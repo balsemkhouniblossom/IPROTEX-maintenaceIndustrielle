@@ -14,11 +14,13 @@ import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { User, UserDocument } from '../schemas/user.schema';
+import { Role, User, UserDocument } from '../schemas/user.schema';
 import { Model, Types } from 'mongoose';
+import { Response } from 'express';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { NotificationsFacade } from '../notifications/notifications.facade';
 import { EmailVerificationTokenService } from './email-verification-token.service';
+import { AppConfigService } from '../config/app.config';
 
 interface JwtPayload {
   email: string;
@@ -31,7 +33,7 @@ export interface LoginResult {
   access_token: string;
   token: string;
   refresh_token: string;
-  user: UserDocument;
+  user: UserWithoutSensitiveData;
 }
 
 export interface UserWithoutSensitiveData {
@@ -49,6 +51,13 @@ export interface UserWithoutSensitiveData {
   photo?: string;
 }
 
+export interface GoogleUserProfile {
+  google_id?: string;
+  email: string;
+  name: string;
+  picture?: string;
+}
+
 const toJwtExpiresIn = (value: string): JwtSignOptions['expiresIn'] =>
   value as JwtSignOptions['expiresIn'];
 
@@ -61,6 +70,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly notificationsFacade: NotificationsFacade,
     private readonly configService: ConfigService,
+    private readonly appConfigService: AppConfigService,
     private readonly emailVerificationTokenService: EmailVerificationTokenService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
@@ -165,7 +175,7 @@ export class AuthService {
       access_token: accessToken,
       token: accessToken,
       refresh_token: refreshToken,
-      user,
+      user: this.sanitizeUser(user),
     };
   }
 
@@ -218,7 +228,9 @@ export class AuthService {
       });
     } catch (err: unknown) {
       const error = err as Error;
-      this.logger.error(`Verification email failed: ${error?.message || error}`);
+      this.logger.error(
+        `Verification email failed: ${error?.message || error}`,
+      );
 
       // Best effort rollback to avoid leaving an account that cannot be verified.
       await this.userModel.findByIdAndDelete(newUser._id).exec();
@@ -252,7 +264,8 @@ export class AuthService {
       previewUrl = await this.notificationsFacade.sendResetPasswordEmail({
         to: user.email,
         resetToken,
-        locale: locale ?? this.configService.get<string>('DEFAULT_LOCALE') ?? 'en',
+        locale:
+          locale ?? this.configService.get<string>('DEFAULT_LOCALE') ?? 'en',
         frontendOrigin,
       });
     }
@@ -303,6 +316,63 @@ export class AuthService {
     await this.setRefreshTokenHash(userId, null);
 
     return { message: 'Logged out successfully' };
+  }
+
+  async googleLogin(
+    googleUser: GoogleUserProfile,
+    res: Response,
+    locale = 'en',
+    frontendOrigin?: string,
+  ) {
+    if (!googleUser.email) {
+      throw new UnauthorizedException('Google authentication failed');
+    }
+
+    let user = await this.usersService.findByEmail(googleUser.email);
+    if (user && !user.google_id) {
+      user.google_id = googleUser.google_id;
+      await user.save();
+    }
+    if (!user) {
+      user = await this.usersService.create({
+        nom_complet: googleUser.name,
+        email: googleUser.email,
+        role: Role.OPERATOR,
+        is_verified: true,
+        is_active: true,
+        google_id: googleUser.google_id,
+        photo: googleUser.picture,
+      });
+    }
+
+    const loginResult = await this.login(user);
+    const frontendBaseUrl = this.appConfigService
+      .resolveFrontendBaseUrl(frontendOrigin)
+      .replace(/\/$/, '');
+
+    const encodedUser = encodeURIComponent(JSON.stringify(loginResult.user));
+
+    res.clearCookie('google_auth_origin', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: frontendBaseUrl.startsWith('https://'),
+      path: '/',
+    });
+
+    return res.redirect(
+      `${frontendBaseUrl}/${locale}/auth/success?token=${encodeURIComponent(loginResult.access_token)}&user=${encodedUser}`,
+    );
+  }
+
+  private sanitizeUser(user: UserDocument): UserWithoutSensitiveData {
+    const userObj = user.toObject() as Record<string, unknown>;
+
+    delete userObj.password;
+    delete userObj.reset_password_token;
+    delete userObj.reset_password_expires;
+    delete userObj.refresh_token_hash;
+
+    return userObj as unknown as UserWithoutSensitiveData;
   }
 
   private async setRefreshTokenHash(

@@ -10,6 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   UnauthorizedException,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local-auth.guard';
@@ -18,8 +20,10 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetTokenDto } from './dto/verify-reset-token.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import type { Request as ExpressRequest } from 'express';
+import { GoogleAuthGuard } from './google-auth.guard';
+import type { Request as ExpressRequest, Response } from 'express';
 import type { UserDocument } from '../schemas/user.schema';
+import type { GoogleUserProfile } from './auth.service';
 
 type LoginRequest = ExpressRequest & {
   user?: UserDocument;
@@ -30,6 +34,43 @@ type JwtRequest = ExpressRequest & {
     userId: string;
   };
 };
+
+type GoogleAuthRequest = ExpressRequest & {
+  user?: GoogleUserProfile;
+};
+
+const SUPPORTED_LOCALES = new Set(['ar', 'de', 'en', 'es', 'fr', 'it']);
+
+function getLocaleFromCookie(cookieHeader?: string): string {
+  if (!cookieHeader) {
+    return 'en';
+  }
+
+  const localeCookie = cookieHeader
+    .split(';')
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith('NEXT_LOCALE='));
+
+  if (!localeCookie) {
+    return 'en';
+  }
+
+  const locale = decodeURIComponent(localeCookie.slice('NEXT_LOCALE='.length));
+  return SUPPORTED_LOCALES.has(locale) ? locale : 'en';
+}
+
+function getCookieValue(cookieHeader: string | undefined, key: string): string {
+  if (!cookieHeader) {
+    return '';
+  }
+
+  const entry = cookieHeader
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${key}=`));
+
+  return entry ? decodeURIComponent(entry.slice(key.length + 1)) : '';
+}
 
 @Controller('auth')
 export class AuthController {
@@ -44,6 +85,26 @@ export class AuthController {
     }
 
     return this.authService.login(req.user);
+  }
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  googleAuth() {
+    // Passport redirects to Google
+  }
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  googleAuthCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
+    if (!req.user) {
+      throw new UnauthorizedException('Google authentication failed');
+    }
+
+    const locale = getLocaleFromCookie(req.headers.cookie);
+    const frontendOrigin = getCookieValue(
+      req.headers.cookie,
+      'google_auth_origin',
+    );
+
+    return this.authService.googleLogin(req.user, res, locale, frontendOrigin);
   }
 
   @Post('refresh')
@@ -90,7 +151,9 @@ export class AuthController {
     @Request() req: ExpressRequest,
   ) {
     const requestOrigin =
-      req.headers.origin ?? req.headers.referer ?? forgotPasswordDto.frontendOrigin;
+      req.headers.origin ??
+      req.headers.referer ??
+      forgotPasswordDto.frontendOrigin;
 
     return this.authService.forgotPassword(
       forgotPasswordDto.email,

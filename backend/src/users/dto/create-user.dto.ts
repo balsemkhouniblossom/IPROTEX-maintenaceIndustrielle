@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 import { Role } from '../../schemas/user.schema';
 import { IsInternationalPhone } from '../../common/validators/is-international-phone.validator';
@@ -24,13 +25,14 @@ export class CreateUserDto {
   @IsNotEmpty()
   email: string;
 
+  @ValidateIf((dto: CreateUserDto) => !dto.google_id)
   @IsString()
   @IsNotEmpty()
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/, {
     message:
       'password must be at least 8 characters and include uppercase, lowercase, number, and special character',
   })
-  password: string;
+  password?: string;
 
   @IsEnum(Role)
   @IsNotEmpty()
@@ -39,6 +41,10 @@ export class CreateUserDto {
   @IsBoolean()
   @IsOptional()
   is_active?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  is_verified?: boolean;
 
   @IsDateString()
   @IsOptional()
@@ -62,4 +68,8 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   photo?: string;
+
+  @IsString()
+  @IsOptional()
+  google_id?: string;
 }

@@ -49,7 +49,7 @@ function createUserDocument(
   overrides: Partial<Record<string, unknown>> = {},
 ): MockUserDocument {
   const baseId = new Types.ObjectId();
-  return {
+  const userDocument: MockUserDocument = {
     _id: baseId,
     email: 'user@example.com',
     user_id: 'USER-001',
@@ -72,7 +72,9 @@ function createUserDocument(
       ...overrides,
     }),
     ...overrides,
-  } as MockUserDocument;
+  };
+
+  return userDocument;
 }
 
 describe('AuthService', () => {
@@ -323,32 +325,40 @@ describe('AuthService', () => {
     });
 
     usersService.findByEmail.mockResolvedValue(user);
-    userModel.findByIdAndUpdate.mockReturnValue(createQuery({ acknowledged: true }));
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
     notificationsFacade.sendResetPasswordEmail.mockResolvedValue('preview-url');
 
     const result = await service.forgotPassword('reset@example.com');
 
-    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
-      user._id.toString(),
-      expect.objectContaining({
-        reset_password_token: expect.any(String),
-        reset_password_expires: expect.any(Date),
-      }),
-      { new: true },
-    );
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledTimes(1);
 
-    const updatePayload = userModel.findByIdAndUpdate.mock.calls[0][1] as {
-      reset_password_token: string;
-    };
+    const updateCall = userModel.findByIdAndUpdate.mock.calls[0] as [
+      string,
+      { reset_password_token: string; reset_password_expires: Date },
+      { new: boolean },
+    ];
 
-    expect(updatePayload.reset_password_token).toMatch(/^[a-f0-9]{64}$/);
+    expect(updateCall[0]).toBe(user._id.toString());
+    expect(updateCall[1].reset_password_token).toMatch(/^[a-f0-9]{64}$/);
+    expect(updateCall[1].reset_password_expires).toBeInstanceOf(Date);
+    expect(updateCall[2]).toEqual({ new: true });
 
-    expect(notificationsFacade.sendResetPasswordEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: 'reset@example.com',
-        resetToken: expect.any(String),
-      }),
-    );
+    expect(notificationsFacade.sendResetPasswordEmail).toHaveBeenCalledTimes(1);
+
+    const sendResetCall = notificationsFacade.sendResetPasswordEmail.mock
+      .calls[0] as [
+      {
+        to: string;
+        resetToken: string;
+        locale?: string;
+        frontendOrigin?: string;
+      },
+    ];
+
+    expect(sendResetCall[0].to).toBe('reset@example.com');
+    expect(sendResetCall[0].resetToken).toMatch(/^[a-f0-9]{64}$/);
     expect(result).toEqual(
       expect.objectContaining({
         message:
@@ -376,12 +386,13 @@ describe('AuthService', () => {
 
     const result = await service.verifyResetToken('plain-reset-token');
 
-    expect(userModel.findOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        reset_password_token: expect.any(String),
-        reset_password_expires: { $gt: expect.any(Date) },
-      }),
-    );
+    expect(userModel.findOne).toHaveBeenCalledTimes(1);
+    const findOneCall = userModel.findOne.mock.calls[0] as [
+      { reset_password_token: string; reset_password_expires: { $gt: Date } },
+    ];
+
+    expect(findOneCall[0].reset_password_token).toMatch(/^[a-f0-9]{64}$/);
+    expect(findOneCall[0].reset_password_expires.$gt).toBeInstanceOf(Date);
     expect(result).toEqual({ message: 'Reset token is valid' });
   });
 
@@ -400,7 +411,9 @@ describe('AuthService', () => {
 
     userModel.findOne.mockReturnValueOnce(createQuery(user));
     (bcrypt.hash as jest.Mock).mockResolvedValue('new-password-hash');
-    userModel.findByIdAndUpdate.mockReturnValue(createQuery({ acknowledged: true }));
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
 
     const result = await service.resetPassword({
       token: 'plain-reset-token',

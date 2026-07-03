@@ -2,12 +2,36 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 
 import { useAuth } from '@/contexts/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { getApiBaseUrl } from '@/config/api-base-url';
+import { getDashboardPath } from '@/services/authRedirect';
+
+const GOOGLE_ICON = (
+  <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
+    <path
+      d="M21.805 10.023h-9.72v3.955h5.576c-.24 1.274-.959 2.353-2.037 3.078v2.554h3.305c1.936-1.783 3.056-4.408 3.056-7.526 0-.688-.062-1.35-.18-1.987Z"
+      fill="#4285F4"
+    />
+    <path
+      d="M12.084 22c2.763 0 5.081-.914 6.774-2.468l-3.305-2.554c-.915.614-2.084.977-3.469.977-2.663 0-4.92-1.798-5.726-4.215H2.947v2.633A10.227 10.227 0 0 0 12.084 22Z"
+      fill="#34A853"
+    />
+    <path
+      d="M6.358 13.74a6.144 6.144 0 0 1-.32-1.94c0-.673.116-1.328.32-1.94V7.227H2.947A10.229 10.229 0 0 0 1.857 11.8c0 1.653.397 3.218 1.09 4.573l3.41-2.633Z"
+      fill="#FBBC05"
+    />
+    <path
+      d="M12.084 5.645c1.503 0 2.853.517 3.916 1.533l2.937-2.937C17.16 2.59 14.842 1.6 12.084 1.6 7.247 1.6 3.08 4.366 2.947 7.227l3.41 2.633c.806-2.417 3.063-4.215 5.727-4.215Z"
+      fill="#EA4335"
+    />
+  </svg>
+);
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -16,6 +40,7 @@ export default function LoginPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const router = useRouter();
@@ -24,6 +49,12 @@ export default function LoginPage() {
   const { login } = useAuth();
   const t = useTranslations('auth');
 
+  const handleGoogleLogin = () => {
+    setError('');
+    setGoogleLoading(true);
+    window.location.href = `${getApiBaseUrl()}/auth/google?locale=${encodeURIComponent(locale)}&frontendOrigin=${encodeURIComponent(window.location.origin)}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -31,9 +62,7 @@ export default function LoginPage() {
 
     try {
       const userRole = await login(formData.email, formData.password);
-      if (userRole === 'admin') router.replace(`/${locale}`);
-      else if (userRole === 'technician') router.replace(`/${locale}/technician`);
-      else router.replace(`/${locale}/operator`);
+      router.replace(getDashboardPath(locale, userRole));
 
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -66,9 +95,11 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center mb-6">
-              <img
+              <Image
                 src="/Iprotex%20logo.png"
                 alt="IPROTEX Logo"
+                width={48}
+                height={48}
                 className="h-12 w-12 object-contain"
               />
             </div>
@@ -139,13 +170,31 @@ export default function LoginPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   {loading ? t('signingIn') : t('signIn')}
                 </button>
               </div>
             </form>
+
+            <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span>{t('orContinueWith')}</span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading || googleLoading}
+              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {GOOGLE_ICON}
+              <span>
+                {googleLoading ? t('redirectingToGoogle') : t('continueWithGoogle')}
+              </span>
+            </button>
 
       <div className="text-center mt-6">
               <p className="text-sm text-gray-600">

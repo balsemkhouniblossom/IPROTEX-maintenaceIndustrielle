@@ -173,7 +173,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 **Auth Flow**:
 
-```
+```text
 1. Login (email + password) → validate password → generate tokens
 2. Store refresh_token_hash in user.refresh_token_hash
 3. Return access_token + refresh_token (short-lived access, long-lived refresh)
@@ -274,7 +274,7 @@ npm update --save # after vetting
 
 **Log Example**:
 
-```
+```text
 [HTTP] POST /auth/login 200 - 125ms
 [HTTP] GET /machines/123 403 - 45ms
 [ERROR] Failed to create work order: ValidationError

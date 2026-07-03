@@ -22,6 +22,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<string>;
+  completeSocialLogin: (authToken: string, authUser: User) => string;
   register: (userData: Record<string, unknown>) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -35,6 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  const establishSession = (authToken: string, authUser: User) => {
+    setToken(authToken);
+    setUser(authUser);
+    localStorage.setItem('token', authToken);
+    localStorage.setItem('user', JSON.stringify(authUser));
+
+    return authUser.role;
+  };
 
   // auth state initialized from localStorage synchronously
   useEffect(() => {
@@ -62,13 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = response.data;
       const authToken = data.access_token ?? data.token;
 
-      setToken(authToken);
-      setUser(data.user);
-      localStorage.setItem('token', authToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-
-      // Return user role for redirect logic
-      return data.user.role;
+      return establishSession(authToken, data.user);
     } catch (error: any) {
       const status = error?.response?.status;
       const responseData = error?.response?.data;
@@ -100,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const completeSocialLogin = (authToken: string, authUser: User) => {
+    return establishSession(authToken, authUser);
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -115,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     token,
     login,
+    completeSocialLogin,
     register,
     logout,
     isLoading,

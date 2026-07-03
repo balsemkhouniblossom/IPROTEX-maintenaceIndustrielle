@@ -9,9 +9,11 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { LocalStrategy } from './local.strategy';
 import { JwtStrategy } from './jwt.strategy';
+import { GoogleStrategy } from './google.strategy';
 import { EmailModule } from '../email/email.module';
 import { User, UserSchema } from '../schemas/user.schema';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AppConfigService } from '../config/app.config';
 import { FeatureFlagsConfigService } from '../config/feature-flags.config';
 import { EmailVerificationTokenService } from './email-verification-token.service';
 
@@ -44,11 +46,9 @@ function resolveJwtSecret(configService: ConfigService): string {
       useFactory: (configService: ConfigService) => ({
         secret: resolveJwtSecret(configService),
         signOptions: {
-          expiresIn: (
-            configService.get<string>('JWT_EXPIRES_IN') ??
+          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ??
             configService.get<string>('JWT_ACCESS_EXPIRES_IN') ??
-            '15m'
-          ) as JwtSignOptions['expiresIn'],
+            '15m') as JwtSignOptions['expiresIn'],
         },
       }),
     }),
@@ -58,6 +58,8 @@ function resolveJwtSecret(configService: ConfigService): string {
     AuthService,
     LocalStrategy,
     JwtStrategy,
+    GoogleStrategy,
+    AppConfigService,
     FeatureFlagsConfigService,
     EmailVerificationTokenService,
   ],

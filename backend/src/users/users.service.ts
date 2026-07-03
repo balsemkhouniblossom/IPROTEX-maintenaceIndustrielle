@@ -10,6 +10,7 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+
   async create(createUserDto: CreateUserDto): Promise<UserDocument> {
     const lastUser = await this.userModel
       .findOne({}, {}, { sort: { created_at: -1 } })
@@ -27,21 +28,25 @@ export class UsersService {
     const userId = `USER-${nextId.toString().padStart(3, '0')}`;
 
     // 🔐 HASH PASSWORD (IMPORTANT FIX)
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    let hashedPassword: string | undefined;
 
+    if (createUserDto.password) {
+      hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    }
     const createdUser = new this.userModel({
       user_id: userId,
       nom_complet: createUserDto.nom_complet,
       email: createUserDto.email,
       role: createUserDto.role,
       is_active: createUserDto.is_active ?? true,
-      is_verified: false,
+      is_verified: Boolean(createUserDto.google_id),
       department: createUserDto.department,
       phone: createUserDto.phone,
       photo: createUserDto.photo,
 
       // ✅ FIX HERE
       password: hashedPassword,
+      google_id: createUserDto.google_id,
     });
 
     return createdUser.save();
