@@ -24,6 +24,8 @@ export interface EmailDiagnostics {
   timestamp: string;
 }
 
+type EmailDeliveryMode = 'auto' | 'smtp' | 'brevo-api';
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -34,6 +36,7 @@ export class EmailService {
   private readonly brevoApiTimeoutMs: number;
   private readonly smtpFallbackCooldownMs: number;
   private readonly smtpVerifyOnStartup: boolean;
+  private readonly deliveryMode: EmailDeliveryMode;
   private smtpBypassUntil = 0;
   private lastSmtpErrorCode?: string;
 
@@ -61,6 +64,9 @@ export class EmailService {
     this.smtpFallbackCooldownMs = Number(
       process.env.SMTP_FALLBACK_COOLDOWN_MS ?? 300000,
     );
+    this.deliveryMode = this.parseDeliveryMode(
+      process.env.EMAIL_DELIVERY_MODE,
+    );
     this.smtpVerifyOnStartup = this.parseBoolean(
       process.env.SMTP_VERIFY_ON_STARTUP,
       process.env.NODE_ENV !== 'production',
@@ -68,7 +74,7 @@ export class EmailService {
 
     this.fromAddress = process.env.EMAIL_FROM || 'Iprotex <noreply@localhost>';
 
-    if (host) {
+    if (host && this.deliveryMode !== 'brevo-api') {
       const smtpConfig: SMTPTransport.Options = {
         host,
         port,
@@ -103,6 +109,10 @@ export class EmailService {
           'Skipping SMTP startup verification; Brevo API fallback is enabled',
         );
       }
+    } else if (host && this.deliveryMode === 'brevo-api') {
+      this.logger.log(
+        'EMAIL_DELIVERY_MODE=brevo-api; skipping SMTP transport initialization',
+      );
     } else {
       this.logger.warn(
         'SMTP_HOST is not configured; development fallback may be used',
@@ -116,6 +126,16 @@ export class EmailService {
 
   async sendMail(options: SendEmailOptions): Promise<string | undefined> {
     const host = process.env.SMTP_HOST;
+
+    if (this.deliveryMode === 'brevo-api') {
+      if (!this.brevoApiKey) {
+        throw new Error(
+          'EMAIL_DELIVERY_MODE=brevo-api requires BREVO_API_KEY to be configured',
+        );
+      }
+
+      return this.sendViaBrevoApi(options);
+    }
 
     if (!host) {
       if (this.brevoApiKey) {
@@ -397,6 +417,21 @@ export class EmailService {
     return fallback;
   }
 
+  private parseDeliveryMode(
+    value: string | undefined,
+  ): EmailDeliveryMode {
+    const normalized = value?.trim().toLowerCase();
+    if (
+      normalized === 'auto' ||
+      normalized === 'smtp' ||
+      normalized === 'brevo-api'
+    ) {
+      return normalized;
+    }
+
+    return 'auto';
+  }
+
   private async sendViaBrevoApi(
     options: SendEmailOptions,
   ): Promise<string | undefined> {
@@ -434,6 +469,16 @@ export class EmailService {
 
       if (!response.ok) {
         const responseText = await response.text();
+        if (
+          response.status === 401 &&
+          /authorised_ips|authorized_ips|unrecognised ip address/i.test(
+            responseText,
+          )
+        ) {
+          this.logger.error(
+            'Brevo API rejected the request because Render egress IP is not authorized in Brevo security settings',
+          );
+        }
         throw new Error(
           `Brevo API send failed (${response.status}): ${responseText}`,
         );
