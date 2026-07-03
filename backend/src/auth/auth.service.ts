@@ -261,18 +261,22 @@ export class AuthService {
         resetExpires,
       );
 
-      try {
-        previewUrl = await this.notificationsFacade.sendResetPasswordEmail({
-          to: user.email,
+      const preferredLocale =
+        locale ?? this.configService.get<string>('DEFAULT_LOCALE') ?? 'en';
+
+      if (this.shouldSendForgotPasswordEmailAsync()) {
+        void this.sendResetPasswordEmailSafe(
+          user.email,
           resetToken,
-          locale:
-            locale ?? this.configService.get<string>('DEFAULT_LOCALE') ?? 'en',
+          preferredLocale,
           frontendOrigin,
-        });
-      } catch (err: unknown) {
-        const error = err as Error;
-        this.logger.error(
-          `Forgot-password email delivery failed: ${error?.message || error}`,
+        );
+      } else {
+        previewUrl = await this.sendResetPasswordEmailSafe(
+          user.email,
+          resetToken,
+          preferredLocale,
+          frontendOrigin,
         );
       }
     }
@@ -290,6 +294,37 @@ export class AuthService {
     }
 
     return response;
+  }
+
+  private shouldSendForgotPasswordEmailAsync(): boolean {
+    const configured = process.env.FORGOT_PASSWORD_ASYNC_EMAIL?.trim();
+    if (!configured) {
+      return process.env.NODE_ENV === 'production';
+    }
+
+    return ['1', 'true', 'yes', 'on'].includes(configured.toLowerCase());
+  }
+
+  private async sendResetPasswordEmailSafe(
+    to: string,
+    resetToken: string,
+    locale: string,
+    frontendOrigin?: string,
+  ): Promise<string | undefined> {
+    try {
+      return await this.notificationsFacade.sendResetPasswordEmail({
+        to,
+        resetToken,
+        locale,
+        frontendOrigin,
+      });
+    } catch (err: unknown) {
+      const error = err as Error;
+      this.logger.error(
+        `Forgot-password email delivery failed: ${error?.message || error}`,
+      );
+      return undefined;
+    }
   }
 
   async verifyResetToken(token: string) {
