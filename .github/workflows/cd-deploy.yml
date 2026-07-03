@@ -56,7 +56,70 @@ jobs:
 
             - name: Resolve frontend API base URL
               run: |
+                  read_json_key() {
+                    local json_input="$1"
+                    local key="$2"
+                    JSON_INPUT="$json_input" JSON_KEY="$key" node -e "try{const o=JSON.parse(process.env.JSON_INPUT||'{}');const v=o[process.env.JSON_KEY];if(typeof v==='string'&&v.length)process.stdout.write(v);}catch{}"
+                  }
+
                   RESOLVED_FROM=""
+                  RAW_API_URL=""
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$SECRETS_JSON" "NEXT_PUBLIC_API_BASE_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="secret NEXT_PUBLIC_API_BASE_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$SECRETS_JSON" "PROD_API_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="secret PROD_API_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$SECRETS_JSON" "API_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="secret API_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$SECRETS_JSON" "BACKEND_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="secret BACKEND_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$VARS_JSON" "NEXT_PUBLIC_API_BASE_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="var NEXT_PUBLIC_API_BASE_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$VARS_JSON" "PROD_API_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="var PROD_API_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$VARS_JSON" "API_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="var API_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    RAW_API_URL=$(read_json_key "$VARS_JSON" "BACKEND_URL")
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="var BACKEND_URL"
+                    fi
+                  fi
 
                   if [ -n "$RAW_API_URL" ]; then
                     RESOLVED_FROM="github secret/variable"
@@ -106,7 +169,8 @@ jobs:
                   echo "NEXT_PUBLIC_API_BASE_URL=$NORMALIZED_API_URL" >> "$GITHUB_ENV"
                   echo "Resolved NEXT_PUBLIC_API_BASE_URL from: $RESOLVED_FROM"
               env:
-                  RAW_API_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || secrets.PROD_API_URL || secrets.API_URL || secrets.BACKEND_URL || vars.NEXT_PUBLIC_API_BASE_URL || vars.PROD_API_URL || vars.API_URL || vars.BACKEND_URL }}
+                  SECRETS_JSON: ${{ toJson(secrets) }}
+                  VARS_JSON: ${{ toJson(vars) }}
 
             - name: Install and build frontend
               run: |

@@ -33,6 +33,7 @@ export class EmailService {
   private readonly brevoApiUrl: string;
   private readonly brevoApiTimeoutMs: number;
   private readonly smtpFallbackCooldownMs: number;
+  private readonly smtpVerifyOnStartup: boolean;
   private smtpBypassUntil = 0;
   private lastSmtpErrorCode?: string;
 
@@ -60,6 +61,10 @@ export class EmailService {
     this.smtpFallbackCooldownMs = Number(
       process.env.SMTP_FALLBACK_COOLDOWN_MS ?? 300000,
     );
+    this.smtpVerifyOnStartup = this.parseBoolean(
+      process.env.SMTP_VERIFY_ON_STARTUP,
+      process.env.NODE_ENV !== 'production',
+    );
 
     this.fromAddress = process.env.EMAIL_FROM || 'Iprotex <noreply@localhost>';
 
@@ -82,16 +87,22 @@ export class EmailService {
 
       this.transporter = nodemailer.createTransport(smtpConfig);
 
-      this.transporter.verify((err) => {
-        if (err) {
-          this.markSmtpFailure(err);
-          this.logger.error('SMTP connection failed', err);
-        } else {
-          this.smtpBypassUntil = 0;
-          this.lastSmtpErrorCode = undefined;
-          this.logger.log('SMTP server is ready');
-        }
-      });
+      if (this.smtpVerifyOnStartup) {
+        this.transporter.verify((err) => {
+          if (err) {
+            this.markSmtpFailure(err);
+            this.logger.warn('SMTP connection check failed at startup', err);
+          } else {
+            this.smtpBypassUntil = 0;
+            this.lastSmtpErrorCode = undefined;
+            this.logger.log('SMTP server is ready');
+          }
+        });
+      } else if (this.brevoApiKey) {
+        this.logger.log(
+          'Skipping SMTP startup verification; Brevo API fallback is enabled',
+        );
+      }
     } else {
       this.logger.warn(
         'SMTP_HOST is not configured; development fallback may be used',
@@ -368,6 +379,22 @@ export class EmailService {
     }
 
     return 'UNKNOWN_SMTP_ERROR';
+  }
+
+  private parseBoolean(value: string | undefined, fallback: boolean): boolean {
+    if (value === undefined) {
+      return fallback;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+
+    return fallback;
   }
 
   private async sendViaBrevoApi(
