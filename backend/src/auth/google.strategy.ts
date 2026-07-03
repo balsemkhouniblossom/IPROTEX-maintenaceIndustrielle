@@ -16,23 +16,49 @@ type GoogleOAuthProfile = {
 const GoogleOAuthStrategy = (googleOAuth20 as { Strategy: StrategyConstructor })
   .Strategy;
 
+function normalizeGoogleEnv(value: string | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  // Some hosts store env values with wrapping quotes; strip only outer quotes.
+  return trimmed.replace(/^['\"]|['\"]$/g, '');
+}
+
+function requireGoogleEnv(key: string, value: string): string {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+
+  if (
+    value === 'google-client-id-not-configured' ||
+    value === 'google-client-secret-not-configured'
+  ) {
+    throw new Error(`Invalid value for environment variable: ${key}`);
+  }
+
+  return value;
+}
+
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(
   GoogleOAuthStrategy,
   'google',
 ) {
   constructor(configService: ConfigService) {
+    const googleClientId = requireGoogleEnv(
+      'GOOGLE_CLIENT_ID',
+      normalizeGoogleEnv(configService.get<string>('GOOGLE_CLIENT_ID')),
+    );
+    const googleClientSecret = requireGoogleEnv(
+      'GOOGLE_CLIENT_SECRET',
+      normalizeGoogleEnv(configService.get<string>('GOOGLE_CLIENT_SECRET')),
+    );
+
     const callbackUrl =
-      configService.get<string>('GOOGLE_CALLBACK_URL')?.trim() ||
+      normalizeGoogleEnv(configService.get<string>('GOOGLE_CALLBACK_URL')) ||
       `${configService.get<string>('BACKEND_URL')?.trim() ?? 'http://localhost:3001'}/auth/google/callback`;
 
     super({
-      clientID:
-        configService.get<string>('GOOGLE_CLIENT_ID')?.trim() ??
-        'google-client-id-not-configured',
-      clientSecret:
-        configService.get<string>('GOOGLE_CLIENT_SECRET')?.trim() ??
-        'google-client-secret-not-configured',
+      clientID: googleClientId,
+      clientSecret: googleClientSecret,
       callbackURL: callbackUrl,
       scope: ['profile', 'email'],
     });

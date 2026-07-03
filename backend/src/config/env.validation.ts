@@ -30,6 +30,11 @@ function requireEnv(key: string): string {
   return value;
 }
 
+function normalizeMaybeQuotedEnv(value: string | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  return trimmed.replace(/^['\"]|['\"]$/g, '');
+}
+
 function parsePort(value: string | undefined): number {
   const fallback = 3001;
   if (!value) return fallback;
@@ -137,6 +142,23 @@ export function validateEnvironment(): EnvValidationResult {
     if (!hasEmailVerificationSecret && !hasJwtSecret) {
       throw new Error(
         'Missing required environment variable: EMAIL_VERIFICATION_SECRET (or JWT_SECRET)',
+      );
+    }
+
+    const googleClientId = normalizeMaybeQuotedEnv(
+      process.env.GOOGLE_CLIENT_ID,
+    );
+    const googleClientSecret = normalizeMaybeQuotedEnv(
+      process.env.GOOGLE_CLIENT_SECRET,
+    );
+
+    if (!googleClientId) {
+      throw new Error('Missing required environment variable: GOOGLE_CLIENT_ID');
+    }
+
+    if (!googleClientSecret) {
+      throw new Error(
+        'Missing required environment variable: GOOGLE_CLIENT_SECRET',
       );
     }
   }
