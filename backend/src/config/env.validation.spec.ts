@@ -23,6 +23,7 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
     process.env.API_URL = 'https://api.example.com';
     process.env.APP_URL = 'https://app.example.com';
     process.env.SMTP_HOST = 'smtp.example.com';
@@ -53,6 +54,29 @@ describe('validateEnvironment', () => {
     );
   });
 
+  it('normalizes wildcard CORS into explicit origins', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.CORS_ORIGINS = '*';
+
+    const env = validateEnvironment();
+
+    expect(env.corsOrigins).toEqual([
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://app.example.com',
+      'https://api.example.com',
+    ]);
+  });
+
   it('allows production when EMAIL_VERIFICATION_SECRET is missing but JWT_SECRET exists', () => {
     process.env.NODE_ENV = 'production';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
@@ -62,6 +86,7 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
     process.env.FRONTEND_BASE_URL = 'https://app.example.com';
     delete process.env.EMAIL_VERIFICATION_SECRET;
 
@@ -79,6 +104,7 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
     process.env.RENDER_EXTERNAL_URL = 'https://gmao-api.onrender.com';
     delete process.env.FRONTEND_BASE_URL;
     delete process.env.APP_URL;

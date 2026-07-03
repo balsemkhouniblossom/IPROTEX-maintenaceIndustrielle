@@ -78,13 +78,26 @@ function wildcardToRegex(originPattern: string): RegExp {
   return new RegExp(`^${escaped}$`);
 }
 
-function parseCorsOrigins(value: string | undefined): CorsOrigin[] {
-  if (!value || !value.trim()) {
-    return [
-      'http://localhost:3000',
-      'https://iprotex-maintenace-industrielle.vercel.app',
-      /^https:\/\/iprotex-maintenace-industrielle-[a-z0-9-]+\.vercel\.app$/,
-    ];
+function buildCorsFallbackOrigins(
+  frontendBaseUrl: string,
+  backendUrl?: string,
+): CorsOrigin[] {
+  const origins = new Set<string>(['http://localhost:3000', 'http://localhost:3001']);
+
+  origins.add(new URL(frontendBaseUrl).origin);
+  if (backendUrl) {
+    origins.add(new URL(backendUrl).origin);
+  }
+
+  return Array.from(origins);
+}
+
+function parseCorsOrigins(
+  value: string | undefined,
+  fallbackOrigins: CorsOrigin[],
+): CorsOrigin[] {
+  if (!value || !value.trim() || value.trim() === '*') {
+    return fallbackOrigins;
   }
 
   return value
@@ -161,10 +174,23 @@ export function validateEnvironment(): EnvValidationResult {
         'Missing required environment variable: GOOGLE_CLIENT_SECRET',
       );
     }
+
+    const googleCallbackUrl = normalizeMaybeQuotedEnv(
+      process.env.GOOGLE_CALLBACK_URL,
+    );
+    const backendUrl = normalizeMaybeQuotedEnv(process.env.BACKEND_URL);
+
+    if (googleCallbackUrl) {
+      parseUrl(googleCallbackUrl, 'GOOGLE_CALLBACK_URL');
+    } else if (backendUrl) {
+      parseUrl(backendUrl, 'BACKEND_URL');
+    } else {
+      throw new Error(
+        'Missing required environment variable: GOOGLE_CALLBACK_URL (or BACKEND_URL)',
+      );
+    }
   }
 
-  const port = parsePort(process.env.PORT);
-  const corsOrigins = parseCorsOrigins(process.env.CORS_ORIGINS);
   const rawFrontendBaseUrl =
     process.env.FRONTEND_BASE_URL?.trim() ||
     process.env.APP_URL?.trim() ||
@@ -173,6 +199,16 @@ export function validateEnvironment(): EnvValidationResult {
   const frontendBaseUrl = rawFrontendBaseUrl
     ? parseUrl(rawFrontendBaseUrl, 'FRONTEND_BASE_URL')
     : 'http://localhost:3000';
+
+  const backendUrl = process.env.BACKEND_URL?.trim()
+    ? parseUrl(process.env.BACKEND_URL.trim(), 'BACKEND_URL')
+    : undefined;
+
+  const port = parsePort(process.env.PORT);
+  const corsOrigins = parseCorsOrigins(
+    process.env.CORS_ORIGINS,
+    buildCorsFallbackOrigins(frontendBaseUrl, backendUrl),
+  );
 
   const emailVerificationSecret =
     process.env.EMAIL_VERIFICATION_SECRET?.trim() ||

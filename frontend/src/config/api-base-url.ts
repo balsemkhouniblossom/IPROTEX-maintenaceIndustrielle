@@ -4,7 +4,11 @@ export function getApiBaseUrl(): string {
     return configuredBaseUrl.replace(/\/$/, '');
   }
 
-  return process.env.NODE_ENV === 'production'
-    ? 'https://pfe-maintenaceindustrielle.onrender.com'
-    : 'http://localhost:3001';
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Missing required environment variable: NEXT_PUBLIC_API_BASE_URL',
+    );
+  }
+
+  return 'http://localhost:3001';
 }
