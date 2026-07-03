@@ -261,13 +261,20 @@ export class AuthService {
         resetExpires,
       );
 
-      previewUrl = await this.notificationsFacade.sendResetPasswordEmail({
-        to: user.email,
-        resetToken,
-        locale:
-          locale ?? this.configService.get<string>('DEFAULT_LOCALE') ?? 'en',
-        frontendOrigin,
-      });
+      try {
+        previewUrl = await this.notificationsFacade.sendResetPasswordEmail({
+          to: user.email,
+          resetToken,
+          locale:
+            locale ?? this.configService.get<string>('DEFAULT_LOCALE') ?? 'en',
+          frontendOrigin,
+        });
+      } catch (err: unknown) {
+        const error = err as Error;
+        this.logger.error(
+          `Forgot-password email delivery failed: ${error?.message || error}`,
+        );
+      }
     }
 
     const response: {

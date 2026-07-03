@@ -24,6 +24,11 @@ export class EmailService {
 
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
+    const connectionTimeout = Number(
+      process.env.SMTP_CONNECTION_TIMEOUT_MS ?? 10000,
+    );
+    const greetingTimeout = Number(process.env.SMTP_GREETING_TIMEOUT_MS ?? 10000);
+    const socketTimeout = Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? 15000);
 
     this.fromAddress = process.env.EMAIL_FROM || 'Iprotex <noreply@localhost>';
 
@@ -32,6 +37,9 @@ export class EmailService {
         host,
         port,
         secure,
+        connectionTimeout,
+        greetingTimeout,
+        socketTimeout,
         auth:
           user && pass
             ? {

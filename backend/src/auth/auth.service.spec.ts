@@ -392,6 +392,29 @@ describe('AuthService', () => {
     });
   });
 
+  it('returns generic forgot-password response when reset email delivery fails', async () => {
+    const user = createUserDocument({
+      email: 'reset-fail@example.com',
+    });
+
+    usersService.findByEmail.mockResolvedValue(user);
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
+    notificationsFacade.sendResetPasswordEmail.mockRejectedValue(
+      new Error('smtp failed'),
+    );
+
+    const result = await service.forgotPassword('reset-fail@example.com');
+
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledTimes(1);
+    expect(notificationsFacade.sendResetPasswordEmail).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      message:
+        'If an account exists with that email, a password reset link has been sent.',
+    });
+  });
+
   it('verifies reset token when token hash matches and token is not expired', async () => {
     userModel.findOne.mockReturnValueOnce(createQuery(createUserDocument()));
 
