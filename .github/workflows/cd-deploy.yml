@@ -54,10 +54,28 @@ jobs:
                   cache: "npm"
                   cache-dependency-path: "frontend/package-lock.json"
 
+            - name: Resolve frontend API base URL
+              run: |
+                  if [ -z "$RAW_API_URL" ] && [ -f ".env.production" ]; then
+                    RAW_API_URL=$(grep -E '^NEXT_PUBLIC_API_BASE_URL=' .env.production | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                  fi
+
+                  if [ -z "$RAW_API_URL" ] && [ -f ".env.production" ]; then
+                    RAW_API_URL=$(grep -E '^API_URL=' .env.production | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                  fi
+
+                  if [ -z "$RAW_API_URL" ]; then
+                    echo "::error::Missing frontend API URL. Configure one of: secrets.NEXT_PUBLIC_API_BASE_URL, secrets.PROD_API_URL, vars.NEXT_PUBLIC_API_BASE_URL, vars.PROD_API_URL, or set NEXT_PUBLIC_API_BASE_URL/API_URL in .env.production"
+                    exit 1
+                  fi
+
+                  NORMALIZED_API_URL="${RAW_API_URL%/}"
+                  echo "NEXT_PUBLIC_API_BASE_URL=$NORMALIZED_API_URL" >> "$GITHUB_ENV"
+              env:
+                  RAW_API_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || secrets.PROD_API_URL || vars.NEXT_PUBLIC_API_BASE_URL || vars.PROD_API_URL }}
+
             - name: Install and build frontend
               run: |
                   cd frontend
                   npm install --legacy-peer-deps
                   npm run build
-              env:
-                  NEXT_PUBLIC_API_BASE_URL: ${{ secrets.PROD_API_URL }}
