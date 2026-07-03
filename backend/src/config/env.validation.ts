@@ -82,7 +82,10 @@ function buildCorsFallbackOrigins(
   frontendBaseUrl: string,
   backendUrl?: string,
 ): CorsOrigin[] {
-  const origins = new Set<string>(['http://localhost:3000', 'http://localhost:3001']);
+  const origins = new Set<string>([
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ]);
 
   origins.add(new URL(frontendBaseUrl).origin);
   if (backendUrl) {
@@ -96,8 +99,13 @@ function parseCorsOrigins(
   value: string | undefined,
   fallbackOrigins: CorsOrigin[],
 ): CorsOrigin[] {
-  if (!value || !value.trim() || value.trim() === '*') {
+  if (!value || !value.trim()) {
     return fallbackOrigins;
+  }
+
+  if (value.trim() === '*') {
+    // Reflect any origin when credentials are enabled.
+    return [/^https?:\/\/.+/i];
   }
 
   return value
@@ -193,6 +201,7 @@ export function validateEnvironment(): EnvValidationResult {
 
   const rawFrontendBaseUrl =
     process.env.FRONTEND_BASE_URL?.trim() ||
+    process.env.FRONTEND_URL?.trim() ||
     process.env.APP_URL?.trim() ||
     process.env.RENDER_EXTERNAL_URL?.trim();
 
@@ -205,8 +214,10 @@ export function validateEnvironment(): EnvValidationResult {
     : undefined;
 
   const port = parsePort(process.env.PORT);
+  const configuredCorsOrigins =
+    process.env.CORS_ORIGINS?.trim() || process.env.ALLOWED_ORIGINS?.trim();
   const corsOrigins = parseCorsOrigins(
-    process.env.CORS_ORIGINS,
+    configuredCorsOrigins,
     buildCorsFallbackOrigins(frontendBaseUrl, backendUrl),
   );
 

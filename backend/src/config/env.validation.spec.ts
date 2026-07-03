@@ -54,7 +54,7 @@ describe('validateEnvironment', () => {
     );
   });
 
-  it('normalizes wildcard CORS into explicit origins', () => {
+  it('accepts wildcard CORS as any http/https origin matcher', () => {
     process.env.NODE_ENV = 'production';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
@@ -69,11 +69,51 @@ describe('validateEnvironment', () => {
 
     const env = validateEnvironment();
 
+    expect(env.corsOrigins).toHaveLength(1);
+    expect(env.corsOrigins[0]).toBeInstanceOf(RegExp);
+    expect((env.corsOrigins[0] as RegExp).test('https://app.example.com')).toBe(
+      true,
+    );
+  });
+
+  it('accepts frontend URL from FRONTEND_URL alias', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.FRONTEND_URL = 'https://app.example.com';
+    delete process.env.FRONTEND_BASE_URL;
+    delete process.env.APP_URL;
+
+    const env = validateEnvironment();
+
+    expect(env.frontendBaseUrl).toBe('https://app.example.com');
+  });
+
+  it('accepts CORS origins from ALLOWED_ORIGINS alias', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.ALLOWED_ORIGINS = 'https://app.example.com,https://preview.example.com';
+    delete process.env.CORS_ORIGINS;
+
+    const env = validateEnvironment();
+
     expect(env.corsOrigins).toEqual([
-      'http://localhost:3000',
-      'http://localhost:3001',
       'https://app.example.com',
-      'https://api.example.com',
+      'https://preview.example.com',
     ]);
   });
 
