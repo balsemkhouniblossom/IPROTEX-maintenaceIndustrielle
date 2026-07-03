@@ -32,6 +32,9 @@ export class EmailService {
   private readonly brevoApiKey: string;
   private readonly brevoApiUrl: string;
   private readonly brevoApiTimeoutMs: number;
+  private readonly smtpFallbackCooldownMs: number;
+  private smtpBypassUntil = 0;
+  private lastSmtpErrorCode?: string;
 
   constructor() {
     const host = process.env.SMTP_HOST;
@@ -54,6 +57,9 @@ export class EmailService {
       process.env.BREVO_API_URL?.trim() ||
       'https://api.brevo.com/v3/smtp/email';
     this.brevoApiTimeoutMs = Number(process.env.BREVO_API_TIMEOUT_MS ?? 10000);
+    this.smtpFallbackCooldownMs = Number(
+      process.env.SMTP_FALLBACK_COOLDOWN_MS ?? 300000,
+    );
 
     this.fromAddress = process.env.EMAIL_FROM || 'Iprotex <noreply@localhost>';
 
@@ -78,8 +84,11 @@ export class EmailService {
 
       this.transporter.verify((err) => {
         if (err) {
+          this.markSmtpFailure(err);
           this.logger.error('SMTP connection failed', err);
         } else {
+          this.smtpBypassUntil = 0;
+          this.lastSmtpErrorCode = undefined;
           this.logger.log('SMTP server is ready');
         }
       });
@@ -146,6 +155,13 @@ export class EmailService {
       throw new Error('SMTP transport is not initialized');
     }
 
+    if (this.shouldBypassSmtp()) {
+      this.logger.warn(
+        'Skipping SMTP attempt during cooldown; using Brevo API fallback',
+      );
+      return this.sendViaBrevoApi(options);
+    }
+
     this.logger.log('========== SMTP SEND ==========');
     this.logger.log(`FROM: ${this.fromAddress}`);
     this.logger.log(`TO: ${options.to}`);
@@ -163,8 +179,12 @@ export class EmailService {
       this.logger.log('SMTP RESPONSE:');
       this.logger.log(JSON.stringify(info, null, 2));
 
+      this.smtpBypassUntil = 0;
+      this.lastSmtpErrorCode = undefined;
+
       return nodemailer.getTestMessageUrl(info) || undefined;
     } catch (err) {
+      this.markSmtpFailure(err);
       this.logger.error('SMTP SEND FAILED');
       this.logger.error(err);
 
@@ -223,6 +243,23 @@ export class EmailService {
           configured: true,
           reachable: false,
           errorCode: 'TRANSPORT_NOT_INITIALIZED',
+        },
+        brevoApi: {
+          configured: brevoConfigured,
+        },
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    if (this.shouldBypassSmtp()) {
+      return {
+        status: brevoConfigured ? 'degraded' : 'down',
+        service: 'email',
+        mode: brevoConfigured ? 'brevo-api' : 'smtp',
+        smtp: {
+          configured: true,
+          reachable: false,
+          errorCode: this.lastSmtpErrorCode ?? 'SMTP_BYPASSED_DURING_COOLDOWN',
         },
         brevoApi: {
           configured: brevoConfigured,
@@ -293,6 +330,46 @@ export class EmailService {
     }
   }
 
+  private shouldBypassSmtp(): boolean {
+    return Boolean(this.brevoApiKey) && Date.now() < this.smtpBypassUntil;
+  }
+
+  private markSmtpFailure(error: unknown): void {
+    const errorCode = this.extractErrorCode(error);
+    this.lastSmtpErrorCode = errorCode;
+
+    if (!this.brevoApiKey) {
+      return;
+    }
+
+    const networkFailureCodes = new Set([
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ENOTFOUND',
+      'EHOSTUNREACH',
+      'ESOCKET',
+    ]);
+
+    if (networkFailureCodes.has(errorCode)) {
+      this.smtpBypassUntil = Date.now() + this.smtpFallbackCooldownMs;
+      this.logger.warn(
+        `SMTP marked unhealthy (${errorCode}); bypassing SMTP for ${this.smtpFallbackCooldownMs}ms`,
+      );
+    }
+  }
+
+  private extractErrorCode(error: unknown): string {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const rawCode = (error as { code?: unknown }).code;
+      if (typeof rawCode === 'string' && rawCode.trim()) {
+        return rawCode;
+      }
+    }
+
+    return 'UNKNOWN_SMTP_ERROR';
+  }
+
   private async sendViaBrevoApi(
     options: SendEmailOptions,
   ): Promise<string | undefined> {
@@ -349,7 +426,13 @@ export class EmailService {
     to: string,
     token: string,
   ): Promise<string | undefined> {
-    const url = `http://localhost:3001/auth/verify-email?token=${token}`;
+    const verificationBaseUrl =
+      process.env.APP_URL?.trim() ||
+      process.env.FRONTEND_BASE_URL?.trim() ||
+      process.env.BACKEND_URL?.trim() ||
+      'http://localhost:3001';
+    const normalizedVerificationBaseUrl = verificationBaseUrl.replace(/\/$/, '');
+    const url = `${normalizedVerificationBaseUrl}/auth/verify-email?token=${token}`;
 
     this.logger.log(`========== VERIFICATION EMAIL ==========`);
 

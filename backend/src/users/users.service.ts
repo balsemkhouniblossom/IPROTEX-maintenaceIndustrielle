@@ -193,8 +193,6 @@ export class UsersService {
 
   async getUsersTotal() {
     try {
-      console.log(await this.userModel.findOne().lean()); // 👈 PUT IT HERE
-
       const totalUsers = await this.userModel.countDocuments();
 
       const activeUsers = await this.userModel.countDocuments({
