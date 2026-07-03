@@ -14,6 +14,7 @@ import { NotificationsFacade } from '../notifications/notifications.facade';
 import { User } from '../schemas/user.schema';
 import { ConfigService } from '@nestjs/config';
 import { EmailVerificationTokenService } from './email-verification-token.service';
+import { AppConfigService } from '../config/app.config';
 
 jest.mock('bcrypt', () => ({
   __esModule: true,
@@ -97,6 +98,9 @@ describe('AuthService', () => {
   let configService: {
     get: jest.Mock;
   };
+  let appConfigService: {
+    resolveFrontendBaseUrl: jest.Mock;
+  };
   let emailVerificationTokenService: {
     issueToken: jest.Mock;
     verifyToken: jest.Mock;
@@ -141,6 +145,12 @@ describe('AuthService', () => {
       }),
     };
 
+    appConfigService = {
+      resolveFrontendBaseUrl: jest
+        .fn()
+        .mockReturnValue('https://app.example.com'),
+    };
+
     emailVerificationTokenService = {
       issueToken: jest.fn(),
       verifyToken: jest.fn(),
@@ -160,6 +170,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: NotificationsFacade, useValue: notificationsFacade },
         { provide: ConfigService, useValue: configService },
+        { provide: AppConfigService, useValue: appConfigService },
         {
           provide: EmailVerificationTokenService,
           useValue: emailVerificationTokenService,
