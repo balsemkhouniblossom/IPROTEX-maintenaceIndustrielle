@@ -56,21 +56,55 @@ jobs:
 
             - name: Resolve frontend API base URL
               run: |
+                  RESOLVED_FROM=""
+
+                  if [ -n "$RAW_API_URL" ]; then
+                    RESOLVED_FROM="github secret/variable"
+                  fi
+
                   if [ -z "$RAW_API_URL" ] && [ -f ".env.production" ]; then
                     RAW_API_URL=$(grep -E '^NEXT_PUBLIC_API_BASE_URL=' .env.production | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM=".env.production NEXT_PUBLIC_API_BASE_URL"
+                    fi
                   fi
 
                   if [ -z "$RAW_API_URL" ] && [ -f ".env.production" ]; then
                     RAW_API_URL=$(grep -E '^API_URL=' .env.production | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM=".env.production API_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ] && [ -f "frontend/.env.example" ]; then
+                    RAW_API_URL=$(grep -E '^NEXT_PUBLIC_API_BASE_URL=' frontend/.env.example | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM="frontend/.env.example NEXT_PUBLIC_API_BASE_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ] && [ -f ".env.example" ]; then
+                    RAW_API_URL=$(grep -E '^NEXT_PUBLIC_API_BASE_URL=' .env.example | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM=".env.example NEXT_PUBLIC_API_BASE_URL"
+                    fi
+                  fi
+
+                  if [ -z "$RAW_API_URL" ] && [ -f ".env.example" ]; then
+                    RAW_API_URL=$(grep -E '^API_URL=' .env.example | tail -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+                    if [ -n "$RAW_API_URL" ]; then
+                      RESOLVED_FROM=".env.example API_URL"
+                    fi
                   fi
 
                   if [ -z "$RAW_API_URL" ]; then
-                    echo "::error::Missing frontend API URL. Configure one of: secrets.NEXT_PUBLIC_API_BASE_URL, secrets.PROD_API_URL, secrets.API_URL, secrets.BACKEND_URL, vars.NEXT_PUBLIC_API_BASE_URL, vars.PROD_API_URL, vars.API_URL, vars.BACKEND_URL, or set NEXT_PUBLIC_API_BASE_URL/API_URL in .env.production"
+                    echo "::error::Missing frontend API URL. Configure one of: secrets.NEXT_PUBLIC_API_BASE_URL, secrets.PROD_API_URL, secrets.API_URL, secrets.BACKEND_URL, vars.NEXT_PUBLIC_API_BASE_URL, vars.PROD_API_URL, vars.API_URL, vars.BACKEND_URL, or define NEXT_PUBLIC_API_BASE_URL/API_URL in frontend/.env.example, .env.example, or .env.production"
                     exit 1
                   fi
 
                   NORMALIZED_API_URL="${RAW_API_URL%/}"
                   echo "NEXT_PUBLIC_API_BASE_URL=$NORMALIZED_API_URL" >> "$GITHUB_ENV"
+                  echo "Resolved NEXT_PUBLIC_API_BASE_URL from: $RESOLVED_FROM"
               env:
                   RAW_API_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || secrets.PROD_API_URL || secrets.API_URL || secrets.BACKEND_URL || vars.NEXT_PUBLIC_API_BASE_URL || vars.PROD_API_URL || vars.API_URL || vars.BACKEND_URL }}
 
