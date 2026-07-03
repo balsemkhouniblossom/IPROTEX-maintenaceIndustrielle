@@ -330,6 +330,42 @@ describe('AuthService', () => {
     expect(usersService.update).not.toHaveBeenCalled();
   });
 
+  it('logs in successfully with a sanitized plain user object', async () => {
+    const plainUser = {
+      _id: new Types.ObjectId(),
+      email: 'plain@example.com',
+      user_id: 'USER-010',
+      role: 'operator',
+      is_active: true,
+      nom_complet: 'Plain User',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
+    jwtService.sign
+      .mockReturnValueOnce('access-token')
+      .mockReturnValueOnce('refresh-token');
+    (bcrypt.hash as jest.Mock).mockResolvedValue('refresh-token-hash');
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
+
+    const result = await service.login(plainUser as never);
+
+    expect(jwtService.sign).toHaveBeenCalledTimes(2);
+    expect(bcrypt.hash).toHaveBeenCalledWith('refresh-token', 10);
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      plainUser._id.toString(),
+      { refresh_token_hash: 'refresh-token-hash' },
+      { new: true },
+    );
+    expect(result).toEqual({
+      access_token: 'access-token',
+      token: 'access-token',
+      refresh_token: 'refresh-token',
+      user: plainUser,
+    });
+  });
+
   it('stores hashed reset token and sends reset email link', async () => {
     const user = createUserDocument({
       email: 'reset@example.com',

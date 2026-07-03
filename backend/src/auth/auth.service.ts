@@ -58,6 +58,8 @@ export interface GoogleUserProfile {
   picture?: string;
 }
 
+type SanitizableUser = UserDocument | UserWithoutSensitiveData;
+
 const toJwtExpiresIn = (value: string): JwtSignOptions['expiresIn'] =>
   value as JwtSignOptions['expiresIn'];
 
@@ -146,7 +148,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired verification token');
     }
   }
-  async login(user: UserDocument): Promise<LoginResult> {
+  async login(user: SanitizableUser): Promise<LoginResult> {
     const accessExpiresIn =
       process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
     const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
@@ -406,8 +408,11 @@ export class AuthService {
     );
   }
 
-  private sanitizeUser(user: UserDocument): UserWithoutSensitiveData {
-    const userObj = user.toObject() as Record<string, unknown>;
+  private sanitizeUser(user: SanitizableUser): UserWithoutSensitiveData {
+    const userObj =
+      typeof (user as UserDocument).toObject === 'function'
+        ? ((user as UserDocument).toObject() as Record<string, unknown>)
+        : ({ ...user } as Record<string, unknown>);
 
     delete userObj.password;
     delete userObj.reset_password_token;
