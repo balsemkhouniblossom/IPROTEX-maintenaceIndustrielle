@@ -65,14 +65,14 @@ jobs:
                   fi
 
                   if [ -z "$RAW_API_URL" ]; then
-                    echo "::error::Missing frontend API URL. Configure one of: secrets.NEXT_PUBLIC_API_BASE_URL, secrets.PROD_API_URL, vars.NEXT_PUBLIC_API_BASE_URL, vars.PROD_API_URL, or set NEXT_PUBLIC_API_BASE_URL/API_URL in .env.production"
+                    echo "::error::Missing frontend API URL. Configure one of: secrets.NEXT_PUBLIC_API_BASE_URL, secrets.PROD_API_URL, secrets.API_URL, secrets.BACKEND_URL, vars.NEXT_PUBLIC_API_BASE_URL, vars.PROD_API_URL, vars.API_URL, vars.BACKEND_URL, or set NEXT_PUBLIC_API_BASE_URL/API_URL in .env.production"
                     exit 1
                   fi
 
                   NORMALIZED_API_URL="${RAW_API_URL%/}"
                   echo "NEXT_PUBLIC_API_BASE_URL=$NORMALIZED_API_URL" >> "$GITHUB_ENV"
               env:
-                  RAW_API_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || secrets.PROD_API_URL || vars.NEXT_PUBLIC_API_BASE_URL || vars.PROD_API_URL }}
+                  RAW_API_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL || secrets.PROD_API_URL || secrets.API_URL || secrets.BACKEND_URL || vars.NEXT_PUBLIC_API_BASE_URL || vars.PROD_API_URL || vars.API_URL || vars.BACKEND_URL }}
 
             - name: Install and build frontend
               run: |
