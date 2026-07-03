@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class HealthService {
-  constructor(@InjectConnection() private readonly connection: Connection) {}
+  constructor(
+    @InjectConnection() private readonly connection: Connection,
+    private readonly emailService: EmailService,
+  ) {}
 
   getApiHealth() {
     return {
@@ -30,18 +34,27 @@ export class HealthService {
     };
   }
 
+  async getEmailHealth() {
+    return this.emailService.getDiagnostics();
+  }
+
   async getHealth() {
-    const [api, database] = await Promise.all([
+    const [api, database, email] = await Promise.all([
       Promise.resolve(this.getApiHealth()),
       this.getDatabaseHealth(),
+      this.getEmailHealth(),
     ]);
 
+    const aggregateStatus =
+      database.status === 'ok' && email.status === 'ok' ? 'ok' : 'degraded';
+
     return {
-      status: 'ok',
+      status: aggregateStatus,
       timestamp: new Date().toISOString(),
       checks: {
         api,
         database,
+        email,
       },
     };
   }

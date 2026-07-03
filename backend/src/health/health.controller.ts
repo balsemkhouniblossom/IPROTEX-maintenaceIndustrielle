@@ -19,4 +19,9 @@ export class HealthController {
   async getDatabaseHealth() {
     return this.healthService.getDatabaseHealth();
   }
+
+  @Get('email')
+  async getEmailHealth() {
+    return this.healthService.getEmailHealth();
+  }
 }

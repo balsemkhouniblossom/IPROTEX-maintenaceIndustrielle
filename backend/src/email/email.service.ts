@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import nodemailer, { Transporter } from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -8,11 +9,29 @@ export interface SendEmailOptions {
   html?: string;
 }
 
+export interface EmailDiagnostics {
+  status: 'ok' | 'degraded' | 'down';
+  service: 'email';
+  mode: 'smtp' | 'brevo-api' | 'development-fallback' | 'unconfigured';
+  smtp: {
+    configured: boolean;
+    reachable?: boolean;
+    errorCode?: string;
+  };
+  brevoApi: {
+    configured: boolean;
+  };
+  timestamp: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter?: Transporter<SMTPTransport.SentMessageInfo>;
   private fromAddress: string;
+  private readonly brevoApiKey: string;
+  private readonly brevoApiUrl: string;
+  private readonly brevoApiTimeoutMs: number;
 
   constructor() {
     const host = process.env.SMTP_HOST;
@@ -29,6 +48,12 @@ export class EmailService {
     );
     const greetingTimeout = Number(process.env.SMTP_GREETING_TIMEOUT_MS ?? 10000);
     const socketTimeout = Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? 15000);
+
+    this.brevoApiKey = process.env.BREVO_API_KEY?.trim() ?? '';
+    this.brevoApiUrl =
+      process.env.BREVO_API_URL?.trim() ||
+      'https://api.brevo.com/v3/smtp/email';
+    this.brevoApiTimeoutMs = Number(process.env.BREVO_API_TIMEOUT_MS ?? 10000);
 
     this.fromAddress = process.env.EMAIL_FROM || 'Iprotex <noreply@localhost>';
 
@@ -62,6 +87,10 @@ export class EmailService {
       this.logger.warn(
         'SMTP_HOST is not configured; development fallback may be used',
       );
+
+      if (this.brevoApiKey) {
+        this.logger.log('Brevo API fallback is enabled');
+      }
     }
   }
 
@@ -69,6 +98,10 @@ export class EmailService {
     const host = process.env.SMTP_HOST;
 
     if (!host) {
+      if (this.brevoApiKey) {
+        return this.sendViaBrevoApi(options);
+      }
+
       const nodeEnv = process.env.NODE_ENV;
 
       if (nodeEnv === 'production') {
@@ -135,7 +168,180 @@ export class EmailService {
       this.logger.error('SMTP SEND FAILED');
       this.logger.error(err);
 
+      if (this.brevoApiKey) {
+        this.logger.warn('Falling back to Brevo API delivery path');
+        return this.sendViaBrevoApi(options);
+      }
+
       throw err;
+    }
+  }
+
+  async getDiagnostics(): Promise<EmailDiagnostics> {
+    const smtpConfigured = Boolean(process.env.SMTP_HOST?.trim());
+    const brevoConfigured = Boolean(this.brevoApiKey);
+
+    if (!smtpConfigured && !brevoConfigured) {
+      return {
+        status: 'down',
+        service: 'email',
+        mode:
+          process.env.NODE_ENV === 'production'
+            ? 'unconfigured'
+            : 'development-fallback',
+        smtp: {
+          configured: false,
+        },
+        brevoApi: {
+          configured: false,
+        },
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    if (!smtpConfigured && brevoConfigured) {
+      return {
+        status: 'ok',
+        service: 'email',
+        mode: 'brevo-api',
+        smtp: {
+          configured: false,
+        },
+        brevoApi: {
+          configured: true,
+        },
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    if (!this.transporter) {
+      return {
+        status: brevoConfigured ? 'degraded' : 'down',
+        service: 'email',
+        mode: brevoConfigured ? 'brevo-api' : 'smtp',
+        smtp: {
+          configured: true,
+          reachable: false,
+          errorCode: 'TRANSPORT_NOT_INITIALIZED',
+        },
+        brevoApi: {
+          configured: brevoConfigured,
+        },
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const verifyResult = await this.verifySmtpConnectivity();
+
+    return {
+      status: verifyResult.reachable
+        ? 'ok'
+        : brevoConfigured
+          ? 'degraded'
+          : 'down',
+      service: 'email',
+      mode: verifyResult.reachable ? 'smtp' : brevoConfigured ? 'brevo-api' : 'smtp',
+      smtp: {
+        configured: true,
+        reachable: verifyResult.reachable,
+        ...(verifyResult.errorCode
+          ? {
+              errorCode: verifyResult.errorCode,
+            }
+          : {}),
+      },
+      brevoApi: {
+        configured: brevoConfigured,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private async verifySmtpConnectivity(): Promise<{
+    reachable: boolean;
+    errorCode?: string;
+  }> {
+    if (!this.transporter) {
+      return {
+        reachable: false,
+        errorCode: 'TRANSPORT_NOT_INITIALIZED',
+      };
+    }
+
+    try {
+      await this.transporter.verify();
+      return {
+        reachable: true,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : String(error);
+      this.logger.warn(`SMTP diagnostics verify failed: ${message}`);
+
+      let errorCode = 'VERIFY_FAILED';
+      if (typeof error === 'object' && error !== null && 'code' in error) {
+        const rawCode = (error as { code?: unknown }).code;
+        if (typeof rawCode === 'string' && rawCode.trim()) {
+          errorCode = rawCode;
+        }
+      }
+
+      return {
+        reachable: false,
+        errorCode,
+      };
+    }
+  }
+
+  private async sendViaBrevoApi(
+    options: SendEmailOptions,
+  ): Promise<string | undefined> {
+    const fromEmailMatch = this.fromAddress.match(/<([^>]+)>/);
+    const fromEmail = fromEmailMatch ? fromEmailMatch[1] : this.fromAddress;
+    const fromName = this.fromAddress.replace(/<[^>]+>/, '').trim() || 'Iprotex';
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, this.brevoApiTimeoutMs);
+
+    try {
+      const response = await fetch(this.brevoApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': this.brevoApiKey,
+          'x-api-key': this.brevoApiKey,
+          Authorization: `Bearer ${this.brevoApiKey}`,
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender: {
+            name: fromName,
+            email: fromEmail,
+          },
+          to: [{ email: options.to }],
+          subject: options.subject,
+          textContent: options.text,
+          htmlContent: options.html,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        throw new Error(
+          `Brevo API send failed (${response.status}): ${responseText}`,
+        );
+      }
+
+      this.logger.log(`Brevo API email sent to ${options.to}`);
+      return undefined;
+    } catch (error) {
+      this.logger.error('BREVO API SEND FAILED', error as Error);
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
