@@ -457,6 +457,13 @@
     "auth": {
       "logout": "Abmelden"
     },
+    "theme": {
+      "label": "Design",
+      "light": "Hell",
+      "dark": "Dunkel",
+      "toggleToLight": "Zum hellen Modus wechseln",
+      "toggleToDark": "Zum dunklen Modus wechseln"
+    },
     "status": {
       "pending": "Ausstehend",
       "inProgress": "In Bearbeitung",

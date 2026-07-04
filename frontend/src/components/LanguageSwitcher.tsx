@@ -1,20 +1,13 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { locales, type AppLocale } from '@/i18n/config';
-
-const languageLabels: Record<AppLocale, string> = {
-  en: 'English',
-  fr: 'Français',
-  ar: 'العربية',
-  es: 'Español',
-  de: 'Deutsch',
-  it: 'Italiano',
-};
 
 export default function LanguageSwitcher() {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations('language');
 
   const segments = pathname.split('/').filter(Boolean);
   const currentLocale = locales.includes(segments[0] as AppLocale)
@@ -38,17 +31,17 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm">
-      <span className="sr-only">Language</span>
+    <label className="toolbar-control">
+      <span className="sr-only">{t('label')}</span>
       <select
         value={currentLocale}
         onChange={(event) => handleLocaleChange(event.target.value as AppLocale)}
-        className="bg-transparent text-sm font-medium text-slate-700 outline-none cursor-pointer"
-        aria-label="Language"
+        className="toolbar-select"
+        aria-label={t('label')}
       >
         {locales.map((locale) => (
           <option key={locale} value={locale}>
-            {languageLabels[locale]}
+            {t(locale)}
           </option>
         ))}
       </select>

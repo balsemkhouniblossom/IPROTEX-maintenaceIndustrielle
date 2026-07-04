@@ -103,6 +103,13 @@
     "auth": {
       "logout": "تسجيل الخروج"
     },
+    "theme": {
+      "label": "السمة",
+      "light": "فاتح",
+      "dark": "داكن",
+      "toggleToLight": "التبديل إلى الوضع الفاتح",
+      "toggleToDark": "التبديل إلى الوضع الداكن"
+    },
     "loading": "Loading...",
     "error": "خطأ",
     "success": "نجاح",

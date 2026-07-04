@@ -8,6 +8,7 @@ import { useDashboardStatistics } from '@/hooks/useDashboardStatistics';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ProfileAvatar from '@/components/ProfileAvatar';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useParams } from 'next/navigation';
 
 import {
@@ -161,7 +162,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
       <img
         src="/Iprotex logo.png"
         alt="IPROTEX Logo Background"
-        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6xl h-288 object-contain opacity-20 pointer-events-none z-0"
+        className="themed-logo-watermark fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6xl h-288 object-contain pointer-events-none z-0"
       />
 
       {/* Sidebar */}
@@ -209,7 +210,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
           {Array.isArray(navigation) && navigation.map((section) => (
             <div key={section.domain} className="mb-4">
               {/* Domain Section Header */}
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-4">
+              <div className="nav-section-label text-xs font-bold uppercase tracking-widest mb-3 px-4">
                 {t(section.domainKey)}
               </div>
               {/* Items in this domain */}
@@ -234,7 +235,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
         </nav>
 
         {/* User Info and Logout - Mobile Only */}
-        <div className="mt-auto pt-4 border-t border-slate-200 md:hidden">
+        <div className="app-shell-border mt-auto pt-4 border-t md:hidden">
           <div className="px-4 py-2">
             <div className="flex items-center gap-3 mb-3">
               <ProfileAvatar
@@ -244,15 +245,15 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
                 size="sm"
               />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-800 truncate">{user?.nom_complet || 'User'}</div>
-                <div className="text-xs text-slate-500 capitalize">{user?.role ? tUsers(`roles.${user.role}`)
-                  : 'User'}</div>
+                <div className="dashboard-user-name text-sm font-medium truncate">{user?.nom_complet || tCommon('defaultUserName')}</div>
+                <div className="dashboard-user-role text-xs capitalize">{user?.role ? tUsers(`roles.${user.role}`)
+                  : tCommon('user')}</div>
               </div>
             </div>
 
             <button
               onClick={logout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+              className="toolbar-action w-full justify-center"
             >
               <ArrowRightOnRectangleIcon className="w-5 h-5" />
               {tCommon('auth.logout')}
@@ -280,6 +281,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
+              <ThemeToggle />
               <LanguageSwitcher />
 
               <div className="hidden md:flex items-center gap-3">
@@ -291,15 +293,15 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
                     size="sm"
                   />
                   <div className="text-end">
-                    <div className="text-sm font-medium text-slate-800">{user?.nom_complet || tCommon('defaultUserName')}</div>
-                    <div className="text-xs text-slate-500 capitalize">{user?.role ? tUsers(`roles.${user.role}`)
+                    <div className="dashboard-user-name text-sm font-medium">{user?.nom_complet || tCommon('defaultUserName')}</div>
+                    <div className="dashboard-user-role text-xs capitalize">{user?.role ? tUsers(`roles.${user.role}`)
                       : tCommon('user')}</div>
                   </div>
                 </div>
 
                 <button
                   onClick={logout}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="toolbar-action"
                 >
                   <ArrowRightOnRectangleIcon className="w-5 h-5" />
                   <span className="hidden lg:inline">{tCommon('auth.logout')}</span>
@@ -308,7 +310,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
 
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="mobile-menu-btn md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="mobile-menu-btn toolbar-action md:hidden"
               >
                 {sidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
               </button>

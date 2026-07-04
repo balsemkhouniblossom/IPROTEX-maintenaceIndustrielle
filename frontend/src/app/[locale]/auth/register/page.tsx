@@ -97,12 +97,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="auth-shell min-h-screen flex">
       <div className="absolute top-4 left-4 z-20">
         <LanguageSwitcher />
       </div>
 
-      <div className="w-full lg:w-2/5 bg-white flex items-center justify-center p-12 lg:p-16">
+      <div className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12 lg:p-16">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center mb-6">
@@ -112,14 +112,14 @@ export default function RegisterPage() {
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('welcomeIprotex')}</h1>
-            <p className="text-lg text-slate-500">{t('advancedMaintenance')}</p>
+            <h1 className="auth-logo-title text-4xl font-bold mb-2">{t('welcomeIprotex')}</h1>
+            <p className="auth-logo-subtitle text-lg">{t('advancedMaintenance')}</p>
           </div>
 
-          <div className="rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] bg-white p-8">
+          <div className="auth-card rounded-4xl p-8">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">{t('signUp')}</h2>
-              <p className="text-sm text-gray-600 mt-1">{t('accessSystem')}</p>
+              <h2 className="auth-heading text-2xl font-semibold">{t('signUp')}</h2>
+              <p className="auth-helper text-sm mt-1">{t('accessSystem')}</p>
             </div>
 
             {error && (
@@ -130,7 +130,7 @@ export default function RegisterPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="nom_complet" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="nom_complet" className="auth-label block text-sm font-medium mb-2">
                   {t('fullName')} *
                 </label>
                 <input
@@ -140,13 +140,13 @@ export default function RegisterPage() {
                   required
                   value={formData.nom_complet}
                   onChange={(e) => setFormData({ ...formData, nom_complet: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                  className="auth-input"
                   placeholder={t('enterFullName')}
                 />
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="email" className="auth-label block text-sm font-medium mb-2">
                   {t('email')} *
                 </label>
                 <input
@@ -157,13 +157,13 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                  className="auth-input"
                   placeholder={t('enterEmail')}
                 />
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="phone" className="auth-label block text-sm font-medium mb-2">
                   {t('phone')}
                 </label>
                 <InternationalPhoneInput
@@ -172,14 +172,14 @@ export default function RegisterPage() {
                   onChange={(phone) => setFormData({ ...formData, phone })}
                   placeholder={t('phoneHint', { default: 'Local number' })}
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="auth-muted mt-1 text-xs">
                   {t('phoneHint', { default: 'Use international format, e.g. +21612345678' })}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="role" className="auth-label block text-sm font-medium mb-2">
                     {t('role')} *
                   </label>
                   <select
@@ -187,7 +187,7 @@ export default function RegisterPage() {
                     name="role"
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                    className="auth-input"
                   >
                     <option value="admin">{t('admin')}</option>
                     <option value="technician">{t('technician')}</option>
@@ -196,7 +196,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="department" className="auth-label block text-sm font-medium mb-2">
                     {t('department')}
                   </label>
                   <select
@@ -204,7 +204,7 @@ export default function RegisterPage() {
                     name="department"
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                    className="auth-input"
                   >
                     <option value="">{t('enterDepartment')}</option>
                     {departmentOptions.map((department) => (
@@ -217,7 +217,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="auth-label block text-sm font-medium mb-2">
                   {t('password')} *
                 </label>
                 <div className="relative">
@@ -228,25 +228,25 @@ export default function RegisterPage() {
                     required
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                    className="auth-input pe-12"
                     placeholder={t('enterPassword')}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center hover:text-gray-600 transition-colors"
+                    className="auth-icon-button absolute inset-y-0 end-0 pe-4 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                      <EyeSlashIcon className="h-5 w-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400" />
+                      <EyeIcon className="h-5 w-5" />
                     )}
                   </button>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="auth-muted mt-2 text-xs">
                   {t('passwordRequirements.title', { default: 'Password must contain:' })}
                 </p>
-                <ul className="mt-1 text-xs text-gray-500 list-disc list-inside">
+                <ul className="auth-muted mt-1 text-xs list-disc list-inside">
                   <li>{t('passwordRequirements.minLength', { default: 'At least 8 characters' })}</li>
                   <li>{t('passwordRequirements.uppercase', { default: 'One uppercase letter' })}</li>
                   <li>{t('passwordRequirements.lowercase', { default: 'One lowercase letter' })}</li>
@@ -256,7 +256,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="confirmPassword" className="auth-label block text-sm font-medium mb-2">
                   {t('confirmPassword')} *
                 </label>
                 <div className="relative">
@@ -269,18 +269,18 @@ export default function RegisterPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, confirmPassword: e.target.value })
                     }
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                    className="auth-input pe-12"
                     placeholder={t('confirmPassword')}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center hover:text-gray-600 transition-colors"
+                    className="auth-icon-button absolute inset-y-0 end-0 pe-4 flex items-center"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                      <EyeSlashIcon className="h-5 w-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400" />
+                      <EyeIcon className="h-5 w-5" />
                     )}
                   </button>
                 </div>
@@ -303,9 +303,9 @@ export default function RegisterPage() {
             </form>
 
             <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">
+              <p className="auth-muted text-sm">
                 {t('login')}{' '}
-                <Link href={`/${locale}/auth/login`} className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                <Link href={`/${locale}/auth/login`} className="auth-link font-semibold transition-colors">
                   {t('signInHere')}
                 </Link>
               </p>
@@ -316,7 +316,7 @@ export default function RegisterPage() {
 
       <div className="hidden lg:flex lg:w-3/5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-800 via-blue-900 to-[#0F172A] relative overflow-hidden">
         <div className="absolute inset-0 hero-split-panel bg-cover bg-center opacity-80" />
-        <div className="absolute inset-0 bg-linear-to-r from-white via-transparent to-transparent" />
+        <div className="auth-hero-overlay absolute inset-0" />
         <div className="absolute bottom-0 inset-s-0 h-2 bg-linear-to-r from-transparent via-white/20 to-transparent" />
       </div>
     </div>

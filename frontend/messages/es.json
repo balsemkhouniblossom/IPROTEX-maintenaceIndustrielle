@@ -3,6 +3,13 @@
     "label": "Idioma",
     "en": "English",
     "fr": "Français",
+    "theme": {
+      "label": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "toggleToLight": "Cambiar al modo claro",
+      "toggleToDark": "Cambiar al modo oscuro"
+    },
     "ar": "العربية",
     "es": "Español",
     "de": "Deutsch",

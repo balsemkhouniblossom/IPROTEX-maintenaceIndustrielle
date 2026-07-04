@@ -290,6 +290,13 @@
       "actions": "Azioni",
       "noData": "Nessun dato disponibile"
     },
+    "theme": {
+      "label": "Tema",
+      "light": "Chiaro",
+      "dark": "Scuro",
+      "toggleToLight": "Passa alla modalità chiara",
+      "toggleToDark": "Passa alla modalità scura"
+    },
     "systemOnline": "System online",
     "percentageChangeFromLastMonth": {
       "positive": "+{value}% dal mese scorso",

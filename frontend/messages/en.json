@@ -95,6 +95,13 @@
     "auth": {
       "logout": "Logout"
     },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "toggleToLight": "Switch to light mode",
+      "toggleToDark": "Switch to dark mode"
+    },
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",

@@ -89,6 +89,13 @@
     "auth": {
       "logout": "Déconnexion"
     },
+    "theme": {
+      "label": "Thème",
+      "light": "Clair",
+      "dark": "Sombre",
+      "toggleToLight": "Basculer vers le mode clair",
+      "toggleToDark": "Basculer vers le mode sombre"
+    },
     "logout": "Déconnexion",
     "notAvailable": "N/A",
     "saving": "Enregistrement en cours..."

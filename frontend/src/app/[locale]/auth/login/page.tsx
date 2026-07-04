@@ -85,13 +85,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="auth-shell min-h-screen flex">
       <div className="absolute top-4 left-4 z-20">
         <LanguageSwitcher />
       </div>
 
 
-      <div className="w-full lg:w-2/5 bg-white flex items-center justify-center p-12">
+      <div className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center mb-6">
@@ -103,14 +103,14 @@ export default function LoginPage() {
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">{t('welcomeIprotex')}</h1>
-            <p className="text-lg text-slate-500">{t('advancedMaintenance')}</p>
+            <h1 className="auth-logo-title text-4xl font-bold mb-2">{t('welcomeIprotex')}</h1>
+            <p className="auth-logo-subtitle text-lg">{t('advancedMaintenance')}</p>
           </div>
 
-          <div className="rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] bg-white p-8">
+          <div className="auth-card rounded-4xl p-8">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">{t('signIn')}</h2>
-              <p className="text-sm text-gray-600 mt-1">{t('accessSystem')}</p>
+              <h2 className="auth-heading text-2xl font-semibold">{t('signIn')}</h2>
+              <p className="auth-helper text-sm mt-1">{t('accessSystem')}</p>
             </div>
 
             {error && (
@@ -121,7 +121,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="email" className="auth-label block text-sm font-medium mb-2">
                   {t('email')}
                 </label>
                 <input
@@ -132,13 +132,13 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                  className="auth-input"
                   placeholder={t('enterEmail')}
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="auth-label block text-sm font-medium mb-2">
                   {t('password')}
                 </label>
                 <div className="relative">
@@ -150,18 +150,18 @@ export default function LoginPage() {
                     required
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                    className="auth-input pe-12"
                     placeholder={t('enterPassword')}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                    className="auth-icon-button absolute inset-y-0 end-0 pe-4 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeSlashIcon className="h-5 w-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeIcon className="h-5 w-5" />
                     )}
                   </button>
                 </div>
@@ -178,17 +178,17 @@ export default function LoginPage() {
               </div>
             </form>
 
-            <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-              <span className="h-px flex-1 bg-slate-200" />
+            <div className="auth-divider my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.24em]">
+              <span className="auth-divider-line h-px flex-1" />
               <span>{t('orContinueWith')}</span>
-              <span className="h-px flex-1 bg-slate-200" />
+              <span className="auth-divider-line h-px flex-1" />
             </div>
 
             <button
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading || googleLoading}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="auth-google-button w-full inline-flex items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold shadow-sm transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {GOOGLE_ICON}
               <span>
@@ -197,18 +197,18 @@ export default function LoginPage() {
             </button>
 
       <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">
+              <p className="auth-muted text-sm">
                 {t('signup')} {' '}
                   <Link
                   href={`/${locale}/auth/register`}
-                  className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                  className="auth-link font-semibold transition-colors"
                 >
                   {t('signUp')}
                 </Link>
               </p>
             </div>
             <div className="text-center mt-2">
-              <Link href={`/${locale}/auth/forgot-password`} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              <Link href={`/${locale}/auth/forgot-password`} className="auth-link text-sm font-semibold transition-colors">
                 {t('forgotPasswordLink') || 'Forgot password?'}
               </Link>
             </div>
@@ -218,7 +218,7 @@ export default function LoginPage() {
 
       <div className="hidden lg:flex lg:w-3/5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-800 via-blue-900 to-[#0F172A] relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/BGsign_in.png')] bg-cover bg-center opacity-80" />
-        <div className="absolute inset-0 bg-linear-to-r from-white via-transparent to-transparent" />
+        <div className="auth-hero-overlay absolute inset-0" />
       </div>
     </div>
   );
