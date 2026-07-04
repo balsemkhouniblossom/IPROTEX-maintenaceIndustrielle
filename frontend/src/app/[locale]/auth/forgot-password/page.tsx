@@ -39,18 +39,18 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      <div className="absolute top-4 right-4">
+    <div className="auth-shell min-h-screen flex">
+      <div className="absolute top-4 left-4 z-20">
         <LanguageSwitcher />
       </div>
-      <div className="w-full lg:w-2/5 bg-white flex items-center justify-center p-12">
+      <div className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('forgotPasswordTitle') || 'Forgot Password'}</h1>
-            <p className="text-sm text-slate-500">{t('forgotPasswordDescription') || 'Enter your email to reset your password.'}</p>
+            <h1 className="auth-logo-title text-3xl font-bold mb-2">{t('forgotPasswordTitle') || 'Forgot Password'}</h1>
+            <p className="auth-logo-subtitle text-sm">{t('forgotPasswordDescription') || 'Enter your email to reset your password.'}</p>
           </div>
 
-          <div className="rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] bg-white p-8">
+          <div className="auth-card rounded-4xl p-8">
             {message && (
               <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-6 text-sm">
                 {message}
@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="email" className="auth-label block text-sm font-medium mb-2">
                   {t('email')}
                 </label>
                 <input
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm hover:border-gray-300"
+                  className="auth-input"
                   placeholder={t('enterEmail')}
                 />
               </div>
@@ -91,8 +91,8 @@ export default function ForgotPasswordPage() {
             </form>
 
             <div className="text-center mt-6">
-              <p className="text-sm text-gray-600">
-                <Link href={`/${locale}/auth/login`} className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+              <p className="auth-muted text-sm">
+                <Link href={`/${locale}/auth/login`} className="auth-link font-semibold transition-colors">
                   {t('signInHere') || 'Back to login'}
                 </Link>
               </p>
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
       </div>
       <div className="hidden lg:flex lg:w-3/5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-800 via-blue-900 to-[#0F172A] relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/BGsign_in.png')] bg-cover bg-center opacity-80" />
-        <div className="absolute inset-0 bg-linear-to-r from-white via-transparent to-transparent" />
+        <div className="auth-hero-overlay absolute inset-0" />
       </div>
     </div>
   );
