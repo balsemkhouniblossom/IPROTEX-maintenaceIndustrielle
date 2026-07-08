@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import api from '@/services/api';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -13,7 +13,6 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const router = useRouter();
   const params = useParams<{ locale: string }>();
   const locale = params.locale || 'en';
   const t = useTranslations('auth');
@@ -31,7 +30,7 @@ export default function ForgotPasswordPage() {
         frontendOrigin: window.location.origin,
       });
       setMessage(response.data.message || 'If the email exists, reset instructions were sent.');
-    } catch (err: unknown) {
+    } catch {
       setError('Unable to process request. Please try again.');
     } finally {
       setLoading(false);

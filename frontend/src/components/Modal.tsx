@@ -50,7 +50,10 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         <div
           className={`panel ${sizeStyles[size]} w-full my-8`}
         >
-          <div className="panel-header flex items-center justify-between bg-[var(--primary)] px-4 py-2 text-sm font-bold uppercase tracking-[0.5px] text-white">
+          <div
+            className="panel-header flex items-center justify-between px-4 py-2 text-sm font-bold uppercase tracking-[0.5px] text-white"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
             <span>{title}</span>
             <button
               aria-label="Close modal"

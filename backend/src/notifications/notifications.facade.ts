@@ -28,7 +28,9 @@ export class NotificationsFacade {
   async sendVerificationEmail(
     intent: VerificationEmailIntent,
   ): Promise<string | undefined> {
-    if (this.shouldUseEventBasedPath(NotificationsFacade.VERIFICATION_EVENT_KEY)) {
+    if (
+      this.shouldUseEventBasedPath(NotificationsFacade.VERIFICATION_EVENT_KEY)
+    ) {
       return this.listener.onVerificationEmailIntent(intent);
     }
 

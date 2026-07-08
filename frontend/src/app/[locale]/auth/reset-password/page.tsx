@@ -56,7 +56,7 @@ function ResetPasswordPageContent() {
       setTimeout(() => {
         router.push(`/${locale}/auth/login`);
       }, 1500);
-    } catch (err: unknown) {
+    } catch {
       setError('Unable to reset password. Please try again.');
     } finally {
       setLoading(false);

@@ -53,7 +53,9 @@ export class EmailService {
     const connectionTimeout = Number(
       process.env.SMTP_CONNECTION_TIMEOUT_MS ?? 10000,
     );
-    const greetingTimeout = Number(process.env.SMTP_GREETING_TIMEOUT_MS ?? 10000);
+    const greetingTimeout = Number(
+      process.env.SMTP_GREETING_TIMEOUT_MS ?? 10000,
+    );
     const socketTimeout = Number(process.env.SMTP_SOCKET_TIMEOUT_MS ?? 15000);
 
     this.brevoApiKey = process.env.BREVO_API_KEY?.trim() ?? '';
@@ -64,9 +66,7 @@ export class EmailService {
     this.smtpFallbackCooldownMs = Number(
       process.env.SMTP_FALLBACK_COOLDOWN_MS ?? 300000,
     );
-    this.deliveryMode = this.parseDeliveryMode(
-      process.env.EMAIL_DELIVERY_MODE,
-    );
+    this.deliveryMode = this.parseDeliveryMode(process.env.EMAIL_DELIVERY_MODE);
     this.smtpVerifyOnStartup = this.parseBoolean(
       process.env.SMTP_VERIFY_ON_STARTUP,
       process.env.NODE_ENV !== 'production',
@@ -308,7 +308,11 @@ export class EmailService {
           ? 'degraded'
           : 'down',
       service: 'email',
-      mode: verifyResult.reachable ? 'smtp' : brevoConfigured ? 'brevo-api' : 'smtp',
+      mode: verifyResult.reachable
+        ? 'smtp'
+        : brevoConfigured
+          ? 'brevo-api'
+          : 'smtp',
       smtp: {
         configured: true,
         reachable: verifyResult.reachable,
@@ -417,9 +421,7 @@ export class EmailService {
     return fallback;
   }
 
-  private parseDeliveryMode(
-    value: string | undefined,
-  ): EmailDeliveryMode {
+  private parseDeliveryMode(value: string | undefined): EmailDeliveryMode {
     const normalized = value?.trim().toLowerCase();
     if (
       normalized === 'auto' ||
@@ -437,7 +439,8 @@ export class EmailService {
   ): Promise<string | undefined> {
     const fromEmailMatch = this.fromAddress.match(/<([^>]+)>/);
     const fromEmail = fromEmailMatch ? fromEmailMatch[1] : this.fromAddress;
-    const fromName = this.fromAddress.replace(/<[^>]+>/, '').trim() || 'Iprotex';
+    const fromName =
+      this.fromAddress.replace(/<[^>]+>/, '').trim() || 'Iprotex';
 
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -503,7 +506,10 @@ export class EmailService {
       process.env.FRONTEND_BASE_URL?.trim() ||
       process.env.BACKEND_URL?.trim() ||
       'http://localhost:3001';
-    const normalizedVerificationBaseUrl = verificationBaseUrl.replace(/\/$/, '');
+    const normalizedVerificationBaseUrl = verificationBaseUrl.replace(
+      /\/$/,
+      '',
+    );
     const url = `${normalizedVerificationBaseUrl}/auth/verify-email?token=${token}`;
 
     this.logger.log(`========== VERIFICATION EMAIL ==========`);

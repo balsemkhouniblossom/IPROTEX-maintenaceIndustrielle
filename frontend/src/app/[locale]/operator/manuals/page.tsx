@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
@@ -52,6 +53,7 @@ function normalizeApiItems<T>(payload: unknown): T[] {
 export default function OperatorManualsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
+  const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
@@ -71,9 +73,21 @@ export default function OperatorManualsPage() {
           apiService.getDocuments(),
         ]);
 
-        setMachineTypes(normalizeApiItems<MachineType>(machineTypesRes.data));
-        setMachines(normalizeApiItems<Machine>(machinesRes.data));
+        const machineTypeItems = normalizeApiItems<MachineType>(machineTypesRes.data);
+        const machineItems = normalizeApiItems<Machine>(machinesRes.data);
+
+        setMachineTypes(machineTypeItems);
+        setMachines(machineItems);
         setDocuments(normalizeApiItems<DocumentEntity>(documentsRes.data));
+
+        const requestedMachineId = searchParams.get("machine");
+        if (requestedMachineId) {
+          const selected = machineItems.find((machine) => machine._id === requestedMachineId);
+          if (selected) {
+            setSelectedMachine(selected._id);
+            setSelectedType(refId(selected.type_id));
+          }
+        }
       } catch (error) {
         console.error("Failed to load manuals", error);
       } finally {
@@ -82,7 +96,7 @@ export default function OperatorManualsPage() {
     }
 
     void loadData();
-  }, []);
+  }, [searchParams]);
 
   const machinesForType = useMemo(
     () => machines.filter((machine) => refId(machine.type_id) === selectedType),
@@ -106,52 +120,53 @@ export default function OperatorManualsPage() {
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("machineManuals")}>
         <div className="bento-grid">
-          <div className="col-span-full panel">
-            <div className="card-title mb-4">{t("machineManuals")}</div>
-            <p className="text-sm text-slate-600 mb-4">{t("manualsIntro")}</p>
+          <section className="col-span-full rounded-4xl border border-slate-200 bg-linear-to-br from-white via-slate-50 to-blue-50 p-6 shadow-sm">
+            <div className="card-title mb-2">{t("machineManuals")}</div>
+            <p className="text-sm text-slate-600">{t("manualsIntro")}</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-2">{t("machineCategory")}</label>
-                <select
-                  value={selectedType}
-                  onChange={(event) => {
-                    setSelectedType(event.target.value);
-                    setSelectedMachine("");
-                  }}
-                  className="w-full border rounded-lg px-3 py-2"
-                  title={t("machineCategory")}
-                  aria-label={t("machineCategory")}
-                >
-                  <option value="">{tCommon("actions.search")}</option>
-                  {machineTypes.map((type) => (
-                    <option key={type._id} value={type._id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-2">{t("machine")}</label>
-                <select
-                  value={selectedMachine}
-                  onChange={(event) => setSelectedMachine(event.target.value)}
-                  className="w-full border rounded-lg px-3 py-2"
-                  title={t("machine")}
-                  aria-label={t("machine")}
-                >
-                  <option value="">{tCommon("actions.search")}</option>
-                  {machinesForType.map((machine) => (
-                    <option key={machine._id} value={machine._id}>
-                      {machine.machine_id} {machine.model ? `- ${machine.model}` : ""}
-                    </option>
-                  ))}
-                </select>
+            <div className="mt-5">
+              <div className="mb-3 text-sm font-semibold text-slate-700">{t("machineCategory")}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {machineTypes.map((type) => (
+                  <button
+                    key={type._id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedType(type._id);
+                      setSelectedMachine("");
+                    }}
+                    className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                      selectedType === type._id ? "border-blue-500 bg-blue-50 shadow-md" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="text-base font-semibold text-slate-900">{type.name}</div>
+                    <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("viewMachines")}</div>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
 
-          <div className="col-span-full panel">
+            <div className="mt-6">
+              <div className="mb-3 text-sm font-semibold text-slate-700">{t("machine")}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {machinesForType.map((machine) => (
+                  <button
+                    key={machine._id}
+                    type="button"
+                    onClick={() => setSelectedMachine(machine._id)}
+                    className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                      selectedMachine === machine._id ? "border-emerald-500 bg-emerald-50 shadow-md" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="text-base font-semibold text-slate-900">{machine.machine_id}</div>
+                    <div className="mt-1 text-sm text-slate-500">{machine.model || tCommon("notAvailable")}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="col-span-full panel">
             <div className="card-title mb-4">{t("openManual")}</div>
 
             {loading ? (
@@ -161,23 +176,23 @@ export default function OperatorManualsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {visibleDocuments.map((doc) => (
-                  <div key={doc._id} className="border rounded-xl p-4">
-                    <div className="font-semibold mb-1">{doc.file_name}</div>
-                    <div className="text-xs text-slate-500 mb-3">{doc.type_document || tCommon("notAvailable")}</div>
+                  <div key={doc._id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                    <div className="font-semibold mb-1 text-slate-900">{doc.file_name}</div>
+                    <div className="text-xs text-slate-500 mb-3 uppercase tracking-wide">{doc.type_document || tCommon("notAvailable")}</div>
                     {doc.description ? <div className="text-sm text-slate-600 mb-3">{doc.description}</div> : null}
                     <div className="flex gap-2">
                       <a
                         href={doc.file_path}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm"
+                        className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
                       >
                         {t("openManual")}
                       </a>
                       <a
                         href={doc.file_path}
                         download
-                        className="px-3 py-2 rounded-lg bg-slate-700 text-white text-sm"
+                        className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                       >
                         {t("download")}
                       </a>
@@ -186,7 +201,7 @@ export default function OperatorManualsPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
         </div>
       </DashboardLayout>
     </ProtectedRoute>

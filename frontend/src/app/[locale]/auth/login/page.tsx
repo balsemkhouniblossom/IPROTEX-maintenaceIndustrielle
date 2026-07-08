@@ -155,7 +155,8 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    className="auth-icon-button absolute inset-y-0 end-0 pe-4 flex items-center"
+                    className="auth-icon-button absolute inset-y-0 pe-4 flex items-center"
+                    style={{ insetInlineEnd: 0 }}
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (

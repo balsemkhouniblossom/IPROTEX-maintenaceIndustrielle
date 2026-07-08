@@ -29,9 +29,7 @@ export default tseslint.config(
     files: ['**/*.js'],
     languageOptions: {
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['migrate-passwords.js', 'scripts/*.js', 'test/*.js'],
-        },
+        projectService: false,
       },
     },
     rules: {
@@ -46,7 +44,7 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn'
+      '@typescript-eslint/no-unsafe-argument': 'warn',
     },
   },
 );

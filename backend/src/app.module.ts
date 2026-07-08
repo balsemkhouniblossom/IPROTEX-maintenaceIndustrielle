@@ -1,6 +1,6 @@
-import { ServeStaticModule } from '@nestjs/serve-static';
 import { Logger, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import type { Connection } from 'mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { User, UserSchema } from './schemas/user.schema';
@@ -65,6 +65,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from './email/email.module';
 import { RequestContextModule } from './common/request-context.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AutomationModule } from './automation/automation.module';
 const mongoLogger = new Logger('MongoDB');
 
 @Module({
@@ -78,6 +80,7 @@ const mongoLogger = new Logger('MongoDB');
       ],
     }),
     RequestContextModule,
+    ScheduleModule.forRoot(),
     CounterModule,
     MongooseModule.forRootAsync({
       inject: [ConfigService],
@@ -88,7 +91,7 @@ const mongoLogger = new Logger('MongoDB');
 
         return {
           uri: mongoUri,
-          connectionFactory: (connection: any) => {
+          connectionFactory: (connection: Connection) => {
             connection.on('connected', () => {
               const host = connection.host || 'unknown-host';
               const dbName = connection.name || 'unknown-db';
@@ -144,6 +147,7 @@ const mongoLogger = new Logger('MongoDB');
     AuthModule,
     EmailModule,
     NotificationsModule,
+    AutomationModule,
     DocumentsModule, // ✅ MUST be here
     InterventionReportsModule,
     PannesModule,

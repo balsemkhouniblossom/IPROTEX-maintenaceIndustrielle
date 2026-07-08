@@ -33,6 +33,11 @@ interface MaintenancePlan {
   module_id: EntityRef;
   type_maintenance?: string;
   instruction?: string;
+  responsable?: string;
+  documentation?: string;
+  maintenance_code?: string;
+  frequence?: number;
+  unite_frequence?: string;
 }
 
 interface DocumentEntity {
@@ -68,8 +73,30 @@ interface GeneratedReportRow {
   status: string;
 }
 
+interface PreventiveDraft {
+  id: string;
+  title: string;
+  updatedAt: string;
+  selectedCategory: string;
+  customCategory: string;
+  selectedMachine: string;
+  customMachine: string;
+  checkedTasks: Record<string, boolean>;
+  customTasks: string[];
+  condition: MachineCondition;
+  customCondition: string;
+  comments: string;
+  completionDate: string;
+  selectedLubrifiant: string;
+  selectedLubrificationQtyMode: string;
+  lubrificationQty: string;
+}
+
 type MachineCondition = "good" | "followUp" | "technicianRequired" | "custom";
 const REPORTS_STORAGE_KEY = "operator_generated_reports_history";
+const PREVENTIVE_DRAFTS_STORAGE_PREFIX = "operator_preventive_drafts";
+const CUSTOM_OPTION = "__custom__";
+const LUBRIFICATION_QTY_OPTIONS = ["1", "2", "5", "10", "20", "50", "100"];
 
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
@@ -94,13 +121,70 @@ function normalizeApiItems<T>(payload: unknown): T[] {
   }
 
   if (payload && typeof payload === "object") {
-    const maybeItems = (payload as { items?: unknown }).items;
-    if (Array.isArray(maybeItems)) {
-      return maybeItems as T[];
+    const objectPayload = payload as {
+      items?: unknown;
+      data?: unknown;
+      results?: unknown;
+      docs?: unknown;
+      rows?: unknown;
+    };
+
+    const candidateArrays = [
+      objectPayload.items,
+      objectPayload.data,
+      objectPayload.results,
+      objectPayload.docs,
+      objectPayload.rows,
+    ];
+
+    for (const candidate of candidateArrays) {
+      if (Array.isArray(candidate)) {
+        return candidate as T[];
+      }
     }
   }
 
   return [];
+}
+
+function readPaginationMeta(payload: unknown): { page: number; totalPages: number } | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const maybePage = Number((payload as { page?: unknown }).page);
+  const maybeTotalPages = Number((payload as { totalPages?: unknown }).totalPages);
+
+  if (!Number.isFinite(maybePage) || !Number.isFinite(maybeTotalPages)) {
+    return null;
+  }
+
+  return {
+    page: Math.max(1, Math.floor(maybePage)),
+    totalPages: Math.max(1, Math.floor(maybeTotalPages)),
+  };
+}
+
+type PaginatedRequest = (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>;
+
+async function fetchAllPaginatedItems<T>(request: PaginatedRequest, pageSize = 100): Promise<T[]> {
+  const firstResponse = await request({ page: 1, limit: pageSize });
+  const firstItems = normalizeApiItems<T>(firstResponse.data);
+  const pagination = readPaginationMeta(firstResponse.data);
+
+  if (!pagination || pagination.totalPages <= 1) {
+    return firstItems;
+  }
+
+  const remainingPagePromises: Array<Promise<{ data: unknown }>> = [];
+  for (let page = pagination.page + 1; page <= pagination.totalPages; page += 1) {
+    remainingPagePromises.push(request({ page, limit: pageSize }));
+  }
+
+  const remainingResponses = await Promise.all(remainingPagePromises);
+  const remainingItems = remainingResponses.flatMap((response) => normalizeApiItems<T>(response.data));
+
+  return [...firstItems, ...remainingItems];
 }
 
 export default function OperatorPreventivePage() {
@@ -125,6 +209,7 @@ export default function OperatorPreventivePage() {
   const [customMachine, setCustomMachine] = useState("");
 
   const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({});
+  const [selectedTaskToAdd, setSelectedTaskToAdd] = useState("");
   const [customTaskInput, setCustomTaskInput] = useState("");
   const [customTasks, setCustomTasks] = useState<string[]>([]);
 
@@ -135,10 +220,36 @@ export default function OperatorPreventivePage() {
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [selectedLubrifiant, setSelectedLubrifiant] = useState("");
+  const [selectedLubrificationQtyMode, setSelectedLubrificationQtyMode] = useState("");
   const [lubrificationQty, setLubrificationQty] = useState("");
   const [submitValidationReason, setSubmitValidationReason] = useState("");
   const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
+  const [drafts, setDrafts] = useState<PreventiveDraft[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const draftStorageKey = useMemo(
+    () => `${PREVENTIVE_DRAFTS_STORAGE_PREFIX}:${user?._id || "anonymous"}`,
+    [user?._id],
+  );
+
+  const submitValidationMessage = useMemo(() => {
+    if (!submitValidationReason) {
+      return "";
+    }
+
+    switch (submitValidationReason) {
+      case "missing-user-or-machine":
+        return `${t("validation")}: ${t("machine")}`;
+      case "no-tasks-selected":
+        return t("preventiveTasks");
+      case "missing-module-for-machine":
+        return t("validation");
+      case "submit-failed":
+        return tCommon("error");
+      default:
+        return submitValidationReason;
+    }
+  }, [submitValidationReason, t, tCommon]);
 
   useEffect(() => {
     if (!notification) return;
@@ -150,6 +261,12 @@ export default function OperatorPreventivePage() {
     return () => clearTimeout(timeout);
   }, [notification]);
 
+  useEffect(() => {
+    if (!submitValidationReason) return;
+
+    setSubmitValidationReason("");
+  }, [selectedMachine, selectedCategory, checkedTasks, submitValidationReason]);
+
   function showNotification(type: "success" | "error", message: string): void {
     setNotification({ type, message });
   }
@@ -160,6 +277,69 @@ export default function OperatorPreventivePage() {
       localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
+  }
+
+  function persistDrafts(nextDrafts: PreventiveDraft[]): void {
+    setDrafts(nextDrafts);
+    localStorage.setItem(draftStorageKey, JSON.stringify(nextDrafts));
+  }
+
+  function saveCurrentAsDraft(): void {
+    const machineLabel = machines.find((item) => item._id === selectedMachine)?.machine_id || customMachine || t("machine");
+    const draftId = selectedDraftId || uniqueId("DRAFT-PREV");
+    const nextDraft: PreventiveDraft = {
+      id: draftId,
+      title: machineLabel,
+      updatedAt: new Date().toISOString(),
+      selectedCategory,
+      customCategory,
+      selectedMachine,
+      customMachine,
+      checkedTasks,
+      customTasks,
+      condition,
+      customCondition,
+      comments,
+      completionDate,
+      selectedLubrifiant,
+      selectedLubrificationQtyMode,
+      lubrificationQty,
+    };
+
+    const nextDrafts = selectedDraftId
+      ? drafts.map((item) => (item.id === selectedDraftId ? nextDraft : item))
+      : [nextDraft, ...drafts];
+
+    persistDrafts(nextDrafts);
+    setSelectedDraftId(draftId);
+    showNotification("success", "Draft saved");
+  }
+
+  function openDraft(draft: PreventiveDraft): void {
+    setSelectedDraftId(draft.id);
+    setSelectedCategory(draft.selectedCategory);
+    setCustomCategory(draft.customCategory);
+    setSelectedMachine(draft.selectedMachine);
+    setCustomMachine(draft.customMachine);
+    setCheckedTasks(draft.checkedTasks);
+    setCustomTasks(draft.customTasks);
+    setCondition(draft.condition);
+    setCustomCondition(draft.customCondition);
+    setComments(draft.comments);
+    setCompletionDate(draft.completionDate);
+    setSelectedLubrifiant(draft.selectedLubrifiant);
+    setSelectedLubrificationQtyMode(draft.selectedLubrificationQtyMode);
+    setLubrificationQty(draft.lubrificationQty);
+    showNotification("success", "Draft loaded");
+  }
+
+  function deleteDraft(draftId: string): void {
+    const nextDrafts = drafts.filter((item) => item.id !== draftId);
+    persistDrafts(nextDrafts);
+    if (selectedDraftId === draftId) {
+      setSelectedDraftId("");
+    }
+    showNotification("success", "Draft deleted");
   }
 
   useEffect(() => {
@@ -176,34 +356,52 @@ export default function OperatorPreventivePage() {
   }, []);
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftStorageKey);
+      if (!saved) {
+        setDrafts([]);
+        return;
+      }
+      const parsed = JSON.parse(saved) as PreventiveDraft[];
+      if (Array.isArray(parsed)) {
+        setDrafts(parsed);
+      } else {
+        setDrafts([]);
+      }
+    } catch {
+      setDrafts([]);
+    }
+  }, [draftStorageKey]);
+
+  useEffect(() => {
     async function loadAll() {
       try {
         setLoading(true);
         const [
-          machineTypeRes,
-          machinesRes,
-          modulesRes,
-          plansRes,
-          documentsRes,
-          lubrifiantsRes,
-          kpiRes,
+          machineTypeItems,
+          machineItems,
+          moduleItems,
+          planItems,
+          documentItems,
+          lubrifiantItems,
+          kpiItems,
         ] = await Promise.all([
-          apiService.getMachineTypes(),
-          apiService.getMachines(),
-          apiService.getModules(),
-          apiService.getMaintenancePlans(),
-          apiService.getDocuments(),
-          apiService.getLubrifiants(),
-          apiService.getKpis(),
+          fetchAllPaginatedItems<MachineType>((params) => apiService.getMachineTypes(params)),
+          fetchAllPaginatedItems<Machine>((params) => apiService.getMachines(params)),
+          fetchAllPaginatedItems<ModuleEntity>((params) => apiService.getModules(params)),
+          fetchAllPaginatedItems<MaintenancePlan>((params) => apiService.getMaintenancePlans(params)),
+          fetchAllPaginatedItems<DocumentEntity>((params) => apiService.getDocuments(params)),
+          fetchAllPaginatedItems<Lubrifiant>((params) => apiService.getLubrifiants(params)),
+          fetchAllPaginatedItems<Kpi>((params) => apiService.getKpis(params)),
         ]);
 
-        setMachineTypes(normalizeApiItems<MachineType>(machineTypeRes.data));
-        setMachines(normalizeApiItems<Machine>(machinesRes.data));
-        setModules(normalizeApiItems<ModuleEntity>(modulesRes.data));
-        setPlans(normalizeApiItems<MaintenancePlan>(plansRes.data));
-        setDocuments(normalizeApiItems<DocumentEntity>(documentsRes.data));
-        setLubrifiants(normalizeApiItems<Lubrifiant>(lubrifiantsRes.data));
-        setKpis(normalizeApiItems<Kpi>(kpiRes.data));
+        setMachineTypes(machineTypeItems);
+        setMachines(machineItems);
+        setModules(moduleItems);
+        setPlans(planItems);
+        setDocuments(documentItems);
+        setLubrifiants(lubrifiantItems);
+        setKpis(kpiItems);
       } catch (error) {
         console.error("Failed to load preventive workflow data", error);
       } finally {
@@ -262,17 +460,23 @@ export default function OperatorPreventivePage() {
     [allTaskItems, checkedTasks],
   );
 
+  const availableTaskOptions = useMemo(
+    () => allTaskItems.filter((task) => !checkedTasks[task]),
+    [allTaskItems, checkedTasks],
+  );
+
   function toggleTask(task: string): void {
     setCheckedTasks((prev) => ({ ...prev, [task]: !prev[task] }));
   }
 
-  function addCustomTask(): void {
-    const value = customTaskInput.trim();
+  function addTaskFromSelection(): void {
+    const value = selectedTaskToAdd === CUSTOM_OPTION ? customTaskInput.trim() : selectedTaskToAdd.trim();
     if (!value) return;
     if (!customTasks.includes(value)) {
       setCustomTasks((prev) => [...prev, value]);
     }
     setCheckedTasks((prev) => ({ ...prev, [value]: true }));
+    setSelectedTaskToAdd("");
     setCustomTaskInput("");
   }
 
@@ -290,7 +494,7 @@ export default function OperatorPreventivePage() {
     await apiService.uploadDocument(formData);
   }
 
-  async function submitPreventiveMaintenance(): Promise<void> {
+  async function submitPreventiveMaintenance(fromDraftId?: string): Promise<void> {
     if (!user?._id || !selectedMachine) {
       setSubmitValidationReason("missing-user-or-machine");
       showNotification("error", t("validation"));
@@ -377,6 +581,13 @@ export default function OperatorPreventivePage() {
         createdAt: nowIso,
         status: "waiting_validation",
       });
+
+      if (fromDraftId) {
+        const nextDrafts = drafts.filter((item) => item.id !== fromDraftId);
+        persistDrafts(nextDrafts);
+        setSelectedDraftId("");
+      }
+
       showNotification("success", t("notifications.submitSuccess"));
     } catch (error) {
       console.error("Failed to submit preventive maintenance", error);
@@ -415,61 +626,111 @@ export default function OperatorPreventivePage() {
 
           <div className="col-span-full panel">
             <div className="card-title mb-4">{t("preventiveMaintenance")}</div>
-            <div className="stats-grid grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-2">{t("machineCategory")}</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(event) => {
-                    setSelectedCategory(event.target.value);
-                    setSelectedMachine("");
-                  }}
-                  data-testid="preventive-category-select"
-                  title={t("machineCategory")}
-                  aria-label={t("machineCategory")}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">{tCommon("actions.search")}</option>
-                  {machineTypes.map((item) => (
-                    <option key={item._id} value={item._id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={customCategory}
-                  onChange={(event) => setCustomCategory(event.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 mt-2"
-                  placeholder={t("comments")}
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm mb-2">{t("machine")}</label>
-                <select
-                  value={selectedMachine}
-                  onChange={(event) => setSelectedMachine(event.target.value)}
-                  data-testid="preventive-machine-select"
-                  title={t("machine")}
-                  aria-label={t("machine")}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">{tCommon("actions.search")}</option>
-                  {machinesForCategory.map((machine) => (
-                    <option key={machine._id} value={machine._id}>
-                      {machine.machine_id} {machine.model ? `- ${machine.model}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={customMachine}
-                  onChange={(event) => setCustomMachine(event.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 mt-2"
-                  placeholder={t("comments")}
+            <div className="mb-6">
+              <div className="mb-3 text-sm font-semibold text-slate-700">{t("machineCategory")}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {machineTypes.map((item) => (
+                  <button
+                    key={item._id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(item._id);
+                      setSelectedMachine("");
+                    }}
+                    data-testid="preventive-category-select"
+                    className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                      selectedCategory === item._id
+                        ? "border-blue-500 bg-blue-50 shadow-md"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="text-lg font-semibold text-slate-900">{item.name}</div>
+                    <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("viewMachines")}</div>
+                  </button>
+                ))}
+              </div>
+              <input
+                value={customCategory}
+                onChange={(event) => setCustomCategory(event.target.value)}
+                className="w-full border rounded-xl px-3 py-2 mt-3"
+                placeholder={t("comments")}
+              />
+            </div>
+
+            <div className="mb-6">
+              <div className="mb-3 text-sm font-semibold text-slate-700">{t("machine")}</div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {machinesForCategory.map((machine) => (
+                  <button
+                    key={machine._id}
+                    type="button"
+                    onClick={() => setSelectedMachine(machine._id)}
+                    data-testid="preventive-machine-select"
+                    className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                      selectedMachine === machine._id
+                        ? "border-emerald-500 bg-emerald-50 shadow-md"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="text-base font-semibold text-slate-900">{machine.machine_id}</div>
+                    <div className="mt-1 text-sm text-slate-500">{machine.model || tCommon("notAvailable")}</div>
+                  </button>
+                ))}
+              </div>
+              <input
+                value={customMachine}
+                onChange={(event) => setCustomMachine(event.target.value)}
+                className="w-full border rounded-xl px-3 py-2 mt-3"
+                placeholder={t("comments")}
+              />
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">{t("progress")}</div>
+                  <div className="text-xs text-slate-500">
+                    {selectedTaskLabels.length}/{allTaskItems.length || 1} {t("completed")}
+                  </div>
+                </div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {allTaskItems.length > 0 ? Math.round((selectedTaskLabels.length / allTaskItems.length) * 100) : 0}%
+                </div>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-slate-200">
+                <div
+                  className="h-2 rounded-full bg-emerald-500 transition-all"
+                  style={{ width: `${allTaskItems.length > 0 ? Math.round((selectedTaskLabels.length / allTaskItems.length) * 100) : 0}%` }}
                 />
               </div>
             </div>
           </div>
+
+          {preventivePlans.length > 0 ? (
+            <div className="col-span-full panel">
+              <div className="card-title mb-3">{t("maintenanceCenter")}</div>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {preventivePlans.map((plan) => (
+                  <div key={plan._id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-lg font-bold text-slate-900">{plan.maintenance_code || plan.plan_id}</div>
+                        <div className="mt-1 text-sm text-slate-500">{plan.responsable || tCommon("notAvailable")}</div>
+                      </div>
+                      <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        {plan.frequence} {plan.unite_frequence}
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2 text-sm text-slate-700">
+                      <div><span className="font-semibold">{t("preventiveTasks")}: </span>{plan.instruction || tCommon("notAvailable")}</div>
+                      <div><span className="font-semibold">{t("openManual")}: </span>{plan.documentation || tCommon("notAvailable")}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="col-span-full panel">
             <div className="card-title mb-3">{t("preventiveTasks")}</div>
@@ -478,7 +739,7 @@ export default function OperatorPreventivePage() {
               {allTaskItems.map((task, index) => (
                 <label
                   key={task}
-                  className={`flex items-start gap-3 text-sm rounded-lg border p-3 cursor-pointer transition-colors ${
+                  className={`flex items-start gap-3 rounded-2xl border p-4 text-sm cursor-pointer transition-colors ${
                     checkedTasks[task]
                       ? "border-emerald-500 bg-emerald-50"
                       : "border-slate-200 bg-white hover:bg-slate-50"
@@ -496,15 +757,32 @@ export default function OperatorPreventivePage() {
               ))}
             </div>
             <div className="flex gap-2 mt-3">
-              <input
-                value={customTaskInput}
-                onChange={(event) => setCustomTaskInput(event.target.value)}
-                data-testid="preventive-custom-task-input"
+              <select
+                value={selectedTaskToAdd}
+                onChange={(event) => setSelectedTaskToAdd(event.target.value)}
+                data-testid="preventive-custom-task-select"
                 className="flex-1 border rounded-lg px-3 py-2"
-                placeholder={t("comments")}
-              />
+                title={t("preventiveTasks")}
+              >
+                <option value="">{tCommon("actions.search")}</option>
+                {availableTaskOptions.map((task) => (
+                  <option key={task} value={task}>
+                    {task}
+                  </option>
+                ))}
+                <option value={CUSTOM_OPTION}>{t("custom")}</option>
+              </select>
+              {selectedTaskToAdd === CUSTOM_OPTION ? (
+                <input
+                  value={customTaskInput}
+                  onChange={(event) => setCustomTaskInput(event.target.value)}
+                  data-testid="preventive-custom-task-input"
+                  className="flex-1 border rounded-lg px-3 py-2"
+                  placeholder={t("comments")}
+                />
+              ) : null}
               <button
-                onClick={addCustomTask}
+                onClick={addTaskFromSelection}
                 data-testid="preventive-add-custom-task"
                 className="px-4 py-2 rounded-lg bg-slate-900 text-white"
               >
@@ -515,28 +793,18 @@ export default function OperatorPreventivePage() {
 
           <div className="col-span-full panel">
             <div className="card-title mb-3">{t("machineCondition")}</div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                <input type="radio" checked={condition === "good"} onChange={() => setCondition("good")} />
-                {t("good")}
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" checked={condition === "followUp"} onChange={() => setCondition("followUp")} />
-                {t("followUp")}
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={condition === "technicianRequired"}
-                  onChange={() => setCondition("technicianRequired")}
-                />
-                {t("technicianRequired")}
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" checked={condition === "custom"} onChange={() => setCondition("custom")} />
-                {tCommon("edit")}
-              </label>
-            </div>
+            <select
+              value={condition}
+              onChange={(event) => setCondition(event.target.value as MachineCondition)}
+              title={t("machineCondition")}
+              aria-label={t("machineCondition")}
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              <option value="good">{t("good")}</option>
+              <option value="followUp">{t("followUp")}</option>
+              <option value="technicianRequired">{t("technicianRequired")}</option>
+              <option value="custom">{t("custom")}</option>
+            </select>
             {condition === "custom" && (
               <input
                 value={customCondition}
@@ -641,32 +909,99 @@ export default function OperatorPreventivePage() {
               </div>
               <div>
                 <label className="block text-sm mb-2">{t("quantity")}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={lubrificationQty}
-                  onChange={(event) => setLubrificationQty(event.target.value)}
+                <select
+                  value={selectedLubrificationQtyMode}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedLubrificationQtyMode(value);
+                    setLubrificationQty(value === CUSTOM_OPTION ? "" : value);
+                  }}
                   title={t("quantity")}
                   aria-label={t("quantity")}
-                  placeholder={t("quantity")}
                   className="w-full border rounded-lg px-3 py-2"
-                />
+                >
+                  <option value="">{tCommon("actions.search")}</option>
+                  {LUBRIFICATION_QTY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                  <option value={CUSTOM_OPTION}>{t("custom")}</option>
+                </select>
+                {selectedLubrificationQtyMode === CUSTOM_OPTION && (
+                  <input
+                    type="number"
+                    min="0"
+                    value={lubrificationQty}
+                    onChange={(event) => setLubrificationQty(event.target.value)}
+                    title={t("quantity")}
+                    aria-label={t("quantity")}
+                    placeholder={t("quantity")}
+                    className="w-full border rounded-lg px-3 py-2 mt-2"
+                  />
+                )}
               </div>
             </div>
 
-            <button
-              disabled={submitting}
-              onClick={() => void submitPreventiveMaintenance()}
-              data-testid="preventive-submit-button"
-              className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
-            >
-              {submitting ? tCommon("saving") : t("generateReport")}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={saveCurrentAsDraft}
+                data-testid="preventive-save-draft"
+                className="w-full md:w-auto px-5 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+              >
+                Save Draft
+              </button>
+              <button
+                disabled={submitting}
+                onClick={() => void submitPreventiveMaintenance(selectedDraftId || undefined)}
+                data-testid="preventive-submit-button"
+                className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
+              >
+                {submitting ? tCommon("saving") : selectedDraftId ? "Submit Draft" : t("generateReport")}
+              </button>
+            </div>
             {submitValidationReason ? (
               <div data-testid="preventive-submit-validation" className="text-sm text-red-600 mt-3">
-                {submitValidationReason}
+                {submitValidationMessage}
               </div>
             ) : null}
+          </div>
+
+          <div className="col-span-full panel">
+            <div className="card-title mb-3">Drafts</div>
+            {drafts.length === 0 ? (
+              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {drafts.map((draft, index) => (
+                  <button
+                    key={draft.id}
+                    type="button"
+                    data-testid={`preventive-draft-${index}`}
+                    onClick={() => openDraft(draft)}
+                    className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow ${selectedDraftId === draft.id ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white"}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-slate-900">{draft.title}</div>
+                      <span className="text-xs text-slate-500">{new Date(draft.updatedAt).toLocaleString()}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600">{t("machine")}: {draft.selectedMachine || draft.customMachine || tCommon("notAvailable")}</div>
+                    <div className="mt-3 flex justify-end">
+                      <span
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteDraft(draft.id);
+                        }}
+                        className="inline-flex rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        {tCommon("delete")}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="col-span-full panel overflow-x-auto">

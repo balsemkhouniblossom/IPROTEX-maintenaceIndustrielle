@@ -7,8 +7,6 @@ function readJSON(p){ return JSON.parse(fs.readFileSync(p,'utf8')); }
 const scriptDir = path.dirname(module.filename);
 const srcDir = path.join(scriptDir,'..','src');
 const messagesDir = path.join(scriptDir,'..','messages');
-const locales = fs.readdirSync(messagesDir).filter(f => f.endsWith('.json'));
-const en = readJSON(path.join(messagesDir,'en.json'));
 const arPath = path.join(messagesDir,'ar.json');
 const ar = readJSON(arPath);
 
@@ -27,9 +25,6 @@ const files = walk(srcDir);
 
 const nsVars = {}; // varName -> namespace
 const usedKeys = {}; // namespace -> Set(keys)
-
-const useTranslationsRegex = /useTranslations\(\s*['\"]([^'\"]+)['\"]\s*\)/g;
-const varAssignRegex = /const\s+(\w+)\s*=\s*useTranslations\(/g;
 
 files.forEach(file=>{
   const content = fs.readFileSync(file,'utf8');
@@ -77,9 +72,7 @@ const missing = {};
 for(const ns of Object.keys(usedKeys)){
   const keys = Array.from(usedKeys[ns]);
   keys.forEach(k=>{
-    const full = ns + '.' + k;
     // check in ar
-    const nsObj = ar[ns] || {};
     if(!existsIn(ar, k) && !existsIn(ar, ns+'.'+k)){
       if(!missing[ns]) missing[ns]=new Set();
       missing[ns].add(k);

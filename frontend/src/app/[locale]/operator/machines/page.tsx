@@ -51,6 +51,7 @@ function OperatorMachinesPageContent() {
     const params = useParams<{ locale?: string }>();
     const searchParams = useSearchParams();
     const tMachines = useTranslations("operatorMachines");
+    const tOperator = useTranslations("dashboard.operator");
     const tCommon = useTranslations("common");
 
 
@@ -205,7 +206,7 @@ function OperatorMachinesPageContent() {
                             </div>
 
                             {/* FOOTER ACTIONS */}
-                            <div className="mt-5 flex gap-2">
+                            <div className="mt-5 grid gap-2 md:grid-cols-3">
                                 <button
                                     onClick={() =>
                                         router.push(
@@ -225,6 +226,15 @@ function OperatorMachinesPageContent() {
                                 >
                                     <WrenchScrewdriverIcon className="w-4 h-4" />
                                     {tMachines("details")}
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        router.push(`/${locale}/operator/manuals?machine=${machine._id}`)
+                                    }
+                                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3 py-2 text-sm font-medium"
+                                >
+                                    {tOperator("openManual")}
                                 </button>
                             </div>
                         </div>

@@ -17,7 +17,6 @@ export default function ThemeToggle() {
       className="toolbar-control theme-toggle"
       aria-label={nextThemeLabel}
       title={nextThemeLabel}
-      aria-pressed={isDark}
     >
       {isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
       <span className="hidden lg:inline">{isDark ? t('dark') : t('light')}</span>

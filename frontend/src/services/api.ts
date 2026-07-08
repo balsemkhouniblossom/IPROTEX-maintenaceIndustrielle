@@ -190,6 +190,21 @@ export const apiService = {
   // Work Orders
   getWorkOrders: (params?: PaginationParams) => api.get('/work-orders', withPagination(params)),
 
+  getCalendarEvents: (params?: AnyObject) =>
+    api.get('/work-orders/calendar/events', { params }),
+  getCalendarTimeline: (params?: AnyObject) =>
+    api.get('/work-orders/calendar/timeline', { params }),
+  getCalendarWidget: () => api.get('/work-orders/calendar/widget'),
+  getCalendarNotifications: () => api.get('/work-orders/calendar/notifications'),
+  getCalendarEventDetails: (id: string) => api.get(`/work-orders/calendar/event/${id}`),
+  completeWorkOrder: (id: string) => api.post(`/work-orders/${id}/complete`),
+  validateWorkOrder: (
+    id: string,
+    data: { action: 'approve' | 'reject' | 'request_correction'; technician_id?: string },
+  ) => api.post(`/work-orders/${id}/validation`, data),
+  getCorrectiveAssistant: (params?: AnyObject) =>
+    api.get('/work-orders/calendar/corrective-assistant', { params }),
+
   createWorkOrder: (data: AnyObject) => api.post('/work-orders', data),
   updateWorkOrder: (id: string, data: AnyObject) => api.patch(`/work-orders/${id}`, data),
   deleteWorkOrder: (id: string) => api.delete(`/work-orders/${id}`),

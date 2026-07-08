@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
@@ -106,9 +107,11 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center mb-6">
-              <img
+              <Image
                 src="/Iprotex%20logo.png"
                 alt="IPROTEX Logo"
+                width={48}
+                height={48}
                 className="h-12 w-12 object-contain"
               />
             </div>
@@ -233,7 +236,7 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="auth-icon-button absolute inset-y-0 end-0 pe-4 flex items-center"
+                    className="auth-icon-button absolute inset-y-0 inset-e-0 pe-4 flex items-center"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -274,7 +277,7 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="auth-icon-button absolute inset-y-0 end-0 pe-4 flex items-center"
+                    className="auth-icon-button absolute inset-y-0 inset-e-0 pe-4 flex items-center"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (

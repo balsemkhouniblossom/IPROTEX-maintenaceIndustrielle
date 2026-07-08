@@ -1,12 +1,8 @@
-import { redirect } from "@/i18n/navigation";
+import { redirect } from "next/navigation";
 import { defaultLocale } from "@/i18n/config";
 
 export default function Root() {
-  // Redirect to the default locale's login page
-  redirect({
-    href: "/auth/login",
-    locale: defaultLocale,
-  });
+  redirect(`/${defaultLocale}/auth/login`);
 }
 
 

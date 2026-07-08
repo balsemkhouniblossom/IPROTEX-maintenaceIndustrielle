@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -10,12 +11,14 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ProfileAvatar from '@/components/ProfileAvatar';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useParams } from 'next/navigation';
+import LiveClock from '@/components/LiveClock';
 
 import {
   HomeIcon,
   UsersIcon,
   CogIcon,
   ClipboardDocumentListIcon,
+  CalendarDaysIcon,
   Bars3Icon,
   XMarkIcon,
   CpuChipIcon,
@@ -31,19 +34,19 @@ import {
 interface DashboardLayoutProps {
   children: React.ReactNode;
   title: string;
+  headerActions?: React.ReactNode;
 }
 
 
 
 
-function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
+function DashboardLayoutBody({ children, title, headerActions }: DashboardLayoutProps) {
 
   const pathname = usePathname() || "";
   const params = useParams();
   const locale = params.locale as string;
   const tCommon = useTranslations('common');
   const tUsers = useTranslations('users');
-  const tDashboardStatus = useTranslations('dashboard.status');
   const t = useTranslations('sidebar');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -121,6 +124,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
     const operatorNav: NavItem[] = [
       { name: t('navigation.dashboard'), href: '/operator', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
       { name: t('navigation.workOrders'), href: '/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: t('navigation.smartMaintenanceCalendar'), href: '/operator/smart-maintenance-calendar', icon: CalendarDaysIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.interventionReports'), href: '/intervention-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.pannes'), href: '/pannes', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
@@ -158,21 +162,30 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
   // Get translated navigation items based on role
 
   return (
-    <div className="dashboard-grid relative overflow-hidden" >
-      <img
+    <div className="dashboard-grid relative overflow-x-hidden overflow-y-visible" >
+      <Image
         src="/Iprotex logo.png"
         alt="IPROTEX Logo Background"
-        className="themed-logo-watermark fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6xl h-288 object-contain pointer-events-none z-0"
+        width={1536}
+        height={1152}
+        className="themed-logo-watermark fixed max-w-none object-contain pointer-events-none z-0"
+        loading="eager"
+        priority
       />
 
       {/* Sidebar */}
       <div className={`sidebar-modern ${sidebarOpen ? 'sidebar-open' : ''} relative z-10`}>
         <div className="sidebar-header-modern">
           <div className="flex items-center gap-3">
-            <img
-              src="/Iprotex%20logo.png"
+            <Image
+              src="/Iprotex logo.png"
               alt="IPROTEX Logo"
+              width={200}
+              height={200}
               className="w-50 h-50 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+              style={{ width: 'auto', height: 'auto' }}
+              loading="eager"
+              priority
               onClick={handleLogoClick}
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -274,13 +287,15 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <div className="main-content relative z-10">
-        <header className="panel">
+        <header className="panel dashboard-header-panel">
           <div className="flex items-center justify-between gap-4 flex-wrap md:flex-nowrap">
             <div className="flex items-center gap-3 min-w-0">
               <h1 className="text-lg md:text-xl lg:text-2xl font-bold truncate">{title}</h1>
             </div>
 
             <div className="flex items-center gap-4">
+              {headerActions}
+              <LiveClock locale={locale} />
               <ThemeToggle />
               <LanguageSwitcher />
 
@@ -318,7 +333,7 @@ function DashboardLayoutBody({ children, title }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="relative z-0 p-4 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
 

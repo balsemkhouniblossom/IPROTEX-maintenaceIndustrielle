@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class TemplateRendererService {
-  renderVerificationEmail(url: string): { subject: string; text: string; html: string } {
+  renderVerificationEmail(url: string): {
+    subject: string;
+    text: string;
+    html: string;
+  } {
     const subject = 'Verify your email - Iprotex';
     const text = `Verify your email using this link: ${url}`;
     const html = `<p>Please verify your email address:</p><p><a href="${url}">${url}</a></p><p>If you did not request this, ignore this email.</p>`;

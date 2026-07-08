@@ -1,34 +1,98 @@
 "use client";
-import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
-import { useRecentActivities } from "@/hooks/useRecentActivities";
 import { useTranslations } from "next-intl";
 import {
-    WrenchScrewdriverIcon,
-    ClockIcon,
+    BellAlertIcon,
     CheckCircleIcon,
-    ExclamationTriangleIcon,
-    CogIcon,
-    CpuChipIcon,
-    ChartBarIcon,
-} from '@heroicons/react/24/outline';
+    ClockIcon,
+    ArrowRightIcon,
+    ClipboardDocumentListIcon,
+    WrenchScrewdriverIcon,
+    SparklesIcon,
+    XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
 
-interface MachineCategory {
-    _id: string;
-    name: string;
-    description?: string;
-}
-
 interface OperatorStats {
-    waitingValidation: number;
     assigned: number;
     inProgress: number;
     completed: number;
+}
+
+interface WorkOrderItem {
+    _id: string;
+    ot_id?: string;
+    status?: string;
+    type_maintenance?: string;
+    date_created?: string;
+    date_start?: string;
+    priorite?: string;
+    machine_id?: string | { _id?: string; machine_id?: string };
+    description?: string;
+    technician_id?: string | { _id?: string; nom_complet?: string };
+}
+
+interface InterventionReportItem {
+    _id: string;
+    report_id?: string;
+    ot_id?: string | { _id?: string };
+    description_action?: string;
+    validation_responsable?: string;
+    date_debut?: string;
+    date_fin?: string;
+}
+
+interface CalendarEventItem {
+    id: string;
+    workOrderId?: string;
+    title: string;
+    type?: string;
+    status: string;
+    dueDate: string;
+    priority?: string;
+    machine?: { id?: string; code?: string };
+    frequency?: { label?: string };
+}
+
+interface OperatorTaskItem {
+    id: string;
+    workOrderId: string;
+    machineId: string;
+    machineCode: string;
+    maintenanceType: string;
+    priority: string;
+    status: string;
+    dueDate: string;
+    isOverdue: boolean;
+}
+
+interface NotificationItem {
+    key: string;
+    label: string;
+    count: number;
+    tone: "blue" | "amber" | "green" | "red";
+}
+
+function extractId(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+        const objectValue = value as { _id?: string; id?: string };
+        return objectValue._id || objectValue.id || "";
+    }
+    return "";
+}
+
+function extractMachineLabel(value: WorkOrderItem["machine_id"]): string {
+    if (!value) return "-";
+    if (typeof value === "string") return value;
+    return value.machine_id || value._id || "-";
 }
 
 function normalizeApiItems<T>(payload: unknown): T[] {
@@ -46,433 +110,634 @@ function normalizeApiItems<T>(payload: unknown): T[] {
     return [];
 }
 
-export default function OperatorDashboard() {
+function isSameDay(date: Date, reference: Date): boolean {
+    return date.getFullYear() === reference.getFullYear()
+        && date.getMonth() === reference.getMonth()
+        && date.getDate() === reference.getDate();
+}
 
+function isCompletedStatus(status?: string): boolean {
+    return status === "completed" || status === "validated";
+}
+
+function formatMaintenanceType(type: string | undefined, tOperator: ReturnType<typeof useTranslations>): string {
+    return (type || "").toLowerCase().includes("correct")
+        ? tOperator("correctiveMaintenance")
+        : tOperator("preventiveMaintenance");
+}
+
+function formatPriority(priority: string | undefined): string {
+    if (!priority) return "Medium";
+    const normalized = priority.toLowerCase();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatReportStatus(status: string | undefined, tOperator: ReturnType<typeof useTranslations>): string {
+    if (status === "validated") {
+        return tOperator("validated");
+    }
+    if (status === "rejected") {
+        return tOperator("dashboard.rejected");
+    }
+    return tOperator("dashboard.pendingTechnicianValidation");
+}
+
+export default function OperatorDashboard() {
     const tOperator = useTranslations("dashboard.operator");
     const tCommon = useTranslations("common");
     const { user, isLoading: authLoading } = useAuth();
     const router = useRouter();
-    const { activities, loading: activitiesLoading } = useRecentActivities(4);
-    const [categories, setCategories] = useState<MachineCategory[]>([]);
-    const [stats, setStats] = useState<OperatorStats>({
-        waitingValidation: 0,
-        assigned: 0,
-        inProgress: 0,
-        completed: 0
-    });
-    const [loading, setLoading] = useState(true);
     const params = useParams();
     const locale = Array.isArray(params?.locale)
         ? params.locale[0]
         : params?.locale || "en";
-    // Helper function to get activity styling
-    const getActivityStyle = (activity: any) => {
-        switch (activity.icon) {
-            case 'check':
-                return {
-                    icon: CheckCircleIcon,
-                    bgColor: 'bg-green-50',
-                    iconColor: 'text-green-500'
-                };
-            case 'wrench':
-                return {
-                    icon: WrenchScrewdriverIcon,
-                    bgColor: 'bg-blue-50',
-                    iconColor: 'text-blue-500'
-                };
-            case 'clock':
-                return {
-                    icon: ClockIcon,
-                    bgColor: 'bg-blue-50',
-                    iconColor: 'text-blue-500'
-                };
-            case 'alert':
-                return {
-                    icon: ExclamationTriangleIcon,
-                    bgColor: 'bg-yellow-50',
-                    iconColor: 'text-yellow-500'
-                };
-            default:
-                return {
-                    icon: ClockIcon,
-                    bgColor: 'bg-gray-50',
-                    iconColor: 'text-gray-500'
-                };
+
+    const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
+    const [reports, setReports] = useState<InterventionReportItem[]>([]);
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
+    const [stats, setStats] = useState<OperatorStats>({
+        assigned: 0,
+        inProgress: 0,
+        completed: 0,
+    });
+    const [loading, setLoading] = useState(true);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notificationMenuStyle, setNotificationMenuStyle] = useState<CSSProperties>({});
+    const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+    const now = useMemo(() => new Date(), []);
+
+    const updateNotificationMenuPosition = useCallback(() => {
+        if (!notificationButtonRef.current || typeof window === "undefined") {
+            return;
         }
-    };
 
-    // Helper function to format relative time
-    const getRelativeTime = (date: Date) => {
-        const now = new Date();
-        const diffInMs = now.getTime() - date.getTime();
-        const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-        const diffInDays = Math.floor(diffInHours / 24);
+        const rect = notificationButtonRef.current.getBoundingClientRect();
+        const isDesktop = window.innerWidth >= 768;
+        const menuWidth = isDesktop ? 384 : 320;
+        const viewportPadding = 12;
+        const left = Math.min(
+            Math.max(viewportPadding, rect.right - menuWidth),
+            window.innerWidth - menuWidth - viewportPadding,
+        );
 
-        if (diffInHours < 1) {
-            return tCommon("time.justNow");
-        } else if (diffInHours < 24) {
-            return tCommon("time.hoursAgo", { count: diffInHours });
-        } else {
-            return tCommon("time.daysAgo", { count: diffInDays });
-        }
-    };
-
-    async function loadOperatorStats() {
-        try {
-            const workOrdersResponse = await apiService.getWorkOrders();
-
-            const workOrders = normalizeApiItems<any>(workOrdersResponse.data);
-
-            const waitingValidation = workOrders.filter(
-                (wo: any) => wo.status === "waiting_validation"
-            ).length;
-
-            const assigned = workOrders.filter(
-                (wo: any) => wo.status === "assigned"
-            ).length;
-
-            const inProgress = workOrders.filter(
-                (wo: any) => wo.status === "in_progress"
-            ).length;
-
-            const completed = workOrders.filter(
-                (wo: any) => wo.status === "completed"
-            ).length;
-
-            setStats({
-                waitingValidation,
-                assigned,
-                inProgress,
-                completed,
-            });
-
-        } catch (error) {
-            console.error("Error loading operator stats", error);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    useEffect(() => {
-        loadCategories();
+        setNotificationMenuStyle({
+            top: rect.bottom + 10,
+            left,
+            width: menuWidth,
+            position: "fixed",
+            zIndex: 140,
+        });
     }, []);
 
-    const loadCategories = async () => {
-        try {
-            const response = await apiService.getMachineTypes();
-
-            setCategories(normalizeApiItems<MachineCategory>(response.data));
-
-            console.log("Loaded Categories:", response.data);
-        } catch (err) {
-            console.error(err);
+    const shiftLabel = useMemo(() => {
+        const hour = now.getHours();
+        if (hour >= 6 && hour < 14) {
+            return tOperator("shift.morning");
         }
+        if (hour >= 14 && hour < 22) {
+            return tOperator("shift.afternoon");
+        }
+        return tOperator("shift.night");
+    }, [now, tOperator]);
+
+    const activeWorkOrders = useMemo(
+        () => workOrders.filter((order) => order.technician_id && extractId(order.technician_id) === user?._id),
+        [user?._id, workOrders],
+    );
+
+    const derivedMachineLabel = useMemo(() => {
+        const firstActive = activeWorkOrders.find((order) => order.status !== "completed");
+        return firstActive ? extractMachineLabel(firstActive.machine_id) : tOperator("dashboard.emptyValue");
+    }, [activeWorkOrders, tOperator]);
+
+    const recentReports = useMemo(() => {
+        return reports
+            .filter((report) => {
+                const workOrder = workOrders.find((order) => order._id === extractId(report.ot_id));
+                return !workOrder || !user?._id || extractId(workOrder.technician_id) === user._id;
+            })
+            .slice()
+            .sort((left, right) => new Date(right.date_fin || right.date_debut || 0).getTime() - new Date(left.date_fin || left.date_debut || 0).getTime())
+            .slice(0, 4);
+    }, [reports, workOrders, user?._id]);
+
+    const eventByWorkOrderId = useMemo(() => {
+        return new Map(
+            calendarEvents
+                .filter((event) => event.workOrderId)
+                .map((event) => [event.workOrderId as string, event]),
+        );
+    }, [calendarEvents]);
+
+    const operatorTasks = useMemo<OperatorTaskItem[]>(() => {
+        return activeWorkOrders
+            .map((order) => {
+                const event = eventByWorkOrderId.get(order._id);
+                const dueDate = event?.dueDate || order.date_start || order.date_created || new Date().toISOString();
+                const due = new Date(dueDate);
+                const overdue = event?.status === "overdue"
+                    || (!isCompletedStatus(order.status) && due.getTime() < now.getTime());
+
+                return {
+                    id: event?.id || order._id,
+                    workOrderId: order._id,
+                    machineId: event?.machine?.id || extractId(order.machine_id),
+                    machineCode: event?.machine?.code || extractMachineLabel(order.machine_id),
+                    maintenanceType: order.type_maintenance || event?.type || "preventive",
+                    priority: event?.priority || order.priorite || "medium",
+                    status: order.status || event?.status || "assigned",
+                    dueDate,
+                    isOverdue: overdue,
+                };
+            })
+            .filter((task) => !isCompletedStatus(task.status))
+            .filter((task) => {
+                const due = new Date(task.dueDate);
+                return task.isOverdue || isSameDay(due, now);
+            })
+            .sort((left, right) => {
+                if (left.isOverdue !== right.isOverdue) {
+                    return left.isOverdue ? -1 : 1;
+                }
+                return new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime();
+            });
+    }, [activeWorkOrders, eventByWorkOrderId, now]);
+
+    const nextTask = operatorTasks[0] || null;
+    const overdueTasksCount = operatorTasks.filter((task) => task.isOverdue).length;
+
+    const upcomingReminderCount = useMemo(() => {
+        return calendarEvents.filter((event) => {
+            const due = new Date(event.dueDate);
+            return event.status !== "completed"
+                && event.status !== "validated"
+                && due.getTime() > now.getTime()
+                && !isSameDay(due, now);
+        }).length;
+    }, [calendarEvents, now]);
+
+    const notificationItems = useMemo<NotificationItem[]>(() => {
+        const validatedReports = recentReports.filter((report) => report.validation_responsable === "validated").length;
+        const correctiveRequests = operatorTasks.filter((task) => task.maintenanceType.toLowerCase().includes("correct")).length;
+
+        return [
+            { key: "due", label: tOperator("dashboardNotifications.dueToday"), count: operatorTasks.filter((task) => !task.isOverdue).length, tone: "amber" as const },
+            { key: "corrective", label: tOperator("dashboard.notificationCorrectiveRequest"), count: correctiveRequests, tone: "blue" as const },
+            { key: "validated", label: tOperator("dashboard.notificationTechnicianValidated"), count: validatedReports, tone: "green" as const },
+            { key: "overdue", label: tOperator("dashboardNotifications.overdue"), count: overdueTasksCount, tone: "red" as const },
+            { key: "reminder", label: tOperator("dashboard.notificationReminder"), count: upcomingReminderCount, tone: "blue" as const },
+        ].filter((item) => item.count > 0);
+    }, [operatorTasks, overdueTasksCount, recentReports, tOperator, upcomingReminderCount]);
+
+    const unreadNotificationsCount = notificationItems.reduce((total, item) => total + item.count, 0);
+    const latestReport = recentReports[0] || null;
+
+    const analyticsCards = [
+        { label: tOperator("dashboard.todayTasks"), value: operatorTasks.length, icon: ClipboardDocumentListIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: "text-[var(--text-primary)]" },
+        { label: tOperator("stats.assignedToYou"), value: stats.assigned, icon: ClipboardDocumentListIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: "text-[var(--text-primary)]" },
+        { label: tOperator("stats.inProgress"), value: stats.inProgress, icon: WrenchScrewdriverIcon, accent: "from-cyan-700 via-sky-700 to-indigo-800", textTone: "text-[var(--text-primary)]" },
+        { label: tOperator("dashboard.overdueTasks"), value: overdueTasksCount, icon: ClockIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: overdueTasksCount > 0 ? "text-rose-500" : "text-[var(--text-primary)]" },
+        { label: tOperator("stats.completedToday"), value: stats.completed, icon: CheckCircleIcon, accent: "from-cyan-700 via-sky-700 to-indigo-800", textTone: "text-[var(--text-primary)]" },
+    ];
+
+    const shellClassName = "p-4 md:p-6 xl:p-8";
+    const softCardClassName = "operator-frost-card";
+    const centeredMetricCardClassName = `${softCardClassName} rounded-3xl p-6 text-center`;
+    const actionButtonClassName = "inline-flex items-center justify-center gap-3 rounded-2xl border border-cyan-700/55 bg-linear-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#155E75] px-6 py-4 text-sm font-semibold text-slate-50 shadow-[0_14px_30px_rgba(6,78,59,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(6,78,59,0.45)]";
+
+    const getTaskRoute = (maintenanceType: string) => {
+        return maintenanceType.toLowerCase().includes("correct")
+            ? `/${locale}/operator/corrective`
+            : `/${locale}/operator/preventive`;
+    };
+
+    const handleStartWorking = () => {
+        if (nextTask) {
+            const machineQuery = nextTask.machineId ? `?machine=${nextTask.machineId}` : "";
+            router.push(`${getTaskRoute(nextTask.maintenanceType)}${machineQuery}`);
+            return;
+        }
+
+        router.push(`/${locale}/operator/preventive`);
+    };
+
+    const handleStartTask = (task: OperatorTaskItem) => {
+        const machineQuery = task.machineId ? `?machine=${task.machineId}` : "";
+        router.push(`${getTaskRoute(task.maintenanceType)}${machineQuery}`);
     };
 
     useEffect(() => {
         if (authLoading) {
             return;
         }
-
-        if (!user) {
-            setLoading(false);
-            router.replace('/auth/login');
+        if (!user?._id) {
             return;
         }
 
-        // Redirect if not operator
-        if (user.role !== 'operator') {
-            setLoading(false);
-            router.replace('/');
+        let cancelled = false;
+
+        const loadOperatorStats = async () => {
+            try {
+                const [workOrdersResponse, reportsResponse, calendarResponse] = await Promise.all([
+                    apiService.getWorkOrders(),
+                    apiService.getInterventionReports(),
+                    apiService.getCalendarEvents({
+                        view: "week",
+                        date: new Date().toISOString().slice(0, 10),
+                        technicianId: user._id,
+                    }),
+                ]);
+
+                if (cancelled) {
+                    return;
+                }
+
+                const normalizedWorkOrders = normalizeApiItems<WorkOrderItem>(workOrdersResponse.data);
+                const reportItems = normalizeApiItems<InterventionReportItem>(reportsResponse.data);
+                const calendarPayload = (calendarResponse.data as { items?: unknown } | undefined)?.items ?? calendarResponse.data;
+                const calendarItems = normalizeApiItems<CalendarEventItem>(calendarPayload);
+
+                setWorkOrders(normalizedWorkOrders);
+                setReports(reportItems);
+                setCalendarEvents(calendarItems);
+
+                const scopedWorkOrders = normalizedWorkOrders.filter((order) => extractId(order.technician_id) === user._id);
+                const assigned = scopedWorkOrders.filter((wo) => wo.status === "assigned").length;
+                const inProgress = scopedWorkOrders.filter((wo) => wo.status === "in_progress").length;
+                const completed = scopedWorkOrders.filter((wo) => wo.status === "completed").length;
+
+                setStats({
+                    assigned,
+                    inProgress,
+                    completed,
+                });
+            } catch (error) {
+                console.error("Error loading operator stats", error);
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        void loadOperatorStats();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user?._id, authLoading]);
+
+    useEffect(() => {
+        if (!notificationsOpen) {
             return;
         }
 
-         
-        loadOperatorStats();
-    }, [user, authLoading, router]);
+        updateNotificationMenuPosition();
 
+        const handleViewportChange = () => {
+            updateNotificationMenuPosition();
+        };
+
+        window.addEventListener("resize", handleViewportChange);
+        window.addEventListener("scroll", handleViewportChange, true);
+
+        return () => {
+            window.removeEventListener("resize", handleViewportChange);
+            window.removeEventListener("scroll", handleViewportChange, true);
+        };
+    }, [notificationsOpen, updateNotificationMenuPosition]);
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+            <div className="operator-dashboard-theme flex min-h-screen items-center justify-center bg-background px-4">
+                <div className="rounded-3xl border border-border bg-(--surface-elevated) px-8 py-10 text-center backdrop-blur-xl shadow-(--shadow-lg)">
+                    <div className="mx-auto h-14 w-14 animate-spin rounded-full border-b-2 border-cyan-700"></div>
+                    <div className="mt-4 text-sm font-medium text-text-secondary">{tCommon("loading")}</div>
+                </div>
             </div>
         );
     }
 
     return (
-        <ProtectedRoute>
-            <DashboardLayout title={tOperator("title")}>
-                <div className="bento-grid">
-                    {/* Welcome Message */}
-                    <div className="col-span-full mb-6 bento-item">
-                        <div className="panel">
-                            <div className="flex items-center gap-3">
-                                <div>
-                                    <div className="card-title">
-                                        {tOperator("welcome", { name: user?.nom_complet || "" })}
+        <ProtectedRoute requiredRole="operator">
+            <DashboardLayout
+                title={tOperator("title")}
+                headerActions={
+                    <div className="relative">
+                        <button
+                            ref={notificationButtonRef}
+                            type="button"
+                            onClick={() => {
+                                setNotificationsOpen((current) => {
+                                    const next = !current;
+                                    if (next) {
+                                        requestAnimationFrame(() => updateNotificationMenuPosition());
+                                    }
+                                    return next;
+                                });
+                            }}
+                            className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) text-cyan-800 dark:text-cyan-600 backdrop-blur-xl shadow-(--shadow) transition hover:-translate-y-0.5 hover:border-cyan-700/55"
+                            aria-label={tOperator("smartCalendar.notificationCenter")}
+                        >
+                            <BellAlertIcon className="h-5 w-5" />
+                            {unreadNotificationsCount > 0 ? (
+                                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
+                                    {unreadNotificationsCount}
+                                </span>
+                            ) : null}
+                        </button>
+
+                        {notificationsOpen && typeof document !== "undefined" ? createPortal(
+                            <div
+                                className={`rounded-3xl p-5 ${softCardClassName}`}
+                                style={notificationMenuStyle}
+                            >
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <div className="flex-1 text-center">
+                                        <div className="text-sm font-semibold text-text-primary">{tOperator("smartCalendar.notificationCenter")}</div>
+                                        <div className="text-xs text-text-secondary">{unreadNotificationsCount} {tOperator("dashboard.unread")}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNotificationsOpen(false)}
+                                        className="rounded-full p-1 text-text-secondary transition hover:bg-(--surface-overlay) hover:text-text-primary"
+                                        aria-label={tCommon("close")}
+                                    >
+                                        <XMarkIcon className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {notificationItems.length === 0 ? (
+                                        <div className="rounded-2xl border border-border bg-(--surface-secondary) px-4 py-4 text-center text-sm text-text-secondary">
+                                            {tOperator("dashboard.notificationEmpty")}
+                                        </div>
+                                    ) : notificationItems.map((item) => (
+                                        <div
+                                            key={item.key}
+                                            className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm ${item.tone === "red"
+                                                ? "border-rose-400/35 bg-rose-500/12 text-rose-200"
+                                                : item.tone === "green"
+                                                    ? "border-emerald-400/35 bg-emerald-500/12 text-emerald-200"
+                                                    : item.tone === "amber"
+                                                        ? "border-amber-400/35 bg-amber-500/12 text-amber-200"
+                                                        : "border-cyan-700/40 bg-cyan-900/18 text-cyan-700 dark:text-cyan-300"
+                                                }`}
+                                        >
+                                            <span className="font-medium">{item.label}</span>
+                                            <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-bold text-text-primary">{item.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>,
+                            document.body,
+                        ) : null}
+                    </div>
+                }
+            >
+                <div className={`operator-dashboard-theme ${shellClassName}`}>
+                    <div className="bento-grid gap-6">
+                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-center">
+                                <div className="flex min-h-55 flex-col items-center justify-center text-center">
+                                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-700/40 bg-cyan-900/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-500">
+                                        <SparklesIcon className="h-4 w-4" />
+                                        {tOperator("dashboard.welcomeOperator")}
+                                    </div>
+                                    <h1 className="mt-5 text-3xl font-semibold tracking-[-0.03em] text-text-primary md:text-5xl">
+                                        {tOperator("dashboard.welcomeOperator")}
+                                    </h1>
+                                    <p className="mt-4 max-w-2xl text-sm leading-7 text-text-secondary md:text-base">
+                                        {tOperator("dashboard.intro")}
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className={`${centeredMetricCardClassName} flex min-h-55 flex-col items-center justify-center`}>
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{tOperator("dashboard.currentShift")}</div>
+                                        <div className="mt-3 text-2xl font-semibold text-text-primary">{shiftLabel}</div>
+                                        <div className="mt-2 text-sm text-text-secondary">{tOperator("dashboard.todayTasks")}</div>
+                                    </div>
+
+                                    <div className={`${centeredMetricCardClassName} flex min-h-55 flex-col items-center justify-center`}>
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{tOperator("dashboard.machineAssigned")}</div>
+                                        <div className="mt-3 text-2xl font-semibold text-text-primary">{derivedMachineLabel}</div>
+                                        <div className="mt-2 text-sm text-text-secondary">{tOperator("machine")}</div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Maintenance Center */}
-                    <div className="col-span-full mb-6 panel">
-                        <div className="card-title mb-4">{tOperator("maintenanceCenter")}</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/preventive`)}
-                                className="panel border-2 border-blue-500 hover:shadow-xl transition-all hover:-translate-y-1"
-                            >
-                                <div className="text-xl font-bold text-blue-700 mb-2">{tOperator("preventive")}</div>
-                                <div className="text-sm text-slate-600">{tOperator("preventiveTasks")}</div>
-                            </button>
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/corrective`)}
-                                className="panel border-2 border-emerald-500 hover:shadow-xl transition-all hover:-translate-y-1"
-                            >
-                                <div className="text-xl font-bold text-emerald-700 mb-2">{tOperator("corrective")}</div>
-                                <div className="text-sm text-slate-600">{tOperator("correctiveTasks")}</div>
-                            </button>
-                        </div>
-                    </div>
+                            <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                                {analyticsCards.map((card) => {
+                                    const Icon = card.icon;
 
-                    {/* Emergency Button */}
-                    <div className="col-span-full mb-6">
-                        <div className="panel bg-red-600 text-black">
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/report-problem`)}
-                                className="w-full py-6 text-2xl font-bold"
-                            >
-                                🚨{tOperator("reportProblem")}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Status Cards */}
-                    <div className="col-span-full">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-
-                            <div className="panel">
-                                <div className="text-sm text-gray-500">
-                                    {tOperator("waitingValidation")}
-                                </div>
-
-                                <div className="text-3xl font-bold">
-                                    {stats.waitingValidation}
-                                </div>
-                            </div>
-
-                            <div className="panel">
-                                <div className="text-sm text-gray-500">
-                                    {tOperator("assigned")}
-                                </div>
-
-                                <div className="text-3xl font-bold">
-                                    {stats.assigned}
-                                </div>
-                            </div>
-
-                            <div className="panel">
-                                <div className="text-sm text-gray-500">
-                                    {tOperator("inProgress")}
-                                </div>
-
-                                <div className="text-3xl font-bold">
-                                    {stats.inProgress}
-                                </div>
-                            </div>
-
-                            <div className="panel">
-                                <div className="text-sm text-gray-500">
-                                    {tOperator("completed")}
-                                </div>
-
-                                <div className="text-3xl font-bold">
-                                    {stats.completed}
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    {/* Machine Categories */}
-                    <div className="col-span-full mb-6">
-                        <div className="panel">
-                            <div className="card-title mb-6">
-                                {tOperator("machineCategories")}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                                {categories.map((category) => (
-                                    <button
-                                        key={category._id}
-                                        onClick={() =>
-                                            router.push(`/${params.locale ?? "en"}/operator/machines?type=${category._id}`)
-                                        }
-                                        className="panel hover:shadow-lg transition-all hover:-translate-y-1"
-                                    >
-                                        <div className="flex flex-col items-center py-6">
-                                            <CogIcon className="w-12 h-12 text-blue-600 mb-3" />
-
-                                            <span className="font-semibold">
-                                                {category.name}
-                                            </span>
-
-                                            <span className="text-xs text-gray-500 mt-2">
-                                                {tOperator("viewMachines")}
-                                            </span>
+                                    return (
+                                        <div key={card.label} className={`${centeredMetricCardClassName} flex min-h-44 flex-col items-center justify-center`}>
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                                                <Icon className="h-5 w-5" />
+                                            </div>
+                                            <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">{card.label}</div>
+                                            <div className={`mt-3 text-4xl font-semibold tracking-[-0.03em] ${card.textTone}`}>{card.value}</div>
+                                            <div className={`mt-4 h-1.5 w-16 rounded-full bg-linear-to-r ${card.accent}`}></div>
                                         </div>
+                                    );
+                                })}
+
+                                <div className={`${centeredMetricCardClassName} flex min-h-44 flex-col items-center justify-center`}>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">{tOperator("dashboard.startWorking")}</div>
+                                    <div className="mt-4 max-w-55 text-center text-sm leading-6 text-text-secondary">{nextTask ? `${nextTask.machineCode} • ${formatMaintenanceType(nextTask.maintenanceType, tOperator)}` : tOperator("dashboard.todaysTasksDescription")}</div>
+                                    <button
+                                        type="button"
+                                        onClick={handleStartWorking}
+                                        className={`mt-5 w-full max-w-55 ${actionButtonClassName}`}
+                                    >
+                                        {tOperator("dashboard.startWorking")}
+                                        <ArrowRightIcon className="h-4 w-4" />
                                     </button>
-                                ))}
-
+                                </div>
                             </div>
-                        </div>
+                        </section>
+
+                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                            <div className="mb-6 text-center">
+                                <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">{tOperator("dashboard.chooseMaintenance")}</div>
+                                <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">{tOperator("dashboard.todaysTasksDescription")}</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 auto-rows-fr items-stretch">
+                                <button
+                                    onClick={() => router.push(`/${locale}/operator/preventive`)}
+                                    className={`group h-full rounded-3xl p-6 text-center transition hover:-translate-y-1 ${softCardClassName}`}
+                                >
+                                    <div className="flex h-full flex-col items-center justify-center gap-5">
+                                        <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-cyan-700/30 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                                            <ClipboardDocumentListIcon className="h-7 w-7" />
+                                        </div>
+                                        <div>
+                                            <div className="text-xl font-semibold text-text-primary">{tOperator("preventiveMaintenance")}</div>
+                                            <p className="mt-3 max-w-md text-sm leading-7 text-text-secondary">{tOperator("dashboard.preventiveFlow")}</p>
+                                        </div>
+                                        <div className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-500">
+                                            {tOperator("dashboard.startWorking")}
+                                            <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => router.push(`/${locale}/operator/corrective`)}
+                                    className={`group h-full rounded-3xl p-6 text-center transition hover:-translate-y-1 ${softCardClassName}`}
+                                >
+                                    <div className="flex h-full flex-col items-center justify-center gap-5">
+                                        <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-cyan-700/30 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                                            <WrenchScrewdriverIcon className="h-7 w-7" />
+                                        </div>
+                                        <div>
+                                            <div className="text-xl font-semibold text-text-primary">{tOperator("correctiveMaintenance")}</div>
+                                            <p className="mt-3 max-w-md text-sm leading-7 text-text-secondary">{tOperator("dashboard.correctiveFlow")}</p>
+                                        </div>
+                                        <div className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-500">
+                                            {tOperator("dashboard.startWorking")}
+                                            <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </section>
+
+                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                            <div className="mb-6 flex flex-col items-center justify-center gap-3 text-center">
+                                <div>
+                                    <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">{tOperator("dashboard.todaysTasks")}</div>
+                                    <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">{operatorTasks.length === 0 ? tOperator("dashboard.noTasksDescription") : tOperator("dashboard.todaysTasksDescription")}</p>
+                                </div>
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                                    <ClockIcon className="h-5 w-5" />
+                                </div>
+                            </div>
+
+                            {operatorTasks.length === 0 ? (
+                                <div className={`${centeredMetricCardClassName} px-6 py-12`}>
+                                    <div className="text-lg font-semibold text-text-primary">{tOperator("dashboard.noTasksTitle")}</div>
+                                    <div className="mt-3 text-sm leading-7 text-text-secondary">{tOperator("dashboard.noTasksDescription")}</div>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="hidden grid-cols-[1.3fr_1fr_0.9fr_0.9fr_0.9fr] gap-4 rounded-[20px] border border-border bg-(--surface-secondary) px-5 py-4 text-center text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:grid">
+                                        <div>{tOperator("machine")}</div>
+                                        <div>{tOperator("smartCalendar.maintenanceType")}</div>
+                                        <div>{tCommon("priority")}</div>
+                                        <div>{tOperator("smartCalendar.due")}</div>
+                                        <div>{tOperator("smartCalendar.start")}</div>
+                                    </div>
+
+                                    {operatorTasks.map((task) => {
+                                        const dueDate = new Date(task.dueDate);
+                                        const dueLabel = task.isOverdue
+                                            ? tCommon("now")
+                                            : new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(dueDate);
+
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                className={`grid gap-4 rounded-3xl px-5 py-5 md:grid-cols-[1.3fr_1fr_0.9fr_0.9fr_0.9fr] md:items-center ${softCardClassName}`}
+                                            >
+                                                <div className="flex flex-col items-center justify-center text-center">
+                                                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">{tOperator("machine")}</div>
+                                                    <div className="mt-1 text-base font-semibold text-text-primary">{task.machineCode}</div>
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center text-center">
+                                                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">{tOperator("smartCalendar.maintenanceType")}</div>
+                                                    <div className="mt-1 text-sm font-medium text-text-secondary">{formatMaintenanceType(task.maintenanceType, tOperator)}</div>
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center text-center">
+                                                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">{tCommon("priority")}</div>
+                                                    <div className={`mt-1 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${task.isOverdue ? "border-rose-400/35 bg-rose-500/12 text-rose-200" : "border-cyan-700/40 bg-cyan-900/18 text-cyan-700 dark:text-cyan-300"}`}>
+                                                        {formatPriority(task.priority)}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center text-center">
+                                                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">{tOperator("smartCalendar.due")}</div>
+                                                    <div className="mt-1 text-sm font-medium text-text-secondary">{dueLabel}</div>
+                                                </div>
+                                                <div className="flex items-center justify-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleStartTask(task)}
+                                                        className={`w-full ${actionButtonClassName}`}
+                                                    >
+                                                        {tOperator("smartCalendar.start")}
+                                                        <ArrowRightIcon className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                            <div className="mb-6 flex flex-col items-center justify-center gap-3 text-center">
+                                <div>
+                                    <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">{tOperator("recentActivity.title")}</div>
+                                    <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">{tOperator("dashboard.recentActivityDescription")}</p>
+                                </div>
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                                    <ClipboardDocumentListIcon className="h-5 w-5" />
+                                </div>
+                            </div>
+
+                            {latestReport ? (() => {
+                                const workOrder = workOrders.find((order) => order._id === extractId(latestReport.ot_id));
+                                const machineLabel = workOrder ? extractMachineLabel(workOrder.machine_id) : tOperator("dashboard.emptyValue");
+                                const maintenanceType = formatMaintenanceType(workOrder?.type_maintenance, tOperator);
+                                const submittedAt = latestReport.date_fin || latestReport.date_debut;
+
+                                return (
+                                    <div className={`rounded-3xl p-6 ${softCardClassName}`}>
+                                        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr] xl:items-center">
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">{tOperator("dashboard.lastSubmittedReport")}</div>
+                                                <div className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-text-primary">{maintenanceType}</div>
+                                                <div className="mt-2 text-sm text-text-secondary">{machineLabel}</div>
+                                            </div>
+
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div className={`${centeredMetricCardClassName} flex min-h-36.5 flex-col items-center justify-center`}>
+                                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{tOperator("smartCalendar.status")}</div>
+                                                    <div className="mt-3 text-sm font-semibold text-text-primary">{formatReportStatus(latestReport.validation_responsable, tOperator)}</div>
+                                                </div>
+                                                <div className={`${centeredMetricCardClassName} flex min-h-36.5 flex-col items-center justify-center`}>
+                                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{tOperator("dashboard.submissionDate")}</div>
+                                                    <div className="mt-3 text-sm font-semibold text-text-primary">
+                                                        {submittedAt
+                                                            ? new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(submittedAt))
+                                                            : tOperator("dashboard.emptyValue")}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-center pt-2 xl:col-span-full">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.push(`/${locale}/operator/my-reports`)}
+                                                    className={actionButtonClassName}
+                                                >
+                                                    {tOperator("smartCalendar.viewHistory")}
+                                                    <ArrowRightIcon className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })() : (
+                                <div className={`${centeredMetricCardClassName} px-6 py-12 text-sm text-text-secondary`}>
+                                    {tOperator("dashboard.noRecentReports")}
+                                </div>
+                            )}
+                        </section>
                     </div>
-                    {/* Quick Actions */}
-                    <div className="col-span-full panel mb-6">
-
-                        <div className="card-title mb-4">
-                            {tOperator("quickActions.title")}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/report-problem`)}
-                                className="bg-red-600 hover:bg-red-700 text-white rounded-lg p-4 transition"
-                            >
-                                🚨  {tOperator("reportProblem")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/preventive`)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-4 transition"
-                            >
-                                📅  {tOperator("preventiveMaintenance")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/corrective`)}
-                                className="bg-green-600 hover:bg-green-700 text-white rounded-lg p-4 transition"
-                            >
-                                🔧{tOperator("correctiveMaintenance")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/manuals`)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-4 transition"
-                            >
-                                📄 {tOperator("quickActions.manuals")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/my-reports`)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-4 transition"
-                            >
-                                📋 {tOperator("quickActions.myReports")}
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                    {/* Machine Manuals */}
-                    <div className="col-span-full panel mb-6">
-
-                        <div className="card-title mb-4">
-                            {tOperator("machineManuals")}
-                        </div>
-
-                        <p className="text-gray-500 mb-4">
-                            {tOperator("manualsIntro")}
-                        </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/manuals`)}
-                                className="border rounded-lg p-4 hover:bg-gray-50 transition"
-                            >
-                                📄 {tOperator("manuals.winding")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/manuals`)}
-                                className="border rounded-lg p-4 hover:bg-gray-50 transition"
-                            >
-                                📄{tOperator("manuals.braiding")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/manuals`)}
-                                className="border rounded-lg p-4 hover:bg-gray-50 transition"
-                            >
-                                📄 {tOperator("manuals.cutting")}
-                            </button>
-
-                            <button
-                                onClick={() => router.push(`/${locale}/operator/manuals`)}
-                                className="border rounded-lg p-4 hover:bg-gray-50 transition"
-                            >
-                                📄 {tOperator("manuals.rolling")}
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                {/* My Reports */}
-                <div className="col-span-full panel mb-6">
-
-                    <div className="card-title mb-4">
-                       {tOperator("myReports")}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                        <div className="border rounded-lg p-4">
-                            <div className="font-semibold">
-                               {tOperator("preventiveMaintenance")}
-                            </div>
-
-                            <div className="text-sm text-green-600 mt-2">
-                                ✔ {tOperator("validated")}
-                            </div>
-                        </div>
-
-                        <div className="border rounded-lg p-4">
-                            <div className="font-semibold">
-                               {tOperator("correctiveMaintenance")}
-                            </div>
-
-                            <div className="text-sm text-gray-500">
-                                {tOperator("waitingValidation")}
-                            </div>
-                        </div>
-
-                        <div className="border rounded-lg p-4">
-                            <div className="font-semibold">
-                                {tOperator("machineInspection")}
-                            </div>
-
-                            <div className="text-sm text-blue-600 mt-2">
-                                🔄 {tOperator("inProgress")}
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <button
-                        onClick={() => router.push(`/${locale}/operator/my-reports`)}
-                        className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
-                    >
-                        {tOperator("viewAllReports")}
-                    </button>
-
                 </div>
             </DashboardLayout>
         </ProtectedRoute>

@@ -2,9 +2,30 @@ export const ALL_FIELDS_TOKEN = '__all_fields__';
 
 const DEFAULT_MAX_DEPTH = 3;
 const DEFAULT_SAMPLE_SIZE = 50;
+const DEFAULT_MAX_FIELDS = 3;
+const DIACRITICS_PATTERN = /[\u0300-\u036f]/g;
+
+const SEARCHABLE_PRIORITY_PATTERNS: RegExp[] = [
+  /(name|nom|title|titre|label|libelle|designation)/,
+  /(description|details|comment|reason|cause|action|summary)/,
+  /(status|state|type|category|role|priority|severity)/,
+  /(code|ref|reference|number|num|serial)/,
+  /(date|time|deadline|due|start|end)/,
+];
+
+const SEARCHABLE_EXCLUSION_PATTERNS: RegExp[] = [
+  /(^|\.)(?:_?id|[a-z0-9]+_id|uuid|guid)$/,
+  /(password|token|secret|hash|salt|signature|otp)/,
+  /(file_path|filepath|blob|binary|base64|photo|image|avatar|mime)/,
+  /(created_by|updated_by|deleted_by|owner_id|user_id|machine_id|technician_id)/,
+];
 
 function isPrimitive(value: unknown): value is string | number | boolean {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+function normalizeSearchText(value: string): string {
+  return value.normalize('NFKD').replace(DIACRITICS_PATTERN, '').toLowerCase();
 }
 
 function getByPath(value: unknown, path: string): unknown {
@@ -21,7 +42,7 @@ function getByPath(value: unknown, path: string): unknown {
 
 function stringifyValue(value: unknown, depth = 0, maxDepth = DEFAULT_MAX_DEPTH): string {
   if (value == null) return '';
-  if (isPrimitive(value)) return String(value).toLowerCase();
+  if (isPrimitive(value)) return normalizeSearchText(String(value));
 
   if (Array.isArray(value)) {
     return value
@@ -31,7 +52,7 @@ function stringifyValue(value: unknown, depth = 0, maxDepth = DEFAULT_MAX_DEPTH)
   }
 
   if (value instanceof Date) {
-    return value.toISOString().toLowerCase();
+    return normalizeSearchText(value.toISOString());
   }
 
   if (typeof value === 'object') {
@@ -43,7 +64,34 @@ function stringifyValue(value: unknown, depth = 0, maxDepth = DEFAULT_MAX_DEPTH)
       .join(' ');
   }
 
-  return String(value).toLowerCase();
+  return normalizeSearchText(String(value));
+}
+
+function isSearchableFieldPath(path: string, exclude: Set<string>): boolean {
+  if (!path || exclude.has(path)) {
+    return false;
+  }
+
+  const normalizedPath = path.toLowerCase();
+  return !SEARCHABLE_EXCLUSION_PATTERNS.some((pattern) => pattern.test(normalizedPath));
+}
+
+function scoreSearchableField(path: string): number {
+  const normalizedPath = path.toLowerCase();
+  let score = 0;
+
+  SEARCHABLE_PRIORITY_PATTERNS.forEach((pattern, index) => {
+    if (pattern.test(normalizedPath)) {
+      score += (SEARCHABLE_PRIORITY_PATTERNS.length - index) * 30;
+    }
+  });
+
+  if (normalizedPath.includes('.')) {
+    score -= 8;
+  }
+
+  score -= normalizedPath.length * 0.05;
+  return score;
 }
 
 function collectFieldPaths(
@@ -116,7 +164,7 @@ function hasDataField<T>(obj: unknown): obj is { data: T[] } {
 
 export function getSearchableFields<T>(
   items: T[] | unknown,
-  options?: { maxDepth?: number; sampleSize?: number; exclude?: string[] },
+  options?: { maxDepth?: number; sampleSize?: number; maxFields?: number; exclude?: string[] },
 ): string[] {
   const safeItems: T[] =
     Array.isArray(items)
@@ -145,6 +193,7 @@ export function getSearchableFields<T>(
 
   const maxDepth = options?.maxDepth ?? DEFAULT_MAX_DEPTH;
   const sampleSize = options?.sampleSize ?? DEFAULT_SAMPLE_SIZE;
+  const maxFields = options?.maxFields ?? DEFAULT_MAX_FIELDS;
   const exclude = new Set(options?.exclude ?? []);
 
   const collector = new Set<string>();
@@ -154,8 +203,16 @@ export function getSearchableFields<T>(
   });
 
   return Array.from(collector)
-    .filter((field) => !exclude.has(field))
-    .sort((a, b) => a.localeCompare(b));
+    .filter((field) => isSearchableFieldPath(field, exclude))
+    .sort((left, right) => {
+      const scoreDiff = scoreSearchableField(right) - scoreSearchableField(left);
+      if (scoreDiff !== 0) {
+        return scoreDiff;
+      }
+
+      return left.localeCompare(right);
+    })
+    .slice(0, maxFields);
 }
 
 export function matchesDynamicSearch<T>(
@@ -164,11 +221,21 @@ export function matchesDynamicSearch<T>(
   selectedField = ALL_FIELDS_TOKEN,
   maxDepth = DEFAULT_MAX_DEPTH,
 ): boolean {
-  const normalizedTerm = searchTerm.trim().toLowerCase();
+  const normalizedTerm = normalizeSearchText(searchTerm.trim());
   if (!normalizedTerm) return true;
 
   if (selectedField === ALL_FIELDS_TOKEN) {
-    return stringifyValue(item, 0, maxDepth).includes(normalizedTerm);
+    const scopedFields = getSearchableFields([item], {
+      maxDepth,
+      sampleSize: 1,
+      maxFields: DEFAULT_MAX_FIELDS,
+    });
+
+    if (scopedFields.length === 0) {
+      return stringifyValue(item, 0, maxDepth).includes(normalizedTerm);
+    }
+
+    return scopedFields.some((field) => stringifyValue(getByPath(item, field), 0, maxDepth).includes(normalizedTerm));
   }
 
   const value = getByPath(item, selectedField);
