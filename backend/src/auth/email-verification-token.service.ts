@@ -49,9 +49,12 @@ export class EmailVerificationTokenService {
       }
 
       try {
-        const payload = this.jwtService.verify<VerificationTokenPayload>(token, {
-          secret: this.getLegacySecret(),
-        });
+        const payload = this.jwtService.verify<VerificationTokenPayload>(
+          token,
+          {
+            secret: this.getLegacySecret(),
+          },
+        );
 
         if (payload.userId) {
           this.logger.warn(

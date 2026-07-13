@@ -123,15 +123,13 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
     const operatorNav: NavItem[] = [
       { name: t('navigation.dashboard'), href: '/operator', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
-      { name: t('navigation.workOrders'), href: '/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: t('navigation.startPreventiveMaintenance'), href: '/operator/preventive', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: t('navigation.startCorrectiveMaintenance'), href: '/operator/corrective', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: t('navigation.reportProblem'), href: '/operator/report-problem', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.smartMaintenanceCalendar'), href: '/operator/smart-maintenance-calendar', icon: CalendarDaysIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.interventionReports'), href: '/intervention-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.pannes'), href: '/pannes', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
-      { name: t('navigation.panneSolutions'), href: '/panne-solutions', icon: DocumentTextIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
-      { name: t('navigation.machines'), href: '/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
-      { name: t('navigation.capteurs'), href: '/capteurs', icon: CpuChipIcon, categoryKey: 'categories.iotMonitoring', domain: 'monitoring' },
-      { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
+      { name: t('navigation.machines'), href: '/operator/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
+      { name: t('navigation.manuals'), href: '/operator/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
+      { name: t('navigation.myReports'), href: '/operator/my-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
     ];
 
     const navItems = role === 'admin' ? adminNav : role === 'technician' ? technicianNav : operatorNav;

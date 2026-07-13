@@ -39,6 +39,7 @@ export default function LoginPage() {
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +62,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const userRole = await login(formData.email, formData.password);
+      const userRole = await login(formData.email, formData.password, keepLoggedIn);
       router.replace(getDashboardPath(locale, userRole));
 
     } catch (err: unknown) {
@@ -167,6 +168,16 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              <label className="auth-label flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={keepLoggedIn}
+                  onChange={(event) => setKeepLoggedIn(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>{t('keepLoggedIn')}</span>
+              </label>
 
               <div>
                 <button

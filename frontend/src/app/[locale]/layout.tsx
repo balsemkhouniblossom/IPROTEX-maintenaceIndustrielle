@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { Montserrat, Source_Sans_3 } from "next/font/google";
 import "../globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -12,20 +10,6 @@ import { isRtlLocale } from "@/i18n/config";
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
-
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
-
-const sourceSans = Source_Sans_3({
-  variable: "--font-source-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "IPROTEX - Gestion de machines Industrielles",
@@ -55,7 +39,7 @@ export default async function LocaleLayout({
   return (
     <div dir={isRtl ? "rtl" : "ltr"}>
       <NextIntlClientProvider locale={locale} messages={messages}>
-        <AuthProvider>{children}</AuthProvider>
+        {children}
       </NextIntlClientProvider>
     </div>
   );

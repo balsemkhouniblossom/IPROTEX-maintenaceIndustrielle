@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ModalProps {
@@ -39,8 +40,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     xl: 'max-w-[1000px]',
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4 text-center">
         <div
           className="fixed inset-0 bg-black/50 transition-opacity"
@@ -68,6 +69,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

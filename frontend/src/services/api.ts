@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
+import { normalizeApiItems, readPaginationMeta } from './pagination';
+import { clearAuthSession, getAuthItem, updateStoredTokens } from './authStorage';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -22,7 +24,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Add auth token here if implemented
-    const token = localStorage.getItem('token');
+    const token = getAuthItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -34,6 +36,8 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for error handling
+let refreshRequest: Promise<string> | null = null;
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -63,10 +67,37 @@ api.interceptors.response.use(
     const isAuthEndpoint = /\/auth\/(login|register|forgot-password|reset-password)/.test(requestUrl);
     const isExpectedAuthFailure = status === 401 && isAuthEndpoint;
 
+    const originalRequest = error.config as typeof error.config & { _retry?: boolean };
+    const refreshToken = getAuthItem('refresh_token');
+
+    if (status === 401 && !isAuthEndpoint && refreshToken && !originalRequest?._retry) {
+      originalRequest._retry = true;
+      refreshRequest ??= axios
+        .post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken })
+        .then((response) => {
+          const nextToken = response.data.access_token ?? response.data.token;
+          updateStoredTokens(nextToken, response.data.refresh_token);
+          return nextToken;
+        })
+        .finally(() => {
+          refreshRequest = null;
+        });
+
+      return refreshRequest.then((nextToken) => {
+        originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+        return api(originalRequest);
+      }).catch((refreshError) => {
+        clearAuthSession();
+        if (typeof window !== 'undefined') {
+          const locale = window.location.pathname.split('/')[1] || 'en';
+          window.location.href = `/${locale}/auth/login`;
+        }
+        return Promise.reject(refreshError);
+      });
+    }
+
     if (status === 401 && !isAuthEndpoint) {
-      // Token expired or invalid, redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuthSession();
       if (typeof window !== 'undefined') {
         const locale = window.location.pathname.split('/')[1] || 'en';
         window.location.href = `/${locale}/auth/login`;
@@ -189,6 +220,7 @@ export const apiService = {
 
   // Work Orders
   getWorkOrders: (params?: PaginationParams) => api.get('/work-orders', withPagination(params)),
+  getMyWorkOrders: (params?: PaginationParams) => api.get('/operator/work-orders/my', withPagination(params)),
 
   getCalendarEvents: (params?: AnyObject) =>
     api.get('/work-orders/calendar/events', { params }),
@@ -218,23 +250,27 @@ export const apiService = {
 
   // Intervention Reports
   getInterventionReports: (params?: PaginationParams) => api.get('/intervention-reports', withPagination(params)),
+  getMyInterventionReports: (params?: PaginationParams) => api.get('/operator/reports/my', withPagination(params)),
   createInterventionReport: (data: AnyObject) => api.post('/intervention-reports', data),
   updateInterventionReport: (id: string, data: AnyObject) => api.patch(`/intervention-reports/${id}`, data),
   deleteInterventionReport: (id: string) => api.delete(`/intervention-reports/${id}`),
 
   // Pannes
   getPannes: (params?: PaginationParams) => api.get('/pannes', withPagination(params)),
+  getOperatorFaults: (params?: AnyObject) => api.get('/operator/faults', { params }),
   createPanne: (data: AnyObject) => api.post('/pannes', data),
   updatePanne: (id: string, data: AnyObject) => api.patch(`/pannes/${id}`, data),
   deletePanne: (id: string) => api.delete(`/pannes/${id}`),
 
   // Panne Solutions
   getPanneSolutions: (params?: PaginationParams) => api.get('/panne-solutions', withPagination(params)),
+  getOperatorFaultSolutions: (params?: AnyObject) => api.get('/operator/fault-solutions', { params }),
   createPanneSolution: (data: AnyObject) => api.post('/panne-solutions', data),
   updatePanneSolution: (id: string, data: AnyObject) => api.patch(`/panne-solutions/${id}`, data),
   deletePanneSolution: (id: string) => api.delete(`/panne-solutions/${id}`),
 
   getDocuments: (params?: PaginationParams) => api.get('/documents', withPagination(params)),
+  getOperatorManuals: (params?: AnyObject) => api.get('/operator/manuals', { params }),
 
   getDocument: (id: string) => api.get(`/documents/${id}`),
 
@@ -291,5 +327,41 @@ export const apiService = {
       console.error('Error fetching dashboard data:', error);
       throw error;
     }
+  },
+
+  getMyMachines: (params?: PaginationParams & { machineTypeId?: string }) =>
+    api.get('/operator/machines/my', {
+      params: {
+        page: params?.page,
+        limit: params?.limit,
+        machineTypeId: params?.machineTypeId,
+      },
+    }),
+
+  getMyCalendarEvents: (params?: AnyObject) => api.get('/operator/calendar/my', { params }),
+
+  async fetchAllFromPaginatedEndpoint<T>(
+    request: (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>,
+    pageSize = 100,
+  ): Promise<T[]> {
+    const firstResponse = await request({ page: 1, limit: pageSize });
+    const firstItems = normalizeApiItems<T>(firstResponse.data);
+    const pagination = readPaginationMeta(firstResponse.data);
+
+    if (!pagination || pagination.totalPages <= 1) {
+      return firstItems;
+    }
+
+    const remainingRequests: Array<Promise<{ data: unknown }>> = [];
+    for (let page = pagination.page + 1; page <= pagination.totalPages; page += 1) {
+      remainingRequests.push(request({ page, limit: pageSize }));
+    }
+
+    const remainingResponses = await Promise.all(remainingRequests);
+    const remainingItems = remainingResponses.flatMap((response) =>
+      normalizeApiItems<T>(response.data),
+    );
+
+    return [...firstItems, ...remainingItems];
   },
 };

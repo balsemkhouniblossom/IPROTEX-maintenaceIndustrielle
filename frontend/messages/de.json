@@ -10,6 +10,7 @@
   },
   "auth": {
     "signIn": "Anmelden",
+    "keepLoggedIn": "Angemeldet bleiben",
     "signUp": "Registrieren",
     "email": "E-Mail-Adresse",
     "password": "Passwort",
@@ -290,6 +291,7 @@
       "solution": "Loesung",
       "validation": "Validierung erforderlich",
       "report": "Bericht",
+      "maintenanceCode": "Wartungscode",
       "openManual": "Handbuch-PDF oeffnen",
       "generateReport": "Bericht erstellen",
       "actionsPerformed": "Durchgefuehrte Aktionen",
@@ -350,6 +352,9 @@
         "loadFailed": "Fehler beim Laden der Daten",
         "customActionAdded": "Benutzerdefinierte Aktion hinzugefugt",
         "customTaskAdded": "Benutzerdefinierte Aufgabe hinzugefugt",
+        "draftSaved": "Entwurf gespeichert",
+        "draftLoaded": "Entwurf geladen",
+        "draftDeleted": "Entwurf geloescht",
         "filterUpdated": "Filter aktualisiert",
         "submitSuccess": "Zur Validierung gesendet",
         "validationFailed": "Bitte erforderliche Felder ausfullen"

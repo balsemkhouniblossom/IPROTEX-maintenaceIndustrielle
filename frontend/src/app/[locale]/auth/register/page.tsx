@@ -99,7 +99,7 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-shell min-h-screen flex">
-      <div className="absolute top-4 left-4 z-20">
+      <div className="absolute top-4 left-8 z-20 sm:left-10">
         <LanguageSwitcher />
       </div>
 

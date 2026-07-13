@@ -59,6 +59,7 @@ import { LubrifiantsModule } from './lubrifiants/lubrifiants.module';
 import { LubrificationLogsModule } from './lubrification-logs/lubrification-logs.module';
 import { OtPiecesModule } from './ot-pieces/ot-pieces.module';
 import { HealthModule } from './health/health.module';
+import { OperatorModule } from './operator/operator.module';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -160,6 +161,7 @@ const mongoLogger = new Logger('MongoDB');
     LubrificationLogsModule,
     OtPiecesModule,
     HealthModule,
+    OperatorModule,
   ],
   controllers: [AppController],
   providers: [AppService],

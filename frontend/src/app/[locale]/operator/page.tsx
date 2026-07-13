@@ -14,10 +14,10 @@ import {
     ArrowRightIcon,
     ClipboardDocumentListIcon,
     WrenchScrewdriverIcon,
-    SparklesIcon,
     XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
+import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 
 interface OperatorStats {
     assigned: number;
@@ -95,21 +95,6 @@ function extractMachineLabel(value: WorkOrderItem["machine_id"]): string {
     return value.machine_id || value._id || "-";
 }
 
-function normalizeApiItems<T>(payload: unknown): T[] {
-    if (Array.isArray(payload)) {
-        return payload as T[];
-    }
-
-    if (payload && typeof payload === "object") {
-        const maybeItems = (payload as { items?: unknown }).items;
-        if (Array.isArray(maybeItems)) {
-            return maybeItems as T[];
-        }
-    }
-
-    return [];
-}
-
 function isSameDay(date: Date, reference: Date): boolean {
     return date.getFullYear() === reference.getFullYear()
         && date.getMonth() === reference.getMonth()
@@ -117,7 +102,8 @@ function isSameDay(date: Date, reference: Date): boolean {
 }
 
 function isCompletedStatus(status?: string): boolean {
-    return status === "completed" || status === "validated";
+    const normalized = (status || "").toLowerCase();
+    return normalized === "completed" || normalized === "validated";
 }
 
 function formatMaintenanceType(type: string | undefined, tOperator: ReturnType<typeof useTranslations>): string {
@@ -312,6 +298,12 @@ export default function OperatorDashboard() {
     };
 
     const handleStartWorking = () => {
+        const chooseSection = document.getElementById("operator-maintenance-entry");
+        if (chooseSection) {
+            chooseSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+        }
+
         if (nextTask) {
             const machineQuery = nextTask.machineId ? `?machine=${nextTask.machineId}` : "";
             router.push(`${getTaskRoute(nextTask.maintenanceType)}${machineQuery}`);
@@ -339,12 +331,11 @@ export default function OperatorDashboard() {
         const loadOperatorStats = async () => {
             try {
                 const [workOrdersResponse, reportsResponse, calendarResponse] = await Promise.all([
-                    apiService.getWorkOrders(),
-                    apiService.getInterventionReports(),
-                    apiService.getCalendarEvents({
+                    fetchAllPaginated<WorkOrderItem>((pagination) => apiService.getMyWorkOrders(pagination)),
+                    fetchAllPaginated<InterventionReportItem>((pagination) => apiService.getMyInterventionReports(pagination)),
+                    apiService.getMyCalendarEvents({
                         view: "week",
                         date: new Date().toISOString().slice(0, 10),
-                        technicianId: user._id,
                     }),
                 ]);
 
@@ -352,8 +343,8 @@ export default function OperatorDashboard() {
                     return;
                 }
 
-                const normalizedWorkOrders = normalizeApiItems<WorkOrderItem>(workOrdersResponse.data);
-                const reportItems = normalizeApiItems<InterventionReportItem>(reportsResponse.data);
+                const normalizedWorkOrders = workOrdersResponse;
+                const reportItems = reportsResponse;
                 const calendarPayload = (calendarResponse.data as { items?: unknown } | undefined)?.items ?? calendarResponse.data;
                 const calendarItems = normalizeApiItems<CalendarEventItem>(calendarPayload);
 
@@ -361,10 +352,10 @@ export default function OperatorDashboard() {
                 setReports(reportItems);
                 setCalendarEvents(calendarItems);
 
-                const scopedWorkOrders = normalizedWorkOrders.filter((order) => extractId(order.technician_id) === user._id);
-                const assigned = scopedWorkOrders.filter((wo) => wo.status === "assigned").length;
-                const inProgress = scopedWorkOrders.filter((wo) => wo.status === "in_progress").length;
-                const completed = scopedWorkOrders.filter((wo) => wo.status === "completed").length;
+                const scopedWorkOrders = normalizedWorkOrders;
+                const assigned = scopedWorkOrders.filter((wo) => (wo.status || "").toLowerCase() === "assigned").length;
+                const inProgress = scopedWorkOrders.filter((wo) => (wo.status || "").toLowerCase() === "in_progress").length;
+                const completed = scopedWorkOrders.filter((wo) => isCompletedStatus(wo.status)).length;
 
                 setStats({
                     assigned,
@@ -500,18 +491,10 @@ export default function OperatorDashboard() {
                         <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
                             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-center">
                                 <div className="flex min-h-55 flex-col items-center justify-center text-center">
-                                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-700/40 bg-cyan-900/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-500">
-                                        <SparklesIcon className="h-4 w-4" />
-                                        {tOperator("dashboard.welcomeOperator")}
-                                    </div>
                                     <h1 className="mt-5 text-3xl font-semibold tracking-[-0.03em] text-text-primary md:text-5xl">
                                         {tOperator("dashboard.welcomeOperator")}
                                     </h1>
-                                    <p className="mt-4 max-w-2xl text-sm leading-7 text-text-secondary md:text-base">
-                                        {tOperator("dashboard.intro")}
-                                    </p>
                                 </div>
-
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className={`${centeredMetricCardClassName} flex min-h-55 flex-col items-center justify-center`}>
                                         <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{tOperator("dashboard.currentShift")}</div>
@@ -544,21 +527,21 @@ export default function OperatorDashboard() {
                                 })}
 
                                 <div className={`${centeredMetricCardClassName} flex min-h-44 flex-col items-center justify-center`}>
-                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">{tOperator("dashboard.startWorking")}</div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">{tOperator("dashboard.startMaintenance")}</div>
                                     <div className="mt-4 max-w-55 text-center text-sm leading-6 text-text-secondary">{nextTask ? `${nextTask.machineCode} • ${formatMaintenanceType(nextTask.maintenanceType, tOperator)}` : tOperator("dashboard.todaysTasksDescription")}</div>
                                     <button
                                         type="button"
                                         onClick={handleStartWorking}
                                         className={`mt-5 w-full max-w-55 ${actionButtonClassName}`}
                                     >
-                                        {tOperator("dashboard.startWorking")}
+                                        {tOperator("dashboard.startMaintenance")}
                                         <ArrowRightIcon className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>
                         </section>
 
-                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                        <section id="operator-maintenance-entry" className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
                             <div className="mb-6 text-center">
                                 <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">{tOperator("dashboard.chooseMaintenance")}</div>
                                 <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">{tOperator("dashboard.todaysTasksDescription")}</p>

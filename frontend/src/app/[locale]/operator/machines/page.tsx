@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
+import { fetchAllPaginated } from "@/services/pagination";
 import {
     CogIcon,
     MapPinIcon,
@@ -29,21 +30,6 @@ interface Machine {
 interface MachineType {
     _id: string;
     name: string;
-}
-
-function normalizeApiItems<T>(payload: unknown): T[] {
-    if (Array.isArray(payload)) {
-        return payload as T[];
-    }
-
-    if (payload && typeof payload === "object") {
-        const maybeItems = (payload as { items?: unknown }).items;
-        if (Array.isArray(maybeItems)) {
-            return maybeItems as T[];
-        }
-    }
-
-    return [];
 }
 
 function OperatorMachinesPageContent() {
@@ -76,12 +62,12 @@ function OperatorMachinesPageContent() {
             setLoading(true);
 
             const [machinesRes, typesRes] = await Promise.all([
-                apiService.getMachines(),
-                apiService.getMachineTypes(),
+                fetchAllPaginated<any>((pagination) => apiService.getMyMachines(pagination)),
+                fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
             ]);
 
-            const machineItems = normalizeApiItems<any>(machinesRes.data);
-            const typeItems = normalizeApiItems<MachineType>(typesRes.data);
+            const machineItems = machinesRes;
+            const typeItems = typesRes;
 
             const normalizedMachines = machineItems.map((m: any) => ({
                 ...m,

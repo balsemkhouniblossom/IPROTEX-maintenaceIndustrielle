@@ -6,12 +6,15 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
+import { getApiBaseUrl } from "@/config/api-base-url";
 import { useTranslations } from "next-intl";
+import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 
-type EntityRef = string | { _id?: string };
+type EntityRef = string | { _id?: string; id?: string };
 
 interface MachineType {
   _id: string;
+  type_id?: number;
   name: string;
 }
 
@@ -40,6 +43,7 @@ interface DocumentEntity {
   _id: string;
   machine_id: EntityRef;
   file_path: string;
+  file_name?: string;
   type_document?: string;
 }
 
@@ -77,7 +81,14 @@ interface InterventionReport {
 
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
-  return typeof value === "string" ? value : value._id ?? "";
+  return typeof value === "string" ? value : value._id ?? value.id ?? "";
+}
+
+const API_URL = getApiBaseUrl();
+
+function getFileUrl(path: string): string {
+  if (!path) return "";
+  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
 }
 
 function tokenize(input: string | undefined): string[] {
@@ -90,21 +101,6 @@ function tokenize(input: string | undefined): string[] {
 
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
-
-function normalizeApiItems<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) {
-    return payload as T[];
-  }
-
-  if (payload && typeof payload === "object") {
-    const maybeItems = (payload as { items?: unknown }).items;
-    if (Array.isArray(maybeItems)) {
-      return maybeItems as T[];
-    }
-  }
-
-  return [];
 }
 
 type CorrectiveResult = "solved" | "notSolved" | "technicianRequired" | "custom";
@@ -150,6 +146,7 @@ function OperatorCorrectivePageContent() {
   const [selectedMachine, setSelectedMachine] = useState("");
   const [selectedPanne, setSelectedPanne] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<Record<string, boolean>>({});
+  const [faultSearch, setFaultSearch] = useState("");
 
   const [checkedActions, setCheckedActions] = useState<Record<string, boolean>>({});
   const [selectedActionToAdd, setSelectedActionToAdd] = useState("");
@@ -164,6 +161,7 @@ function OperatorCorrectivePageContent() {
   const [selectedParts, setSelectedParts] = useState<Record<string, string>>({});
   const [submitValidationReason, setSubmitValidationReason] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [faultsLoading, setFaultsLoading] = useState(false);
   const [drafts, setDrafts] = useState<CorrectiveDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const draftStorageKey = useMemo(
@@ -205,6 +203,36 @@ function OperatorCorrectivePageContent() {
     setNotification({ type, message });
   }
 
+  function resetCorrectiveState(): void {
+    setSelectedPanne("");
+    setFaultSearch("");
+    setSelectedSymptoms({});
+    setCheckedActions({});
+    setSelectedActionToAdd("");
+    setCustomActionInput("");
+    setCustomActions([]);
+    setResult("solved");
+    setCustomResult("");
+    setComments("");
+    setPhoto(null);
+    setSelectedParts({});
+    setSubmitValidationReason("");
+  }
+
+  function resetFaultSpecificState(): void {
+    setSelectedSymptoms({});
+    setCheckedActions({});
+    setSelectedActionToAdd("");
+    setCustomActionInput("");
+    setCustomActions([]);
+    setResult("solved");
+    setCustomResult("");
+    setComments("");
+    setPhoto(null);
+    setSelectedParts({});
+    setSubmitValidationReason("");
+  }
+
   function persistDrafts(nextDrafts: CorrectiveDraft[]): void {
     setDrafts(nextDrafts);
     localStorage.setItem(draftStorageKey, JSON.stringify(nextDrafts));
@@ -235,7 +263,7 @@ function OperatorCorrectivePageContent() {
 
     persistDrafts(nextDrafts);
     setSelectedDraftId(draftId);
-    showNotification("success", "Draft saved");
+    showNotification("success", t("notifications.draftSaved"));
   }
 
   function openDraft(draft: CorrectiveDraft): void {
@@ -250,7 +278,7 @@ function OperatorCorrectivePageContent() {
     setCustomResult(draft.customResult);
     setComments(draft.comments);
     setSelectedParts(draft.selectedParts);
-    showNotification("success", "Draft loaded");
+    showNotification("success", t("notifications.draftLoaded"));
   }
 
   function deleteDraft(draftId: string): void {
@@ -259,7 +287,7 @@ function OperatorCorrectivePageContent() {
     if (selectedDraftId === draftId) {
       setSelectedDraftId("");
     }
-    showNotification("success", "Draft deleted");
+    showNotification("success", t("notifications.draftDeleted"));
   }
 
   useEffect(() => {
@@ -267,36 +295,32 @@ function OperatorCorrectivePageContent() {
       try {
         setLoading(true);
         const [
-          machineTypeRes,
-          machinesRes,
-          pannesRes,
-          panneSolutionsRes,
-          documentsRes,
-          cataloguesRes,
-          stocksRes,
-          workOrdersRes,
-          reportsRes,
+          machineTypeItems,
+          machineItems,
+          documentItems,
+          catalogueItems,
+          stockItems,
+          workOrderItems,
+          reportItems,
         ] = await Promise.all([
-          apiService.getMachineTypes(),
-          apiService.getMachines(),
-          apiService.getPannes(),
-          apiService.getPanneSolutions(),
-          apiService.getDocuments(),
-          apiService.getCatalogues(),
-          apiService.getStocks(),
-          apiService.getWorkOrders(),
-          apiService.getInterventionReports(),
+          fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
+          fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
+          fetchAllPaginated<DocumentEntity>((pagination) => apiService.getOperatorManuals(pagination)),
+          fetchAllPaginated<Catalogue>((pagination) => apiService.getCatalogues(pagination)),
+          fetchAllPaginated<Stock>((pagination) => apiService.getStocks(pagination)),
+          fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
+          fetchAllPaginated<InterventionReport>((pagination) => apiService.getMyInterventionReports(pagination)),
         ]);
 
-        setMachineTypes(normalizeApiItems<MachineType>(machineTypeRes.data));
-        setMachines(normalizeApiItems<Machine>(machinesRes.data));
-        setPannes(normalizeApiItems<Panne>(pannesRes.data));
-        setPanneSolutions(normalizeApiItems<PanneSolution>(panneSolutionsRes.data));
-        setDocuments(normalizeApiItems<DocumentEntity>(documentsRes.data));
-        setCatalogues(normalizeApiItems<Catalogue>(cataloguesRes.data));
-        setStocks(normalizeApiItems<Stock>(stocksRes.data));
-        setWorkOrders(normalizeApiItems<WorkOrder>(workOrdersRes.data));
-        setInterventionReports(normalizeApiItems<InterventionReport>(reportsRes.data));
+        setMachineTypes(machineTypeItems);
+        setMachines(machineItems);
+        setPannes([]);
+        setPanneSolutions([]);
+        setDocuments(documentItems);
+        setCatalogues(catalogueItems);
+        setStocks(stockItems);
+        setWorkOrders(workOrderItems);
+        setInterventionReports(reportItems);
       } catch (error) {
         console.error("Failed to load corrective workflow data", error);
       } finally {
@@ -306,6 +330,61 @@ function OperatorCorrectivePageContent() {
 
     void loadAll();
   }, []);
+
+  useEffect(() => {
+    async function loadScopedFaults() {
+      if (!selectedMachine && !selectedCategory) {
+        setPannes([]);
+        setPanneSolutions([]);
+        return;
+      }
+
+      try {
+        setFaultsLoading(true);
+        const faultItems = await fetchAllPaginated<Panne>((pagination) =>
+          apiService.getOperatorFaults({
+            ...pagination,
+            machineId: selectedMachine || undefined,
+            machineTypeId: selectedCategory || undefined,
+            search: faultSearch || undefined,
+          }),
+        );
+        setPannes(faultItems);
+      } catch (error) {
+        console.error("Failed to load scoped faults", error);
+        setPannes([]);
+      } finally {
+        setFaultsLoading(false);
+      }
+    }
+
+    void loadScopedFaults();
+  }, [selectedCategory, selectedMachine, faultSearch]);
+
+  useEffect(() => {
+    async function loadFaultSolutions() {
+      if (!selectedPanne) {
+        setPanneSolutions([]);
+        return;
+      }
+
+      try {
+        const response = await apiService.getOperatorFaultSolutions({
+          page: 1,
+          limit: 100,
+          panneId: selectedPanne,
+          machineId: selectedMachine || undefined,
+          machineTypeId: selectedCategory || undefined,
+        });
+        setPanneSolutions(normalizeApiItems<PanneSolution>(response.data));
+      } catch (error) {
+        console.error("Failed to load fault solutions", error);
+        setPanneSolutions([]);
+      }
+    }
+
+    void loadFaultSolutions();
+  }, [selectedCategory, selectedMachine, selectedPanne]);
 
   useEffect(() => {
     try {
@@ -329,6 +408,14 @@ function OperatorCorrectivePageContent() {
     () => machines.filter((machine) => refId(machine.type_id) === selectedCategory),
     [machines, selectedCategory],
   );
+
+  const visibleMachineTypes = useMemo(() => {
+    const usedTypeIds = new Set(
+      machines.map((machine) => refId(machine.type_id)).filter(Boolean),
+    );
+
+    return machineTypes.filter((type) => usedTypeIds.has(type._id));
+  }, [machineTypes, machines]);
 
   useEffect(() => {
     if (!machines.length) return;
@@ -365,6 +452,18 @@ function OperatorCorrectivePageContent() {
     () => panneSolutions.filter((solution) => refId(solution.panne_id) === selectedPanne),
     [panneSolutions, selectedPanne],
   );
+
+  const visiblePannes = useMemo(() => {
+    if (!faultSearch.trim()) {
+      return pannes;
+    }
+
+    const query = faultSearch.trim().toLowerCase();
+    return pannes.filter((panne) =>
+      panne.code_panne.toLowerCase().includes(query)
+      || panne.description.toLowerCase().includes(query),
+    );
+  }, [faultSearch, pannes]);
 
   const symptomOptions = useMemo(
     () => [
@@ -403,13 +502,37 @@ function OperatorCorrectivePageContent() {
   );
 
   const manualDocument = useMemo(
-    () =>
-      documents.find((doc) => {
-        const machineMatches = refId(doc.machine_id) === selectedMachine;
-        const type = (doc.type_document ?? "").toLowerCase();
-        return machineMatches && (type.includes("manual") || type.includes("procedure") || type.includes("pdf"));
-      }) ?? null,
-    [documents, selectedMachine],
+    () => {
+      const selectedCategoryMachineIds = new Set(
+        machines
+          .filter((machine) => refId(machine.type_id) === selectedCategory)
+          .map((machine) => machine._id),
+      );
+
+      return (
+        documents.find((doc) => {
+          const documentMachineId = refId(doc.machine_id);
+          const type = (doc.type_document ?? "").toLowerCase();
+          const name = (doc.file_name ?? "").toLowerCase();
+          const isManualType =
+            type.includes("manual") ||
+            type.includes("procedure") ||
+            type.includes("pdf") ||
+            type.includes("excel") ||
+            type.includes("xlsx") ||
+            type.includes("xls") ||
+            type.includes("spreadsheet") ||
+            name.endsWith(".xlsx") ||
+            name.endsWith(".xls");
+
+          if (!isManualType) return false;
+          if (selectedMachine) return documentMachineId === selectedMachine;
+          if (selectedCategory) return selectedCategoryMachineIds.has(documentMachineId);
+          return false;
+        }) ?? null
+      );
+    },
+    [documents, machines, selectedCategory, selectedMachine],
   );
 
   const stockByCatalogueId = useMemo(() => {
@@ -615,14 +738,14 @@ function OperatorCorrectivePageContent() {
             <div className="mb-6">
               <div className="mb-3 text-sm font-semibold text-slate-700">{t("machineCategory")}</div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {machineTypes.map((type) => (
+                {visibleMachineTypes.map((type) => (
                   <button
                     key={type._id}
                     type="button"
                     onClick={() => {
                       setSelectedCategory(type._id);
                       setSelectedMachine("");
-                      setSelectedPanne("");
+                      resetCorrectiveState();
                     }}
                     data-testid="corrective-category-select"
                     className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
@@ -645,7 +768,7 @@ function OperatorCorrectivePageContent() {
                     type="button"
                     onClick={() => {
                       setSelectedMachine(machine._id);
-                      setSelectedPanne("");
+                      resetCorrectiveState();
                     }}
                     data-testid="corrective-machine-select"
                     className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
@@ -661,12 +784,36 @@ function OperatorCorrectivePageContent() {
 
             <div>
               <div className="mb-3 text-sm font-semibold text-slate-700">{t("fault")}</div>
+              <div className="mt-3">
+                <input
+                  value={faultSearch}
+                  onChange={(event) => setFaultSearch(event.target.value)}
+                  className="w-full border rounded-xl px-3 py-2"
+                  placeholder={tCommon("actions.search")}
+                />
+              </div>
+
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {pannes.map((panne) => (
+                {!selectedMachine ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    {t("selectMachineForHistory")}
+                  </div>
+                ) : faultsLoading ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    {tCommon("loading")}
+                  </div>
+                ) : visiblePannes.length === 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    {tCommon("table.noData")}
+                  </div>
+                ) : visiblePannes.map((panne) => (
                   <button
                     key={panne._id}
                     type="button"
-                    onClick={() => setSelectedPanne(panne._id)}
+                    onClick={() => {
+                      setSelectedPanne(panne._id);
+                      resetFaultSpecificState();
+                    }}
                     data-testid="corrective-fault-select"
                     className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
                       selectedPanne === panne._id ? "border-red-500 bg-red-50 shadow-md" : "border-slate-200 bg-white"
@@ -822,7 +969,7 @@ function OperatorCorrectivePageContent() {
             <div className="card-title mb-3">{t("openManual")}</div>
             {manualDocument ? (
               <a
-                href={manualDocument.file_path}
+                href={getFileUrl(manualDocument.file_path)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white"
@@ -914,7 +1061,7 @@ function OperatorCorrectivePageContent() {
                 data-testid="corrective-save-draft"
                 className="w-full md:w-auto px-5 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
               >
-                Save Draft
+                {tCommon("save")}
               </button>
               <button
                 disabled={submitting}
@@ -922,13 +1069,13 @@ function OperatorCorrectivePageContent() {
                 data-testid="corrective-submit-button"
                 className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
               >
-                {submitting ? tCommon("saving") : selectedDraftId ? "Submit Draft" : t("generateReport")}
+                {submitting ? tCommon("saving") : t("generateReport")}
               </button>
             </div>
           </div>
 
           <div className="col-span-full panel">
-            <div className="card-title mb-3">Drafts</div>
+            <div className="card-title mb-3">{t("report")}</div>
             {drafts.length === 0 ? (
               <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
             ) : (

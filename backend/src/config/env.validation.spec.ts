@@ -21,7 +21,8 @@ describe('validateEnvironment', () => {
     process.env.EMAIL_VERIFICATION_SECRET = 'c'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.API_URL = 'https://api.example.com';
@@ -61,7 +62,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.APP_URL = 'https://app.example.com';
@@ -83,7 +85,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.FRONTEND_URL = 'https://app.example.com';
@@ -102,11 +105,13 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.APP_URL = 'https://app.example.com';
-    process.env.ALLOWED_ORIGINS = 'https://app.example.com,https://preview.example.com';
+    process.env.ALLOWED_ORIGINS =
+      'https://app.example.com,https://preview.example.com';
     delete process.env.CORS_ORIGINS;
 
     const env = validateEnvironment();
@@ -124,7 +129,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.FRONTEND_BASE_URL = 'https://app.example.com';
@@ -142,7 +148,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.RENDER_EXTERNAL_URL = 'https://gmao-api.onrender.com';

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
+import { fetchAllPaginated } from "@/services/pagination";
 import {
   CalendarDaysIcon,
   FunnelIcon,
@@ -207,24 +209,14 @@ function toInputDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function normalizeApiItems<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) {
-    return payload as T[];
-  }
-
-  if (payload && typeof payload === "object") {
-    const maybeItems = (payload as { items?: unknown }).items;
-    if (Array.isArray(maybeItems)) {
-      return maybeItems as T[];
-    }
-  }
-
-  return [];
-}
-
 export default function SmartMaintenanceCalendarPage() {
   const tCalendar = useTranslations("dashboard.operator.smartCalendar");
   const tCommon = useTranslations("common");
+  const router = useRouter();
+  const params = useParams();
+  const locale = Array.isArray(params?.locale)
+    ? params.locale[0]
+    : params?.locale || "en";
 
   const [loading, setLoading] = useState(true);
   const [widgetLoading, setWidgetLoading] = useState(true);
@@ -316,40 +308,23 @@ export default function SmartMaintenanceCalendarPage() {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const [machinesResponse, machineTypesResponse, usersResponse] = await Promise.all([
-          apiService.getMachines({ page: 1, limit: 500 }),
-          apiService.getMachineTypes({ page: 1, limit: 500 }),
-          apiService.getUsers({ page: 1, limit: 500 }),
+        const [machines, machineTypes] = await Promise.all([
+          fetchAllPaginated<{
+            _id?: string;
+            id?: string;
+            machine_id?: string;
+            machine_code?: string;
+            model?: string;
+            type_id?: string | { _id?: string; id?: string };
+          }>((pagination) => apiService.getMyMachines(pagination)),
+          fetchAllPaginated<{
+            _id?: string;
+            id?: string;
+            name?: string;
+            machine_type?: string;
+            code?: string;
+          }>((pagination) => apiService.getMachineTypes(pagination)),
         ]);
-
-        const machines = normalizeApiItems<{
-          _id?: string;
-          id?: string;
-          machine_id?: string;
-          machine_code?: string;
-          model?: string;
-          type_id?:
-            | string
-            | {
-                _id?: string;
-                id?: string;
-              };
-        }>(machinesResponse.data);
-        const machineTypes = normalizeApiItems<{
-          _id?: string;
-          id?: string;
-          name?: string;
-          machine_type?: string;
-          code?: string;
-        }>(machineTypesResponse.data);
-        const users = normalizeApiItems<{
-          _id?: string;
-          id?: string;
-          role?: string;
-          nom_complet?: string;
-          username?: string;
-          full_name?: string;
-        }>(usersResponse.data);
 
         setMachineFilterOptions(
           machines.flatMap((machine) => {
@@ -377,19 +352,7 @@ export default function SmartMaintenanceCalendarPage() {
             }),
         );
 
-        setOperatorFilterOptions(
-          users
-            .filter((user) => {
-              const role = (user.role || "").toLowerCase();
-              return role === "operator" || role === "technician" || role === "supervisor" || role === "admin";
-            })
-            .flatMap((user) => {
-              const id = user._id || user.id || "";
-              if (!id) return [];
-              const label = user.nom_complet || user.full_name || user.username || id;
-              return [{ id, label } satisfies SelectOption];
-            }),
-        );
+        setOperatorFilterOptions([]);
       } catch (error) {
         console.error("Failed to load smart calendar filter options", error);
       }
@@ -428,7 +391,7 @@ export default function SmartMaintenanceCalendarPage() {
           }
         });
 
-        const response = await apiService.getCalendarEvents(params);
+        const response = await apiService.getMyCalendarEvents(params);
         setEvents((response.data?.items || []) as CalendarEvent[]);
 
         if (view === "timeline") {
@@ -510,7 +473,7 @@ export default function SmartMaintenanceCalendarPage() {
       const refreshedDetails = await apiService.getCalendarEventDetails(selectedEventDetails.id);
       setSelectedEventDetails((refreshedDetails.data || null) as CalendarEventDetails | null);
 
-      const refreshedEvents = await apiService.getCalendarEvents({ view, date, ...filters });
+      const refreshedEvents = await apiService.getMyCalendarEvents({ view, date, ...filters });
       setEvents((refreshedEvents.data?.items || []) as CalendarEvent[]);
     } catch (error) {
       console.error("Failed to run maintenance action", error);
@@ -854,11 +817,11 @@ export default function SmartMaintenanceCalendarPage() {
                   <div className="text-2xl font-bold text-slate-800">{widgetData.counts?.nextMonth ?? 0}</div>
                 </div>
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-900">
-                  <div className="inline-flex items-center gap-1 text-xs"><ExclamationTriangleIcon className="h-3.5 w-3.5" />Overdue</div>
+                  <div className="inline-flex items-center gap-1 text-xs"><ExclamationTriangleIcon className="h-3.5 w-3.5" />{tCalendar("overdue")}</div>
                   <div className="text-2xl font-bold">{widgetData.counts?.overdue ?? 0}</div>
                 </div>
                 <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-violet-900">
-                  <div className="inline-flex items-center gap-1 text-xs"><ClipboardDocumentCheckIcon className="h-3.5 w-3.5" />Waiting Validation</div>
+                  <div className="inline-flex items-center gap-1 text-xs"><ClipboardDocumentCheckIcon className="h-3.5 w-3.5" />{tCalendar("waitingValidation")}</div>
                   <div className="text-2xl font-bold">{widgetData.counts?.waitingValidation ?? 0}</div>
                 </div>
               </div>
@@ -927,7 +890,15 @@ export default function SmartMaintenanceCalendarPage() {
                       {tCalendar("complete")}
                     </button>
                     <button
-                      onClick={() => window.open("/intervention-reports", "_blank", "noopener,noreferrer")}
+                      onClick={() => {
+                        if (!selectedEventDetails) return;
+                        const base = `/${locale}/operator`;
+                        if (selectedEventDetails.maintenanceType === "preventive") {
+                          router.push(`${base}/preventive?workOrderId=${selectedEventDetails.id}`);
+                          return;
+                        }
+                        router.push(`${base}/report-problem?workOrderId=${selectedEventDetails.id}`);
+                      }}
                       disabled={!selectedEventDetails.actions.canGenerateReport}
                       className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >

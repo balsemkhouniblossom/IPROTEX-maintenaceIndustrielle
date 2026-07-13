@@ -6,7 +6,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardStatistics } from "@/hooks/useDashboardStatistics";
-import { useHealthStatus } from "@/hooks/useHealthStatus";
 import { useTranslations } from "next-intl";
 
 import {
@@ -82,48 +81,14 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
   const machines = normalizeArray(dashboardData.machines) as Machine[];
   const workOrders = normalizeArray(dashboardData.workOrders) as WorkOrder[];
   const users = normalizeArray(dashboardData.users) as User[];
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
   const { statistics } = useDashboardStatistics();
-  const { health } = useHealthStatus();
-
-  // Helper function to get status styling
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'ONLINE':
-        return {
-          dotClass: 'online',
-          badgeClass: 'online'
-        };
-      case 'WARNING':
-        return {
-          dotClass: 'warning',
-          badgeClass: 'warning'
-        };
-       
-      case 'OFFLINE':
-      case 'ERROR':
-        return {
-          dotClass: 'offline',
-          badgeClass: 'offline'
-        };
-      default:
-        return {
-          dotClass: '',
-          badgeClass: ''
-        };
-    }
-  };
 
   async function loadDashboardData() {
-    setLoading(true);
     try {
       const data = await apiService.getDashboardData();
       setDashboardData(data);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -136,7 +101,6 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
       return;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDashboardData();
   }, [authLoading, user]);
 

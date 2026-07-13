@@ -37,7 +37,12 @@ export class MachineTypesService {
     skip: number,
   ): Promise<PaginatedResponse<MachineType>> {
     const [items, totalItems] = await Promise.all([
-      this.machineTypeModel.find().skip(skip).limit(limit).exec(),
+      this.machineTypeModel
+        .find()
+        .sort({ type_id: 1, _id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.machineTypeModel.countDocuments().exec(),
     ]);
 

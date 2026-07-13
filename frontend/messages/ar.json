@@ -10,6 +10,7 @@
   },
   "auth": {
     "signIn": "تسجيل الدخول",
+    "keepLoggedIn": "إبقائي مسجلاً للدخول",
     "signUp": "إنشاء حساب",
     "email": "البريد الإلكتروني",
     "password": "كلمة المرور",
@@ -436,6 +437,9 @@
         "loadFailed": "فشل تحميل البيانات",
         "customActionAdded": "تمت إضافة إجراء مخصص",
         "customTaskAdded": "تمت إضافة مهمة مخصصة",
+        "draftSaved": "تم حفظ المسودة",
+        "draftLoaded": "تم تحميل المسودة",
+        "draftDeleted": "تم حذف المسودة",
         "filterUpdated": "تم تحديث عامل التصفية",
         "submitSuccess": "تم الإرسال للمراجعة",
         "validationFailed": "يرجى إكمال الحقول المطلوبة"

@@ -7,7 +7,7 @@ import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import { useRouter } from 'next/navigation';
-import { CheckCircleIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 import Pagination from '@/components/Pagination';
 

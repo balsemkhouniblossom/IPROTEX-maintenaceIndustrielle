@@ -20,7 +20,10 @@ import { Stock, StockDocument } from '../schemas/stock.schema';
 import { Capteur, CapteurDocument } from '../schemas/capteur.schema';
 import { Mesure, MesureDocument } from '../schemas/mesure.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
-import { Module as ModuleEntity, ModuleDocument } from '../schemas/module.schema';
+import {
+  Module as ModuleEntity,
+  ModuleDocument,
+} from '../schemas/module.schema';
 import { User, UserDocument } from '../schemas/user.schema';
 
 interface JobResult {
@@ -65,10 +68,16 @@ export class AutomationSchedulerService {
   })
   async runNightlyJobs() {
     await this.executeBatch('nightly', [
-      ['job_generate_preventive_maintenance', () => this.jobGeneratePreventiveMaintenance()],
+      [
+        'job_generate_preventive_maintenance',
+        () => this.jobGeneratePreventiveMaintenance(),
+      ],
       ['job_mark_overdue_maintenance', () => this.jobMarkOverdueMaintenance()],
       ['job_refresh_kpis', () => this.jobRefreshKpis()],
-      ['job_detect_duplicate_workorders', () => this.jobDetectDuplicateWorkOrders()],
+      [
+        'job_detect_duplicate_workorders',
+        () => this.jobDetectDuplicateWorkOrders(),
+      ],
       ['job_calendar_synchronization', () => this.jobCalendarSynchronization()],
     ]);
   }
@@ -79,7 +88,10 @@ export class AutomationSchedulerService {
   })
   async runHourlyJobs() {
     await this.executeBatch('hourly', [
-      ['job_upcoming_maintenance_reminders', () => this.jobUpcomingMaintenanceReminders()],
+      [
+        'job_upcoming_maintenance_reminders',
+        () => this.jobUpcomingMaintenanceReminders(),
+      ],
       ['job_overdue_escalation', () => this.jobOverdueEscalation()],
       ['job_corrective_follow_up', () => this.jobCorrectiveFollowUp()],
       ['job_stock_monitoring', () => this.jobStockMonitoring()],
@@ -123,17 +135,22 @@ export class AutomationSchedulerService {
         `[${name}] finish duration_ms=${duration} processed=${result.processed}`,
       );
       if (result.details) {
-        this.logger.debug(`[${name}] details=${JSON.stringify(result.details)}`);
+        this.logger.debug(
+          `[${name}] details=${JSON.stringify(result.details)}`,
+        );
       }
     } catch (error) {
       const duration = Date.now() - startedAt;
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`[${name}] failed duration_ms=${duration} error=${message}`);
+      this.logger.error(
+        `[${name}] failed duration_ms=${duration} error=${message}`,
+      );
     }
   }
 
   private async jobGeneratePreventiveMaintenance(): Promise<JobResult> {
-    const summary = await this.workOrdersService.triggerScheduler('cron_nightly');
+    const summary =
+      await this.workOrdersService.triggerScheduler('cron_nightly');
     return {
       processed:
         Number(summary.createdFirstExecution || 0) +
@@ -173,7 +190,8 @@ export class AutomationSchedulerService {
       }
 
       const workOrderId = this.objectIdString(row._id);
-      const recipient = this.objectIdString(row.technician_id) || 'maintenance_team';
+      const recipient =
+        this.objectIdString(row.technician_id) || 'maintenance_team';
       const key = `upcoming:${workOrderId}:${days}:${today.toISOString()}`;
       if (
         this.emitNotification(
@@ -235,7 +253,8 @@ export class AutomationSchedulerService {
           key,
           `Work order ${row.ot_id || workOrderId} is overdue`,
           {
-            recipient: this.objectIdString(row.technician_id) || 'maintenance_team',
+            recipient:
+              this.objectIdString(row.technician_id) || 'maintenance_team',
             workOrderId,
             machineId: this.objectIdString(row.machine_id),
             dueDate: row.date_start,
@@ -288,7 +307,9 @@ export class AutomationSchedulerService {
 
     for (const row of overdueRows) {
       const due = new Date(row.date_start || now);
-      const overdueDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
+      const overdueDays = Math.floor(
+        (now.getTime() - due.getTime()) / 86400000,
+      );
       const workOrderId = this.objectIdString(row._id);
 
       if (overdueDays >= 3) {
@@ -298,7 +319,8 @@ export class AutomationSchedulerService {
             key,
             `Escalation 3+ days overdue for ${row.ot_id || workOrderId}`,
             {
-              recipient: this.objectIdString(row.technician_id) || 'technician_team',
+              recipient:
+                this.objectIdString(row.technician_id) || 'technician_team',
               workOrderId,
               overdueDays,
             },
@@ -348,7 +370,12 @@ export class AutomationSchedulerService {
       .find(
         {
           validation_responsable: {
-            $in: ['waiting_validation', 'validated', 'rejected', 'request_correction'],
+            $in: [
+              'waiting_validation',
+              'validated',
+              'rejected',
+              'request_correction',
+            ],
           },
           date_fin: { $gte: since },
         },
@@ -402,7 +429,10 @@ export class AutomationSchedulerService {
       const otLabel = row.ot_id || workOrderId;
 
       if (state === 'waiting_validation' || state === 'request_correction') {
-        const recipient = this.objectIdString(report.technician_id) || this.objectIdString(row.technician_id) || 'technician_team';
+        const recipient =
+          this.objectIdString(report.technician_id) ||
+          this.objectIdString(row.technician_id) ||
+          'technician_team';
         if (
           this.emitNotification(
             `corrective_waiting:${workOrderId}:${state}`,
@@ -421,7 +451,8 @@ export class AutomationSchedulerService {
       }
 
       if (state === 'validated' || state === 'rejected') {
-        const recipient = this.objectIdString(row.technician_id) || 'operator_team';
+        const recipient =
+          this.objectIdString(row.technician_id) || 'operator_team';
         if (
           this.emitNotification(
             `corrective_feedback:${workOrderId}:${state}`,
@@ -442,13 +473,26 @@ export class AutomationSchedulerService {
 
     return {
       processed: notifications,
-      details: { scannedReports: reports.length, scannedWorkOrders: workOrders.length },
+      details: {
+        scannedReports: reports.length,
+        scannedWorkOrders: workOrders.length,
+      },
     };
   }
 
   private async jobStockMonitoring(): Promise<JobResult> {
     const stocks = await this.stockModel
-      .find({}, { _id: 1, stock_id: 1, part_id: 1, quantite_en_stock: 1, seuil_alerte_stock: 1, quantite_minimale: 1 })
+      .find(
+        {},
+        {
+          _id: 1,
+          stock_id: 1,
+          part_id: 1,
+          quantite_en_stock: 1,
+          seuil_alerte_stock: 1,
+          quantite_minimale: 1,
+        },
+      )
       .lean()
       .exec();
 
@@ -503,10 +547,15 @@ export class AutomationSchedulerService {
 
     const moduleIds = latestLogs
       .map((item: { _id: Types.ObjectId }) => item._id)
-      .filter((id: unknown): id is Types.ObjectId => id instanceof Types.ObjectId);
+      .filter(
+        (id: unknown): id is Types.ObjectId => id instanceof Types.ObjectId,
+      );
 
     const modules = await this.moduleModel
-      .find({ _id: { $in: moduleIds } }, { _id: 1, machine_id: 1, module_id: 1 })
+      .find(
+        { _id: { $in: moduleIds } },
+        { _id: 1, machine_id: 1, module_id: 1 },
+      )
       .lean()
       .exec();
     const moduleMap = new Map<string, (typeof modules)[number]>();
@@ -540,8 +589,14 @@ export class AutomationSchedulerService {
 
       const frequency = plan?.frequence ?? 1;
       const unit = plan?.unite_frequence ?? 'month';
-      const nextDue = this.computeNextDueDate(new Date(entry.lastDate), frequency, unit);
-      const dueDays = Math.floor((this.startOfDay(nextDue).getTime() - today.getTime()) / 86400000);
+      const nextDue = this.computeNextDueDate(
+        new Date(entry.lastDate),
+        frequency,
+        unit,
+      );
+      const dueDays = Math.floor(
+        (this.startOfDay(nextDue).getTime() - today.getTime()) / 86400000,
+      );
 
       if (![1, 3, 7].includes(dueDays) && dueDays >= 0) {
         continue;
@@ -556,7 +611,9 @@ export class AutomationSchedulerService {
           `Lubrication reminder for module ${moduleEntity?.module_id || moduleId} (${stage})`,
           {
             moduleId,
-            machineId: moduleEntity ? this.objectIdString(moduleEntity.machine_id) : '',
+            machineId: moduleEntity
+              ? this.objectIdString(moduleEntity.machine_id)
+              : '',
             nextDue,
             stage,
           },
@@ -577,7 +634,13 @@ export class AutomationSchedulerService {
     const capteurs = await this.capteurModel
       .find(
         { is_active: true },
-        { _id: 1, capteur_id: 1, seuil_avertissement: 1, seuil_critique: 1, module_id: 1 },
+        {
+          _id: 1,
+          capteur_id: 1,
+          seuil_avertissement: 1,
+          seuil_critique: 1,
+          module_id: 1,
+        },
       )
       .lean()
       .exec();
@@ -620,14 +683,19 @@ export class AutomationSchedulerService {
           ? capteur.seuil_avertissement
           : undefined;
       const criticalThreshold =
-        typeof capteur.seuil_critique === 'number' ? capteur.seuil_critique : undefined;
+        typeof capteur.seuil_critique === 'number'
+          ? capteur.seuil_critique
+          : undefined;
 
       const value = Number(mesure.valeur);
       let level: 'warning' | 'critical' | null = null;
 
       if (typeof criticalThreshold === 'number' && value >= criticalThreshold) {
         level = 'critical';
-      } else if (typeof warningThreshold === 'number' && value >= warningThreshold) {
+      } else if (
+        typeof warningThreshold === 'number' &&
+        value >= warningThreshold
+      ) {
         level = 'warning';
       }
 
@@ -662,7 +730,9 @@ export class AutomationSchedulerService {
 
     let refreshed = 0;
     for (const machine of machines) {
-      await this.workOrdersService.updateKpiForMachine(this.objectIdString(machine._id));
+      await this.workOrdersService.updateKpiForMachine(
+        this.objectIdString(machine._id),
+      );
       refreshed += 1;
     }
 
@@ -820,18 +890,29 @@ export class AutomationSchedulerService {
     const unit = (value || '').toLowerCase().replace(/\s+/g, '_');
 
     if (!unit) return 'monthly';
-    if (unit.includes('jour') || unit.includes('day') || unit === 'd') return 'daily';
-    if (unit.includes('week') || unit.includes('semaine') || unit.includes('w')) {
+    if (unit.includes('jour') || unit.includes('day') || unit === 'd')
+      return 'daily';
+    if (
+      unit.includes('week') ||
+      unit.includes('semaine') ||
+      unit.includes('w')
+    ) {
       return 'weekly';
     }
     if (unit.includes('3') && unit.includes('month')) return 'quarterly';
     if (unit.includes('6') && unit.includes('month')) return 'semiannual';
-    if (unit.includes('year') || unit.includes('an') || unit.includes('ann')) return 'yearly';
-    if (unit.includes('month') || unit.includes('mois') || unit === 'm') return 'monthly';
+    if (unit.includes('year') || unit.includes('an') || unit.includes('ann'))
+      return 'yearly';
+    if (unit.includes('month') || unit.includes('mois') || unit === 'm')
+      return 'monthly';
     return 'monthly';
   }
 
-  private computeNextDueDate(fromDate: Date, frequency?: number, unit?: string): Date {
+  private computeNextDueDate(
+    fromDate: Date,
+    frequency?: number,
+    unit?: string,
+  ): Date {
     const base = new Date(fromDate);
     const value = frequency && frequency > 0 ? frequency : 1;
     const normalized = this.normalizeFrequencyUnit(unit);

@@ -5,9 +5,12 @@ import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
+import { getApiBaseUrl } from "@/config/api-base-url";
 import { useTranslations } from "next-intl";
+import { fetchAllPaginated } from "@/services/pagination";
+import { Modal } from "@/components/Modal";
 
-type EntityRef = string | { _id?: string };
+type EntityRef = string | { _id?: string; id?: string };
 
 interface MachineType {
   _id: string;
@@ -27,27 +30,36 @@ interface DocumentEntity {
   type_document?: string;
   file_name: string;
   file_path: string;
+  preview_path?: string;
   description?: string;
 }
 
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
-  return typeof value === "string" ? value : value._id ?? "";
+  return typeof value === "string" ? value : value._id ?? value.id ?? "";
 }
 
-function normalizeApiItems<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) {
-    return payload as T[];
-  }
+const API_URL = getApiBaseUrl();
 
-  if (payload && typeof payload === "object") {
-    const maybeItems = (payload as { items?: unknown }).items;
-    if (Array.isArray(maybeItems)) {
-      return maybeItems as T[];
-    }
-  }
+function getFileUrl(path: string): string {
+  if (!path) return "";
+  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
+}
 
-  return [];
+function getPreviewPath(doc: DocumentEntity): string {
+  if (doc.preview_path) return doc.preview_path;
+  if (/\.xlsx?$/i.test(doc.file_path)) {
+    return doc.file_path.replace(/\.xlsx?$/i, "_preview.pdf");
+  }
+  return doc.file_path;
+}
+
+function getPreviewUrl(doc: DocumentEntity): string {
+  const previewPath = getPreviewPath(doc);
+  if (/\.pdf$/i.test(previewPath) && previewPath.startsWith("/uploads/")) {
+    return `/api/manual-preview?path=${encodeURIComponent(previewPath)}`;
+  }
+  return getFileUrl(previewPath);
 }
 
 export default function OperatorManualsPage() {
@@ -59,6 +71,7 @@ export default function OperatorManualsPage() {
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [documents, setDocuments] = useState<DocumentEntity[]>([]);
+  const [previewDocument, setPreviewDocument] = useState<DocumentEntity | null>(null);
 
   const [selectedType, setSelectedType] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
@@ -67,22 +80,19 @@ export default function OperatorManualsPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const [machineTypesRes, machinesRes, documentsRes] = await Promise.all([
-          apiService.getMachineTypes(),
-          apiService.getMachines(),
-          apiService.getDocuments(),
+        const [machineTypes, machines, manuals] = await Promise.all([
+          fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
+          fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
+          fetchAllPaginated<DocumentEntity>((pagination) => apiService.getOperatorManuals(pagination)),
         ]);
 
-        const machineTypeItems = normalizeApiItems<MachineType>(machineTypesRes.data);
-        const machineItems = normalizeApiItems<Machine>(machinesRes.data);
-
-        setMachineTypes(machineTypeItems);
-        setMachines(machineItems);
-        setDocuments(normalizeApiItems<DocumentEntity>(documentsRes.data));
+        setMachineTypes(machineTypes);
+        setMachines(machines);
+        setDocuments(manuals);
 
         const requestedMachineId = searchParams.get("machine");
         if (requestedMachineId) {
-          const selected = machineItems.find((machine) => machine._id === requestedMachineId);
+          const selected = machines.find((machine) => machine._id === requestedMachineId);
           if (selected) {
             setSelectedMachine(selected._id);
             setSelectedType(refId(selected.type_id));
@@ -112,9 +122,29 @@ export default function OperatorManualsPage() {
       }
 
       const type = (doc.type_document ?? "").toLowerCase();
-      return type.includes("manual") || type.includes("pdf") || type.includes("procedure") || type.includes("diagram");
+      const name = (doc.file_name ?? "").toLowerCase();
+      return (
+        type.includes("manual") ||
+        type.includes("pdf") ||
+        type.includes("procedure") ||
+        type.includes("diagram") ||
+        type.includes("excel") ||
+        type.includes("xlsx") ||
+        type.includes("xls") ||
+        type.includes("spreadsheet") ||
+        name.endsWith(".xlsx") ||
+        name.endsWith(".xls")
+      );
     });
   }, [documents, machines, selectedMachine, selectedType]);
+
+  function openManualPreview(doc: DocumentEntity) {
+    setPreviewDocument(doc);
+  }
+
+  function closeManualPreview() {
+    setPreviewDocument(null);
+  }
 
   return (
     <ProtectedRoute requiredRole="operator">
@@ -181,16 +211,15 @@ export default function OperatorManualsPage() {
                     <div className="text-xs text-slate-500 mb-3 uppercase tracking-wide">{doc.type_document || tCommon("notAvailable")}</div>
                     {doc.description ? <div className="text-sm text-slate-600 mb-3">{doc.description}</div> : null}
                     <div className="flex gap-2">
-                      <a
-                        href={doc.file_path}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => openManualPreview(doc)}
                         className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
                       >
                         {t("openManual")}
-                      </a>
+                      </button>
                       <a
-                        href={doc.file_path}
+                        href={getFileUrl(doc.file_path)}
                         download
                         className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                       >
@@ -203,6 +232,21 @@ export default function OperatorManualsPage() {
             )}
           </section>
         </div>
+
+        <Modal
+          isOpen={Boolean(previewDocument)}
+          onClose={closeManualPreview}
+          title={previewDocument?.file_name || t("openManual")}
+          size="xl"
+        >
+          {previewDocument ? (
+            <iframe
+              src={`${getPreviewUrl(previewDocument)}#view=FitH`}
+              title={previewDocument.file_name}
+              className="h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-100"
+            />
+          ) : null}
+        </Modal>
       </DashboardLayout>
     </ProtectedRoute>
   );

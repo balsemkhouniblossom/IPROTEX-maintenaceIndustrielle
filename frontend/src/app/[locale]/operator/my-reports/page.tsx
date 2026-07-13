@@ -13,6 +13,7 @@ import { Modal } from "@/components/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
+import { fetchAllPaginated, normalizeApiItems, readPaginationMeta } from "@/services/pagination";
 
 type EntityRef = string | { _id?: string };
 
@@ -64,21 +65,6 @@ function refId(value: EntityRef | undefined): string {
   return typeof value === "string" ? value : value._id ?? "";
 }
 
-function normalizeApiItems<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) {
-    return payload as T[];
-  }
-
-  if (payload && typeof payload === "object") {
-    const maybeItems = (payload as { items?: unknown }).items;
-    if (Array.isArray(maybeItems)) {
-      return maybeItems as T[];
-    }
-  }
-
-  return [];
-}
-
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
@@ -121,6 +107,10 @@ export default function OperatorMyReportsPage() {
   const [selectedReportId, setSelectedReportId] = useState("");
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [formData, setFormData] = useState<ReportFormData>({
     report_id: "",
     ot_id: "",
@@ -244,26 +234,29 @@ export default function OperatorMyReportsPage() {
   }
 
   async function refreshReports(): Promise<void> {
-    const [reportsRes, workOrdersRes] = await Promise.all([
-      apiService.getInterventionReports(),
-      apiService.getWorkOrders(),
+    const [reportsRes, workOrderItems] = await Promise.all([
+      apiService.getMyInterventionReports({ page, limit }),
+      fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
     ]);
 
     setReports(normalizeApiItems<InterventionReport>(reportsRes.data));
-    setWorkOrders(normalizeApiItems<WorkOrder>(workOrdersRes.data));
+    setWorkOrders(workOrderItems);
+    const pagination = readPaginationMeta(reportsRes.data);
+    setTotalPages(pagination?.totalPages || 1);
+    setTotalItems(Number((reportsRes.data as { totalItems?: unknown })?.totalItems) || 0);
   }
 
   function validateForm(): boolean {
     if (!formData.report_id.trim()) {
-      showNotification("error", "Report ID is required");
+      showNotification("error", t("report"));
       return false;
     }
     if (!formData.ot_id) {
-      showNotification("error", `${t("workOrder")} is required`);
+      showNotification("error", t("workOrder"));
       return false;
     }
     if (!formData.description_action.trim()) {
-      showNotification("error", `${t("actionsPerformed")} is required`);
+      showNotification("error", t("actionsPerformed"));
       return false;
     }
     return true;
@@ -287,17 +280,17 @@ export default function OperatorMyReportsPage() {
 
       await refreshReports();
       setEditorOpen(false);
-      showNotification("success", "Report updated successfully");
+      showNotification("success", t("notifications.submitSuccess"));
     } catch (error) {
       console.error("Failed to update report", error);
-      showNotification("error", "Failed to update report");
+      showNotification("error", t("notifications.loadFailed"));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleDeleteReport(reportId: string): Promise<void> {
-    if (!window.confirm("Are you sure you want to delete this report?")) {
+    if (!window.confirm(tCommon("confirm"))) {
       return;
     }
 
@@ -305,10 +298,10 @@ export default function OperatorMyReportsPage() {
       await apiService.deleteInterventionReport(reportId);
       await refreshReports();
       setEditorOpen(false);
-      showNotification("success", "Report deleted successfully");
+      showNotification("success", tCommon("success"));
     } catch (error) {
       console.error("Failed to delete report", error);
-      showNotification("error", "Failed to delete report");
+      showNotification("error", t("notifications.loadFailed"));
     }
   }
 
@@ -336,7 +329,7 @@ export default function OperatorMyReportsPage() {
     persistDrafts(nextDrafts);
     setEditorMode("draft");
     setSelectedDraftId(nextDraft._id);
-    showNotification("success", "Draft saved");
+    showNotification("success", tCommon("success"));
   }
 
   function handleDeleteDraft(draftId: string): void {
@@ -345,7 +338,7 @@ export default function OperatorMyReportsPage() {
     if (selectedDraftId === draftId) {
       setEditorOpen(false);
     }
-    showNotification("success", "Draft deleted");
+    showNotification("success", tCommon("success"));
   }
 
   async function handleSubmitDraft(): Promise<void> {
@@ -370,10 +363,10 @@ export default function OperatorMyReportsPage() {
 
       await refreshReports();
       setEditorOpen(false);
-      showNotification("success", "Draft submitted successfully");
+      showNotification("success", t("notifications.submitSuccess"));
     } catch (error) {
       console.error("Failed to submit draft", error);
-      showNotification("error", "Failed to submit draft");
+      showNotification("error", t("notifications.loadFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -383,13 +376,16 @@ export default function OperatorMyReportsPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const [reportsRes, workOrdersRes] = await Promise.all([
-          apiService.getInterventionReports(),
-          apiService.getWorkOrders(),
+        const [reportsRes, workOrderItems] = await Promise.all([
+          apiService.getMyInterventionReports({ page, limit }),
+          fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
         ]);
 
         setReports(normalizeApiItems<InterventionReport>(reportsRes.data));
-        setWorkOrders(normalizeApiItems<WorkOrder>(workOrdersRes.data));
+        setWorkOrders(workOrderItems);
+        const pagination = readPaginationMeta(reportsRes.data);
+        setTotalPages(pagination?.totalPages || 1);
+        setTotalItems(Number((reportsRes.data as { totalItems?: unknown })?.totalItems) || 0);
         loadDraftsFromStorage();
         showNotification("success", t("notifications.dataLoaded"));
       } catch (error) {
@@ -401,21 +397,17 @@ export default function OperatorMyReportsPage() {
     }
 
     void loadData();
-  }, [draftStorageKey, loadDraftsFromStorage, t]);
+  }, [draftStorageKey, limit, loadDraftsFromStorage, page, t]);
 
   const myReports = useMemo(() => {
-    if (!user?._id) return [];
-
-    const filtered = reports.filter((report) => refId(report.technician_id) === user._id);
-
-    return filtered
+    return reports
       .map((report) => {
         const workOrderId = refId(report.ot_id);
         const workOrder = workOrders.find((item) => item._id === workOrderId);
         return { report, workOrder };
       })
       .filter((item) => (statusFilter === "all" ? true : item.workOrder?.status === statusFilter));
-  }, [reports, statusFilter, user?._id, workOrders]);
+  }, [reports, statusFilter, workOrders]);
 
   return (
     <ProtectedRoute requiredRole="operator">
@@ -474,7 +466,7 @@ export default function OperatorMyReportsPage() {
                   data-testid="my-reports-create-draft"
                 >
                   <PlusIcon className="h-4 w-4" />
-                  Create Draft
+                  {tCommon("add")}
                 </button>
               </div>
             </div>
@@ -483,34 +475,38 @@ export default function OperatorMyReportsPage() {
           <section className="col-span-full panel">
             <div className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900">
               <DocumentTextIcon className="h-5 w-5" />
-              Drafts
+              {t("report")}
             </div>
             {drafts.length === 0 ? (
-              <div className="text-sm text-slate-500">No drafts yet.</div>
+              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {drafts.map((draft, index) => (
-                  <button
-                    type="button"
+                  <article
                     key={draft._id}
-                    className="w-full rounded-3xl border border-amber-200 bg-amber-50 p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                    onClick={() => openDraftEditor(draft)}
-                    data-testid={`my-report-draft-card-${index}`}
+                    className="relative w-full rounded-3xl border border-amber-200 bg-amber-50 p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
+                    <button
+                      type="button"
+                      className="absolute inset-0 rounded-3xl"
+                      onClick={() => openDraftEditor(draft)}
+                      aria-label={`${tCommon("edit")} ${draft.report_id}`}
+                      data-testid={`my-report-draft-card-${index}`}
+                    />
                     <div className="flex items-start justify-between gap-3">
                       <div className="font-semibold text-slate-900">{draft.report_id}</div>
                       <div className="rounded-full border border-amber-300 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
-                        Draft
+                        {t("report")}
                       </div>
                     </div>
                     <div className="mt-1 text-sm text-slate-600">{t("workOrder")}: {draft.ot_id || tCommon("notAvailable")}</div>
                     <div className="mt-3 line-clamp-3 text-sm text-slate-700">{draft.description_action || tCommon("notAvailable")}</div>
-                    <div className="mt-3 text-xs text-slate-500">Updated: {new Date(draft.updatedAt).toLocaleString()}</div>
-                    <div className="mt-4 flex justify-end gap-2">
+                    <div className="mt-3 text-xs text-slate-500">{new Date(draft.updatedAt).toLocaleString()}</div>
+                    <div className="relative z-10 mt-4 flex justify-end gap-2">
                       <span
                         className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800"
                       >
-                        <PencilSquareIcon className="h-3.5 w-3.5" /> Edit
+                        <PencilSquareIcon className="h-3.5 w-3.5" /> {tCommon("edit")}
                       </span>
                       <button
                         type="button"
@@ -521,10 +517,10 @@ export default function OperatorMyReportsPage() {
                         className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                         data-testid={`my-report-draft-delete-${index}`}
                       >
-                        <TrashIcon className="h-3.5 w-3.5" /> Delete
+                        <TrashIcon className="h-3.5 w-3.5" /> {tCommon("delete")}
                       </button>
                     </div>
-                  </button>
+                  </article>
                 ))}
               </div>
             )}
@@ -538,13 +534,17 @@ export default function OperatorMyReportsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {myReports.map(({ report, workOrder }, index) => (
-                  <button
-                    type="button"
+                  <article
                     key={report._id}
-                    className="w-full rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                    data-testid={`my-report-card-${index}`}
-                    onClick={() => openReportEditor(report)}
+                    className="relative w-full rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
+                    <button
+                      type="button"
+                      className="absolute inset-0 rounded-3xl"
+                      data-testid={`my-report-card-${index}`}
+                      onClick={() => openReportEditor(report)}
+                      aria-label={`${tCommon("edit")} ${report.report_id}`}
+                    />
                     <div className="flex items-start justify-between gap-3">
                       <div className="font-semibold text-slate-900">{report.report_id}</div>
                       <div className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
@@ -557,7 +557,7 @@ export default function OperatorMyReportsPage() {
                       <div>{t("validation")}: {workOrder?.status ?? tCommon("notAvailable")}</div>
                       <div>{t("machine")}: {typeof workOrder?.machine_id === "string" ? workOrder.machine_id : (workOrder?.machine_id?.machine_id ?? "-")}</div>
                     </div>
-                    <div className="mt-4 flex justify-end gap-2">
+                    <div className="relative z-10 mt-4 flex justify-end gap-2">
                       <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700">
                         <PencilSquareIcon className="h-3.5 w-3.5" /> {tCommon("edit")}
                       </span>
@@ -573,22 +573,47 @@ export default function OperatorMyReportsPage() {
                         <TrashIcon className="h-3.5 w-3.5" /> {tCommon("delete")}
                       </button>
                     </div>
-                  </button>
+                  </article>
                 ))}
               </div>
             )}
+
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+              <div className="text-xs text-slate-500">{totalItems} {t("report")}</div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                >
+                  {tCommon("pagination.previous")}
+                </button>
+                <span className="inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                >
+                  {tCommon("pagination.next")}
+                </button>
+              </div>
+            </div>
           </section>
         </div>
 
         <Modal
           isOpen={editorOpen}
           onClose={() => setEditorOpen(false)}
-          title={editorMode === "report" ? "Edit Report" : editorMode === "draft" ? "Draft Report" : "Create Draft"}
+          title={editorMode === "report" ? tCommon("edit") : t("report")}
           size="lg"
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-700">Report ID</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">{t("report")}</label>
               <input
                 value={formData.report_id}
                 onChange={(event) => setFormData((prev) => ({ ...prev, report_id: event.target.value }))}
@@ -605,7 +630,7 @@ export default function OperatorMyReportsPage() {
                 aria-label={t("workOrder")}
                 title={t("workOrder")}
               >
-                <option value="">Select work order</option>
+                <option value="">{t("workOrder")}</option>
                 {workOrders.map((workOrder) => (
                   <option key={workOrder._id} value={workOrder._id}>
                     {workOrder.ot_id}
@@ -615,7 +640,7 @@ export default function OperatorMyReportsPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-700">Start</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">{t("smartCalendar.start")}</label>
               <input
                 type="datetime-local"
                 value={formData.date_debut}
@@ -625,7 +650,7 @@ export default function OperatorMyReportsPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-700">End</label>
+              <label className="mb-1 block text-sm font-semibold text-slate-700">{t("smartCalendar.due")}</label>
               <input
                 type="datetime-local"
                 value={formData.date_fin}
@@ -678,7 +703,7 @@ export default function OperatorMyReportsPage() {
                   className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
                   disabled={submitting}
                 >
-                  <TrashIcon className="h-4 w-4" /> Delete Report
+                  <TrashIcon className="h-4 w-4" /> {tCommon("delete")}
                 </button>
               ) : null}
 
@@ -689,7 +714,7 @@ export default function OperatorMyReportsPage() {
                   className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100"
                   disabled={submitting}
                 >
-                  Save Draft
+                  {tCommon("save")}
                 </button>
               ) : null}
             </div>
@@ -711,7 +736,7 @@ export default function OperatorMyReportsPage() {
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                   disabled={submitting}
                 >
-                  {submitting ? tCommon("saving") : "Update Report"}
+                  {submitting ? tCommon("saving") : tCommon("update")}
                 </button>
               ) : (
                 <button
@@ -720,7 +745,7 @@ export default function OperatorMyReportsPage() {
                   className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                   disabled={submitting}
                 >
-                  {submitting ? tCommon("saving") : "Submit Draft"}
+                  {submitting ? tCommon("saving") : t("generateReport")}
                 </button>
               )}
             </div>

@@ -32,7 +32,7 @@ function requireEnv(key: string): string {
 
 function normalizeMaybeQuotedEnv(value: string | undefined): string {
   const trimmed = value?.trim() ?? '';
-  return trimmed.replace(/^['\"]|['\"]$/g, '');
+  return trimmed.replace(/^['"]|['"]$/g, '');
 }
 
 function parsePort(value: string | undefined): number {
@@ -174,7 +174,9 @@ export function validateEnvironment(): EnvValidationResult {
     );
 
     if (!googleClientId) {
-      throw new Error('Missing required environment variable: GOOGLE_CLIENT_ID');
+      throw new Error(
+        'Missing required environment variable: GOOGLE_CLIENT_ID',
+      );
     }
 
     if (!googleClientSecret) {

@@ -17,6 +17,7 @@
   },
   "auth": {
     "signIn": "Iniciar sesión",
+    "keepLoggedIn": "Mantener la sesión iniciada",
     "signUp": "Registrarse",
     "email": "Dirección de correo electrónico",
     "password": "Contraseña",
@@ -271,6 +272,7 @@
       "solution": "Solucion",
       "validation": "Validacion requerida",
       "report": "Informe",
+      "maintenanceCode": "Codigo de mantenimiento",
       "openManual": "Abrir manual PDF",
       "generateReport": "Generar informe",
       "actionsPerformed": "Acciones realizadas",
@@ -314,6 +316,9 @@
         "loadFailed": "Error al cargar los datos",
         "customActionAdded": "Accion personalizada agregada",
         "customTaskAdded": "Tarea personalizada agregada",
+        "draftSaved": "Borrador guardado",
+        "draftLoaded": "Borrador cargado",
+        "draftDeleted": "Borrador eliminado",
         "filterUpdated": "Filtro actualizado",
         "submitSuccess": "Enviado para validacion",
         "validationFailed": "Complete los campos requeridos"

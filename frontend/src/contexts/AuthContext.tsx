@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import api from '../services/api';
+import { clearAuthSession, getAuthItem, saveAuthSession } from '../services/authStorage';
 
 interface User {
   _id: string;
@@ -20,7 +21,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<string>;
+  login: (email: string, password: string, keepLoggedIn?: boolean) => Promise<string>;
   completeSocialLogin: (authToken: string, authUser: User) => string;
   register: (userData: Record<string, unknown>) => Promise<void>;
   logout: () => void;
@@ -35,11 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const establishSession = (authToken: string, authUser: User) => {
+  const establishSession = (authToken: string, authUser: User, refreshToken?: string, persistent = true) => {
     setToken(authToken);
     setUser(authUser);
-    localStorage.setItem('token', authToken);
-    localStorage.setItem('user', JSON.stringify(authUser));
+    saveAuthSession(authToken, refreshToken, authUser, persistent);
 
     return authUser.role;
   };
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // auth state initialized from localStorage synchronously
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem('user');
-      const storedToken = localStorage.getItem('token');
+      const storedUser = getAuthItem('user');
+      const storedToken = getAuthItem('token');
 
       if (storedUser) {
         setUser(JSON.parse(storedUser));
@@ -63,14 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, keepLoggedIn = true) => {
     try {
       const response = await api.post('/auth/login', { email, password });
 
       const data = response.data;
       const authToken = data.access_token ?? data.token;
 
-      return establishSession(authToken, data.user);
+      return establishSession(authToken, data.user, data.refresh_token, keepLoggedIn);
     } catch (error: any) {
       const status = error?.response?.status;
       const responseData = error?.response?.data;
@@ -109,8 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuthSession();
     // Redirect with locale-based routing (Next-intl expects /{locale}/...)
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
     const locale = path.split('/')[1] || 'en';

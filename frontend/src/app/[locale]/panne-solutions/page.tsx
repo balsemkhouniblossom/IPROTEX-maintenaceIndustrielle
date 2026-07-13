@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  MagnifyingGlassIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,

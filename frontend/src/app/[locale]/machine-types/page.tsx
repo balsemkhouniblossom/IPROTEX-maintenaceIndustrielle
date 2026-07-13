@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
-import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
+import { ALL_FIELDS_TOKEN, getSearchableFields } from '@/services/dynamicSearch';
 import {
   PencilIcon,
   TrashIcon,

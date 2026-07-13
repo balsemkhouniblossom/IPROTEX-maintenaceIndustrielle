@@ -10,6 +10,7 @@
   },
   "auth": {
     "signIn": "Se connecter",
+    "keepLoggedIn": "Rester connecté",
     "signUp": "S'inscrire",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
@@ -71,6 +72,10 @@
     "back": "Retour",
     "next": "Suivant",
     "previous": "Précédent",
+    "pagination": {
+      "next": "Suivant",
+      "previous": "Précédent"
+    },
     "close": "Fermer",
     "confirm": "Confirmer",
     "status": {
@@ -220,6 +225,7 @@
         "intro": "Suivez un parcours guidé unique : choisissez le type de maintenance, la machine, complétez la checklist puis envoyez le rapport.",
         "welcomeOperator": "Bienvenue opérateur",
         "startWorking": "Commencer",
+        "startMaintenance": "Demarrer la maintenance",
         "todayDate": "Date du jour",
         "currentShift": "Shift actuel",
         "machineAssigned": "Machine attribuée",
@@ -324,6 +330,7 @@
       "solution": "Solution",
       "validation": "Validation requise",
       "report": "Rapport",
+      "maintenanceCode": "Code maintenance",
       "openManual": "Ouvrir le PDF du manuel",
       "generateReport": "Générer le rapport",
       "actionsPerformed": "Actions réalisées",
@@ -367,6 +374,9 @@
         "loadFailed": "Echec du chargement des donnees",
         "customActionAdded": "Action personnalisee ajoutee",
         "customTaskAdded": "Tache personnalisee ajoutee",
+        "draftSaved": "Brouillon enregistre",
+        "draftLoaded": "Brouillon charge",
+        "draftDeleted": "Brouillon supprime",
         "filterUpdated": "Filtre mis a jour",
         "submitSuccess": "Soumis pour validation",
         "validationFailed": "Veuillez completer les champs requis"
@@ -618,6 +628,11 @@
       "users": "Utilisateurs",
       "machines": "Machines",
       "workOrders": "Ordres de travail",
+      "startPreventiveMaintenance": "Demarrer maintenance preventive",
+      "startCorrectiveMaintenance": "Demarrer maintenance corrective",
+      "reportProblem": "Signaler un probleme",
+      "manuals": "Manuels",
+      "myReports": "Mes rapports",
       "catalogues": "Catalogues",
       "machineTypes": "Types",
       "types": "Types"
@@ -1164,6 +1179,11 @@
       "users": "Utilisateurs",
       "machines": "Machines",
       "workOrders": "Ordres de travail",
+      "startPreventiveMaintenance": "Demarrer maintenance preventive",
+      "startCorrectiveMaintenance": "Demarrer maintenance corrective",
+      "reportProblem": "Signaler un probleme",
+      "manuals": "Manuels",
+      "myReports": "Mes rapports",
       "catalogues": "Catalogues",
       "machineTypes": "Types de machines",
       "sensors": "Capteurs",

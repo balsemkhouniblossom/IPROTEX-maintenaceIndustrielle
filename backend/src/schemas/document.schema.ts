@@ -21,6 +21,9 @@ export class DocumentEntity {
   file_name: string;
 
   @Prop()
+  preview_path?: string;
+
+  @Prop()
   description: string;
 
   @Prop({ type: [String], default: [] })

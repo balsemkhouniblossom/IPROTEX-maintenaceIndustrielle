@@ -71,14 +71,6 @@ function mergeOptions(dynamicValues: Array<string | undefined>, fixedValues: str
   return Array.from(new Set(values));
 }
 
-function getModuleIdValue(value: string | ModuleEntity): string {
-  if (!value) return '';
-  if (typeof value === 'object') {
-    return value._id || '';
-  }
-  return value;
-}
-
 function getModuleLabel(value: string | ModuleEntity, modules: ModuleEntity[], fallback: string): string {
   if (!value) return fallback;
   if (typeof value === 'object') {

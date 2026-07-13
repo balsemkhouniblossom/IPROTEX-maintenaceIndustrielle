@@ -88,7 +88,6 @@ export default function WorkOrdersPage() {
   }, [page, limit]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 
@@ -105,17 +104,6 @@ export default function WorkOrdersPage() {
       window.removeEventListener('focus', handleWorkOrdersChanged);
     };
   }, []);
-
-  const loadWorkOrders = useCallback(async () => {
-    try {
-      const response = await apiService.getWorkOrders({ page, limit });
-      setWorkOrders(response.data.items || []);
-      setTotalItems(response.data.totalItems || 0);
-      setTotalPages(response.data.totalPages || 1);
-    } catch (error) {
-      console.error('Error loading work orders:', error);
-    }
-  }, [page, limit]);
 
   const searchableWorkOrders = useMemo(
     () =>

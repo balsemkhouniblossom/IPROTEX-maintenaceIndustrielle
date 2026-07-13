@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
@@ -9,7 +6,10 @@ import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
-import { Module as ModuleEntity, ModuleDocument } from '../schemas/module.schema';
+import {
+  Module as ModuleEntity,
+  ModuleDocument,
+} from '../schemas/module.schema';
 import {
   MaintenancePlan,
   MaintenancePlanDocument,
@@ -18,10 +18,7 @@ import {
   InterventionReport,
   InterventionReportDocument,
 } from '../schemas/intervention-report.schema';
-import {
-  DocumentEntity,
-  DocumentDocument,
-} from '../schemas/document.schema';
+import { DocumentEntity, DocumentDocument } from '../schemas/document.schema';
 import {
   MachineType,
   MachineTypeDocument,
@@ -650,7 +647,9 @@ export class WorkOrdersService {
         return due >= todayStart && due < nextMonthEnd;
       }),
       overdue: rows.filter((row) => row.color === 'red'),
-      waitingValidation: rows.filter((row) => row.status === 'waiting_validation'),
+      waitingValidation: rows.filter(
+        (row) => row.status === 'waiting_validation',
+      ),
       counts: {
         today: rows.filter((row) => {
           const due = row.dueDate;
@@ -692,7 +691,11 @@ export class WorkOrdersService {
       const closed = order.date_closed || order.date_end;
       if (!closed) return false;
       const closedDate = new Date(closed);
-      return this.isCompletedStatus(order.status) && closedDate >= dayStart && closedDate < dayEnd;
+      return (
+        this.isCompletedStatus(order.status) &&
+        closedDate >= dayStart &&
+        closedDate < dayEnd
+      );
     });
 
     const waitingValidation = orders.filter(
@@ -701,12 +704,18 @@ export class WorkOrdersService {
 
     const dueToday = orders.filter((order) => {
       const due = this.getWorkOrderDueDate(order);
-      return due >= dayStart && due < dayEnd && !this.isCompletedStatus(order.status);
+      return (
+        due >= dayStart && due < dayEnd && !this.isCompletedStatus(order.status)
+      );
     });
 
     const upcoming = orders.filter((order) => {
       const due = this.getWorkOrderDueDate(order);
-      return due > dayEnd && due <= upcomingLimit && !this.isCompletedStatus(order.status);
+      return (
+        due > dayEnd &&
+        due <= upcomingLimit &&
+        !this.isCompletedStatus(order.status)
+      );
     });
 
     const overdue = orders.filter((order) => {
@@ -790,7 +799,8 @@ export class WorkOrdersService {
       machineId,
       pannes: pannes.map((panne) => {
         const relatedSolutions = solutions.filter(
-          (solution) => this.objectIdString(solution.panne_id) === panne._id.toString(),
+          (solution) =>
+            this.objectIdString(solution.panne_id) === panne._id.toString(),
         );
         return {
           id: panne._id.toString(),
@@ -865,18 +875,26 @@ export class WorkOrdersService {
     });
 
     for (const order of existingPreventiveOrders) {
-      const key = this.buildPlanKey(order.machine_id, order.module_id, order.plan_id);
+      const key = this.buildPlanKey(
+        order.machine_id,
+        order.module_id,
+        order.plan_id,
+      );
       const current = latestOrderByPlanKey.get(key);
       const currentDate = current
         ? new Date(current.date_start || current.date_created || 0).getTime()
         : -1;
-      const nextDate = new Date(order.date_start || order.date_created || 0).getTime();
+      const nextDate = new Date(
+        order.date_start || order.date_created || 0,
+      ).getTime();
 
       if (!current || nextDate >= currentDate) {
         latestOrderByPlanKey.set(key, order);
       }
 
-      const dueTime = new Date(order.date_start || order.date_created || 0).getTime();
+      const dueTime = new Date(
+        order.date_start || order.date_created || 0,
+      ).getTime();
       dueKeySet.add(`${key}|${dueTime}`);
     }
 
@@ -903,7 +921,13 @@ export class WorkOrdersService {
       const existing = latestOrderByPlanKey.get(key);
 
       if (!existing) {
-        const created = await this.createSeedWorkOrder(machine, moduleEntity, plan, dueKeySet, latestOrderByPlanKey);
+        const created = await this.createSeedWorkOrder(
+          machine,
+          moduleEntity,
+          plan,
+          dueKeySet,
+          latestOrderByPlanKey,
+        );
         if (created) {
           summary.createdFirstExecution += 1;
         } else {
@@ -913,7 +937,11 @@ export class WorkOrdersService {
       }
 
       if (this.isCompletedStatus(existing.status)) {
-        const created = await this.ensureNextPreventiveWorkOrder(existing, dueKeySet, latestOrderByPlanKey);
+        const created = await this.ensureNextPreventiveWorkOrder(
+          existing,
+          dueKeySet,
+          latestOrderByPlanKey,
+        );
         if (created) {
           summary.createdNextExecution += 1;
         } else {
@@ -935,7 +963,11 @@ export class WorkOrdersService {
     const baseDate = machine.installation_date
       ? new Date(machine.installation_date)
       : new Date();
-    const dueDate = this.computeNextDueDate(baseDate, plan.frequence, plan.unite_frequence);
+    const dueDate = this.computeNextDueDate(
+      baseDate,
+      plan.frequence,
+      plan.unite_frequence,
+    );
 
     const key = this.buildPlanKey(machine, moduleEntity, plan);
     const dueKey = `${key}|${dueDate.getTime()}`;
@@ -983,14 +1015,22 @@ export class WorkOrdersService {
       return false;
     }
 
-    const baseDate = workOrder.date_closed || workOrder.date_end || workOrder.date_start || workOrder.date_created;
+    const baseDate =
+      workOrder.date_closed ||
+      workOrder.date_end ||
+      workOrder.date_start ||
+      workOrder.date_created;
     const nextDue = this.computeNextDueDate(
       new Date(baseDate || new Date()),
       plan.frequence,
       plan.unite_frequence,
     );
 
-    const key = this.buildPlanKey(workOrder.machine_id, workOrder.module_id, workOrder.plan_id);
+    const key = this.buildPlanKey(
+      workOrder.machine_id,
+      workOrder.module_id,
+      workOrder.plan_id,
+    );
     const dueKey = `${key}|${nextDue.getTime()}`;
     if (dueKeySet?.has(dueKey)) {
       return false;
@@ -1042,7 +1082,8 @@ export class WorkOrdersService {
       date_debut: dateDebut,
       date_fin: dateFin,
       cause_racine: correctiveInfo?.faultDescription || workOrder.code_panne,
-      description_action: correctiveInfo?.recommendedSolution || workOrder.description,
+      description_action:
+        correctiveInfo?.recommendedSolution || workOrder.description,
       etat_final: this.isCompletedStatus(workOrder.status)
         ? 'completed'
         : 'in_progress',
@@ -1066,12 +1107,14 @@ export class WorkOrdersService {
       return;
     }
 
-    const completed = orders.filter((order) => this.isCompletedStatus(order.status));
+    const completed = orders.filter((order) =>
+      this.isCompletedStatus(order.status),
+    );
     const corrective = completed.filter(
       (order) => (order.type_maintenance || '').toLowerCase() === 'corrective',
     );
-    const preventive = completed.filter(
-      (order) => (order.type_maintenance || '').toLowerCase().includes('prevent'),
+    const preventive = completed.filter((order) =>
+      (order.type_maintenance || '').toLowerCase().includes('prevent'),
     );
 
     const now = new Date();
@@ -1085,7 +1128,10 @@ export class WorkOrdersService {
         if (!start || !end) {
           return null;
         }
-        return (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
+        return (
+          (new Date(end).getTime() - new Date(start).getTime()) /
+          (1000 * 60 * 60)
+        );
       })
       .filter((value): value is number => value !== null && value >= 0);
 
@@ -1094,7 +1140,12 @@ export class WorkOrdersService {
       : 0;
 
     const failures = corrective
-      .map((order) => new Date(order.date_closed || order.date_end || order.date_created || now))
+      .map(
+        (order) =>
+          new Date(
+            order.date_closed || order.date_end || order.date_created || now,
+          ),
+      )
       .sort((a, b) => a.getTime() - b.getTime());
 
     let mtbf = 0;
@@ -1102,7 +1153,8 @@ export class WorkOrdersService {
       let totalGapHours = 0;
       for (let i = 1; i < failures.length; i += 1) {
         totalGapHours +=
-          (failures[i].getTime() - failures[i - 1].getTime()) / (1000 * 60 * 60);
+          (failures[i].getTime() - failures[i - 1].getTime()) /
+          (1000 * 60 * 60);
       }
       mtbf = totalGapHours / (failures.length - 1);
     }
@@ -1142,7 +1194,9 @@ export class WorkOrdersService {
     }
   }
 
-  private async toCalendarEvents(workOrders: any[]): Promise<CalendarEventRow[]> {
+  private async toCalendarEvents(
+    workOrders: any[],
+  ): Promise<CalendarEventRow[]> {
     const machineTypeCache = new Map<string, MachineType | null>();
     const userCache = new Map<string, User | null>();
 
@@ -1151,14 +1205,22 @@ export class WorkOrdersService {
       const dueDate = this.getWorkOrderDueDate(workOrder);
       const now = new Date();
       const plan = await this.resolvePlan(workOrder.plan_id, workOrder.plan_id);
-      const machine = await this.resolveMachine(workOrder.machine_id, workOrder.machine_id);
-      const moduleEntity = await this.resolveModule(workOrder.module_id, workOrder.module_id);
+      const machine = await this.resolveMachine(
+        workOrder.machine_id,
+        workOrder.machine_id,
+      );
+      const moduleEntity = await this.resolveModule(
+        workOrder.module_id,
+        workOrder.module_id,
+      );
 
       const machineTypeId = machine ? this.objectIdString(machine.type_id) : '';
       let machineType: MachineType | null = null;
       if (machineTypeId) {
         if (!machineTypeCache.has(machineTypeId)) {
-          const fetched = await this.machineTypeModel.findById(machineTypeId).exec();
+          const fetched = await this.machineTypeModel
+            .findById(machineTypeId)
+            .exec();
           machineTypeCache.set(machineTypeId, fetched);
         }
         machineType = machineTypeCache.get(machineTypeId) || null;
@@ -1175,7 +1237,9 @@ export class WorkOrdersService {
           technician = hydratedTechnician;
           userCache.set(technicianId, hydratedTechnician);
         } else if (!userCache.has(technicianId)) {
-          const fetchedUser = await this.userModel.findById(technicianId).exec();
+          const fetchedUser = await this.userModel
+            .findById(technicianId)
+            .exec();
           userCache.set(technicianId, fetchedUser);
         }
         technician = technician || userCache.get(technicianId) || null;
@@ -1195,10 +1259,14 @@ export class WorkOrdersService {
         startDate: new Date(
           workOrder.date_start || workOrder.date_created || now,
         ).toISOString(),
-        endDate: workOrder.date_end ? new Date(workOrder.date_end).toISOString() : undefined,
+        endDate: workOrder.date_end
+          ? new Date(workOrder.date_end).toISOString()
+          : undefined,
         color: this.computeEventColor(workOrder.status, dueDate, now),
         machine: {
-          id: this.objectIdString(machine) || this.objectIdString(workOrder.machine_id),
+          id:
+            this.objectIdString(machine) ||
+            this.objectIdString(workOrder.machine_id),
           code:
             machine?.machine_id ||
             (workOrder.machine_id &&
@@ -1236,7 +1304,11 @@ export class WorkOrdersService {
               name: technician.nom_complet,
             }
           : undefined,
-        reminderStage: this.computeReminderStage(workOrder.status, dueDate, now),
+        reminderStage: this.computeReminderStage(
+          workOrder.status,
+          dueDate,
+          now,
+        ),
       });
     }
 
@@ -1286,11 +1358,20 @@ export class WorkOrdersService {
     return { rangeStart, rangeEnd };
   }
 
-  private matchCalendarFilter(event: CalendarEventRow, filters: CalendarFilters) {
-    if (filters.machineTypeId && event.machine.typeId !== filters.machineTypeId) {
+  private matchCalendarFilter(
+    event: CalendarEventRow,
+    filters: CalendarFilters,
+  ) {
+    if (
+      filters.machineTypeId &&
+      event.machine.typeId !== filters.machineTypeId
+    ) {
       return false;
     }
-    if (filters.operatorId && event.assignedOperator?.id !== filters.operatorId) {
+    if (
+      filters.operatorId &&
+      event.assignedOperator?.id !== filters.operatorId
+    ) {
       return false;
     }
     if (filters.month) {
@@ -1318,16 +1399,21 @@ export class WorkOrdersService {
     const unit = (value || '').toLowerCase().replace(/\s+/g, '_');
 
     if (!unit) return 'monthly';
-    if (unit.includes('jour') || unit.includes('day') || unit === 'd') return 'daily';
+    if (unit.includes('jour') || unit.includes('day') || unit === 'd')
+      return 'daily';
     if (unit.includes('week') || unit.includes('semaine') || unit.includes('w'))
       return 'weekly';
     if (unit.includes('3') && unit.includes('month')) return 'quarterly';
     if (unit.includes('6') && unit.includes('month')) return 'semiannual';
-    if (unit.includes('year') || unit.includes('an') || unit.includes('ann')) return 'yearly';
+    if (unit.includes('year') || unit.includes('an') || unit.includes('ann'))
+      return 'yearly';
     if (unit.includes('shift') || unit.includes('poste')) return 'per_shift';
-    if (unit.includes('loading') || unit.includes('charg')) return 'per_loading';
-    if (unit.includes('production') || unit.includes('ordre')) return 'per_production_order';
-    if (unit.includes('month') || unit.includes('mois') || unit === 'm') return 'monthly';
+    if (unit.includes('loading') || unit.includes('charg'))
+      return 'per_loading';
+    if (unit.includes('production') || unit.includes('ordre'))
+      return 'per_production_order';
+    if (unit.includes('month') || unit.includes('mois') || unit === 'm')
+      return 'monthly';
     return 'monthly';
   }
 
@@ -1410,7 +1496,11 @@ export class WorkOrdersService {
     return 'blue';
   }
 
-  private computeReminderStage(status: string, dueDate: Date, now: Date): string {
+  private computeReminderStage(
+    status: string,
+    dueDate: Date,
+    now: Date,
+  ): string {
     if (this.isCompletedStatus(status)) {
       return 'completed';
     }
@@ -1435,7 +1525,9 @@ export class WorkOrdersService {
       return null;
     }
 
-    const panne = await this.panneModel.findOne({ code_panne: codePanne }).exec();
+    const panne = await this.panneModel
+      .findOne({ code_panne: codePanne })
+      .exec();
     if (!panne) {
       return null;
     }
@@ -1453,7 +1545,9 @@ export class WorkOrdersService {
   }
 
   private async resolveMachine(value: unknown, hydrated?: unknown) {
-    const inlineMachine = this.extractHydratedEntity<Machine>(hydrated, ['machine_id']);
+    const inlineMachine = this.extractHydratedEntity<Machine>(hydrated, [
+      'machine_id',
+    ]);
     if (inlineMachine) return inlineMachine;
     const machineId = this.objectIdString(value);
     if (!machineId) return null;
@@ -1461,7 +1555,9 @@ export class WorkOrdersService {
   }
 
   private async resolveModule(value: unknown, hydrated?: unknown) {
-    const inlineModule = this.extractHydratedEntity<ModuleEntity>(hydrated, ['module_id']);
+    const inlineModule = this.extractHydratedEntity<ModuleEntity>(hydrated, [
+      'module_id',
+    ]);
     if (inlineModule) return inlineModule;
     const moduleId = this.objectIdString(value);
     if (!moduleId) return null;
@@ -1469,7 +1565,9 @@ export class WorkOrdersService {
   }
 
   private async resolvePlan(value: unknown, hydrated?: unknown) {
-    const inlinePlan = this.extractHydratedEntity<MaintenancePlan>(hydrated, ['plan_id']);
+    const inlinePlan = this.extractHydratedEntity<MaintenancePlan>(hydrated, [
+      'plan_id',
+    ]);
     if (inlinePlan) return inlinePlan;
     const planId = this.objectIdString(value);
     if (!planId) return null;
@@ -1524,7 +1622,11 @@ export class WorkOrdersService {
     return '';
   }
 
-  private buildPlanKey(machine: unknown, moduleEntity: unknown, plan: unknown): string {
+  private buildPlanKey(
+    machine: unknown,
+    moduleEntity: unknown,
+    plan: unknown,
+  ): string {
     return [
       this.objectIdString(machine),
       this.objectIdString(moduleEntity),
@@ -1541,7 +1643,9 @@ export class WorkOrdersService {
   }
 
   private async generateReportCode() {
-    const sequence = await this.counterService.getNextSequence('intervention_report');
+    const sequence = await this.counterService.getNextSequence(
+      'intervention_report',
+    );
     return `REP-${sequence.toString().padStart(6, '0')}`;
   }
 
@@ -1551,11 +1655,13 @@ export class WorkOrdersService {
   }
 
   private getIsoWeek(date: Date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const d = new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    );
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   }
 
   private async mesureCriticalAlarmCount() {
@@ -1579,7 +1685,9 @@ export class WorkOrdersService {
         typeof stock.seuil_alerte_stock === 'number'
           ? stock.seuil_alerte_stock
           : stock.quantite_minimale;
-      return typeof threshold === 'number' && stock.quantite_en_stock <= threshold;
+      return (
+        typeof threshold === 'number' && stock.quantite_en_stock <= threshold
+      );
     }).length;
   }
 

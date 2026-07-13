@@ -6,11 +6,15 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
+import { getApiBaseUrl } from "@/config/api-base-url";
+import { fetchAllPaginated } from "@/services/pagination";
+import { Modal } from "@/components/Modal";
 
-type EntityRef = string | { _id?: string };
+type EntityRef = string | { _id?: string; id?: string };
 
 interface MachineType {
   _id: string;
+  type_id?: number;
   name: string;
 }
 
@@ -45,6 +49,7 @@ interface DocumentEntity {
   machine_id: EntityRef;
   file_path: string;
   file_name: string;
+  preview_path?: string;
   type_document?: string;
 }
 
@@ -83,6 +88,7 @@ interface PreventiveDraft {
   customMachine: string;
   checkedTasks: Record<string, boolean>;
   customTasks: string[];
+  customTaskGroups?: Record<string, string>;
   condition: MachineCondition;
   customCondition: string;
   comments: string;
@@ -100,7 +106,25 @@ const LUBRIFICATION_QTY_OPTIONS = ["1", "2", "5", "10", "20", "50", "100"];
 
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
-  return typeof value === "string" ? value : value._id ?? "";
+  return typeof value === "string" ? value : value._id ?? value.id ?? "";
+}
+
+const API_URL = getApiBaseUrl();
+
+function getFileUrl(path: string): string {
+  if (!path) return "";
+  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
+}
+
+function getManualPreviewUrl(doc: DocumentEntity): string {
+  let previewPath = doc.preview_path || doc.file_path;
+  if (!doc.preview_path && /\.xlsx?$/i.test(previewPath)) {
+    previewPath = previewPath.replace(/\.xlsx?$/i, "_preview.pdf");
+  }
+  if (/\.pdf$/i.test(previewPath) && previewPath.startsWith("/uploads/")) {
+    return `/api/manual-preview?path=${encodeURIComponent(previewPath)}`;
+  }
+  return getFileUrl(previewPath);
 }
 
 function tokenizeInstructions(input: string | undefined): string[] {
@@ -111,80 +135,12 @@ function tokenizeInstructions(input: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function isChecklistHeader(task: string): boolean {
+  return /^Checklist for W\d+[:]?$/i.test(task.trim());
+}
+
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
-
-function normalizeApiItems<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) {
-    return payload as T[];
-  }
-
-  if (payload && typeof payload === "object") {
-    const objectPayload = payload as {
-      items?: unknown;
-      data?: unknown;
-      results?: unknown;
-      docs?: unknown;
-      rows?: unknown;
-    };
-
-    const candidateArrays = [
-      objectPayload.items,
-      objectPayload.data,
-      objectPayload.results,
-      objectPayload.docs,
-      objectPayload.rows,
-    ];
-
-    for (const candidate of candidateArrays) {
-      if (Array.isArray(candidate)) {
-        return candidate as T[];
-      }
-    }
-  }
-
-  return [];
-}
-
-function readPaginationMeta(payload: unknown): { page: number; totalPages: number } | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const maybePage = Number((payload as { page?: unknown }).page);
-  const maybeTotalPages = Number((payload as { totalPages?: unknown }).totalPages);
-
-  if (!Number.isFinite(maybePage) || !Number.isFinite(maybeTotalPages)) {
-    return null;
-  }
-
-  return {
-    page: Math.max(1, Math.floor(maybePage)),
-    totalPages: Math.max(1, Math.floor(maybeTotalPages)),
-  };
-}
-
-type PaginatedRequest = (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>;
-
-async function fetchAllPaginatedItems<T>(request: PaginatedRequest, pageSize = 100): Promise<T[]> {
-  const firstResponse = await request({ page: 1, limit: pageSize });
-  const firstItems = normalizeApiItems<T>(firstResponse.data);
-  const pagination = readPaginationMeta(firstResponse.data);
-
-  if (!pagination || pagination.totalPages <= 1) {
-    return firstItems;
-  }
-
-  const remainingPagePromises: Array<Promise<{ data: unknown }>> = [];
-  for (let page = pagination.page + 1; page <= pagination.totalPages; page += 1) {
-    remainingPagePromises.push(request({ page, limit: pageSize }));
-  }
-
-  const remainingResponses = await Promise.all(remainingPagePromises);
-  const remainingItems = remainingResponses.flatMap((response) => normalizeApiItems<T>(response.data));
-
-  return [...firstItems, ...remainingItems];
 }
 
 export default function OperatorPreventivePage() {
@@ -200,6 +156,7 @@ export default function OperatorPreventivePage() {
   const [modules, setModules] = useState<ModuleEntity[]>([]);
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [documents, setDocuments] = useState<DocumentEntity[]>([]);
+  const [previewDocument, setPreviewDocument] = useState<DocumentEntity | null>(null);
   const [lubrifiants, setLubrifiants] = useState<Lubrifiant[]>([]);
   const [kpis, setKpis] = useState<Kpi[]>([]);
 
@@ -210,8 +167,10 @@ export default function OperatorPreventivePage() {
 
   const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({});
   const [selectedTaskToAdd, setSelectedTaskToAdd] = useState("");
+  const [selectedTaskGroup, setSelectedTaskGroup] = useState("");
   const [customTaskInput, setCustomTaskInput] = useState("");
   const [customTasks, setCustomTasks] = useState<string[]>([]);
+  const [customTaskGroups, setCustomTaskGroups] = useState<Record<string, string>>({});
 
   const [condition, setCondition] = useState<MachineCondition>("good");
   const [customCondition, setCustomCondition] = useState("");
@@ -271,6 +230,43 @@ export default function OperatorPreventivePage() {
     setNotification({ type, message });
   }
 
+  function resetPreventiveFlowState(): void {
+    setSelectedMachine("");
+    setCheckedTasks({});
+    setSelectedTaskToAdd("");
+    setSelectedTaskGroup("");
+    setCustomTaskInput("");
+    setCustomTasks([]);
+    setCustomTaskGroups({});
+    setCondition("good");
+    setCustomCondition("");
+    setComments("");
+    setPhoto(null);
+    setSelectedLubrifiant("");
+    setSelectedLubrificationQtyMode("");
+    setLubrificationQty("");
+    setSubmitValidationReason("");
+    setSelectedDraftId("");
+  }
+
+  function resetMachineSpecificState(): void {
+    setCheckedTasks({});
+    setSelectedTaskToAdd("");
+    setSelectedTaskGroup("");
+    setCustomTaskInput("");
+    setCustomTasks([]);
+    setCustomTaskGroups({});
+    setCondition("good");
+    setCustomCondition("");
+    setComments("");
+    setPhoto(null);
+    setSelectedLubrifiant("");
+    setSelectedLubrificationQtyMode("");
+    setLubrificationQty("");
+    setSubmitValidationReason("");
+    setSelectedDraftId("");
+  }
+
   function addGeneratedReport(report: GeneratedReportRow): void {
     setGeneratedReports((prev) => {
       const next = [report, ...prev].slice(0, 30);
@@ -297,6 +293,7 @@ export default function OperatorPreventivePage() {
       customMachine,
       checkedTasks,
       customTasks,
+      customTaskGroups,
       condition,
       customCondition,
       comments,
@@ -312,7 +309,7 @@ export default function OperatorPreventivePage() {
 
     persistDrafts(nextDrafts);
     setSelectedDraftId(draftId);
-    showNotification("success", "Draft saved");
+    showNotification("success", t("notifications.draftSaved"));
   }
 
   function openDraft(draft: PreventiveDraft): void {
@@ -323,6 +320,7 @@ export default function OperatorPreventivePage() {
     setCustomMachine(draft.customMachine);
     setCheckedTasks(draft.checkedTasks);
     setCustomTasks(draft.customTasks);
+    setCustomTaskGroups(draft.customTaskGroups ?? {});
     setCondition(draft.condition);
     setCustomCondition(draft.customCondition);
     setComments(draft.comments);
@@ -330,7 +328,7 @@ export default function OperatorPreventivePage() {
     setSelectedLubrifiant(draft.selectedLubrifiant);
     setSelectedLubrificationQtyMode(draft.selectedLubrificationQtyMode);
     setLubrificationQty(draft.lubrificationQty);
-    showNotification("success", "Draft loaded");
+    showNotification("success", t("notifications.draftLoaded"));
   }
 
   function deleteDraft(draftId: string): void {
@@ -339,7 +337,7 @@ export default function OperatorPreventivePage() {
     if (selectedDraftId === draftId) {
       setSelectedDraftId("");
     }
-    showNotification("success", "Draft deleted");
+    showNotification("success", t("notifications.draftDeleted"));
   }
 
   useEffect(() => {
@@ -386,11 +384,11 @@ export default function OperatorPreventivePage() {
           lubrifiantItems,
           kpiItems,
         ] = await Promise.all([
-          fetchAllPaginatedItems<MachineType>((params) => apiService.getMachineTypes(params)),
-          fetchAllPaginatedItems<Machine>((params) => apiService.getMachines(params)),
+          fetchAllPaginated<MachineType>((params) => apiService.getMachineTypes(params)),
+          fetchAllPaginated<Machine>((params) => apiService.getMyMachines(params)),
           fetchAllPaginatedItems<ModuleEntity>((params) => apiService.getModules(params)),
           fetchAllPaginatedItems<MaintenancePlan>((params) => apiService.getMaintenancePlans(params)),
-          fetchAllPaginatedItems<DocumentEntity>((params) => apiService.getDocuments(params)),
+          fetchAllPaginated<DocumentEntity>((params) => apiService.getOperatorManuals(params)),
           fetchAllPaginatedItems<Lubrifiant>((params) => apiService.getLubrifiants(params)),
           fetchAllPaginatedItems<Kpi>((params) => apiService.getKpis(params)),
         ]);
@@ -412,10 +410,24 @@ export default function OperatorPreventivePage() {
     void loadAll();
   }, []);
 
+  async function fetchAllPaginatedItems<T>(
+    request: (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>,
+  ): Promise<T[]> {
+    return fetchAllPaginated<T>(request);
+  }
+
   const machinesForCategory = useMemo(
     () => machines.filter((machine) => refId(machine.type_id) === selectedCategory),
     [machines, selectedCategory],
   );
+
+  const visibleMachineTypes = useMemo(() => {
+    const usedTypeIds = new Set(
+      machines.map((machine) => refId(machine.type_id)).filter(Boolean),
+    );
+
+    return machineTypes.filter((type) => usedTypeIds.has(type._id));
+  }, [machineTypes, machines]);
 
   const modulesForMachine = useMemo(
     () => modules.filter((module) => refId(module.machine_id) === selectedMachine),
@@ -438,14 +450,66 @@ export default function OperatorPreventivePage() {
     return Array.from(new Set(generated));
   }, [preventivePlans]);
 
+  const checklistGroups = useMemo(() => {
+    const groups: Array<{ header: string; items: string[] }> = [];
+    let currentHeader = "";
+
+    taskList.forEach((task) => {
+      if (isChecklistHeader(task)) {
+        currentHeader = task;
+        groups.push({ header: task, items: [] });
+        return;
+      }
+
+      if (!currentHeader) {
+        groups.push({ header: task, items: [] });
+        return;
+      }
+
+      const currentGroup = groups[groups.length - 1];
+      currentGroup?.items.push(task);
+    });
+
+    return groups;
+  }, [taskList]);
+
+  const checklistHeaders = useMemo(
+    () => checklistGroups.map((group) => group.header).filter((header) => isChecklistHeader(header)),
+    [checklistGroups],
+  );
+
   const manualDocument = useMemo(
-    () =>
-      documents.find((doc) => {
-        const machineMatches = refId(doc.machine_id) === selectedMachine;
-        const type = (doc.type_document ?? "").toLowerCase();
-        return machineMatches && (type.includes("manual") || type.includes("procedure") || type.includes("pdf"));
-      }) ?? null,
-    [documents, selectedMachine],
+    () => {
+      const selectedCategoryMachineIds = new Set(
+        machines
+          .filter((machine) => refId(machine.type_id) === selectedCategory)
+          .map((machine) => machine._id),
+      );
+
+      return (
+        documents.find((doc) => {
+          const documentMachineId = refId(doc.machine_id);
+          const type = (doc.type_document ?? "").toLowerCase();
+          const name = (doc.file_name ?? "").toLowerCase();
+          const isManualType =
+            type.includes("manual") ||
+            type.includes("procedure") ||
+            type.includes("pdf") ||
+            type.includes("excel") ||
+            type.includes("xlsx") ||
+            type.includes("xls") ||
+            type.includes("spreadsheet") ||
+            name.endsWith(".xlsx") ||
+            name.endsWith(".xls");
+
+          if (!isManualType) return false;
+          if (selectedMachine) return documentMachineId === selectedMachine;
+          if (selectedCategory) return selectedCategoryMachineIds.has(documentMachineId);
+          return false;
+        }) ?? null
+      );
+    },
+    [documents, machines, selectedCategory, selectedMachine],
   );
 
   const selectedMachineKpi = useMemo(
@@ -453,7 +517,34 @@ export default function OperatorPreventivePage() {
     [kpis, selectedMachine],
   );
 
-  const allTaskItems = useMemo(() => [...taskList, ...customTasks], [taskList, customTasks]);
+  const allTaskItems = useMemo(() => {
+    if (!customTasks.length) {
+      return taskList;
+    }
+
+    const assignedCustom = new Map<string, string[]>();
+    const unassignedCustom: string[] = [];
+
+    customTasks.forEach((task) => {
+      const header = customTaskGroups[task];
+      if (header && checklistHeaders.includes(header)) {
+        assignedCustom.set(header, [...(assignedCustom.get(header) ?? []), task]);
+      } else {
+        unassignedCustom.push(task);
+      }
+    });
+
+    if (!checklistGroups.length) {
+      return [...taskList, ...unassignedCustom];
+    }
+
+    const result: string[] = [];
+    checklistGroups.forEach((group) => {
+      result.push(group.header, ...group.items, ...(assignedCustom.get(group.header) ?? []));
+    });
+
+    return [...result, ...unassignedCustom];
+  }, [taskList, customTasks, customTaskGroups, checklistGroups, checklistHeaders]);
 
   const selectedTaskLabels = useMemo(
     () => allTaskItems.filter((task) => checkedTasks[task]),
@@ -466,7 +557,30 @@ export default function OperatorPreventivePage() {
   );
 
   function toggleTask(task: string): void {
-    setCheckedTasks((prev) => ({ ...prev, [task]: !prev[task] }));
+    setCheckedTasks((prev) => {
+      const next = { ...prev };
+      const group = checklistGroups.find((item) => item.header === task);
+
+      if (group && group.items.length > 0) {
+        const shouldCheck = !group.items.every((item) => Boolean(prev[item])) || !prev[task];
+        next[task] = shouldCheck;
+        group.items.forEach((item) => {
+          next[item] = shouldCheck;
+        });
+        return next;
+      }
+
+      next[task] = !prev[task];
+
+      const parentGroup = checklistGroups.find((item) => item.items.includes(task));
+      if (parentGroup) {
+        next[parentGroup.header] = parentGroup.items.every((item) =>
+          item === task ? next[item] : Boolean(next[item]),
+        );
+      }
+
+      return next;
+    });
   }
 
   function addTaskFromSelection(): void {
@@ -475,9 +589,27 @@ export default function OperatorPreventivePage() {
     if (!customTasks.includes(value)) {
       setCustomTasks((prev) => [...prev, value]);
     }
+    if (selectedTaskGroup) {
+      setCustomTaskGroups((prev) => ({ ...prev, [value]: selectedTaskGroup }));
+    }
     setCheckedTasks((prev) => ({ ...prev, [value]: true }));
     setSelectedTaskToAdd("");
+    setSelectedTaskGroup("");
     setCustomTaskInput("");
+  }
+
+  function removeCustomTask(task: string): void {
+    setCustomTasks((prev) => prev.filter((item) => item !== task));
+    setCustomTaskGroups((prev) => {
+      const next = { ...prev };
+      delete next[task];
+      return next;
+    });
+    setCheckedTasks((prev) => {
+      const next = { ...prev };
+      delete next[task];
+      return next;
+    });
   }
 
   async function uploadPhotoIfPresent(machineId: string): Promise<void> {
@@ -630,13 +762,13 @@ export default function OperatorPreventivePage() {
             <div className="mb-6">
               <div className="mb-3 text-sm font-semibold text-slate-700">{t("machineCategory")}</div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {machineTypes.map((item) => (
+                {visibleMachineTypes.map((item) => (
                   <button
                     key={item._id}
                     type="button"
                     onClick={() => {
                       setSelectedCategory(item._id);
-                      setSelectedMachine("");
+                      resetPreventiveFlowState();
                     }}
                     data-testid="preventive-category-select"
                     className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
@@ -665,7 +797,10 @@ export default function OperatorPreventivePage() {
                   <button
                     key={machine._id}
                     type="button"
-                    onClick={() => setSelectedMachine(machine._id)}
+                    onClick={() => {
+                      resetMachineSpecificState();
+                      setSelectedMachine(machine._id);
+                    }}
                     data-testid="preventive-machine-select"
                     className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
                       selectedMachine === machine._id
@@ -736,27 +871,57 @@ export default function OperatorPreventivePage() {
             <div className="card-title mb-3">{t("preventiveTasks")}</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {allTaskItems.length === 0 && <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>}
-              {allTaskItems.map((task, index) => (
-                <label
-                  key={task}
-                  className={`flex items-start gap-3 rounded-2xl border p-4 text-sm cursor-pointer transition-colors ${
-                    checkedTasks[task]
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-slate-200 bg-white hover:bg-slate-50"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={Boolean(checkedTasks[task])}
-                    onChange={() => toggleTask(task)}
-                    data-testid={`preventive-task-checkbox-${index}`}
-                    className="mt-0.5 h-4 w-4"
-                  />
-                  <span className="leading-5">{task}</span>
-                </label>
-              ))}
+              {allTaskItems.map((task, index) => {
+                const isHeader = isChecklistHeader(task);
+                const isCustomTask = customTasks.includes(task);
+                return (
+                  <div
+                    key={task}
+                    className={`flex items-start gap-3 rounded-2xl border p-4 text-sm cursor-pointer transition-colors ${
+                      checkedTasks[task]
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
+                    } ${isHeader ? "md:col-span-2 font-semibold" : ""}`}
+                  >
+                    <label className="flex min-w-0 flex-1 items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(checkedTasks[task])}
+                        onChange={() => toggleTask(task)}
+                        data-testid={`preventive-task-checkbox-${index}`}
+                        className="mt-0.5 h-4 w-4"
+                      />
+                      <span className={`leading-5 ${!isHeader ? "pl-1" : ""}`}>{task}</span>
+                    </label>
+                    {isCustomTask ? (
+                      <button
+                        type="button"
+                        onClick={() => removeCustomTask(task)}
+                        data-testid={`preventive-remove-custom-task-${index}`}
+                        className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        {tCommon("delete")}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
             <div className="flex gap-2 mt-3">
+              <select
+                value={selectedTaskGroup}
+                onChange={(event) => setSelectedTaskGroup(event.target.value)}
+                data-testid="preventive-custom-task-group"
+                className="w-48 border rounded-lg px-3 py-2"
+                title={t("preventiveTasks")}
+              >
+                <option value="">{t("maintenanceCode")}</option>
+                {checklistHeaders.map((header) => (
+                  <option key={header} value={header}>
+                    {header}
+                  </option>
+                ))}
+              </select>
               <select
                 value={selectedTaskToAdd}
                 onChange={(event) => setSelectedTaskToAdd(event.target.value)}
@@ -858,14 +1023,13 @@ export default function OperatorPreventivePage() {
             <div className="card-title mb-3">{t("openManual")}</div>
             <div className="flex flex-wrap gap-3">
               {manualDocument ? (
-                <a
-                  href={manualDocument.file_path}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setPreviewDocument(manualDocument)}
                   className="px-4 py-2 rounded-lg bg-blue-600 text-white"
                 >
                   {t("openManual")}
-                </a>
+                </button>
               ) : (
                 <span className="text-sm text-slate-500">{tCommon("table.noData")}</span>
               )}
@@ -950,7 +1114,7 @@ export default function OperatorPreventivePage() {
                 data-testid="preventive-save-draft"
                 className="w-full md:w-auto px-5 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
               >
-                Save Draft
+                {tCommon("save")}
               </button>
               <button
                 disabled={submitting}
@@ -958,7 +1122,7 @@ export default function OperatorPreventivePage() {
                 data-testid="preventive-submit-button"
                 className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
               >
-                {submitting ? tCommon("saving") : selectedDraftId ? "Submit Draft" : t("generateReport")}
+                {submitting ? tCommon("saving") : t("generateReport")}
               </button>
             </div>
             {submitValidationReason ? (
@@ -969,7 +1133,7 @@ export default function OperatorPreventivePage() {
           </div>
 
           <div className="col-span-full panel">
-            <div className="card-title mb-3">Drafts</div>
+            <div className="card-title mb-3">{t("report")}</div>
             {drafts.length === 0 ? (
               <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
             ) : (
@@ -1038,6 +1202,21 @@ export default function OperatorPreventivePage() {
             )}
           </div>
         </div>
+
+        <Modal
+          isOpen={Boolean(previewDocument)}
+          onClose={() => setPreviewDocument(null)}
+          title={previewDocument?.file_name || t("openManual")}
+          size="xl"
+        >
+          {previewDocument ? (
+            <iframe
+              src={`${getManualPreviewUrl(previewDocument)}#view=FitH`}
+              title={previewDocument.file_name}
+              className="h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-100"
+            />
+          ) : null}
+        </Modal>
       </DashboardLayout>
     </ProtectedRoute>
   );

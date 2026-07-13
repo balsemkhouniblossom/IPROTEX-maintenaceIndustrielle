@@ -19,7 +19,7 @@ const GoogleOAuthStrategy = (googleOAuth20 as { Strategy: StrategyConstructor })
 function normalizeGoogleEnv(value: string | undefined): string {
   const trimmed = value?.trim() ?? '';
   // Some hosts store env values with wrapping quotes; strip only outer quotes.
-  return trimmed.replace(/^['\"]|['\"]$/g, '');
+  return trimmed.replace(/^['"]|['"]$/g, '');
 }
 
 function requireGoogleEnv(key: string, value: string): string {

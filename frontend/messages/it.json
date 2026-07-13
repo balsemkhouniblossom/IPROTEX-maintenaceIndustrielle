@@ -10,6 +10,7 @@
   },
   "auth": {
     "signIn": "Accedi",
+    "keepLoggedIn": "Resta connesso",
     "signUp": "Registrati",
     "email": "Indirizzo e-mail",
     "password": "Password",
@@ -250,6 +251,7 @@
       "solution": "Soluzione",
       "validation": "Validazione richiesta",
       "report": "Rapporto",
+      "maintenanceCode": "Codice manutenzione",
       "openManual": "Apri manuale PDF",
       "generateReport": "Genera rapporto",
       "actionsPerformed": "Azioni eseguite",
@@ -295,6 +297,9 @@
         "loadFailed": "Errore nel caricamento dei dati",
         "customActionAdded": "Azione personalizzata aggiunta",
         "customTaskAdded": "Attivita personalizzata aggiunta",
+        "draftSaved": "Bozza salvata",
+        "draftLoaded": "Bozza caricata",
+        "draftDeleted": "Bozza eliminata",
         "filterUpdated": "Filtro aggiornato",
         "submitSuccess": "Inviato per la validazione",
         "validationFailed": "Compila i campi obbligatori"
