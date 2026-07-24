@@ -1,9 +1,2 @@
-"use client";
-
-import TechnicianDashboardPage from "../technician-dashboard/page";
-
-export default function RootPage() {
-  return <TechnicianDashboardPage />;
-}
-
-
+import { TechnicianDashboard } from "@/components/technician/TechnicianWorkspace";
+export default TechnicianDashboard;

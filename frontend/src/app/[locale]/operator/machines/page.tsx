@@ -63,7 +63,7 @@ function OperatorMachinesPageContent() {
 
             const [machinesRes, typesRes] = await Promise.all([
                 fetchAllPaginated<any>((pagination) => apiService.getMyMachines(pagination)),
-                fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
+                fetchAllPaginated<MachineType>((pagination) => apiService.getOperatorMachineTypes(pagination)),
             ]);
 
             const machineItems = machinesRes;

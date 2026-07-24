@@ -1,13 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
-import {
-  InterventionReport,
-  InterventionReportDocument,
-} from '../schemas/intervention-report.schema';
 import {
   MaintenancePlan,
   MaintenancePlanDocument,
@@ -24,7 +21,9 @@ import {
   Module as ModuleEntity,
   ModuleDocument,
 } from '../schemas/module.schema';
-import { User, UserDocument } from '../schemas/user.schema';
+import { User, UserDocument, Role } from '../schemas/user.schema';
+import { NotificationCenterService } from '../notification-center/notification-center.service';
+import { NotificationType } from '../schemas/notification.schema';
 
 interface JobResult {
   processed: number;
@@ -34,14 +33,11 @@ interface JobResult {
 @Injectable()
 export class AutomationSchedulerService {
   private readonly logger = new Logger(AutomationSchedulerService.name);
-  private readonly notificationCooldown = new Map<string, number>();
 
   constructor(
     private readonly workOrdersService: WorkOrdersService,
     @InjectModel(WorkOrder.name)
     private readonly workOrderModel: Model<WorkOrderDocument>,
-    @InjectModel(InterventionReport.name)
-    private readonly interventionReportModel: Model<InterventionReportDocument>,
     @InjectModel(MaintenancePlan.name)
     private readonly maintenancePlanModel: Model<MaintenancePlanDocument>,
     @InjectModel(LubrificationLog.name)
@@ -58,6 +54,7 @@ export class AutomationSchedulerService {
     private readonly moduleModel: Model<ModuleDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly notificationCenterService: NotificationCenterService,
   ) {
     this.logger.log('Background scheduler initialized (automatic mode).');
   }
@@ -93,7 +90,6 @@ export class AutomationSchedulerService {
         () => this.jobUpcomingMaintenanceReminders(),
       ],
       ['job_overdue_escalation', () => this.jobOverdueEscalation()],
-      ['job_corrective_follow_up', () => this.jobCorrectiveFollowUp()],
       ['job_stock_monitoring', () => this.jobStockMonitoring()],
       ['job_lubrication_reminders', () => this.jobLubricationReminders()],
     ]);
@@ -173,9 +169,21 @@ export class AutomationSchedulerService {
       .find(
         {
           status: { $nin: ['completed', 'validated', 'cancelled'] },
-          date_start: { $gte: tomorrow, $lt: eightDays },
+          $or: [
+            { due_date: { $gte: tomorrow, $lt: eightDays } },
+            { scheduled_date: { $gte: tomorrow, $lt: eightDays } },
+            { date_start: { $gte: tomorrow, $lt: eightDays } },
+          ],
         },
-        { _id: 1, ot_id: 1, technician_id: 1, date_start: 1, machine_id: 1 },
+        {
+          _id: 1,
+          ot_id: 1,
+          technician_id: 1,
+          due_date: 1,
+          scheduled_date: 1,
+          date_start: 1,
+          machine_id: 1,
+        },
       )
       .lean()
       .exec();
@@ -183,29 +191,25 @@ export class AutomationSchedulerService {
     let notifications = 0;
 
     for (const row of rows) {
-      const dueDate = this.startOfDay(new Date(row.date_start || now));
+      const dueSource = row.due_date || row.scheduled_date || row.date_start;
+      if (!dueSource) continue;
+      const dueDate = this.startOfDay(new Date(dueSource));
       const days = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
       if (![1, 3, 7].includes(days)) {
         continue;
       }
 
       const workOrderId = this.objectIdString(row._id);
-      const recipient =
-        this.objectIdString(row.technician_id) || 'maintenance_team';
-      const key = `upcoming:${workOrderId}:${days}:${today.toISOString()}`;
-      if (
-        this.emitNotification(
-          key,
-          `Upcoming maintenance in ${days} day(s) for ${row.ot_id || workOrderId}`,
-          {
-            recipient,
-            workOrderId,
-            machineId: this.objectIdString(row.machine_id),
-            dueDate: row.date_start,
-          },
-          24 * 60,
-        )
-      ) {
+      const dedupeKey = `upcoming:${workOrderId}:${days}:${today.toISOString()}`;
+      const created = await this.notificationCenterService.createIfNotExists({
+        dedupeKey,
+        type: NotificationType.PREVENTIVE_DUE,
+        title: `Upcoming maintenance in ${days} day(s) for ${row.ot_id || workOrderId}`,
+        workOrderId,
+        machineId: this.objectIdString(row.machine_id) || undefined,
+        ...this.resolveRecipient(this.objectIdString(row.technician_id)),
+      });
+      if (created) {
         notifications += 1;
       }
     }
@@ -219,10 +223,31 @@ export class AutomationSchedulerService {
     const overdueRows = await this.workOrderModel
       .find(
         {
-          status: { $nin: ['completed', 'validated', 'cancelled', 'overdue'] },
-          date_start: { $lt: now },
+          status: {
+            $nin: [
+              'completed',
+              'validated',
+              'cancelled',
+              'overdue',
+              'waiting_validation',
+              'returned',
+            ],
+          },
+          $or: [
+            { due_date: { $lt: now } },
+            { scheduled_date: { $lt: now } },
+            { date_start: { $lt: now } },
+          ],
         },
-        { _id: 1, ot_id: 1, technician_id: 1, machine_id: 1, date_start: 1 },
+        {
+          _id: 1,
+          ot_id: 1,
+          technician_id: 1,
+          machine_id: 1,
+          due_date: 1,
+          scheduled_date: 1,
+          date_start: 1,
+        },
       )
       .lean()
       .limit(1000)
@@ -247,21 +272,16 @@ export class AutomationSchedulerService {
     let notifications = 0;
     for (const row of overdueRows) {
       const workOrderId = this.objectIdString(row._id);
-      const key = `overdue:${workOrderId}:${this.startOfDay(now).toISOString()}`;
-      if (
-        this.emitNotification(
-          key,
-          `Work order ${row.ot_id || workOrderId} is overdue`,
-          {
-            recipient:
-              this.objectIdString(row.technician_id) || 'maintenance_team',
-            workOrderId,
-            machineId: this.objectIdString(row.machine_id),
-            dueDate: row.date_start,
-          },
-          12 * 60,
-        )
-      ) {
+      const dedupeKey = `overdue:${workOrderId}:${this.startOfDay(now).toISOString()}`;
+      const created = await this.notificationCenterService.createIfNotExists({
+        dedupeKey,
+        type: NotificationType.PREVENTIVE_OVERDUE,
+        title: `Work order ${row.ot_id || workOrderId} is overdue`,
+        workOrderId,
+        machineId: this.objectIdString(row.machine_id) || undefined,
+        ...this.resolveRecipient(this.objectIdString(row.technician_id)),
+      });
+      if (created) {
         notifications += 1;
       }
     }
@@ -287,9 +307,20 @@ export class AutomationSchedulerService {
       .find(
         {
           status: 'overdue',
-          date_start: { $lte: threeDaysAgo },
+          $or: [
+            { due_date: { $lte: threeDaysAgo } },
+            { scheduled_date: { $lte: threeDaysAgo } },
+            { date_start: { $lte: threeDaysAgo } },
+          ],
         },
-        { _id: 1, ot_id: 1, technician_id: 1, date_start: 1 },
+        {
+          _id: 1,
+          ot_id: 1,
+          technician_id: 1,
+          due_date: 1,
+          scheduled_date: 1,
+          date_start: 1,
+        },
       )
       .lean()
       .limit(1000)
@@ -306,27 +337,24 @@ export class AutomationSchedulerService {
     let notifications = 0;
 
     for (const row of overdueRows) {
-      const due = new Date(row.date_start || now);
+      const dueSource = row.due_date || row.scheduled_date || row.date_start;
+      if (!dueSource) continue;
+      const due = new Date(dueSource);
       const overdueDays = Math.floor(
         (now.getTime() - due.getTime()) / 86400000,
       );
       const workOrderId = this.objectIdString(row._id);
 
       if (overdueDays >= 3) {
-        const key = `escalation:tech:${workOrderId}:${Math.floor(overdueDays / 3)}`;
-        if (
-          this.emitNotification(
-            key,
-            `Escalation 3+ days overdue for ${row.ot_id || workOrderId}`,
-            {
-              recipient:
-                this.objectIdString(row.technician_id) || 'technician_team',
-              workOrderId,
-              overdueDays,
-            },
-            12 * 60,
-          )
-        ) {
+        const dedupeKey = `escalation:tech:${workOrderId}:${Math.floor(overdueDays / 3)}`;
+        const created = await this.notificationCenterService.createIfNotExists({
+          dedupeKey,
+          type: NotificationType.OVERDUE_ESCALATION,
+          title: `Escalation 3+ days overdue for ${row.ot_id || workOrderId}`,
+          workOrderId,
+          ...this.resolveRecipient(this.objectIdString(row.technician_id)),
+        });
+        if (created) {
           notifications += 1;
         }
       }
@@ -334,22 +362,17 @@ export class AutomationSchedulerService {
       if (overdueDays >= 7) {
         for (const supervisor of supervisors) {
           const supervisorId = this.objectIdString(supervisor._id);
-          const key = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
+          const dedupeKey = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
             overdueDays / 7,
           )}`;
-          if (
-            this.emitNotification(
-              key,
-              `Escalation 7+ days overdue for ${row.ot_id || workOrderId}`,
-              {
-                recipient: supervisorId,
-                recipientName: supervisor.nom_complet,
-                workOrderId,
-                overdueDays,
-              },
-              24 * 60,
-            )
-          ) {
+          const created = await this.notificationCenterService.createIfNotExists({
+            dedupeKey,
+            type: NotificationType.OVERDUE_ESCALATION,
+            title: `Escalation 7+ days overdue for ${row.ot_id || workOrderId}`,
+            workOrderId,
+            recipientUserId: supervisorId,
+          });
+          if (created) {
             notifications += 1;
           }
         }
@@ -359,124 +382,6 @@ export class AutomationSchedulerService {
     return {
       processed: notifications,
       details: { scanned: overdueRows.length, supervisors: supervisors.length },
-    };
-  }
-
-  private async jobCorrectiveFollowUp(): Promise<JobResult> {
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-
-    const reports = await this.interventionReportModel
-      .find(
-        {
-          validation_responsable: {
-            $in: [
-              'waiting_validation',
-              'validated',
-              'rejected',
-              'request_correction',
-            ],
-          },
-          date_fin: { $gte: since },
-        },
-        {
-          _id: 1,
-          ot_id: 1,
-          technician_id: 1,
-          validation_responsable: 1,
-          date_fin: 1,
-        },
-      )
-      .sort({ date_fin: -1 })
-      .lean()
-      .exec();
-
-    const latestByWorkOrder = new Map<string, (typeof reports)[number]>();
-    for (const report of reports) {
-      const workOrderId = this.objectIdString(report.ot_id);
-      if (!latestByWorkOrder.has(workOrderId)) {
-        latestByWorkOrder.set(workOrderId, report);
-      }
-    }
-
-    const workOrderIds = Array.from(latestByWorkOrder.keys())
-      .filter((id) => Types.ObjectId.isValid(id))
-      .map((id) => new Types.ObjectId(id));
-
-    const workOrders = await this.workOrderModel
-      .find(
-        {
-          _id: { $in: workOrderIds },
-          type_maintenance: { $regex: /corrective/i },
-        },
-        { _id: 1, ot_id: 1, technician_id: 1, machine_id: 1 },
-      )
-      .lean()
-      .exec();
-
-    const workOrderMap = new Map<string, (typeof workOrders)[number]>();
-    for (const row of workOrders) {
-      workOrderMap.set(this.objectIdString(row._id), row);
-    }
-
-    let notifications = 0;
-
-    for (const [workOrderId, report] of latestByWorkOrder.entries()) {
-      const row = workOrderMap.get(workOrderId);
-      if (!row) continue;
-
-      const state = String(report.validation_responsable || '').toLowerCase();
-      const otLabel = row.ot_id || workOrderId;
-
-      if (state === 'waiting_validation' || state === 'request_correction') {
-        const recipient =
-          this.objectIdString(report.technician_id) ||
-          this.objectIdString(row.technician_id) ||
-          'technician_team';
-        if (
-          this.emitNotification(
-            `corrective_waiting:${workOrderId}:${state}`,
-            `Corrective report for ${otLabel} requires technician action (${state})`,
-            {
-              recipient,
-              workOrderId,
-              reportId: this.objectIdString(report._id),
-              state,
-            },
-            60,
-          )
-        ) {
-          notifications += 1;
-        }
-      }
-
-      if (state === 'validated' || state === 'rejected') {
-        const recipient =
-          this.objectIdString(row.technician_id) || 'operator_team';
-        if (
-          this.emitNotification(
-            `corrective_feedback:${workOrderId}:${state}`,
-            `Corrective report for ${otLabel} was ${state}`,
-            {
-              recipient,
-              workOrderId,
-              reportId: this.objectIdString(report._id),
-              state,
-            },
-            60,
-          )
-        ) {
-          notifications += 1;
-        }
-      }
-    }
-
-    return {
-      processed: notifications,
-      details: {
-        scannedReports: reports.length,
-        scannedWorkOrders: workOrders.length,
-      },
     };
   }
 
@@ -510,19 +415,14 @@ export class AutomationSchedulerService {
 
       if (stock.quantite_en_stock <= threshold) {
         const stockId = this.objectIdString(stock._id) || stock.stock_id;
-        if (
-          this.emitNotification(
-            `stock_alert:${stockId}:${stock.quantite_en_stock}`,
-            `Stock alert for ${stock.stock_id}: quantity ${stock.quantite_en_stock} <= threshold ${threshold}`,
-            {
-              stockId,
-              partId: this.objectIdString(stock.part_id),
-              quantity: stock.quantite_en_stock,
-              threshold,
-            },
-            60,
-          )
-        ) {
+        const created = await this.notificationCenterService.createIfNotExists({
+          dedupeKey: `stock_alert:${stockId}:${stock.quantite_en_stock}`,
+          type: NotificationType.STOCK_ALERT,
+          title: `Stock alert for ${stock.stock_id}: quantity ${stock.quantite_en_stock} <= threshold ${threshold}`,
+          referenceId: this.objectIdString(stock.part_id) || undefined,
+          recipientRole: Role.ADMIN,
+        });
+        if (created) {
           alerts += 1;
         }
       }
@@ -603,23 +503,18 @@ export class AutomationSchedulerService {
       }
 
       const stage = dueDays < 0 ? 'overdue' : `due_in_${dueDays}_days`;
-      const key = `lubrication:${moduleId}:${stage}:${this.startOfDay(nextDue).toISOString()}`;
+      const dedupeKey = `lubrication:${moduleId}:${stage}:${this.startOfDay(nextDue).toISOString()}`;
 
-      if (
-        this.emitNotification(
-          key,
-          `Lubrication reminder for module ${moduleEntity?.module_id || moduleId} (${stage})`,
-          {
-            moduleId,
-            machineId: moduleEntity
-              ? this.objectIdString(moduleEntity.machine_id)
-              : '',
-            nextDue,
-            stage,
-          },
-          24 * 60,
-        )
-      ) {
+      const created = await this.notificationCenterService.createIfNotExists({
+        dedupeKey,
+        type: NotificationType.LUBRICATION_DUE,
+        title: `Lubrication reminder for module ${moduleEntity?.module_id || moduleId} (${stage})`,
+        machineId: moduleEntity
+          ? this.objectIdString(moduleEntity.machine_id) || undefined
+          : undefined,
+        recipientRole: Role.ADMIN,
+      });
+      if (created) {
         reminders += 1;
       }
     }
@@ -703,21 +598,15 @@ export class AutomationSchedulerService {
         continue;
       }
 
-      const key = `sensor:${sensorId}:${level}:${this.startOfDay(new Date(mesure.timestamp)).toISOString()}`;
-      if (
-        this.emitNotification(
-          key,
-          `Sensor ${capteur.capteur_id} ${level} threshold exceeded (value=${value})`,
-          {
-            capteurId: sensorId,
-            moduleId: this.objectIdString(capteur.module_id),
-            level,
-            value,
-            timestamp: mesure.timestamp,
-          },
-          level === 'critical' ? 10 : 20,
-        )
-      ) {
+      const dedupeKey = `sensor:${sensorId}:${level}:${this.startOfDay(new Date(mesure.timestamp)).toISOString()}`;
+      const created = await this.notificationCenterService.createIfNotExists({
+        dedupeKey,
+        type: NotificationType.SENSOR_ALERT,
+        title: `Sensor ${capteur.capteur_id} ${level} threshold exceeded (value=${value})`,
+        referenceId: this.objectIdString(capteur.module_id) || undefined,
+        recipientRole: Role.ADMIN,
+      });
+      if (created) {
         alerts += 1;
       }
     }
@@ -778,18 +667,15 @@ export class AutomationSchedulerService {
     let notifications = 0;
 
     for (const group of duplicateGroups) {
-      const key = `duplicate:${JSON.stringify(group._id)}`;
-      if (
-        this.emitNotification(
-          key,
-          'Duplicate work order pattern detected',
-          {
-            group: group._id,
-            count: group.count,
-          },
-          12 * 60,
-        )
-      ) {
+      const dedupeKey = `duplicate:${JSON.stringify(group._id)}`;
+      const created = await this.notificationCenterService.createIfNotExists({
+        dedupeKey,
+        type: NotificationType.DUPLICATE_WORK_ORDER,
+        title: `Duplicate work order pattern detected (${group.count} matches)`,
+        machineId: this.objectIdString(group._id?.machine_id) || undefined,
+        recipientRole: Role.ADMIN,
+      });
+      if (created) {
         notifications += 1;
       }
     }
@@ -838,36 +724,19 @@ export class AutomationSchedulerService {
     };
   }
 
-  private emitNotification(
-    key: string,
-    message: string,
-    payload: Record<string, unknown>,
-    cooldownMinutes: number,
-  ): boolean {
-    const now = Date.now();
-    const cooldownMs = cooldownMinutes * 60 * 1000;
-    const lastSentAt = this.notificationCooldown.get(key);
-
-    if (typeof lastSentAt === 'number' && now - lastSentAt < cooldownMs) {
-      return false;
+  /**
+   * Resolves who a scheduler-detected event should notify: a concrete user
+   * when one can be identified (e.g. the work order's assigned technician),
+   * falling back to a broadcast to every Admin when no specific individual
+   * is resolvable (e.g. stock/sensor alerts with no assignee).
+   */
+  private resolveRecipient(
+    candidateUserId: string,
+  ): { recipientUserId?: string; recipientRole?: Role } {
+    if (candidateUserId && Types.ObjectId.isValid(candidateUserId)) {
+      return { recipientUserId: candidateUserId };
     }
-
-    this.notificationCooldown.set(key, now);
-    this.logger.warn(`NOTIFICATION: ${message} ${JSON.stringify(payload)}`);
-
-    if (this.notificationCooldown.size > 10000) {
-      this.cleanupNotificationCache(now);
-    }
-
-    return true;
-  }
-
-  private cleanupNotificationCache(now: number) {
-    for (const [key, value] of this.notificationCooldown.entries()) {
-      if (now - value > 48 * 60 * 60 * 1000) {
-        this.notificationCooldown.delete(key);
-      }
-    }
+    return { recipientRole: Role.ADMIN };
   }
 
   private startOfDay(value: Date) {

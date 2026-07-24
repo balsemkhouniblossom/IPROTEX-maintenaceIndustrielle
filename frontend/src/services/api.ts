@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { normalizeApiItems, readPaginationMeta } from './pagination';
-import { clearAuthSession, getAuthItem, updateStoredTokens } from './authStorage';
+import { clearAuthSession, getAuthItem, updateStoredTokens, updateStoredUser } from './authStorage';
+import { getLoginRedirectForAuthFailure, getStableAuthFailureCode } from './authErrors';
+import { parseLocalLoginSession } from './localLogin';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -15,6 +17,7 @@ if (typeof window === 'undefined') {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -64,20 +67,26 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
     const requestUrl = String(error.config?.url || '');
-    const isAuthEndpoint = /\/auth\/(login|register|forgot-password|reset-password)/.test(requestUrl);
+    const isAuthEndpoint = /\/auth\/(login|register|forgot-password|reset-password|refresh)/.test(requestUrl);
     const isExpectedAuthFailure = status === 401 && isAuthEndpoint;
 
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
-    const refreshToken = getAuthItem('refresh_token');
-
-    if (status === 401 && !isAuthEndpoint && refreshToken && !originalRequest?._retry) {
+    if (status === 401 && !isAuthEndpoint && !originalRequest?._retry) {
       originalRequest._retry = true;
       refreshRequest ??= axios
-        .post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken })
+        .post(
+          `${API_BASE_URL}/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+            headers: getCsrfHeaders(),
+          },
+        )
         .then((response) => {
-          const nextToken = response.data.access_token ?? response.data.token;
-          updateStoredTokens(nextToken, response.data.refresh_token);
-          return nextToken;
+          const session = parseLocalLoginSession(response.data);
+          updateStoredTokens(session.authToken);
+          updateStoredUser(session.user);
+          return session.authToken;
         })
         .finally(() => {
           refreshRequest = null;
@@ -87,23 +96,29 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${nextToken}`;
         return api(originalRequest);
       }).catch((refreshError) => {
+        const code = getStableAuthFailureCode(refreshError);
         clearAuthSession();
         if (typeof window !== 'undefined') {
           const locale = window.location.pathname.split('/')[1] || 'en';
-          window.location.href = `/${locale}/auth/login`;
+          window.location.href = getLoginRedirectForAuthFailure(locale, code);
         }
         return Promise.reject(refreshError);
       });
     }
 
     if (status === 401 && !isAuthEndpoint) {
+      const code = getStableAuthFailureCode(error);
       clearAuthSession();
       if (typeof window !== 'undefined') {
         const locale = window.location.pathname.split('/')[1] || 'en';
-        window.location.href = `/${locale}/auth/login`;
+        window.location.href = getLoginRedirectForAuthFailure(locale, code);
       }
     }
-    if (!isExpectedAuthFailure) {
+    const suppressErrorLog = Boolean(
+      (error.config as QuietAxiosConfig | undefined)?.suppressErrorLog,
+    );
+
+    if (!isExpectedAuthFailure && !suppressErrorLog) {
       console.error('API Error:', error);
     }
     return Promise.reject(error);
@@ -112,8 +127,32 @@ api.interceptors.response.use(
 
 export default api;
 
+export function getCsrfHeaders(): Record<string, string> {
+  const csrfToken = getCookieValue('csrf_token');
+  return csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+}
+
+function getCookieValue(key: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const entry = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${key}=`));
+  return entry ? decodeURIComponent(entry.slice(key.length + 1)) : null;
+}
+
 type AnyObject = Record<string, unknown>;
-type PaginationParams = { page?: number; limit?: number };
+type QuietAxiosConfig = {
+  params?: AnyObject;
+  suppressErrorLog?: boolean;
+};
+type PaginationParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+};
+type FilterPaginationParams = PaginationParams & Record<string, string | number | undefined>;
 
 function withPagination(params?: PaginationParams) {
   if (!params) return {};
@@ -121,7 +160,16 @@ function withPagination(params?: PaginationParams) {
     params: {
       page: params.page,
       limit: params.limit,
+      search: params.search,
+      approvalStatus: params.approvalStatus,
     },
+  };
+}
+
+function quiet(config: QuietAxiosConfig = {}) {
+  return {
+    ...config,
+    suppressErrorLog: true,
   };
 }
 
@@ -131,6 +179,9 @@ export const apiService = {
   getUsers: (params?: PaginationParams) => api.get('/users', withPagination(params)),
   createUser: (data: AnyObject) => api.post('/users', data),
   updateUser: (id: string, data: AnyObject) => api.patch(`/users/${id}`, data),
+  relinkUserGoogleAuth: (id: string, data: { google_id: string }) =>
+    api.patch(`/users/${id}/google-auth`, data),
+  unlinkUserGoogleAuth: (id: string) => api.delete(`/users/${id}/google-auth`),
   deleteUser: (id: string) => api.delete(`/users/${id}`),
   uploadPhoto(formData: FormData) {
     return api.post('/users/upload-photo', formData, {
@@ -179,7 +230,15 @@ export const apiService = {
   getMaintenancePlans: (params?: PaginationParams) => api.get('/maintenance-plans', withPagination(params)),
   createMaintenancePlan: (data: AnyObject) => api.post('/maintenance-plans', data),
   updateMaintenancePlan: (id: string, data: AnyObject) => api.patch(`/maintenance-plans/${id}`, data),
-  deleteMaintenancePlan: (id: string) => api.delete(`/maintenance-plans/${id}`),
+  deleteMaintenancePlan: (id: string, expectedVersion?: number) =>
+    api.delete(`/maintenance-plans/${id}`, {
+      params: expectedVersion !== undefined ? { expected_version: expectedVersion } : undefined,
+    }),
+  transitionMaintenancePlan: (
+    id: string,
+    action: 'activate' | 'pause' | 'resume' | 'archive' | 'complete',
+    reason?: string,
+  ) => api.patch(`/maintenance-plans/${id}/transition`, { action, reason }),
 
   // Catalogues
   getCatalogues: (params?: PaginationParams) => api.get('/catalogues', withPagination(params)),
@@ -192,10 +251,18 @@ export const apiService = {
   createStock: (data: AnyObject) => api.post('/stocks', data),
   updateStock: (id: string, data: AnyObject) => api.patch(`/stocks/${id}`, data),
   deleteStock: (id: string) => api.delete(`/stocks/${id}`),
+  adjustStock: (
+    id: string,
+    data: { delta: number; reason: string; expected_version?: number },
+  ) => api.post(`/stocks/${id}/adjustment`, data),
+  getStockMovements: (id: string, params?: PaginationParams) =>
+    api.get(`/stocks/${id}/movements`, withPagination(params)),
 
   // OT Pieces
   getOtPieces: (params?: PaginationParams) => api.get('/ot-pieces', withPagination(params)),
   createOtPiece: (data: AnyObject) => api.post('/ot-pieces', data),
+  requestOperatorParts: (workOrderId: string, data: { part_id: string; quantity: number }) =>
+    api.post(`/operator/work-orders/${workOrderId}/parts-request`, data),
   updateOtPiece: (id: string, data: AnyObject) => api.patch(`/ot-pieces/${id}`, data),
   deleteOtPiece: (id: string) => api.delete(`/ot-pieces/${id}`),
 
@@ -230,6 +297,21 @@ export const apiService = {
   getCalendarNotifications: () => api.get('/work-orders/calendar/notifications'),
   getCalendarEventDetails: (id: string) => api.get(`/work-orders/calendar/event/${id}`),
   completeWorkOrder: (id: string) => api.post(`/work-orders/${id}/complete`),
+  rescheduleWorkOrder: (id: string, data: { new_due_date: string; reason: string }) =>
+    api.patch(`/work-orders/${id}/reschedule`, data),
+
+  // Operator-scoped calendar (personal widgets/notifications/timeline/event
+  // actions, hard-limited server-side to work orders assigned to the
+  // authenticated Operator — never the Admin-only /work-orders/calendar/* routes above)
+  getMyCalendarWidget: () => api.get('/operator/calendar/widget'),
+  getMyCalendarNotifications: () => api.get('/operator/calendar/notifications'),
+  getMyCalendarTimeline: (params?: AnyObject) =>
+    api.get('/operator/calendar/timeline', { params }),
+  getMyCalendarEventDetails: (id: string) => api.get(`/operator/calendar/events/${id}`),
+  startMyCalendarEvent: (id: string) => api.post(`/operator/calendar/events/${id}/start`),
+  completeMyCalendarEvent: (id: string) => api.post(`/operator/calendar/events/${id}/complete`),
+  rescheduleMyCalendarEvent: (id: string, data: { new_due_date: string; reason: string }) =>
+    api.patch(`/operator/calendar/events/${id}/reschedule`, data),
   validateWorkOrder: (
     id: string,
     data: { action: 'approve' | 'reject' | 'request_correction'; technician_id?: string },
@@ -241,12 +323,44 @@ export const apiService = {
   updateWorkOrder: (id: string, data: AnyObject) => api.patch(`/work-orders/${id}`, data),
   deleteWorkOrder: (id: string) => api.delete(`/work-orders/${id}`),
   getWorkOrderStatistics: () => api.get('/work-orders/statistics'),
+  getTechnicianDashboard: () => api.get('/technician/dashboard'),
+  getTechnicianWorkOrders: (params?: AnyObject) => api.get('/technician/work-orders', { params }),
+  getTechnicianWorkOrder: (id: string) => api.get(`/technician/work-orders/${id}`),
+  getTechnicianManuals: (params?: AnyObject) => api.get('/technician/manuals', { params }),
+  getTechnicianParts: (params?: AnyObject) => api.get('/technician/parts', { params }),
+  claimTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/claim`),
+  reviewTechnicianWorkOrder: (id: string, action: 'approve' | 'return' | 'intervene') => api.patch(`/technician/work-orders/${id}/review`, { action }),
+  startTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/start`),
+  waitForTechnicianParts: (id: string) => api.patch(`/technician/work-orders/${id}/waiting-parts`),
+  resumeTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/resume`),
+  updateTechnicianReport: (id: string, data: AnyObject) => api.patch(`/technician/work-orders/${id}/report`, data),
+  setTechnicianPartQuantity: (id: string, data: { partId: string; quantity: number }) => api.post(`/technician/work-orders/${id}/parts`, data),
+  closeTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/close`),
 
   // Capteurs (Sensors)
   getCapteurs: (params?: PaginationParams) => api.get('/capteurs', withPagination(params)),
   createCapteur: (data: AnyObject) => api.post('/capteurs', data),
   updateCapteur: (id: string, data: AnyObject) => api.patch(`/capteurs/${id}`, data),
   deleteCapteur: (id: string) => api.delete(`/capteurs/${id}`),
+
+  // Sensor measurements
+  getMesures: (params?: FilterPaginationParams) => api.get('/mesures', { params }),
+  createMesure: (data: AnyObject) => api.post('/mesures', data),
+  updateMesure: (id: string, data: AnyObject) => api.patch(`/mesures/${id}`, data),
+  deleteMesure: (id: string) => api.delete(`/mesures/${id}`),
+
+  // Standard parts assigned to module types
+  getModulePieces: (params?: FilterPaginationParams) => api.get('/module-pieces', { params }),
+  createModulePiece: (data: AnyObject) => api.post('/module-pieces', data),
+  updateModulePiece: (id: string, data: AnyObject) => api.patch(`/module-pieces/${id}`, data),
+  deleteModulePiece: (id: string) => api.delete(`/module-pieces/${id}`),
+
+  // Persistent preventive checklist tasks
+  getPreventiveTasks: (params?: FilterPaginationParams) => api.get('/preventive-tasks', { params }),
+  createPreventiveTask: (data: AnyObject) => api.post('/preventive-tasks', data),
+  updatePreventiveTask: (id: string, data: AnyObject) => api.patch(`/preventive-tasks/${id}`, data),
+  deletePreventiveTask: (id: string) => api.delete(`/preventive-tasks/${id}`),
+  syncPreventiveTasks: () => api.post('/preventive-tasks/sync-plans'),
 
   // Intervention Reports
   getInterventionReports: (params?: PaginationParams) => api.get('/intervention-reports', withPagination(params)),
@@ -289,39 +403,38 @@ export const apiService = {
 
 
   // Get all data for dashboard
-  getDashboardData: async () => {
+  getDashboardData: async (options: { includeUsers?: boolean } = {}) => {
     try {
-      const results = await Promise.allSettled([
-        api.get('/users'),
-        api.get('/machines'),
-        api.get('/machine-types'),
-        api.get('/work-orders'),
-        api.get('/catalogues'),
-        api.get('/module-types'),
-        api.get('/capteurs')
-      ]);
+      const requests = {
+        ...(options.includeUsers ? { users: api.get('/users', quiet()) } : {}),
+        machines: api.get('/machines', quiet()),
+        machineTypes: api.get('/machine-types', quiet()),
+        workOrders: api.get('/work-orders', quiet()),
+        catalogues: api.get('/catalogues', quiet()),
+        moduleTypes: api.get('/module-types', quiet()),
+        capteurs: api.get('/capteurs', quiet()),
+      };
 
-      // Extract successful results, use empty arrays for failed requests
-      const [
-        users,
-        machines,
-        machineTypes,
-        workOrders,
-        catalogues,
-        moduleTypes,
-        capteurs
-      ] = results.map(result =>
-        result.status === 'fulfilled' ? result.value : { data: [] }
+      const entries = await Promise.all(
+        Object.entries(requests).map(async ([key, request]) => {
+          const value = await Promise.resolve(request).then(
+            (response) => response.data,
+            () => [],
+          );
+
+          return [key, value] as const;
+        }),
       );
+      const data = Object.fromEntries(entries);
 
       return {
-        users: users.data,
-        machines: machines.data,
-        machineTypes: machineTypes.data,
-        workOrders: workOrders.data,
-        catalogues: catalogues.data,
-        moduleTypes: moduleTypes.data,
-        capteurs: capteurs.data
+        users: data.users ?? [],
+        machines: data.machines ?? [],
+        machineTypes: data.machineTypes ?? [],
+        workOrders: data.workOrders ?? [],
+        catalogues: data.catalogues ?? [],
+        moduleTypes: data.moduleTypes ?? [],
+        capteurs: data.capteurs ?? [],
       };
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -337,8 +450,40 @@ export const apiService = {
         machineTypeId: params?.machineTypeId,
       },
     }),
+  getOperatorMachineTypes: (params?: PaginationParams) =>
+    api.get('/operator/machine-types', withPagination(params)),
+  getOperatorModules: (params?: PaginationParams) =>
+    api.get('/operator/modules', withPagination(params)),
+  getOperatorMaintenancePlans: (params?: PaginationParams) =>
+    api.get('/operator/maintenance-plans', withPagination(params)),
+  getOperatorLubrifiants: (params?: PaginationParams) =>
+    api.get('/operator/lubrifiants', withPagination(params)),
+  getOperatorKpis: (params?: PaginationParams) =>
+    api.get('/operator/kpis', withPagination(params)),
+  getOperatorCatalogues: (params?: PaginationParams) =>
+    api.get('/operator/catalogues', withPagination(params)),
+  getOperatorStocks: (params?: PaginationParams) =>
+    api.get('/operator/stocks', withPagination(params)),
 
   getMyCalendarEvents: (params?: AnyObject) => api.get('/operator/calendar/my', { params }),
+  getOperatorPreventiveStates: (params: { machineId: string }) =>
+    api.get('/operator/preventive/states', { params }),
+  scheduleOperatorPreventive: (data: { machine_id: string; plan_id: string; scheduled_date: string }) =>
+    api.post('/operator/preventive/schedule', data),
+  createOperatorCorrectiveReport: (data: {
+    machine_id: string;
+    code_panne: string;
+    fault_description?: string;
+    actions: string[];
+    priority?: string;
+  }) => api.post('/operator/report-problem', data),
+  submitOperatorPreventiveMaintenance: (data: {
+    work_order_id: string;
+    tasks_completed: string[];
+    condition: string;
+    comments?: string;
+    lubrication?: { lubrifiant_id: string; quantity: number };
+  }) => api.post('/operator/preventive/submit', data),
 
   async fetchAllFromPaginatedEndpoint<T>(
     request: (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>,
@@ -364,4 +509,20 @@ export const apiService = {
 
     return [...firstItems, ...remainingItems];
   },
+
+  // In-app notifications — one shared, role-scoped surface for
+  // Operator/Technician/Admin; the backend derives identity from the
+  // authenticated request, so every call here only ever returns/affects
+  // notifications visible to the current user.
+  getNotifications: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) =>
+    api.get('/notifications', { params }),
+  getUnreadNotificationCount: () => api.get('/notifications/unread-count'),
+  markNotificationRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllNotificationsRead: () => api.patch('/notifications/read-all'),
+  clearNotification: (id: string) => api.delete(`/notifications/${id}`),
+  clearAllNotifications: () => api.delete('/notifications'),
+
+  // Technician/Admin part-request decision
+  decidePartRequest: (id: string, action: 'approve' | 'reject') =>
+    api.patch(`/work-orders/part-requests/${id}/decision`, { action }),
 };

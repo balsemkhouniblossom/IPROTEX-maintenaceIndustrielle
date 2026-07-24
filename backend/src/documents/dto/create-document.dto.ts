@@ -13,6 +13,14 @@ export class CreateDocumentDto {
   @IsString()
   file_path: string;
 
+  @IsOptional()
+  @IsString()
+  storage_path?: string;
+
+  @IsOptional()
+  @IsString()
+  file_url?: string;
+
   @IsString()
   file_name: string;
 

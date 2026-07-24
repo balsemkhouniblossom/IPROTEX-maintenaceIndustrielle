@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { apiService } from "@/services/api";
+import { displayText } from "@/services/displayValues";
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from "@/services/dynamicSearch";
 import { useTranslations } from "next-intl";
 
@@ -19,14 +20,14 @@ interface LubrificationLog {
 
 function machineLabel(value: LubrificationLog["machine_id"]): string {
   if (!value) return "N/A";
-  if (typeof value === "string") return value;
-  return value.machine_id || value._id || "N/A";
+  if (typeof value === "string") return displayText(value, "N/A");
+  return displayText(value.machine_id, "N/A");
 }
 
 function lubrifiantLabel(value: LubrificationLog["lubrifiant_id"]): string {
   if (!value) return "N/A";
-  if (typeof value === "string") return value;
-  return value.nom || value._id || "N/A";
+  if (typeof value === "string") return displayText(value, "N/A");
+  return displayText(value.nom, "N/A");
 }
 
 export default function LubrificationLogsPage() {
@@ -100,7 +101,7 @@ export default function LubrificationLogsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>Reference</th>
                   <th>Machine</th>
                   <th>Lubrifiant</th>
                   <th>Date</th>
@@ -111,7 +112,7 @@ export default function LubrificationLogsPage() {
               <tbody>
                 {filteredItems.map((item) => (
                   <tr key={item._id}>
-                    <td>{item.log_id || item._id}</td>
+                    <td>{displayText(item.log_id, "N/A")}</td>
                     <td>{machineLabel(item.machine_id)}</td>
                     <td>{lubrifiantLabel(item.lubrifiant_id)}</td>
                     <td>{item.date_application ? new Date(item.date_application).toLocaleString() : "N/A"}</td>

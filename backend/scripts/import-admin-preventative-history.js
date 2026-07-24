@@ -563,6 +563,20 @@ async function main() {
             documentation: normalizeText(row.documentation),
             maintenance_code: normalizeText(row.maintenance),
             frequence_label: normalizeText(row.frequency),
+            // These plans represent equipment already in service, so they
+            // start life Active (not Draft). The preceding deleteMany
+            // means every upsert here is a fresh insert, so there is no
+            // existing lifecycle state to preserve.
+            status: 'active',
+            version: 1,
+            lifecycle_history: [
+              {
+                action: 'created',
+                to_status: 'active',
+                reason: 'Bulk-imported from historical preventative maintenance data',
+                at: new Date(),
+              },
+            ],
           },
         },
         { upsert: true },

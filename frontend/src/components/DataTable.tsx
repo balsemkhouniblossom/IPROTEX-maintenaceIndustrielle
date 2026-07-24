@@ -38,14 +38,14 @@ export function DataTable({ columns, data, onEdit, onDelete, loading = false }: 
   }
 
   return (
-    <div className="overflow-hidden">
+    <div className="min-w-0 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="table">
+        <table className="table responsive-table">
           <thead>
             <tr>
               {columns.map((column) => (
-                <th key={column.key}>
-                  {column.header}
+                <th key={column.key} title={column.header}>
+                  <span className="block max-w-full truncate">{column.header}</span>
                 </th>
               ))}
               {(onEdit || onDelete) && (
@@ -70,15 +70,23 @@ export function DataTable({ columns, data, onEdit, onDelete, loading = false }: 
                 <tr key={index}>
                   {columns.map((column) => (
                     <td key={column.key} className="align-top">
-                      {column.render
-                        ? (column.render(row[column.key], row) as ReactNode)
-                        : String(row[column.key] ?? '-')
-                      }
+                      {column.render ? (
+                        <div className="min-w-0 max-w-full">
+                          {column.render(row[column.key], row) as ReactNode}
+                        </div>
+                      ) : (
+                        <span
+                          className="block max-w-[18rem] truncate"
+                          title={String(row[column.key] ?? '-')}
+                        >
+                          {String(row[column.key] ?? '-')}
+                        </span>
+                      )}
                     </td>
                   ))}
                   {(onEdit || onDelete) && (
-                    <td className="text-end">
-                      <div className="flex justify-end gap-2">
+                    <td className="text-end whitespace-nowrap">
+                      <div className="flex shrink-0 justify-end gap-2">
                         {onEdit && (
                           <button
                             onClick={() => onEdit(row)}

@@ -1,13 +1,20 @@
-const AUTH_KEYS = ['token', 'refresh_token', 'user'] as const;
+const AUTH_KEYS = ['token', 'user'] as const;
 
 export function getAuthItem(key: (typeof AUTH_KEYS)[number]) {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(key) ?? sessionStorage.getItem(key);
 }
 
+export function getAuthSessionPersistence() {
+  if (typeof window === 'undefined') return true;
+  if (localStorage.getItem('token') || localStorage.getItem('user')) return true;
+  if (sessionStorage.getItem('token') || sessionStorage.getItem('user')) return false;
+  return true;
+}
+
 export function saveAuthSession(
   token: string,
-  refreshToken: string | undefined,
+  _refreshToken: string | undefined,
   user: unknown,
   persistent: boolean,
 ) {
@@ -15,16 +22,23 @@ export function saveAuthSession(
   const other = persistent ? sessionStorage : localStorage;
 
   AUTH_KEYS.forEach((key) => other.removeItem(key));
+  other.removeItem('refresh_token');
+  target.removeItem('refresh_token');
   target.setItem('token', token);
   target.setItem('user', JSON.stringify(user));
-  if (refreshToken) target.setItem('refresh_token', refreshToken);
-  else target.removeItem('refresh_token');
 }
 
-export function updateStoredTokens(token: string, refreshToken?: string) {
-  const target = localStorage.getItem('refresh_token') ? localStorage : sessionStorage;
+export function updateStoredTokens(token: string, _refreshToken?: string) {
+  const target = localStorage.getItem('user') ? localStorage : sessionStorage;
   target.setItem('token', token);
-  if (refreshToken) target.setItem('refresh_token', refreshToken);
+  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('refresh_token');
+}
+
+export function updateStoredUser(user: unknown) {
+  if (typeof window === 'undefined') return;
+  const target = localStorage.getItem('user') ? localStorage : sessionStorage;
+  target.setItem('user', JSON.stringify(user));
 }
 
 export function clearAuthSession() {
@@ -33,4 +47,6 @@ export function clearAuthSession() {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
   });
+  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('refresh_token');
 }

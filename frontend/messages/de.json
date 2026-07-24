@@ -38,12 +38,63 @@
     "advancedMaintenance": "Erweiterte Wartungsverwaltung",
     "loginFailed": "Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Anmeldedaten.",
     "networkError": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "sessionRevoked": "Ihre Sitzung ist nicht mehr gültig. Bitte melden Sie sich erneut an.",
+    "sessionRenewFailed": "Die Sitzung konnte nicht erneuert werden. Bitte melden Sie sich erneut an.",
+    "errors": {
+      "invalidCredentials": "E-Mail-Adresse oder Passwort ist ungültig.",
+      "emailNotVerified": "Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden.",
+      "accountPendingApproval": "Ihr Konto wartet auf die Freigabe durch einen Administrator.",
+      "accountRejected": "Ihre Kontoanfrage wurde abgelehnt. Wenden Sie sich an einen Administrator.",
+      "accountInactive": "Ihr Konto ist inaktiv. Wenden Sie sich an einen Administrator.",
+      "accountRoleNotAllowed": "Diese Kontorolle darf sich nicht anmelden.",
+      "authenticationFailed": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "profileCompletionRequired": "Vervollst?ndigen Sie Ihr Profil, bevor Sie auf die Anwendung zugreifen."
+    },
+    "protected": {
+      "loading": "Sitzung wird geprueft...",
+      "redirectingTitle": "Weiterleitung zur Anmeldung...",
+      "redirectingDescription": "Ihre Sitzung konnte nicht bestaetigt werden. Sie werden weitergeleitet.",
+      "accessDeniedTitle": "Zugriff eingeschraenkt",
+      "accessDeniedDescription": "Ihre aktuelle Kontorolle darf diese Seite nicht anzeigen. Weiterleitung..."
+    },
     "orContinueWith": "Oder fortfahren mit",
     "continueWithGoogle": "Mit Google fortfahren",
     "redirectingToGoogle": "Weiterleitung zu Google...",
     "googleSigninCompletingTitle": "Google-Anmeldung wird abgeschlossen",
     "googleSigninCompletingDescription": "Ihre Sitzung wird abgeschlossen und Sie werden jetzt weitergeleitet.",
-    "registrationSuccess": "Registrierung erfolgreich. Bitte melden Sie sich an.",
+    "googleDoNotClose": "Schließen Sie diese Seite nicht, während die Anmeldung abgeschlossen wird.",
+    "googleSignInSuccessful": "Google-Anmeldung erfolgreich",
+    "googleAccountCreatedTitle": "Google-Konto erstellt",
+    "googleAccountCreatedPendingApproval": "Ihr Google-Konto wartet auf die Genehmigung durch einen Administrator. Danach können Sie sich anmelden.",
+    "googlePendingTitle": "Genehmigung ausstehend",
+    "googleAccountPendingApproval": "Ihr Konto wartet noch auf Genehmigung.",
+    "googleRejectedTitle": "Kontoanfrage abgelehnt",
+    "googleAccountRejected": "Ihre Kontoanfrage wurde abgelehnt.",
+    "googleInactiveTitle": "Konto inaktiv",
+    "googleAccountInactive": "Ihr Konto ist inaktiv.",
+    "googleFailedTitle": "Google-Anmeldung fehlgeschlagen",
+    "googleSignInFailed": "Die Google-Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "googleLinkExpiredTitle": "Google-Anmeldelink abgelaufen",
+    "googleLoginLinkExpired": "Dieser Google-Anmeldelink ist ungültig oder abgelaufen. Bitte versuchen Sie es erneut.",
+    "tryGoogleSignInAgain": "Google-Anmeldung erneut versuchen",
+    "googleRoleNotSupported": "Die Kontorolle wird nicht unterstützt.",
+    "registrationSuccess": "Konto erstellt. Prüfen Sie Ihre E-Mail und öffnen Sie den Bestätigungslink, bevor Sie sich anmelden.",
+    "registrationPendingApproval": "Ihr Konto wurde erfolgreich erstellt. Bitte bestätigen Sie Ihre E-Mail. Danach muss ein Administrator das Konto genehmigen, bevor Sie sich anmelden können.",
+    "emailAlreadyRegistered": "Diese E-Mail-Adresse ist bereits registriert.",
+    "publicRoleNotAllowed": "Diese Rolle ist nicht für die öffentliche Registrierung verfügbar.",
+    "emailVerified": "Ihre E-Mail-Adresse wurde bestätigt. Sie können sich jetzt anmelden.",
+    "emailAlreadyVerified": "Ihre E-Mail-Adresse wurde bereits bestätigt.",
+    "emailVerifiedPendingApproval": "Ihre E-Mail-Adresse wurde bestätigt. Ihr Konto wartet noch auf die Genehmigung durch einen Administrator. Danach können Sie sich anmelden.",
+    "emailVerifiedAccountRejected": "Ihre E-Mail-Adresse wurde bestätigt, aber die Kontoanfrage wurde abgelehnt.",
+    "waitingForAdminApproval": "Wartet auf die Genehmigung durch einen Administrator.",
+    "emailVerificationFailed": "Dieser Bestätigungslink ist ungültig oder abgelaufen. Bitte wenden Sie sich an den Support.",
+    "invalidOrExpiredVerificationLink": "Dieser Bestätigungslink ist ungültig oder abgelaufen.",
+    "youMayCloseThisPage": "Sie können diese Seite schließen.",
+    "returnToLogin": "Zurück zur Anmeldung",
+    "emailNotVerified": "Bitte bestätigen Sie Ihre E-Mail-Adresse, bevor Sie sich anmelden.",
+    "verifyingEmail": "E-Mail-Adresse wird bestätigt",
+    "verificationPleaseWait": "Bitte warten Sie, während wir Ihr Konto aktivieren.",
     "registrationFailed": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein.",
     "passwordMinLength": "Das Passwort muss mindestens 6 Zeichen lang sein.",
@@ -66,7 +117,15 @@
     "resetPasswordTitle": "Passwort zurücksetzen",
     "resetPasswordDescription": "Legen Sie ein neues Passwort fest, um fortzufahren.",
     "resetPassword": "Passwort zurücksetzen",
-    "sending": "Senden..."
+    "sending": "Senden...",
+    "completeProfileTitle": "Profil vervollst?ndigen",
+    "completeProfileDescription": "Schlie?en Sie Ihre Google-Kontoanfrage ab. Ihr Konto bleibt ausstehend, bis ein Administrator es genehmigt.",
+    "completeProfileSubmit": "Zur Genehmigung senden",
+    "completeProfileSaving": "Speichern...",
+    "completeProfileSaveFailed": "Das Profil konnte nicht gespeichert werden.",
+    "completeProfilePosition": "Position",
+    "completeProfileLanguage": "Sprache",
+    "completeProfileRequestedRole": "Angeforderte Rolle"
   },
   "dashboard": {
     "status": {
@@ -312,6 +371,40 @@
       "urgent": "Dringend",
       "overdue": "Überfällig",
       "scheduled": "Geplant",
+      "lifecycle": {
+        "notScheduled": "Noch nicht geplant",
+        "scheduled": "Geplant",
+        "upcoming": "Bevorstehend",
+        "dueSoon": "Bald fällig",
+        "dueToday": "Heute fällig",
+        "overdue": "Überfällig",
+        "inProgress": "In Bearbeitung",
+        "waitingValidation": "Wartet auf Validierung",
+        "returned": "Zurückgegeben",
+        "completed": "Abgeschlossen",
+        "setFirstInterventionDate": "Erstes Interventionsdatum festlegen",
+        "performToday": "Heute ausführen",
+        "actualExecutionDate": "Tatsächliches Ausführungsdatum",
+        "lastCompleted": "Zuletzt abgeschlossen",
+        "nextDue": "Nächste Fälligkeit",
+        "preventivePlan": "Präventivplan",
+        "scheduledOccurrences": "Geplante Vorkommen",
+        "noDueDate": "Kein Fälligkeitsdatum",
+        "technicianValidationRequired": "Technikervalidierung erforderlich",
+        "nextOccurrenceCreated": "Nächstes Vorkommen erstellt",
+        "taskAlreadySubmitted": "Diese Intervention wurde bereits übermittelt.",
+        "reschedule": "Neu planen",
+        "reschedulingReason": "Grund der Neuplanung",
+        "newDueDate": "Neues Fälligkeitsdatum",
+        "originalDueDate": "Ursprüngliches Fälligkeitsdatum",
+        "rescheduledBy": "Neu geplant von",
+        "rescheduledAt": "Neu geplant am",
+        "scheduleCreated": "Erstes Interventionsdatum wurde geplant.",
+        "rescheduleSuccess": "Das Vorkommen wurde neu geplant.",
+        "alreadyScheduled": "Diese Aufgabe ist bereits geplant.",
+        "duplicateOccurrence": "Ein doppeltes Vorkommen existiert bereits.",
+        "invalidPlanForMachine": "Dieser Wartungsplan gilt nicht für die ausgewählte Maschine."
+      },
       "reportProblem": "Problem melden",
       "preventiveMaintenance": "Präventive Wartung",
       "correctiveMaintenance": "Korrektive Wartung",
@@ -405,6 +498,8 @@
         "requestCorrection": "Korrektur anfordern",
         "start": "Starten",
         "complete": "Abschliessen",
+        "startSuccess": "Arbeit erfolgreich gestartet",
+        "completeSuccess": "Arbeit als abgeschlossen markiert und zur Validierung gesendet",
         "generateReportAction": "Bericht erzeugen",
         "openManualAction": "Handbuch oeffnen",
         "type": "Typ",
@@ -416,13 +511,14 @@
         "descriptionLabel": "Beschreibung",
         "noItem": "Kein Eintrag",
         "operatorFlowNote": "Der Operator-Ablauf ist voll automatisiert: auswaehlen, pruefen, abschliessen. Planung, Berichtserzeugung, Erinnerungen und naechste Faelligkeit laufen automatisch."
-      }
+      },
+      "module": "Modul"
     },
     "technician": {
       "title": "Techniker-Dashboard",
       "welcome": "Willkommen zurück, {name}!",
       "description": "Hier ist Ihre heutige technische Wartungsübersicht.",
-        "smartMaintenanceCalendar": "Intelligenter Wartungskalender",
+      "smartMaintenanceCalendar": "Intelligenter Wartungskalender",
       "stats": {
         "activeWorkOrders": "Aktive Arbeitsaufträge",
         "currentlyAssigned": "Derzeit zugewiesen",
@@ -539,7 +635,8 @@
       "category": "Kategorie",
       "stock": "Bestand",
       "unitPrice": "Stückpreis",
-      "actions": "Aktionen"
+      "actions": "Aktionen",
+      "partCode": "Teilecode"
     },
     "form": {
       "partId": "Teilenummer",
@@ -550,12 +647,14 @@
       "unitPrice": "Einzelpreis",
       "location": "Standort",
       "stockQuantity": "Lagerbestand",
-      "minimumStock": "Mindestbestand"
+      "minimumStock": "Mindestbestand",
+      "partCode": "Teilecode"
     },
     "validation": {
       "partIdRequired": "Teile-ID ist erforderlich",
       "partNameRequired": "Teilename ist erforderlich",
-      "manufacturerRefRequired": "Herstellerreferenz ist erforderlich"
+      "manufacturerRefRequired": "Herstellerreferenz ist erforderlich",
+      "partCodeRequired": "Teilecode ist erforderlich"
     },
     "placeholders": {
       "enterPartId": "Teile-ID eingeben",
@@ -563,7 +662,8 @@
       "enterManufacturerRef": "Herstellerreferenz eingeben",
       "enterManufacturer": "Hersteller eingeben",
       "enterCategory": "Kategorie eingeben",
-      "enterLocation": "Standort eingeben"
+      "enterLocation": "Standort eingeben",
+      "enterPartCode": "Teilecode eingeben"
     },
     "empty": {
       "search": "Keine Teile gefunden, die Ihrer Suche entsprechen.",
@@ -696,7 +796,8 @@
       "samplingFrequency": "Abtastfrequenz",
       "firmwareVersion": "Firmware-Version",
       "lastSeen": "Zuletzt gesehen",
-      "status": "Status"
+      "status": "Status",
+      "sensorReference": "Sensorreferenz"
     },
     "empty": {
       "search": "Keine Sensoren entsprechen Ihrer Suche.",
@@ -718,7 +819,9 @@
       "samplingFrequency": "Abtastfrequenz",
       "lastSeen": "Zuletzt gesehen",
       "firmwareVersion": "Firmware-Version",
-      "active": "Aktiv"
+      "active": "Aktiv",
+      "sensorReference": "Sensorreferenz",
+      "module": "Modul"
     },
     "placeholders": {
       "sensorId": "Sensor-ID eingeben",
@@ -730,7 +833,8 @@
       "warningThreshold": "Warnschwelle eingeben",
       "criticalThreshold": "Kritische Schwelle eingeben",
       "samplingFrequency": "Abtastfrequenz eingeben",
-      "firmwareVersion": "Firmware-Version eingeben"
+      "firmwareVersion": "Firmware-Version eingeben",
+      "sensorReference": "Sensorreferenz eingeben"
     },
     "button": {
       "create": "Erstellen",
@@ -747,7 +851,9 @@
       "capteurIdRequired": "Sensor-ID ist erforderlich",
       "moduleIdRequired": "Modul-ID ist erforderlich",
       "codeRequired": "Sensorcode ist erforderlich",
-      "typeRequired": "Sensortyp ist erforderlich"
+      "typeRequired": "Sensortyp ist erforderlich",
+      "sensorReferenceRequired": "Sensorreferenz ist erforderlich",
+      "moduleRequired": "Modul ist erforderlich"
     }
   },
   "dashboardHome": {
@@ -901,7 +1007,8 @@
       "priority": "Priorität",
       "created": "Erstellt am",
       "startDate": "Startdatum",
-      "endDate": "Enddatum"
+      "endDate": "Enddatum",
+      "reference": "Arbeitsauftragsreferenz"
     },
     "empty": {
       "search": "Keine Arbeitsaufträge entsprechen Ihrer Suche",
@@ -920,7 +1027,8 @@
       "status": "Status",
       "estimatedDuration": "Geschätzte Dauer (Stunden)",
       "startDate": "Startdatum",
-      "endDate": "Enddatum"
+      "endDate": "Enddatum",
+      "reference": "Arbeitsauftragsreferenz"
     },
     "priority": {
       "low": "Niedrig",
@@ -948,7 +1056,8 @@
     "validation": {
       "workOrderIdRequired": "OT-Nummer ist erforderlich",
       "machineRequired": "Maschinenauswahl ist erforderlich",
-      "technicianRequired": "Technikerzuweisung ist erforderlich"
+      "technicianRequired": "Technikerzuweisung ist erforderlich",
+      "referenceRequired": "Arbeitsauftragsreferenz ist erforderlich"
     },
     "notifications": {
       "confirmDelete": "Sind Sie sicher, dass Sie diesen Benutzer löschen möchten?",
@@ -957,6 +1066,18 @@
       "updated": "Arbeitsauftrag erfolgreich aktualisiert",
       "created": "Arbeitsauftrag erfolgreich erstellt",
       "saveFailed": "Fehler beim Speichern des Arbeitsauftrags"
+    },
+    "sort": {
+      "priorityHighToLow": "Priorit?t absteigend sortieren",
+      "priorityLowToHigh": "Priorit?t aufsteigend sortieren",
+      "statusAToZ": "Status von A bis Z sortieren",
+      "statusZToA": "Status von Z bis A sortieren",
+      "createdNewestToOldest": "Erstellungsdatum von neu nach alt sortieren",
+      "createdOldestToNewest": "Erstellungsdatum von alt nach neu sortieren",
+      "startNewestToOldest": "Startdatum von neu nach alt sortieren",
+      "startOldestToNewest": "Startdatum von alt nach neu sortieren",
+      "endNewestToOldest": "Enddatum von neu nach alt sortieren",
+      "endOldestToNewest": "Enddatum von alt nach neu sortieren"
     }
   },
   "users": {
@@ -967,6 +1088,104 @@
     "allUsers": "Alle Benutzer",
     "placeholder": "Dies ist ein Platzhaltertext",
     "searchPlaceholder": "Benutzer suchen...",
+    "approvals": {
+      "tabs": {
+        "pending": "Ausstehend",
+        "approved": "Genehmigt",
+        "rejected": "Abgelehnt",
+        "all": "Alle Benutzer"
+      },
+      "descriptions": {
+        "pending": "Kontoanfragen von Bedienern und Technikern prüfen.",
+        "approved": "Genehmigte Konten mit Systemzugriff.",
+        "rejected": "Abgelehnte Anfragen und Gründe.",
+        "all": "Alle Konten mit Genehmigungsstatus."
+      },
+      "pendingCount": "Ausstehende Kontoanfragen",
+      "loading": "Kontoanfragen werden geladen...",
+      "retry": "Erneut versuchen",
+      "accessDenied": "Zugriff verweigert",
+      "accessDeniedDescription": "Nur aktive, verifizierte und genehmigte Administratoren können Genehmigungen verwalten.",
+      "emailVerification": "E-Mail-Verifizierung",
+      "approvalStatus": "Genehmigungsstatus",
+      "requestDate": "Anfragedatum",
+      "approvalDate": "Genehmigungsdatum",
+      "rejectionDate": "Ablehnungsdatum",
+      "rejectionReason": "Ablehnungsgrund",
+      "emailVerified": "E-Mail verifiziert",
+      "emailNotVerified": "E-Mail nicht verifiziert",
+      "mustVerifyBeforeApproval": "Dieser Benutzer muss die E-Mail vor der Genehmigung verifizieren.",
+      "unknownRole": "Unbekannte Rolle",
+      "userAvatar": "Benutzeravatar",
+      "viewRejectionReason": "Ablehnungsgrund anzeigen",
+      "status": {
+        "pending": "Wartet auf Genehmigung",
+        "approved": "Genehmigt",
+        "rejected": "Abgelehnt",
+        "legacy": "Legacy-Konto"
+      },
+      "filters": {
+        "search": "Benutzer suchen",
+        "role": "Rolle",
+        "allRoles": "Alle Rollen",
+        "verification": "E-Mail-Verifizierung",
+        "allVerification": "Alle Zustände",
+        "sort": "Sortierung",
+        "oldest": "Älteste zuerst",
+        "newest": "Neueste zuerst",
+        "pageSize": "Seitengröße"
+      },
+      "actions": {
+        "approve": "Genehmigen",
+        "reject": "Ablehnen",
+        "approveAccount": "Konto genehmigen",
+        "rejectAccount": "Konto ablehnen",
+        "confirmApprove": "Genehmigung bestätigen",
+        "confirmReject": "Ablehnung bestätigen",
+        "cancel": "Abbrechen",
+        "processing": "Wird verarbeitet..."
+      },
+      "dialog": {
+        "approveTitle": "Konto genehmigen",
+        "rejectTitle": "Konto ablehnen",
+        "approveQuestion": "Dieses Konto genehmigen?",
+        "approveDescription": "Der Benutzer kann sich nach der Genehmigung anmelden."
+      },
+      "validation": {
+        "reasonRequired": "Grund ist erforderlich.",
+        "reasonMax": "Maximal 500 Zeichen."
+      },
+      "messages": {
+        "approved": "Konto erfolgreich genehmigt.",
+        "rejected": "Konto erfolgreich abgelehnt.",
+        "alreadyApproved": "Konto ist bereits genehmigt.",
+        "rejectionUpdated": "Ablehnung aktualisiert."
+      },
+      "empty": {
+        "pending": "Keine ausstehenden Kontoanfragen.",
+        "pendingDescription": "Derzeit warten keine Konten auf Administratorgenehmigung.",
+        "approved": "Keine genehmigten Konten gefunden.",
+        "rejected": "Keine abgelehnten Konten gefunden.",
+        "all": "Keine Benutzer verfügbar.",
+        "search": "Keine Benutzer entsprechen Ihrer Suche."
+      },
+      "errors": {
+        "ADMIN_ACCESS_REQUIRED": "Administratorzugriff erforderlich.",
+        "AUTHENTICATED_USER_NOT_FOUND": "Ihre Sitzung ist nicht mehr gültig.",
+        "ACCOUNT_INACTIVE": "Ihr Administratorkonto ist inaktiv.",
+        "EMAIL_NOT_VERIFIED": "Ihre Administrator-E-Mail muss verifiziert werden.",
+        "ACCOUNT_PENDING_APPROVAL": "Ihr Administratorkonto wartet auf Genehmigung.",
+        "ACCOUNT_REJECTED": "Ihr Administratorkonto wurde abgelehnt.",
+        "INVALID_USER_IDENTIFIER": "Das ausgewählte Konto ist ungültig.",
+        "USER_NOT_FOUND": "Das ausgewählte Konto existiert nicht mehr.",
+        "EMAIL_VERIFICATION_REQUIRED_BEFORE_APPROVAL": "E-Mail muss vor der Genehmigung verifiziert werden.",
+        "CANNOT_REJECT_SELF": "Sie können Ihr eigenes Administratorkonto nicht ablehnen.",
+        "ADMIN_ACCOUNT_REQUIRES_SEPARATE_MANAGEMENT": "Administratorkonten benötigen separate Verwaltung.",
+        "INVALID_APPROVAL_TRANSITION": "Der Kontostatus hat sich geändert. Die Liste wurde aktualisiert.",
+        "ACCOUNT_ALREADY_APPROVED": "Konto ist bereits genehmigt.",
+        "generic": "Genehmigungen konnten nicht geladen werden."
+      }
+    },
     "subtitle": "Systembenutzer verwalten",
     "table": {
       "photo": "Foto",
@@ -981,7 +1200,9 @@
       "createdAt": "Erstellt am",
       "loginHistory": "Anmeldeverlauf",
       "lastLogin": "Letzte Anmeldung",
-      "actions": "Aktionen"
+      "actions": "Aktionen",
+      "userCode": "Benutzercode",
+      "customDepartment": "Benutzerdefinierte Abteilung"
     },
     "empty": {
       "search": "Keine Benutzer gefunden, die Ihrer Suche entsprechen.",
@@ -1011,9 +1232,11 @@
       "fullName": "Vollständiger Name",
       "phone": "Telefon",
       "department": "Abteilung",
+      "customDepartment": "Benutzerdefinierte Abteilung",
       "role": "Rolle",
       "status": "Status",
-      "clickAvatar": "Klicken Sie auf den Avatar"
+      "clickAvatar": "Klicken Sie auf den Avatar",
+      "userCode": "Benutzercode"
     },
     "options": {
       "admin": "Administrator",
@@ -1278,6 +1501,8 @@
       "machineTypes": "Maschinentypen",
       "sensors": "Sensoren",
       "capteurs": "Sensoren",
+      "mesures": "Sensormessungen",
+      "modulePieces": "Modulteile",
       "maintenancePlans": "Wartungspläne",
       "smartMaintenanceCalendar": "Intelligenter Wartungskalender",
       "preventiveTaskChecklist": "Checkliste für vorbeugende Aufgaben",
@@ -1323,7 +1548,8 @@
       "actions": "Aktionen",
       "manufacturer": "Hersteller",
       "model": "Modell",
-      "location": "Standort"
+      "location": "Standort",
+      "machineCode": "Maschinencode"
     },
     "empty": {
       "search": "Keine Maschinen gefunden, die Ihrer Suche entsprechen.",
@@ -1343,7 +1569,8 @@
       "installationDate": "Installationsdatum",
       "weight": "Gewicht (kg)",
       "location": "Standort",
-      "selectType": "Typ auswählen"
+      "selectType": "Typ auswählen",
+      "machineCode": "Maschinencode"
     },
     "options": {
       "operational": "Betriebsbereit",
@@ -1377,7 +1604,8 @@
       "manufacturerRequired": "Hersteller ist erforderlich",
       "modelRequired": "Modell ist erforderlich",
       "installationRequired": "Installationsdatum ist erforderlich",
-      "confirmDelete": "Möchten Sie diese Maschine wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      "confirmDelete": "Möchten Sie diese Maschine wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "machineCodeRequired": "Maschinencode ist erforderlich"
     },
     "button": {
       "cancel": "Abbrechen",
@@ -1399,7 +1627,8 @@
       "technician": "Techniker",
       "startDate": "Startdatum",
       "endDate": "Enddatum",
-      "finalState": "Endzustand"
+      "finalState": "Endzustand",
+      "reportReference": "Berichtsreferenz"
     },
     "empty": {
       "search": "Keine Berichte entsprechen Ihrer Suche.",
@@ -1418,7 +1647,8 @@
       "rootCause": "Grundursache",
       "actionDescription": "Aktionsbeschreibung",
       "finalState": "Endzustand",
-      "responsibleValidation": "Verantwortliche Validierung"
+      "responsibleValidation": "Verantwortliche Validierung",
+      "reportReference": "Berichtsreferenz"
     },
     "placeholders": {
       "selectWorkOrder": "Arbeitsauftrag auswaehlen",
@@ -1442,7 +1672,8 @@
       "workOrderRequired": "Arbeitsauftrag ist erforderlich",
       "technicianRequired": "Techniker ist erforderlich",
       "startDateRequired": "Startdatum ist erforderlich",
-      "endDateRequired": "Enddatum ist erforderlich"
+      "endDateRequired": "Enddatum ist erforderlich",
+      "reportReferenceRequired": "Berichtsreferenz ist erforderlich"
     }
   },
   "pannes": {
@@ -1461,7 +1692,8 @@
       "panneId": "Stoerungs-ID",
       "code": "Code",
       "description": "Beschreibung",
-      "severity": "Schweregrad"
+      "severity": "Schweregrad",
+      "faultReference": "St?rungsreferenz"
     },
     "empty": {
       "default": "Keine Stoerungen gefunden",
@@ -1475,7 +1707,8 @@
       "panneId": "Stoerungs-ID",
       "code": "Stoerungscode",
       "description": "Beschreibung",
-      "severity": "Schweregrad (optional)"
+      "severity": "Schweregrad (optional)",
+      "faultReference": "St?rungsreferenz"
     },
     "notifications": {
       "panneIdRequired": "Stoerungs-ID ist erforderlich",
@@ -1486,7 +1719,8 @@
       "updated": "Stoerung erfolgreich aktualisiert",
       "deleted": "Stoerung erfolgreich geloescht",
       "saveFailed": "Speichern der Stoerung fehlgeschlagen",
-      "deleteFailed": "Loeschen der Stoerung fehlgeschlagen"
+      "deleteFailed": "Loeschen der Stoerung fehlgeschlagen",
+      "faultReferenceRequired": "St?rungsreferenz ist erforderlich"
     }
   },
   "panneSolutions": {
@@ -1505,7 +1739,8 @@
       "solutionId": "Loesungs-ID",
       "panne": "Stoerung",
       "cause": "Wahrscheinliche Ursache",
-      "solution": "Empfohlene Loesung"
+      "solution": "Empfohlene Loesung",
+      "solutionReference": "L?sungsreferenz"
     },
     "empty": {
       "default": "Keine Stoerungsloesungen gefunden",
@@ -1520,7 +1755,8 @@
       "panne": "Stoerung",
       "selectPanne": "Stoerung auswaehlen",
       "cause": "Wahrscheinliche Ursache (optional)",
-      "solution": "Empfohlene Loesung (optional)"
+      "solution": "Empfohlene Loesung (optional)",
+      "solutionReference": "L?sungsreferenz"
     },
     "notifications": {
       "solutionIdRequired": "Loesungs-ID ist erforderlich",
@@ -1530,7 +1766,8 @@
       "updated": "Stoerungsloesung erfolgreich aktualisiert",
       "deleted": "Stoerungsloesung erfolgreich geloescht",
       "saveFailed": "Speichern der Stoerungsloesung fehlgeschlagen",
-      "deleteFailed": "Loeschen der Stoerungsloesung fehlgeschlagen"
+      "deleteFailed": "Loeschen der Stoerungsloesung fehlgeschlagen",
+      "solutionReferenceRequired": "L?sungsreferenz ist erforderlich"
     }
   },
   "documents": {
@@ -1585,7 +1822,13 @@
       "save": "Speichern"
     },
     "viewer": {
-      "title": "Dokumentenanzeige"
+      "title": "Dokumentenanzeige",
+      "loading": "Vorschau wird geladen...",
+      "imageUnavailable": "Dieses Bild konnte nicht angezeigt werden.",
+      "downloadOnly": "Fuer diesen Dateityp ist keine Vorschau verfuegbar. Sie koennen die Datei oeffnen oder herunterladen.",
+      "open": "Oeffnen",
+      "download": "Herunterladen",
+      "unsupported": "Dieser Dateityp wird fuer die Vorschau nicht unterstuetzt."
     },
     "notifications": {
       "fileRequired": "Bitte waehlen Sie eine PDF-Datei aus",
@@ -1619,7 +1862,8 @@
       "huileGraisse": "Öl / Fett",
       "documentation": "Dokumentation",
       "maintenanceCode": "Wartungscode",
-      "frequencyLabel": "Frequenzbezeichnung"
+      "frequencyLabel": "Frequenzbezeichnung",
+      "planCode": "Plancode"
     },
     "custom": "Benutzerdefiniert",
     "empty": {
@@ -1641,7 +1885,8 @@
       "responsable": "Verantwortlich",
       "huileGraisse": "Öl / Fett",
       "documentation": "Dokumentation",
-      "instruction": "Anweisung"
+      "instruction": "Anweisung",
+      "planCode": "Plancode"
     },
     "placeholders": {
       "planId": "Plan-ID eingeben",
@@ -1654,14 +1899,20 @@
       "responsable": "Ruster / Wartung",
       "huileGraisse": "ARAL Degol B 220",
       "documentation": "Wartungsplandokument",
-      "instruction": "Detaillierte Wartungsschritte eingeben"
+      "instruction": "Detaillierte Wartungsschritte eingeben",
+      "planCode": "Plancode eingeben"
     },
     "actions": {
       "edit": "Bearbeiten",
       "delete": "Löschen",
       "cancel": "Abbrechen",
       "create": "Erstellen",
-      "update": "Aktualisieren"
+      "update": "Aktualisieren",
+      "activate": "Aktivieren",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "archive": "Archivieren",
+      "complete": "Als abgeschlossen markieren"
     },
     "notifications": {
       "loadFailed": "Laden der Wartungspläne fehlgeschlagen",
@@ -1675,7 +1926,155 @@
       "deleteFailed": "Löschen des Wartungsplans fehlgeschlagen",
       "createSuccess": "Wartungsplan erfolgreich erstellt",
       "updateSuccess": "Wartungsplan erfolgreich aktualisiert",
-      "saveFailed": "Speichern des Wartungsplans fehlgeschlagen"
+      "saveFailed": "Speichern des Wartungsplans fehlgeschlagen",
+      "planCodeRequired": "Plancode ist erforderlich",
+      "confirmActivate": "Diesen Wartungsplan aktivieren? Der erste geplante Termin wird bei Bedarf erstellt.",
+      "confirmPause": "Diesen Wartungsplan pausieren? Es werden keine weiteren Termine erzeugt, bis er fortgesetzt wird.",
+      "confirmResume": "Diesen Wartungsplan fortsetzen? Zukünftige Termine werden wieder erzeugt.",
+      "confirmArchive": "Diesen Wartungsplan archivieren? Er wird schreibgeschützt und kann nicht mehr bearbeitet, geplant oder gelöscht werden.",
+      "confirmComplete": "Diesen Wartungsplan als abgeschlossen markieren?",
+      "transitionSuccess": "Status des Wartungsplans erfolgreich aktualisiert",
+      "transitionFailed": "Status des Wartungsplans konnte nicht aktualisiert werden",
+      "versionConflict": "Dieser Plan hat sich seit dem letzten Laden geändert. Die neueste Version wird geladen."
+    },
+    "status": {
+      "draft": "Entwurf",
+      "active": "Aktiv",
+      "paused": "Pausiert",
+      "archived": "Archiviert",
+      "completed": "Abgeschlossen"
+    }
+  },
+  "stocks": {
+    "title": "BESTANDSVERWALTUNG",
+    "heading": "Bestandsverwaltung",
+    "description": "Verfolgen Sie verfügbare Mengen, Reservierungen und den vollständigen Prüfpfad für jedes Lagerteil.",
+    "totalStocks": "Gesamtzahl Bestandsdatensätze",
+    "addStock": "Bestandsdatensatz hinzufügen",
+    "allStocks": "Alle Bestandsdatensätze",
+    "searchPlaceholder": "Suche nach Teil, Standort...",
+    "table": {
+      "part": "Teil",
+      "quantity": "Im Bestand",
+      "reserved": "Reserviert",
+      "available": "Verfügbar",
+      "threshold": "Warnschwelle",
+      "location": "Standort"
+    },
+    "empty": {
+      "default": "Keine Bestandsdatensätze verfügbar.",
+      "search": "Keine Bestandsdatensätze entsprechen Ihrer Suche."
+    },
+    "modal": {
+      "add": "Bestandsdatensatz hinzufügen",
+      "edit": "Bestandsdatensatz bearbeiten",
+      "adjust": "Bestand anpassen",
+      "history": "Bewegungshistorie"
+    },
+    "form": {
+      "stockCode": "Bestandscode",
+      "part": "Teil",
+      "initialQuantity": "Anfangsmenge",
+      "threshold": "Warnschwelle",
+      "minimum": "Mindestmenge",
+      "location": "Standort",
+      "delta": "Anpassung (+/-)",
+      "reason": "Grund"
+    },
+    "placeholders": {
+      "stockCode": "Eindeutigen Bestandscode eingeben",
+      "part": "Teil auswählen",
+      "threshold": "Optional",
+      "minimum": "Optional",
+      "location": "Optional",
+      "delta": "z. B. 10 oder -5",
+      "reason": "Diese Anpassung erläutern"
+    },
+    "actions": {
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren",
+      "adjust": "Anpassen",
+      "history": "Historie",
+      "apply": "Anwenden"
+    },
+    "notifications": {
+      "loadFailed": "Bestandsdatensätze konnten nicht geladen werden",
+      "stockCodeRequired": "Bestandscode ist erforderlich",
+      "partRequired": "Teil ist erforderlich",
+      "quantityNonNegative": "Die Anfangsmenge muss null oder größer sein",
+      "confirmDelete": "Diesen Bestandsdatensatz löschen? Dies ist nur möglich, wenn er vollständig aufgebraucht ist und keine Bewegungshistorie besitzt.",
+      "deleteSuccess": "Bestandsdatensatz erfolgreich gelöscht",
+      "deleteFailed": "Bestandsdatensatz konnte nicht gelöscht werden",
+      "createSuccess": "Bestandsdatensatz erfolgreich erstellt",
+      "updateSuccess": "Bestandsdatensatz erfolgreich aktualisiert",
+      "saveFailed": "Bestandsdatensatz konnte nicht gespeichert werden",
+      "deltaRequired": "Eine Anpassungsmenge ungleich null eingeben",
+      "reasonRequired": "Für jede Bestandsanpassung ist ein Grund erforderlich",
+      "confirmAdjust": "Eine Anpassung von {delta} für {part} anwenden?",
+      "adjustSuccess": "Bestand erfolgreich angepasst",
+      "adjustFailed": "Bestand konnte nicht angepasst werden",
+      "versionConflict": "Dieser Bestandsdatensatz hat sich seit dem letzten Laden geändert. Die neueste Version wird geladen.",
+      "historyLoadFailed": "Bewegungshistorie konnte nicht geladen werden"
+    },
+    "movementTypes": {
+      "reservation": "Reservierung",
+      "consumption": "Verbrauch",
+      "return": "Rückgabe",
+      "adjustment": "Anpassung",
+      "cancellation": "Stornierung"
+    },
+    "history": {
+      "empty": "Für diesen Bestand wurden noch keine Bewegungen erfasst.",
+      "type": "Typ",
+      "quantityChange": "Mengenänderung",
+      "reservedChange": "Reservierungsänderung",
+      "stockAfter": "Bestand danach",
+      "reservedAfter": "Reserviert danach",
+      "reason": "Grund"
+    }
+  },
+  "resourceCrud": {
+    "common": {
+      "add": "Hinzufügen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "actions": "Aktionen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "loading": "Wird geladen...",
+      "confirmDelete": "Diesen Datensatz löschen?",
+      "loadFailed": "Daten konnten nicht geladen werden",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "deleteFailed": "Löschen fehlgeschlagen"
+    },
+    "measurements": {
+      "title": "Sensormessungen",
+      "empty": "Keine Messungen gefunden",
+      "fields": {
+        "id": "Messungs-ID",
+        "sensor": "Sensor",
+        "value": "Wert",
+        "timestamp": "Zeitstempel",
+        "status": "Status",
+        "reference": "Messreferenz"
+      },
+      "status": {
+        "normal": "Normal",
+        "warning": "Warnung",
+        "critical": "Kritisch"
+      }
+    },
+    "modulePieces": {
+      "title": "Standard-Modulteile",
+      "empty": "Keine Modulteile gefunden",
+      "fields": {
+        "moduleType": "Modultyp",
+        "part": "Katalogteil",
+        "quantity": "Standardmenge"
+      }
     }
   },
   "preventiveTaskChecklist": {
@@ -1694,7 +2093,8 @@
       "frequency": "Frequenz",
       "instruction": "Anweisung",
       "responsable": "Verantwortlich",
-      "status": "Status"
+      "status": "Status",
+      "planCode": "Plancode"
     },
     "empty": {
       "default": "Keine vorbeugenden Wartungsaufgaben verfügbar",
@@ -1741,6 +2141,8 @@
       "taskDeleted": "Aufgabe erfolgreich gelöscht",
       "noTasksAvailable": "Keine vorbeugenden Wartungsaufgaben verfügbar. Bitte erstellen Sie zuerst Wartungspläne.",
       "confirmMarkComplete": "Sind Sie sicher, dass Sie diese Aufgabe als abgeschlossen markieren möchten?",
+      "confirmDelete": "Diese vorbeugende Aufgabe löschen?",
+      "deleteFailed": "Aufgabe konnte nicht gelöscht werden",
       "saveFailed": "Bitte geben Sie eine Anweisung ein."
     },
     "filters": {
@@ -1749,5 +2151,185 @@
       "completed": "Nur abgeschlossen",
       "overdue": "Überfällige Aufgaben"
     }
+  },
+  "technician": {
+    "operator": "Bediener",
+    "operatorSubmission": "Eingabe des Bedieners",
+    "claim": "Mir zuweisen",
+    "loading": "Wird geladen…",
+    "notAvailable": "Nicht verfügbar",
+    "dashboard": {
+      "title": "Techniker-Dashboard",
+      "cards": {
+        "assigned": "Mir zugewiesen",
+        "inProgress": "In Bearbeitung",
+        "waitingParts": "Warten auf Teile",
+        "waitingReview": "Warten auf Prüfung",
+        "completedToday": "Heute abgeschlossen",
+        "urgent": "Dringend"
+      },
+      "sections": {
+        "urgentTasks": "Dringende Aufgaben",
+        "current": "Aktuelle Einsätze",
+        "waitingPartsTasks": "Warten auf Teile",
+        "recent": "Kürzlich abgeschlossen"
+      }
+    },
+    "workOrders": {
+      "title": "Arbeitsaufträge",
+      "detailTitle": "Auftragsdetails"
+    },
+    "actions": {
+      "title": "Verfügbare Aktionen",
+      "retry": "Erneut versuchen",
+      "viewAll": "Alle anzeigen",
+      "viewDetails": "Details anzeigen",
+      "openManuals": "Handbücher öffnen",
+      "openManual": "Handbuch öffnen",
+      "previous": "Zurück",
+      "next": "Weiter",
+      "saveReport": "Bericht speichern",
+      "addPart": "Ersatzteil hinzufügen",
+      "approve": "Bericht genehmigen",
+      "return": "Bericht zurückgeben",
+      "intervene": "Einsatz starten",
+      "start": "Einsatz starten",
+      "waitingParts": "Auf Teile warten",
+      "resume": "Einsatz fortsetzen",
+      "close": "Auftrag schließen"
+    },
+    "filters": {
+      "status": "Status",
+      "allStatuses": "Alle Status",
+      "maintenanceType": "Wartungsart",
+      "allTypes": "Alle Arten",
+      "priority": "Priorität",
+      "allPriorities": "Alle Prioritäten",
+      "dateFrom": "Von",
+      "dateTo": "Bis"
+    },
+    "status": {
+      "waiting_validation": "Warten auf Prüfung",
+      "technician_required": "Techniker erforderlich",
+      "assigned": "Zugewiesen",
+      "in_progress": "In Bearbeitung",
+      "waiting_parts": "Warten auf Teile",
+      "completed": "Abgeschlossen",
+      "validated": "Bestätigt",
+      "returned": "Zurückgegeben",
+      "cancelled": "Storniert",
+      "canceled": "Storniert"
+    },
+    "types": {
+      "preventive": "Vorbeugend",
+      "corrective": "Korrektiv"
+    },
+    "priority": {
+      "urgent": "Dringend",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig"
+    },
+    "fields": {
+      "type": "Wartungsart",
+      "priority": "Priorität",
+      "created": "Erstellt",
+      "technician": "Techniker",
+      "startDate": "Start",
+      "endDate": "Ende"
+    },
+    "machine": {
+      "title": "Maschine",
+      "machine_id": "Maschinen-ID",
+      "serial_no": "Seriennummer",
+      "reference": "Referenz",
+      "fabricant": "Hersteller",
+      "model": "Modell",
+      "location": "Standort",
+      "status": "Status",
+      "installation_date": "Installationsdatum",
+      "poids_kg": "Gewicht (kg)",
+      "type": "Maschinentyp"
+    },
+    "report": {
+      "title": "Einsatzbericht",
+      "cause": "Technischer Befund / Ursache",
+      "actions": "Ausgeführte Arbeiten",
+      "result": "Ergebnis"
+    },
+    "parts": {
+      "title": "Ersatzteile",
+      "select": "Vorhandenes Teil auswählen",
+      "quantity": "Gesamtverbrauch"
+    },
+    "manuals": {
+      "title": "Handbücher"
+    },
+    "empty": {
+      "workOrders": "Keine Arbeitsaufträge gefunden.",
+      "manuals": "Kein Handbuch verfügbar.",
+      "report": "Kein Einsatzbericht verknüpft.",
+      "parts": "Keine Ersatzteile erfasst."
+    },
+    "errors": {
+      "network": "Technikerdaten konnten nicht geladen werden.",
+      "load": "Auftrag konnte nicht geladen werden.",
+      "update": "Aktion konnte nicht ausgeführt werden.",
+      "notFound": "Arbeitsauftrag nicht gefunden."
+    },
+    "messages": {
+      "confirmClose": "Diesen Auftrag schließen? Der Bericht muss vollständig sein.",
+      "completed": "Dieser Einsatz ist abgeschlossen."
+    }
+  },
+  "miniAvatar": {
+    "greetings": {
+      "hello": "Hallo.",
+      "helloName": "Hallo, {name}.",
+      "morning": "Guten Morgen.",
+      "morningName": "Guten Morgen, {name}.",
+      "afternoon": "Guten Tag.",
+      "afternoonName": "Guten Tag, {name}.",
+      "evening": "Guten Abend.",
+      "eveningName": "Guten Abend, {name}.",
+      "night": "Guten Abend.",
+      "nightName": "Guten Abend, {name}."
+    },
+    "messages": {
+      "loading": "Ihre Wartungsaktivitäten werden geprüft...",
+      "ready": "Ihr Dashboard ist bereit.",
+      "overdue": "{count, plural, one {Sie haben eine überfällige Wartungsaufgabe, die Ihre Aufmerksamkeit erfordert.} other {Sie haben # überfällige Wartungsaufgaben, die Ihre Aufmerksamkeit erfordern.}}",
+      "dueToday": "{count, plural, one {Sie haben heute eine geplante Wartungsaufgabe.} other {Sie haben heute # geplante Wartungsaufgaben.}}",
+      "inProgress": "{count, plural, one {Sie haben eine laufende Wartungsaufgabe.} other {Sie haben # laufende Wartungsaufgaben.}}",
+      "waitingValidation": "{count, plural, one {Ein Bericht wartet auf die Freigabe.} other {# Berichte warten auf die Freigabe.}}",
+      "assigned": "{count, plural, one {Ihnen ist eine Wartungsaufgabe zugewiesen.} other {Ihnen sind # Wartungsaufgaben zugewiesen.}}",
+      "clear": "Derzeit ist Ihnen keine dringende Wartungsaufgabe zugewiesen."
+    },
+    "actions": {
+      "reviewOverdue": "Überfällige Aufgaben prüfen",
+      "startMaintenance": "Wartung starten",
+      "continueTask": "Aufgabe fortsetzen",
+      "viewReports": "Berichte anzeigen",
+      "viewCalendar": "Kalender anzeigen",
+      "openMessage": "Assistentennachricht öffnen",
+      "closeMessage": "Assistentennachricht schließen"
+    },
+    "accessibility": {
+      "assistantRegion": "Wartungsassistent",
+      "operatorAvatar": "Assistenten-Avatar des Bedieners",
+      "technicianAvatar": "Assistenten-Avatar des Technikers",
+      "adminAvatar": "Assistenten-Avatar des Administrators",
+      "neutralAvatar": "Industrieller Assistenten-Avatar"
+    }
+  },
+  "notificationCenter": {
+    "title": "Benachrichtigungen",
+    "unread": "ungelesen",
+    "markAllRead": "Alle als gelesen markieren",
+    "clearAll": "Alle löschen",
+    "markRead": "Als gelesen markieren",
+    "clear": "Löschen",
+    "loading": "Wird geladen...",
+    "empty": "Keine Benachrichtigungen"
   }
 }

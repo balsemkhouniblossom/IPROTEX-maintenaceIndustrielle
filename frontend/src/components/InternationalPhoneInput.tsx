@@ -98,9 +98,9 @@ export default function InternationalPhoneInput({
   const SelectedFlag = FLAG_COMPONENT_BY_COUNTRY[selectedOption.country];
 
   return (
-    <div ref={rootRef} className={`space-y-2 ${className}`}>
-      <div className="grid grid-cols-[10.5rem_minmax(0,1fr)] gap-3 items-start">
-        <div className="relative">
+    <div ref={rootRef} className={`min-w-0 space-y-2 ${className}`}>
+      <div className="grid min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[10.5rem_minmax(0,1fr)]">
+        <div className="relative min-w-0">
           <button
             type="button"
             aria-label="Phone country"
@@ -112,11 +112,11 @@ export default function InternationalPhoneInput({
               <SelectedFlag aria-hidden="true" className="h-4 w-6 shrink-0 rounded-xs shadow-sm" />
               <span className="truncate">{selectedOption.dialCode}</span>
             </span>
-            <ChevronDownIcon className="h-4 w-4 text-slate-500" />
+            <ChevronDownIcon className="h-4 w-4 shrink-0 text-slate-500" />
           </button>
 
           {isOpen && !disabled && (
-            <ul className="absolute z-20 mt-2 max-h-64 w-[20rem] overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+            <ul className="absolute z-20 mt-2 max-h-64 w-full min-w-0 max-w-[calc(100vw-2rem)] overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl sm:w-max sm:min-w-full sm:max-w-[min(24rem,calc(100vw-2rem))]">
               {PHONE_COUNTRY_OPTIONS.map((option) => {
                 const OptionFlag = FLAG_COMPONENT_BY_COUNTRY[option.country];
 
@@ -128,15 +128,15 @@ export default function InternationalPhoneInput({
                       handleCountryChange(option.country);
                       setIsOpen(false);
                     }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    className={`flex w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                       option.country === value.country
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <OptionFlag aria-hidden="true" className="h-4 w-6 shrink-0 rounded-xs shadow-sm" />
-                    <span className="flex-1 truncate">{option.label}</span>
-                    <span className="text-right text-xs text-slate-500">
+                    <span className="min-w-0 flex-1 truncate" title={option.label}>{option.label}</span>
+                    <span className="shrink-0 text-right text-xs text-slate-500">
                       <span className="block">{option.dialCode}</span>
                       <span className="block">{option.digitsHint}</span>
                     </span>

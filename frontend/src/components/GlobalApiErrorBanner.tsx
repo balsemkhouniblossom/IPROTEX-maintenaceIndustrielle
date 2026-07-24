@@ -30,21 +30,21 @@ export default function GlobalApiErrorBanner() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-100 mx-auto max-w-3xl rounded-lg border border-red-300 bg-red-50 p-4 text-red-900 shadow-lg">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    <div className="global-api-error-banner fixed bottom-4 left-4 right-4 z-100 mx-auto max-w-3xl rounded-lg border border-red-300 bg-red-50 p-4 text-red-900 shadow-lg">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <p className="font-semibold">API connection issue</p>
           <p className="text-sm">
             The application is online, but it cannot reach the backend API.
           </p>
-          <p className="mt-1 text-xs opacity-90">
+          <p className="mt-1 text-xs opacity-90 wrap-break-word">
             {error.method?.toUpperCase() || 'REQUEST'} {error.url || ''}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setError(null)}
-          className="rounded border border-red-300 px-2 py-1 text-xs hover:bg-red-100"
+          className="shrink-0 rounded border border-red-300 px-2 py-1 text-xs hover:bg-red-100"
         >
           Dismiss
         </button>

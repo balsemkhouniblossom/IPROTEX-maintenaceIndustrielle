@@ -182,7 +182,7 @@ export default function DynamicSearchControls({
   }, [searchTerm, selectedField]);
 
   return (
-    <div className={`${className} grid gap-3 md:grid-cols-[240px_1fr]`}>
+    <div className={`${className} grid min-w-0 gap-3 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]`}>
       <select
         value={selectedField}
         onChange={(e) => onSelectedFieldChange(e.target.value)}
@@ -198,7 +198,7 @@ export default function DynamicSearchControls({
         ))}
       </select>
 
-      <div className="relative">
+      <div className="relative min-w-0">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
         </div>

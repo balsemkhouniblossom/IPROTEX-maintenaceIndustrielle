@@ -25,7 +25,14 @@ export class FeatureFlagsConfigService {
   isLegacyEmailTokensEnabled(): boolean {
     return parseBoolean(
       this.configService.get<string>('ENABLE_LEGACY_EMAIL_TOKENS'),
-      true,
+      false,
+    );
+  }
+
+  isLegacyResetTokensEnabled(): boolean {
+    return parseBoolean(
+      this.configService.get<string>('ENABLE_LEGACY_RESET_TOKENS'),
+      false,
     );
   }
 

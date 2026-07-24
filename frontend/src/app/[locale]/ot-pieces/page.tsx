@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { apiService } from "@/services/api";
+import { displayText } from "@/services/displayValues";
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from "@/services/dynamicSearch";
 import { useTranslations } from "next-intl";
 
@@ -16,14 +17,14 @@ interface OtPiece {
 
 function workOrderLabel(value: OtPiece["ot_id"]): string {
   if (!value) return "N/A";
-  if (typeof value === "string") return value;
-  return value.ot_id || value._id || "N/A";
+  if (typeof value === "string") return displayText(value, "N/A");
+  return displayText(value.ot_id, "N/A");
 }
 
 function partLabel(value: OtPiece["part_id"]): string {
   if (!value) return "N/A";
-  if (typeof value === "string") return value;
-  return value.part_id || value.nom_piece || value._id || "N/A";
+  if (typeof value === "string") return displayText(value, "N/A");
+  return displayText(value.part_id ?? value.nom_piece, "N/A");
 }
 
 export default function OtPiecesPage() {
@@ -101,7 +102,6 @@ export default function OtPiecesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Work Order</th>
                   <th>Part</th>
                   <th>Quantity</th>
@@ -110,7 +110,6 @@ export default function OtPiecesPage() {
               <tbody>
                 {filteredItems.map((item) => (
                   <tr key={item._id}>
-                    <td>{item._id}</td>
                     <td>{workOrderLabel(item.ot_id)}</td>
                     <td>{partLabel(item.part_id)}</td>
                     <td>{item.quantite ?? 0}</td>

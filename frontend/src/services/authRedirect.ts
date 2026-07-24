@@ -1,4 +1,7 @@
-export function getDashboardPath(locale: string, role?: string | null): string {
+export function getDashboardPath(
+  locale: string,
+  role?: string | null,
+): string | null {
   const normalizedRole = role?.trim().toLowerCase();
 
   if (normalizedRole === 'admin') {
@@ -9,5 +12,9 @@ export function getDashboardPath(locale: string, role?: string | null): string {
     return `/${locale}/technician`;
   }
 
-  return `/${locale}/operator`;
+  if (normalizedRole === 'operator') {
+    return `/${locale}/operator`;
+  }
+
+  return null;
 }

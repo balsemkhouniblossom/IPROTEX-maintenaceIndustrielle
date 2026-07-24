@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,8 @@ import ProfileAvatar from '@/components/ProfileAvatar';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useParams } from 'next/navigation';
 import LiveClock from '@/components/LiveClock';
+import NotificationBell from '@/components/NotificationBell';
+import { getPendingApprovalCount } from '@/services/userApprovals';
 
 import {
   HomeIcon,
@@ -48,12 +50,14 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
   const tCommon = useTranslations('common');
   const tUsers = useTranslations('users');
   const t = useTranslations('sidebar');
+  const tTechnician = useTranslations('technician');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
   const router = useRouter();
   const { user, logout } = useAuth();
   const { statistics } = useDashboardStatistics();
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const localePrefix = `/${locale}`;
   const withLocale = (href: string) => {
     if (!localePrefix) return href;
@@ -69,6 +73,44 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
   };
 
   const role = user?.role ?? 'operator';
+
+  useEffect(() => {
+    if (user?.profile_completed === false) {
+      router.replace(withLocale('/auth/complete-profile'));
+    }
+  }, [router, user?.profile_completed]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (role !== 'admin') {
+      setPendingApprovalCount(0);
+      return;
+    }
+
+    getPendingApprovalCount()
+      .then((result) => {
+        if (active) setPendingApprovalCount(result.count);
+      })
+      .catch(() => {
+        if (active) setPendingApprovalCount(0);
+      });
+
+    const handleApprovalChanged = () => {
+      void getPendingApprovalCount()
+        .then((result) => {
+          setPendingApprovalCount(result.count);
+        })
+        .catch(() => setPendingApprovalCount(0));
+    };
+
+    window.addEventListener('users:approvals-changed', handleApprovalChanged);
+
+    return () => {
+      active = false;
+      window.removeEventListener('users:approvals-changed', handleApprovalChanged);
+    };
+  }, [role]);
 
   interface NavItem {
     name: string;
@@ -98,7 +140,9 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.pannes'), href: '/pannes', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
       { name: t('navigation.panneSolutions'), href: '/panne-solutions', icon: DocumentTextIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
       { name: t('navigation.capteurs'), href: '/capteurs', icon: CpuChipIcon, categoryKey: 'categories.iotMonitoring', domain: 'monitoring' },
+      { name: t('navigation.mesures'), href: '/mesures', icon: ChartBarIcon, categoryKey: 'categories.iotMonitoring', domain: 'monitoring' },
       { name: t('navigation.catalogues'), href: '/catalogues', icon: BuildingStorefrontIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
+      { name: t('navigation.modulePieces'), href: '/module-pieces', icon: CubeIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
       { name: t('navigation.stocks'), href: '/stocks', icon: BuildingStorefrontIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
       { name: t('navigation.lubrifiants'), href: '/lubrifiants', icon: CubeIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
       { name: t('navigation.lubrificationLogs'), href: '/lubrification-logs', icon: ClipboardDocumentListIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
@@ -108,17 +152,11 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
     const technicianNav: NavItem[] = [
       { name: t('navigation.dashboard'), href: '/technician', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
-      { name: t('navigation.workOrders'), href: '/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.preventiveTaskChecklist'), href: '/preventive-task-checklist', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.interventionReports'), href: '/intervention-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.pannes'), href: '/pannes', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
-      { name: t('navigation.panneSolutions'), href: '/panne-solutions', icon: DocumentTextIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
-      { name: t('navigation.machines'), href: '/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
-      { name: t('navigation.machineTypes'), href: '/machine-types', icon: CubeIcon, categoryKey: 'categories.equipmentTypes', domain: 'assets' },
-      { name: t('navigation.capteurs'), href: '/capteurs', icon: CpuChipIcon, categoryKey: 'categories.iotMonitoring', domain: 'monitoring' },
-      { name: t('navigation.catalogues'), href: '/catalogues', icon: BuildingStorefrontIcon, categoryKey: 'categories.partsInventory', domain: 'inventory' },
-      { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
+      { name: tTechnician('workOrders.title'), href: '/technician/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: tTechnician('dashboard.sections.current'), href: '/technician/interventions', icon: CogIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: tTechnician('dashboard.sections.waitingPartsTasks'), href: '/technician/waiting-parts', icon: BuildingStorefrontIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: tTechnician('dashboard.sections.recent'), href: '/technician/history', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
+      { name: tTechnician('manuals.title'), href: '/technician/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
     ];
 
     const operatorNav: NavItem[] = [
@@ -195,16 +233,16 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
         {/* System Status */}
         <div className="system-status-modern">
           <div className="status-item-modern">
-            <SignalIcon className="w-4 h-4 text-green-500" />
-            <span>{t('systemStatus.online')}</span>
+            <SignalIcon className="h-4 w-4 shrink-0 text-green-500" />
+            <span title={t('systemStatus.online')}>{t('systemStatus.online')}</span>
           </div>
           <div className="status-item-modern warning">
-            <ExclamationTriangleIcon className="w-4 h-4 text-amber-500" />
-            <span>{statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}</span>
+            <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-amber-500" />
+            <span title={statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}>{statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}</span>
           </div>
           <div className="status-item-modern success">
-            <ChartBarIcon className="w-4 h-4 text-green-500" />
-            <span>
+            <ChartBarIcon className="h-4 w-4 shrink-0 text-green-500" />
+            <span title={statistics ? String(statistics.percentageChange) : t('systemStatus.loading')}>
               {statistics ? (
                 statistics.percentageChange >= 0
                   ? t('systemStatus.percentageChange.positive', { value: statistics.percentageChange })
@@ -221,7 +259,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
           {Array.isArray(navigation) && navigation.map((section) => (
             <div key={section.domain} className="mb-4">
               {/* Domain Section Header */}
-              <div className="nav-section-label text-xs font-bold uppercase tracking-widest mb-3 px-4">
+              <div className="nav-section-label text-xs font-bold uppercase tracking-widest mb-3 px-4" title={t(section.domainKey)}>
                 {t(section.domainKey)}
               </div>
               {/* Items in this domain */}
@@ -234,9 +272,15 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
                       href={withLocale(item.href)}
                       className={`nav-link-modern ${pathname === withLocale(item.href) ? 'active' : ''}`}
                       onClick={() => setSidebarOpen(false)}
+                      title={item.name}
                     >
-                      <Icon className="w-5 h-5" />
-                      {item.name}
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                      {item.href === '/users' && pendingApprovalCount > 0 && (
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                          {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -293,6 +337,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
             <div className="flex items-center gap-4">
               {headerActions}
+              <NotificationBell />
               <LiveClock locale={locale} />
               <ThemeToggle />
               <LanguageSwitcher />

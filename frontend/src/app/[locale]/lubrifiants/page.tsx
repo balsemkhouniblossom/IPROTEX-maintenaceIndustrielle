@@ -89,7 +89,6 @@ export default function LubrifiantsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Code</th>
                   <th>Name</th>
                   <th>Type</th>
@@ -99,7 +98,6 @@ export default function LubrifiantsPage() {
               <tbody>
                 {filteredItems.map((item) => (
                   <tr key={item._id}>
-                    <td>{item._id}</td>
                     <td>{item.lubrifiant_id || "N/A"}</td>
                     <td>{item.nom || "N/A"}</td>
                     <td>{item.type || "N/A"}</td>

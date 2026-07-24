@@ -1,4 +1,5 @@
 import { Logger, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 import { AppController } from './app.controller';
@@ -66,8 +67,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from './email/email.module';
 import { RequestContextModule } from './common/request-context.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationCenterModule } from './notification-center/notification-center.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AutomationModule } from './automation/automation.module';
+import { MesuresModule } from './mesures/mesures.module';
+import { ModulePiecesModule } from './module-pieces/module-pieces.module';
+import { PreventiveTasksModule } from './preventive-tasks/preventive-tasks.module';
+import { TechnicianModule } from './technician/technician.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
 const mongoLogger = new Logger('MongoDB');
 
 @Module({
@@ -148,6 +156,7 @@ const mongoLogger = new Logger('MongoDB');
     AuthModule,
     EmailModule,
     NotificationsModule,
+    NotificationCenterModule,
     AutomationModule,
     DocumentsModule, // ✅ MUST be here
     InterventionReportsModule,
@@ -162,9 +171,23 @@ const mongoLogger = new Logger('MongoDB');
     OtPiecesModule,
     HealthModule,
     OperatorModule,
+    MesuresModule,
+    ModulePiecesModule,
+    PreventiveTasksModule,
+    TechnicianModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

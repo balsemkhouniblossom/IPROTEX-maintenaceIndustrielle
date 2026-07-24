@@ -17,6 +17,12 @@ export class DocumentEntity {
   @Prop({ required: true })
   file_path: string;
 
+  @Prop()
+  storage_path?: string;
+
+  @Prop()
+  file_url?: string;
+
   @Prop({ required: true })
   file_name: string;
 

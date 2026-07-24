@@ -33,38 +33,39 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   if (!isOpen) return null;
 
-  const sizeStyles = {
-    sm: 'max-w-[400px]',
-    md: 'max-w-[600px]',
-    lg: 'max-w-[800px]',
-    xl: 'max-w-[1000px]',
+  const sizeWidths: Record<NonNullable<ModalProps['size']>, string> = {
+    sm: '22rem',
+    md: '30rem',
+    lg: '38rem',
+    xl: '46rem',
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[1000] overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4 text-center">
+    <div className="fixed inset-0 z-1000 overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-3 text-center sm:p-4">
         <div
           className="fixed inset-0 bg-black/50 transition-opacity"
           onClick={onClose}
         />
 
         <div
-          className={`panel ${sizeStyles[size]} w-full my-8`}
+          className="panel modal-panel my-4 w-full overflow-hidden text-left sm:my-6"
+          style={{ maxWidth: `min(${sizeWidths[size]}, calc(100vw - 1.5rem))` }}
         >
           <div
-            className="panel-header flex items-center justify-between px-4 py-2 text-sm font-bold uppercase tracking-[0.5px] text-white"
+            className="modal-header flex min-w-0 items-center justify-between gap-3 px-4 py-2 text-sm font-bold uppercase tracking-[0.5px] text-white"
             style={{ backgroundColor: 'var(--primary)' }}
           >
-            <span>{title}</span>
+            <span className="min-w-0 truncate" title={title}>{title}</span>
             <button
               aria-label="Close modal"
               onClick={onClose}
-              className="flex items-center justify-center rounded-md p-1 text-white transition-colors hover:bg-white/10"
+              className="flex shrink-0 items-center justify-center rounded-md p-1 text-white transition-colors hover:bg-white/10"
             >
               <XMarkIcon className="h-4 w-4" />
             </button>
           </div>
-          <div className="panel-content max-h-[calc(90vh-80px)] overflow-y-auto p-4">
+          <div className="panel-content modal-body max-h-[calc(100vh-5.5rem)] min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:max-h-[calc(100vh-7rem)] sm:p-4">
             {children}
           </div>
         </div>

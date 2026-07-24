@@ -92,6 +92,10 @@ The `nginx.conf` is pre-configured with:
 - Gzip compression
 - Static file caching
 
+### Public Avatar Policy
+
+Approved, active user avatars are intentionally public profile assets. The backend may serve local development avatars from `/files/uploads/avatars/*`, and API responses generate avatar URLs only for active approved users or legacy active users without an approval status. Protected documents and maintenance attachments must never be exposed through static upload routes; they are served through authenticated document endpoints.
+
 Review and customize as needed:
 
 ```bash

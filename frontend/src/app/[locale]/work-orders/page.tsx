@@ -8,7 +8,15 @@ import ProfileAvatar from "@/components/ProfileAvatar";
 import Pagination from "@/components/Pagination";
 import { apiService } from "@/services/api";
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from "@/services/dynamicSearch";
-import { PencilIcon, TrashIcon, PlusIcon, CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PencilIcon,
+  TrashIcon,
+  PlusIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
@@ -37,6 +45,28 @@ interface User {
   photo?: string;
 }
 
+type PrioritySortDirection = 'high-to-low' | 'low-to-high' | null;
+type StatusSortDirection = 'a-to-z' | 'z-to-a' | null;
+type DateSortField = 'date_created' | 'date_start' | 'date_end';
+type DateSortDirection = 'newest-to-oldest' | 'oldest-to-newest' | null;
+
+const PRIORITY_ORDER: Record<string, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
+function priorityRank(priority?: string): number {
+  return PRIORITY_ORDER[(priority || '').toLowerCase()] ?? 0;
+}
+
+function dateRank(value?: string): number {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 export default function WorkOrdersPage() {
   const tWorkOrders = useTranslations("workOrders");
   const tCommon = useTranslations("common");
@@ -54,6 +84,10 @@ export default function WorkOrdersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
+  const [prioritySortDirection, setPrioritySortDirection] = useState<PrioritySortDirection>(null);
+  const [statusSortDirection, setStatusSortDirection] = useState<StatusSortDirection>(null);
+  const [dateSortField, setDateSortField] = useState<DateSortField | null>(null);
+  const [dateSortDirection, setDateSortDirection] = useState<DateSortDirection>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [formData, setFormData] = useState({
     ot_id: '',
@@ -117,10 +151,42 @@ export default function WorkOrdersPage() {
 
   const searchableFields = useMemo(() => getSearchableFields(searchableWorkOrders), [searchableWorkOrders]);
 
-  const filteredWorkOrders = useMemo(
-    () => searchableWorkOrders.filter((workOrder) => matchesDynamicSearch(workOrder, searchTerm, selectedSearchField)),
-    [searchableWorkOrders, searchTerm, selectedSearchField],
-  );
+  const filteredWorkOrders = useMemo(() => {
+    const filtered = searchableWorkOrders.filter((workOrder) =>
+      matchesDynamicSearch(workOrder, searchTerm, selectedSearchField),
+    );
+
+    if (prioritySortDirection) {
+      return [...filtered].sort((left, right) => {
+        const rankDiff = priorityRank(right.priorite) - priorityRank(left.priorite);
+        return prioritySortDirection === 'high-to-low' ? rankDiff : -rankDiff;
+      });
+    }
+
+    if (statusSortDirection) {
+      return [...filtered].sort((left, right) => {
+        const statusDiff = (left.status || '').localeCompare(right.status || '');
+        return statusSortDirection === 'a-to-z' ? statusDiff : -statusDiff;
+      });
+    }
+
+    if (dateSortField && dateSortDirection) {
+      return [...filtered].sort((left, right) => {
+        const dateDiff = dateRank(right[dateSortField]) - dateRank(left[dateSortField]);
+        return dateSortDirection === 'newest-to-oldest' ? dateDiff : -dateDiff;
+      });
+    }
+
+    return filtered;
+  }, [
+    searchableWorkOrders,
+    searchTerm,
+    selectedSearchField,
+    prioritySortDirection,
+    statusSortDirection,
+    dateSortField,
+    dateSortDirection,
+  ]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -133,9 +199,16 @@ export default function WorkOrdersPage() {
     window.dispatchEvent(new Event('work-orders:changed'));
   }
 
+  function sortByDate(field: DateSortField, direction: Exclude<DateSortDirection, null>) {
+    setDateSortField(field);
+    setDateSortDirection(direction);
+    setPrioritySortDirection(null);
+    setStatusSortDirection(null);
+  }
+
   const validateForm = () => {
     if (!formData.ot_id.trim()) {
-      showNotification('error', tWorkOrders("validation.workOrderIdRequired"));
+      showNotification('error', tWorkOrders("validation.referenceRequired", { default: "Work order reference is required" }));
       return false;
     }
     if (!formData.machine_id) {
@@ -246,7 +319,7 @@ export default function WorkOrdersPage() {
     <DashboardLayout title={tWorkOrders("title")}>
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${notification.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+        <div className={`work-orders-toast fixed top-4 right-4 z-50 flex items-center space-x-2 rounded-lg border p-4 shadow-lg ${notification.type === 'success' ? 'work-orders-toast-success' : 'work-orders-toast-error'
           }`}>
           {notification.type === 'success' ? (
             <CheckCircleIcon className="w-5 h-5" />
@@ -256,14 +329,14 @@ export default function WorkOrdersPage() {
           <span>{notification.message}</span>
           <button
             onClick={() => setNotification(null)}
-            className="ml-2 text-gray-500 hover:text-gray-700"
+            className="ml-2 text-current opacity-70 transition-opacity hover:opacity-100"
           >
             ×
           </button>
         </div>
       )}
 
-      <div className="bento-grid">
+      <div className="bento-grid work-orders-theme">
         {/* Header */}
         <div className="col-span-full mb-6 bento-item">
           <div className="panel">
@@ -307,18 +380,198 @@ export default function WorkOrdersPage() {
             />
           </div>
           <div className="overflow-x-auto">
-            <table className="table">
+            <table className="table text-center">
               <thead>
                 <tr>
-                  <th>{tWorkOrders("table.otId")}</th>
+                  <th>{tWorkOrders("table.reference", { default: "Work Order Reference" })}</th>
                   <th>{tWorkOrders("table.description")}</th>
                   <th>{tWorkOrders("table.machine")}</th>
                   <th>{tWorkOrders("table.technician")}</th>
-                  <th>{tWorkOrders("table.status")}</th>
-                  <th>{tWorkOrders("table.priority")}</th>
-                  <th>{tWorkOrders("table.created")}</th>
-                  <th>{tWorkOrders("table.startDate")}</th>
-                  <th>{tWorkOrders("table.endDate")}</th>
+                  <th>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{tWorkOrders("table.status")}</span>
+                      <div className="flex items-center rounded-md border border-slate-200 bg-white">
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.statusAToZ", { default: "Sort status A to Z" })}
+                          title={tWorkOrders("sort.statusAToZ", { default: "Sort status A to Z" })}
+                          onClick={() => {
+                            setStatusSortDirection('a-to-z');
+                            setPrioritySortDirection(null);
+                            setDateSortField(null);
+                            setDateSortDirection(null);
+                          }}
+                          className={`p-1 transition-colors ${
+                            statusSortDirection === 'a-to-z'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.statusZToA", { default: "Sort status Z to A" })}
+                          title={tWorkOrders("sort.statusZToA", { default: "Sort status Z to A" })}
+                          onClick={() => {
+                            setStatusSortDirection('z-to-a');
+                            setPrioritySortDirection(null);
+                            setDateSortField(null);
+                            setDateSortDirection(null);
+                          }}
+                          className={`border-l border-slate-200 p-1 transition-colors ${
+                            statusSortDirection === 'z-to-a'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{tWorkOrders("table.priority")}</span>
+                      <div className="flex items-center rounded-md border border-slate-200 bg-white">
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.priorityHighToLow", { default: "Sort priority high to low" })}
+                          title={tWorkOrders("sort.priorityHighToLow", { default: "Sort priority high to low" })}
+                          onClick={() => {
+                            setPrioritySortDirection('high-to-low');
+                            setStatusSortDirection(null);
+                            setDateSortField(null);
+                            setDateSortDirection(null);
+                          }}
+                          className={`p-1 transition-colors ${
+                            prioritySortDirection === 'high-to-low'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.priorityLowToHigh", { default: "Sort priority low to high" })}
+                          title={tWorkOrders("sort.priorityLowToHigh", { default: "Sort priority low to high" })}
+                          onClick={() => {
+                            setPrioritySortDirection('low-to-high');
+                            setStatusSortDirection(null);
+                            setDateSortField(null);
+                            setDateSortDirection(null);
+                          }}
+                          className={`border-l border-slate-200 p-1 transition-colors ${
+                            prioritySortDirection === 'low-to-high'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{tWorkOrders("table.created")}</span>
+                      <div className="flex items-center rounded-md border border-slate-200 bg-white">
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.createdNewestToOldest", { default: "Sort created date newest to oldest" })}
+                          title={tWorkOrders("sort.createdNewestToOldest", { default: "Sort created date newest to oldest" })}
+                          onClick={() => sortByDate('date_created', 'newest-to-oldest')}
+                          className={`p-1 transition-colors ${
+                            dateSortField === 'date_created' && dateSortDirection === 'newest-to-oldest'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.createdOldestToNewest", { default: "Sort created date oldest to newest" })}
+                          title={tWorkOrders("sort.createdOldestToNewest", { default: "Sort created date oldest to newest" })}
+                          onClick={() => sortByDate('date_created', 'oldest-to-newest')}
+                          className={`border-l border-slate-200 p-1 transition-colors ${
+                            dateSortField === 'date_created' && dateSortDirection === 'oldest-to-newest'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{tWorkOrders("table.startDate")}</span>
+                      <div className="flex items-center rounded-md border border-slate-200 bg-white">
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.startNewestToOldest", { default: "Sort start date newest to oldest" })}
+                          title={tWorkOrders("sort.startNewestToOldest", { default: "Sort start date newest to oldest" })}
+                          onClick={() => sortByDate('date_start', 'newest-to-oldest')}
+                          className={`p-1 transition-colors ${
+                            dateSortField === 'date_start' && dateSortDirection === 'newest-to-oldest'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.startOldestToNewest", { default: "Sort start date oldest to newest" })}
+                          title={tWorkOrders("sort.startOldestToNewest", { default: "Sort start date oldest to newest" })}
+                          onClick={() => sortByDate('date_start', 'oldest-to-newest')}
+                          className={`border-l border-slate-200 p-1 transition-colors ${
+                            dateSortField === 'date_start' && dateSortDirection === 'oldest-to-newest'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  <th>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{tWorkOrders("table.endDate")}</span>
+                      <div className="flex items-center rounded-md border border-slate-200 bg-white">
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.endNewestToOldest", { default: "Sort end date newest to oldest" })}
+                          title={tWorkOrders("sort.endNewestToOldest", { default: "Sort end date newest to oldest" })}
+                          onClick={() => sortByDate('date_end', 'newest-to-oldest')}
+                          className={`p-1 transition-colors ${
+                            dateSortField === 'date_end' && dateSortDirection === 'newest-to-oldest'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={tWorkOrders("sort.endOldestToNewest", { default: "Sort end date oldest to newest" })}
+                          title={tWorkOrders("sort.endOldestToNewest", { default: "Sort end date oldest to newest" })}
+                          onClick={() => sortByDate('date_end', 'oldest-to-newest')}
+                          className={`border-l border-slate-200 p-1 transition-colors ${
+                            dateSortField === 'date_end' && dateSortDirection === 'oldest-to-newest'
+                              ? 'text-blue-700'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                        >
+                          <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </th>
                   <th>{tCommon("table.actions")}</th>
                 </tr>
               </thead>
@@ -337,7 +590,7 @@ export default function WorkOrdersPage() {
                       <td>{wo.machine_id?.machine_id || tCommon("notAvailable")}</td>
                       <td>
                         {wo.technician_id ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             <ProfileAvatar
                               name={wo.technician_id.nom_complet}
                               photo={(wo.technician_id as { photo?: string }).photo}
@@ -370,7 +623,7 @@ export default function WorkOrdersPage() {
                       <td>{wo.date_start ? new Date(wo.date_start).toLocaleDateString() : tCommon("notAvailable")}</td>
                       <td>{wo.date_end ? new Date(wo.date_end).toLocaleDateString() : tCommon("notAvailable")}</td>
                       <td>
-                        <div className="flex space-x-2">
+                        <div className="flex justify-center space-x-2">
                           <button
                             onClick={() => handleEdit(wo)}
                             className="btn-secondary p-2"
@@ -414,19 +667,19 @@ export default function WorkOrdersPage() {
         title={editingWorkOrder ? tWorkOrders("modal.editTitle") : tWorkOrders("modal.addTitle")}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="work-orders-theme space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-dark mb-1">
-                {tWorkOrders("form.otId")}
+                {tWorkOrders("form.reference", { default: "Work Order Reference" })}
               </label>
               <input
                 type="text"
                 value={formData.ot_id}
                 onChange={(e) => setFormData({ ...formData, ot_id: e.target.value })}
                 className="input-field"
-                title={tWorkOrders("form.otId")}
-                placeholder={tWorkOrders("form.otId")}
+                title={tWorkOrders("form.reference", { default: "Work Order Reference" })}
+                placeholder={tWorkOrders("form.reference", { default: "Work Order Reference" })}
                 required
               />
             </div>

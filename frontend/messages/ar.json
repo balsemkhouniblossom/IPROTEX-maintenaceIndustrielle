@@ -38,12 +38,63 @@
     "advancedMaintenance": "إدارة الصيانة المتقدمة",
     "loginFailed": "فشل تسجيل الدخول. يرجى التحقق من بيانات اعتمادك.",
     "networkError": "خطأ في الشبكة. يرجى المحاولة مجدداً.",
+    "sessionExpired": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
+    "sessionRevoked": "لم تعد جلستك صالحة. يرجى تسجيل الدخول مرة أخرى.",
+    "sessionRenewFailed": "تعذر تجديد الجلسة. يرجى تسجيل الدخول مرة أخرى.",
+    "errors": {
+      "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+      "emailNotVerified": "يرجى التحقق من بريدك الإلكتروني قبل تسجيل الدخول.",
+      "accountPendingApproval": "حسابك بانتظار موافقة المسؤول.",
+      "accountRejected": "تم رفض طلب حسابك. يرجى التواصل مع المسؤول.",
+      "accountInactive": "حسابك غير نشط. يرجى التواصل مع المسؤول.",
+      "accountRoleNotAllowed": "دور هذا الحساب غير مسموح له بتسجيل الدخول.",
+      "authenticationFailed": "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
+      "profileCompletionRequired": "???? ???? ?????? ??? ?????? ??? ???????."
+    },
+    "protected": {
+      "loading": "جارٍ التحقق من الجلسة...",
+      "redirectingTitle": "جارٍ التحويل إلى تسجيل الدخول...",
+      "redirectingDescription": "تعذر التحقق من الجلسة. سيتم تحويلك.",
+      "accessDeniedTitle": "الوصول مقيد",
+      "accessDeniedDescription": "دور حسابك الحالي لا يسمح بعرض هذه الصفحة. جارٍ التحويل..."
+    },
     "orContinueWith": "أو المتابعة باستخدام",
     "continueWithGoogle": "المتابعة باستخدام Google",
     "redirectingToGoogle": "جارٍ التحويل إلى Google...",
     "googleSigninCompletingTitle": "جارٍ إكمال تسجيل الدخول عبر Google",
     "googleSigninCompletingDescription": "نقوم الآن بإنهاء جلستك ثم تحويلك تلقائياً.",
-    "registrationSuccess": "تم التسجيل بنجاح. يرجى تسجيل الدخول.",
+    "googleDoNotClose": "لا تغلق هذه الصفحة أثناء إكمال تسجيل الدخول.",
+    "googleSignInSuccessful": "تم تسجيل الدخول باستخدام Google بنجاح",
+    "googleAccountCreatedTitle": "تم إنشاء حساب Google",
+    "googleAccountCreatedPendingApproval": "حساب Google الخاص بك ينتظر موافقة المسؤول. ستتمكن من تسجيل الدخول بعد الموافقة.",
+    "googlePendingTitle": "الموافقة قيد الانتظار",
+    "googleAccountPendingApproval": "لا يزال حسابك ينتظر الموافقة.",
+    "googleRejectedTitle": "تم رفض طلب الحساب",
+    "googleAccountRejected": "تم رفض طلب حسابك.",
+    "googleInactiveTitle": "الحساب غير نشط",
+    "googleAccountInactive": "حسابك غير نشط.",
+    "googleFailedTitle": "فشل تسجيل الدخول باستخدام Google",
+    "googleSignInFailed": "فشل تسجيل الدخول باستخدام Google. يرجى المحاولة مرة أخرى.",
+    "googleLinkExpiredTitle": "انتهت صلاحية رابط Google",
+    "googleLoginLinkExpired": "رابط تسجيل الدخول باستخدام Google غير صالح أو انتهت صلاحيته. يرجى المحاولة مرة أخرى.",
+    "tryGoogleSignInAgain": "حاول تسجيل الدخول باستخدام Google مرة أخرى",
+    "googleRoleNotSupported": "دور الحساب غير مدعوم.",
+    "registrationSuccess": "تم إنشاء الحساب. تحقّق من بريدك الإلكتروني وافتح رابط التحقق قبل تسجيل الدخول.",
+    "registrationPendingApproval": "تم إنشاء حسابك بنجاح. يرجى التحقق من بريدك الإلكتروني. بعد التحقق، يجب أن يوافق مسؤول على الحساب قبل أن تتمكن من تسجيل الدخول.",
+    "emailAlreadyRegistered": "البريد الإلكتروني مسجل بالفعل.",
+    "publicRoleNotAllowed": "هذا الدور غير متاح للتسجيل العام.",
+    "emailVerified": "تم التحقق من بريدك الإلكتروني. يمكنك الآن تسجيل الدخول.",
+    "emailAlreadyVerified": "تم التحقق من بريدك الإلكتروني مسبقاً.",
+    "emailVerifiedPendingApproval": "تم التحقق من بريدك الإلكتروني. لا يزال حسابك في انتظار موافقة المسؤول. ستتمكن من تسجيل الدخول بعد الموافقة.",
+    "emailVerifiedAccountRejected": "تم التحقق من بريدك الإلكتروني، لكن طلب الحساب تم رفضه.",
+    "waitingForAdminApproval": "في انتظار موافقة المسؤول.",
+    "emailVerificationFailed": "رابط التحقق غير صالح أو انتهت صلاحيته. يرجى الاتصال بالدعم للحصول على المساعدة.",
+    "invalidOrExpiredVerificationLink": "رابط التحقق غير صالح أو انتهت صلاحيته.",
+    "youMayCloseThisPage": "يمكنك إغلاق هذه الصفحة.",
+    "returnToLogin": "العودة إلى تسجيل الدخول",
+    "emailNotVerified": "يرجى التحقق من بريدك الإلكتروني قبل تسجيل الدخول.",
+    "verifyingEmail": "جارٍ التحقق من بريدك الإلكتروني",
+    "verificationPleaseWait": "يرجى الانتظار بينما نقوم بتفعيل حسابك.",
     "registrationFailed": "فشل التسجيل. يرجى المحاولة مجدداً.",
     "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين.",
     "passwordMinLength": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
@@ -66,7 +117,15 @@
     "resetPasswordTitle": "إعادة تعيين كلمة المرور",
     "resetPasswordDescription": "قم بتعيين كلمة مرور جديدة للمتابعة.",
     "resetPassword": "إعادة تعيين كلمة المرور",
-    "sending": "جارٍ الإرسال..."
+    "sending": "جارٍ الإرسال...",
+    "completeProfileTitle": "????? ????? ??????",
+    "completeProfileDescription": "???? ??? ???? Google ????? ??. ????? ????? ??? ???????? ??? ????? ???? ???????.",
+    "completeProfileSubmit": "????? ????????",
+    "completeProfileSaving": "???? ?????...",
+    "completeProfileSaveFailed": "???? ??? ????? ??????.",
+    "completeProfilePosition": "??????",
+    "completeProfileLanguage": "?????",
+    "completeProfileRequestedRole": "????? ???????"
   },
   "common": {
     "allFields": "كل الحقول",
@@ -468,6 +527,40 @@
         "maintenanceType": "نوع الصيانة",
         "status": "الحالة",
         "scheduled": "مجدول",
+        "lifecycle": {
+          "notScheduled": "لم تتم الجدولة بعد",
+          "scheduled": "مجدول",
+          "upcoming": "قادم",
+          "dueSoon": "مستحق قريباً",
+          "dueToday": "مستحق اليوم",
+          "overdue": "متأخر",
+          "inProgress": "قيد التنفيذ",
+          "waitingValidation": "بانتظار التحقق",
+          "returned": "مُعاد",
+          "completed": "مكتمل",
+          "setFirstInterventionDate": "تحديد تاريخ أول تدخل",
+          "performToday": "تنفيذ اليوم",
+          "actualExecutionDate": "تاريخ التنفيذ الفعلي",
+          "lastCompleted": "آخر إنجاز",
+          "nextDue": "الاستحقاق التالي",
+          "preventivePlan": "الخطة الوقائية",
+          "scheduledOccurrences": "التدخلات المجدولة",
+          "noDueDate": "لا يوجد تاريخ استحقاق",
+          "technicianValidationRequired": "يلزم تحقق الفني",
+          "nextOccurrenceCreated": "تم إنشاء التدخل التالي",
+          "taskAlreadySubmitted": "تم إرسال هذا التدخل بالفعل.",
+          "reschedule": "إعادة الجدولة",
+          "reschedulingReason": "سبب إعادة الجدولة",
+          "newDueDate": "تاريخ الاستحقاق الجديد",
+          "originalDueDate": "تاريخ الاستحقاق الأصلي",
+          "rescheduledBy": "أعيدت الجدولة بواسطة",
+          "rescheduledAt": "وقت إعادة الجدولة",
+          "scheduleCreated": "تمت جدولة تاريخ التدخل الأول.",
+          "rescheduleSuccess": "تمت إعادة جدولة التدخل.",
+          "alreadyScheduled": "هذه المهمة مجدولة بالفعل.",
+          "duplicateOccurrence": "يوجد تدخل مكرر بالفعل.",
+          "invalidPlanForMachine": "خطة الصيانة هذه لا تنطبق على الآلة المحددة."
+        },
         "preventive": "وقائية",
         "corrective": "تصحيحية",
         "inProgress": "قيد التنفيذ",
@@ -490,6 +583,8 @@
         "requestCorrection": "طلب تصحيح",
         "start": "بدء",
         "complete": "إكمال",
+        "startSuccess": "تم بدء العمل بنجاح",
+        "completeSuccess": "تم وضع علامة على العمل كمكتمل وإرساله للتحقق",
         "generateReportAction": "إنشاء تقرير",
         "openManualAction": "فتح الدليل",
         "type": "النوع",
@@ -501,7 +596,8 @@
         "descriptionLabel": "الوصف",
         "noItem": "لا توجد عناصر",
         "operatorFlowNote": "مسار المشغل مؤتمت بالكامل: اختيار، فحص، إكمال. الجدولة وإنشاء التقرير والتذكيرات والاستحقاق التالي تتم تلقائياً."
-      }
+      },
+      "module": "Module"
     },
     "technician": {
       "title": "لوحة تحكم الفني",
@@ -608,7 +704,8 @@
       "samplingFrequency": "تردد أخذ العينات",
       "firmwareVersion": "إصدار البرنامج الثابت",
       "lastSeen": "آخر ظهور",
-      "status": "الحالة"
+      "status": "الحالة",
+      "sensorReference": "???? ????????"
     },
     "empty": {
       "search": "لا توجد مستشعرات تطابق البحث.",
@@ -630,7 +727,9 @@
       "samplingFrequency": "تردد أخذ العينات",
       "lastSeen": "آخر ظهور",
       "firmwareVersion": "إصدار البرنامج الثابت",
-      "active": "نشط"
+      "active": "نشط",
+      "sensorReference": "???? ????????",
+      "module": "??????"
     },
     "placeholders": {
       "sensorId": "أدخل معرف المستشعر",
@@ -642,7 +741,8 @@
       "warningThreshold": "أدخل حد التحذير",
       "criticalThreshold": "أدخل الحد الحرج",
       "samplingFrequency": "أدخل تردد أخذ العينات",
-      "firmwareVersion": "أدخل إصدار البرنامج الثابت"
+      "firmwareVersion": "أدخل إصدار البرنامج الثابت",
+      "sensorReference": "???? ???? ????????"
     },
     "button": {
       "create": "إنشاء",
@@ -659,7 +759,9 @@
       "capteurIdRequired": "معرّف المستشعر مطلوب",
       "moduleIdRequired": "معرّف الوحدة مطلوب",
       "codeRequired": "رمز المستشعر مطلوب",
-      "typeRequired": "نوع المستشعر مطلوب"
+      "typeRequired": "نوع المستشعر مطلوب",
+      "sensorReferenceRequired": "???? ???????? ?????",
+      "moduleRequired": "?????? ??????"
     }
   },
   "dashboardHome": {
@@ -774,7 +876,8 @@
       "priority": "الأولوية",
       "created": "تاريخ الإنشاء",
       "startDate": "تاريخ البدء",
-      "endDate": "تاريخ الانتهاء"
+      "endDate": "تاريخ الانتهاء",
+      "reference": "???? ??? ?????"
     },
     "empty": {
       "search": "لا توجد أوامر عمل تطابق بحثك",
@@ -793,7 +896,8 @@
       "status": "الحالة",
       "estimatedDuration": "المدة المقدّرة (ساعات)",
       "startDate": "تاريخ البدء",
-      "endDate": "تاريخ الانتهاء"
+      "endDate": "تاريخ الانتهاء",
+      "reference": "???? ??? ?????"
     },
     "priority": {
       "low": "منخفضة",
@@ -818,7 +922,8 @@
     "validation": {
       "workOrderIdRequired": "رقم OT مطلوب",
       "machineRequired": "اختيار الآلة مطلوب",
-      "technicianRequired": "تعيين الفني مطلوب"
+      "technicianRequired": "تعيين الفني مطلوب",
+      "referenceRequired": "???? ??? ????? ?????"
     },
     "notifications": {
       "deleted": "تم حذف أمر العمل بنجاح",
@@ -826,6 +931,18 @@
       "updated": "تم تحديث أمر العمل بنجاح",
       "created": "تم إنشاء أمر العمل بنجاح",
       "saveFailed": "فشل حفظ أمر العمل"
+    },
+    "sort": {
+      "priorityHighToLow": "????? ???????? ?? ?????? ??? ??????",
+      "priorityLowToHigh": "????? ???????? ?? ?????? ??? ??????",
+      "statusAToZ": "????? ?????? ?? ? ??? ?",
+      "statusZToA": "????? ?????? ?? ? ??? ?",
+      "createdNewestToOldest": "????? ????? ??????? ?? ?????? ??? ??????",
+      "createdOldestToNewest": "????? ????? ??????? ?? ?????? ??? ??????",
+      "startNewestToOldest": "????? ????? ??????? ?? ?????? ??? ??????",
+      "startOldestToNewest": "????? ????? ??????? ?? ?????? ??? ??????",
+      "endNewestToOldest": "????? ????? ??????? ?? ?????? ??? ??????",
+      "endOldestToNewest": "????? ????? ??????? ?? ?????? ??? ??????"
     }
   },
   "users": {
@@ -837,6 +954,104 @@
     "allUsers": "جميع المستخدمين",
     "searchPlaceholder": "البحث عن مستخدمين...",
     "subtitle": "إدارة مستخدمي النظام",
+    "approvals": {
+      "tabs": {
+        "pending": "قيد الانتظار",
+        "approved": "تمت الموافقة",
+        "rejected": "مرفوضة",
+        "all": "كل المستخدمين"
+      },
+      "descriptions": {
+        "pending": "مراجعة طلبات حسابات المشغلين والفنيين.",
+        "approved": "الحسابات الموافق عليها التي يمكنها الوصول إلى النظام.",
+        "rejected": "الطلبات المرفوضة وأسباب الرفض.",
+        "all": "كل الحسابات مع حالة الموافقة الحالية."
+      },
+      "pendingCount": "طلبات الحسابات المعلقة",
+      "loading": "جارٍ تحميل الطلبات...",
+      "retry": "إعادة المحاولة",
+      "accessDenied": "تم رفض الوصول",
+      "accessDeniedDescription": "يمكن للمسؤولين النشطين والمتحققين والمعتمدين فقط إدارة الموافقات.",
+      "emailVerification": "التحقق من البريد",
+      "approvalStatus": "حالة الموافقة",
+      "requestDate": "تاريخ الطلب",
+      "approvalDate": "تاريخ الموافقة",
+      "rejectionDate": "تاريخ الرفض",
+      "rejectionReason": "سبب الرفض",
+      "emailVerified": "البريد محقق",
+      "emailNotVerified": "البريد غير محقق",
+      "mustVerifyBeforeApproval": "يجب أن يتحقق هذا المستخدم من بريده قبل الموافقة.",
+      "unknownRole": "دور غير معروف",
+      "userAvatar": "صورة المستخدم",
+      "viewRejectionReason": "عرض سبب الرفض",
+      "status": {
+        "pending": "بانتظار الموافقة",
+        "approved": "موافق عليه",
+        "rejected": "مرفوض",
+        "legacy": "حساب قديم"
+      },
+      "filters": {
+        "search": "بحث عن المستخدمين",
+        "role": "الدور",
+        "allRoles": "كل الأدوار",
+        "verification": "التحقق من البريد",
+        "allVerification": "كل الحالات",
+        "sort": "الترتيب",
+        "oldest": "الأقدم أولاً",
+        "newest": "الأحدث أولاً",
+        "pageSize": "حجم الصفحة"
+      },
+      "actions": {
+        "approve": "موافقة",
+        "reject": "رفض",
+        "approveAccount": "الموافقة على الحساب",
+        "rejectAccount": "رفض الحساب",
+        "confirmApprove": "تأكيد الموافقة",
+        "confirmReject": "تأكيد الرفض",
+        "cancel": "إلغاء",
+        "processing": "جارٍ المعالجة..."
+      },
+      "dialog": {
+        "approveTitle": "الموافقة على الحساب",
+        "rejectTitle": "رفض الحساب",
+        "approveQuestion": "هل تريد الموافقة على هذا الحساب؟",
+        "approveDescription": "سيتمكن المستخدم من تسجيل الدخول بعد الموافقة."
+      },
+      "validation": {
+        "reasonRequired": "سبب الرفض مطلوب.",
+        "reasonMax": "الحد الأقصى 500 حرف."
+      },
+      "messages": {
+        "approved": "تمت الموافقة على الحساب بنجاح.",
+        "rejected": "تم رفض الحساب بنجاح.",
+        "alreadyApproved": "تمت الموافقة على الحساب مسبقاً.",
+        "rejectionUpdated": "تم تحديث الرفض."
+      },
+      "empty": {
+        "pending": "لا توجد طلبات حساب معلقة.",
+        "pendingDescription": "لا توجد حالياً حسابات بانتظار موافقة المسؤول.",
+        "approved": "لا توجد حسابات موافق عليها.",
+        "rejected": "لا توجد حسابات مرفوضة.",
+        "all": "لا يوجد مستخدمون.",
+        "search": "لا يوجد مستخدم يطابق البحث."
+      },
+      "errors": {
+        "ADMIN_ACCESS_REQUIRED": "صلاحية المسؤول مطلوبة.",
+        "AUTHENTICATED_USER_NOT_FOUND": "جلستك لم تعد صالحة.",
+        "ACCOUNT_INACTIVE": "حساب المسؤول غير نشط.",
+        "EMAIL_NOT_VERIFIED": "يجب التحقق من بريد المسؤول.",
+        "ACCOUNT_PENDING_APPROVAL": "حساب المسؤول قيد الانتظار.",
+        "ACCOUNT_REJECTED": "تم رفض حساب المسؤول.",
+        "INVALID_USER_IDENTIFIER": "الحساب المحدد غير صالح.",
+        "USER_NOT_FOUND": "الحساب المحدد لم يعد موجوداً.",
+        "EMAIL_VERIFICATION_REQUIRED_BEFORE_APPROVAL": "يجب التحقق من البريد قبل الموافقة.",
+        "CANNOT_REJECT_SELF": "لا يمكنك رفض حساب المسؤول الخاص بك.",
+        "ADMIN_ACCOUNT_REQUIRES_SEPARATE_MANAGEMENT": "حسابات المسؤولين تتطلب إدارة منفصلة.",
+        "INVALID_APPROVAL_TRANSITION": "تغيرت حالة الحساب. تم تحديث القائمة.",
+        "ACCOUNT_ALREADY_APPROVED": "تمت الموافقة على الحساب مسبقاً.",
+        "generic": "تعذر تحميل الموافقات."
+      }
+    },
     "actions": {
       "edit": "تعديل",
       "delete": "حذف",
@@ -857,7 +1072,8 @@
       "createdAt": "تاريخ الإنشاء",
       "loginHistory": "سجل تسجيل الدخول",
       "lastLogin": "آخر تسجيل دخول",
-      "actions": "الإجراءات"
+      "actions": "الإجراءات",
+      "userCode": "??? ????????"
     },
     "empty": {
       "search": "لا يوجد مستخدمون يطابقون بحثك.",
@@ -874,6 +1090,7 @@
     "form": {
       "profilePhoto": "الصورة الشخصية",
       "clickAvatar": "اضغط على الصورة لرفع صورة شخصية",
+      "customDepartment": "قسم مخصص",
       "userId": "معرف المستخدم",
       "fullName": "الاسم الكامل",
       "email": "البريد الإلكتروني",
@@ -882,7 +1099,8 @@
       "role": "الدور",
       "status": "الحالة",
       "password": "كلمة المرور",
-      "editPassword": "اترك فارغاً للحفاظ على كلمة المرور الحالية"
+      "editPassword": "اترك فارغاً للحفاظ على كلمة المرور الحالية",
+      "userCode": "??? ????????"
     },
     "options": {
       "admin": "مدير",
@@ -963,7 +1181,8 @@
       "category": "الفئة",
       "stock": "المخزون",
       "unitPrice": "سعر الوحدة",
-      "actions": "الإجراءات"
+      "actions": "الإجراءات",
+      "partCode": "??? ??????"
     },
     "form": {
       "partId": "معرف القطعة",
@@ -974,14 +1193,16 @@
       "unitPrice": "سعر الوحدة",
       "location": "الموقع",
       "stockQuantity": "كمية المخزون",
-      "minimumStock": "الحد الأدنى للمخزون"
+      "minimumStock": "الحد الأدنى للمخزون",
+      "partCode": "??? ??????"
     },
     "placeholders": {
       "enterPartId": "أدخل معرف القطعة",
       "enterPartName": "أدخل اسم القطعة",
       "enterManufacturerRef": "أدخل مرجع الشركة المصنعة",
       "enterManufacturer": "أدخل الشركة المصنعة",
-      "enterCategory": "أدخل الفئة"
+      "enterCategory": "أدخل الفئة",
+      "enterPartCode": "???? ??? ??????"
     },
     "actions": {
       "addPart": "إضافة قطعة",
@@ -999,7 +1220,8 @@
     "validation": {
       "partIdRequired": "معرف القطعة مطلوب",
       "partNameRequired": "اسم القطعة مطلوب",
-      "manufacturerRefRequired": "مرجع الشركة المصنعة مطلوب"
+      "manufacturerRefRequired": "مرجع الشركة المصنعة مطلوب",
+      "partCodeRequired": "??? ?????? ?????"
     },
     "notifications": {
       "createSuccess": "تم إنشاء القطعة بنجاح",
@@ -1065,6 +1287,8 @@
       "machineTypes": "أنواع الآلات",
       "sensors": "المستشعرات",
       "capteurs": "المستشعرات",
+      "mesures": "قياسات المستشعرات",
+      "modulePieces": "قطع الوحدات",
       "maintenancePlans": "خطط الصيانة",
       "smartMaintenanceCalendar": "تقويم الصيانة الذكي",
       "preventiveTaskChecklist": "قائمة مراجعة مهام الصيانة الوقائية",
@@ -1109,7 +1333,8 @@
       "installationDate": "تاريخ التثبيت",
       "weight": "الوزن (كجم)",
       "location": "الموقع",
-      "actions": "الإجراءات"
+      "actions": "الإجراءات",
+      "machineCode": "??? ?????"
     },
     "empty": {
       "search": "لم يتم العثور على آلات تطابق بحثك.",
@@ -1129,7 +1354,8 @@
       "installationDate": "تاريخ التثبيت",
       "weight": "الوزن (كجم)",
       "location": "الموقع",
-      "selectType": "اختر نوع الآلة"
+      "selectType": "اختر نوع الآلة",
+      "machineCode": "??? ?????"
     },
     "options": {
       "operational": "قيد التشغيل",
@@ -1163,7 +1389,8 @@
       "manufacturerRequired": "الشركة المصنعة مطلوبة",
       "modelRequired": "الموديل مطلوب",
       "installationRequired": "تاريخ التثبيت مطلوب",
-      "confirmDelete": "هل أنت متأكد من حذف هذه الآلة؟ لا يمكن التراجع عن هذا الإجراء."
+      "confirmDelete": "هل أنت متأكد من حذف هذه الآلة؟ لا يمكن التراجع عن هذا الإجراء.",
+      "machineCodeRequired": "??? ????? ?????"
     },
     "button": {
       "cancel": "إلغاء",
@@ -1185,7 +1412,8 @@
       "technician": "الفني",
       "startDate": "تاريخ البدء",
       "endDate": "تاريخ الانتهاء",
-      "finalState": "الحالة النهائية"
+      "finalState": "الحالة النهائية",
+      "reportReference": "???? ???????"
     },
     "empty": {
       "search": "لا توجد تقارير مطابقة للبحث.",
@@ -1204,7 +1432,8 @@
       "rootCause": "السبب الجذري",
       "actionDescription": "وصف الإجراء",
       "finalState": "الحالة النهائية",
-      "responsibleValidation": "اعتماد المسؤول"
+      "responsibleValidation": "اعتماد المسؤول",
+      "reportReference": "???? ???????"
     },
     "placeholders": {
       "selectWorkOrder": "اختر أمر العمل",
@@ -1228,7 +1457,8 @@
       "workOrderRequired": "أمر العمل مطلوب",
       "technicianRequired": "الفني مطلوب",
       "startDateRequired": "تاريخ البدء مطلوب",
-      "endDateRequired": "تاريخ الانتهاء مطلوب"
+      "endDateRequired": "تاريخ الانتهاء مطلوب",
+      "reportReferenceRequired": "???? ??????? ?????"
     }
   },
   "pannes": {
@@ -1247,7 +1477,8 @@
       "panneId": "معرف العطل",
       "code": "رمز العطل",
       "description": "الوصف",
-      "severity": "الخطورة"
+      "severity": "الخطورة",
+      "faultReference": "???? ?????"
     },
     "empty": {
       "default": "لا توجد أعطال",
@@ -1261,7 +1492,8 @@
       "panneId": "معرف العطل",
       "code": "رمز العطل",
       "description": "الوصف",
-      "severity": "الخطورة (اختياري)"
+      "severity": "الخطورة (اختياري)",
+      "faultReference": "???? ?????"
     },
     "notifications": {
       "panneIdRequired": "معرف العطل مطلوب",
@@ -1272,7 +1504,8 @@
       "updated": "تم تحديث العطل بنجاح",
       "deleted": "تم حذف العطل بنجاح",
       "saveFailed": "فشل حفظ العطل",
-      "deleteFailed": "فشل حذف العطل"
+      "deleteFailed": "فشل حذف العطل",
+      "faultReferenceRequired": "???? ????? ?????"
     }
   },
   "panneSolutions": {
@@ -1291,7 +1524,8 @@
       "solutionId": "معرف الحل",
       "panne": "العطل",
       "cause": "السبب المحتمل",
-      "solution": "الحل الموصى به"
+      "solution": "الحل الموصى به",
+      "solutionReference": "???? ????"
     },
     "empty": {
       "default": "لا توجد حلول أعطال",
@@ -1306,7 +1540,8 @@
       "panne": "العطل",
       "selectPanne": "اختر عطلًا",
       "cause": "السبب المحتمل (اختياري)",
-      "solution": "الحل الموصى به (اختياري)"
+      "solution": "الحل الموصى به (اختياري)",
+      "solutionReference": "???? ????"
     },
     "notifications": {
       "solutionIdRequired": "معرف الحل مطلوب",
@@ -1316,7 +1551,8 @@
       "updated": "تم تحديث حل العطل بنجاح",
       "deleted": "تم حذف حل العطل بنجاح",
       "saveFailed": "فشل حفظ حل العطل",
-      "deleteFailed": "فشل حذف حل العطل"
+      "deleteFailed": "فشل حذف حل العطل",
+      "solutionReferenceRequired": "???? ???? ?????"
     }
   },
   "documents": {
@@ -1371,7 +1607,13 @@
       "save": "حفظ"
     },
     "viewer": {
-      "title": "عارض الوثائق"
+      "title": "عارض الوثائق",
+      "loading": "جاري تحميل المعاينة...",
+      "imageUnavailable": "تعذر عرض هذه الصورة.",
+      "downloadOnly": "المعاينة غير متاحة لهذا النوع من الملفات. يمكنك فتحه أو تنزيله.",
+      "open": "فتح",
+      "download": "تنزيل",
+      "unsupported": "هذا النوع من الملفات غير مدعوم للمعاينة."
     },
     "notifications": {
       "fileRequired": "يرجى اختيار ملف PDF",
@@ -1405,7 +1647,8 @@
       "huileGraisse": "زيت / شحم",
       "documentation": "التوثيق",
       "maintenanceCode": "رمز الصيانة",
-      "frequencyLabel": "وصف التكرار"
+      "frequencyLabel": "وصف التكرار",
+      "planCode": "??? ?????"
     },
     "custom": "مخصص",
     "empty": {
@@ -1427,7 +1670,8 @@
       "responsable": "المسؤول",
       "huileGraisse": "زيت / شحم",
       "documentation": "التوثيق",
-      "instruction": "التعليمات"
+      "instruction": "التعليمات",
+      "planCode": "??? ?????"
     },
     "placeholders": {
       "planId": "أدخل معرف الخطة",
@@ -1440,14 +1684,20 @@
       "responsable": "المناولة / الصيانة",
       "huileGraisse": "ARAL Degol B 220",
       "documentation": "بطاقة خطة الصيانة",
-      "instruction": "أدخل خطوات الصيانة بالتفصيل"
+      "instruction": "أدخل خطوات الصيانة بالتفصيل",
+      "planCode": "???? ??? ?????"
     },
     "actions": {
       "edit": "تعديل",
       "delete": "حذف",
       "cancel": "إلغاء",
       "create": "إنشاء",
-      "update": "تحديث"
+      "update": "تحديث",
+      "activate": "تفعيل",
+      "pause": "إيقاف مؤقت",
+      "resume": "استئناف",
+      "archive": "أرشفة",
+      "complete": "وضع علامة مكتمل"
     },
     "notifications": {
       "loadFailed": "فشل تحميل خطط الصيانة",
@@ -1461,7 +1711,155 @@
       "deleteFailed": "فشل حذف خطة الصيانة",
       "createSuccess": "تم إنشاء خطة الصيانة بنجاح",
       "updateSuccess": "تم تحديث خطة الصيانة بنجاح",
-      "saveFailed": "فشل حفظ خطة الصيانة"
+      "saveFailed": "فشل حفظ خطة الصيانة",
+      "planCodeRequired": "??? ????? ?????",
+      "confirmActivate": "تفعيل خطة الصيانة هذه؟ سيتم إنشاء أول حدث مجدول لها إذا لزم الأمر.",
+      "confirmPause": "إيقاف خطة الصيانة هذه مؤقتاً؟ سيتوقف إنشاء الأحداث المستقبلية حتى استئنافها.",
+      "confirmResume": "استئناف خطة الصيانة هذه؟ سيتم إنشاء الأحداث المستقبلية مرة أخرى.",
+      "confirmArchive": "أرشفة خطة الصيانة هذه؟ ستصبح للقراءة فقط ولن يمكن تعديلها أو جدولتها أو حذفها.",
+      "confirmComplete": "وضع علامة على خطة الصيانة هذه كمكتملة؟",
+      "transitionSuccess": "تم تحديث حالة خطة الصيانة بنجاح",
+      "transitionFailed": "فشل تحديث حالة خطة الصيانة",
+      "versionConflict": "تم تغيير هذه الخطة منذ آخر تحميل لها. جارٍ إعادة تحميل أحدث نسخة."
+    },
+    "status": {
+      "draft": "مسودة",
+      "active": "نشط",
+      "paused": "متوقف مؤقتاً",
+      "archived": "مؤرشف",
+      "completed": "مكتمل"
+    }
+  },
+  "stocks": {
+    "title": "إدارة المخزون",
+    "heading": "إدارة المخزون",
+    "description": "تتبع الكميات المتاحة والحجوزات والسجل الكامل لكل قطعة في المخزون.",
+    "totalStocks": "إجمالي سجلات المخزون",
+    "addStock": "إضافة سجل مخزون",
+    "allStocks": "جميع سجلات المخزون",
+    "searchPlaceholder": "ابحث حسب القطعة أو الموقع...",
+    "table": {
+      "part": "القطعة",
+      "quantity": "الكمية في المخزون",
+      "reserved": "محجوز",
+      "available": "متاح",
+      "threshold": "حد التنبيه",
+      "location": "الموقع"
+    },
+    "empty": {
+      "default": "لا توجد سجلات مخزون متاحة.",
+      "search": "لا توجد سجلات مخزون مطابقة للبحث."
+    },
+    "modal": {
+      "add": "إضافة سجل مخزون",
+      "edit": "تعديل سجل المخزون",
+      "adjust": "تعديل الكمية",
+      "history": "سجل الحركات"
+    },
+    "form": {
+      "stockCode": "رمز المخزون",
+      "part": "القطعة",
+      "initialQuantity": "الكمية الأولية",
+      "threshold": "حد التنبيه",
+      "minimum": "الحد الأدنى للكمية",
+      "location": "الموقع",
+      "delta": "التعديل (+/-)",
+      "reason": "السبب"
+    },
+    "placeholders": {
+      "stockCode": "أدخل رمز مخزون فريد",
+      "part": "اختر قطعة",
+      "threshold": "اختياري",
+      "minimum": "اختياري",
+      "location": "اختياري",
+      "delta": "مثال: 10 أو -5",
+      "reason": "اشرح سبب هذا التعديل"
+    },
+    "actions": {
+      "edit": "تعديل",
+      "delete": "حذف",
+      "cancel": "إلغاء",
+      "create": "إنشاء",
+      "update": "تحديث",
+      "adjust": "تعديل",
+      "history": "السجل",
+      "apply": "تطبيق"
+    },
+    "notifications": {
+      "loadFailed": "فشل تحميل سجلات المخزون",
+      "stockCodeRequired": "رمز المخزون مطلوب",
+      "partRequired": "القطعة مطلوبة",
+      "quantityNonNegative": "يجب أن تكون الكمية الأولية صفراً أو أكبر",
+      "confirmDelete": "حذف سجل المخزون هذا؟ هذا ممكن فقط عندما يكون فارغاً تماماً وبدون أي سجل حركات.",
+      "deleteSuccess": "تم حذف سجل المخزون بنجاح",
+      "deleteFailed": "فشل حذف سجل المخزون",
+      "createSuccess": "تم إنشاء سجل المخزون بنجاح",
+      "updateSuccess": "تم تحديث سجل المخزون بنجاح",
+      "saveFailed": "فشل حفظ سجل المخزون",
+      "deltaRequired": "أدخل كمية تعديل غير صفرية",
+      "reasonRequired": "السبب مطلوب لأي تعديل على المخزون",
+      "confirmAdjust": "تطبيق تعديل بقيمة {delta} على {part}؟",
+      "adjustSuccess": "تم تعديل المخزون بنجاح",
+      "adjustFailed": "فشل تعديل المخزون",
+      "versionConflict": "لقد تغير سجل المخزون هذا منذ آخر تحميل. جارٍ إعادة تحميل أحدث نسخة.",
+      "historyLoadFailed": "فشل تحميل سجل الحركات"
+    },
+    "movementTypes": {
+      "reservation": "حجز",
+      "consumption": "استهلاك",
+      "return": "إرجاع",
+      "adjustment": "تعديل",
+      "cancellation": "إلغاء"
+    },
+    "history": {
+      "empty": "لا توجد حركات مسجلة لهذا المخزون بعد.",
+      "type": "النوع",
+      "quantityChange": "تغير الكمية",
+      "reservedChange": "تغير المحجوز",
+      "stockAfter": "المخزون بعد",
+      "reservedAfter": "المحجوز بعد",
+      "reason": "السبب"
+    }
+  },
+  "resourceCrud": {
+    "common": {
+      "add": "إضافة",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "actions": "الإجراءات",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "loading": "جارٍ التحميل...",
+      "confirmDelete": "هل تريد حذف هذا السجل؟",
+      "loadFailed": "تعذر تحميل البيانات",
+      "saveFailed": "تعذر حفظ السجل",
+      "deleteFailed": "تعذر حذف السجل"
+    },
+    "measurements": {
+      "title": "قياسات المستشعرات",
+      "empty": "لا توجد قياسات",
+      "fields": {
+        "id": "معرف القياس",
+        "sensor": "المستشعر",
+        "value": "القيمة",
+        "timestamp": "الوقت",
+        "status": "الحالة",
+        "reference": "???? ??????"
+      },
+      "status": {
+        "normal": "عادي",
+        "warning": "تحذير",
+        "critical": "حرج"
+      }
+    },
+    "modulePieces": {
+      "title": "قطع الوحدات القياسية",
+      "empty": "لا توجد قطع",
+      "fields": {
+        "moduleType": "نوع الوحدة",
+        "part": "قطعة الكتالوج",
+        "quantity": "الكمية القياسية"
+      }
     }
   },
   "preventiveTaskChecklist": {
@@ -1480,7 +1878,8 @@
       "frequency": "التكرار",
       "instruction": "التعليمات",
       "responsable": "المسؤول",
-      "status": "الحالة"
+      "status": "الحالة",
+      "planCode": "??? ?????"
     },
     "empty": {
       "default": "لا توجد مهام صيانة وقائية متاحة",
@@ -1527,6 +1926,8 @@
       "taskDeleted": "تم حذف المهمة بنجاح",
       "noTasksAvailable": "لا توجد مهام صيانة وقائية متاحة. يرجى إنشاء خطط صيانة أولاً.",
       "confirmMarkComplete": "هل أنت متأكد من رغبتك في وضع علامة على هذه المهمة كمكتملة؟",
+      "confirmDelete": "هل تريد حذف مهمة الصيانة الوقائية؟",
+      "deleteFailed": "تعذر حذف المهمة",
       "saveFailed": "يرجى إدخال التعليمات."
     },
     "filters": {
@@ -1535,5 +1936,185 @@
       "completed": "المكتملة فقط",
       "overdue": "المهام المتأخرة"
     }
+  },
+  "technician": {
+    "operator": "المشغل",
+    "operatorSubmission": "المعلومات المسجلة بواسطة المشغل",
+    "claim": "إسناد إليّ",
+    "loading": "جارٍ التحميل…",
+    "notAvailable": "غير متاح",
+    "dashboard": {
+      "title": "لوحة الفني",
+      "cards": {
+        "assigned": "مسندة إليّ",
+        "inProgress": "قيد التنفيذ",
+        "waitingParts": "بانتظار القطع",
+        "waitingReview": "بانتظار المراجعة",
+        "completedToday": "مكتملة اليوم",
+        "urgent": "عاجلة"
+      },
+      "sections": {
+        "urgentTasks": "المهام العاجلة",
+        "current": "التدخلات الحالية",
+        "waitingPartsTasks": "بانتظار القطع",
+        "recent": "مكتملة مؤخراً"
+      }
+    },
+    "workOrders": {
+      "title": "أوامر العمل",
+      "detailTitle": "تفاصيل أمر العمل"
+    },
+    "actions": {
+      "title": "الإجراءات المتاحة",
+      "retry": "إعادة المحاولة",
+      "viewAll": "عرض الكل",
+      "viewDetails": "عرض التفاصيل",
+      "openManuals": "فتح الأدلة",
+      "openManual": "فتح الدليل",
+      "previous": "السابق",
+      "next": "التالي",
+      "saveReport": "حفظ التقرير",
+      "addPart": "إضافة قطعة غيار",
+      "approve": "اعتماد التقرير",
+      "return": "إرجاع التقرير",
+      "intervene": "بدء التدخل",
+      "start": "بدء التدخل",
+      "waitingParts": "وضعه بانتظار القطع",
+      "resume": "استئناف التدخل",
+      "close": "إغلاق أمر العمل"
+    },
+    "filters": {
+      "status": "الحالة",
+      "allStatuses": "كل الحالات",
+      "maintenanceType": "نوع الصيانة",
+      "allTypes": "كل الأنواع",
+      "priority": "الأولوية",
+      "allPriorities": "كل الأولويات",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ"
+    },
+    "status": {
+      "waiting_validation": "بانتظار المراجعة",
+      "technician_required": "الفني مطلوب",
+      "assigned": "مسند",
+      "in_progress": "قيد التنفيذ",
+      "waiting_parts": "بانتظار القطع",
+      "completed": "مكتمل",
+      "validated": "معتمد",
+      "returned": "مُعاد",
+      "cancelled": "ملغى",
+      "canceled": "ملغى"
+    },
+    "types": {
+      "preventive": "وقائية",
+      "corrective": "تصحيحية"
+    },
+    "priority": {
+      "urgent": "عاجلة",
+      "high": "عالية",
+      "medium": "متوسطة",
+      "low": "منخفضة"
+    },
+    "fields": {
+      "type": "نوع الصيانة",
+      "priority": "الأولوية",
+      "created": "تاريخ الإنشاء",
+      "technician": "الفني",
+      "startDate": "???????",
+      "endDate": "???????"
+    },
+    "machine": {
+      "title": "الآلة",
+      "machine_id": "معرّف الآلة",
+      "serial_no": "الرقم التسلسلي",
+      "reference": "المرجع",
+      "fabricant": "المصنّع",
+      "model": "الطراز",
+      "location": "الموقع",
+      "status": "الحالة",
+      "installation_date": "تاريخ التركيب",
+      "poids_kg": "الوزن (كغ)",
+      "type": "نوع الآلة"
+    },
+    "report": {
+      "title": "تقرير التدخل",
+      "cause": "النتائج الفنية / السبب الجذري",
+      "actions": "العمل المنجز",
+      "result": "النتيجة"
+    },
+    "parts": {
+      "title": "قطع الغيار",
+      "select": "اختر قطعة موجودة",
+      "quantity": "إجمالي الكمية المستخدمة"
+    },
+    "manuals": {
+      "title": "الأدلة"
+    },
+    "empty": {
+      "workOrders": "لا توجد أوامر عمل.",
+      "manuals": "لا يتوفر دليل.",
+      "report": "لا يوجد تقرير مرتبط.",
+      "parts": "لم تُسجل قطع غيار."
+    },
+    "errors": {
+      "network": "تعذر تحميل بيانات الفني.",
+      "load": "تعذر تحميل أمر العمل.",
+      "update": "تعذر إكمال الإجراء.",
+      "notFound": "أمر العمل غير موجود."
+    },
+    "messages": {
+      "confirmClose": "إغلاق أمر العمل؟ يجب أن يكون التقرير مكتملاً.",
+      "completed": "اكتمل هذا التدخل."
+    }
+  },
+  "miniAvatar": {
+    "greetings": {
+      "hello": "مرحبًا.",
+      "helloName": "مرحبًا، {name}.",
+      "morning": "صباح الخير.",
+      "morningName": "صباح الخير، {name}.",
+      "afternoon": "مساء الخير.",
+      "afternoonName": "مساء الخير، {name}.",
+      "evening": "مساء الخير.",
+      "eveningName": "مساء الخير، {name}.",
+      "night": "مساء الخير.",
+      "nightName": "مساء الخير، {name}."
+    },
+    "messages": {
+      "loading": "جارٍ التحقق من أنشطة الصيانة الخاصة بك...",
+      "ready": "لوحة المعلومات جاهزة.",
+      "overdue": "{count, plural, one {لديك مهمة صيانة متأخرة تتطلب الاهتمام.} other {لديك # مهام صيانة متأخرة تتطلب الاهتمام.}}",
+      "dueToday": "{count, plural, one {لديك مهمة صيانة واحدة مجدولة اليوم.} other {لديك # مهام صيانة مجدولة اليوم.}}",
+      "inProgress": "{count, plural, one {لديك مهمة صيانة قيد التنفيذ.} other {لديك # مهام صيانة قيد التنفيذ.}}",
+      "waitingValidation": "{count, plural, one {يوجد تقرير واحد بانتظار المصادقة.} other {يوجد # تقارير بانتظار المصادقة.}}",
+      "assigned": "{count, plural, one {تم إسناد مهمة صيانة واحدة إليك.} other {تم إسناد # مهام صيانة إليك.}}",
+      "clear": "لا توجد حاليًا مهمة صيانة عاجلة مسندة إليك."
+    },
+    "actions": {
+      "reviewOverdue": "مراجعة المهام المتأخرة",
+      "startMaintenance": "بدء الصيانة",
+      "continueTask": "متابعة المهمة",
+      "viewReports": "عرض التقارير",
+      "viewCalendar": "عرض التقويم",
+      "openMessage": "فتح رسالة المساعد",
+      "closeMessage": "إغلاق رسالة المساعد"
+    },
+    "accessibility": {
+      "assistantRegion": "مساعد الصيانة",
+      "operatorAvatar": "الصورة الرمزية لمساعد المشغّل",
+      "technicianAvatar": "الصورة الرمزية لمساعد الفني",
+      "adminAvatar": "الصورة الرمزية لمساعد المسؤول",
+      "neutralAvatar": "الصورة الرمزية للمساعد الصناعي"
+    }
+  },
+  "notificationCenter": {
+    "title": "الإشعارات",
+    "unread": "غير مقروءة",
+    "markAllRead": "وضع علامة مقروء على الكل",
+    "clearAll": "مسح الكل",
+    "markRead": "وضع علامة مقروء",
+    "clear": "مسح",
+    "loading": "جارٍ التحميل...",
+    "empty": "لا توجد إشعارات"
   }
 }

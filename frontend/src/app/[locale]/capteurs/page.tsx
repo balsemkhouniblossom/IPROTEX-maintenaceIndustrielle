@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
+import { displayText, referenceDisplay } from '@/services/displayValues';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import { useRouter } from 'next/navigation';
 import { CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -14,7 +15,7 @@ import Pagination from '@/components/Pagination';
 interface Capteur {
   _id: string;
   capteur_id: string;
-  module_id: string;
+  module_id: string | { _id?: string; module_id?: string; localisation?: string };
   code_capteur: string;
   type_capteur: string;
   unite_mesure?: string;
@@ -27,11 +28,22 @@ interface Capteur {
   firmware_version?: string;
 }
 
+interface ModuleOption {
+  _id: string;
+  module_id?: string;
+  localisation?: string;
+}
+
+function refId(value: Capteur['module_id']): string {
+  return typeof value === 'string' ? value : value?._id ?? '';
+}
+
 export default function CapteursPage() {
   const tCapteurs = useTranslations('capteurs');
   const tCommon = useTranslations('common');
   const router = useRouter();
   const [capteurs, setCapteurs] = useState<Capteur[]>([]);
+  const [modules, setModules] = useState<ModuleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -78,6 +90,15 @@ export default function CapteursPage() {
     }
   }
 
+  async function loadModules() {
+    try {
+      const response = await apiService.getModules({ page: 1, limit: 200 });
+      setModules(response.data.items ?? []);
+    } catch (error) {
+      console.error('Error loading modules:', error);
+    }
+  }
+
   async function refreshCapteurs() {
     await loadCapteurs();
     router.refresh();
@@ -90,6 +111,22 @@ export default function CapteursPage() {
   }
 
   const searchableFields = useMemo(() => getSearchableFields(capteurs), [capteurs]);
+
+  const moduleById = useMemo(
+    () => new Map(modules.map((module) => [module._id, module])),
+    [modules],
+  );
+
+  function moduleLabel(value: Capteur['module_id']) {
+    if (value && typeof value === 'object') {
+      return referenceDisplay(value, ['module_id', 'localisation'], tCapteurs('na'));
+    }
+
+    const module = moduleById.get(String(value ?? ''));
+    return module
+      ? referenceDisplay(module, ['module_id', 'localisation'], tCapteurs('na'))
+      : displayText(value, tCapteurs('na'));
+  }
 
   const filteredCapteurs = useMemo(() => {
     const list = Array.isArray(capteurs) ? capteurs : [];
@@ -119,11 +156,11 @@ export default function CapteursPage() {
 
   function validateForm() {
     if (!formData.capteur_id.trim()) {
-      showNotification('error', tCapteurs('notifications.capteurIdRequired'));
+      showNotification('error', tCapteurs('notifications.sensorReferenceRequired', { default: 'Sensor reference is required' }));
       return false;
     }
     if (!formData.module_id.trim()) {
-      showNotification('error', tCapteurs('notifications.moduleIdRequired'));
+      showNotification('error', tCapteurs('notifications.moduleRequired', { default: 'Module is required' }));
       return false;
     }
     if (!formData.code_capteur.trim()) {
@@ -146,7 +183,7 @@ export default function CapteursPage() {
     setEditingCapteur(capteur);
     setFormData({
       capteur_id: capteur.capteur_id ?? '',
-      module_id: String(capteur.module_id ?? ''),
+      module_id: refId(capteur.module_id),
       code_capteur: capteur.code_capteur ?? '',
       type_capteur: capteur.type_capteur ?? '',
       unite_mesure: capteur.unite_mesure ?? '',
@@ -222,6 +259,10 @@ export default function CapteursPage() {
   useEffect(() => {
     loadCapteurs();
   }, [page, limit]);
+
+  useEffect(() => {
+    void loadModules();
+  }, []);
 
   useEffect(() => {
     const handleCapteursChanged = () => {
@@ -313,8 +354,7 @@ export default function CapteursPage() {
             <table className="table min-w-full md:min-w-375">
               <thead>
                 <tr>
-                  <th className="hidden md:table-cell">{tCapteurs('table.databaseId')}</th>
-                  <th>{tCapteurs('table.sensorId')}</th>
+                  <th>{tCapteurs('table.sensorReference', { default: 'Sensor Reference' })}</th>
                   <th>{tCapteurs('table.code')}</th>
                   <th>{tCapteurs('table.type')}</th>
                   <th>{tCapteurs('table.module')}</th>
@@ -332,7 +372,7 @@ export default function CapteursPage() {
               <tbody>
                 {filteredCapteurs.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="text-center py-8 text-gray-500">
+                    <td colSpan={13} className="text-center py-8 text-gray-500">
                       {searchTerm ? tCapteurs('empty.search') : tCapteurs('empty.default')}
                     </td>
                   </tr>
@@ -340,11 +380,10 @@ export default function CapteursPage() {
                   filteredCapteurs.map((capteur) => (
                     <Fragment key={capteur._id}>
                       <tr>
-                        <td className="hidden md:table-cell font-medium">{capteur._id || tCapteurs('na')}</td>
                         <td>{capteur.capteur_id || tCapteurs('na')}</td>
                         <td>{capteur.code_capteur || tCapteurs('na')}</td>
                         <td>{capteur.type_capteur || tCapteurs('na')}</td>
-                        <td>{capteur.module_id || tCapteurs('na')}</td>
+                        <td>{moduleLabel(capteur.module_id)}</td>
                         <td className="hidden md:table-cell">{capteur.unite_mesure || tCapteurs('na')}</td>
                         <td className="hidden md:table-cell max-w-60 truncate" title={capteur.mqtt_topic || ''}>{capteur.mqtt_topic || tCapteurs('na')}</td>
                         <td className="hidden md:table-cell">{capteur.seuil_avertissement ?? tCapteurs('na')}</td>
@@ -384,10 +423,9 @@ export default function CapteursPage() {
                         </td>
                       </tr>
                       <tr className="md:hidden">
-                        <td colSpan={14} className="pb-4 pt-0">
+                        <td colSpan={13} className="pb-4 pt-0">
                           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                              <div><span className="font-medium">{tCapteurs('table.databaseId')}:</span> {capteur._id || tCapteurs('na')}</div>
                               <div><span className="font-medium">{tCapteurs('table.unit')}:</span> {capteur.unite_mesure || tCapteurs('na')}</div>
                               <div className="sm:col-span-2"><span className="font-medium">{tCapteurs('table.mqttTopic')}:</span> {capteur.mqtt_topic || tCapteurs('na')}</div>
                               <div><span className="font-medium">{tCapteurs('table.warningThreshold')}:</span> {capteur.seuil_avertissement ?? tCapteurs('na')}</div>
@@ -427,27 +465,36 @@ export default function CapteursPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{tCapteurs('form.sensorId')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {tCapteurs('form.sensorReference', { default: 'Sensor Reference' })}
+              </label>
               <input
                 type="text"
                 value={formData.capteur_id}
                 onChange={(e) => setFormData({ ...formData, capteur_id: e.target.value })}
                 className="input-field w-full"
-                placeholder={tCapteurs('placeholders.sensorId')}
+                placeholder={tCapteurs('placeholders.sensorReference', { default: 'Sensor Reference' })}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{tCapteurs('form.moduleId')}</label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {tCapteurs.has('form.module') ? tCapteurs('form.module') : tCapteurs('table.module')}
+              </label>
+              <select
                 value={formData.module_id}
                 onChange={(e) => setFormData({ ...formData, module_id: e.target.value })}
                 className="input-field w-full"
-                placeholder={tCapteurs('placeholders.moduleId')}
                 required
-              />
+              >
+                <option value="">{tCapteurs('table.module')}</option>
+                {modules.map((module) => (
+                  <option key={module._id} value={module._id}>
+                    {referenceDisplay(module, ['module_id', 'localisation'], tCapteurs('na'))}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

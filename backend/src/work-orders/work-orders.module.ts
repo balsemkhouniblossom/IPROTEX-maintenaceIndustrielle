@@ -26,10 +26,21 @@ import { KPI, KPISchema } from '../schemas/kpi.schema';
 import { Stock, StockSchema } from '../schemas/stock.schema';
 import { Catalogue, CatalogueSchema } from '../schemas/catalogue.schema';
 import { OTPieces, OTPiecesSchema } from '../schemas/ot-pieces.schema';
+import { Lubrifiant, LubrifiantSchema } from '../schemas/lubrifiant.schema';
+import {
+  LubrificationLog,
+  LubrificationLogSchema,
+} from '../schemas/lubrification-log.schema';
+import { PartRequest, PartRequestSchema } from '../schemas/part-request.schema';
+import { MaintenanceSchedulingService } from './maintenance-scheduling.service';
+import { NotificationCenterModule } from '../notification-center/notification-center.module';
+import { StockMovementsModule } from '../stock-movements/stock-movements.module';
 
 @Module({
   imports: [
     CounterModule,
+    NotificationCenterModule,
+    StockMovementsModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: Machine.name, schema: MachineSchema },
@@ -45,10 +56,13 @@ import { OTPieces, OTPiecesSchema } from '../schemas/ot-pieces.schema';
       { name: Stock.name, schema: StockSchema },
       { name: Catalogue.name, schema: CatalogueSchema },
       { name: OTPieces.name, schema: OTPiecesSchema },
+      { name: Lubrifiant.name, schema: LubrifiantSchema },
+      { name: LubrificationLog.name, schema: LubrificationLogSchema },
+      { name: PartRequest.name, schema: PartRequestSchema },
     ]),
   ],
   controllers: [WorkOrdersController],
-  providers: [WorkOrdersService],
-  exports: [WorkOrdersService],
+  providers: [WorkOrdersService, MaintenanceSchedulingService],
+  exports: [WorkOrdersService, MaintenanceSchedulingService],
 })
 export class WorkOrdersModule {}

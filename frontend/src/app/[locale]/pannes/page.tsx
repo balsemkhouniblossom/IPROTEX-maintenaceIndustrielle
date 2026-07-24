@@ -147,7 +147,7 @@ export default function PannesPage() {
 
   function validateForm(): boolean {
     if (!formData.panne_id.trim()) {
-      showNotification('error', t('notifications.panneIdRequired'));
+      showNotification('error', t('notifications.faultReferenceRequired', { default: 'Fault reference is required' }));
       return false;
     }
     if (!formData.code_panne.trim()) {
@@ -322,7 +322,7 @@ export default function PannesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('table.panneId')}</th>
+                  <th>{t('table.faultReference', { default: 'Fault Reference' })}</th>
                   <th>{t('table.code')}</th>
                   <th>{t('table.description')}</th>
                   <th>{t('table.severity')}</th>
@@ -391,7 +391,7 @@ export default function PannesPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.panneId')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.faultReference', { default: 'Fault Reference' })}</label>
               {isOperator ? (
                 <select
                   value={formData.panne_id}
@@ -406,10 +406,10 @@ export default function PannesPage() {
                     applyPanneTemplate(selectedValue);
                   }}
                   className="input-field"
-                  title={t('form.panneId')}
+                  title={t('form.faultReference', { default: 'Fault Reference' })}
                   required
                 >
-                  <option value="">{t('form.panneId')}</option>
+                  <option value="">{t('form.faultReference', { default: 'Fault Reference' })}</option>
                   <option value={CUSTOM_OPTION}>Custom value...</option>
                   {panneTemplates.map((panne) => (
                     <option key={panne._id} value={panne.panne_id}>
@@ -423,7 +423,7 @@ export default function PannesPage() {
                   value={formData.panne_id}
                   onChange={(e) => setFormData({ ...formData, panne_id: e.target.value })}
                   className="input-field"
-                  title={t('form.panneId')}
+                  title={t('form.faultReference', { default: 'Fault Reference' })}
                   required
                 />
               )}
@@ -433,8 +433,8 @@ export default function PannesPage() {
                   value={formData.panne_id}
                   onChange={(e) => setFormData({ ...formData, panne_id: e.target.value })}
                   className="input-field mt-2"
-                  title={t('form.panneId')}
-                  placeholder="Custom panne ID"
+                  title={t('form.faultReference', { default: 'Fault Reference' })}
+                  placeholder="Custom fault reference"
                   required
                 />
               )}

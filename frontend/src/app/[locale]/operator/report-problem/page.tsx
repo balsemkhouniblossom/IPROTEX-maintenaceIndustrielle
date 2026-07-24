@@ -6,9 +6,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
-import { getApiBaseUrl } from "@/config/api-base-url";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
+import { resolveManagedFileUrl } from "@/services/managedFileUrls";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -60,13 +60,6 @@ function tokenize(input: string | undefined): string[] {
 
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
-
-const API_URL = getApiBaseUrl();
-
-function getFileUrl(path: string): string {
-  if (!path) return "";
-  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
 }
 
 export default function OperatorReportProblemPage() {
@@ -124,7 +117,7 @@ export default function OperatorReportProblemPage() {
       try {
         setLoading(true);
         const [machineTypeItems, machineItems, documentItems] = await Promise.all([
-          fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
+          fetchAllPaginated<MachineType>((pagination) => apiService.getOperatorMachineTypes(pagination)),
           fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
           fetchAllPaginated<DocumentEntity>((pagination) => apiService.getOperatorManuals(pagination)),
         ]);
@@ -302,40 +295,21 @@ export default function OperatorReportProblemPage() {
       return;
     }
 
-    const nowIso = new Date().toISOString();
-
     setSubmitValidationReason("");
     setSubmitting(true);
     try {
-      const workOrderRes = await apiService.createWorkOrder({
-        ot_id: uniqueId("WO-RP"),
+      const reportRes = await apiService.createOperatorCorrectiveReport({
         machine_id: selectedMachine,
-        technician_id: user._id,
-        description: `${selectedFault.code_panne} | ${selectedActions.join(" | ")}`,
-        type_maintenance: "corrective",
-        status: "waiting_validation",
-        priorite: "high",
         code_panne: selectedFault.code_panne,
-        date_created: nowIso,
-        date_start: nowIso,
+        fault_description: selectedFault.description,
+        actions: selectedActions,
+        priority: "high",
       });
 
-      const workOrderId = workOrderRes?.data?._id as string | undefined;
+      const workOrderId = reportRes?.data?.workOrder?._id as string | undefined;
       if (!workOrderId) {
-        throw new Error("Work order creation failed");
+        throw new Error("Corrective report creation failed");
       }
-
-      await apiService.createInterventionReport({
-        report_id: uniqueId("REP-RP"),
-        ot_id: workOrderId,
-        technician_id: user._id,
-        date_debut: nowIso,
-        date_fin: nowIso,
-        cause_racine: selectedFault.description,
-        description_action: selectedActions.join(" | "),
-        etat_final: "waiting_validation",
-        validation_responsable: "waiting_validation",
-      });
 
       await uploadPhotoIfPresent(selectedMachine);
       showNotification("success", t("notifications.submitSuccess"));
@@ -496,7 +470,7 @@ export default function OperatorReportProblemPage() {
             <div className="card-title mb-3">{t("openManual")}</div>
             {manualDocument ? (
               <a
-                href={getFileUrl(manualDocument.file_path)}
+                href={resolveManagedFileUrl(manualDocument.file_path)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white"

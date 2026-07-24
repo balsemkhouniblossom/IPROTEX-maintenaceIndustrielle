@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
+import { displayText } from '@/services/displayValues';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import Pagination from '@/components/Pagination';
@@ -77,7 +78,7 @@ export default function ModuleTypesPage() {
 
   const validateForm = () => {
     if (!formData.module_type_id.trim()) {
-      showNotification('error', 'Module Type ID is required');
+      showNotification('error', 'Module type code is required');
       return false;
     }
     if (!formData.nom_module.trim()) {
@@ -238,7 +239,7 @@ export default function ModuleTypesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Module Type ID</th>
+                  <th>Module Type Code</th>
                   <th>Name</th>
                   <th>Description</th>
                   <th>Category</th>
@@ -257,7 +258,7 @@ export default function ModuleTypesPage() {
                 ) : (
                   filteredModuleTypes.map((module: ModuleType) => (
                     <tr key={module._id}>
-                      <td className="font-medium">{module.module_type_id || module._id}</td>
+                      <td className="font-medium">{displayText(module.module_type_id, 'N/A')}</td>
                       <td>{module.nom_module || 'N/A'}</td>
                       <td>{module.description || 'N/A'}</td>
                       <td>{module.category || 'N/A'}</td>
@@ -310,7 +311,7 @@ export default function ModuleTypesPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-dark mb-1">
-                Module Type ID
+                Module Type Code
               </label>
               <input
                 type="text"

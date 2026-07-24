@@ -56,9 +56,41 @@ export class CreateWorkOrderDto {
 
   @IsDateString()
   @IsOptional()
+  scheduled_date?: string;
+
+  @IsDateString()
+  @IsOptional()
+  due_date?: string;
+
+  @IsDateString()
+  @IsOptional()
+  execution_date?: string;
+
+  @IsDateString()
+  @IsOptional()
   date_end?: string;
 
   @IsDateString()
   @IsOptional()
   date_closed?: string;
+
+  @IsString()
+  @IsOptional()
+  recurrence_source_occurrence_id?: string;
+
+  @IsDateString()
+  @IsOptional()
+  original_due_date?: string;
+
+  @IsString()
+  @IsOptional()
+  reschedule_reason?: string;
+
+  @IsString()
+  @IsOptional()
+  rescheduled_by?: string;
+
+  @IsDateString()
+  @IsOptional()
+  rescheduled_at?: string;
 }

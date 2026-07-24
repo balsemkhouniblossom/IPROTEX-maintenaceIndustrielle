@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useTranslations } from 'next-intl';
 
@@ -11,6 +11,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { getDashboardPath } from '@/services/authRedirect';
+import {
+  getLoginErrorMessageKey,
+  isAccountAccessErrorCode,
+} from '@/services/authErrors';
 
 const GOOGLE_ICON = (
   <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
@@ -45,10 +49,57 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ locale: string }>();
   const locale = params.locale || 'en';
   const { login } = useAuth();
   const t = useTranslations('auth');
+  const verificationState = searchParams.get('verified');
+  const registrationState = searchParams.get('registered');
+  const sessionState = searchParams.get('session');
+  const accountErrorState = searchParams.get('error');
+  const authNotice = registrationState === 'pending-approval'
+    ? t('registrationPendingApproval', {
+      default:
+        'Your account was created successfully. Please verify your email. After verification, an administrator must approve the account before you can sign in.',
+    })
+    : registrationState === 'true'
+      ? t('registrationSuccess')
+      : verificationState === 'pending-approval'
+        ? t('emailVerifiedPendingApproval', {
+          default:
+            'Your email has been verified. Your account is still waiting for administrator approval. You will be able to sign in after an administrator approves it.',
+        })
+        : verificationState === 'already'
+          ? t('emailAlreadyVerified', { default: 'Your email is already verified.' })
+          : verificationState === 'rejected'
+            ? t('emailVerifiedAccountRejected', {
+              default:
+                'Your email was verified, but the account request has been rejected.',
+            })
+            : verificationState === 'verified' || verificationState === 'true'
+              ? t('emailVerified')
+              : verificationState === 'failed' || verificationState === 'false'
+                ? t('emailVerificationFailed')
+                : accountErrorState === 'pending-approval'
+                  ? t('errors.accountPendingApproval')
+                  : accountErrorState === 'rejected'
+                    ? t('errors.accountRejected')
+                    : accountErrorState === 'inactive'
+                      ? t('errors.accountInactive')
+                      : accountErrorState === 'email-not-verified'
+                        ? t('errors.emailNotVerified')
+                        : sessionState === 'revoked'
+                          ? t('sessionRevoked')
+                          : sessionState === 'expired'
+                            ? t('sessionExpired')
+                            : null;
+  const authNoticeIsError =
+    verificationState === 'failed' ||
+    verificationState === 'false' ||
+    verificationState === 'rejected' ||
+    Boolean(accountErrorState) ||
+    Boolean(sessionState);
 
   const handleGoogleLogin = () => {
     setError('');
@@ -63,19 +114,23 @@ export default function LoginPage() {
 
     try {
       const userRole = await login(formData.email, formData.password, keepLoggedIn);
-      router.replace(getDashboardPath(locale, userRole));
+      const dashboardPath = getDashboardPath(locale, userRole);
+
+      if (!dashboardPath) {
+        setError(t('errors.accountRoleNotAllowed'));
+        return;
+      }
+
+      router.replace(dashboardPath);
 
     } catch (err: unknown) {
       if (err instanceof Error) {
-        const normalizedMessage = err.message.toLowerCase();
-        if (
-          normalizedMessage.includes('invalid credentials') ||
-          normalizedMessage.includes('unauthorized') ||
-          normalizedMessage.includes('status code 401')
-        ) {
-          setError(t('loginFailed'));
+        if (isAccountAccessErrorCode(err.message)) {
+          setError(t(getLoginErrorMessageKey(err.message)));
+        } else if (err.message === 'AUTHENTICATION_FAILED') {
+          setError(t('errors.authenticationFailed'));
         } else {
-          setError(err.message);
+          setError(t('networkError'));
         }
       } else {
         setError(t('networkError'));
@@ -117,6 +172,18 @@ export default function LoginPage() {
             {error && (
               <div className="bg-red-50/80 backdrop-blur-sm border border-red-200/50 text-red-700 px-4 py-3 rounded-xl text-sm mb-6">
                 {error}
+              </div>
+            )}
+
+            {authNotice && (
+              <div
+                role={authNoticeIsError ? 'alert' : 'status'}
+                className={`mb-6 rounded-xl border px-4 py-3 text-sm ${authNoticeIsError
+                  ? 'border-red-200/60 bg-red-50/80 text-red-700 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-300'
+                  : 'border-emerald-200/60 bg-emerald-50/80 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300'
+                  }`}
+              >
+                {authNotice}
               </div>
             )}
 

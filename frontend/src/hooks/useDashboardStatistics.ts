@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiService } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardStatistics {
   currentMonthWorkOrders: number;
@@ -21,22 +22,43 @@ interface DashboardStatistics {
   totalUsers: number;
 }
 
+const emptyStatistics: DashboardStatistics = {
+  currentMonthWorkOrders: 0,
+  lastMonthWorkOrders: 0,
+  percentageChange: 0,
+  pendingMaintenance: 0,
+  totalWorkOrders: 0,
+  activeUsers: 0,
+  totalUsers: 0,
+  totalMachines: 0,
+  activeWorkOrders: 0,
+  completedThisMonth: 0,
+  usersPercentageChange: 0,
+  machinesPercentageChange: 0,
+  workOrdersPercentageChange: 0,
+  completedPercentageChange: 0,
+};
+
 export function useDashboardStatistics() {
   const [statistics, setStatistics] = useState<DashboardStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, isLoading: authLoading } = useAuth();
+  const hasUser = Boolean(user);
+  const userRole = user?.role;
 
   useEffect(() => {
     const fetchStatistics = async () => {
       try {
         setLoading(true);
+        const includeUserStats = userRole === 'admin';
 
         // Fetch all data in parallel
         const results = await Promise.allSettled([
           apiService.getWorkOrderStatistics(),
           apiService.getDashboardData(),
           apiService.getMachinesTotal(),
-          apiService.getUsersTotal()
+          includeUserStats ? apiService.getUsersTotal() : Promise.resolve(null),
         ]);
 
         const workOrderStats =
@@ -54,7 +76,7 @@ export function useDashboardStatistics() {
         const safeArray = (value: any) =>
           Array.isArray(value) ? value : value?.items ?? [];
         const machines = safeArray(data?.machines ?? []);
-        const users = safeArray(usersTotalRes?.data?.items ?? []);
+        const users = safeArray([]);
         const workOrders = safeArray(data?.workOrders ?? []);
         // API returns either { totalMachines } or { data: { totalMachines } } depending on axios wrapping
         const machinesTotal =
@@ -67,10 +89,6 @@ export function useDashboardStatistics() {
           usersTotalRes?.data?.totalUsers ??
           (usersTotalRes as any)?.totalUsers ??
           0;
-        console.log("dashboardData:", dashboardData);
-        console.log("users:", users);
-        console.log("machines:", machines);
-        console.log("workOrders:", workOrders);
         // Calculate current month vs last month for various metrics
         const now = new Date();
         const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -160,8 +178,18 @@ export function useDashboardStatistics() {
       }
     };
 
+    if (authLoading) {
+      return;
+    }
+
+    if (!hasUser) {
+      setStatistics(emptyStatistics);
+      setLoading(false);
+      return;
+    }
+
     fetchStatistics();
-  }, []);
+  }, [authLoading, hasUser, userRole]);
 
   return { statistics, loading, error };
 }

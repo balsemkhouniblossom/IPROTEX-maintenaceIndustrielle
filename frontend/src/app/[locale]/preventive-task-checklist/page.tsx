@@ -7,26 +7,12 @@ import { Modal } from "@/components/Modal";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
+import { displayText } from "@/services/displayValues";
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from "@/services/dynamicSearch";
-import { CheckIcon, EyeIcon, CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, EyeIcon, CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Pagination from "@/components/Pagination";
 
 type EntityRef = string | { _id?: string };
-
-interface MaintenancePlan {
-  _id: string;
-  plan_id: string;
-  module_id: EntityRef;
-  type_maintenance?: string;
-  frequence?: number;
-  unite_frequence?: string;
-  instruction?: string;
-  responsable?: string;
-  huile_graisse?: string;
-  documentation?: string;
-  maintenance_code?: string;
-  frequence_label?: string;
-}
 
 interface Module {
   _id: string;
@@ -64,9 +50,6 @@ interface PreventiveTaskForm {
 
 type PreventiveTaskFilter = "all" | "pending" | "completed";
 type NotificationType = "success" | "error" | "info";
-
-const TASK_STATE_STORAGE_KEY = "preventive_tasks";
-const CUSTOM_TASK_STORAGE_KEY = "preventive_tasks_custom";
 
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
@@ -107,11 +90,9 @@ export default function PreventiveTaskChecklistPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const [plansRes, modulesRes, machinesRes] = await Promise.all([
-          apiService.getMaintenancePlans({
-            page: 1,
-            limit: 1000,
-          }),
+        await apiService.syncPreventiveTasks();
+        const [tasksRes, modulesRes, machinesRes] = await Promise.all([
+          apiService.getPreventiveTasks({ page: 1, limit: 1000 }),
           apiService.getModules({
             page: 1,
             limit: 1000,
@@ -122,77 +103,26 @@ export default function PreventiveTaskChecklistPage() {
           }),
         ]);
 
-        const plansData: MaintenancePlan[] = plansRes.data.items ?? [];
         const modulesData: Module[] = modulesRes.data.items ?? [];
         const machinesData: Machine[] = machinesRes.data.items ?? [];
 
         setModules(modulesData);
         setMachines(machinesData);
 
-        // Filter for preventive maintenance plans
-        const preventivePlans = plansData.filter((plan) => {
-          const maintenanceType = (plan.type_maintenance ?? "").toLowerCase();
-          return maintenanceType.includes("prevent");
-        });
+        const persistedTasks = (tasksRes.data.items ?? []).map((task: Record<string, any>): PreventiveTask => ({
+          id: String(task._id),
+          planId: refId(task.plan_id),
+          plan_id: String(task.plan_code ?? task.task_id),
+          moduleId: refId(task.module_id),
+          instruction: String(task.instruction),
+          responsable: task.responsable,
+          completed: task.status === "completed",
+          completedAt: task.completed_at,
+          notes: task.notes,
+        }));
+        setTasks(persistedTasks);
 
-        // Generate tasks from preventive plans
-        const generatedTasks: PreventiveTask[] = [];
-        preventivePlans.forEach((plan) => {
-          if (plan.instruction) {
-            const taskList = plan.instruction
-              .split(/\r?\n|[;,]/g)
-              .map((item) => item.replace(/^[-*\u2022\s]+/, "").trim())
-              .filter(Boolean);
-
-            taskList.forEach((instruction, idx) => {
-              generatedTasks.push({
-                id: `${plan._id}-${idx}`,
-                planId: plan._id,
-                plan_id: plan.plan_id,
-                moduleId: refId(plan.module_id),
-                instruction,
-                responsable: plan.responsable,
-                completed: false,
-              });
-            });
-          }
-        });
-
-        // Try to load task status from localStorage
-        const savedTasks = localStorage.getItem(TASK_STATE_STORAGE_KEY);
-        if (savedTasks) {
-          try {
-            const savedState = JSON.parse(savedTasks) as PreventiveTask[];
-            generatedTasks.forEach((task) => {
-              const saved = savedState.find((s: PreventiveTask) => s.id === task.id);
-              if (saved) {
-                task.completed = saved.completed;
-                task.completedAt = saved.completedAt;
-                task.notes = saved.notes;
-              }
-            });
-          } catch {
-            // Continue if parsing fails
-          }
-        }
-
-        // Load custom tasks created manually from the UI form
-        const customTasksRaw = localStorage.getItem(CUSTOM_TASK_STORAGE_KEY);
-        let customTasks: PreventiveTask[] = [];
-        if (customTasksRaw) {
-          try {
-            const parsed = JSON.parse(customTasksRaw) as PreventiveTask[];
-            customTasks = Array.isArray(parsed)
-              ? parsed.filter((task) => task?.id?.startsWith("manual-"))
-              : [];
-          } catch {
-            customTasks = [];
-          }
-        }
-
-        setTasks([...generatedTasks, ...customTasks]);
-
-        if (generatedTasks.length === 0) {
+        if (persistedTasks.length === 0) {
           setNotification({
             type: "info",
             message: t("notifications.noTasksAvailable"),
@@ -306,19 +236,6 @@ export default function PreventiveTaskChecklistPage() {
     });
   };
 
-  const persistTasks = (nextTasks: PreventiveTask[]) => {
-    const statusPayload = nextTasks.map((task) => ({
-      id: task.id,
-      completed: task.completed,
-      completedAt: task.completedAt,
-      notes: task.notes,
-    }));
-    localStorage.setItem(TASK_STATE_STORAGE_KEY, JSON.stringify(statusPayload));
-
-    const customTasks = nextTasks.filter((task) => task.id.startsWith("manual-"));
-    localStorage.setItem(CUSTOM_TASK_STORAGE_KEY, JSON.stringify(customTasks));
-  };
-
   const openAddForm = () => {
     resetForm();
     setIsFormModalOpen(true);
@@ -337,7 +254,7 @@ export default function PreventiveTaskChecklistPage() {
     setIsFormModalOpen(true);
   };
 
-  const handleFormSubmit = (event: React.FormEvent) => {
+  const handleFormSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!formData.instruction.trim()) {
@@ -350,39 +267,22 @@ export default function PreventiveTaskChecklistPage() {
 
     setSubmitting(true);
     try {
-      const timestamp = new Date().toISOString();
-
-      const nextTask: PreventiveTask = editingTask
-        ? {
-            ...editingTask,
-            plan_id: formData.plan_id.trim(),
-            moduleId: formData.moduleId,
-            instruction: formData.instruction.trim(),
-            responsable: formData.responsable.trim() || undefined,
-            completed: formData.completed,
-            completedAt: formData.completed
-              ? editingTask.completedAt ?? timestamp
-              : undefined,
-            notes: formData.notes.trim() || undefined,
-          }
-        : {
-            id: `manual-${Date.now()}`,
-            planId: "",
-            plan_id: formData.plan_id.trim() || `MANUAL-${Date.now().toString().slice(-6)}`,
-            moduleId: formData.moduleId,
-            instruction: formData.instruction.trim(),
-            responsable: formData.responsable.trim() || undefined,
-            completed: formData.completed,
-            completedAt: formData.completed ? timestamp : undefined,
-            notes: formData.notes.trim() || undefined,
-          };
-
-      const updatedTasks = editingTask
-        ? tasks.map((task) => (task.id === editingTask.id ? nextTask : task))
-        : [nextTask, ...tasks];
-
-      setTasks(updatedTasks);
-      persistTasks(updatedTasks);
+      const taskId = editingTask?.id;
+      const payload = {
+        plan_code: formData.plan_id.trim() || undefined,
+        module_id: formData.moduleId || undefined,
+        instruction: formData.instruction.trim(),
+        responsable: formData.responsable.trim() || undefined,
+        status: formData.completed ? "completed" : "pending",
+        notes: formData.notes.trim() || undefined,
+      };
+      if (taskId) {
+        await apiService.updatePreventiveTask(taskId, payload);
+      } else {
+        await apiService.createPreventiveTask({ ...payload, task_id: `PT-MANUAL-${Date.now()}` });
+      }
+      const refreshed = await apiService.getPreventiveTasks({ page: 1, limit: 1000 });
+      setTasks((refreshed.data.items ?? []).map((task: Record<string, any>): PreventiveTask => ({ id: String(task._id), planId: refId(task.plan_id), plan_id: String(task.plan_code ?? task.task_id), moduleId: refId(task.module_id), instruction: String(task.instruction), responsable: task.responsable, completed: task.status === "completed", completedAt: task.completed_at, notes: task.notes })));
       setNotification({
         type: "success",
         message: editingTask
@@ -391,21 +291,23 @@ export default function PreventiveTaskChecklistPage() {
       });
       setIsFormModalOpen(false);
       resetForm();
+    } catch {
+      setNotification({ type: "error", message: t("notifications.saveFailed") });
     } finally {
       setSubmitting(false);
     }
   };
 
   // Handle task completion toggle
-  const toggleTaskCompletion = (task: PreventiveTask) => {
+  const toggleTaskCompletion = async (task: PreventiveTask) => {
     if (task.completed) {
       const updatedTasks = tasks.map((t) =>
         t.id === task.id
           ? { ...t, completed: false, completedAt: undefined, notes: undefined }
           : t,
       );
+      await apiService.updatePreventiveTask(task.id, { status: "pending", notes: "" });
       setTasks(updatedTasks);
-      persistTasks(updatedTasks);
       setNotification({
         type: "success",
         message: t("notifications.taskUpdated"),
@@ -425,7 +327,7 @@ export default function PreventiveTaskChecklistPage() {
   };
 
   // Handle marking task as complete with notes
-  const markTaskComplete = () => {
+  const markTaskComplete = async () => {
     if (!selectedTask) return;
 
     const updatedTasks = tasks.map((t) =>
@@ -439,13 +341,24 @@ export default function PreventiveTaskChecklistPage() {
         : t,
     );
 
+    await apiService.updatePreventiveTask(selectedTask.id, { status: "completed", notes: completionNotes });
     setTasks(updatedTasks);
-    persistTasks(updatedTasks);
     setNotification({
       type: "success",
       message: t("notifications.taskMarkedComplete"),
     });
     closeModal();
+  };
+
+  const deleteTask = async (task: PreventiveTask) => {
+    if (!window.confirm(t("notifications.confirmDelete"))) return;
+    try {
+      await apiService.deletePreventiveTask(task.id);
+      setTasks((current) => current.filter((item) => item.id !== task.id));
+      setNotification({ type: "success", message: t("notifications.taskDeleted") });
+    } catch {
+      setNotification({ type: "error", message: t("notifications.deleteFailed") });
+    }
   };
 
   if (loading) {
@@ -580,7 +493,7 @@ export default function PreventiveTaskChecklistPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>{t("table.planId")}</th>
+                    <th>{t("table.planCode", { default: "Plan Code" })}</th>
                     <th>{t("table.machine")}</th>
                     <th>{t("table.module")}</th>
                     <th>{t("table.instruction")}</th>
@@ -599,7 +512,7 @@ export default function PreventiveTaskChecklistPage() {
                   ) : (
                     paginatedTasks.map((task) => (
                       <tr key={task.id} className={task.completed ? "bg-emerald-50" : ""}>
-                        <td className="font-mono text-xs">{task.plan_id}</td>
+                        <td>{displayText(task.plan_id, tCommon("notAvailable"))}</td>
                         <td>{getMachineName(task.moduleId)}</td>
                         <td>{getModuleName(task.moduleId)}</td>
                         <td>{task.instruction}</td>
@@ -637,6 +550,13 @@ export default function PreventiveTaskChecklistPage() {
                               className="btn-secondary p-2"
                             >
                               <EyeIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => void deleteTask(task)}
+                              title={t("actions.delete")}
+                              className="btn-danger p-2"
+                            >
+                              <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -678,14 +598,14 @@ export default function PreventiveTaskChecklistPage() {
           <form onSubmit={handleFormSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">{t("table.planId")}</label>
+                <label className="block text-sm font-medium mb-1">{t("table.planCode", { default: "Plan Code" })}</label>
                 <input
                   type="text"
                   value={formData.plan_id}
                   onChange={(e) => setFormData({ ...formData, plan_id: e.target.value })}
                   className="input-field"
-                  placeholder={t("table.planId")}
-                  title={t("table.planId")}
+                  placeholder={t("table.planCode", { default: "Plan Code" })}
+                  title={t("table.planCode", { default: "Plan Code" })}
                 />
               </div>
               <div>
@@ -699,7 +619,7 @@ export default function PreventiveTaskChecklistPage() {
                   <option value="">{tCommon("notAvailable")}</option>
                   {modules.map((module) => (
                     <option key={module._id} value={module._id}>
-                      {module.module_id || module._id}
+                      {displayText(module.module_id, tCommon("notAvailable"))}
                     </option>
                   ))}
                 </select>
@@ -801,7 +721,7 @@ export default function PreventiveTaskChecklistPage() {
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">{t("table.planId")}</label>
+                  <label className="block text-sm font-medium mb-1">{t("table.planCode", { default: "Plan Code" })}</label>
                   <input type="text" value={selectedTask.plan_id} className="input-field" readOnly />
                 </div>
                 <div>

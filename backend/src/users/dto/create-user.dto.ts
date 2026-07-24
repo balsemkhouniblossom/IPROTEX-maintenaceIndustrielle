@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsArray,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -7,6 +8,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  IsMongoId,
   ValidateIf,
 } from 'class-validator';
 import { Role } from '../../schemas/user.schema';
@@ -67,7 +69,32 @@ export class CreateUserDto {
 
   @IsString()
   @IsOptional()
+  position?: string;
+
+  @IsString()
+  @IsOptional()
+  language?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  profile_completed?: boolean;
+
+  @IsString()
+  @IsOptional()
   photo?: string;
+
+  @IsString()
+  @IsOptional()
+  photo_storage_path?: string;
+
+  @IsString()
+  @IsOptional()
+  photo_url?: string;
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  @IsOptional()
+  assigned_machine_ids?: string[];
 
   @IsString()
   @IsOptional()

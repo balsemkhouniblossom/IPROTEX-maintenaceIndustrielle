@@ -214,6 +214,8 @@ The backend automatically connects to `mongodb://localhost:27017/GMAO_IPROTEX`
 
 ## Deployment
 
+See [DEPLOYMENT.md](DEPLOYMENT.md) for exact local, Render backend, and Vercel frontend environment examples.
+
 ### Production Build
 
 ```bash

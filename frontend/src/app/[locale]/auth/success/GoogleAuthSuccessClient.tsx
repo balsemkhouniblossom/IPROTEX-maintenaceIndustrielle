@@ -1,52 +1,19 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-
-import { useAuth } from '@/contexts/AuthContext';
-import { getDashboardPath } from '@/services/authRedirect';
-
-type AuthUser = {
-  _id: string;
-  user_id: string;
-  nom_complet: string;
-  email: string;
-  role: string;
-  is_active: boolean;
-  last_login?: string;
-  created_at: string;
-  phone?: string;
-  department?: string;
-  photo?: string;
-};
 
 export default function GoogleAuthSuccessClient() {
   const router = useRouter();
   const params = useParams<{ locale: string }>();
-  const searchParams = useSearchParams();
-  const { completeSocialLogin } = useAuth();
   const t = useTranslations('auth');
 
   const locale = params.locale || 'en';
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const userParam = searchParams.get('user');
-
-    if (!token || !userParam) {
-      router.replace(`/${locale}/auth/login?error=google-auth`);
-      return;
-    }
-
-    try {
-      const authUser = JSON.parse(userParam) as AuthUser;
-      const role = completeSocialLogin(token, authUser);
-      window.location.replace(getDashboardPath(locale, role));
-    } catch {
-      router.replace(`/${locale}/auth/login?error=google-auth`);
-    }
-  }, [completeSocialLogin, locale, router, searchParams]);
+    router.replace(`/${locale}/auth/google-result?status=failed`);
+  }, [locale, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.16),transparent_40%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] px-6">

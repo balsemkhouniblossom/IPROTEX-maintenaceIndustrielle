@@ -101,7 +101,7 @@ export default function CataloguesPage() {
 
   function validateForm() {
     if (!formData.part_id.trim()) {
-      showNotification('error', t('validation.partIdRequired'));
+      showNotification('error', t('validation.partCodeRequired', { default: 'Part code is required' }));
       return false;
     }
 
@@ -307,7 +307,7 @@ export default function CataloguesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('table.partId')}</th>
+                  <th>{t('table.partCode', { default: 'Part Code' })}</th>
                   <th>{t('table.partName')}</th>
                   <th>{t('table.manufacturerRef')}</th>
                   <th>{t('table.manufacturer')}</th>
@@ -376,14 +376,14 @@ export default function CataloguesPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.partId')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.partCode', { default: 'Part Code' })}</label>
               <input
                 type="text"
                 value={formData.part_id}
                 onChange={(e) => setFormData({ ...formData, part_id: e.target.value })}
                 className="input-field"
-                placeholder={t('placeholders.enterPartId')}
-                title={t('form.partId')}
+                placeholder={t('placeholders.enterPartCode', { default: 'Enter part code' })}
+                title={t('form.partCode', { default: 'Part Code' })}
                 required
               />
             </div>

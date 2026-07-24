@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
+import { displayText } from '@/services/displayValues';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import {
   CheckCircleIcon,
@@ -21,6 +22,9 @@ interface ModuleEntity {
   localisation?: string;
 }
 
+type MaintenancePlanStatus = 'draft' | 'active' | 'paused' | 'archived' | 'completed';
+type MaintenancePlanTransitionAction = 'activate' | 'pause' | 'resume' | 'archive' | 'complete';
+
 interface MaintenancePlan {
   _id: string;
   plan_id: string;
@@ -34,6 +38,44 @@ interface MaintenancePlan {
   documentation?: string;
   maintenance_code?: string;
   frequence_label?: string;
+  status?: MaintenancePlanStatus;
+  version?: number;
+}
+
+const STATUS_BADGE_CLASSES: Record<MaintenancePlanStatus, string> = {
+  draft: 'bg-slate-100 text-slate-700 border-slate-200',
+  active: 'bg-green-100 text-green-800 border-green-200',
+  paused: 'bg-amber-100 text-amber-800 border-amber-200',
+  archived: 'bg-gray-200 text-gray-600 border-gray-300',
+  completed: 'bg-blue-100 text-blue-800 border-blue-200',
+};
+
+// Only the transitions valid for the plan's current status are ever
+// offered — this mirrors the backend's own transition table exactly, so
+// the UI never presents an action the server would reject.
+const AVAILABLE_TRANSITIONS: Record<
+  MaintenancePlanStatus,
+  MaintenancePlanTransitionAction[]
+> = {
+  draft: ['activate', 'archive'],
+  active: ['pause', 'complete', 'archive'],
+  paused: ['resume', 'archive'],
+  completed: ['archive'],
+  archived: [],
+};
+
+function extractApiErrorMessage(error: unknown, fallback: string): string {
+  const apiError = error as {
+    response?: { status?: number; data?: { message?: string | string[] } };
+  };
+  const raw = apiError?.response?.data?.message;
+  if (Array.isArray(raw) && raw.length) {
+    return raw.join(' ');
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw;
+  }
+  return fallback;
 }
 
 const CUSTOM_OPTION = '__custom__';
@@ -71,13 +113,26 @@ function mergeOptions(dynamicValues: Array<string | undefined>, fixedValues: str
   return Array.from(new Set(values));
 }
 
+function cleanInstruction(value?: string): string {
+  return (value || '')
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(?:Photo|Mode)\s*:\s*N\/A\s*$/i.test(line))
+    .join('\n')
+    .trim();
+}
+
+function cleanResponsable(value?: string): string {
+  const responsable = (value || '').trim();
+  return /setup\s*technician/i.test(responsable) ? 'Maintenance' : responsable;
+}
+
 function getModuleLabel(value: string | ModuleEntity, modules: ModuleEntity[], fallback: string): string {
   if (!value) return fallback;
   if (typeof value === 'object') {
-    return value.module_id || value.localisation || value._id;
+    return displayText(value.module_id ?? value.localisation, fallback);
   }
   const found = modules.find((module) => module._id === value);
-  return found?.module_id || value || fallback;
+  return displayText(found?.module_id ?? found?.localisation ?? value, fallback);
 }
 
 export default function MaintenancePlansPage() {
@@ -119,7 +174,14 @@ export default function MaintenancePlansPage() {
         apiService.getModules(),
       ]);
 
-      setPlans(plansResponse.data.items ?? []);
+      const loadedPlans = plansResponse.data.items ?? [];
+      setPlans(
+        loadedPlans.map((plan: MaintenancePlan) => ({
+          ...plan,
+          instruction: cleanInstruction(plan.instruction),
+          responsable: cleanResponsable(plan.responsable),
+        })),
+      );
       setTotalItems(plansResponse.data.totalItems ?? 0);
       setTotalPages(plansResponse.data.totalPages ?? 1);
 
@@ -166,7 +228,7 @@ export default function MaintenancePlansPage() {
 
   function validateForm(): boolean {
     if (!formData.plan_id.trim()) {
-      showNotification('error', t('notifications.planIdRequired'));
+      showNotification('error', t('notifications.planCodeRequired', { default: 'Plan code is required' }));
       return false;
     }
     if (!formData.module_id.trim()) {
@@ -204,24 +266,45 @@ export default function MaintenancePlansPage() {
       unite_frequence: plan.unite_frequence || 'semaine',
       maintenance_code: plan.maintenance_code || '',
       frequence_label: plan.frequence_label || '',
-      instruction: plan.instruction || '',
-      responsable: plan.responsable || '',
+      instruction: cleanInstruction(plan.instruction),
+      responsable: cleanResponsable(plan.responsable),
       huile_graisse: plan.huile_graisse || '',
       documentation: plan.documentation || '',
     });
     setShowModal(true);
   }
 
-  async function handleDelete(planId: string) {
+  async function handleDelete(plan: MaintenancePlan) {
     if (!confirm(t('notifications.confirmDelete'))) return;
 
     try {
-      await apiService.deleteMaintenancePlan(planId);
+      await apiService.deleteMaintenancePlan(plan._id, plan.version);
       showNotification('success', t('notifications.deleteSuccess'));
       await loadData();
     } catch (error) {
       console.error('Error deleting maintenance plan:', error);
-      showNotification('error', t('notifications.deleteFailed'));
+      showNotification('error', extractApiErrorMessage(error, t('notifications.deleteFailed')));
+    }
+  }
+
+  const TRANSITION_CONFIRM_KEYS: Record<MaintenancePlanTransitionAction, string> = {
+    activate: 'notifications.confirmActivate',
+    pause: 'notifications.confirmPause',
+    resume: 'notifications.confirmResume',
+    archive: 'notifications.confirmArchive',
+    complete: 'notifications.confirmComplete',
+  };
+
+  async function handleTransition(plan: MaintenancePlan, action: MaintenancePlanTransitionAction) {
+    if (!confirm(t(TRANSITION_CONFIRM_KEYS[action]))) return;
+
+    try {
+      await apiService.transitionMaintenancePlan(plan._id, action);
+      showNotification('success', t('notifications.transitionSuccess'));
+      await loadData();
+    } catch (error) {
+      console.error('Error transitioning maintenance plan:', error);
+      showNotification('error', extractApiErrorMessage(error, t('notifications.transitionFailed')));
     }
   }
 
@@ -239,14 +322,17 @@ export default function MaintenancePlansPage() {
         unite_frequence: formData.unite_frequence.trim(),
         maintenance_code: formData.maintenance_code.trim() || undefined,
         frequence_label: formData.frequence_label.trim() || undefined,
-        instruction: formData.instruction.trim() || undefined,
-        responsable: formData.responsable.trim() || undefined,
+        instruction: cleanInstruction(formData.instruction) || undefined,
+        responsable: cleanResponsable(formData.responsable) || undefined,
         huile_graisse: formData.huile_graisse.trim() || undefined,
         documentation: formData.documentation.trim() || undefined,
       };
 
       if (editingPlan) {
-        await apiService.updateMaintenancePlan(editingPlan._id, payload);
+        await apiService.updateMaintenancePlan(editingPlan._id, {
+          ...payload,
+          expected_version: editingPlan.version,
+        });
         showNotification('success', t('notifications.updateSuccess'));
       } else {
         await apiService.createMaintenancePlan(payload);
@@ -258,7 +344,7 @@ export default function MaintenancePlansPage() {
       await loadData();
     } catch (error) {
       console.error('Error saving maintenance plan:', error);
-      showNotification('error', t('notifications.saveFailed'));
+      showNotification('error', extractApiErrorMessage(error, t('notifications.saveFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -365,6 +451,7 @@ export default function MaintenancePlansPage() {
             <table className="table">
               <thead>
                 <tr>
+                  <th>{t('table.status', { default: 'Status' })}</th>
                   <th>{t('table.maintenanceType')}</th>
                   <th>{t('table.frequency')}</th>
                   <th>{t('table.frequencyUnit')}</th>
@@ -378,32 +465,59 @@ export default function MaintenancePlansPage() {
               <tbody>
                 {filteredPlans.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-8 text-gray-500">
+                    <td colSpan={9} className="text-center py-8 text-gray-500">
                       {searchTerm ? t('empty.search') : t('empty.default')}
                     </td>
                   </tr>
                 ) : (
-                  filteredPlans.map((plan) => (
-                    <tr key={plan._id}>
-                      <td>{plan.type_maintenance}</td>
-                      <td>{plan.frequence}</td>
-                      <td>{plan.unite_frequence}</td>
-                      <td>{plan.instruction || tCommon('notAvailable')}</td>
-                      <td>{plan.responsable || tCommon('notAvailable')}</td>
-                      <td>{plan.huile_graisse || tCommon('notAvailable')}</td>
-                      <td>{plan.documentation || tCommon('notAvailable')}</td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button className="btn-secondary p-2" title={t('actions.edit')} onClick={() => handleEdit(plan)}>
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          <button className="btn-danger p-2" title={t('actions.delete')} onClick={() => handleDelete(plan._id)}>
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  filteredPlans.map((plan) => {
+                    const status = plan.status || 'active';
+                    const isArchived = status === 'archived';
+                    const availableActions = AVAILABLE_TRANSITIONS[status] || [];
+
+                    return (
+                      <tr key={plan._id}>
+                        <td>
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${STATUS_BADGE_CLASSES[status]}`}
+                          >
+                            {t(`status.${status}`, { default: status })}
+                          </span>
+                        </td>
+                        <td>{plan.type_maintenance}</td>
+                        <td>{plan.frequence}</td>
+                        <td>{plan.unite_frequence}</td>
+                        <td>{cleanInstruction(plan.instruction) || tCommon('notAvailable')}</td>
+                        <td>{cleanResponsable(plan.responsable) || tCommon('notAvailable')}</td>
+                        <td>{plan.huile_graisse || tCommon('notAvailable')}</td>
+                        <td>{plan.documentation || tCommon('notAvailable')}</td>
+                        <td>
+                          <div className="flex flex-wrap gap-2">
+                            {availableActions.map((action) => (
+                              <button
+                                key={action}
+                                className="btn-secondary px-2 py-1 text-xs"
+                                title={t(`actions.${action}`)}
+                                onClick={() => handleTransition(plan, action)}
+                              >
+                                {t(`actions.${action}`)}
+                              </button>
+                            ))}
+                            {!isArchived ? (
+                              <button className="btn-secondary p-2" title={t('actions.edit')} onClick={() => handleEdit(plan)}>
+                                <PencilIcon className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                            {!isArchived ? (
+                              <button className="btn-danger p-2" title={t('actions.delete')} onClick={() => handleDelete(plan)}>
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -424,7 +538,7 @@ export default function MaintenancePlansPage() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingPlan ? t('modal.edit') : t('modal.add')}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.planId')}</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.planCode', { default: 'Plan Code' })}</label>
             <select
               value={getSelectValue(planIdOptions, formData.plan_id)}
               onChange={(event) =>
@@ -434,10 +548,10 @@ export default function MaintenancePlansPage() {
                 }))
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              title={t('form.planId')}
+              title={t('form.planCode', { default: 'Plan Code' })}
               required
             >
-              <option value="">{t('placeholders.planId')}</option>
+              <option value="">{t('placeholders.planCode', { default: 'Select plan code' })}</option>
               {planIdOptions.map((planId) => (
                 <option key={planId} value={planId}>
                   {planId}
@@ -451,7 +565,7 @@ export default function MaintenancePlansPage() {
                 value={formData.plan_id}
                 onChange={(event) => setFormData((prev) => ({ ...prev, plan_id: event.target.value }))}
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder={t('placeholders.planId')}
+                placeholder={t('placeholders.planCode', { default: 'Enter plan code' })}
                 required
               />
             )}
@@ -469,7 +583,7 @@ export default function MaintenancePlansPage() {
               <option value="">{t('placeholders.module')}</option>
               {(Array.isArray(modules) ? modules : []).map((module) => (
                 <option key={module._id} value={module._id}>
-                  {module.module_id || module._id}
+                  {getModuleLabel(module, modules, tCommon('notAvailable'))}
                 </option>
               ))}
             </select>
@@ -666,7 +780,7 @@ export default function MaintenancePlansPage() {
               <input
                 type="text"
                 value={formData.responsable}
-                onChange={(event) => setFormData((prev) => ({ ...prev, responsable: event.target.value }))}
+                onChange={(event) => setFormData((prev) => ({ ...prev, responsable: cleanResponsable(event.target.value) }))}
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder={t('placeholders.responsable')}
               />
@@ -762,7 +876,7 @@ export default function MaintenancePlansPage() {
               <textarea
                 rows={5}
                 value={formData.instruction}
-                onChange={(event) => setFormData((prev) => ({ ...prev, instruction: event.target.value }))}
+                onChange={(event) => setFormData((prev) => ({ ...prev, instruction: cleanInstruction(event.target.value) }))}
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
                 placeholder={t('placeholders.instruction')}
               />

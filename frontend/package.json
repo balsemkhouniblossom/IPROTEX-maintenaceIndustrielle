@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "type-check": "tsc --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-specifier-resolution=node --test tests/avatar-logic.test.ts tests/document-viewer-logic.test.ts tests/registration-logic.test.ts tests/email-verification-logic.test.ts tests/auth-login-logic.test.ts tests/user-approvals-logic.test.ts tests/google-auth-logic.test.ts tests/refresh-logic.test.ts tests/session-guard-logic.test.ts tests/operator-endpoint-logic.test.ts tests/notification-center-logic.test.ts tests/maintenance-plan-lifecycle-logic.test.ts tests/stocks-inventory-logic.test.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.10",
@@ -32,5 +34,11 @@
     "eslint-config-next": "^16.2.9",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "browserslist": [
+    "Chrome >= 111",
+    "Edge >= 111",
+    "Firefox >= 128",
+    "Safari >= 16.4"
+  ]
 }

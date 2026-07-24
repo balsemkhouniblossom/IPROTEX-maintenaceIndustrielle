@@ -7,10 +7,14 @@ import type { GoogleUserProfile } from './auth.service';
 type StrategyConstructor = new (...args: unknown[]) => object;
 
 type GoogleOAuthProfile = {
+  provider?: string;
   id?: string;
   displayName?: string;
   emails?: Array<{ value?: string }>;
   photos?: Array<{ value?: string }>;
+  _json?: {
+    email_verified?: boolean;
+  };
 };
 
 const GoogleOAuthStrategy = (googleOAuth20 as { Strategy: StrategyConstructor })
@@ -75,10 +79,12 @@ export class GoogleStrategy extends PassportStrategy(
     }
 
     return {
+      provider: profile.provider,
       google_id: profile.id,
       email,
       name: profile.displayName ?? email,
       picture: profile.photos?.[0]?.value,
+      email_verified: profile._json?.email_verified,
     };
   }
 }

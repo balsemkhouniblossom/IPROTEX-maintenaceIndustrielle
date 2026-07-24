@@ -15,6 +15,7 @@ import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { displayText } from '@/services/displayValues';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import Pagination from '@/components/Pagination';
 
@@ -43,9 +44,9 @@ interface PanneSolution {
 const CUSTOM_OPTION = '__custom__';
 
 function getPanneLabel(panne: string | PanneRef): string {
-  if (typeof panne === 'string') return panne;
+  if (typeof panne === 'string') return displayText(panne, '');
   const code = panne?.code_panne ? ` (${panne.code_panne})` : '';
-  const label = panne?.panne_id || panne?._id || '';
+  const label = displayText(panne?.panne_id ?? panne?.description, '');
   return `${label}${code}`.trim();
 }
 
@@ -200,7 +201,7 @@ export default function PanneSolutionsPage() {
 
   function validateForm(): boolean {
     if (!formData.solution_id.trim()) {
-      showNotification('error', t('notifications.solutionIdRequired'));
+      showNotification('error', t('notifications.solutionReferenceRequired', { default: 'Solution reference is required' }));
       return false;
     }
     if (!formData.panne_id) {
@@ -370,7 +371,7 @@ export default function PanneSolutionsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('table.solutionId')}</th>
+                  <th>{t('table.solutionReference', { default: 'Solution Reference' })}</th>
                   <th>{t('table.panne')}</th>
                   <th>{t('table.cause')}</th>
                   <th>{t('table.solution')}</th>
@@ -437,7 +438,7 @@ export default function PanneSolutionsPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.solutionId')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.solutionReference', { default: 'Solution Reference' })}</label>
               {isOperator ? (
                 <select
                   value={formData.solution_id}
@@ -456,10 +457,10 @@ export default function PanneSolutionsPage() {
                     }
                   }}
                   className="input-field"
-                  title={t('form.solutionId')}
+                  title={t('form.solutionReference', { default: 'Solution Reference' })}
                   required
                 >
-                  <option value="">{t('form.solutionId')}</option>
+                  <option value="">{t('form.solutionReference', { default: 'Solution Reference' })}</option>
                   <option value={CUSTOM_OPTION}>Custom value...</option>
                   {solutionIdOptions.map((option) => (
                     <option key={`${option.panneRefId}-solution`} value={option.solutionId}>
@@ -473,7 +474,7 @@ export default function PanneSolutionsPage() {
                   value={formData.solution_id}
                   onChange={(e) => setFormData({ ...formData, solution_id: e.target.value })}
                   className="input-field"
-                  title={t('form.solutionId')}
+                  title={t('form.solutionReference', { default: 'Solution Reference' })}
                   required
                 />
               )}
@@ -483,8 +484,8 @@ export default function PanneSolutionsPage() {
                   value={formData.solution_id}
                   onChange={(e) => setFormData({ ...formData, solution_id: e.target.value })}
                   className="input-field mt-2"
-                  title={t('form.solutionId')}
-                  placeholder="Custom solution ID"
+                  title={t('form.solutionReference', { default: 'Solution Reference' })}
+                  placeholder="Custom solution reference"
                   required
                 />
               )}

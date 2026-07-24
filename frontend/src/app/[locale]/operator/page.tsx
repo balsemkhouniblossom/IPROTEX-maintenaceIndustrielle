@@ -1,22 +1,22 @@
 "use client";
 
-import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import DashboardLayout from "@/components/DashboardLayout";
+import { MiniAvatarAssistant } from "@/components/avatar/MiniAvatarAssistant";
+import type { AvatarActionKey } from "@/components/avatar/avatar-types";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
 import {
-    BellAlertIcon,
     CheckCircleIcon,
     ClockIcon,
     ArrowRightIcon,
     ClipboardDocumentListIcon,
     WrenchScrewdriverIcon,
-    XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
+import { displayText } from "@/services/displayValues";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 
 interface OperatorStats {
@@ -72,13 +72,6 @@ interface OperatorTaskItem {
     isOverdue: boolean;
 }
 
-interface NotificationItem {
-    key: string;
-    label: string;
-    count: number;
-    tone: "blue" | "amber" | "green" | "red";
-}
-
 function extractId(value: unknown): string {
     if (!value) return "";
     if (typeof value === "string") return value;
@@ -91,8 +84,8 @@ function extractId(value: unknown): string {
 
 function extractMachineLabel(value: WorkOrderItem["machine_id"]): string {
     if (!value) return "-";
-    if (typeof value === "string") return value;
-    return value.machine_id || value._id || "-";
+    if (typeof value === "string") return displayText(value, "-");
+    return displayText(value.machine_id, "-");
 }
 
 function isSameDay(date: Date, reference: Date): boolean {
@@ -147,33 +140,8 @@ export default function OperatorDashboard() {
         completed: 0,
     });
     const [loading, setLoading] = useState(true);
-    const [notificationsOpen, setNotificationsOpen] = useState(false);
-    const [notificationMenuStyle, setNotificationMenuStyle] = useState<CSSProperties>({});
-    const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+    const [statsError, setStatsError] = useState(false);
     const now = useMemo(() => new Date(), []);
-
-    const updateNotificationMenuPosition = useCallback(() => {
-        if (!notificationButtonRef.current || typeof window === "undefined") {
-            return;
-        }
-
-        const rect = notificationButtonRef.current.getBoundingClientRect();
-        const isDesktop = window.innerWidth >= 768;
-        const menuWidth = isDesktop ? 384 : 320;
-        const viewportPadding = 12;
-        const left = Math.min(
-            Math.max(viewportPadding, rect.right - menuWidth),
-            window.innerWidth - menuWidth - viewportPadding,
-        );
-
-        setNotificationMenuStyle({
-            top: rect.bottom + 10,
-            left,
-            width: menuWidth,
-            position: "fixed",
-            zIndex: 140,
-        });
-    }, []);
 
     const shiftLabel = useMemo(() => {
         const hour = now.getHours();
@@ -252,31 +220,8 @@ export default function OperatorDashboard() {
     const nextTask = operatorTasks[0] || null;
     const overdueTasksCount = operatorTasks.filter((task) => task.isOverdue).length;
 
-    const upcomingReminderCount = useMemo(() => {
-        return calendarEvents.filter((event) => {
-            const due = new Date(event.dueDate);
-            return event.status !== "completed"
-                && event.status !== "validated"
-                && due.getTime() > now.getTime()
-                && !isSameDay(due, now);
-        }).length;
-    }, [calendarEvents, now]);
-
-    const notificationItems = useMemo<NotificationItem[]>(() => {
-        const validatedReports = recentReports.filter((report) => report.validation_responsable === "validated").length;
-        const correctiveRequests = operatorTasks.filter((task) => task.maintenanceType.toLowerCase().includes("correct")).length;
-
-        return [
-            { key: "due", label: tOperator("dashboardNotifications.dueToday"), count: operatorTasks.filter((task) => !task.isOverdue).length, tone: "amber" as const },
-            { key: "corrective", label: tOperator("dashboard.notificationCorrectiveRequest"), count: correctiveRequests, tone: "blue" as const },
-            { key: "validated", label: tOperator("dashboard.notificationTechnicianValidated"), count: validatedReports, tone: "green" as const },
-            { key: "overdue", label: tOperator("dashboardNotifications.overdue"), count: overdueTasksCount, tone: "red" as const },
-            { key: "reminder", label: tOperator("dashboard.notificationReminder"), count: upcomingReminderCount, tone: "blue" as const },
-        ].filter((item) => item.count > 0);
-    }, [operatorTasks, overdueTasksCount, recentReports, tOperator, upcomingReminderCount]);
-
-    const unreadNotificationsCount = notificationItems.reduce((total, item) => total + item.count, 0);
     const latestReport = recentReports[0] || null;
+    const waitingValidationCount = reports.filter((report) => !report.validation_responsable || report.validation_responsable === "pending").length;
 
     const analyticsCards = [
         { label: tOperator("dashboard.todayTasks"), value: operatorTasks.length, icon: ClipboardDocumentListIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: "text-[var(--text-primary)]" },
@@ -316,6 +261,22 @@ export default function OperatorDashboard() {
     const handleStartTask = (task: OperatorTaskItem) => {
         const machineQuery = task.machineId ? `?machine=${task.machineId}` : "";
         router.push(`${getTaskRoute(task.maintenanceType)}${machineQuery}`);
+    };
+
+    const handleAvatarAction = (action: AvatarActionKey) => {
+        if (action === "viewReports") {
+            router.push(`/${locale}/operator/my-reports`);
+            return;
+        }
+        if (action === "viewCalendar") {
+            router.push(`/${locale}/operator/smart-maintenance-calendar`);
+            return;
+        }
+        if (nextTask) {
+            handleStartTask(nextTask);
+            return;
+        }
+        handleStartWorking();
     };
 
     useEffect(() => {
@@ -364,6 +325,7 @@ export default function OperatorDashboard() {
                 });
             } catch (error) {
                 console.error("Error loading operator stats", error);
+                setStatsError(true);
             } finally {
                 if (!cancelled) {
                     setLoading(false);
@@ -378,26 +340,6 @@ export default function OperatorDashboard() {
         };
     }, [user?._id, authLoading]);
 
-    useEffect(() => {
-        if (!notificationsOpen) {
-            return;
-        }
-
-        updateNotificationMenuPosition();
-
-        const handleViewportChange = () => {
-            updateNotificationMenuPosition();
-        };
-
-        window.addEventListener("resize", handleViewportChange);
-        window.addEventListener("scroll", handleViewportChange, true);
-
-        return () => {
-            window.removeEventListener("resize", handleViewportChange);
-            window.removeEventListener("scroll", handleViewportChange, true);
-        };
-    }, [notificationsOpen, updateNotificationMenuPosition]);
-
     if (loading) {
         return (
             <div className="operator-dashboard-theme flex min-h-screen items-center justify-center bg-background px-4">
@@ -411,101 +353,48 @@ export default function OperatorDashboard() {
 
     return (
         <ProtectedRoute requiredRole="operator">
-            <DashboardLayout
-                title={tOperator("title")}
-                headerActions={
-                    <div className="relative">
-                        <button
-                            ref={notificationButtonRef}
-                            type="button"
-                            onClick={() => {
-                                setNotificationsOpen((current) => {
-                                    const next = !current;
-                                    if (next) {
-                                        requestAnimationFrame(() => updateNotificationMenuPosition());
-                                    }
-                                    return next;
-                                });
-                            }}
-                            className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) text-cyan-800 dark:text-cyan-600 backdrop-blur-xl shadow-(--shadow) transition hover:-translate-y-0.5 hover:border-cyan-700/55"
-                            aria-label={tOperator("smartCalendar.notificationCenter")}
-                        >
-                            <BellAlertIcon className="h-5 w-5" />
-                            {unreadNotificationsCount > 0 ? (
-                                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
-                                    {unreadNotificationsCount}
-                                </span>
-                            ) : null}
-                        </button>
-
-                        {notificationsOpen && typeof document !== "undefined" ? createPortal(
-                            <div
-                                className={`rounded-3xl p-5 ${softCardClassName}`}
-                                style={notificationMenuStyle}
-                            >
-                                <div className="mb-3 flex items-center justify-between gap-3">
-                                    <div className="flex-1 text-center">
-                                        <div className="text-sm font-semibold text-text-primary">{tOperator("smartCalendar.notificationCenter")}</div>
-                                        <div className="text-xs text-text-secondary">{unreadNotificationsCount} {tOperator("dashboard.unread")}</div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setNotificationsOpen(false)}
-                                        className="rounded-full p-1 text-text-secondary transition hover:bg-(--surface-overlay) hover:text-text-primary"
-                                        aria-label={tCommon("close")}
-                                    >
-                                        <XMarkIcon className="h-4 w-4" />
-                                    </button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    {notificationItems.length === 0 ? (
-                                        <div className="rounded-2xl border border-border bg-(--surface-secondary) px-4 py-4 text-center text-sm text-text-secondary">
-                                            {tOperator("dashboard.notificationEmpty")}
-                                        </div>
-                                    ) : notificationItems.map((item) => (
-                                        <div
-                                            key={item.key}
-                                            className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm ${item.tone === "red"
-                                                ? "border-rose-400/35 bg-rose-500/12 text-rose-200"
-                                                : item.tone === "green"
-                                                    ? "border-emerald-400/35 bg-emerald-500/12 text-emerald-200"
-                                                    : item.tone === "amber"
-                                                        ? "border-amber-400/35 bg-amber-500/12 text-amber-200"
-                                                        : "border-cyan-700/40 bg-cyan-900/18 text-cyan-700 dark:text-cyan-300"
-                                                }`}
-                                        >
-                                            <span className="font-medium">{item.label}</span>
-                                            <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-bold text-text-primary">{item.count}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>,
-                            document.body,
-                        ) : null}
-                    </div>
-                }
-            >
+            <DashboardLayout title={tOperator("title")}>
                 <div className={`operator-dashboard-theme ${shellClassName}`}>
                     <div className="bento-grid gap-6">
-                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
-                            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-center">
-                                <div className="flex min-h-55 flex-col items-center justify-center text-center">
-                                    <h1 className="mt-5 text-3xl font-semibold tracking-[-0.03em] text-text-primary md:text-5xl">
-                                        {tOperator("dashboard.welcomeOperator")}
-                                    </h1>
+                        <section className={`col-span-full rounded-[28px] p-5 md:p-8 ${softCardClassName}`}>
+                            <div className="operator-welcome-stage grid gap-6 rounded-[26px] p-4 sm:p-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-center xl:p-6">
+                                <div className="flex min-w-0 flex-col justify-center">
+                                    <MiniAvatarAssistant
+                                        userName={user?.nom_complet}
+                                        role={user?.role}
+                                        status={statsError ? "error" : "ready"}
+                                        stats={{
+                                            assigned: stats.assigned,
+                                            dueToday: operatorTasks.filter((task) => !task.isOverdue).length,
+                                            overdue: overdueTasksCount,
+                                            waitingValidation: waitingValidationCount,
+                                            inProgress: stats.inProgress,
+                                        }}
+                                        onAction={handleAvatarAction}
+                                        variant="embedded"
+                                    />
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className={`${centeredMetricCardClassName} flex min-h-55 flex-col items-center justify-center`}>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{tOperator("dashboard.currentShift")}</div>
-                                        <div className="mt-3 text-2xl font-semibold text-text-primary">{shiftLabel}</div>
-                                        <div className="mt-2 text-sm text-text-secondary">{tOperator("dashboard.todayTasks")}</div>
+                                    <div className={`operator-context-card ${softCardClassName} flex min-h-36 items-center gap-4 rounded-3xl p-5 text-start`}>
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 to-blue-700 text-white shadow-[0_10px_24px_rgba(14,116,144,0.24)]">
+                                            <ClockIcon className="h-5 w-5" aria-hidden="true" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">{tOperator("dashboard.currentShift")}</div>
+                                            <div className="mt-1.5 truncate text-xl font-semibold tracking-[-0.02em] text-text-primary">{shiftLabel}</div>
+                                            <div className="mt-1 text-xs text-text-secondary">{tOperator("dashboard.todayTasks")}</div>
+                                        </div>
                                     </div>
 
-                                    <div className={`${centeredMetricCardClassName} flex min-h-55 flex-col items-center justify-center`}>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{tOperator("dashboard.machineAssigned")}</div>
-                                        <div className="mt-3 text-2xl font-semibold text-text-primary">{derivedMachineLabel}</div>
-                                        <div className="mt-2 text-sm text-text-secondary">{tOperator("machine")}</div>
+                                    <div className={`operator-context-card ${softCardClassName} flex min-h-36 items-center gap-4 rounded-3xl p-5 text-start`}>
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-blue-600 to-indigo-800 text-white shadow-[0_10px_24px_rgba(30,64,175,0.24)]">
+                                            <WrenchScrewdriverIcon className="h-5 w-5" aria-hidden="true" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">{tOperator("dashboard.machineAssigned")}</div>
+                                            <div className="mt-1.5 truncate text-xl font-semibold tracking-[-0.02em] text-text-primary">{derivedMachineLabel}</div>
+                                            <div className="mt-1 text-xs text-text-secondary">{tOperator("machine")}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

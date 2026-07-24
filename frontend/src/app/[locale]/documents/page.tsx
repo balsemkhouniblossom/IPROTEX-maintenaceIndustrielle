@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 import {
   CheckCircleIcon,
   CloudArrowUpIcon,
@@ -18,8 +17,9 @@ import {
 import { useTranslations } from "next-intl";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal } from "@/components/Modal";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { apiService } from "@/services/api";
-import { getApiBaseUrl } from "@/config/api-base-url";
+import { displayText } from "@/services/displayValues";
 
 type MachineRef = string | { _id: string; machine_id?: string };
 
@@ -41,17 +41,13 @@ interface Machine {
   machine_id: string;
 }
 
-const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), {
-  ssr: false,
-});
-
 function machineRefId(machine: MachineRef): string {
   return typeof machine === "string" ? machine : machine?._id || "";
 }
 
 function machineRefLabel(machine: MachineRef): string {
-  if (typeof machine === "string") return machine;
-  return machine?.machine_id || machine?._id || "";
+  if (typeof machine === "string") return displayText(machine, "");
+  return displayText(machine?.machine_id, "");
 }
 
 export default function DocumentsPage() {
@@ -182,11 +178,6 @@ export default function DocumentsPage() {
     });
   }, [documents, search, selectedMachine]);
 
-  const API_URL = getApiBaseUrl();
-
-  function getFileUrl(path: string): string {
-    return `${API_URL}${path}`;
-  }
   function validateUploadForm(): boolean {
     if (!file) {
       showNotification("error", t("notifications.fileRequired"));
@@ -419,10 +410,6 @@ export default function DocumentsPage() {
 
               <div className="text-sm text-gray-500 mt-1">
                 <div>
-                  <span className="font-medium">{t("table.documentId")}: </span>
-                  {doc.document_id}
-                </div>
-                <div>
                   <span className="font-medium">{t("table.type")}: </span>
                   {doc.type_document}
                 </div>
@@ -645,15 +632,11 @@ export default function DocumentsPage() {
         title={selectedDoc?.file_name || t("viewer.title")}
         size="xl"
       >
-        <div className="h-[70vh] overflow-auto bg-gray-100 p-4 rounded-lg">
-          {selectedDoc ? (
-            <div className="flex justify-center">
-              <PdfViewer file={getFileUrl(selectedDoc.file_path)} />
-            </div>
-          ) : (
-            <div className="text-center text-gray-500">{tCommon("loading")}</div>
-          )}
-        </div>
+        {selectedDoc ? (
+          <DocumentAttachmentViewer document={selectedDoc} title={selectedDoc.file_name} />
+        ) : (
+          <div className="text-center text-gray-500">{tCommon("loading")}</div>
+        )}
       </Modal>
     </DashboardLayout>
   );

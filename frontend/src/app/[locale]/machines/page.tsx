@@ -166,7 +166,7 @@ export default function MachinesPage() {
 
   const validateForm = () => {
     if (!formData.machine_id.trim()) {
-      showNotification('error', tMachines('notifications.machineIdRequired'));
+      showNotification('error', tMachines('notifications.machineCodeRequired', { default: 'Machine code is required' }));
       return false;
     }
     if (!formData.serial_no.trim()) {
@@ -341,7 +341,7 @@ export default function MachinesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>{tMachines('table.machineId')}</th>
+                  <th>{tMachines('table.machineCode', { default: 'Machine Code' })}</th>
                   <th>{tMachines('table.serialNumber')}</th>
                   <th>{tMachines('table.manufacturer')}</th>
                   <th>{tMachines('table.model')}</th>
@@ -365,7 +365,7 @@ export default function MachinesPage() {
                     const machineType = machineTypeMap[String(machine.type_id)];
                     return (
                       <tr key={machine._id}>
-                        <td className="font-medium">{machine.machine_id}</td>
+                        <td className="font-medium">{machine.machine_id || tCommon('notAvailable')}</td>
                         <td>{machine.serial_no}</td>
                         <td>{machine.fabricant || tCommon('notAvailable')}</td>
                         <td>{machine.model || tCommon('notAvailable')}</td>
@@ -444,14 +444,14 @@ export default function MachinesPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-dark mb-1">
-                {tMachines('form.machineId')}
+                {tMachines('form.machineCode', { default: 'Machine Code' })}
               </label>
               <input
                 type="text"
                 value={formData.machine_id}
                 onChange={(e) => setFormData({ ...formData, machine_id: e.target.value })}
                 className="input-field"
-                title={tMachines('form.machineId')}
+                title={tMachines('form.machineCode', { default: 'Machine Code' })}
                 required
               />
             </div>

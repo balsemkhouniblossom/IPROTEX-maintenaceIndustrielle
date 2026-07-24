@@ -85,7 +85,7 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
 
   async function loadDashboardData() {
     try {
-      const data = await apiService.getDashboardData();
+      const data = await apiService.getDashboardData({ includeUsers: true });
       setDashboardData(data);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -97,7 +97,7 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
       return;
     }
 
-    if (!user) {
+    if (!user || user.role !== 'admin') {
       return;
     }
 
@@ -261,7 +261,7 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
           </div>
 
 
-          <div className="bento-item panel" style={{ gridColumn: '1 / 3' }}>
+          <div className="bento-item panel md:col-span-2">
 
             <div className="card-title">
               {tAdmin("workOrders.recent")}
@@ -271,14 +271,14 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
                 .map((wo) => (
                   <div
                     key={wo._id}
-                    className="flex justify-between items-center border-b pb-2"
+                    className="flex min-w-0 items-center justify-between gap-3 border-b pb-2"
                   >
-                    <div>
-                      <div className="font-semibold">
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold" title={wo.title || wo.description || ''}>
                         {wo.title || wo.description}
                       </div>
 
-                      <div className="text-xs text-slate-500">
+                      <div className="truncate text-xs text-slate-500" title={wo.status}>
                         {wo.status}
                       </div>
                     </div>
@@ -347,10 +347,7 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
           </div>
 
 
-          <div
-            className="bento-item panel"
-            style={{ gridColumn: '1 / 3' }}
-          >
+          <div className="bento-item panel md:col-span-2">
             <div className="card-title">
               {tAdmin("workOrders.distribution")}
             </div>
@@ -410,10 +407,7 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
 
 
 
-          <div
-            className="bento-item panel"
-            style={{ gridColumn: '3 / 5' }}
-          >
+          <div className="bento-item panel md:col-span-2">
             <div className="card-title">
               {tAdmin("quickKpis.title")}
             </div>

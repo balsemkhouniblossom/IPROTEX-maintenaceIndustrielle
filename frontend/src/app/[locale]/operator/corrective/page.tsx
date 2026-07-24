@@ -6,9 +6,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
-import { getApiBaseUrl } from "@/config/api-base-url";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
+import { resolveManagedFileUrl } from "@/services/managedFileUrls";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -82,13 +82,6 @@ interface InterventionReport {
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
   return typeof value === "string" ? value : value._id ?? value.id ?? "";
-}
-
-const API_URL = getApiBaseUrl();
-
-function getFileUrl(path: string): string {
-  if (!path) return "";
-  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
 }
 
 function tokenize(input: string | undefined): string[] {
@@ -183,6 +176,20 @@ function OperatorCorrectivePageContent() {
         return submitValidationReason;
     }
   }, [submitValidationReason, t, tCommon]);
+
+  function extractApiErrorMessage(error: unknown, fallback: string): string {
+    const apiError = error as {
+      response?: { status?: number; data?: { message?: string | string[] } };
+    };
+    const raw = apiError?.response?.data?.message;
+    if (Array.isArray(raw) && raw.length) {
+      return raw.join(" ");
+    }
+    if (typeof raw === "string" && raw.trim()) {
+      return raw;
+    }
+    return fallback;
+  }
 
   const initialTypeId = searchParams.get("type") || "";
   const initialMachineId = searchParams.get("machine") || "";
@@ -303,11 +310,11 @@ function OperatorCorrectivePageContent() {
           workOrderItems,
           reportItems,
         ] = await Promise.all([
-          fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
+          fetchAllPaginated<MachineType>((pagination) => apiService.getOperatorMachineTypes(pagination)),
           fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
           fetchAllPaginated<DocumentEntity>((pagination) => apiService.getOperatorManuals(pagination)),
-          fetchAllPaginated<Catalogue>((pagination) => apiService.getCatalogues(pagination)),
-          fetchAllPaginated<Stock>((pagination) => apiService.getStocks(pagination)),
+          fetchAllPaginated<Catalogue>((pagination) => apiService.getOperatorCatalogues(pagination)),
+          fetchAllPaginated<Stock>((pagination) => apiService.getOperatorStocks(pagination)),
           fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
           fetchAllPaginated<InterventionReport>((pagination) => apiService.getMyInterventionReports(pagination)),
         ]);
@@ -673,12 +680,15 @@ function OperatorCorrectivePageContent() {
         .filter(([, quantity]) => Number(quantity) > 0)
         .map(([partId, quantity]) => ({ partId, quantity: Number(quantity) }));
 
+      // Requesting parts only records a pending request against this work
+      // order — it never reduces Stock directly. Stock is only ever
+      // consumed later by the Technician's own transactional flow once the
+      // part is approved or used.
       await Promise.all(
         requestedParts.map((part) =>
-          apiService.createOtPiece({
-            ot_id: workOrderId,
+          apiService.requestOperatorParts(workOrderId, {
             part_id: part.partId,
-            quantite: part.quantity,
+            quantity: part.quantity,
           }),
         ),
       );
@@ -695,7 +705,7 @@ function OperatorCorrectivePageContent() {
     } catch (error) {
       console.error("Failed to submit corrective maintenance", error);
       setSubmitValidationReason("submit-failed");
-      showNotification("error", tCommon("error"));
+      showNotification("error", extractApiErrorMessage(error, tCommon("error")));
     } finally {
       setSubmitting(false);
     }
@@ -969,7 +979,7 @@ function OperatorCorrectivePageContent() {
             <div className="card-title mb-3">{t("openManual")}</div>
             {manualDocument ? (
               <a
-                href={getFileUrl(manualDocument.file_path)}
+                href={resolveManagedFileUrl(manualDocument.file_path)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white"

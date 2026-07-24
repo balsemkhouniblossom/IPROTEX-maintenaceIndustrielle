@@ -37,25 +37,26 @@ export default function Pagination({
   }
 
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between ${className}`}>
-      <div className="text-sm text-text-secondary">
+    <div className={`flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between ${className}`}>
+      <div className="min-w-0 text-sm text-text-secondary">
         Showing <span className="font-semibold text-text-primary">{start}</span> to{' '}
         <span className="font-semibold text-text-primary">{end}</span> of{' '}
         <span className="font-semibold text-text-primary">{totalItems}</span> items
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, safePage - 1))}
           disabled={safePage <= 1}
-          className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex min-w-0 items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          title="Previous"
         >
           <ChevronLeftIcon className="h-4 w-4" />
-          Previous
+          <span className="truncate">Previous</span>
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
           {pages[0] > 1 && (
             <>
               <button
@@ -102,9 +103,10 @@ export default function Pagination({
           type="button"
           onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))}
           disabled={safePage >= safeTotalPages}
-          className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex min-w-0 items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+          title="Next"
         >
-          Next
+          <span className="truncate">Next</span>
           <ChevronRightIcon className="h-4 w-4" />
         </button>
       </div>

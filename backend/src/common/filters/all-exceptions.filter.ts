@@ -7,6 +7,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import {
+  buildRequestLogMessage,
+  getRequestId,
+  getRequestPathname,
+  type RequestWithLogContext,
+} from '../log-sanitizer';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,7 +21,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithLogContext>();
 
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException
@@ -25,6 +31,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const exceptionResponse = isHttpException
       ? exception.getResponse()
       : 'Internal server error';
+    const exceptionCode =
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null &&
+      typeof (exceptionResponse as { code?: unknown }).code === 'string'
+        ? (exceptionResponse as { code: string }).code
+        : undefined;
 
     const message =
       typeof exceptionResponse === 'string'
@@ -38,17 +50,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? message
         : JSON.stringify(message);
 
+    const requestId = getRequestId(request);
+    const pathname = getRequestPathname(request);
     this.logger.error(
-      `${request.method} ${request.url} -> ${status} (${messageText})`,
+      `${buildRequestLogMessage({
+        requestId,
+        method: request.method,
+        pathname,
+        status,
+      })} message=${messageText}`,
       exception instanceof Error ? exception.stack : undefined,
     );
 
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: pathname,
       method: request.method,
       message,
+      ...(exceptionCode ? { code: exceptionCode } : {}),
     });
   }
 }

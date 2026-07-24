@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  HttpException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -14,19 +16,44 @@ import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { Role, User, UserDocument } from '../schemas/user.schema';
+import {
+  ApprovalStatus,
+  Role,
+  User,
+  UserDocument,
+} from '../schemas/user.schema';
 import { Model, Types } from 'mongoose';
 import { Response } from 'express';
-import { CreateUserDto } from '../users/dto/create-user.dto';
 import { NotificationsFacade } from '../notifications/notifications.facade';
 import { EmailVerificationTokenService } from './email-verification-token.service';
 import { AppConfigService } from '../config/app.config';
+import { PublicRegistrationRole, RegisterDto } from './dto/register.dto';
+import { resolveApprovalStatus } from '../users/approval-status.utils';
+import {
+  throwInvalidCredentials,
+  validateAccountAccess,
+} from './account-access.validator';
+import { AccountAccessErrorCode } from './account-access-error-code';
+import { GoogleLoginExchangeService } from './google-login-exchange.service';
+import { RefreshTokenErrorCode } from './refresh-token-error-code';
+import {
+  resolveUserPhotoUrl,
+  shouldExposeUserAvatar,
+} from '../users/user-photo-url';
+import { FileStorageService } from '../storage/file-storage.service';
+import {
+  CompleteGoogleProfileDto,
+  SUPPORTED_PROFILE_LANGUAGES,
+} from './dto/complete-google-profile.dto';
+import { FeatureFlagsConfigService } from '../config/feature-flags.config';
 
 interface JwtPayload {
-  email: string;
+  email?: string;
   sub: string;
   role: string;
-  user_id: string;
+  user_id?: string;
+  type?: 'access' | 'refresh';
+  jti?: string;
 }
 
 export interface LoginResult {
@@ -38,17 +65,24 @@ export interface LoginResult {
 
 export interface UserWithoutSensitiveData {
   _id: Types.ObjectId;
-  user_id: string;
+  user_id?: string;
   nom_complet: string;
   email: string;
   role: string;
   is_active: boolean;
+  is_verified?: boolean;
+  approval_status?: ApprovalStatus;
   last_login?: Date;
   login_history?: Date[];
   created_at: Date;
   phone?: string;
   department?: string;
+  position?: string;
+  language?: string;
   photo?: string;
+  photo_url?: string;
+  photo_storage_path?: string;
+  profile_completed?: boolean;
 }
 
 export interface GoogleUserProfile {
@@ -56,9 +90,53 @@ export interface GoogleUserProfile {
   email: string;
   name: string;
   picture?: string;
+  provider?: string;
+  email_verified?: boolean;
 }
 
+export interface RegisterResult {
+  success: true;
+  code: 'ACCOUNT_CREATED_PENDING_APPROVAL';
+  requiresEmailVerification: true;
+  requiresAdminApproval: true;
+  user: {
+    email: string;
+    role: Role.OPERATOR | Role.TECHNICIAN;
+    is_verified: false;
+    is_active: false;
+    approval_status: ApprovalStatus.PENDING;
+  };
+  message: string;
+}
+
+export type VerifyEmailResult = {
+  success: true;
+  code:
+    | 'EMAIL_VERIFIED_PENDING_APPROVAL'
+    | 'EMAIL_ALREADY_VERIFIED_PENDING_APPROVAL'
+    | 'EMAIL_VERIFIED'
+    | 'EMAIL_ALREADY_VERIFIED'
+    | 'EMAIL_VERIFIED_ACCOUNT_REJECTED';
+  emailVerified: true;
+  requiresAdminApproval: boolean;
+  message: string;
+};
+
 type SanitizableUser = UserDocument | UserWithoutSensitiveData;
+
+type GoogleLoginStatus =
+  | 'created-pending'
+  | 'pending'
+  | 'rejected'
+  | 'inactive'
+  | 'failed';
+
+type GoogleProfile = {
+  googleId: string;
+  email: string;
+  name: string;
+  picture?: string;
+};
 
 const toJwtExpiresIn = (value: string): JwtSignOptions['expiresIn'] =>
   value as JwtSignOptions['expiresIn'];
@@ -74,6 +152,9 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly appConfigService: AppConfigService,
     private readonly emailVerificationTokenService: EmailVerificationTokenService,
+    private readonly googleLoginExchangeService: GoogleLoginExchangeService,
+    private readonly fileStorageService: FileStorageService,
+    private readonly featureFlags: FeatureFlagsConfigService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
@@ -81,29 +162,21 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<UserWithoutSensitiveData> {
-    const user = await this.usersService.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (!user.is_active) {
-      throw new UnauthorizedException('Account is deactivated');
-    }
-
-    if (!user.password) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!user?.password) {
+      throwInvalidCredentials();
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throwInvalidCredentials();
     }
 
-    if (!user.is_verified) {
-      throw new UnauthorizedException('Please verify your email first');
-    }
+    validateAccountAccess(user);
+
     const updatedUser = await this.usersService.recordSuccessfulLogin(
       user._id.toString(),
     );
@@ -114,76 +187,71 @@ export class AuthService {
     delete userObj.reset_password_token;
     delete userObj.reset_password_expires;
     delete userObj.refresh_token_hash;
+    delete userObj.approved_by;
+    delete userObj.rejected_by;
     return userObj as unknown as UserWithoutSensitiveData;
   }
-  async verifyEmail(token: string) {
+  async verifyEmail(token: string): Promise<VerifyEmailResult> {
     if (!token?.trim()) {
-      throw new BadRequestException('Verification token is required');
-    }
-
-    try {
-      const payload = this.emailVerificationTokenService.verifyToken(token);
-
-      if (!payload.userId) {
-        throw new BadRequestException('Invalid or expired verification token');
-      }
-
-      const user = await this.userModel.findById(payload.userId);
-
-      if (!user) {
-        throw new BadRequestException('User not found');
-      }
-
-      if (user.is_verified) {
-        return { message: 'Email already verified' };
-      }
-
-      await this.userModel.findByIdAndUpdate(payload.userId, {
-        is_verified: true,
-        is_active: true,
+      throw new BadRequestException({
+        code: 'EMAIL_VERIFICATION_TOKEN_INVALID_OR_EXPIRED',
+        message: 'Invalid or expired verification token',
       });
-
-      return { message: 'Email verified successfully' };
-    } catch {
-      throw new BadRequestException('Invalid or expired verification token');
     }
-  }
-  async login(user: SanitizableUser): Promise<LoginResult> {
-    const accessExpiresIn =
-      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
-    const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
 
-    const payload = {
-      email: user.email,
-      sub: user._id.toString(),
-      role: user.role,
-      user_id: user.user_id,
+    const payload = this.emailVerificationTokenService.verifyToken(token);
+
+    if (!payload.userId) {
+      throw new BadRequestException({
+        code: 'EMAIL_VERIFICATION_TOKEN_INVALID_OR_EXPIRED',
+        message: 'Invalid or expired verification token',
+      });
+    }
+
+    const user = await this.userModel.findById(payload.userId).exec();
+
+    if (!user) {
+      throw new BadRequestException({
+        code: 'EMAIL_VERIFICATION_USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    if (user.is_verified) {
+      return this.buildVerificationResponse(user, true);
+    }
+
+    await this.userModel.findByIdAndUpdate(payload.userId, {
+      is_verified: true,
+    });
+
+    const verifiedUser = {
+      approval_status: user.approval_status,
+      is_active: user.is_active,
+      is_verified: true,
     };
 
-    const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: toJwtExpiresIn(accessExpiresIn),
-    });
-
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: toJwtExpiresIn(refreshExpiresIn),
-    });
-
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    return this.buildVerificationResponse(verifiedUser, false);
+  }
+  async login(user: SanitizableUser): Promise<LoginResult> {
+    const { accessToken, refreshToken, refreshTokenHash } =
+      await this.issueTokenPair(user);
     await this.setRefreshTokenHash(user._id.toString(), refreshTokenHash);
 
     return {
       access_token: accessToken,
       token: accessToken,
       refresh_token: refreshToken,
-      user: this.sanitizeUser(user),
+      user: await this.sanitizeUser(user),
     };
   }
 
   async refreshToken(token: string): Promise<LoginResult> {
     if (!token?.trim()) {
-      throw new UnauthorizedException('Missing refresh token');
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_MISSING,
+        'Refresh token is required.',
+      );
     }
 
     let payload: JwtPayload;
@@ -191,33 +259,143 @@ export class AuthService {
       payload = this.jwtService.verify(token, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
-    } catch {
-      throw new UnauthorizedException('Invalid refresh token');
+    } catch (error: unknown) {
+      const errorName = error instanceof Error ? error.name : '';
+      throwRefreshTokenError(
+        errorName === 'TokenExpiredError'
+          ? RefreshTokenErrorCode.REFRESH_TOKEN_EXPIRED
+          : RefreshTokenErrorCode.REFRESH_TOKEN_INVALID_OR_EXPIRED,
+        'The refresh token is invalid or expired.',
+      );
     }
 
-    const user = await this.usersService.findOne(payload.sub);
-    if (!user?.refresh_token_hash) {
-      throw new UnauthorizedException('Invalid refresh token');
+    if (payload.type !== 'refresh') {
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_WRONG_TYPE,
+        'The submitted token cannot be used for refresh.',
+      );
     }
 
-    const isTokenValid = await bcrypt.compare(token, user.refresh_token_hash);
+    if (!payload.sub || !Types.ObjectId.isValid(payload.sub)) {
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_SUBJECT_INVALID,
+        'The refresh token subject is invalid.',
+      );
+    }
+
+    const user = await this.userModel.findById(payload.sub).exec();
+    if (!user) {
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_USER_NOT_FOUND,
+        'The refresh token user no longer exists.',
+      );
+    }
+
+    validateAccountAccess(user);
+
+    const storedRefreshHash = user.refresh_token_hash;
+    if (!storedRefreshHash) {
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_REVOKED,
+        'The refresh token is no longer valid.',
+      );
+    }
+
+    const isTokenValid = await bcrypt.compare(
+      this.hashRefreshToken(token),
+      storedRefreshHash,
+    );
     if (!isTokenValid) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_REVOKED,
+        'The refresh token is no longer valid.',
+      );
     }
 
-    return this.login(user);
+    const { accessToken, refreshToken, refreshTokenHash } =
+      await this.issueTokenPair(user);
+
+    const rotatedUser = await this.userModel
+      .findOneAndUpdate(
+        {
+          _id: user._id,
+          refresh_token_hash: storedRefreshHash,
+        },
+        {
+          $set: {
+            refresh_token_hash: refreshTokenHash,
+          },
+        },
+        { new: true },
+      )
+      .exec();
+
+    if (!rotatedUser) {
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_REUSE_DETECTED,
+        'The refresh token is no longer valid.',
+      );
+    }
+
+    return {
+      access_token: accessToken,
+      token: accessToken,
+      refresh_token: refreshToken,
+      user: await this.sanitizeRefreshUser(rotatedUser),
+    };
   }
 
-  async register(userData: CreateUserDto): Promise<UserDocument> {
-    const existingUser = await this.usersService.findByEmail(userData.email);
+  async register(
+    userData: RegisterDto,
+    locale?: string,
+    frontendOrigin?: string,
+  ): Promise<RegisterResult> {
+    const normalizedEmail = userData.email.trim().toLowerCase();
+    const publicRole = this.toPublicRole(userData.role);
 
-    if (existingUser) {
-      throw new ConflictException('Email already registered');
+    if (!publicRole) {
+      throw new ForbiddenException({
+        code: 'PUBLIC_ROLE_NOT_ALLOWED',
+        message:
+          'Public registration is limited to operator and technician accounts.',
+      });
     }
 
-    const newUser = await this.usersService.create({
-      ...userData,
-    });
+    const existingUser = await this.usersService.findByEmail(normalizedEmail);
+
+    if (existingUser) {
+      throw new ConflictException({
+        code: 'EMAIL_ALREADY_REGISTERED',
+        message: 'Email already registered',
+      });
+    }
+
+    let newUser: UserDocument;
+    try {
+      newUser = await this.usersService.create({
+        nom_complet: userData.nom_complet.trim(),
+        email: normalizedEmail,
+        password: userData.password,
+        role: publicRole,
+        phone: userData.phone,
+        department: userData.department?.trim() || undefined,
+        is_verified: false,
+        is_active: false,
+        approval_status: ApprovalStatus.PENDING,
+      });
+    } catch (error: unknown) {
+      if (isDuplicateKeyError(error)) {
+        throw new ConflictException({
+          code: 'EMAIL_ALREADY_REGISTERED',
+          message: 'Email already registered',
+        });
+      }
+
+      throw new ServiceUnavailableException({
+        code: 'REGISTRATION_FAILED',
+        message: 'Registration failed. Please try again later.',
+      });
+    }
 
     const verificationToken = this.emailVerificationTokenService.issueToken(
       newUser._id.toString(),
@@ -227,6 +405,8 @@ export class AuthService {
       await this.notificationsFacade.sendVerificationEmail({
         to: newUser.email,
         token: verificationToken,
+        ...(locale ? { locale } : {}),
+        ...(frontendOrigin ? { frontendOrigin } : {}),
       });
     } catch (err: unknown) {
       const error = err as Error;
@@ -237,11 +417,26 @@ export class AuthService {
       // Best effort rollback to avoid leaving an account that cannot be verified.
       await this.userModel.findByIdAndDelete(newUser._id).exec();
 
-      throw new ServiceUnavailableException(
-        'Email service failed. Please try again later.',
-      );
+      throw new ServiceUnavailableException({
+        code: 'REGISTRATION_EMAIL_DELIVERY_FAILED',
+        message: 'Email service failed. Please try again later.',
+      });
     }
-    return newUser;
+    return {
+      success: true,
+      code: 'ACCOUNT_CREATED_PENDING_APPROVAL',
+      requiresEmailVerification: true,
+      requiresAdminApproval: true,
+      user: {
+        email: newUser.email,
+        role: publicRole,
+        is_verified: false,
+        is_active: false,
+        approval_status: ApprovalStatus.PENDING,
+      },
+      message:
+        'Your account was created successfully. Verify your email and wait for administrator approval before signing in.',
+    };
   }
 
   async forgotPassword(
@@ -368,58 +563,570 @@ export class AuthService {
     locale = 'en',
     frontendOrigin?: string,
   ) {
-    if (!googleUser.email) {
-      throw new UnauthorizedException('Google authentication failed');
-    }
+    try {
+      const profile = this.validateGoogleProfile(googleUser);
+      const resolved = await this.resolveGoogleAccount(profile);
+      const approvalStatus = resolveApprovalStatus(resolved.user);
 
-    let user = await this.usersService.findByEmail(googleUser.email);
-    if (user && !user.google_id) {
-      user.google_id = googleUser.google_id;
-      await user.save();
+      if (approvalStatus === ApprovalStatus.REJECTED) {
+        return this.redirectGoogleResult(
+          res,
+          frontendOrigin,
+          locale,
+          'rejected',
+        );
+      }
+
+      if (approvalStatus === ApprovalStatus.APPROVED && !resolved.user.is_active) {
+        return this.redirectGoogleResult(
+          res,
+          frontendOrigin,
+          locale,
+          'inactive',
+        );
+      }
+
+      if (!this.isGoogleProfileComplete(resolved.user)) {
+        const profileUser = await this.markGoogleProfileIncomplete(
+          resolved.user,
+        );
+        const updatedUser = await this.usersService.recordSuccessfulLogin(
+          profileUser._id.toString(),
+        );
+        const loginResult = await this.login(updatedUser ?? profileUser);
+        loginResult.user.profile_completed = false;
+        const exchangeCode =
+          await this.googleLoginExchangeService.createExchange(loginResult);
+
+        return this.redirectGoogleExchange(
+          res,
+          frontendOrigin,
+          locale,
+          exchangeCode,
+        );
+      }
+
+      try {
+        validateAccountAccess(resolved.user);
+      } catch (error) {
+        const accessCode = this.extractAccountAccessCode(error);
+        return this.redirectGoogleResult(
+          res,
+          frontendOrigin,
+          locale,
+          this.mapAccountAccessCodeToGoogleStatus(accessCode),
+        );
+      }
+
+      const updatedUser = await this.usersService.recordSuccessfulLogin(
+        resolved.user._id.toString(),
+      );
+      const loginResult = await this.login(updatedUser ?? resolved.user);
+      const exchangeCode =
+        await this.googleLoginExchangeService.createExchange(loginResult);
+
+      return this.redirectGoogleExchange(
+        res,
+        frontendOrigin,
+        locale,
+        exchangeCode,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Google OAuth callback failed: ${this.extractSafeGoogleErrorCode(error)}`,
+      );
+      return this.redirectGoogleResult(res, frontendOrigin, locale, 'failed');
     }
-    if (!user) {
-      user = await this.usersService.create({
-        nom_complet: googleUser.name,
-        email: googleUser.email,
-        role: Role.OPERATOR,
-        is_verified: true,
-        is_active: true,
-        google_id: googleUser.google_id,
-        photo: googleUser.picture,
+  }
+
+  async exchangeGoogleLogin(code: string) {
+    return this.googleLoginExchangeService.consumeExchange(code);
+  }
+
+  redirectFailedGoogleLogin(
+    res: Response,
+    locale = 'en',
+    frontendOrigin?: string,
+  ) {
+    return this.redirectGoogleResult(res, frontendOrigin, locale, 'failed');
+  }
+
+  private validateGoogleProfile(googleUser: GoogleUserProfile): GoogleProfile {
+    if (googleUser.provider && googleUser.provider !== 'google') {
+      throw new UnauthorizedException({
+        code: 'GOOGLE_PROFILE_INVALID',
+        message: 'Google profile is invalid.',
       });
     }
 
-    const loginResult = await this.login(user);
+    if (!googleUser.google_id?.trim()) {
+      throw new UnauthorizedException({
+        code: 'GOOGLE_PROFILE_INVALID',
+        message: 'Google profile is invalid.',
+      });
+    }
+
+    if (!googleUser.email?.trim()) {
+      throw new UnauthorizedException({
+        code: 'GOOGLE_EMAIL_MISSING',
+        message: 'Google account email is missing.',
+      });
+    }
+
+    if (googleUser.email_verified === false) {
+      throw new UnauthorizedException({
+        code: 'GOOGLE_EMAIL_NOT_VERIFIED',
+        message: 'Google account email is not verified.',
+      });
+    }
+
+    const email = googleUser.email.trim().toLowerCase();
+
+    return {
+      googleId: googleUser.google_id.trim(),
+      email,
+      name: this.sanitizeGoogleDisplayName(googleUser.name, email),
+      picture: this.sanitizeGooglePhotoUrl(googleUser.picture),
+    };
+  }
+
+  private async resolveGoogleAccount(
+    profile: GoogleProfile,
+  ): Promise<{ user: UserDocument; created: boolean }> {
+    const userByGoogleId = await this.usersService.findByGoogleId(
+      profile.googleId,
+    );
+    const userByEmail = await this.usersService.findByEmail(profile.email);
+
+    if (
+      userByGoogleId &&
+      userByEmail &&
+      !userByGoogleId._id.equals(userByEmail._id)
+    ) {
+      throw new ConflictException({
+        code: 'GOOGLE_ACCOUNT_CONFLICT',
+        message: 'Google account cannot be linked automatically.',
+      });
+    }
+
+    if (userByGoogleId) {
+      if (userByGoogleId.email.trim().toLowerCase() !== profile.email) {
+        throw new UnauthorizedException({
+          code: 'GOOGLE_IDENTITY_MISMATCH',
+          message: 'Google identity does not match this account.',
+        });
+      }
+
+      return { user: userByGoogleId, created: false };
+    }
+
+    if (userByEmail) {
+      const linkedUser = await this.usersService.linkGoogleIdentity(
+        userByEmail._id.toString(),
+        profile.googleId,
+      );
+
+      if (!linkedUser) {
+        const conflictingUser = await this.usersService.findByGoogleId(
+          profile.googleId,
+        );
+        if (conflictingUser && !conflictingUser._id.equals(userByEmail._id)) {
+          throw new ConflictException({
+            code: 'GOOGLE_ACCOUNT_CONFLICT',
+            message: 'Google account cannot be linked automatically.',
+          });
+        }
+
+        const refreshedUser = await this.usersService.findOne(
+          userByEmail._id.toString(),
+        );
+        return { user: refreshedUser ?? userByEmail, created: false };
+      }
+
+      return { user: linkedUser, created: false };
+    }
+
+    const user = await this.usersService.create({
+      nom_complet: profile.name,
+      email: profile.email,
+      role: Role.OPERATOR,
+      is_verified: true,
+      is_active: false,
+      approval_status: ApprovalStatus.PENDING,
+      profile_completed: false,
+      google_id: profile.googleId,
+      ...(profile.picture ? { photo: profile.picture } : {}),
+    });
+
+    return { user, created: true };
+  }
+
+  async completeGoogleProfile(
+    userId: string,
+    dto: CompleteGoogleProfileDto,
+  ): Promise<{
+    code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL';
+    mandatoryFields: string[];
+    user: UserWithoutSensitiveData;
+  }> {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new UnauthorizedException('Authentication failed');
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user?.google_id) {
+      throw new ForbiddenException({
+        code: 'GOOGLE_PROFILE_COMPLETION_REQUIRED',
+        message: 'Only Google accounts can complete a Google profile.',
+      });
+    }
+
+    if (resolveApprovalStatus(user) === ApprovalStatus.REJECTED) {
+      throw new ForbiddenException({
+        code: AccountAccessErrorCode.ACCOUNT_REJECTED,
+        message: 'Your account request was rejected.',
+      });
+    }
+
+    if (this.isGoogleProfileComplete(user)) {
+      return {
+        code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
+        mandatoryFields: this.getMandatoryGoogleProfileFields(),
+        user: await this.sanitizeRefreshUser(user),
+      };
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        user._id,
+        {
+          $set: {
+            phone: dto.phone.trim(),
+            role: dto.role,
+            department: dto.department.trim(),
+            position: dto.position.trim(),
+            language: dto.language,
+            profile_completed: true,
+            approval_status: ApprovalStatus.PENDING,
+            is_active: false,
+            is_verified: true,
+          },
+          $unset: {
+            refresh_token_hash: '',
+            approved_by: '',
+            approved_at: '',
+            rejected_by: '',
+            rejected_at: '',
+            rejection_reason: '',
+          },
+        },
+        { new: true },
+      )
+      .exec();
+
+    if (!updated) {
+      throw new UnauthorizedException('Authentication failed');
+    }
+
+    return {
+      code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
+      mandatoryFields: this.getMandatoryGoogleProfileFields(),
+      user: await this.sanitizeRefreshUser(updated),
+    };
+  }
+
+  getMandatoryGoogleProfileFields(): string[] {
+    return [
+      'nom_complet',
+      'email',
+      'phone',
+      'role',
+      'department',
+      'position',
+      'language',
+    ];
+  }
+
+  private isGoogleProfileComplete(user: UserDocument): boolean {
+    if (user.profile_completed === false) return false;
+
+    return Boolean(
+      user.nom_complet?.trim() &&
+        user.email?.trim() &&
+        user.phone?.trim() &&
+        (user.role === Role.OPERATOR || user.role === Role.TECHNICIAN) &&
+        user.department?.trim() &&
+        user.position?.trim() &&
+        user.language?.trim() &&
+        SUPPORTED_PROFILE_LANGUAGES.includes(
+          user.language as (typeof SUPPORTED_PROFILE_LANGUAGES)[number],
+        ),
+    );
+  }
+
+  private async markGoogleProfileIncomplete(
+    user: UserDocument,
+  ): Promise<UserDocument> {
+    if (user.profile_completed === false) return user;
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        user._id,
+        {
+          $set: {
+            profile_completed: false,
+            approval_status: ApprovalStatus.PENDING,
+            is_active: false,
+            is_verified: true,
+          },
+          $unset: {
+            refresh_token_hash: '',
+            approved_by: '',
+            approved_at: '',
+            rejected_by: '',
+            rejected_at: '',
+            rejection_reason: '',
+          },
+        },
+        { new: true },
+      )
+      .exec();
+
+    return updated ?? user;
+  }
+
+  private sanitizeGoogleDisplayName(
+    name: string | undefined,
+    email: string,
+  ): string {
+    const trimmedName = name?.trim();
+    if (trimmedName) {
+      return trimmedName;
+    }
+
+    const localPart = email
+      .split('@')[0]
+      ?.replace(/[._-]+/g, ' ')
+      .trim();
+    return localPart || 'Google User';
+  }
+
+  private sanitizeGooglePhotoUrl(photo?: string): string | undefined {
+    if (!photo?.trim()) {
+      return undefined;
+    }
+
+    try {
+      const url = new URL(photo.trim());
+      return url.protocol === 'https:' ? url.toString() : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private mapAccountAccessCodeToGoogleStatus(
+    code?: AccountAccessErrorCode,
+  ): GoogleLoginStatus {
+    if (code === AccountAccessErrorCode.ACCOUNT_REJECTED) {
+      return 'rejected';
+    }
+
+    if (code === AccountAccessErrorCode.ACCOUNT_INACTIVE) {
+      return 'inactive';
+    }
+
+    if (code === AccountAccessErrorCode.ACCOUNT_PENDING_APPROVAL) {
+      return 'pending';
+    }
+
+    return 'failed';
+  }
+
+  private extractAccountAccessCode(
+    error: unknown,
+  ): AccountAccessErrorCode | undefined {
+    if (!(error instanceof HttpException)) {
+      return undefined;
+    }
+
+    const response = error.getResponse();
+    const code =
+      typeof response === 'object' && response && 'code' in response
+        ? (response as { code?: unknown }).code
+        : undefined;
+
+    return Object.values(AccountAccessErrorCode).includes(
+      code as AccountAccessErrorCode,
+    )
+      ? (code as AccountAccessErrorCode)
+      : undefined;
+  }
+
+  private extractSafeGoogleErrorCode(error: unknown): string {
+    if (error instanceof HttpException) {
+      const response = error.getResponse();
+      const code =
+        typeof response === 'object' && response && 'code' in response
+          ? (response as { code?: unknown }).code
+          : undefined;
+      return typeof code === 'string' ? code : error.constructor.name;
+    }
+
+    return error instanceof Error ? error.constructor.name : 'UnknownError';
+  }
+
+  private redirectGoogleExchange(
+    res: Response,
+    frontendOrigin: string | undefined,
+    locale: string,
+    exchangeCode: string,
+  ) {
+    const frontendBaseUrl = this.clearGoogleCookies(res, frontendOrigin);
+
+    return res.redirect(
+      `${frontendBaseUrl}/${locale}/auth/google-result?exchange=${encodeURIComponent(exchangeCode)}`,
+    );
+  }
+
+  private redirectGoogleResult(
+    res: Response,
+    frontendOrigin: string | undefined,
+    locale: string,
+    status: GoogleLoginStatus,
+  ) {
     const frontendBaseUrl = this.appConfigService
       .resolveFrontendBaseUrl(frontendOrigin)
       .replace(/\/$/, '');
 
-    const encodedUser = encodeURIComponent(JSON.stringify(loginResult.user));
+    this.clearGoogleCookies(res, frontendOrigin);
 
+    return res.redirect(
+      `${frontendBaseUrl}/${locale}/auth/google-result?status=${status}`,
+    );
+  }
+
+  private clearGoogleCookies(res: Response, frontendOrigin?: string): string {
+    const frontendBaseUrl = this.appConfigService
+      .resolveFrontendBaseUrl(frontendOrigin)
+      .replace(/\/$/, '');
     res.clearCookie('google_auth_origin', {
       httpOnly: true,
       sameSite: 'lax',
       secure: frontendBaseUrl.startsWith('https://'),
       path: '/',
     });
+    res.clearCookie('google_auth_state', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: frontendBaseUrl.startsWith('https://'),
+      path: '/',
+    });
+    res.clearCookie('google_auth_locale', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: frontendBaseUrl.startsWith('https://'),
+      path: '/',
+    });
 
-    return res.redirect(
-      `${frontendBaseUrl}/${locale}/auth/success?token=${encodeURIComponent(loginResult.access_token)}&user=${encodedUser}`,
-    );
+    return frontendBaseUrl;
   }
 
-  private sanitizeUser(user: SanitizableUser): UserWithoutSensitiveData {
+  private async sanitizeUser(user: SanitizableUser): Promise<UserWithoutSensitiveData> {
     const userObj =
       typeof (user as UserDocument).toObject === 'function'
         ? ((user as UserDocument).toObject() as Record<string, unknown>)
         : ({ ...user } as Record<string, unknown>);
 
     delete userObj.password;
+    delete userObj.__v;
     delete userObj.reset_password_token;
     delete userObj.reset_password_expires;
     delete userObj.refresh_token_hash;
+    delete userObj.approved_by;
+    delete userObj.rejected_by;
+    const photo = userObj.photo as string | null | undefined;
+    const photoUrl = userObj.photo_url as string | null | undefined;
+    const canExposeAvatar = shouldExposeUserAvatar(userObj);
+    const resolvedPhoto = canExposeAvatar
+      ? await this.fileStorageService.resolveUrl(photo, photoUrl)
+      : null;
+    if (canExposeAvatar && resolvedPhoto) {
+      userObj.photo = resolveUserPhotoUrl(resolvedPhoto);
+    } else {
+      delete userObj.photo;
+      delete userObj.photo_url;
+    }
 
     return userObj as unknown as UserWithoutSensitiveData;
+  }
+
+  private async sanitizeRefreshUser(
+    user: SanitizableUser,
+  ): Promise<UserWithoutSensitiveData> {
+    const userObj = (await this.sanitizeUser(user)) as unknown as Record<
+      string,
+      unknown
+    >;
+
+    delete userObj.user_id;
+    delete userObj.google_id;
+    delete userObj.login_history;
+    delete userObj.approved_at;
+    delete userObj.rejected_at;
+    delete userObj.rejection_reason;
+
+    return userObj as unknown as UserWithoutSensitiveData;
+  }
+
+  private async issueTokenPair(user: SanitizableUser): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    refreshTokenHash: string;
+  }> {
+    const accessExpiresIn =
+      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
+    const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
+    const userId = user._id.toString();
+
+    const accessToken = this.jwtService.sign(
+      {
+        email: user.email,
+        sub: userId,
+        role: user.role,
+        user_id: user.user_id,
+        type: 'access',
+        jti: crypto.randomUUID(),
+      },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: toJwtExpiresIn(accessExpiresIn),
+      },
+    );
+
+    const refreshToken = this.jwtService.sign(
+      {
+        sub: userId,
+        type: 'refresh',
+        jti: crypto.randomUUID(),
+      },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: toJwtExpiresIn(refreshExpiresIn),
+      },
+    );
+
+    return {
+      accessToken,
+      refreshToken,
+      refreshTokenHash: await bcrypt.hash(
+        this.hashRefreshToken(refreshToken),
+        10,
+      ),
+    };
+  }
+
+  private hashRefreshToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
   private async setRefreshTokenHash(
@@ -474,6 +1181,59 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  private toPublicRole(
+    role: PublicRegistrationRole | string,
+  ): Role.OPERATOR | Role.TECHNICIAN | null {
+    const roleMap: Record<string, Role.OPERATOR | Role.TECHNICIAN> = {
+      [PublicRegistrationRole.OPERATOR]: Role.OPERATOR,
+      [PublicRegistrationRole.TECHNICIAN]: Role.TECHNICIAN,
+    };
+
+    return roleMap[String(role)] ?? null;
+  }
+
+  private buildVerificationResponse(
+    user: Pick<UserDocument, 'approval_status' | 'is_active' | 'is_verified'>,
+    alreadyVerified: boolean,
+  ): VerifyEmailResult {
+    const approvalStatus = resolveApprovalStatus(user);
+
+    if (approvalStatus === ApprovalStatus.REJECTED) {
+      return {
+        success: true,
+        code: 'EMAIL_VERIFIED_ACCOUNT_REJECTED',
+        emailVerified: true,
+        requiresAdminApproval: false,
+        message:
+          'Your email was verified, but the account request has been rejected.',
+      };
+    }
+
+    if (approvalStatus === ApprovalStatus.APPROVED) {
+      return {
+        success: true,
+        code: alreadyVerified ? 'EMAIL_ALREADY_VERIFIED' : 'EMAIL_VERIFIED',
+        emailVerified: true,
+        requiresAdminApproval: false,
+        message: alreadyVerified
+          ? 'Your email is already verified.'
+          : 'Your email was verified successfully.',
+      };
+    }
+
+    return {
+      success: true,
+      code: alreadyVerified
+        ? 'EMAIL_ALREADY_VERIFIED_PENDING_APPROVAL'
+        : 'EMAIL_VERIFIED_PENDING_APPROVAL',
+      emailVerified: true,
+      requiresAdminApproval: true,
+      message: alreadyVerified
+        ? 'Your email is already verified. Your account is waiting for administrator approval.'
+        : 'Your email was verified successfully. Your account is waiting for administrator approval.',
+    };
+  }
+
   private async findUserByResetToken(
     token: string,
   ): Promise<UserDocument | null> {
@@ -490,7 +1250,11 @@ export class AuthService {
       return user;
     }
 
-    // Legacy compatibility: support plaintext reset tokens issued before hashing rollout.
+    if (!this.featureFlags.isLegacyResetTokensEnabled()) {
+      return null;
+    }
+
+    // Temporary migration compatibility: support plaintext reset tokens issued before hashing rollout.
     const legacyUser = await this.userModel
       .findOne({
         reset_password_token: token,
@@ -506,4 +1270,23 @@ export class AuthService {
 
     return legacyUser;
   }
+}
+
+function throwRefreshTokenError(
+  code: RefreshTokenErrorCode,
+  message: string,
+): never {
+  throw new UnauthorizedException({
+    code,
+    message,
+  });
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 11000
+  );
 }

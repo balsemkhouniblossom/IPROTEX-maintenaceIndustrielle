@@ -1,23 +1,9 @@
-import { getApiBaseUrl } from '@/config/api-base-url';
-
-export const API_BASE_URL = getApiBaseUrl();
+import { resolveManagedFileUrl } from '@/services/managedFileUrls';
 
 export function resolveUserPhotoUrl(photoPath?: string | null): string {
-  if (!photoPath) return '';
-
-  const normalized = photoPath
-    .trim()
-    .replace(/^['\"]+|['\"]+$/g, '')
-    .replace(/\\/g, '/');
-
-  if (!normalized) return '';
-
-  if (/^https?:\/\//i.test(normalized)) {
-    return encodeURI(normalized);
-  }
-
-  const path = normalized.startsWith('/') ? normalized : `/${normalized}`;
-  return encodeURI(`${API_BASE_URL}${path}`);
+  const stripped = photoPath?.replace(/^['\"]+|['\"]+$/g, '');
+  const resolved = resolveManagedFileUrl(stripped);
+  return resolved ? encodeURI(resolved) : '';
 }
 
 export function getAvatarInitial(name?: string | null): string | null {

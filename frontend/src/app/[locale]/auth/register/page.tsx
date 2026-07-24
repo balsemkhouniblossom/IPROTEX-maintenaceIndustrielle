@@ -16,6 +16,11 @@ import {
   validateNationalPhone,
 } from '@/services/phoneNumber';
 import { validatePasswordPolicy } from '@/services/userValidation';
+import {
+  buildPublicRegistrationPayload,
+  getRegistrationSuccessRedirect,
+  PUBLIC_REGISTRATION_ROLES,
+} from '@/services/publicRegistration';
 
 export default function RegisterPage() {
   const departmentOptions = ['IT', 'Maintenance', 'Production', 'Administration'];
@@ -78,19 +83,27 @@ export default function RegisterPage() {
     const phone = buildInternationalPhone(formData.phone.country, formData.phone.nationalNumber);
 
     try {
-      await register({
+      await register(buildPublicRegistrationPayload({
         nom_complet: formData.nom_complet,
         email: formData.email,
-        phone: phone || undefined,
+        phone,
         password: formData.password,
         role: formData.role,
-        department: formData.department
-      });
+        department: formData.department,
+      }), { locale });
 
-      router.push(`/${locale}/auth/login?message=${encodeURIComponent(t('registrationSuccess'))}`);
+      router.push(getRegistrationSuccessRedirect(locale));
 
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
+      if (err instanceof Error) {
+        if (err.message === 'EMAIL_ALREADY_REGISTERED') {
+          setError(t('emailAlreadyRegistered', { default: 'Email already registered.' }));
+        } else if (err.message === 'PUBLIC_ROLE_NOT_ALLOWED') {
+          setError(t('publicRoleNotAllowed', { default: 'This role is not available for public registration.' }));
+        } else {
+          setError(err.message);
+        }
+      }
       else setError(t('networkError'));
     } finally {
       setLoading(false);
@@ -192,9 +205,9 @@ export default function RegisterPage() {
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     className="auth-input"
                   >
-                    <option value="admin">{t('admin')}</option>
-                    <option value="technician">{t('technician')}</option>
-                    <option value="operator">{t('operator')}</option>
+                    {PUBLIC_REGISTRATION_ROLES.map((role) => (
+                      <option key={role} value={role}>{t(role)}</option>
+                    ))}
                   </select>
                 </div>
 

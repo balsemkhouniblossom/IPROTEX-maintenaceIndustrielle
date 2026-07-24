@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type ModulePiecesDocument = ModulePieces & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class ModulePieces {
   @Prop({ type: Types.ObjectId, ref: 'ModuleType', required: true })
   mod_type_id: Types.ObjectId;
@@ -16,3 +16,4 @@ export class ModulePieces {
 }
 
 export const ModulePiecesSchema = SchemaFactory.createForClass(ModulePieces);
+ModulePiecesSchema.index({ mod_type_id: 1, part_id: 1 }, { unique: true });

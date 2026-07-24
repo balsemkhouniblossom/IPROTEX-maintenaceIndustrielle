@@ -502,15 +502,16 @@ export class EmailService {
     token: string,
   ): Promise<string | undefined> {
     const verificationBaseUrl =
-      process.env.APP_URL?.trim() ||
       process.env.FRONTEND_BASE_URL?.trim() ||
-      process.env.BACKEND_URL?.trim() ||
-      'http://localhost:3001';
+      process.env.FRONTEND_URL?.trim() ||
+      process.env.APP_URL?.trim() ||
+      'http://localhost:3000';
     const normalizedVerificationBaseUrl = verificationBaseUrl.replace(
       /\/$/,
       '',
     );
-    const url = `${normalizedVerificationBaseUrl}/auth/verify-email?token=${token}`;
+    const locale = process.env.DEFAULT_LOCALE?.trim() || 'en';
+    const url = `${normalizedVerificationBaseUrl}/${locale}/auth/verify-email?token=${encodeURIComponent(token)}`;
 
     this.logger.log(`========== VERIFICATION EMAIL ==========`);
 

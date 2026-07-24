@@ -411,7 +411,7 @@
     "unassigned": "Unassigned",
     "confirmDelete": "Are you sure you want to delete this work order?",
     "table": {
-      "otId": "OT ID",
+      "otId": "Work Order Reference",
       "description": "Description",
       "machine": "Machine",
       "technician": "Technician",
@@ -430,7 +430,7 @@
       "addTitle": "Add Work Order"
     },
     "form": {
-      "otId": "OT Number",
+      "otId": "Work Order Reference",
       "priority": "Priority",
       "description": "Description",
       "machine": "Machine",
@@ -460,7 +460,7 @@
       "create": "Create Work Order"
     },
     "validation": {
-      "workOrderIdRequired": "OT ID is required",
+      "workOrderIdRequired": "Work order reference is required",
       "machineRequired": "Machine selection is required",
       "technicianRequired": "Technician assignment is required"
     },

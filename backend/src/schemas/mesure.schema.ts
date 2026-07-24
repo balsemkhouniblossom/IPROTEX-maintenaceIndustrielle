@@ -3,7 +3,7 @@ import { Document, Types } from 'mongoose';
 
 export type MesureDocument = Mesure & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Mesure {
   @Prop({ required: true, unique: true })
   mesure_id: string;
@@ -22,3 +22,5 @@ export class Mesure {
 }
 
 export const MesureSchema = SchemaFactory.createForClass(Mesure);
+MesureSchema.index({ capteur_id: 1, timestamp: -1 });
+MesureSchema.index({ status: 1, timestamp: -1 });

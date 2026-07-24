@@ -15,6 +15,7 @@ import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import Pagination from '@/components/Pagination';
 import { apiService } from '@/services/api';
+import { displayText } from '@/services/displayValues';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 
 interface WorkOrderRef {
@@ -52,13 +53,13 @@ interface UserItem {
 }
 
 function getWorkOrderLabel(ot: string | WorkOrderRef): string {
-  if (typeof ot === 'string') return ot;
-  return ot?.ot_id || ot?._id || '';
+  if (typeof ot === 'string') return displayText(ot, '');
+  return displayText(ot?.ot_id, '');
 }
 
 function getTechnicianLabel(user: string | TechnicianRef): string {
-  if (typeof user === 'string') return user;
-  return user?.nom_complet || user?._id || '';
+  if (typeof user === 'string') return displayText(user, '');
+  return displayText(user?.nom_complet, '');
 }
 
 function getRefId(ref: string | { _id: string }): string {
@@ -185,7 +186,7 @@ export default function InterventionReportsPage() {
 
   function validateForm(): boolean {
     if (!formData.report_id.trim()) {
-      showNotification('error', t('notifications.reportIdRequired'));
+      showNotification('error', t('notifications.reportReferenceRequired', { default: 'Report reference is required' }));
       return false;
     }
     if (!formData.ot_id) {
@@ -367,7 +368,7 @@ export default function InterventionReportsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('table.reportId')}</th>
+                  <th>{t('table.reportReference', { default: 'Report Reference' })}</th>
                   <th>{t('table.workOrder')}</th>
                   <th>{t('table.technician')}</th>
                   <th>{t('table.startDate')}</th>
@@ -440,13 +441,13 @@ export default function InterventionReportsPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.reportId')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.reportReference', { default: 'Report Reference' })}</label>
               <input
                 type="text"
                 value={formData.report_id}
                 onChange={(e) => setFormData({ ...formData, report_id: e.target.value })}
                 className="input-field"
-                title={t('form.reportId')}
+                title={t('form.reportReference', { default: 'Report Reference' })}
                 required
               />
             </div>

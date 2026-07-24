@@ -5,10 +5,11 @@ import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
-import { getApiBaseUrl } from "@/config/api-base-url";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated } from "@/services/pagination";
 import { Modal } from "@/components/Modal";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
+import { resolveManagedFileUrl } from "@/services/managedFileUrls";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -39,29 +40,6 @@ function refId(value: EntityRef | undefined): string {
   return typeof value === "string" ? value : value._id ?? value.id ?? "";
 }
 
-const API_URL = getApiBaseUrl();
-
-function getFileUrl(path: string): string {
-  if (!path) return "";
-  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
-}
-
-function getPreviewPath(doc: DocumentEntity): string {
-  if (doc.preview_path) return doc.preview_path;
-  if (/\.xlsx?$/i.test(doc.file_path)) {
-    return doc.file_path.replace(/\.xlsx?$/i, "_preview.pdf");
-  }
-  return doc.file_path;
-}
-
-function getPreviewUrl(doc: DocumentEntity): string {
-  const previewPath = getPreviewPath(doc);
-  if (/\.pdf$/i.test(previewPath) && previewPath.startsWith("/uploads/")) {
-    return `/api/manual-preview?path=${encodeURIComponent(previewPath)}`;
-  }
-  return getFileUrl(previewPath);
-}
-
 export default function OperatorManualsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
@@ -81,7 +59,7 @@ export default function OperatorManualsPage() {
       try {
         setLoading(true);
         const [machineTypes, machines, manuals] = await Promise.all([
-          fetchAllPaginated<MachineType>((pagination) => apiService.getMachineTypes(pagination)),
+          fetchAllPaginated<MachineType>((pagination) => apiService.getOperatorMachineTypes(pagination)),
           fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
           fetchAllPaginated<DocumentEntity>((pagination) => apiService.getOperatorManuals(pagination)),
         ]);
@@ -219,7 +197,7 @@ export default function OperatorManualsPage() {
                         {t("openManual")}
                       </button>
                       <a
-                        href={getFileUrl(doc.file_path)}
+                        href={resolveManagedFileUrl(doc.file_path)}
                         download
                         className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                       >
@@ -240,11 +218,7 @@ export default function OperatorManualsPage() {
           size="xl"
         >
           {previewDocument ? (
-            <iframe
-              src={`${getPreviewUrl(previewDocument)}#view=FitH`}
-              title={previewDocument.file_name}
-              className="h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-100"
-            />
+            <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name} />
           ) : null}
         </Modal>
       </DashboardLayout>

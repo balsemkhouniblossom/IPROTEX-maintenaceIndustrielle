@@ -1,4 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
@@ -13,6 +21,7 @@ import {
 import {
   MaintenancePlan,
   MaintenancePlanDocument,
+  MaintenancePlanStatus,
 } from '../schemas/maintenance-plan.schema';
 import {
   InterventionReport,
@@ -23,7 +32,7 @@ import {
   MachineType,
   MachineTypeDocument,
 } from '../schemas/machine-type.schema';
-import { User, UserDocument } from '../schemas/user.schema';
+import { User, UserDocument, Role } from '../schemas/user.schema';
 import { Panne, PanneDocument } from '../schemas/panne.schema';
 import {
   PanneSolution,
@@ -33,10 +42,33 @@ import { KPI, KPIDocument } from '../schemas/kpi.schema';
 import { Stock, StockDocument } from '../schemas/stock.schema';
 import { Catalogue, CatalogueDocument } from '../schemas/catalogue.schema';
 import { OTPieces, OTPiecesDocument } from '../schemas/ot-pieces.schema';
+import { Lubrifiant, LubrifiantDocument } from '../schemas/lubrifiant.schema';
+import {
+  LubrificationLog,
+  LubrificationLogDocument,
+} from '../schemas/lubrification-log.schema';
+import {
+  PartRequest,
+  PartRequestDocument,
+  PartRequestStatus,
+} from '../schemas/part-request.schema';
 import { CounterService } from '../counters/counter.service';
+import { MaintenanceSchedulingService } from './maintenance-scheduling.service';
+import { NotificationCenterService } from '../notification-center/notification-center.service';
+import { NotificationType } from '../schemas/notification.schema';
+import { StockMovementsService } from '../stock-movements/stock-movements.service';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 type ValidationAction = 'approve' | 'reject' | 'request_correction';
+
+const PART_REQUEST_DECISION_RULES: Record<
+  'approve' | 'reject' | 'cancel',
+  { from: PartRequestStatus; to: PartRequestStatus }
+> = {
+  approve: { from: PartRequestStatus.PENDING, to: PartRequestStatus.RESERVED },
+  reject: { from: PartRequestStatus.PENDING, to: PartRequestStatus.CANCELLED },
+  cancel: { from: PartRequestStatus.RESERVED, to: PartRequestStatus.CANCELLED },
+};
 
 interface SchedulerRunSummary {
   plansEvaluated: number;
@@ -58,7 +90,7 @@ interface CalendarFilters {
   year?: number;
 }
 
-interface CalendarEventRow {
+export interface CalendarEventRow {
   id: string;
   workOrderId: string;
   title: string;
@@ -98,9 +130,69 @@ interface CalendarEventRow {
   reminderStage: string;
 }
 
+interface PreventiveScheduleInput {
+  machineId: string;
+  planId: string;
+  scheduledDate: string;
+  operatorId: string;
+}
+
+interface RescheduleInput {
+  workOrderId: string;
+  newDueDate: string;
+  reason: string;
+  userId: string;
+  role?: string;
+}
+
+interface CorrectiveReportForOperatorInput {
+  operatorId: string;
+  machineId: string;
+  codePanne: string;
+  faultDescription?: string;
+  actions: string[];
+  priority?: string;
+}
+
+interface SubmitPreventiveMaintenanceInput {
+  operatorId: string;
+  workOrderId: string;
+  tasksCompleted: string[];
+  condition: string;
+  comments?: string;
+  lubrication?: { lubrifiantId: string; quantity: number };
+}
+
+const SUBMITTABLE_PREVENTIVE_STATUSES = ['scheduled', 'overdue'];
+
+interface PartRequestForOperatorInput {
+  operatorId: string;
+  workOrderId: string;
+  partId: string;
+  quantity: number;
+}
+
+const PART_REQUEST_BLOCKED_STATUSES = [
+  'completed',
+  'validated',
+  'rejected',
+  'cancelled',
+  'canceled',
+  'CLOTURE',
+  'ANNULE',
+];
+
+interface OperatorCalendarScope {
+  operatorId: string;
+  workOrderId: string;
+}
+
+const OPERATOR_STARTABLE_STATUSES = ['scheduled', 'overdue', 'pending'];
+
 @Injectable()
 export class WorkOrdersService {
   private readonly logger = new Logger(WorkOrdersService.name);
+  private static readonly CORRECTIVE_REPORT_DEDUPE_WINDOW_MS = 2 * 60 * 1000;
 
   constructor(
     @InjectModel(WorkOrder.name)
@@ -131,7 +223,16 @@ export class WorkOrdersService {
     private catalogueModel: Model<CatalogueDocument>,
     @InjectModel(OTPieces.name)
     private otPiecesModel: Model<OTPiecesDocument>,
+    @InjectModel(Lubrifiant.name)
+    private lubrifiantModel: Model<LubrifiantDocument>,
+    @InjectModel(LubrificationLog.name)
+    private lubrificationLogModel: Model<LubrificationLogDocument>,
+    @InjectModel(PartRequest.name)
+    private partRequestModel: Model<PartRequestDocument>,
     private counterService: CounterService,
+    private schedulingService: MaintenanceSchedulingService,
+    private notificationCenterService: NotificationCenterService,
+    private stockMovementsService: StockMovementsService,
   ) {}
 
   async create(createWorkOrderDto: CreateWorkOrderDto): Promise<WorkOrder> {
@@ -145,6 +246,21 @@ export class WorkOrdersService {
       createWorkOrderDto.date_created = new Date().toISOString();
     }
 
+    if (!createWorkOrderDto.due_date && createWorkOrderDto.date_start) {
+      createWorkOrderDto.due_date = createWorkOrderDto.date_start;
+    }
+
+    if (!createWorkOrderDto.scheduled_date && createWorkOrderDto.due_date) {
+      createWorkOrderDto.scheduled_date = createWorkOrderDto.due_date;
+    }
+
+    await this.assertNoDuplicatePreventiveOccurrence({
+      machineId: createWorkOrderDto.machine_id,
+      planId: createWorkOrderDto.plan_id,
+      dueDate: createWorkOrderDto.due_date,
+      excludeId: undefined,
+    });
+
     const createdWorkOrder = new this.workOrderModel(createWorkOrderDto);
     const savedWorkOrder = await createdWorkOrder.save();
 
@@ -152,6 +268,15 @@ export class WorkOrdersService {
       await this.ensureAutoInterventionReport(savedWorkOrder);
       await this.ensureNextPreventiveWorkOrder(savedWorkOrder);
       await this.updateKpiForMachine(savedWorkOrder.machine_id?.toString());
+    } else if (savedWorkOrder.technician_id) {
+      await this.notificationCenterService.createIfNotExists({
+        dedupeKey: `work_order_created:${savedWorkOrder._id.toString()}`,
+        type: NotificationType.WORK_ORDER_CREATED,
+        title: `New work order ${savedWorkOrder.ot_id} assigned`,
+        recipientUserId: savedWorkOrder.technician_id.toString(),
+        workOrderId: savedWorkOrder._id.toString(),
+        machineId: savedWorkOrder.machine_id?.toString(),
+      });
     }
 
     return savedWorkOrder;
@@ -299,7 +424,7 @@ export class WorkOrdersService {
     const statusByAction: Record<ValidationAction, string> = {
       approve: 'validated',
       reject: 'rejected',
-      request_correction: 'waiting_correction',
+      request_correction: 'returned',
     };
 
     const reportStatusByAction: Record<ValidationAction, string> = {
@@ -331,7 +456,1102 @@ export class WorkOrdersService {
         .exec();
     }
 
+    if (action === 'approve' && updatedWorkOrder) {
+      await this.ensureNextPreventiveWorkOrder(updatedWorkOrder);
+      await this.updateKpiForMachine(updatedWorkOrder.machine_id?.toString());
+    }
+
+    if (
+      updatedWorkOrder?.technician_id &&
+      (action === 'approve' || action === 'reject')
+    ) {
+      await this.notificationCenterService.createIfNotExists({
+        dedupeKey: `validation_decision:${workOrderId}:${action}`,
+        type:
+          action === 'approve'
+            ? NotificationType.VALIDATION_APPROVED
+            : NotificationType.VALIDATION_REJECTED,
+        title:
+          action === 'approve'
+            ? `Your report for ${updatedWorkOrder.ot_id} was approved`
+            : `Your report for ${updatedWorkOrder.ot_id} was rejected`,
+        recipientUserId: updatedWorkOrder.technician_id.toString(),
+        workOrderId: updatedWorkOrder._id.toString(),
+        machineId: updatedWorkOrder.machine_id?.toString(),
+      });
+    }
+
     return updatedWorkOrder;
+  }
+
+  async getMachinePreventiveStates(machineId: string) {
+    if (!Types.ObjectId.isValid(machineId)) {
+      throw new BadRequestException('Invalid machine_id');
+    }
+
+    const machine = await this.machineModel.findById(machineId).exec();
+    if (!machine) {
+      throw new NotFoundException('Machine not found');
+    }
+
+    const modules = await this.moduleModel
+      .find({ machine_id: new Types.ObjectId(machineId) })
+      .exec();
+    const moduleIds = modules.map((moduleEntity) => moduleEntity._id);
+    const moduleById = new Map(
+      modules.map((moduleEntity) => [
+        moduleEntity._id.toString(),
+        moduleEntity,
+      ]),
+    );
+
+    const plans = await this.maintenancePlanModel
+      .find({
+        module_id: { $in: moduleIds },
+        type_maintenance: { $regex: /prevent/i },
+      })
+      .sort({ maintenance_code: 1, plan_id: 1 })
+      .exec();
+
+    const orders = await this.workOrderModel
+      .find({
+        machine_id: new Types.ObjectId(machineId),
+        type_maintenance: { $regex: /prevent/i },
+      })
+      .sort({
+        due_date: 1,
+        scheduled_date: 1,
+        execution_date: 1,
+        date_start: 1,
+      })
+      .populate('technician_id')
+      .exec();
+
+    const ordersByPlan = new Map<string, WorkOrderDocument[]>();
+    for (const order of orders) {
+      const planId = this.objectIdString(order.plan_id);
+      if (!planId) continue;
+      ordersByPlan.set(planId, [...(ordersByPlan.get(planId) || []), order]);
+    }
+
+    const today = new Date();
+    const planStates = plans.map((plan) => {
+      const planOrders = ordersByPlan.get(plan._id.toString()) || [];
+      const historical = planOrders
+        .filter((order) => this.isCompletedStatus(order.status))
+        .sort(
+          (left, right) =>
+            new Date(
+              right.execution_date ||
+                right.date_closed ||
+                right.date_end ||
+                right.date_start ||
+                0,
+            ).getTime() -
+            new Date(
+              left.execution_date ||
+                left.date_closed ||
+                left.date_end ||
+                left.date_start ||
+                0,
+            ).getTime(),
+        );
+      const active = planOrders.find(
+        (order) =>
+          !this.isCompletedStatus(order.status) &&
+          !['cancelled', 'canceled', 'rejected'].includes(
+            (order.status || '').toLowerCase(),
+          ),
+      );
+      const activeDue = active ? this.getWorkOrderDueDate(active) : null;
+      const lastCompleted = historical[0];
+      const lastCompletedDate = lastCompleted
+        ? new Date(
+            lastCompleted.execution_date ||
+              lastCompleted.date_closed ||
+              lastCompleted.date_end ||
+              lastCompleted.date_start ||
+              lastCompleted.date_created,
+          )
+        : null;
+
+      return {
+        plan,
+        module: moduleById.get(this.objectIdString(plan.module_id)) || null,
+        currentOccurrence: active || null,
+        currentState: this.schedulingService.calculateOperationalStatus({
+          status: active?.status,
+          dueDate: activeDue,
+          today,
+          intervalUnit: plan.unite_frequence || plan.frequence_label,
+        }),
+        lastCompletedDate: lastCompletedDate?.toISOString() || null,
+        nextDueDate: activeDue?.toISOString() || null,
+        frequency: {
+          value: plan.frequence,
+          unit: plan.unite_frequence,
+          originalLabel: plan.frequence_label || plan.unite_frequence,
+          normalized: this.schedulingService.normalizeFrequency(
+            plan.unite_frequence || plan.frequence_label,
+          ),
+        },
+      };
+    });
+
+    return {
+      machineId,
+      visibilityRule:
+        'Operators can currently access all machines because no operator-machine assignment relationship exists in the current schema.',
+      sections: {
+        dueToday: planStates.filter(
+          (item) => item.currentState === 'due_today',
+        ),
+        overdue: planStates.filter((item) => item.currentState === 'overdue'),
+        upcoming: planStates.filter((item) =>
+          ['scheduled', 'due_soon'].includes(item.currentState),
+        ),
+        waitingValidation: planStates.filter(
+          (item) => item.currentState === 'waiting_validation',
+        ),
+        returned: planStates.filter((item) => item.currentState === 'returned'),
+        preventivePlan: planStates,
+      },
+    };
+  }
+
+  async scheduleFirstPreventiveOccurrence(input: PreventiveScheduleInput) {
+    const { machine, plan, moduleEntity } =
+      await this.resolvePreventivePlanForMachine(input.machineId, input.planId);
+    if (!this.isPlanSchedulable(plan)) {
+      throw new ConflictException(
+        `This maintenance plan is "${plan.status}" and cannot be scheduled`,
+      );
+    }
+    const scheduledDate = new Date(input.scheduledDate);
+    if (Number.isNaN(scheduledDate.getTime())) {
+      throw new BadRequestException('Invalid scheduled_date');
+    }
+
+    await this.assertNoDuplicatePreventiveOccurrence({
+      machineId: machine._id.toString(),
+      planId: plan._id.toString(),
+      dueDate: scheduledDate.toISOString(),
+    });
+
+    const otId = await this.generateWorkOrderCode('preventive');
+    const created = await this.workOrderModel.create({
+      ot_id: otId,
+      machine_id: machine._id,
+      module_id: moduleEntity._id,
+      technician_id: new Types.ObjectId(input.operatorId),
+      plan_id: plan._id,
+      description: plan.instruction || 'Preventive maintenance task',
+      type_maintenance: 'preventive',
+      status: 'scheduled',
+      priorite: 'medium',
+      date_created: new Date(),
+      date_start: scheduledDate,
+      scheduled_date: scheduledDate,
+      due_date: scheduledDate,
+    });
+
+    return {
+      occurrence: created,
+      schedulingState: this.schedulingService.calculateOperationalStatus({
+        status: created.status,
+        dueDate: created.due_date,
+        intervalUnit: plan.unite_frequence || plan.frequence_label,
+      }),
+    };
+  }
+
+  /**
+   * Creates the one-and-only first occurrence for a plan that has just
+   * been activated, when appropriate — appropriate meaning: the plan is
+   * actually schedulable (preventive-type), and it does not already have
+   * any occurrence at all (idempotent: re-activating, e.g. Draft->Active
+   * after the very first activation somehow raced, never creates a
+   * second). Unlike the Operator-driven `scheduleFirstPreventiveOccurrence`
+   * (which takes an explicit chosen date), this is Admin-triggered with no
+   * date input, so the occurrence is due immediately — the plan just went
+   * live, so its first maintenance is due now. Returns `null` (not an
+   * error) whenever creation is skipped, since skipping is the normal,
+   * expected outcome for a non-preventive plan or one that already has an
+   * occurrence.
+   */
+  async createInitialOccurrenceForPlan(
+    planId: string,
+  ): Promise<WorkOrderDocument | null> {
+    if (!Types.ObjectId.isValid(planId)) {
+      return null;
+    }
+
+    const plan = await this.maintenancePlanModel.findById(planId).exec();
+    if (!plan || !(plan.type_maintenance || '').toLowerCase().includes('prevent')) {
+      return null;
+    }
+
+    const alreadyExists = await this.workOrderModel
+      .exists({ plan_id: plan._id })
+      .exec();
+    if (alreadyExists) {
+      return null;
+    }
+
+    const moduleEntity = await this.moduleModel.findById(plan.module_id).exec();
+    if (!moduleEntity) {
+      return null;
+    }
+
+    const now = new Date();
+    const otId = await this.generateWorkOrderCode('preventive');
+    return this.workOrderModel.create({
+      ot_id: otId,
+      machine_id: moduleEntity.machine_id,
+      module_id: moduleEntity._id,
+      plan_id: plan._id,
+      description: plan.instruction || 'Preventive maintenance task',
+      type_maintenance: 'preventive',
+      status: 'scheduled',
+      priorite: 'medium',
+      date_created: now,
+      date_start: now,
+      scheduled_date: now,
+      due_date: now,
+    });
+  }
+
+  async reschedulePreventiveOccurrence(input: RescheduleInput) {
+    if (!Types.ObjectId.isValid(input.workOrderId)) {
+      throw new BadRequestException('Invalid work order id');
+    }
+    if (
+      !['operator', 'technician', 'admin'].includes(
+        (input.role || '').toLowerCase(),
+      )
+    ) {
+      throw new ForbiddenException('User is not authorized to reschedule');
+    }
+
+    const workOrder = await this.workOrderModel
+      .findById(input.workOrderId)
+      .exec();
+    if (!workOrder) {
+      throw new NotFoundException('Work order not found');
+    }
+    if (!(workOrder.type_maintenance || '').toLowerCase().includes('prevent')) {
+      throw new BadRequestException(
+        'Only preventive occurrences can be rescheduled',
+      );
+    }
+    if (this.isCompletedStatus(workOrder.status)) {
+      throw new ConflictException('Completed occurrence cannot be rescheduled');
+    }
+
+    const nextDue = new Date(input.newDueDate);
+    if (Number.isNaN(nextDue.getTime())) {
+      throw new BadRequestException('Invalid new_due_date');
+    }
+
+    await this.assertNoDuplicatePreventiveOccurrence({
+      machineId: this.objectIdString(workOrder.machine_id),
+      planId: this.objectIdString(workOrder.plan_id),
+      dueDate: nextDue.toISOString(),
+      excludeId: workOrder._id.toString(),
+    });
+
+    const previousDue =
+      workOrder.due_date || workOrder.scheduled_date || workOrder.date_start;
+    const updated = await this.workOrderModel
+      .findByIdAndUpdate(
+        workOrder._id,
+        {
+          $set: {
+            scheduled_date: nextDue,
+            due_date: nextDue,
+            date_start: nextDue,
+            status: 'scheduled',
+            original_due_date: workOrder.original_due_date || previousDue,
+            reschedule_reason: input.reason,
+            rescheduled_by: new Types.ObjectId(input.userId),
+            rescheduled_at: new Date(),
+          },
+        },
+        { new: true },
+      )
+      .exec();
+
+    return {
+      occurrence: updated,
+      schedulingState: this.schedulingService.calculateOperationalStatus({
+        status: updated?.status,
+        dueDate: updated?.due_date,
+      }),
+    };
+  }
+
+  /**
+   * Creates a corrective work order and its initial intervention report as a
+   * single, reliable operation for an Operator. Both documents are created
+   * inside one Mongo transaction: if either write fails, the whole operation
+   * rolls back so a corrective report can never exist without its work order
+   * (or vice versa). The caller (OperatorService) has already verified the
+   * machine is assigned to this operator before this method runs; identity
+   * always comes from `input.operatorId` (derived from the authenticated
+   * request), never from client-supplied data.
+   */
+  async createCorrectiveReportForOperator(
+    input: CorrectiveReportForOperatorInput,
+  ): Promise<{
+    workOrder: WorkOrderDocument;
+    report: InterventionReportDocument;
+    duplicate: boolean;
+  }> {
+    if (!Types.ObjectId.isValid(input.machineId)) {
+      throw new BadRequestException('Invalid machine_id');
+    }
+
+    const machine = await this.machineModel.findById(input.machineId).exec();
+    if (!machine) {
+      throw new NotFoundException('Machine not found');
+    }
+
+    const codePanne = input.codePanne?.trim();
+    if (!codePanne) {
+      throw new BadRequestException('code_panne is required');
+    }
+
+    const actions = (input.actions || [])
+      .map((action) => action.trim())
+      .filter(Boolean);
+    if (!actions.length) {
+      throw new BadRequestException(
+        'At least one action performed is required',
+      );
+    }
+
+    const operatorObjectId = new Types.ObjectId(input.operatorId);
+    const description = `${codePanne} | ${actions.join(' | ')}`;
+    const descriptionAction = actions.join(' | ');
+
+    // Idempotency guard: a double-click or a client retry that resubmits the
+    // same fault for the same machine moments later returns the record that
+    // already exists instead of creating a second, duplicate report.
+    const dedupeWindowStart = new Date(
+      Date.now() - WorkOrdersService.CORRECTIVE_REPORT_DEDUPE_WINDOW_MS,
+    );
+    const recentDuplicate = await this.workOrderModel
+      .findOne({
+        machine_id: machine._id,
+        technician_id: operatorObjectId,
+        type_maintenance: 'corrective',
+        code_panne: codePanne,
+        date_created: { $gte: dedupeWindowStart },
+      })
+      .sort({ date_created: -1 })
+      .exec();
+
+    if (recentDuplicate) {
+      const existingReport = await this.interventionReportModel
+        .findOne({ ot_id: recentDuplicate._id })
+        .exec();
+      if (existingReport) {
+        return {
+          workOrder: recentDuplicate,
+          report: existingReport,
+          duplicate: true,
+        };
+      }
+    }
+
+    const session = await this.workOrderModel.db.startSession();
+    let result: {
+      workOrder: WorkOrderDocument;
+      report: InterventionReportDocument;
+      duplicate: boolean;
+    };
+    try {
+      result = await session.withTransaction(async () => {
+        const otId = await this.generateWorkOrderCode('corrective');
+        const now = new Date();
+
+        const [workOrder] = await this.workOrderModel.create(
+          [
+            {
+              ot_id: otId,
+              machine_id: machine._id,
+              technician_id: operatorObjectId,
+              description,
+              type_maintenance: 'corrective',
+              status: 'waiting_validation',
+              priorite: input.priority?.trim() || 'high',
+              code_panne: codePanne,
+              date_created: now,
+              date_start: now,
+            },
+          ],
+          { session },
+        );
+
+        const reportId = await this.generateReportCode();
+        const [report] = await this.interventionReportModel.create(
+          [
+            {
+              report_id: reportId,
+              ot_id: workOrder._id,
+              technician_id: operatorObjectId,
+              date_debut: now,
+              date_fin: now,
+              cause_racine: input.faultDescription?.trim() || codePanne,
+              description_action: descriptionAction,
+              etat_final: 'waiting_validation',
+              validation_responsable: 'waiting_validation',
+            },
+          ],
+          { session },
+        );
+
+        return { workOrder, report, duplicate: false };
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    await this.notificationCenterService.createIfNotExists({
+      dedupeKey: `corrective_awaiting_validation:${result.workOrder._id.toString()}`,
+      type: NotificationType.CORRECTIVE_AWAITING_VALIDATION,
+      title: `Corrective report for ${result.workOrder.ot_id} is awaiting validation`,
+      recipientRole: Role.ADMIN,
+      workOrderId: result.workOrder._id.toString(),
+      machineId: machine._id.toString(),
+      referenceId: result.report._id.toString(),
+    });
+
+    return result;
+  }
+
+  /**
+   * Submits a preventive maintenance round for an already-assigned occurrence
+   * as a single, reliable operation for an Operator: the existing preventive
+   * WorkOrder is updated (never re-created), its intervention report is
+   * created, and a lubrication log is recorded only when lubrication input
+   * was supplied. All three writes share one Mongo transaction, so a failure
+   * anywhere rolls the whole submission back — the work order is never left
+   * pointing at a status with no matching report.
+   *
+   * Identity and the execution date/time always come from `input` as derived
+   * by the caller (OperatorService, from the authenticated request) and from
+   * this method's own server clock — never from anything resembling a
+   * client-supplied status or timestamp. The atomic, status-guarded update
+   * below is also what makes a duplicate/double submission fail safely: once
+   * the first call moves the work order out of the submittable-status set,
+   * a second call targeting the same work order finds no matching document
+   * and is rejected as a conflict rather than creating a second report.
+   *
+   * Creating the next recurrence stays the sole responsibility of the
+   * existing validation lifecycle (`applyValidationAction('approve')`): this
+   * method only ever moves the occurrence to `waiting_validation`, never to a
+   * completed status, so `ensureNextPreventiveWorkOrder` is not invoked here.
+   * It does record `execution_date` as the real moment of submission so that,
+   * once approved, the next occurrence is scheduled from when the work was
+   * actually performed rather than from the original due date.
+   */
+  async submitPreventiveMaintenanceForOperator(
+    input: SubmitPreventiveMaintenanceInput,
+  ): Promise<{
+    workOrder: WorkOrderDocument;
+    report: InterventionReportDocument;
+    lubricationLog: LubrificationLogDocument | null;
+  }> {
+    if (!Types.ObjectId.isValid(input.workOrderId)) {
+      throw new BadRequestException('Invalid work_order_id');
+    }
+
+    const workOrderObjectId = new Types.ObjectId(input.workOrderId);
+    const operatorObjectId = new Types.ObjectId(input.operatorId);
+
+    const existing = await this.workOrderModel
+      .findById(workOrderObjectId)
+      .exec();
+    if (!existing) {
+      throw new NotFoundException('Work order not found');
+    }
+    if (!(existing.type_maintenance || '').toLowerCase().includes('prevent')) {
+      throw new BadRequestException(
+        'Only preventive occurrences can be submitted through this endpoint',
+      );
+    }
+    if (
+      !existing.technician_id ||
+      existing.technician_id.toString() !== input.operatorId
+    ) {
+      throw new ForbiddenException(
+        'This preventive occurrence is not assigned to you',
+      );
+    }
+    if (!SUBMITTABLE_PREVENTIVE_STATUSES.includes(existing.status)) {
+      throw new ConflictException(
+        'This preventive occurrence has already been submitted or is not in a submittable state',
+      );
+    }
+
+    const tasksCompleted = (input.tasksCompleted || [])
+      .map((task) => task.trim())
+      .filter(Boolean);
+    if (!tasksCompleted.length) {
+      throw new BadRequestException(
+        'At least one completed task is required',
+      );
+    }
+
+    const condition = input.condition?.trim();
+    if (!condition) {
+      throw new BadRequestException('condition is required');
+    }
+
+    let lubrifiant: LubrifiantDocument | null = null;
+    if (input.lubrication) {
+      if (!Types.ObjectId.isValid(input.lubrication.lubrifiantId)) {
+        throw new BadRequestException('Invalid lubrication.lubrifiant_id');
+      }
+      if (!Number.isFinite(input.lubrication.quantity) || input.lubrication.quantity <= 0) {
+        throw new BadRequestException(
+          'lubrication.quantity must be a positive number',
+        );
+      }
+      lubrifiant = await this.lubrifiantModel
+        .findById(input.lubrication.lubrifiantId)
+        .exec();
+      if (!lubrifiant) {
+        throw new NotFoundException('Lubrifiant not found');
+      }
+    }
+
+    const taskSummary = tasksCompleted.join(' | ');
+
+    const session = await this.workOrderModel.db.startSession();
+    try {
+      return await session.withTransaction(async () => {
+        const now = new Date();
+
+        const workOrder = await this.workOrderModel
+          .findOneAndUpdate(
+            {
+              _id: workOrderObjectId,
+              technician_id: operatorObjectId,
+              status: { $in: SUBMITTABLE_PREVENTIVE_STATUSES },
+            },
+            {
+              $set: {
+                status: 'waiting_validation',
+                description: taskSummary,
+                execution_date: now,
+                date_end: now,
+              },
+            },
+            { session, new: true },
+          )
+          .exec();
+
+        if (!workOrder) {
+          // Lost the race with a concurrent/duplicate submission for the
+          // same occurrence between the pre-check above and this guarded
+          // update — fail safe rather than create a second report.
+          throw new ConflictException(
+            'This preventive occurrence has already been submitted or is not in a submittable state',
+          );
+        }
+
+        const reportId = await this.generateReportCode();
+        const [report] = await this.interventionReportModel.create(
+          [
+            {
+              report_id: reportId,
+              ot_id: workOrder._id,
+              technician_id: operatorObjectId,
+              date_debut: now,
+              date_fin: now,
+              cause_racine: input.comments?.trim() || undefined,
+              description_action: taskSummary,
+              etat_final: condition,
+              validation_responsable: 'waiting_validation',
+            },
+          ],
+          { session },
+        );
+
+        let lubricationLog: LubrificationLogDocument | null = null;
+        if (input.lubrication && lubrifiant) {
+          const logId = await this.generateLubrificationLogCode();
+          const [createdLog] = await this.lubrificationLogModel.create(
+            [
+              {
+                log_id: logId,
+                module_id: workOrder.module_id,
+                lubrifiant_id: lubrifiant._id,
+                date_application: now,
+                quantite: input.lubrication.quantity,
+                technician_id: operatorObjectId,
+              },
+            ],
+            { session },
+          );
+          lubricationLog = createdLog;
+        }
+
+        return { workOrder, report, lubricationLog };
+      });
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Records an Operator's request for spare parts against an existing
+   * corrective work order they own. This never touches Stock — it only
+   * stores a pending signal. Stock is only ever mutated later by the
+   * Technician's own transactional consumption flow
+   * (TechnicianService.setPartQuantity), once the part is actually approved
+   * or used; this method has no code path that writes to the Stock
+   * collection at all.
+   */
+  async requestPartsForOperator(
+    input: PartRequestForOperatorInput,
+  ): Promise<PartRequestDocument> {
+    if (!Types.ObjectId.isValid(input.workOrderId)) {
+      throw new BadRequestException('Invalid work_order_id');
+    }
+    if (!Types.ObjectId.isValid(input.partId)) {
+      throw new BadRequestException('Invalid part_id');
+    }
+    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+      throw new BadRequestException('quantity must be a positive integer');
+    }
+
+    const workOrderObjectId = new Types.ObjectId(input.workOrderId);
+    const operatorObjectId = new Types.ObjectId(input.operatorId);
+    const partObjectId = new Types.ObjectId(input.partId);
+
+    const workOrder = await this.workOrderModel
+      .findById(workOrderObjectId)
+      .exec();
+    if (!workOrder) {
+      throw new NotFoundException('Work order not found');
+    }
+    if (!(workOrder.type_maintenance || '').toLowerCase().includes('correct')) {
+      throw new BadRequestException(
+        'Only corrective work orders can receive part requests through this endpoint',
+      );
+    }
+    if (
+      !workOrder.technician_id ||
+      workOrder.technician_id.toString() !== input.operatorId
+    ) {
+      throw new ForbiddenException('This work order is not assigned to you');
+    }
+    if (PART_REQUEST_BLOCKED_STATUSES.includes(workOrder.status)) {
+      throw new ConflictException(
+        'Parts cannot be requested for a work order in this status',
+      );
+    }
+
+    const part = await this.catalogueModel.findById(partObjectId).exec();
+    if (!part) {
+      throw new NotFoundException('Part not found');
+    }
+
+    const existingActive = await this.partRequestModel
+      .findOne({
+        ot_id: workOrder._id,
+        part_id: part._id,
+        status: { $in: [PartRequestStatus.PENDING, PartRequestStatus.RESERVED] },
+      })
+      .exec();
+    if (existingActive) {
+      throw new ConflictException(
+        'There is already an active parts request for this part on this work order',
+      );
+    }
+
+    try {
+      const [request] = await this.partRequestModel.create([
+        {
+          request_id: await this.generatePartRequestCode(),
+          ot_id: workOrder._id,
+          part_id: part._id,
+          quantity: input.quantity,
+          requested_by: operatorObjectId,
+          status: PartRequestStatus.PENDING,
+          requested_at: new Date(),
+        },
+      ]);
+      await this.notificationCenterService.createIfNotExists({
+        dedupeKey: `part_request_created:${request._id.toString()}`,
+        type: NotificationType.PART_REQUEST_CREATED,
+        title: `A part was requested for work order ${workOrder.ot_id}`,
+        recipientRole: Role.TECHNICIAN,
+        workOrderId: workOrder._id.toString(),
+        referenceId: request._id.toString(),
+      });
+      return request;
+    } catch (error) {
+      if (this.isDuplicateKeyError(error)) {
+        throw new ConflictException(
+          'There is already an active parts request for this part on this work order',
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Decides a part request: 'approve' (Pending -> Reserved) puts a
+   * transactional hold on Stock via `StockMovementsService.reserve`,
+   * 'reject' (Pending -> Cancelled) never touches Stock at all (nothing
+   * was ever held), and 'cancel' (Reserved -> Cancelled) releases a
+   * reservation that will not be consumed after all. The PartRequest
+   * status flip and the Stock movement always happen inside one Mongo
+   * transaction, so the ledger and the request's status can never drift
+   * apart — either both change or neither does. The atomic status-guarded
+   * update on the request itself makes a double-decision (two people
+   * deciding, or cancelling, at once) fail safe: whichever call wins the
+   * race is the one that gets applied.
+   */
+  async decidePartRequest(input: {
+    requestId: string;
+    decision: 'approve' | 'reject' | 'cancel';
+    deciderId: string;
+    reason?: string;
+  }): Promise<PartRequestDocument> {
+    if (!Types.ObjectId.isValid(input.requestId)) {
+      throw new BadRequestException('Invalid request id');
+    }
+
+    const existing = await this.partRequestModel
+      .findById(input.requestId)
+      .exec();
+    if (!existing) {
+      throw new NotFoundException('Part request not found');
+    }
+
+    const rule = PART_REQUEST_DECISION_RULES[input.decision];
+    if (!rule) {
+      throw new BadRequestException(`Unknown decision: ${input.decision}`);
+    }
+    if (existing.status !== rule.from) {
+      throw new ConflictException(
+        `Cannot ${input.decision} a part request in "${existing.status}" status`,
+      );
+    }
+
+    let stock: StockDocument | null = null;
+    if (input.decision === 'approve' || input.decision === 'cancel') {
+      stock = await this.stockModel
+        .findOne({ part_id: existing.part_id })
+        .exec();
+      if (!stock) {
+        throw new NotFoundException('No stock record exists for this part');
+      }
+    }
+
+    const session = await this.partRequestModel.db.startSession();
+    let updated: PartRequestDocument | null;
+    try {
+      updated = await session.withTransaction(async () => {
+        const result = await this.partRequestModel
+          .findOneAndUpdate(
+            { _id: existing._id, status: rule.from },
+            { $set: { status: rule.to } },
+            { new: true, session },
+          )
+          .exec();
+        if (!result) {
+          throw new ConflictException(
+            `Cannot ${input.decision} a part request in "${existing.status}" status`,
+          );
+        }
+
+        if (input.decision === 'approve' && stock) {
+          await this.stockMovementsService.reserve(session, {
+            stockId: stock._id.toString(),
+            partId: existing.part_id.toString(),
+            quantity: existing.quantity,
+            workOrderId: existing.ot_id.toString(),
+            partRequestId: existing._id.toString(),
+            actorId: input.deciderId,
+          });
+        } else if (input.decision === 'cancel' && stock) {
+          await this.stockMovementsService.cancelReservation(session, {
+            stockId: stock._id.toString(),
+            partId: existing.part_id.toString(),
+            quantity: existing.quantity,
+            workOrderId: existing.ot_id.toString(),
+            partRequestId: existing._id.toString(),
+            actorId: input.deciderId,
+            reason: input.reason,
+          });
+        }
+
+        return result;
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    const finalRequest = updated as PartRequestDocument;
+
+    await this.notificationCenterService.createIfNotExists({
+      dedupeKey: `part_request_decision:${finalRequest._id.toString()}:${input.decision}`,
+      type: NotificationType.PART_REQUEST_DECISION,
+      title:
+        input.decision === 'approve'
+          ? 'Your part request was approved and reserved'
+          : input.decision === 'cancel'
+            ? 'Your reserved part request was cancelled'
+            : 'Your part request was rejected',
+      recipientUserId: finalRequest.requested_by.toString(),
+      workOrderId: finalRequest.ot_id.toString(),
+      referenceId: finalRequest._id.toString(),
+    });
+
+    return finalRequest;
+  }
+
+  /**
+   * Operator-scoped calendar event list. Every query is hard-scoped to
+   * `technician_id: operatorId` — an Operator can never see another
+   * Operator's or Technician's work orders here, regardless of what
+   * filters are supplied. Date-range boundaries are computed in the
+   * configured business timezone rather than the server host's clock.
+   */
+  async getCalendarEventsForOperator(
+    view: CalendarView,
+    date: Date,
+    operatorId: string,
+    filters: CalendarFilters,
+  ) {
+    const timeZone = this.schedulingService.getBusinessTimezone();
+    const { rangeStart, rangeEnd } = this.getViewDateRange(
+      view,
+      date,
+      timeZone,
+    );
+    const query: Record<string, unknown> = {
+      technician_id: new Types.ObjectId(operatorId),
+      $or: [
+        { due_date: { $gte: rangeStart, $lte: rangeEnd } },
+        { scheduled_date: { $gte: rangeStart, $lte: rangeEnd } },
+        { execution_date: { $gte: rangeStart, $lte: rangeEnd } },
+        { date_start: { $gte: rangeStart, $lte: rangeEnd } },
+      ],
+    };
+
+    if (filters.machineId) {
+      query.machine_id = new Types.ObjectId(filters.machineId);
+    }
+    if (filters.maintenanceType) {
+      query.type_maintenance = filters.maintenanceType;
+    }
+    if (filters.status) {
+      query.status = filters.status;
+    }
+    if (filters.priority) {
+      query.priorite = filters.priority;
+    }
+
+    const workOrders = await this.workOrderModel
+      .find(query)
+      .populate('machine_id')
+      .populate('module_id')
+      .populate('technician_id')
+      .populate('plan_id')
+      .exec();
+
+    const events = await this.toCalendarEvents(workOrders);
+    const filteredEvents = events.filter((event) =>
+      this.matchCalendarFilter(event, filters),
+    );
+
+    return {
+      view,
+      date: date.toISOString(),
+      rangeStart: rangeStart.toISOString(),
+      rangeEnd: rangeEnd.toISOString(),
+      totalItems: filteredEvents.length,
+      items: filteredEvents,
+    };
+  }
+
+  async getCalendarEventDetailsForOperator(
+    workOrderId: string,
+    operatorId: string,
+  ) {
+    if (!Types.ObjectId.isValid(workOrderId)) {
+      throw new BadRequestException('Invalid work order id');
+    }
+
+    const workOrder = await this.workOrderModel
+      .findById(workOrderId)
+      .select({ technician_id: 1 })
+      .exec();
+    if (!workOrder) {
+      throw new NotFoundException('Calendar event not found');
+    }
+    if (
+      !workOrder.technician_id ||
+      workOrder.technician_id.toString() !== operatorId
+    ) {
+      throw new ForbiddenException('This work order is not assigned to you');
+    }
+
+    return this.getCalendarEventDetails(workOrderId);
+  }
+
+  /** Personal dashboard widget, scoped to work orders assigned to this Operator. */
+  async getCalendarWidgetForOperator(operatorId: string) {
+    return this.getDashboardCalendarWidget({ technicianId: operatorId });
+  }
+
+  /** Personal notification cards, scoped to work orders assigned to this Operator. */
+  async getNotificationCardsForOperator(operatorId: string) {
+    return this.getNotificationCards({ technicianId: operatorId });
+  }
+
+  /** Personal timeline, scoped to work orders assigned to this Operator. */
+  async getTimelineForOperator(
+    date: Date,
+    operatorId: string,
+    machineId?: string,
+  ) {
+    return this.getTimeline(date, machineId, operatorId);
+  }
+
+  private async loadOwnedWorkOrderOrThrow(
+    scope: OperatorCalendarScope,
+  ): Promise<WorkOrderDocument> {
+    if (!Types.ObjectId.isValid(scope.workOrderId)) {
+      throw new BadRequestException('Invalid work order id');
+    }
+    const workOrder = await this.workOrderModel
+      .findById(scope.workOrderId)
+      .exec();
+    if (!workOrder) {
+      throw new NotFoundException('Work order not found');
+    }
+    if (
+      !workOrder.technician_id ||
+      workOrder.technician_id.toString() !== scope.operatorId
+    ) {
+      throw new ForbiddenException('This work order is not assigned to you');
+    }
+    return workOrder;
+  }
+
+  /**
+   * Marks that the Operator has begun work on an assigned occurrence. Only a
+   * valid transition from a not-yet-started status is accepted; anything
+   * else (already in progress, already submitted, closed, etc.) is a 409
+   * rather than a silent no-op, and the guard is applied atomically so a
+   * double-click can't race itself into two "starts".
+   */
+  async startWorkOrderForOperator(
+    scope: OperatorCalendarScope,
+  ): Promise<WorkOrderDocument> {
+    await this.loadOwnedWorkOrderOrThrow(scope);
+
+    const updated = await this.workOrderModel
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(scope.workOrderId),
+          technician_id: new Types.ObjectId(scope.operatorId),
+          status: { $in: OPERATOR_STARTABLE_STATUSES },
+        },
+        { $set: { status: 'in_progress', date_start: new Date() } },
+        { new: true },
+      )
+      .exec();
+    if (!updated) {
+      throw new ConflictException(
+        'This work order cannot be started from its current status',
+      );
+    }
+    return updated;
+  }
+
+  /**
+   * Marks that the Operator has finished active work on an assigned
+   * corrective occurrence, moving it to `waiting_validation` pending
+   * Technician/Admin review — never straight to `completed`, since an
+   * Operator is never the final approval authority in this system.
+   *
+   * Preventive occurrences are intentionally rejected here: they must go
+   * through `submitPreventiveMaintenanceForOperator`, which is the only
+   * path that captures the checklist/lubrication data and computes the
+   * next recurrence from the real execution date. Allowing this generic
+   * action to complete a preventive occurrence would silently skip both.
+   */
+  async completeWorkOrderForOperator(
+    scope: OperatorCalendarScope,
+  ): Promise<WorkOrderDocument> {
+    const workOrder = await this.loadOwnedWorkOrderOrThrow(scope);
+
+    if ((workOrder.type_maintenance || '').toLowerCase().includes('prevent')) {
+      throw new ConflictException(
+        'Preventive occurrences must be completed through the preventive maintenance submission endpoint',
+      );
+    }
+
+    const now = new Date();
+    const updated = await this.workOrderModel
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(scope.workOrderId),
+          technician_id: new Types.ObjectId(scope.operatorId),
+          status: 'in_progress',
+        },
+        {
+          $set: {
+            status: 'waiting_validation',
+            execution_date: workOrder.execution_date || now,
+            date_end: now,
+          },
+        },
+        { new: true },
+      )
+      .exec();
+    if (!updated) {
+      throw new ConflictException(
+        'This work order must be in progress before it can be completed',
+      );
+    }
+    return updated;
+  }
+
+  /**
+   * Reschedules a preventive occurrence assigned to this Operator. Ownership
+   * is verified here (the shared `reschedulePreventiveOccurrence` below only
+   * checks that the caller's role is allowed to reschedule at all, not that
+   * this specific occurrence belongs to them), then all of the existing
+   * type/status/date validation is reused as-is.
+   */
+  async rescheduleWorkOrderForOperator(input: {
+    operatorId: string;
+    workOrderId: string;
+    newDueDate: string;
+    reason: string;
+  }) {
+    await this.loadOwnedWorkOrderOrThrow({
+      operatorId: input.operatorId,
+      workOrderId: input.workOrderId,
+    });
+
+    return this.reschedulePreventiveOccurrence({
+      workOrderId: input.workOrderId,
+      newDueDate: input.newDueDate,
+      reason: input.reason,
+      userId: input.operatorId,
+      role: 'operator',
+    });
   }
 
   async getCalendarEvents(
@@ -341,7 +1561,12 @@ export class WorkOrdersService {
   ) {
     const { rangeStart, rangeEnd } = this.getViewDateRange(view, date);
     const query: Record<string, unknown> = {
-      date_start: { $gte: rangeStart, $lte: rangeEnd },
+      $or: [
+        { due_date: { $gte: rangeStart, $lte: rangeEnd } },
+        { scheduled_date: { $gte: rangeStart, $lte: rangeEnd } },
+        { execution_date: { $gte: rangeStart, $lte: rangeEnd } },
+        { date_start: { $gte: rangeStart, $lte: rangeEnd } },
+      ],
     };
 
     if (filters.machineId) {
@@ -516,19 +1741,41 @@ export class WorkOrdersService {
     };
   }
 
-  async getTimeline(date: Date, machineId?: string) {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
+  async getTimeline(date: Date, machineId?: string, technicianId?: string) {
+    const timeZone = technicianId
+      ? this.schedulingService.getBusinessTimezone()
+      : undefined;
 
-    const end = new Date(start);
-    end.setDate(end.getDate() + 370);
+    const start = timeZone
+      ? this.schedulingService.startOfBusinessDay(date, timeZone)
+      : (() => {
+          const value = new Date(date);
+          value.setHours(0, 0, 0, 0);
+          return value;
+        })();
+
+    const end = timeZone
+      ? this.schedulingService.addBusinessDays(start, 370, timeZone)
+      : (() => {
+          const value = new Date(start);
+          value.setDate(value.getDate() + 370);
+          return value;
+        })();
 
     const query: Record<string, unknown> = {
-      date_start: { $gte: start, $lte: end },
+      $or: [
+        { due_date: { $gte: start, $lte: end } },
+        { scheduled_date: { $gte: start, $lte: end } },
+        { execution_date: { $gte: start, $lte: end } },
+        { date_start: { $gte: start, $lte: end } },
+      ],
     };
 
     if (machineId) {
       query.machine_id = new Types.ObjectId(machineId);
+    }
+    if (technicianId) {
+      query.technician_id = new Types.ObjectId(technicianId);
     }
 
     const workOrders = await this.workOrderModel
@@ -546,23 +1793,36 @@ export class WorkOrdersService {
       oneYear: [],
     };
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = timeZone
+      ? this.schedulingService.startOfBusinessDay(new Date(), timeZone)
+      : (() => {
+          const value = new Date();
+          value.setHours(0, 0, 0, 0);
+          return value;
+        })();
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const addDays = (value: Date, days: number) =>
+      timeZone
+        ? this.schedulingService.addBusinessDays(value, days, timeZone)
+        : (() => {
+            const result = new Date(value);
+            result.setDate(result.getDate() + days);
+            return result;
+          })();
+    const addMonths = (value: Date, months: number) =>
+      timeZone
+        ? this.schedulingService.addBusinessMonths(value, months, timeZone)
+        : (() => {
+            const result = new Date(value);
+            result.setMonth(result.getMonth() + months);
+            return result;
+          })();
 
-    const nextWeekLimit = new Date(today);
-    nextWeekLimit.setDate(nextWeekLimit.getDate() + 7);
-
-    const nextMonthLimit = new Date(today);
-    nextMonthLimit.setMonth(nextMonthLimit.getMonth() + 1);
-
-    const sixMonthsLimit = new Date(today);
-    sixMonthsLimit.setMonth(sixMonthsLimit.getMonth() + 6);
-
-    const oneYearLimit = new Date(today);
-    oneYearLimit.setFullYear(oneYearLimit.getFullYear() + 1);
+    const tomorrow = addDays(today, 1);
+    const nextWeekLimit = addDays(today, 7);
+    const nextMonthLimit = addMonths(today, 1);
+    const sixMonthsLimit = addMonths(today, 6);
+    const oneYearLimit = addMonths(today, 12);
 
     const events = await this.toCalendarEvents(workOrders);
 
@@ -586,26 +1846,66 @@ export class WorkOrdersService {
     return groups;
   }
 
-  async getDashboardCalendarWidget() {
+  async getDashboardCalendarWidget(scope?: { technicianId?: string }) {
+    const timeZone = scope?.technicianId
+      ? this.schedulingService.getBusinessTimezone()
+      : undefined;
     const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = timeZone
+      ? this.schedulingService.startOfBusinessDay(now, timeZone)
+      : (() => {
+          const value = new Date(now);
+          value.setHours(0, 0, 0, 0);
+          return value;
+        })();
 
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    const addDays = (value: Date, days: number) =>
+      timeZone
+        ? this.schedulingService.addBusinessDays(value, days, timeZone)
+        : (() => {
+            const result = new Date(value);
+            result.setDate(result.getDate() + days);
+            return result;
+          })();
+    const addMonths = (value: Date, months: number) =>
+      timeZone
+        ? this.schedulingService.addBusinessMonths(value, months, timeZone)
+        : (() => {
+            const result = new Date(value);
+            result.setMonth(result.getMonth() + months);
+            return result;
+          })();
 
-    const weekEnd = new Date(todayStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-
+    const todayEnd = addDays(todayStart, 1);
+    const weekEnd = addDays(todayStart, 7);
     const nextWeekStart = new Date(weekEnd);
-    const nextWeekEnd = new Date(weekEnd);
-    nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+    const nextWeekEnd = addDays(weekEnd, 7);
+    const nextMonthEnd = addMonths(todayStart, 1);
 
-    const nextMonthEnd = new Date(todayStart);
-    nextMonthEnd.setMonth(nextMonthEnd.getMonth() + 1);
+    const baseQuery: Record<string, unknown> = {
+      $or: [
+        { due_date: { $exists: true } },
+        { date_start: { $exists: true } },
+      ],
+    };
+    if (scope?.technicianId) {
+      baseQuery.technician_id = new Types.ObjectId(scope.technicianId);
+    }
 
     const baseOrders = await this.workOrderModel
-      .find({}, { _id: 1, ot_id: 1, status: 1, date_start: 1, date_created: 1 })
+      .find(
+        baseQuery,
+        {
+          _id: 1,
+          ot_id: 1,
+          status: 1,
+          due_date: 1,
+          scheduled_date: 1,
+          execution_date: 1,
+          date_start: 1,
+          date_created: 1,
+        },
+      )
       .sort({ date_start: 1 })
       .lean()
       .exec();
@@ -614,6 +1914,9 @@ export class WorkOrdersService {
       _id: unknown;
       ot_id?: string;
       status?: string;
+      due_date?: Date;
+      scheduled_date?: Date;
+      execution_date?: Date;
       date_start?: Date;
       date_created?: Date;
     }) => {
@@ -624,7 +1927,9 @@ export class WorkOrdersService {
         title: order.ot_id || 'Work order',
         status: order.status || 'pending',
         dueDate: due,
-        color: this.computeEventColor(order.status || 'pending', due, now),
+        color: due
+          ? this.computeEventColor(order.status || 'pending', due, now)
+          : 'blue',
       };
     };
 
@@ -632,19 +1937,19 @@ export class WorkOrdersService {
     return {
       today: rows.filter((row) => {
         const due = row.dueDate;
-        return due >= todayStart && due < todayEnd;
+        return due !== null && due >= todayStart && due < todayEnd;
       }),
       thisWeek: rows.filter((row) => {
         const due = row.dueDate;
-        return due >= todayStart && due < weekEnd;
+        return due !== null && due >= todayStart && due < weekEnd;
       }),
       nextWeek: rows.filter((row) => {
         const due = row.dueDate;
-        return due >= nextWeekStart && due < nextWeekEnd;
+        return due !== null && due >= nextWeekStart && due < nextWeekEnd;
       }),
       nextMonth: rows.filter((row) => {
         const due = row.dueDate;
-        return due >= todayStart && due < nextMonthEnd;
+        return due !== null && due >= todayStart && due < nextMonthEnd;
       }),
       overdue: rows.filter((row) => row.color === 'red'),
       waitingValidation: rows.filter(
@@ -653,19 +1958,19 @@ export class WorkOrdersService {
       counts: {
         today: rows.filter((row) => {
           const due = row.dueDate;
-          return due >= todayStart && due < todayEnd;
+          return due !== null && due >= todayStart && due < todayEnd;
         }).length,
         thisWeek: rows.filter((row) => {
           const due = row.dueDate;
-          return due >= todayStart && due < weekEnd;
+          return due !== null && due >= todayStart && due < weekEnd;
         }).length,
         nextWeek: rows.filter((row) => {
           const due = row.dueDate;
-          return due >= nextWeekStart && due < nextWeekEnd;
+          return due !== null && due >= nextWeekStart && due < nextWeekEnd;
         }).length,
         nextMonth: rows.filter((row) => {
           const due = row.dueDate;
-          return due >= todayStart && due < nextMonthEnd;
+          return due !== null && due >= todayStart && due < nextMonthEnd;
         }).length,
         overdue: rows.filter((row) => row.color === 'red').length,
         waitingValidation: rows.filter(
@@ -675,18 +1980,46 @@ export class WorkOrdersService {
     };
   }
 
-  async getNotificationCards() {
+  async getNotificationCards(scope?: { technicianId?: string }) {
+    const timeZone = scope?.technicianId
+      ? this.schedulingService.getBusinessTimezone()
+      : undefined;
     const now = new Date();
-    const dayStart = new Date(now);
-    dayStart.setHours(0, 0, 0, 0);
+    const dayStart = timeZone
+      ? this.schedulingService.startOfBusinessDay(now, timeZone)
+      : (() => {
+          const value = new Date(now);
+          value.setHours(0, 0, 0, 0);
+          return value;
+        })();
 
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
+    const dayEnd = timeZone
+      ? this.schedulingService.addBusinessDays(dayStart, 1, timeZone)
+      : (() => {
+          const value = new Date(dayStart);
+          value.setDate(value.getDate() + 1);
+          return value;
+        })();
 
-    const upcomingLimit = new Date(now);
-    upcomingLimit.setDate(upcomingLimit.getDate() + 7);
+    const upcomingLimit = timeZone
+      ? this.schedulingService.addBusinessDays(now, 7, timeZone)
+      : (() => {
+          const value = new Date(now);
+          value.setDate(value.getDate() + 7);
+          return value;
+        })();
 
-    const orders = await this.workOrderModel.find().exec();
+    const ordersQuery: Record<string, unknown> = {
+      $or: [
+        { due_date: { $exists: true } },
+        { date_start: { $exists: true } },
+      ],
+    };
+    if (scope?.technicianId) {
+      ordersQuery.technician_id = new Types.ObjectId(scope.technicianId);
+    }
+
+    const orders = await this.workOrderModel.find(ordersQuery).exec();
     const completedToday = orders.filter((order) => {
       const closed = order.date_closed || order.date_end;
       if (!closed) return false;
@@ -705,31 +2038,50 @@ export class WorkOrdersService {
     const dueToday = orders.filter((order) => {
       const due = this.getWorkOrderDueDate(order);
       return (
-        due >= dayStart && due < dayEnd && !this.isCompletedStatus(order.status)
+        due !== null &&
+        due >= dayStart &&
+        due < dayEnd &&
+        !this.isCompletedStatus(order.status) &&
+        order.status !== 'waiting_validation'
       );
     });
 
     const upcoming = orders.filter((order) => {
       const due = this.getWorkOrderDueDate(order);
       return (
+        due !== null &&
         due > dayEnd &&
         due <= upcomingLimit &&
-        !this.isCompletedStatus(order.status)
+        !this.isCompletedStatus(order.status) &&
+        order.status !== 'waiting_validation'
       );
     });
 
     const overdue = orders.filter((order) => {
       const due = this.getWorkOrderDueDate(order);
-      return due < now && !this.isCompletedStatus(order.status);
+      return (
+        due !== null &&
+        due < now &&
+        !this.isCompletedStatus(order.status) &&
+        order.status !== 'waiting_validation'
+      );
     });
 
     const criticalSensorAlarms = await this.mesureCriticalAlarmCount();
     const stockAlerts = await this.stockAlertCount();
 
-    const approvedToday = await this.interventionReportModel.countDocuments({
+    const approvedTodayQuery: Record<string, unknown> = {
       validation_responsable: 'validated',
       date_fin: { $gte: dayStart, $lt: dayEnd },
-    });
+    };
+    if (scope?.technicianId) {
+      approvedTodayQuery.technician_id = new Types.ObjectId(
+        scope.technicianId,
+      );
+    }
+    const approvedToday = await this.interventionReportModel.countDocuments(
+      approvedTodayQuery,
+    );
 
     return [
       {
@@ -921,18 +2273,7 @@ export class WorkOrdersService {
       const existing = latestOrderByPlanKey.get(key);
 
       if (!existing) {
-        const created = await this.createSeedWorkOrder(
-          machine,
-          moduleEntity,
-          plan,
-          dueKeySet,
-          latestOrderByPlanKey,
-        );
-        if (created) {
-          summary.createdFirstExecution += 1;
-        } else {
-          summary.skippedDuplicates += 1;
-        }
+        summary.skippedDuplicates += 1;
         continue;
       }
 
@@ -1014,17 +2355,29 @@ export class WorkOrdersService {
     if (!plan) {
       return false;
     }
+    if (!this.isPlanSchedulable(plan)) {
+      // Paused/Archived/Completed/Draft plans stop future scheduling
+      // entirely, without touching any already-created WorkOrder/report —
+      // that history is untouched by this early return.
+      return false;
+    }
 
     const baseDate =
+      workOrder.execution_date ||
       workOrder.date_closed ||
       workOrder.date_end ||
-      workOrder.date_start ||
-      workOrder.date_created;
-    const nextDue = this.computeNextDueDate(
-      new Date(baseDate || new Date()),
-      plan.frequence,
-      plan.unite_frequence,
-    );
+      workOrder.date_start;
+
+    if (!baseDate) {
+      return false;
+    }
+
+    const nextDue = this.schedulingService.calculateNextDueDate({
+      performedAt: new Date(baseDate),
+      frequency: plan.frequence,
+      intervalUnit: plan.unite_frequence || plan.frequence_label,
+      timezone: process.env.BUSINESS_TIMEZONE || 'Africa/Tunis',
+    });
 
     const key = this.buildPlanKey(
       workOrder.machine_id,
@@ -1033,6 +2386,19 @@ export class WorkOrdersService {
     );
     const dueKey = `${key}|${nextDue.getTime()}`;
     if (dueKeySet?.has(dueKey)) {
+      return false;
+    }
+
+    const duplicate = await this.workOrderModel
+      .findOne({
+        machine_id: workOrder.machine_id,
+        plan_id: workOrder.plan_id,
+        type_maintenance: workOrder.type_maintenance,
+        status: { $nin: ['completed', 'validated', 'cancelled', 'canceled'] },
+        due_date: nextDue,
+      })
+      .exec();
+    if (duplicate) {
       return false;
     }
 
@@ -1049,6 +2415,11 @@ export class WorkOrdersService {
       priorite: workOrder.priorite || 'medium',
       date_created: new Date(),
       date_start: nextDue,
+      scheduled_date: nextDue,
+      due_date: nextDue,
+      recurrence_source_occurrence_id: new Types.ObjectId(
+        this.objectIdString(workOrder),
+      ),
     });
 
     dueKeySet?.add(dueKey);
@@ -1067,7 +2438,11 @@ export class WorkOrdersService {
 
     const reportId = await this.generateReportCode();
     const now = new Date();
-    const dateDebut = workOrder.date_start || workOrder.date_created || now;
+    const dateDebut =
+      workOrder.execution_date ||
+      workOrder.date_start ||
+      workOrder.date_created ||
+      now;
     const dateFin = workOrder.date_end || workOrder.date_closed || now;
 
     const codePanne = workOrder.code_panne;
@@ -1162,7 +2537,12 @@ export class WorkOrdersService {
     const total = orders.length;
     const overdueCount = orders.filter((order) => {
       const due = this.getWorkOrderDueDate(order);
-      return due < now && !this.isCompletedStatus(order.status);
+      return (
+        due !== null &&
+        due < now &&
+        !this.isCompletedStatus(order.status) &&
+        order.status !== 'waiting_validation'
+      );
     }).length;
 
     const availability = mtbf + mttr > 0 ? (mtbf / (mtbf + mttr)) * 100 : 100;
@@ -1202,8 +2582,8 @@ export class WorkOrdersService {
 
     const rows: CalendarEventRow[] = [];
     for (const workOrder of workOrders) {
-      const dueDate = this.getWorkOrderDueDate(workOrder);
       const now = new Date();
+      const dueDate = this.getWorkOrderDueDate(workOrder) || now;
       const plan = await this.resolvePlan(workOrder.plan_id, workOrder.plan_id);
       const machine = await this.resolveMachine(
         workOrder.machine_id,
@@ -1253,11 +2633,19 @@ export class WorkOrdersService {
           plan?.instruction ||
           `${(workOrder.type_maintenance || 'maintenance').toUpperCase()} task`,
         type: workOrder.type_maintenance || 'preventive',
-        status: workOrder.status,
+        status: this.schedulingService.calculateOperationalStatus({
+          status: workOrder.status,
+          dueDate,
+          intervalUnit: plan?.unite_frequence,
+        }),
         priority: workOrder.priorite || 'medium',
         dueDate: dueDate.toISOString(),
         startDate: new Date(
-          workOrder.date_start || workOrder.date_created || now,
+          workOrder.execution_date ||
+            workOrder.scheduled_date ||
+            workOrder.due_date ||
+            workOrder.date_start ||
+            now,
         ).toISOString(),
         endDate: workOrder.date_end
           ? new Date(workOrder.date_end).toISOString()
@@ -1317,44 +2705,93 @@ export class WorkOrdersService {
     );
   }
 
-  private getViewDateRange(view: CalendarView, date: Date) {
+  private getViewDateRange(view: CalendarView, date: Date, timeZone?: string) {
     const base = new Date(date);
     if (Number.isNaN(base.getTime())) {
       base.setTime(Date.now());
     }
 
-    const rangeStart = new Date(base);
-    const rangeEnd = new Date(base);
+    if (!timeZone) {
+      const rangeStart = new Date(base);
+      const rangeEnd = new Date(base);
 
-    if (view === 'day') {
+      if (view === 'day') {
+        rangeStart.setHours(0, 0, 0, 0);
+        rangeEnd.setHours(23, 59, 59, 999);
+        return { rangeStart, rangeEnd };
+      }
+
+      if (view === 'week' || view === 'timeline') {
+        const day = rangeStart.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        rangeStart.setDate(rangeStart.getDate() + diff);
+        rangeStart.setHours(0, 0, 0, 0);
+        rangeEnd.setTime(rangeStart.getTime());
+        rangeEnd.setDate(rangeEnd.getDate() + 6);
+        rangeEnd.setHours(23, 59, 59, 999);
+        return { rangeStart, rangeEnd };
+      }
+
+      if (view === 'month') {
+        rangeStart.setDate(1);
+        rangeStart.setHours(0, 0, 0, 0);
+        rangeEnd.setMonth(rangeEnd.getMonth() + 1, 0);
+        rangeEnd.setHours(23, 59, 59, 999);
+        return { rangeStart, rangeEnd };
+      }
+
+      rangeStart.setMonth(0, 1);
       rangeStart.setHours(0, 0, 0, 0);
+      rangeEnd.setMonth(11, 31);
       rangeEnd.setHours(23, 59, 59, 999);
+      return { rangeStart, rangeEnd };
+    }
+
+    // Business-timezone-aware variant: used by the Operator-scoped calendar
+    // so "today"/"this week"/etc. line up with the timezone the maintenance
+    // business actually operates in, rather than the server host's clock.
+    if (view === 'day') {
+      const rangeStart = this.schedulingService.startOfBusinessDay(
+        base,
+        timeZone,
+      );
+      const rangeEnd = this.schedulingService.endOfBusinessDay(base, timeZone);
       return { rangeStart, rangeEnd };
     }
 
     if (view === 'week' || view === 'timeline') {
-      const day = rangeStart.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      rangeStart.setDate(rangeStart.getDate() + diff);
-      rangeStart.setHours(0, 0, 0, 0);
-      rangeEnd.setTime(rangeStart.getTime());
-      rangeEnd.setDate(rangeEnd.getDate() + 6);
-      rangeEnd.setHours(23, 59, 59, 999);
+      const rangeStart = this.schedulingService.startOfBusinessWeek(
+        base,
+        timeZone,
+      );
+      const rangeEnd = new Date(
+        this.schedulingService.addBusinessDays(rangeStart, 7, timeZone).getTime() -
+          1,
+      );
       return { rangeStart, rangeEnd };
     }
 
     if (view === 'month') {
-      rangeStart.setDate(1);
-      rangeStart.setHours(0, 0, 0, 0);
-      rangeEnd.setMonth(rangeEnd.getMonth() + 1, 0);
-      rangeEnd.setHours(23, 59, 59, 999);
+      const rangeStart = this.schedulingService.startOfBusinessMonth(
+        base,
+        timeZone,
+      );
+      const rangeEnd = new Date(
+        this.schedulingService
+          .addBusinessMonths(rangeStart, 1, timeZone)
+          .getTime() - 1,
+      );
       return { rangeStart, rangeEnd };
     }
 
-    rangeStart.setMonth(0, 1);
-    rangeStart.setHours(0, 0, 0, 0);
-    rangeEnd.setMonth(11, 31);
-    rangeEnd.setHours(23, 59, 59, 999);
+    const rangeStart = this.schedulingService.startOfBusinessYear(
+      base,
+      timeZone,
+    );
+    const rangeEnd = new Date(
+      this.schedulingService.addBusinessMonths(rangeStart, 12, timeZone).getTime() -
+        1,
+    );
     return { rangeStart, rangeEnd };
   }
 
@@ -1396,25 +2833,7 @@ export class WorkOrdersService {
   }
 
   private normalizeFrequencyUnit(value?: string): string {
-    const unit = (value || '').toLowerCase().replace(/\s+/g, '_');
-
-    if (!unit) return 'monthly';
-    if (unit.includes('jour') || unit.includes('day') || unit === 'd')
-      return 'daily';
-    if (unit.includes('week') || unit.includes('semaine') || unit.includes('w'))
-      return 'weekly';
-    if (unit.includes('3') && unit.includes('month')) return 'quarterly';
-    if (unit.includes('6') && unit.includes('month')) return 'semiannual';
-    if (unit.includes('year') || unit.includes('an') || unit.includes('ann'))
-      return 'yearly';
-    if (unit.includes('shift') || unit.includes('poste')) return 'per_shift';
-    if (unit.includes('loading') || unit.includes('charg'))
-      return 'per_loading';
-    if (unit.includes('production') || unit.includes('ordre'))
-      return 'per_production_order';
-    if (unit.includes('month') || unit.includes('mois') || unit === 'm')
-      return 'monthly';
-    return 'monthly';
+    return this.schedulingService.normalizeFrequency(value).toLowerCase();
   }
 
   private computeNextDueDate(
@@ -1422,38 +2841,11 @@ export class WorkOrdersService {
     frequency?: number,
     unit?: string,
   ): Date {
-    const base = new Date(fromDate);
-    const value = frequency && frequency > 0 ? frequency : 1;
-    const normalized = this.normalizeFrequencyUnit(unit);
-
-    if (normalized === 'daily') {
-      base.setDate(base.getDate() + value);
-      return base;
-    }
-    if (normalized === 'weekly') {
-      base.setDate(base.getDate() + value * 7);
-      return base;
-    }
-    if (normalized === 'monthly') {
-      base.setMonth(base.getMonth() + value);
-      return base;
-    }
-    if (normalized === 'quarterly') {
-      base.setMonth(base.getMonth() + 3 * value);
-      return base;
-    }
-    if (normalized === 'semiannual') {
-      base.setMonth(base.getMonth() + 6 * value);
-      return base;
-    }
-    if (normalized === 'yearly') {
-      base.setFullYear(base.getFullYear() + value);
-      return base;
-    }
-
-    // Event-like units: due immediately on next operational cycle.
-    base.setHours(base.getHours() + 8);
-    return base;
+    return this.schedulingService.calculateNextDueDate({
+      performedAt: fromDate,
+      frequency,
+      intervalUnit: unit,
+    });
   }
 
   private formatFrequency(value?: number, unit?: string): string {
@@ -1574,6 +2966,97 @@ export class WorkOrdersService {
     return this.maintenancePlanModel.findById(planId).exec();
   }
 
+  private async resolvePreventivePlanForMachine(
+    machineId: string,
+    planId: string,
+  ) {
+    if (!Types.ObjectId.isValid(machineId)) {
+      throw new BadRequestException('Invalid machine_id');
+    }
+    if (!Types.ObjectId.isValid(planId)) {
+      throw new BadRequestException('Invalid plan_id');
+    }
+
+    const [machine, plan] = await Promise.all([
+      this.machineModel.findById(machineId).exec(),
+      this.maintenancePlanModel.findById(planId).exec(),
+    ]);
+    if (!machine) {
+      throw new NotFoundException('Machine not found');
+    }
+    if (!plan) {
+      throw new NotFoundException('Maintenance plan not found');
+    }
+    if (!(plan.type_maintenance || '').toLowerCase().includes('prevent')) {
+      throw new BadRequestException('Maintenance plan is not preventive');
+    }
+
+    const moduleEntity = await this.moduleModel
+      .findOne({
+        _id: plan.module_id,
+        machine_id: machine._id,
+      })
+      .exec();
+    if (!moduleEntity) {
+      throw new BadRequestException(
+        'Maintenance plan does not apply to machine',
+      );
+    }
+
+    return { machine, plan, moduleEntity };
+  }
+
+  private async assertNoDuplicatePreventiveOccurrence(input: {
+    machineId?: string;
+    planId?: string;
+    dueDate?: string;
+    excludeId?: string;
+  }) {
+    if (!input.machineId || !input.planId || !input.dueDate) {
+      return;
+    }
+    if (
+      !Types.ObjectId.isValid(input.machineId) ||
+      !Types.ObjectId.isValid(input.planId)
+    ) {
+      return;
+    }
+    const dueDate = new Date(input.dueDate);
+    if (Number.isNaN(dueDate.getTime())) {
+      return;
+    }
+
+    const dayStart = this.schedulingService.startOfLocalDay(dueDate);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const query: Record<string, unknown> = {
+      machine_id: new Types.ObjectId(input.machineId),
+      plan_id: new Types.ObjectId(input.planId),
+      type_maintenance: { $regex: /prevent/i },
+      status: {
+        $nin: ['completed', 'validated', 'cancelled', 'canceled', 'rejected'],
+      },
+      $or: [
+        { due_date: { $gte: dayStart, $lt: dayEnd } },
+        { scheduled_date: { $gte: dayStart, $lt: dayEnd } },
+        { execution_date: { $gte: dayStart, $lt: dayEnd } },
+        { date_start: { $gte: dayStart, $lt: dayEnd } },
+      ],
+    };
+
+    if (input.excludeId && Types.ObjectId.isValid(input.excludeId)) {
+      query._id = { $ne: new Types.ObjectId(input.excludeId) };
+    }
+
+    const duplicate = await this.workOrderModel.findOne(query).exec();
+    if (duplicate) {
+      throw new ConflictException(
+        'Duplicate preventive occurrence already exists',
+      );
+    }
+  }
+
   private extractHydratedEntity<T>(
     value: unknown,
     requiredKeys: string[],
@@ -1592,15 +3075,36 @@ export class WorkOrdersService {
   }
 
   private getWorkOrderDueDate(workOrder: {
+    due_date?: Date | string;
+    scheduled_date?: Date | string;
+    execution_date?: Date | string;
     date_start?: Date | string;
     date_created?: Date | string;
-  }): Date {
-    const source = workOrder.date_start || workOrder.date_created;
-    return new Date(source || Date.now());
+  }): Date | null {
+    const source =
+      workOrder.due_date ||
+      workOrder.scheduled_date ||
+      workOrder.execution_date ||
+      workOrder.date_start;
+    return source ? new Date(source) : null;
   }
 
   private isCompletedStatus(status?: string) {
     return status === 'completed' || status === 'validated';
+  }
+
+  /**
+   * A plan with no `status` at all is legacy/imported data that predates
+   * this lifecycle field entirely (Mongoose defaults only apply on insert,
+   * never retroactively to documents already in the database, and the two
+   * raw-driver import scripts under backend/scripts/ bypass Mongoose
+   * entirely). Treating "no status" the same as Active preserves exactly
+   * the scheduling behavior every pre-existing plan already had — only a
+   * plan that has explicitly gone through the new lifecycle and is
+   * currently Draft/Paused/Archived/Completed is blocked from scheduling.
+   */
+  private isPlanSchedulable(plan: { status?: MaintenancePlanStatus }): boolean {
+    return !plan.status || plan.status === MaintenancePlanStatus.ACTIVE;
   }
 
   private objectIdString(value: unknown): string {
@@ -1652,6 +3156,28 @@ export class WorkOrdersService {
   private async generateKpiCode() {
     const sequence = await this.counterService.getNextSequence('kpi');
     return `KPI-${sequence.toString().padStart(6, '0')}`;
+  }
+
+  private async generateLubrificationLogCode() {
+    const sequence = await this.counterService.getNextSequence(
+      'lubrification_log',
+    );
+    return `LUB-${sequence.toString().padStart(6, '0')}`;
+  }
+
+  private async generatePartRequestCode() {
+    const sequence = await this.counterService.getNextSequence(
+      'part_request',
+    );
+    return `PR-${sequence.toString().padStart(6, '0')}`;
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { code?: number }).code === 11000
+    );
   }
 
   private getIsoWeek(date: Date) {

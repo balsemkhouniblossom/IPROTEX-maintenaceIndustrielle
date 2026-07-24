@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
-import { getApiBaseUrl } from "@/config/api-base-url";
 import { fetchAllPaginated } from "@/services/pagination";
 import { Modal } from "@/components/Modal";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -109,22 +109,42 @@ function refId(value: EntityRef | undefined): string {
   return typeof value === "string" ? value : value._id ?? value.id ?? "";
 }
 
-const API_URL = getApiBaseUrl();
-
-function getFileUrl(path: string): string {
-  if (!path) return "";
-  return path.startsWith("http://") || path.startsWith("https://") ? path : `${API_URL}${path}`;
+interface PreventiveOccurrence {
+  _id: string;
+  status?: string;
+  due_date?: string;
+  scheduled_date?: string;
+  execution_date?: string;
+  date_start?: string;
+  original_due_date?: string;
+  reschedule_reason?: string;
+  rescheduled_at?: string;
 }
 
-function getManualPreviewUrl(doc: DocumentEntity): string {
-  let previewPath = doc.preview_path || doc.file_path;
-  if (!doc.preview_path && /\.xlsx?$/i.test(previewPath)) {
-    previewPath = previewPath.replace(/\.xlsx?$/i, "_preview.pdf");
-  }
-  if (/\.pdf$/i.test(previewPath) && previewPath.startsWith("/uploads/")) {
-    return `/api/manual-preview?path=${encodeURIComponent(previewPath)}`;
-  }
-  return getFileUrl(previewPath);
+interface PreventivePlanState {
+  plan: MaintenancePlan;
+  module?: ModuleEntity | null;
+  currentOccurrence?: PreventiveOccurrence | null;
+  currentState: string;
+  lastCompletedDate?: string | null;
+  nextDueDate?: string | null;
+  frequency?: {
+    value?: number;
+    unit?: string;
+    originalLabel?: string;
+    normalized?: string;
+  };
+}
+
+interface PreventiveStateResponse {
+  sections?: {
+    dueToday: PreventivePlanState[];
+    overdue: PreventivePlanState[];
+    upcoming: PreventivePlanState[];
+    waitingValidation: PreventivePlanState[];
+    returned: PreventivePlanState[];
+    preventivePlan: PreventivePlanState[];
+  };
 }
 
 function tokenizeInstructions(input: string | undefined): string[] {
@@ -159,6 +179,8 @@ export default function OperatorPreventivePage() {
   const [previewDocument, setPreviewDocument] = useState<DocumentEntity | null>(null);
   const [lubrifiants, setLubrifiants] = useState<Lubrifiant[]>([]);
   const [kpis, setKpis] = useState<Kpi[]>([]);
+  const [preventiveState, setPreventiveState] = useState<PreventiveStateResponse | null>(null);
+  const [stateLoading, setStateLoading] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
@@ -182,6 +204,13 @@ export default function OperatorPreventivePage() {
   const [selectedLubrificationQtyMode, setSelectedLubrificationQtyMode] = useState("");
   const [lubrificationQty, setLubrificationQty] = useState("");
   const [submitValidationReason, setSubmitValidationReason] = useState("");
+  const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
+  const [selectedOccurrenceId, setSelectedOccurrenceId] = useState("");
+  const [schedulePlan, setSchedulePlan] = useState<MaintenancePlan | null>(null);
+  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().slice(0, 10));
+  const [scheduleReason, setScheduleReason] = useState("");
+  const [rescheduleOccurrence, setRescheduleOccurrence] = useState<PreventiveOccurrence | null>(null);
+  const [actionSaving, setActionSaving] = useState(false);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
   const [drafts, setDrafts] = useState<PreventiveDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState("");
@@ -201,7 +230,7 @@ export default function OperatorPreventivePage() {
         return `${t("validation")}: ${t("machine")}`;
       case "no-tasks-selected":
         return t("preventiveTasks");
-      case "missing-module-for-machine":
+      case "no-occurrence-scheduled":
         return t("validation");
       case "submit-failed":
         return tCommon("error");
@@ -209,6 +238,23 @@ export default function OperatorPreventivePage() {
         return submitValidationReason;
     }
   }, [submitValidationReason, t, tCommon]);
+
+  function extractApiErrorMessage(error: unknown, fallback: string): string {
+    const apiError = error as {
+      response?: { status?: number; data?: { message?: string | string[] } };
+    };
+    if (apiError?.response?.status === 409) {
+      return t("lifecycle.taskAlreadySubmitted");
+    }
+    const raw = apiError?.response?.data?.message;
+    if (Array.isArray(raw) && raw.length) {
+      return raw.join(" ");
+    }
+    if (typeof raw === "string" && raw.trim()) {
+      return raw;
+    }
+    return fallback;
+  }
 
   useEffect(() => {
     if (!notification) return;
@@ -247,6 +293,9 @@ export default function OperatorPreventivePage() {
     setLubrificationQty("");
     setSubmitValidationReason("");
     setSelectedDraftId("");
+    setSelectedPlanIds([]);
+    setSelectedOccurrenceId("");
+    setPreventiveState(null);
   }
 
   function resetMachineSpecificState(): void {
@@ -265,6 +314,8 @@ export default function OperatorPreventivePage() {
     setLubrificationQty("");
     setSubmitValidationReason("");
     setSelectedDraftId("");
+    setSelectedPlanIds([]);
+    setSelectedOccurrenceId("");
   }
 
   function addGeneratedReport(report: GeneratedReportRow): void {
@@ -384,13 +435,13 @@ export default function OperatorPreventivePage() {
           lubrifiantItems,
           kpiItems,
         ] = await Promise.all([
-          fetchAllPaginated<MachineType>((params) => apiService.getMachineTypes(params)),
+          fetchAllPaginated<MachineType>((params) => apiService.getOperatorMachineTypes(params)),
           fetchAllPaginated<Machine>((params) => apiService.getMyMachines(params)),
-          fetchAllPaginatedItems<ModuleEntity>((params) => apiService.getModules(params)),
-          fetchAllPaginatedItems<MaintenancePlan>((params) => apiService.getMaintenancePlans(params)),
+          fetchAllPaginatedItems<ModuleEntity>((params) => apiService.getOperatorModules(params)),
+          fetchAllPaginatedItems<MaintenancePlan>((params) => apiService.getOperatorMaintenancePlans(params)),
           fetchAllPaginated<DocumentEntity>((params) => apiService.getOperatorManuals(params)),
-          fetchAllPaginatedItems<Lubrifiant>((params) => apiService.getLubrifiants(params)),
-          fetchAllPaginatedItems<Kpi>((params) => apiService.getKpis(params)),
+          fetchAllPaginatedItems<Lubrifiant>((params) => apiService.getOperatorLubrifiants(params)),
+          fetchAllPaginatedItems<Kpi>((params) => apiService.getOperatorKpis(params)),
         ]);
 
         setMachineTypes(machineTypeItems);
@@ -409,6 +460,28 @@ export default function OperatorPreventivePage() {
 
     void loadAll();
   }, []);
+
+  useEffect(() => {
+    async function loadPreventiveState() {
+      if (!selectedMachine) {
+        setPreventiveState(null);
+        return;
+      }
+
+      try {
+        setStateLoading(true);
+        const response = await apiService.getOperatorPreventiveStates({ machineId: selectedMachine });
+        setPreventiveState((response.data || null) as PreventiveStateResponse | null);
+      } catch (error) {
+        console.error("Failed to load machine preventive scheduling state", error);
+        setPreventiveState(null);
+      } finally {
+        setStateLoading(false);
+      }
+    }
+
+    void loadPreventiveState();
+  }, [selectedMachine]);
 
   async function fetchAllPaginatedItems<T>(
     request: (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>,
@@ -517,6 +590,92 @@ export default function OperatorPreventivePage() {
     [kpis, selectedMachine],
   );
 
+  const preventiveSections = preventiveState?.sections;
+
+  function formatPlanStateLabel(state: string): string {
+    const key = state === "not_scheduled"
+      ? "notScheduled"
+      : state === "due_today"
+        ? "dueToday"
+        : state === "due_soon"
+          ? "dueSoon"
+          : state === "waiting_validation"
+            ? "waitingValidation"
+            : state === "in_progress"
+              ? "inProgress"
+              : state;
+    try {
+      return t(`lifecycle.${key}`);
+    } catch {
+      return state;
+    }
+  }
+
+  function formatDateLabel(value?: string | null): string {
+    if (!value) return t("lifecycle.noDueDate");
+    return new Date(value).toLocaleDateString();
+  }
+
+  function renderOccurrenceSection(title: string, items: PreventivePlanState[] = []) {
+    if (!selectedMachine) return null;
+    return (
+      <div className="panel">
+        <div className="card-title mb-3">{title}</div>
+        {stateLoading ? (
+          <div className="text-sm text-slate-500">{tCommon("loading")}</div>
+        ) : items.length === 0 ? (
+          <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {items.map((item) => {
+              const occurrence = item.currentOccurrence;
+              return (
+                <div key={`${item.plan._id}-${item.currentState}`} className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-slate-900">{item.plan.maintenance_code || item.plan.plan_id}</div>
+                      <div className="mt-1 text-sm text-slate-600">{item.plan.instruction || tCommon("notAvailable")}</div>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
+                      {formatPlanStateLabel(item.currentState)}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-2">
+                    <div>{t("lifecycle.lastCompleted")}: {formatDateLabel(item.lastCompletedDate)}</div>
+                    <div>{t("lifecycle.nextDue")}: {formatDateLabel(item.nextDueDate)}</div>
+                    <div>{t("lifecycle.originalDueDate")}: {formatDateLabel(occurrence?.original_due_date)}</div>
+                    <div>{t("lifecycle.reschedulingReason")}: {occurrence?.reschedule_reason || tCommon("notAvailable")}</div>
+                  </div>
+                  {occurrence && ["scheduled", "due_soon", "due_today", "overdue"].includes(item.currentState) ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => performPlanToday(item.plan, occurrence)}
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
+                      >
+                        {t("lifecycle.performToday")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRescheduleOccurrence(occurrence);
+                          setScheduleDate((item.nextDueDate || new Date().toISOString()).slice(0, 10));
+                        }}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
+                      >
+                        {t("lifecycle.reschedule")}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const allTaskItems = useMemo(() => {
     if (!customTasks.length) {
       return taskList;
@@ -550,6 +709,41 @@ export default function OperatorPreventivePage() {
     () => allTaskItems.filter((task) => checkedTasks[task]),
     [allTaskItems, checkedTasks],
   );
+
+  const taskLabelsForPlan = useCallback((plan: MaintenancePlan): string[] => {
+    const planTasks = tokenizeInstructions(plan.instruction);
+    const planTaskSet = new Set(planTasks);
+    const code = (plan.maintenance_code || plan.plan_id || "").trim().toLowerCase();
+    const explicitHeader = planTasks.find((task) => isChecklistHeader(task));
+    const explicitHeaderMatches =
+      explicitHeader && selectedTaskLabels.some((task) => task.toLowerCase() === explicitHeader.toLowerCase());
+
+    const selectedForPlan = selectedTaskLabels.filter((task) => {
+      if (planTaskSet.has(task)) return true;
+      const group = customTaskGroups[task];
+      if (group && explicitHeader && group.toLowerCase() === explicitHeader.toLowerCase()) return true;
+      return Boolean(code) && task.toLowerCase().includes(code);
+    });
+
+    if (selectedForPlan.length > 0 || explicitHeaderMatches) {
+      return selectedForPlan.filter((task) => !isChecklistHeader(task));
+    }
+
+    return [];
+  }, [customTaskGroups, selectedTaskLabels]);
+
+  const selectedPreventivePlans = useMemo(() => {
+    if (selectedPlanIds.length > 0) {
+      return preventivePlans.filter((plan) => selectedPlanIds.includes(plan._id));
+    }
+
+    const matched = preventivePlans.filter((plan) => taskLabelsForPlan(plan).length > 0);
+    if (matched.length > 0) {
+      return matched;
+    }
+
+    return selectedTaskLabels.length > 0 && preventivePlans[0] ? [preventivePlans[0]] : [];
+  }, [preventivePlans, selectedPlanIds, selectedTaskLabels, taskLabelsForPlan]);
 
   const availableTaskOptions = useMemo(
     () => allTaskItems.filter((task) => !checkedTasks[task]),
@@ -612,6 +806,67 @@ export default function OperatorPreventivePage() {
     });
   }
 
+  function performPlanToday(plan: MaintenancePlan, occurrence?: PreventiveOccurrence | null): void {
+    setSelectedPlanIds([plan._id]);
+    setSelectedOccurrenceId(occurrence?._id || "");
+    setCompletionDate(new Date().toISOString().slice(0, 16));
+    const planTasks = tokenizeInstructions(plan.instruction).filter((task) => !isChecklistHeader(task));
+    setCheckedTasks((prev) => {
+      const next = { ...prev };
+      planTasks.forEach((task) => {
+        next[task] = true;
+      });
+      return next;
+    });
+    showNotification("success", `${plan.maintenance_code || plan.plan_id}: ${t("lifecycle.performToday")}`);
+  }
+
+  async function createFirstSchedule(plan: MaintenancePlan): Promise<void> {
+    if (!selectedMachine || !scheduleDate) return;
+
+    try {
+      setActionSaving(true);
+      await apiService.scheduleOperatorPreventive({
+        machine_id: selectedMachine,
+        plan_id: plan._id,
+        scheduled_date: scheduleDate,
+      });
+      const response = await apiService.getOperatorPreventiveStates({ machineId: selectedMachine });
+      setPreventiveState((response.data || null) as PreventiveStateResponse | null);
+      setSchedulePlan(null);
+      showNotification("success", t("lifecycle.scheduleCreated"));
+    } catch (error) {
+      console.error("Failed to schedule first preventive occurrence", error);
+      showNotification("error", t("lifecycle.duplicateOccurrence"));
+    } finally {
+      setActionSaving(false);
+    }
+  }
+
+  async function rescheduleSelectedOccurrence(): Promise<void> {
+    if (!rescheduleOccurrence?._id || !scheduleDate || !scheduleReason.trim()) return;
+
+    try {
+      setActionSaving(true);
+      await apiService.rescheduleMyCalendarEvent(rescheduleOccurrence._id, {
+        new_due_date: scheduleDate,
+        reason: scheduleReason.trim(),
+      });
+      if (selectedMachine) {
+        const response = await apiService.getOperatorPreventiveStates({ machineId: selectedMachine });
+        setPreventiveState((response.data || null) as PreventiveStateResponse | null);
+      }
+      setRescheduleOccurrence(null);
+      setScheduleReason("");
+      showNotification("success", t("lifecycle.rescheduleSuccess"));
+    } catch (error) {
+      console.error("Failed to reschedule preventive occurrence", error);
+      showNotification("error", extractApiErrorMessage(error, tCommon("error")));
+    } finally {
+      setActionSaving(false);
+    }
+  }
+
   async function uploadPhotoIfPresent(machineId: string): Promise<void> {
     if (!photo || !user?._id) return;
 
@@ -639,80 +894,57 @@ export default function OperatorPreventivePage() {
       return;
     }
 
-    const planRef = preventivePlans[0]?._id;
-    const moduleRef = modulesForMachine[0]?._id;
-    if (!moduleRef) {
-      setSubmitValidationReason("missing-module-for-machine");
+    if (!selectedOccurrenceId) {
+      // The Operator must act on an already-scheduled occurrence (via
+      // "Perform today" on a due/overdue card) rather than an arbitrary
+      // plan — this endpoint updates an assigned work order, it never
+      // creates one.
+      setSubmitValidationReason("no-occurrence-scheduled");
       showNotification("error", t("validation"));
       return;
     }
 
-    const nowIso = new Date().toISOString();
-    const startIso = new Date(completionDate).toISOString();
     const conditionValue = condition === "custom" ? customCondition.trim() : condition;
 
     setSubmitValidationReason("");
     setSubmitting(true);
     try {
-      const workOrderPayload = {
-        ot_id: uniqueId("WO-PREV"),
-        machine_id: selectedMachine,
-        module_id: moduleRef,
-        technician_id: user._id,
-        plan_id: planRef,
-        description: selectedTaskLabels.join(" | "),
-        type_maintenance: "preventive",
-        status: "waiting_validation",
-        priorite: "medium",
-        date_created: nowIso,
-        date_start: startIso,
-      };
+      const machineLabel = machines.find((item) => item._id === selectedMachine)?.machine_id ?? tCommon("notAvailable");
+      const taskSummary = selectedTaskLabels.join(" | ");
+      const lubrication =
+        selectedLubrifiant && lubrificationQty.trim() && Number(lubrificationQty) > 0
+          ? { lubrifiant_id: selectedLubrifiant, quantity: Number(lubrificationQty) }
+          : undefined;
 
-      const workOrderRes = await apiService.createWorkOrder(workOrderPayload);
-      const workOrderId = workOrderRes?.data?._id as string | undefined;
-      if (!workOrderId) {
-        throw new Error("Work order creation failed");
-      }
+      const response = await apiService.submitOperatorPreventiveMaintenance({
+        work_order_id: selectedOccurrenceId,
+        tasks_completed: selectedTaskLabels,
+        condition: conditionValue,
+        comments: comments.trim() || undefined,
+        lubrication,
+      });
 
-      const reportId = uniqueId("REP-PREV");
-
-      const reportPayload = {
-        report_id: reportId,
-        ot_id: workOrderId,
-        technician_id: user._id,
-        date_debut: startIso,
-        date_fin: nowIso,
-        cause_racine: comments.trim() || undefined,
-        description_action: selectedTaskLabels.join(" | "),
-        etat_final: conditionValue,
-        validation_responsable: "waiting_validation",
-      };
-
-      await apiService.createInterventionReport(reportPayload);
-
-      if (selectedLubrifiant && lubrificationQty.trim()) {
-        await apiService.createLubrificationLog({
-          log_id: uniqueId("LUB-LOG"),
-          module_id: moduleRef,
-          lubrifiant_id: selectedLubrifiant,
-          date_application: nowIso,
-          quantite: Number(lubrificationQty),
-          technician_id: user._id,
-        });
+      const workOrderId = response?.data?.workOrder?._id as string | undefined;
+      const reportId = response?.data?.report?._id as string | undefined;
+      if (!workOrderId || !reportId) {
+        throw new Error("Preventive submission failed");
       }
 
       await uploadPhotoIfPresent(selectedMachine);
-      const machineLabel = machines.find((item) => item._id === selectedMachine)?.machine_id ?? tCommon("notAvailable");
       addGeneratedReport({
         id: `${workOrderId}-${reportId}`,
         type: "preventive",
         workOrderId,
         reportId,
         machine: machineLabel,
-        summary: selectedTaskLabels.join(" | "),
-        createdAt: nowIso,
+        summary: taskSummary,
+        createdAt: new Date().toISOString(),
         status: "waiting_validation",
       });
+
+      const refreshedState = await apiService.getOperatorPreventiveStates({ machineId: selectedMachine });
+      setPreventiveState((refreshedState.data || null) as PreventiveStateResponse | null);
+      setSelectedOccurrenceId("");
 
       if (fromDraftId) {
         const nextDrafts = drafts.filter((item) => item.id !== fromDraftId);
@@ -724,7 +956,7 @@ export default function OperatorPreventivePage() {
     } catch (error) {
       console.error("Failed to submit preventive maintenance", error);
       setSubmitValidationReason("submit-failed");
-      showNotification("error", tCommon("error"));
+      showNotification("error", extractApiErrorMessage(error, tCommon("error")));
     } finally {
       setSubmitting(false);
     }
@@ -842,24 +1074,69 @@ export default function OperatorPreventivePage() {
             </div>
           </div>
 
+          <div className="col-span-full grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {renderOccurrenceSection(t("lifecycle.dueToday"), preventiveSections?.dueToday)}
+            {renderOccurrenceSection(t("lifecycle.overdue"), preventiveSections?.overdue)}
+            {renderOccurrenceSection(t("lifecycle.upcoming"), preventiveSections?.upcoming)}
+            {renderOccurrenceSection(t("lifecycle.waitingValidation"), preventiveSections?.waitingValidation)}
+            {renderOccurrenceSection(t("lifecycle.returned"), preventiveSections?.returned)}
+          </div>
+
           {preventivePlans.length > 0 ? (
             <div className="col-span-full panel">
-              <div className="card-title mb-3">{t("maintenanceCenter")}</div>
+              <div className="card-title mb-3">{t("lifecycle.preventivePlan")}</div>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {preventivePlans.map((plan) => (
-                  <div key={plan._id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                {(preventiveSections?.preventivePlan || preventivePlans.map((plan) => ({
+                  plan,
+                  module: modules.find((moduleEntity) => refId(plan.module_id) === moduleEntity._id) || null,
+                  currentState: "not_scheduled",
+                  currentOccurrence: null,
+                  lastCompletedDate: null,
+                  nextDueDate: null,
+                  frequency: {
+                    value: plan.frequence,
+                    unit: plan.unite_frequence,
+                    normalized: plan.unite_frequence,
+                  },
+                } satisfies PreventivePlanState))).map((item) => (
+                  <div key={item.plan._id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-lg font-bold text-slate-900">{plan.maintenance_code || plan.plan_id}</div>
-                        <div className="mt-1 text-sm text-slate-500">{plan.responsable || tCommon("notAvailable")}</div>
+                        <div className="text-lg font-bold text-slate-900">{item.plan.maintenance_code || item.plan.plan_id}</div>
+                        <div className="mt-1 text-sm text-slate-500">{item.plan.responsable || tCommon("notAvailable")}</div>
                       </div>
                       <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        {plan.frequence} {plan.unite_frequence}
+                        {item.frequency?.normalized || item.plan.unite_frequence}
                       </div>
                     </div>
                     <div className="mt-4 space-y-2 text-sm text-slate-700">
-                      <div><span className="font-semibold">{t("preventiveTasks")}: </span>{plan.instruction || tCommon("notAvailable")}</div>
-                      <div><span className="font-semibold">{t("openManual")}: </span>{plan.documentation || tCommon("notAvailable")}</div>
+                      <div><span className="font-semibold">{t("preventiveTasks")}: </span>{item.plan.instruction || tCommon("notAvailable")}</div>
+                      <div><span className="font-semibold">{t("module")}: </span>{item.module?.module_id || tCommon("notAvailable")}</div>
+                      <div><span className="font-semibold">{t("lifecycle.lastCompleted")}: </span>{formatDateLabel(item.lastCompletedDate)}</div>
+                      <div><span className="font-semibold">{t("lifecycle.nextDue")}: </span>{formatDateLabel(item.nextDueDate)}</div>
+                      <div><span className="font-semibold">{t("smartCalendar.status")}: </span>{formatPlanStateLabel(item.currentState)}</div>
+                      <div><span className="font-semibold">{t("openManual")}: </span>{item.plan.documentation || tCommon("notAvailable")}</div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => performPlanToday(item.plan, item.currentOccurrence)}
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
+                      >
+                        {t("lifecycle.performToday")}
+                      </button>
+                      {item.currentState === "not_scheduled" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSchedulePlan(item.plan);
+                            setScheduleDate(new Date().toISOString().slice(0, 10));
+                          }}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
+                        >
+                          {t("lifecycle.setFirstInterventionDate")}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -992,16 +1269,13 @@ export default function OperatorPreventivePage() {
                 />
               </div>
               <div>
-                <label className="block text-sm mb-2">{t("report")}</label>
-                <input
-                  type="datetime-local"
-                  value={completionDate}
-                  onChange={(event) => setCompletionDate(event.target.value)}
-                  title={t("report")}
-                  aria-label={t("report")}
-                  placeholder={t("report")}
-                  className="w-full border rounded-lg px-3 py-2"
-                />
+                <label className="block text-sm mb-2">{t("lifecycle.actualExecutionDate")}</label>
+                <div
+                  data-testid="preventive-execution-date-note"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+                >
+                  {new Date().toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
@@ -1210,12 +1484,75 @@ export default function OperatorPreventivePage() {
           size="xl"
         >
           {previewDocument ? (
-            <iframe
-              src={`${getManualPreviewUrl(previewDocument)}#view=FitH`}
-              title={previewDocument.file_name}
-              className="h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-100"
-            />
+            <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name} />
           ) : null}
+        </Modal>
+
+        <Modal
+          isOpen={Boolean(schedulePlan)}
+          onClose={() => setSchedulePlan(null)}
+          title={t("lifecycle.setFirstInterventionDate")}
+        >
+          <div className="space-y-4">
+            <div className="text-sm font-semibold text-slate-800">
+              {schedulePlan?.maintenance_code || schedulePlan?.plan_id}
+            </div>
+            <label className="block text-sm">
+              {t("lifecycle.newDueDate")}
+              <input
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                value={scheduleDate}
+                onChange={(event) => setScheduleDate(event.target.value)}
+                className="mt-2 w-full rounded-lg border px-3 py-2"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={actionSaving || !schedulePlan}
+              onClick={() => schedulePlan && void createFirstSchedule(schedulePlan)}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+            >
+              {actionSaving ? tCommon("saving") : t("lifecycle.setFirstInterventionDate")}
+            </button>
+          </div>
+        </Modal>
+
+        <Modal
+          isOpen={Boolean(rescheduleOccurrence)}
+          onClose={() => setRescheduleOccurrence(null)}
+          title={t("lifecycle.reschedule")}
+        >
+          <div className="space-y-4">
+            <div className="text-sm text-slate-600">
+              {t("lifecycle.originalDueDate")}: {formatDateLabel(rescheduleOccurrence?.original_due_date || rescheduleOccurrence?.due_date || rescheduleOccurrence?.scheduled_date)}
+            </div>
+            <label className="block text-sm">
+              {t("lifecycle.newDueDate")}
+              <input
+                type="date"
+                value={scheduleDate}
+                onChange={(event) => setScheduleDate(event.target.value)}
+                className="mt-2 w-full rounded-lg border px-3 py-2"
+              />
+            </label>
+            <label className="block text-sm">
+              {t("lifecycle.reschedulingReason")}
+              <input
+                value={scheduleReason}
+                onChange={(event) => setScheduleReason(event.target.value)}
+                className="mt-2 w-full rounded-lg border px-3 py-2"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={actionSaving || !scheduleReason.trim()}
+              onClick={() => void rescheduleSelectedOccurrence()}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+            >
+              {actionSaving ? tCommon("saving") : t("lifecycle.reschedule")}
+            </button>
+          </div>
         </Modal>
       </DashboardLayout>
     </ProtectedRoute>

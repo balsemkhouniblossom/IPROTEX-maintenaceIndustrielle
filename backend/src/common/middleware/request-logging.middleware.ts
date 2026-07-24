@@ -1,16 +1,24 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
+import {
+  assignRequestId,
+  buildRequestLogMessage,
+  getRequestPathname,
+  type RequestWithLogContext,
+} from '../log-sanitizer';
 
 @Injectable()
 export class RequestLoggingMiddleware implements NestMiddleware {
   private readonly logger = new Logger('HTTP');
 
-  use(req: Request, res: Response, next: NextFunction): void {
+  use(req: RequestWithLogContext, res: Response, next: NextFunction): void {
     if (req.url.startsWith('/.well-known')) {
       res.status(204).end();
       return;
     }
     const startedAt = Date.now();
+    const requestId = assignRequestId(req, res);
+    const pathname = getRequestPathname(req);
 
     res.on('finish', () => {
       const durationMs = Date.now() - startedAt;
@@ -20,7 +28,13 @@ export class RequestLoggingMiddleware implements NestMiddleware {
           : res.statusCode >= 400
             ? 'warn'
             : 'log';
-      const message = `${req.method} ${req.originalUrl} ${res.statusCode} - ${durationMs}ms`;
+      const message = buildRequestLogMessage({
+        requestId,
+        method: req.method,
+        pathname,
+        status: res.statusCode,
+        durationMs,
+      });
 
       if (level === 'error') {
         this.logger.error(message);

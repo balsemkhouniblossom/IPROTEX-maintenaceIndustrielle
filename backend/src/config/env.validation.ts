@@ -11,7 +11,9 @@ type EnvValidationResult = {
   frontendBaseUrl: string;
   emailVerificationSecret: string;
   enableLegacyEmailTokens: boolean;
+  enableLegacyResetTokens: boolean;
   enableEventBasedEmails: boolean;
+  fileStorageDriver: 'local' | 'supabase';
 };
 
 function parseNodeEnv(input: string | undefined): RuntimeMode {
@@ -53,6 +55,25 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
+function parseFutureDeadline(value: string | undefined, key: string): Date {
+  if (!value?.trim()) {
+    throw new Error(
+      `${key} is required when legacy authentication compatibility flags are enabled in production`,
+    );
+  }
+
+  const deadline = new Date(value);
+  if (Number.isNaN(deadline.getTime())) {
+    throw new Error(`${key} must be a valid ISO date`);
+  }
+
+  if (deadline.getTime() <= Date.now()) {
+    throw new Error(`${key} must be a future date`);
+  }
+
+  return deadline;
+}
+
 function parseUrl(value: string, key: string): string {
   try {
     const parsed = new URL(value);
@@ -60,6 +81,28 @@ function parseUrl(value: string, key: string): string {
   } catch {
     throw new Error(`${key} must be a valid URL`);
   }
+}
+
+function validateFileStorage(nodeEnv: RuntimeMode): 'local' | 'supabase' {
+  const configuredDriver = process.env.FILE_STORAGE_DRIVER?.trim().toLowerCase();
+
+  if (configuredDriver && configuredDriver !== 'local' && configuredDriver !== 'supabase') {
+    throw new Error('FILE_STORAGE_DRIVER must be either local or supabase');
+  }
+
+  if (nodeEnv !== 'production') {
+    return (configuredDriver as 'local' | 'supabase' | undefined) ?? 'local';
+  }
+
+  if (configuredDriver !== 'supabase') {
+    throw new Error('FILE_STORAGE_DRIVER=supabase is required in production');
+  }
+
+  parseUrl(requireEnv('SUPABASE_URL'), 'SUPABASE_URL');
+  requireEnv('SUPABASE_SECRET_KEY');
+  requireEnv('SUPABASE_STORAGE_BUCKET');
+
+  return 'supabase';
 }
 
 function isAtlasUri(uri: string): boolean {
@@ -76,6 +119,45 @@ function wildcardToRegex(originPattern: string): RegExp {
     .replace(/\*/g, '.*');
 
   return new RegExp(`^${escaped}$`);
+}
+
+function parseCorsOrigin(origin: string, nodeEnv: RuntimeMode): CorsOrigin {
+  if (origin.includes('*')) {
+    if (nodeEnv === 'production') {
+      throw new Error('CORS_ORIGINS cannot contain wildcards in production');
+    }
+
+    return wildcardToRegex(origin);
+  }
+
+  const parsed = parseUrl(origin, 'CORS_ORIGINS');
+  const url = new URL(parsed);
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('CORS_ORIGINS entries must use http or https URLs');
+  }
+
+  if (nodeEnv === 'production') {
+    if (url.protocol !== 'https:') {
+      throw new Error('CORS_ORIGINS entries must use https in production');
+    }
+
+    if (isLocalhost(url.hostname)) {
+      throw new Error('CORS_ORIGINS cannot include localhost in production');
+    }
+  }
+
+  return url.origin;
+}
+
+function isLocalhost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === 'localhost' ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized.endsWith('.localhost')
+  );
 }
 
 function buildCorsFallbackOrigins(
@@ -98,21 +180,39 @@ function buildCorsFallbackOrigins(
 function parseCorsOrigins(
   value: string | undefined,
   fallbackOrigins: CorsOrigin[],
+  nodeEnv: RuntimeMode,
 ): CorsOrigin[] {
   if (!value || !value.trim()) {
+    if (nodeEnv === 'production') {
+      throw new Error(
+        'CORS_ORIGINS must be set to a comma-separated list of trusted frontend origins in production',
+      );
+    }
+
     return fallbackOrigins;
   }
 
   if (value.trim() === '*') {
-    // Reflect any origin when credentials are enabled.
+    if (nodeEnv === 'production') {
+      throw new Error('CORS_ORIGINS=* is not allowed in production');
+    }
+
     return [/^https?:\/\/.+/i];
   }
 
-  return value
+  const origins = value
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
-    .map((origin) => (origin.includes('*') ? wildcardToRegex(origin) : origin));
+    .map((origin) => parseCorsOrigin(origin, nodeEnv));
+
+  if (nodeEnv === 'production' && origins.length === 0) {
+    throw new Error(
+      'CORS_ORIGINS must include at least one trusted frontend origin in production',
+    );
+  }
+
+  return Array.from(new Set(origins));
 }
 
 export function validateEnvironment(): EnvValidationResult {
@@ -199,6 +299,10 @@ export function validateEnvironment(): EnvValidationResult {
         'Missing required environment variable: GOOGLE_CALLBACK_URL (or BACKEND_URL)',
       );
     }
+
+    if (nodeEnv === 'production') {
+      requireExchangeEncryptionKey();
+    }
   }
 
   const rawFrontendBaseUrl =
@@ -221,6 +325,7 @@ export function validateEnvironment(): EnvValidationResult {
   const corsOrigins = parseCorsOrigins(
     configuredCorsOrigins,
     buildCorsFallbackOrigins(frontendBaseUrl, backendUrl),
+    nodeEnv,
   );
 
   const emailVerificationSecret =
@@ -230,13 +335,28 @@ export function validateEnvironment(): EnvValidationResult {
 
   const enableLegacyEmailTokens = parseBoolean(
     process.env.ENABLE_LEGACY_EMAIL_TOKENS,
-    true,
+    false,
   );
+  const enableLegacyResetTokens = parseBoolean(
+    process.env.ENABLE_LEGACY_RESET_TOKENS,
+    false,
+  );
+
+  if (
+    nodeEnv === 'production' &&
+    (enableLegacyEmailTokens || enableLegacyResetTokens)
+  ) {
+    parseFutureDeadline(
+      process.env.LEGACY_AUTH_MIGRATION_DEADLINE,
+      'LEGACY_AUTH_MIGRATION_DEADLINE',
+    );
+  }
 
   const enableEventBasedEmails = parseBoolean(
     process.env.ENABLE_EVENT_BASED_EMAILS,
     false,
   );
+  const fileStorageDriver = validateFileStorage(nodeEnv);
 
   return {
     nodeEnv,
@@ -248,6 +368,24 @@ export function validateEnvironment(): EnvValidationResult {
     frontendBaseUrl,
     emailVerificationSecret,
     enableLegacyEmailTokens,
+    enableLegacyResetTokens,
     enableEventBasedEmails,
+    fileStorageDriver,
   };
+}
+
+function requireExchangeEncryptionKey(): void {
+  const key = process.env.GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY?.trim();
+  if (!key) {
+    throw new Error(
+      'Missing required environment variable: GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY',
+    );
+  }
+
+  const decoded = Buffer.from(key, 'base64');
+  if (decoded.length !== 32 && key.length < 32) {
+    throw new Error(
+      'GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY must be a 32-byte base64 key or at least 32 characters',
+    );
+  }
 }

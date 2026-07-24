@@ -137,8 +137,6 @@ interface NotificationCard {
 interface FilterState {
   machineId: string;
   machineTypeId: string;
-  operatorId: string;
-  technicianId: string;
   maintenanceType: string;
   status: string;
   priority: string;
@@ -231,14 +229,12 @@ export default function SmartMaintenanceCalendarPage() {
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [machineFilterOptions, setMachineFilterOptions] = useState<SelectOption[]>([]);
   const [machineTypeFilterOptions, setMachineTypeFilterOptions] = useState<SelectOption[]>([]);
-  const [operatorFilterOptions, setOperatorFilterOptions] = useState<SelectOption[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     machineId: "",
     machineTypeId: "",
-    operatorId: "",
-    technicianId: "",
     maintenanceType: "",
     status: "",
     priority: "",
@@ -291,20 +287,6 @@ export default function SmartMaintenanceCalendarPage() {
     return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
   }, [events, machineTypeFilterOptions]);
 
-  const operatorOptions = useMemo(() => {
-    if (operatorFilterOptions.length > 0) {
-      return operatorFilterOptions;
-    }
-
-    const map = new Map<string, string>();
-    events.forEach((event) => {
-      if (event.assignedOperator?.id) {
-        map.set(event.assignedOperator.id, event.assignedOperator.name || event.assignedOperator.id);
-      }
-    });
-    return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
-  }, [events, operatorFilterOptions]);
-
   useEffect(() => {
     async function loadFilterOptions() {
       try {
@@ -323,7 +305,7 @@ export default function SmartMaintenanceCalendarPage() {
             name?: string;
             machine_type?: string;
             code?: string;
-          }>((pagination) => apiService.getMachineTypes(pagination)),
+          }>((pagination) => apiService.getOperatorMachineTypes(pagination)),
         ]);
 
         setMachineFilterOptions(
@@ -351,8 +333,6 @@ export default function SmartMaintenanceCalendarPage() {
               return [{ id, label } satisfies SelectOption];
             }),
         );
-
-        setOperatorFilterOptions([]);
       } catch (error) {
         console.error("Failed to load smart calendar filter options", error);
       }
@@ -375,6 +355,30 @@ export default function SmartMaintenanceCalendarPage() {
     }
   }, [filters.machineId, machineOptions]);
 
+  function extractApiErrorMessage(error: unknown, fallback: string): string {
+    const apiError = error as {
+      response?: { status?: number; data?: { message?: string | string[] } };
+    };
+    const raw = apiError?.response?.data?.message;
+    if (Array.isArray(raw) && raw.length) {
+      return raw.join(" ");
+    }
+    if (typeof raw === "string" && raw.trim()) {
+      return raw;
+    }
+    return fallback;
+  }
+
+  function showNotification(type: "success" | "error", message: string): void {
+    setNotification({ type, message });
+  }
+
+  useEffect(() => {
+    if (!notification) return;
+    const timeout = setTimeout(() => setNotification(null), 5000);
+    return () => clearTimeout(timeout);
+  }, [notification]);
+
   useEffect(() => {
     async function loadCalendar() {
       try {
@@ -395,7 +399,7 @@ export default function SmartMaintenanceCalendarPage() {
         setEvents((response.data?.items || []) as CalendarEvent[]);
 
         if (view === "timeline") {
-          const timelineResponse = await apiService.getCalendarTimeline({ date, machineId: filters.machineId || undefined });
+          const timelineResponse = await apiService.getMyCalendarTimeline({ date, machineId: filters.machineId || undefined });
           setTimeline((timelineResponse.data || {}) as Record<string, CalendarEvent[]>);
         } else {
           setTimeline({});
@@ -404,6 +408,7 @@ export default function SmartMaintenanceCalendarPage() {
         console.error("Failed to load smart maintenance calendar", error);
         setEvents([]);
         setTimeline({});
+        showNotification("error", extractApiErrorMessage(error, tCommon("error")));
       } finally {
         setLoading(false);
       }
@@ -417,8 +422,8 @@ export default function SmartMaintenanceCalendarPage() {
       try {
         setWidgetLoading(true);
         const [widgetResponse, notificationResponse] = await Promise.all([
-          apiService.getCalendarWidget(),
-          apiService.getCalendarNotifications(),
+          apiService.getMyCalendarWidget(),
+          apiService.getMyCalendarNotifications(),
         ]);
         setWidgetData((widgetResponse.data || {}) as WidgetData);
         setNotificationCards((notificationResponse.data || []) as NotificationCard[]);
@@ -443,11 +448,12 @@ export default function SmartMaintenanceCalendarPage() {
 
       try {
         setDrawerLoading(true);
-        const response = await apiService.getCalendarEventDetails(selectedEventId);
+        const response = await apiService.getMyCalendarEventDetails(selectedEventId);
         setSelectedEventDetails((response.data || null) as CalendarEventDetails | null);
       } catch (error) {
         console.error("Failed to load calendar event details", error);
         setSelectedEventDetails(null);
+        showNotification("error", extractApiErrorMessage(error, tCommon("error")));
       } finally {
         setDrawerLoading(false);
       }
@@ -462,21 +468,23 @@ export default function SmartMaintenanceCalendarPage() {
     try {
       setActionLoading(true);
       if (action === "start") {
-        await apiService.updateWorkOrder(selectedEventDetails.id, {
-          status: "in_progress",
-          date_start: new Date().toISOString(),
-        });
+        await apiService.startMyCalendarEvent(selectedEventDetails.id);
       } else {
-        await apiService.completeWorkOrder(selectedEventDetails.id);
+        await apiService.completeMyCalendarEvent(selectedEventDetails.id);
       }
 
-      const refreshedDetails = await apiService.getCalendarEventDetails(selectedEventDetails.id);
+      const refreshedDetails = await apiService.getMyCalendarEventDetails(selectedEventDetails.id);
       setSelectedEventDetails((refreshedDetails.data || null) as CalendarEventDetails | null);
 
       const refreshedEvents = await apiService.getMyCalendarEvents({ view, date, ...filters });
       setEvents((refreshedEvents.data?.items || []) as CalendarEvent[]);
+      showNotification(
+        "success",
+        action === "start" ? tCalendar("startSuccess") : tCalendar("completeSuccess"),
+      );
     } catch (error) {
       console.error("Failed to run maintenance action", error);
+      showNotification("error", extractApiErrorMessage(error, tCommon("error")));
     } finally {
       setActionLoading(false);
     }
@@ -510,6 +518,18 @@ export default function SmartMaintenanceCalendarPage() {
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={tCalendar("title")}>
         <div className="bento-grid">
+          {notification ? (
+            <div
+              className={`col-span-full panel border ${
+                notification.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-red-200 bg-red-50 text-red-800"
+              }`}
+            >
+              {notification.message}
+            </div>
+          ) : null}
+
           <div className="col-span-full rounded-2xl border border-slate-200 bg-linear-to-br from-white via-slate-50 to-blue-50 p-5 shadow-sm">
             <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -574,8 +594,6 @@ export default function SmartMaintenanceCalendarPage() {
                   setFilters({
                     machineId: "",
                     machineTypeId: "",
-                    operatorId: "",
-                    technicianId: "",
                     maintenanceType: "",
                     status: "",
                     priority: "",
@@ -636,21 +654,6 @@ export default function SmartMaintenanceCalendarPage() {
               >
                 <option value="">{tCalendar("machineType")}</option>
                 {machineTypeOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filters.operatorId}
-                onChange={(event) => setFilters((prev) => ({ ...prev, operatorId: event.target.value }))}
-                title={tCalendar("operator")}
-                aria-label={tCalendar("operator")}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800"
-              >
-                <option value="">{tCalendar("operator")}</option>
-                {operatorOptions.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.label}
                   </option>
@@ -722,7 +725,7 @@ export default function SmartMaintenanceCalendarPage() {
                               </div>
                             </div>
                             <div className="mt-2 text-sm">
-                              {event.machine.code} · {new Date(event.dueDate).toLocaleString()}
+                              {event.machine.code} · {new Date(event.dueDate).toLocaleString(locale)}
                             </div>
                           </button>
                         ))
@@ -766,7 +769,7 @@ export default function SmartMaintenanceCalendarPage() {
                     <div className="space-y-1 text-sm">
                       <div><span className="font-medium text-slate-700">{tCalendar("machine")}:</span> {event.machine.code || tCommon("notAvailable")}</div>
                       <div><span className="font-medium text-slate-700">{tCalendar("frequency")}:</span> {event.frequency.label}</div>
-                      <div><span className="font-medium text-slate-700">{tCalendar("due")}:</span> {new Date(event.dueDate).toLocaleString()}</div>
+                      <div><span className="font-medium text-slate-700">{tCalendar("due")}:</span> {new Date(event.dueDate).toLocaleString(locale)}</div>
                     </div>
                     <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
                       <ClockIcon className="h-3.5 w-3.5" />
@@ -930,7 +933,7 @@ export default function SmartMaintenanceCalendarPage() {
                           {selectedEventDetails.history.map((entry) => (
                             <div key={entry.id} className="rounded-lg border border-slate-200 bg-white p-2 text-sm">
                               <div className="font-semibold">{entry.reportId}</div>
-                              <div>{new Date(entry.start).toLocaleString()} - {new Date(entry.end).toLocaleString()}</div>
+                              <div>{new Date(entry.start).toLocaleString(locale)} - {new Date(entry.end).toLocaleString(locale)}</div>
                               <div>{tCalendar("status")}: {entry.status}</div>
                               <div>{entry.action || tCommon("notAvailable")}</div>
                             </div>

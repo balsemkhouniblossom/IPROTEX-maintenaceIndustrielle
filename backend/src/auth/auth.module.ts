@@ -16,6 +16,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AppConfigService } from '../config/app.config';
 import { FeatureFlagsConfigService } from '../config/feature-flags.config';
 import { EmailVerificationTokenService } from './email-verification-token.service';
+import { GoogleLoginExchangeService } from './google-login-exchange.service';
+import {
+  GoogleLoginExchange,
+  GoogleLoginExchangeSchema,
+} from './schemas/google-login-exchange.schema';
+import { FileStorageModule } from '../storage/file-storage.module';
+import { AuthThrottleService } from './auth-throttle.service';
 
 function resolveJwtSecret(configService: ConfigService): string {
   const secret = configService.get<string>('JWT_SECRET')?.trim();
@@ -35,10 +42,14 @@ function resolveJwtSecret(configService: ConfigService): string {
 @Module({
   imports: [
     UsersModule,
+    FileStorageModule,
     EmailModule,
     NotificationsModule,
     ConfigModule,
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: GoogleLoginExchange.name, schema: GoogleLoginExchangeSchema },
+    ]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -62,6 +73,8 @@ function resolveJwtSecret(configService: ConfigService): string {
     AppConfigService,
     FeatureFlagsConfigService,
     EmailVerificationTokenService,
+    GoogleLoginExchangeService,
+    AuthThrottleService,
   ],
   exports: [AuthService],
 })

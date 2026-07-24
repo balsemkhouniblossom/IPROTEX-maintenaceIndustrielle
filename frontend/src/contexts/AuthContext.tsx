@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import api from '../services/api';
-import { clearAuthSession, getAuthItem, saveAuthSession } from '../services/authStorage';
+import api, { getCsrfHeaders } from '../services/api';
+import { clearAuthSession, getAuthSessionPersistence, saveAuthSession } from '../services/authStorage';
+import { getAuthErrorCode } from '../services/authErrors';
+import { getRegistrationErrorCode } from '../services/publicRegistration';
+import { parseLocalLoginSession } from '../services/localLogin';
 
 interface User {
   _id: string;
-  user_id: string;
+  user_id?: string;
   nom_complet: string;
   email: string;
   role: string;
@@ -15,15 +18,26 @@ interface User {
   created_at: string;
   phone?: string;
   department?: string;
+  position?: string;
+  language?: string;
   photo?: string;
+  profile_completed?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string, keepLoggedIn?: boolean) => Promise<string>;
-  completeSocialLogin: (authToken: string, authUser: User) => string;
-  register: (userData: Record<string, unknown>) => Promise<void>;
+  completeSocialLogin: (
+    authToken: string,
+    authUser: User,
+    refreshToken?: string,
+  ) => string;
+  register: (
+    userData: Record<string, unknown>,
+    options?: { locale?: string },
+  ) => Promise<void>;
+  clearSession: () => void;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -44,41 +58,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser.role;
   };
 
-  // auth state initialized from localStorage synchronously
+  const clearLocalSession = () => {
+    setToken(null);
+    setUser(null);
+    clearAuthSession();
+  };
+
+  // Browser storage is only a credential cache; the backend is the session authority.
   useEffect(() => {
-    try {
-      const storedUser = getAuthItem('user');
-      const storedToken = getAuthItem('token');
+    let active = true;
 
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
+    const validateBackendSession = async () => {
+      try {
+        const response = await api.post(
+          '/auth/refresh',
+          {},
+          { headers: getCsrfHeaders() },
+        );
+        const session = parseLocalLoginSession(response.data);
 
-      if (storedToken) {
-        setToken(storedToken);
+        if (!active) return;
+
+        establishSession(
+          session.authToken,
+          session.user,
+          session.refreshToken,
+          getAuthSessionPersistence(),
+        );
+      } catch {
+        if (!active) return;
+        clearLocalSession();
+      } finally {
+        if (active) setIsLoading(false);
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    void validateBackendSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
   const login = async (email: string, password: string, keepLoggedIn = true) => {
     try {
       const response = await api.post('/auth/login', { email, password });
+      const session = parseLocalLoginSession(response.data);
 
-      const data = response.data;
-      const authToken = data.access_token ?? data.token;
-
-      return establishSession(authToken, data.user, data.refresh_token, keepLoggedIn);
+      return establishSession(
+        session.authToken,
+        session.user,
+        session.refreshToken,
+        keepLoggedIn,
+      );
     } catch (error: any) {
-      const status = error?.response?.status;
+      clearLocalSession();
+      const code = getAuthErrorCode(error);
+      if (code) {
+        throw new Error(code);
+      }
+
       const responseData = error?.response?.data;
       const responseMessage = responseData?.message;
-
-      if (status === 401) {
-        throw new Error('Invalid credentials');
-      }
 
       if (Array.isArray(responseMessage)) {
         throw new Error(responseMessage.join(', '));
@@ -92,24 +132,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (userData: Record<string, unknown>) => {
+  const register = async (
+    userData: Record<string, unknown>,
+    options?: { locale?: string },
+  ) => {
     try {
-      await api.post('/auth/register', userData);
+      await api.post('/auth/register', userData, {
+        headers: options?.locale
+          ? { 'X-App-Locale': options.locale }
+          : undefined,
+      });
       // Registration successful, but don't auto-login
     } catch (error: unknown) {
       const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      throw new Error(msg || 'Registration failed');
+      const code = getRegistrationErrorCode(error);
+      throw new Error(code || msg || 'Registration failed');
     }
   };
 
-  const completeSocialLogin = (authToken: string, authUser: User) => {
-    return establishSession(authToken, authUser);
+  const completeSocialLogin = (
+    authToken: string,
+    authUser: User,
+    refreshToken?: string,
+  ) => {
+    parseLocalLoginSession({
+      access_token: authToken,
+      refresh_token: refreshToken,
+      user: authUser,
+    });
+    return establishSession(authToken, authUser, refreshToken);
+  };
+
+  const clearSession = () => {
+    clearLocalSession();
   };
 
   const logout = () => {
-    setToken(null);
-    setUser(null);
-    clearAuthSession();
+    void api
+      .post('/auth/logout', {}, { headers: getCsrfHeaders() })
+      .catch(() => undefined);
+    clearSession();
     // Redirect with locale-based routing (Next-intl expects /{locale}/...)
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
     const locale = path.split('/')[1] || 'en';
@@ -122,18 +184,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     completeSocialLogin,
     register,
+    clearSession,
     logout,
     isLoading,
     isAuthenticated: !!token && !!user,
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
-    );
-  }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

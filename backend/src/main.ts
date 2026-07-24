@@ -10,6 +10,7 @@ import hpp from 'hpp';
 import compression from 'compression';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { validateEnvironment } from './config/env.validation';
+import { MANAGED_AVATAR_ROUTE } from './common/managed-file-url';
 
 function isAtlasUri(uri: string): boolean {
   const normalized = uri.trim().toLowerCase();
@@ -64,9 +65,11 @@ async function bootstrap() {
   });
 
   // ✅ IMPORTANT: correct static serving for PDFs
-  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+  app.use(
+    MANAGED_AVATAR_ROUTE,
+    express.static(join(process.cwd(), 'uploads', 'avatars')),
+  );
 
-  app.use('/files/uploads', express.static(join(process.cwd(), 'uploads')));
 
   app.enableShutdownHooks();
 

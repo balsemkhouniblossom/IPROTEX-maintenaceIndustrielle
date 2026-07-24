@@ -1,0 +1,363 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+' =============================
+'       BASE UTILISATEUR
+' =============================
+class Utilisateur {
+    - id: int
+    - email: String {unique}
+    - nom: String
+    - prenom: String
+    - telephone: String
+    - adresse: String
+    - date_naissance: Date
+    - photo_profil: ImageField
+    - date_creation: DateTime
+    - derniere_connexion: DateTime
+    + __str__(): String
+}
+
+Utilisateur <|-- Formateur
+Utilisateur <|-- Apprenant
+Utilisateur <|-- Administrateur
+
+class Formateur {
+    - utilisateur: OneToOneField(Utilisateur)
+    - cv: FileField
+    - competences: String
+    - experience: int
+    - description: String
+    - tarif_horaire: Decimal
+    - disponible: boolean
+    + __str__(): String
+}
+
+class Apprenant {
+    - utilisateur: OneToOneField(Utilisateur)
+    - entreprise: String
+    - poste: String
+    - niveau_etude: String
+    - objectifs: String
+    - date_inscription: DateTime
+    + __str__(): String
+}
+
+class Administrateur {
+    - utilisateur: OneToOneField(Utilisateur)
+    - niveau_acces: String {super, admin, moderateur}
+    - departement: String
+    + __str__(): String
+}
+
+' =============================
+'       FORMATION SYSTEM
+' =============================
+class Formation {
+    - id: int
+    - titre: String
+    - description: String
+    - objectifs: String
+    - duree_heures: int
+    - niveau: String {debutant, intermediaire, avance, expert}
+    - prix: Decimal
+    - participants_max: int
+    - prerequisites: String
+    - statut: String {brouillon, publiee, en_cours, terminee, annulee}
+    - date_creation: DateTime
+    - date_debut: DateTime
+    - date_fin: DateTime
+    + participants_inscrits(): int
+    + places_restantes(): int
+    + __str__(): String
+}
+
+class Salle {
+    - id: int
+    - nom: String
+    - capacite: int
+    - localisation: String
+    - equipements: String
+    - disponible: boolean
+    + __str__(): String
+}
+
+class Planning {
+    - id: int
+    - date_session: DateTime
+    - duree_session: int
+    - sujet: String
+    - description: String
+    - code_presence: String
+    + __str__(): String
+}
+
+class Presence {
+    - id: int
+    - present: boolean
+    - heure_arrivee: DateTime
+    - heure_depart: DateTime
+    - commentaire: String
+    + __str__(): String
+}
+
+class Evaluation {
+    - id: int
+    - note_contenu: int {1-5}
+    - note_formateur: int {1-5}
+    - note_organisation: int {1-5}
+    - note_globale: int {1-5}
+    - commentaire: String
+    - recommande: boolean
+    - date_evaluation: DateTime
+    + __str__(): String
+}
+
+class Attestation {
+    - id: int
+    - numero_attestation: String {unique}
+    - date_emission: DateTime
+    - note_obtenue: Decimal
+    - competences_acquises: String
+    - fichier_pdf: FileField
+    + __str__(): String
+}
+
+' =============================
+'       COURS SYSTEM
+' =============================
+class Cours {
+    - id: int
+    - titre: String
+    - description: String
+    - contenu: String
+    - duree_minutes: int
+    - niveau: String {debutant, intermediaire, avance, expert}
+    - categorie: String
+    - mots_cles: String
+    - image_couverture: ImageField
+    - prix: Decimal
+    - gratuit: boolean
+    - publie: boolean
+    - date_creation: DateTime
+    - date_publication: DateTime
+    - nb_vues: int
+    + nombre_inscrits(): int
+    + note_moyenne(): float
+    + __str__(): String
+}
+
+class RessourceCours {
+    - id: int
+    - titre: String
+    - type_ressource: String {video, document, audio, lien, exercice, quiz}
+    - fichier: FileField
+    - lien_externe: URLField
+    - description: String
+    - ordre: int
+    - obligatoire: boolean
+    + __str__(): String
+}
+
+class ProgressionCours {
+    - id: int
+    - date_inscription: DateTime
+    - progression_pourcentage: int
+    - temps_passe_minutes: int
+    - derniere_activite: DateTime
+    - termine: boolean
+    - date_completion: DateTime
+    + __str__(): String
+}
+
+class CommentaireCours {
+    - id: int
+    - note: int {1-5}
+    - commentaire: String
+    - date_creation: DateTime
+    - approuve: boolean
+    + __str__(): String
+}
+
+' =============================
+'       MESSAGING SYSTEM
+' =============================
+class Message {
+    - id: int
+    - sujet: String
+    - contenu: String
+    - fichier_joint: FileField
+    - date_envoi: DateTime
+    - lu: boolean
+    - date_lecture: DateTime
+    - important: boolean
+    - archive: boolean
+    + __str__(): String
+}
+
+class GroupeChat {
+    - id: int
+    - nom: String
+    - description: String
+    - prive: boolean
+    - date_creation: DateTime
+    - actif: boolean
+    + __str__(): String
+}
+
+class MessageGroupe {
+    - id: int
+    - contenu: String
+    - fichier_joint: FileField
+    - date_envoi: DateTime
+    - modifie: boolean
+    - date_modification: DateTime
+    + __str__(): String
+}
+
+class FilDiscussion {
+    - id: int
+    - titre: String
+    - contenu: String
+    - epingle: boolean
+    - ferme: boolean
+    - date_creation: DateTime
+    - derniere_reponse: DateTime
+    - nb_vues: int
+    + nb_reponses(): int
+    + __str__(): String
+}
+
+class ReponseDiscussion {
+    - id: int
+    - contenu: String
+    - fichier_joint: FileField
+    - date_creation: DateTime
+    - modifie: boolean
+    - date_modification: DateTime
+    + __str__(): String
+}
+
+' =============================
+'       PAYMENT SYSTEM
+' =============================
+class Organisation {
+    - id: int
+    - nom: String
+    - secteur_activite: String
+    - adresse: String
+    - telephone: String
+    - email: String
+    - site_web: URLField
+    - contact_principal: String
+    - numero_siret: String
+    - tva_applicable: boolean
+    - taux_tva: Decimal
+    - date_creation: DateTime
+    - active: boolean
+    + __str__(): String
+}
+
+class Paiement {
+    - id: int
+    - montant: Decimal
+    - mode_paiement: String {carte, virement, cheque, especes, paypal}
+    - statut: String {en_attente, valide, refuse, rembourse}
+    - reference_transaction: String {unique}
+    - date_paiement: DateTime
+    + __str__(): String
+}
+
+' =============================
+'       NOTIFICATION SYSTEM
+' =============================
+class Notification {
+    - id: int
+    - titre: String
+    - message: String
+    - type_notification: String {info, warning, success, error}
+    - lu: boolean
+    - date_creation: DateTime
+    + __str__(): String
+}
+
+class Reclamation {
+    - id: int
+    - sujet: String
+    - description: String
+    - statut: String {ouverte, en_cours, resolue, fermee}
+    - priorite: String {basse, normale, haute, urgente}
+    - date_creation: DateTime
+    - date_resolution: DateTime
+    + __str__(): String
+}
+
+' =============================
+'       RELATIONSHIPS
+' =============================
+
+' Formation relationships
+Formation "1" o-- "1" Formateur : created_by
+Formation "*" o-- "*" Apprenant : participants
+Formation "1" -- "*" Planning : sessions
+Formation "1" -- "*" Evaluation : evaluations
+Formation "1" -- "*" Attestation : certificates
+
+' Planning relationships
+Planning "1" o-- "1" Salle : room
+Planning "1" -- "*" Presence : attendance
+
+' Presence relationships
+Presence "*" o-- "1" Apprenant : student
+
+' Evaluation relationships
+Evaluation "*" o-- "1" Apprenant : evaluated_by
+
+' Attestation relationships
+Attestation "*" o-- "1" Apprenant : awarded_to
+
+' Course relationships
+Cours "1" o-- "1" Formateur : created_by
+Cours "1" -- "*" RessourceCours : resources
+Cours "1" -- "*" ProgressionCours : progress
+Cours "1" -- "*" CommentaireCours : comments
+
+' Progress relationships
+ProgressionCours "*" o-- "1" Apprenant : student
+ProgressionCours "*" o-- "*" RessourceCours : completed_resources
+
+' Comment relationships
+CommentaireCours "*" o-- "1" Apprenant : author
+
+' Messaging relationships
+Message "*" o-- "1" Utilisateur : sender
+Message "*" o-- "1" Utilisateur : receiver
+
+GroupeChat "*" o-- "1" Utilisateur : creator
+GroupeChat "*" o-- "*" Utilisateur : members
+GroupeChat "*" o-- "0..1" Formation : related_to
+GroupeChat "1" -- "*" MessageGroupe : messages
+
+MessageGroupe "*" o-- "1" Utilisateur : author
+
+FilDiscussion "*" o-- "1" Formation : forum
+FilDiscussion "*" o-- "1" Utilisateur : author
+FilDiscussion "1" -- "*" ReponseDiscussion : replies
+
+ReponseDiscussion "*" o-- "1" Utilisateur : author
+
+' Payment relationships
+Paiement "*" o-- "1" Formation : for_formation
+Paiement "*" o-- "0..1" Apprenant : individual_payment
+Paiement "*" o-- "0..1" Organisation : corporate_payment
+
+Organisation "1" -- "*" Apprenant : sponsors
+
+' Notification relationships
+Notification "*" o-- "1" Utilisateur : recipient
+
+' Complaint relationships
+Reclamation "*" o-- "1" Utilisateur : complainant
+
+@enduml

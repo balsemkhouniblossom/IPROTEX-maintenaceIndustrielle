@@ -480,6 +480,22 @@ async function main() {
             created_by: 'G. Fleischmann',
             approved_by: 'W.Rödel',
           },
+          // Only stamped on first insert: these plans represent equipment
+          // already in service, so they start life Active (not Draft) —
+          // but re-running this script must never clobber a lifecycle
+          // change (pause/archive/etc.) an admin made since the import.
+          $setOnInsert: {
+            status: 'active',
+            version: 1,
+            lifecycle_history: [
+              {
+                action: 'created',
+                to_status: 'active',
+                reason: 'Bulk-imported from historical maintenance plan data',
+                at: new Date(),
+              },
+            ],
+          },
         },
         { upsert: true },
       );
