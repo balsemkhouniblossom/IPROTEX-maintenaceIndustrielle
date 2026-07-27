@@ -17,6 +17,7 @@ import type { Request } from 'express';
 import { WorkOrdersService } from './work-orders.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
+import { WorkOrdersQueryDto } from './dto/work-orders-query.dto';
 import { normalizePagination } from '../common/pagination';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
@@ -47,12 +48,13 @@ export class WorkOrdersController {
 
   @Get()
   @AdminOnly()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    const pagination = normalizePagination(page, limit);
+  findAll(@Query() query: WorkOrdersQueryDto) {
+    const pagination = normalizePagination(query.page, query.limit);
     return this.workOrdersService.findAll(
       pagination.page,
       pagination.limit,
       pagination.skip,
+      query,
     );
   }
 

@@ -31,6 +31,12 @@ export class InterventionReport {
 
   @Prop()
   validation_responsable?: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  validated_by?: Types.ObjectId;
+
+  @Prop({ type: Date })
+  validated_at?: Date;
 }
 
 export const InterventionReportSchema =

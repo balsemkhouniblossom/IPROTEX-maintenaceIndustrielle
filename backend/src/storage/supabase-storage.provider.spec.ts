@@ -158,6 +158,27 @@ describe('SupabaseStorageProvider', () => {
     ).resolves.toBe(legacyUrl);
   });
 
+  it('quarantines rejected uploads under their own prefix without ever generating a URL', async () => {
+    const result = await provider({ SUPABASE_STORAGE_BUCKET_PUBLIC: 'true' }).save({
+      buffer: Buffer.from('rejected'),
+      fileName: 'rejected-1.rejected',
+      folder: 'quarantine',
+      contentType: 'application/octet-stream',
+    });
+
+    expect(result.storageKey).toBe('quarantine/rejected-1.rejected');
+    expect(result.url).toBeUndefined();
+    expect(result.shouldPersistUrl).toBe(false);
+    expect(getPublicUrl).not.toHaveBeenCalled();
+    expect(createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('never treats a quarantine storage key as an ownable/servable document', () => {
+    const storage = provider();
+
+    expect(storage.ownsFile('quarantine/rejected-1.rejected')).toBe(false);
+  });
+
   it('deletes by storage key for rollback', async () => {
     await provider().delete('uploads/photo.webp');
 

@@ -291,7 +291,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const storedRequest = await partRequests.findById(partRequestId);
       expect(storedRequest?.status).toBe('reserved');
 
-      const movements = await stockMovements.find({ stock_id: stock._id }).sort({ createdAt: 1 });
+      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
       expect(movements).toHaveLength(2);
       const reservation = movements[1];
       expect(reservation.type).toBe('reservation');
@@ -328,7 +328,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       expect(stockAfter?.quantite_reservee).toBe(0);
       expect(stockAfter?.version).toBe(1);
 
-      const movementCount = await stockMovements.countDocuments({ stock_id: stock._id });
+      const movementCount = await stockMovements.countDocuments({ stock_id: new Types.ObjectId(stock._id) });
       expect(movementCount).toBe(1); // only the initial-creation movement
     });
 
@@ -362,7 +362,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const storedRequest = await partRequests.findById(partRequestId);
       expect(storedRequest?.status).toBe('cancelled');
 
-      const movements = await stockMovements.find({ stock_id: stock._id }).sort({ createdAt: 1 });
+      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
       const cancellation = movements[movements.length - 1];
       expect(cancellation.type).toBe('cancellation');
       expect(cancellation.reserved_delta).toBe(-5);
@@ -433,7 +433,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const storedRequest = await partRequests.findById(partRequestId);
       expect(storedRequest?.status).toBe('fulfilled');
 
-      const movements = await stockMovements.find({ stock_id: stock._id }).sort({ createdAt: 1 });
+      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
       const consumption = movements[movements.length - 1];
       expect(consumption.type).toBe('consumption');
       expect(consumption.quantity_delta).toBe(-4);
@@ -484,7 +484,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       stockAfter = await stocks.findById(stock._id);
       expect(stockAfter?.quantite_en_stock).toBe(8);
 
-      const movements = await stockMovements.find({ stock_id: stock._id }).sort({ createdAt: 1 });
+      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
       const returnMovement = movements[movements.length - 1];
       expect(returnMovement.type).toBe('return');
       expect(returnMovement.quantity_delta).toBe(4);
@@ -584,7 +584,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       expect([60, 70]).toContain(stockAfter?.quantite_en_stock);
       expect(stockAfter?.version).toBe(2);
 
-      const movementCount = await stockMovements.countDocuments({ stock_id: stock._id });
+      const movementCount = await stockMovements.countDocuments({ stock_id: new Types.ObjectId(stock._id) });
       expect(movementCount).toBe(2); // initial-creation + exactly one successful adjustment
     });
   });

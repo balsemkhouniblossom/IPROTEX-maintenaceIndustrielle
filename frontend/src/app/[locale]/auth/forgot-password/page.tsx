@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
       <div className="absolute top-4 left-4 z-20">
         <LanguageSwitcher />
       </div>
-      <div className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12">
+      <main className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="auth-logo-title text-3xl font-bold mb-2">{t('forgotPasswordTitle') || 'Forgot Password'}</h1>
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                  className="w-full min-h-11 flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   {loading ? t('sending') || 'Sending...' : t('sendResetLink') || 'Send reset link'}
                 </button>
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
       <div className="hidden lg:flex lg:w-3/5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-800 via-blue-900 to-[#0F172A] relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/BGsign_in.png')] bg-cover bg-center opacity-80" />
         <div className="auth-hero-overlay absolute inset-0" />

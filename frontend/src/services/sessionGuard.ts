@@ -112,6 +112,70 @@ export function getAccountStateRedirect(
   return null;
 }
 
+/**
+ * Single source of truth for "where should an authenticated user land"
+ * (Complete Profile page, Google result page, etc. all defer to this
+ * instead of re-implementing the lifecycle priority order themselves):
+ * unauthenticated -> incomplete profile -> pending -> rejected -> inactive
+ * -> role dashboard. Mirrors getAccountStateRedirect's priority, then
+ * resolves the final "allowed" case to the user's own dashboard.
+ */
+export function getAuthenticatedAccountDestination(
+  locale: string,
+  user?: SessionUser | null,
+): string {
+  const safeLocale = normalizeLocale(locale);
+  const accountRedirect = getAccountStateRedirect(safeLocale, user);
+
+  if (accountRedirect) {
+    return accountRedirect.to;
+  }
+
+  return (
+    getDashboardPath(safeLocale, user?.role) ??
+    getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_ROLE_NOT_ALLOWED')
+  );
+}
+
+export type CompleteProfileAccessDecision =
+  | { status: 'loading' }
+  | { status: 'redirect'; to: string }
+  | { status: 'show-form' };
+
+/**
+ * Pure decision function behind the Complete Profile page's guard. Kept
+ * separate from React so the loading race (redirecting on a transient
+ * token=null/user=null before AuthContext finishes restoring the session)
+ * can be unit tested without rendering the component, and so the page
+ * doesn't re-implement its own copy of the account-lifecycle priority order.
+ */
+export function evaluateCompleteProfileAccess(params: {
+  isLoading: boolean;
+  token?: string | null;
+  user?: SessionUser | null;
+  locale: string;
+}): CompleteProfileAccessDecision {
+  const { isLoading, token, user } = params;
+  const safeLocale = normalizeLocale(params.locale);
+
+  if (isLoading) {
+    return { status: 'loading' };
+  }
+
+  if (!token || !user) {
+    return { status: 'redirect', to: `/${safeLocale}/auth/login` };
+  }
+
+  if (user.profile_completed === false) {
+    return { status: 'show-form' };
+  }
+
+  return {
+    status: 'redirect',
+    to: getAuthenticatedAccountDestination(safeLocale, user),
+  };
+}
+
 export function evaluateProtectedRouteAccess(params: {
   user?: SessionUser | null;
   pathname?: string | null;

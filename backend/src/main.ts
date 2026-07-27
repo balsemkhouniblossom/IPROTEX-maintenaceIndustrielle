@@ -1,6 +1,7 @@
 import './load-env';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import * as express from 'express';
 import { join } from 'path';
@@ -29,6 +30,8 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
   const env = validateEnvironment();
+
+  app.getHttpAdapter().getInstance().set('trust proxy', env.trustProxy);
 
   mongoose.set('debug', env.mongoDebug);
 
@@ -72,6 +75,7 @@ async function bootstrap() {
 
 
   app.enableShutdownHooks();
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   await app.listen(env.port);
   logger.log(`Backend running in ${env.nodeEnv} mode on port ${env.port}`);

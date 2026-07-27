@@ -31,7 +31,6 @@ if exist "%SOURCE_DIR%\frontend\logs" xcopy "%SOURCE_DIR%\frontend\logs" "%TEMP_
 REM Copy configuration files
 if exist "%SOURCE_DIR%\backend\.env" copy "%SOURCE_DIR%\backend\.env" "%TEMP_BACKUP_DIR%\backend\.env"
 if exist "%SOURCE_DIR%\frontend\.env.local" copy "%SOURCE_DIR%\frontend\.env.local" "%TEMP_BACKUP_DIR%\frontend\.env.local"
-if exist "%SOURCE_DIR%\docker-compose.yml" copy "%SOURCE_DIR%\docker-compose.yml" "%TEMP_BACKUP_DIR%\docker-compose.yml"
 
 REM Compress the backup
 powershell "Compress-Archive -Path '%TEMP_BACKUP_DIR%' -DestinationPath '%BACKUP_DIR%\%BACKUP_NAME%.zip' -Force"

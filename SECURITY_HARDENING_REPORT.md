@@ -4,6 +4,17 @@
 **Project**: GMAO - Computer-Aided Maintenance Management System  
 **Focus**: Security, Encryption, Access Control, Data Protection
 
+> **⚠ SUPERSEDED (Docker/Nginx sections only) — SEE NOTE**
+> This report's Docker image, Docker Compose, and self-hosted Nginx
+> references describe an earlier architecture that is **no longer used**.
+> The project now runs natively on Render + Vercel + MongoDB Atlas +
+> Supabase Storage, with no Docker or self-hosted Nginx anywhere. TLS,
+> routing, and container-adjacent hardening are now handled by Render and
+> Vercel directly. See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the current
+> deployment process. The application-level hardening (auth, validation,
+> rate limiting, etc.) described elsewhere in this report remains active and
+> accurate.
+
 ---
 
 ## Executive Summary

@@ -111,9 +111,10 @@
     "completeProfileSubmit": "Envoyer pour approbation",
     "completeProfileSaving": "Enregistrement...",
     "completeProfileSaveFailed": "Le profil n?a pas pu ?tre enregistr?.",
-    "completeProfilePosition": "Poste",
     "completeProfileLanguage": "Langue",
-    "completeProfileRequestedRole": "R?le demand?"
+    "completeProfileRequestedRole": "R?le demand?",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe"
   },
   "common": {
     "allFields": "Tous les champs",
@@ -163,7 +164,20 @@
     },
     "logout": "Déconnexion",
     "notAvailable": "N/A",
-    "saving": "Enregistrement en cours..."
+    "saving": "Enregistrement en cours...",
+    "skipToContent": "Aller au contenu principal",
+    "offlineBanner": "Vous etes hors ligne. Certaines fonctionnalites peuvent ne pas fonctionner tant que la connexion n'est pas retablie.",
+    "refresh": "Actualiser",
+    "retry": "Reessayer",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "dismiss": "Fermer",
+    "savedViews": {
+      "save": "Enregistrer la vue",
+      "namePlaceholder": "Nom de la vue",
+      "empty": "Aucune vue enregistree.",
+      "delete": "Supprimer la vue"
+    }
   },
   "dashboard": {
     "status": {
@@ -198,25 +212,42 @@
         "totalMachines": "Machines totales",
         "activeUsers": "Utilisateurs actifs",
         "activeWorkOrders": "Ordres de travail actifs",
-        "completedThisMonth": "Terminés ce mois-ci"
+        "completedThisMonth": "Terminés ce mois-ci",
+        "fleetTotal": "Total du parc",
+        "totalUsers": "Total des utilisateurs",
+        "openMaintenance": "Maintenance ouverte",
+        "openMaintenanceHint": "{overdue} en retard, {dueToday} dues aujourd'hui",
+        "completedToday": "Terminees aujourd'hui",
+        "outOfTotal": "sur {total} au total"
       },
       "workOrders": {
         "recent": "Ordres de travail récents",
         "completionRate": "Taux d'achèvement des ordres de travail",
         "distribution": "Répartition des ordres de travail",
-        "outOf": "sur"
+        "outOf": "sur",
+        "overdue": "En retard",
+        "dueToday": "Dues aujourd'hui",
+        "waitingValidation": "En attente de validation",
+        "completedTodayLabel": "Terminees aujourd'hui",
+        "completionRateHint": "Maintenance preventive terminee a temps ou avant echeance"
       },
       "machines": {
         "availability": "Disponibilité des machines",
         "overview": "Aperçu des machines",
-        "online": "machines en ligne"
+        "online": "machines en ligne",
+        "availabilityHint": "Base sur le temps moyen entre pannes et le temps moyen de reparation"
       },
       "quickKpis": {
         "title": "Indicateurs clés",
         "machineAvailability": "Disponibilité des machines",
         "completionRate": "Taux d'achèvement",
         "activeWorkOrders": "Ordres de travail actifs",
-        "activeUsers": "Utilisateurs actifs"
+        "activeUsers": "Utilisateurs actifs",
+        "stockAlerts": "Alertes de stock",
+        "correctiveResponseTime": "Temps de reponse correctif",
+        "mttr": "MTTR (temps moyen de reparation)",
+        "mtbf": "MTBF (temps moyen entre pannes)",
+        "hoursValue": "{hours} h"
       },
       "databaseSummary": {
         "title": "Résumé de la base de données",
@@ -240,6 +271,14 @@
         "catalogues": "Catalogues",
         "machineTypes": "Types",
         "types": "Types"
+      },
+      "stockAlerts": {
+        "title": "Alertes de stock",
+        "availableOf": "{available} disponible (seuil {threshold})"
+      },
+      "workload": {
+        "title": "Charge de l'equipe",
+        "openCount": "{count} ouvertes"
       }
     },
     "operator": {
@@ -277,7 +316,8 @@
         "underYourCare": "Sous votre responsabilité",
         "inProgress": "En cours",
         "waitingValidation": "En attente de validation",
-        "overdue": "En retard"
+        "overdue": "En retard",
+        "dueToday": "Dues aujourd'hui"
       },
       "dashboard": {
         "operatorConsole": "Console opérateur",
@@ -897,7 +937,10 @@
     },
     "actions": {
       "update": "Mettre à jour le bon de travail",
-      "create": "Créer un bon de travail"
+      "create": "Créer un bon de travail",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "requestCorrection": "Demander une correction"
     },
     "validation": {
       "workOrderIdRequired": "Le numéro OT est requis",
@@ -911,7 +954,13 @@
       "updated": "Bon de travail mis à jour avec succès",
       "created": "Bon de travail créé avec succès",
       "saveFailed": "Échec de l'enregistrement du bon de travail",
-      "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet utilisateur ?"
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet utilisateur ?",
+      "approved": "Bon de travail approuvé avec succès",
+      "approveFailed": "Échec de l'approbation du bon de travail",
+      "rejected": "Bon de travail rejeté avec succès",
+      "rejectFailed": "Échec du rejet du bon de travail",
+      "correctionRequested": "Demande de correction envoyée avec succès",
+      "correctionFailed": "Échec de la demande de correction"
     },
     "sort": {
       "priorityHighToLow": "Trier la priorit? de haute ? basse",
@@ -924,7 +973,14 @@
       "startOldestToNewest": "Trier la date de d?but de la plus ancienne ? la plus r?cente",
       "endNewestToOldest": "Trier la date de fin de la plus r?cente ? la plus ancienne",
       "endOldestToNewest": "Trier la date de fin de la plus ancienne ? la plus r?cente"
-    }
+    },
+    "filters": {
+      "allStatuses": "Tous les statuts",
+      "allPriorities": "Toutes les priorites"
+    },
+    "confirmApprove": "Approuver ce bon de travail ?",
+    "confirmReject": "Rejeter ce bon de travail ?",
+    "confirmRequestCorrection": "Renvoyer ce bon de travail pour correction ?"
   },
   "users": {
     "pageTitle": "Gestion des utilisateurs",
@@ -1119,6 +1175,31 @@
       "update": "Mettre à jour",
       "create": "Créer",
       "saving": "Enregistrement en cours..."
+    },
+    "savedViews": {
+      "title": "Vues enregistrees",
+      "save": "Enregistrer la vue",
+      "namePlaceholder": "Nom de la vue",
+      "empty": "Aucune vue enregistree.",
+      "delete": "Supprimer la vue",
+      "saved": "Vue enregistree.",
+      "saveFailed": "Echec de l'enregistrement de la vue.",
+      "deleted": "Vue supprimee.",
+      "deleteFailed": "Echec de la suppression de la vue."
+    },
+    "bulk": {
+      "selectAll": "Selectionner tout sur cette page",
+      "selectRow": "Selectionner {name}",
+      "selectedCount": "{count} selectionne(s)",
+      "approve": "Approuver la selection",
+      "reject": "Rejeter la selection",
+      "reasonPlaceholder": "Motif du rejet de tous les comptes selectionnes",
+      "clearSelection": "Effacer la selection",
+      "approveSuccess": "{count} comptes approuves.",
+      "approveFailed": "Echec de l'approbation des comptes selectionnes.",
+      "rejectSuccess": "{count} comptes rejetes.",
+      "rejectFailed": "Echec du rejet des comptes selectionnes.",
+      "reasonRequired": "Un motif de rejet est requis."
     }
   },
   "catalogues": {
@@ -1438,7 +1519,10 @@
       },
       "interventionReports": "Rapports d'intervention",
       "pannes": "Pannes",
-      "panneSolutions": "Solutions de panne"
+      "panneSolutions": "Solutions de panne",
+      "knowledgeBase": "Base de connaissances",
+      "devices": "Appareils",
+      "reports": "Rapports"
     }
   },
   "machines": {
@@ -1692,7 +1776,11 @@
       "add": "Televerser un document",
       "view": "Voir",
       "edit": "Modifier",
-      "delete": "Supprimer"
+      "delete": "Supprimer",
+      "publish": "Publier",
+      "archive": "Archiver",
+      "replace": "Remplacer",
+      "history": "Historique des versions"
     },
     "table": {
       "documentId": "ID document",
@@ -1700,7 +1788,9 @@
       "type": "Type",
       "machine": "Machine",
       "uploadedBy": "Televerse par",
-      "dateAdded": "Date d'ajout"
+      "dateAdded": "Date d'ajout",
+      "status": "Statut",
+      "revision": "Revision"
     },
     "empty": {
       "search": "Aucun document ne correspond a votre recherche.",
@@ -1709,28 +1799,33 @@
     "modal": {
       "uploadTitle": "Televerser un document",
       "editTitle": "Modifier le document",
-      "viewTitle": "Voir le document"
+      "viewTitle": "Voir le document",
+      "replaceTitle": "Remplacer le document",
+      "historyTitle": "Historique des versions"
     },
     "form": {
-      "file": "Selectionner un fichier PDF",
+      "file": "Selectionner un fichier PDF ou Office",
       "machine": "Machine",
       "type": "Type de document",
       "description": "Description",
       "tags": "Etiquettes (separees par des virgules)",
-      "uploadedBy": "Televerse par"
+      "uploadedBy": "Televerse par",
+      "reason": "Motif"
     },
     "placeholders": {
       "selectMachine": "Selectionner une machine...",
       "type": "ex. Manuel, Specification, Guide de maintenance",
       "description": "Saisir la description du document...",
       "tags": "ex. preventif, electrique, moteur",
-      "uploadedBy": "Saisissez votre nom ou nom d'utilisateur..."
+      "uploadedBy": "Saisissez votre nom ou nom d'utilisateur...",
+      "reason": "Expliquer ce remplacement"
     },
     "buttons": {
       "upload": "Televerser le document",
       "update": "Mettre a jour le document",
       "cancel": "Annuler",
-      "save": "Enregistrer"
+      "save": "Enregistrer",
+      "replace": "Remplacer"
     },
     "viewer": {
       "title": "Visionneuse de documents",
@@ -1742,7 +1837,7 @@
       "unsupported": "Ce type de fichier n'est pas pris en charge pour l'apercu."
     },
     "notifications": {
-      "fileRequired": "Veuillez selectionner un fichier PDF",
+      "fileRequired": "Veuillez selectionner un fichier",
       "machineRequired": "Veuillez selectionner une machine",
       "typeRequired": "Veuillez saisir le type de document",
       "created": "Document televerse avec succes",
@@ -1750,7 +1845,28 @@
       "deleted": "Document supprime avec succes",
       "saveFailed": "Echec de l'enregistrement du document",
       "deleteFailed": "Echec de la suppression du document",
-      "confirmDelete": "Voulez-vous vraiment supprimer ce document ? Cette action est irreversible."
+      "confirmDelete": "Supprimer ce document ? Cela n'est possible que pour un brouillon jamais modifie et sans historique de version.",
+      "confirmPublish": "Publier ce document ? Il deviendra la version actuelle et citable pour sa machine liee.",
+      "publishSuccess": "Document publie avec succes",
+      "publishFailed": "Echec de la publication du document",
+      "confirmArchive": "Archiver ce document ? Il deviendra en lecture seule, mais son historique est conserve.",
+      "archiveSuccess": "Document archive avec succes",
+      "archiveFailed": "Echec de l'archivage du document",
+      "confirmReplace": "Remplacer \"{fileName}\" par un nouveau fichier ? La version actuelle sera marquee comme remplacee et conservee pour l'historique.",
+      "replaceSuccess": "Document remplace avec succes",
+      "replaceFailed": "Echec du remplacement du document",
+      "historyLoadFailed": "Echec du chargement de l'historique des versions"
+    },
+    "filterAllStatuses": "Tous les statuts",
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publie",
+      "archived": "Archive",
+      "superseded": "Remplace"
+    },
+    "history": {
+      "empty": "Aucun historique de version disponible.",
+      "current": "actuel"
     }
   },
   "maintenancePlans": {
@@ -1774,7 +1890,9 @@
       "documentation": "Documentation",
       "maintenanceCode": "Code maintenance",
       "frequencyLabel": "Libelle frequence",
-      "planCode": "Code plan"
+      "planCode": "Code plan",
+      "machineHealth": "Sante de la machine",
+      "status": "Statut"
     },
     "custom": "Personnalise",
     "empty": {
@@ -1854,6 +1972,10 @@
       "paused": "En pause",
       "archived": "Archivé",
       "completed": "Terminé"
+    },
+    "filters": {
+      "allStatuses": "Tous les statuts",
+      "allTypes": "Tous les types"
     }
   },
   "stocks": {
@@ -1996,6 +2118,7 @@
     "completedTasks": "Taches completes",
     "pendingTasks": "Taches en attente",
     "taskStatus": "Etat de la tache",
+    "completionRate": "Taux d'achevement",
     "table": {
       "planId": "ID du plan",
       "machine": "Machine",
@@ -2101,7 +2224,6 @@
       "next": "Suivant",
       "saveReport": "Enregistrer le rapport",
       "addPart": "Ajouter une pièce",
-      "approve": "Approuver le rapport",
       "return": "Retourner le rapport",
       "intervene": "Démarrer l’intervention",
       "start": "Démarrer l’intervention",
@@ -2190,7 +2312,8 @@
     },
     "messages": {
       "confirmClose": "Clôturer cet ordre de travail ? Le rapport doit être complet.",
-      "completed": "Cette intervention est terminée."
+      "completed": "Cette intervention est terminée.",
+      "awaitingValidation": "Ce travail est terminé et en attente d'une validation indépendante par un autre utilisateur autorisé."
     }
   },
   "miniAvatar": {
@@ -2242,5 +2365,315 @@
     "clear": "Effacer",
     "loading": "Chargement...",
     "empty": "Aucune notification"
+  },
+  "knowledgeBase": {
+    "title": "Base de connaissances",
+    "heading": "Base de connaissances de maintenance",
+    "description": "Articles de depannage, procedures, explications des codes de panne, instructions de lubrification et documents de securite.",
+    "readerIntro": "Parcourez les articles de depannage, procedures et documents de securite publies pertinents pour vos machines.",
+    "searchPlaceholder": "Rechercher par titre, tag ou code de panne...",
+    "filterAllCategories": "Toutes les categories",
+    "filterAllStatuses": "Tous les statuts",
+    "categories": {
+      "troubleshooting": "Depannage",
+      "procedure": "Procedure",
+      "fault_code": "Code de panne",
+      "lubrication": "Lubrification",
+      "safety": "Securite"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publie",
+      "archived": "Archive"
+    },
+    "table": {
+      "revision": "Revision",
+      "category": "Categorie",
+      "machine": "Machine",
+      "faultCodes": "Codes de panne"
+    },
+    "form": {
+      "articleId": "ID de l'article",
+      "category": "Categorie",
+      "title": "Titre",
+      "summary": "Resume",
+      "content": "Contenu",
+      "machineType": "Type de machine",
+      "machine": "Machine",
+      "maintenancePlan": "Plan de maintenance",
+      "tags": "Tags",
+      "faultCodes": "Codes de panne",
+      "errorCodes": "Codes d'erreur"
+    },
+    "placeholders": {
+      "articleId": "ex. KB-ROULEMENT-001",
+      "title": "Titre de l'article",
+      "summary": "Court resume affiche dans les listes",
+      "content": "Contenu complet de l'article",
+      "none": "Aucun",
+      "tags": "Tags separes par des virgules",
+      "faultCodes": "Codes de panne separes par des virgules",
+      "errorCodes": "Codes d'erreur separes par des virgules"
+    },
+    "actions": {
+      "add": "Nouvel article",
+      "view": "Voir",
+      "history": "Historique des versions",
+      "edit": "Modifier",
+      "publish": "Publier",
+      "revise": "Reviser",
+      "archive": "Archiver",
+      "delete": "Supprimer"
+    },
+    "modal": {
+      "createTitle": "Nouvel article de connaissance",
+      "editTitle": "Modifier l'article",
+      "reviseTitle": "Reviser l'article publie",
+      "reviseHint": "Ceci cree une nouvelle version brouillon. L'article actuellement publie reste inchange jusqu'a la publication de cette revision.",
+      "historyTitle": "Historique des versions"
+    },
+    "buttons": {
+      "create": "Creer",
+      "update": "Enregistrer",
+      "revise": "Creer la revision"
+    },
+    "history": {
+      "empty": "Aucun historique de version disponible.",
+      "current": "actuel"
+    },
+    "viewer": {
+      "title": "Article"
+    },
+    "empty": {
+      "search": "Aucun article ne correspond a votre recherche.",
+      "default": "Aucun article dans la base de connaissances."
+    },
+    "notifications": {
+      "loadFailed": "Echec du chargement des articles.",
+      "saveFailed": "Echec de l'enregistrement de l'article.",
+      "created": "Article cree.",
+      "updated": "Article mis a jour.",
+      "revised": "Revision creee.",
+      "deleted": "Article supprime.",
+      "deleteFailed": "Echec de la suppression de l'article.",
+      "articleIdRequired": "L'ID de l'article est requis.",
+      "titleRequired": "Le titre est requis.",
+      "contentRequired": "Le contenu est requis.",
+      "confirmPublish": "Publier cet article ?",
+      "publishSuccess": "Article publie.",
+      "publishFailed": "Echec de la publication de l'article.",
+      "confirmArchive": "Archiver cet article ?",
+      "archiveSuccess": "Article archive.",
+      "archiveFailed": "Echec de l'archivage de l'article.",
+      "confirmDelete": "Supprimer cet article ? Cette action est irreversible.",
+      "historyLoadFailed": "Echec du chargement de l'historique."
+    },
+    "suggestions": {
+      "title": "Connaissances associees"
+    }
+  },
+  "aiAssistant": {
+    "title": "Assistant IA (a titre consultatif)",
+    "disclaimer": "A titre consultatif uniquement : cet assistant suggere des pistes possibles a partir des donnees disponibles. Il ne modifie jamais un ordre de travail, le stock ou le statut d'une machine -- verifiez toujours avant d'agir.",
+    "questionPlaceholder": "Decrivez le symptome ou posez une question de depannage...",
+    "ask": "Demander",
+    "asking": "Envoi en cours...",
+    "requestFailed": "Impossible de contacter l'assistant IA. Veuillez reessayer.",
+    "statusDisabled": "L'assistant IA n'est pas active dans cet environnement.",
+    "statusRateLimited": "Vous avez atteint la limite de demandes pour l'assistant IA. Veuillez reessayer plus tard.",
+    "statusUnavailable": "L'assistant IA n'a pas pu generer de reponse pour le moment. Veuillez reessayer ou continuer manuellement.",
+    "knownFacts": "Faits connus",
+    "probableCauses": "Causes probables",
+    "recommendedChecks": "Verifications recommandees",
+    "safetyWarnings": "Avertissements de securite",
+    "uncertainty": "Incertitude"
+  },
+  "deviceMonitoring": {
+    "title": "Appareils",
+    "heading": "Appareils de surveillance des machines",
+    "description": "Enregistrez des passerelles OpenPLC ou des simulateurs pour diffuser en direct la telemetrie, les signaux de presence et les evenements de panne d'une machine.",
+    "empty": "Aucun appareil enregistre pour le moment.",
+    "status": {
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "deviceTypes": {
+      "openplc": "OpenPLC",
+      "simulator": "Simulateur",
+      "gateway": "Passerelle"
+    },
+    "table": {
+      "liveStatus": "Statut en direct"
+    },
+    "lastSignal": "Dernier signal",
+    "lastSignalValue": "il y a {value}",
+    "never": "jamais",
+    "activeAlarms": "Alarmes actives",
+    "form": {
+      "deviceId": "ID de l'appareil",
+      "deviceType": "Type d'appareil",
+      "machine": "Machine",
+      "label": "Etiquette",
+      "heartbeatInterval": "Intervalle de signal de presence (secondes)"
+    },
+    "placeholders": {
+      "deviceId": "ex. PLC-LIGNE1-01",
+      "selectMachine": "Selectionner une machine",
+      "label": "Nom convivial affiche aux administrateurs"
+    },
+    "actions": {
+      "register": "Enregistrer un appareil",
+      "activate": "Activer",
+      "deactivate": "Desactiver",
+      "rotateKey": "Renouveler la cle API",
+      "delete": "Supprimer"
+    },
+    "modal": {
+      "registerTitle": "Enregistrer un nouvel appareil",
+      "apiKeyTitle": "Cle API de l'appareil",
+      "apiKeyWarning": "Cette cle n'est affichee qu'une seule fois. Copiez-la maintenant et conservez-la en lieu sur — elle ne pourra plus etre recuperee."
+    },
+    "buttons": {
+      "register": "Enregistrer",
+      "doneCopying": "J'ai copie la cle"
+    },
+    "notifications": {
+      "loadFailed": "Echec du chargement des appareils.",
+      "saveFailed": "Echec de l'enregistrement de l'appareil.",
+      "registerValidation": "L'ID de l'appareil et la machine sont requis.",
+      "registered": "Appareil enregistre.",
+      "activated": "Appareil active.",
+      "deactivated": "Appareil desactive.",
+      "confirmRotate": "Renouveler la cle API de cet appareil ? L'ancienne cle cessera de fonctionner immediatement.",
+      "rotated": "Cle API renouvelee.",
+      "confirmDelete": "Supprimer cet enregistrement d'appareil ? Cette action est irreversible.",
+      "deleted": "Appareil supprime.",
+      "deleteFailed": "Echec de la suppression de l'appareil."
+    },
+    "suggestions": {}
+  },
+  "predictiveMaintenance": {
+    "table": {
+      "health": "Sante"
+    },
+    "panelTitle": "Sante predictive",
+    "disclaimer": "A titre consultatif uniquement : ce sont des estimations du modele basees sur des donnees historiques, pas des diagnostics verifies. Confirmez toujours avec un technicien avant d'agir.",
+    "measuredFacts": "Faits mesures",
+    "modelOutput": "Resultat du modele",
+    "uncertainty": "Incertitude",
+    "confidence": "Confiance",
+    "healthScoreValue": "{value}%",
+    "riskLevelTooltip": "Niveau de risque : {level}",
+    "riskLevels": {
+      "low": "Risque faible",
+      "medium": "Risque moyen",
+      "high": "Risque eleve",
+      "critical": "Risque critique",
+      "insufficient_data": "Donnees insuffisantes"
+    },
+    "modelTypes": {
+      "zscore": "Reference Z-Score",
+      "isolation_forest": "Isolation Forest",
+      "dbscan": "Clustering de densite DBSCAN",
+      "autoencoder": "Autoencodeur (erreur de reconstruction)"
+    }
+  },
+  "reports": {
+    "pageTitle": "Rapports",
+    "heading": "Rapports",
+    "description": "Generer des exports PDF, Excel et CSV a partir des donnees de maintenance, de stock et predictives existantes.",
+    "builder": {
+      "title": "Generer un rapport",
+      "type": "Type de rapport",
+      "format": "Format",
+      "machine": "Machine",
+      "allAccessibleMachines": "Toutes les machines accessibles",
+      "dateFrom": "Date de debut",
+      "dateTo": "Date de fin",
+      "generate": "Generer le rapport",
+      "generating": "Generation en cours..."
+    },
+    "charts": {
+      "byType": "Rapports par type",
+      "byStatus": "Rapports par statut"
+    },
+    "history": {
+      "title": "Rapports generes",
+      "scope": "Portee",
+      "scopeAll": "Tous les rapports",
+      "scopeMine": "Mes rapports",
+      "refresh": "Actualiser",
+      "download": "Telecharger",
+      "table": {
+        "type": "Type",
+        "format": "Format",
+        "status": "Statut",
+        "rows": "Lignes",
+        "requested": "Demande le",
+        "actions": "Actions"
+      }
+    },
+    "schedules": {
+      "title": "Rapports planifies",
+      "frequency": "Frequence",
+      "rangeDays": "Fenetre glissante (jours)",
+      "create": "Creer la planification",
+      "creating": "Creation en cours...",
+      "nextRun": "Prochaine execution",
+      "active": "Actif",
+      "empty": "Aucun rapport planifie.",
+      "activeLabel": "Actif",
+      "pausedLabel": "En pause"
+    },
+    "types": {
+      "machine_history": "Historique machine",
+      "preventive_compliance": "Conformite preventive",
+      "corrective_downtime": "Temps d'arret correctif",
+      "mttr_mtbf_trends": "Tendances MTTR / MTBF",
+      "stock_movements": "Mouvements de stock",
+      "maintenance_costs": "Couts de maintenance",
+      "technician_workload": "Charge de travail technicien",
+      "fault_frequency": "Frequence des pannes",
+      "audit_history": "Historique d'audit",
+      "predictive_risk": "Risque predictif"
+    },
+    "formats": {
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV"
+    },
+    "frequencies": {
+      "daily": "Quotidien",
+      "weekly": "Hebdomadaire",
+      "monthly": "Mensuel"
+    },
+    "status": {
+      "pending": "En attente",
+      "processing": "En cours",
+      "completed": "Termine",
+      "failed": "Echoue"
+    },
+    "empty": {
+      "default": "Aucune donnee disponible."
+    },
+    "notifications": {
+      "loadFailed": "Echec du chargement des rapports.",
+      "scheduleLoadFailed": "Echec du chargement des rapports planifies.",
+      "machineRequired": "Veuillez selectionner une machine.",
+      "requested": "Rapport demande. Il apparaitra ci-dessous une fois genere.",
+      "requestFailed": "Echec de la demande de rapport.",
+      "downloadFailed": "Echec du telechargement du rapport.",
+      "confirmDelete": "Supprimer ce rapport ?",
+      "deleted": "Rapport supprime.",
+      "deleteFailed": "Echec de la suppression du rapport.",
+      "scheduleCreated": "Planification creee.",
+      "scheduleCreateFailed": "Echec de la creation de la planification.",
+      "scheduleUpdateFailed": "Echec de la mise a jour de la planification.",
+      "confirmScheduleDelete": "Supprimer cette planification ?",
+      "scheduleDeleted": "Planification supprimee.",
+      "scheduleDeleteFailed": "Echec de la suppression de la planification."
+    }
   }
 }

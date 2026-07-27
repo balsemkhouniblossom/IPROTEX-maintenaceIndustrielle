@@ -9,15 +9,16 @@ skinparam usecase {
   ArrowColor #334155
 }
 
-title Diagramme global des cas d'utilisation - Systeme GMAO
+title Diagramme global des cas d'utilisation - GMAO industrielle
 
 actor "Visiteur" as Visitor
 actor "Utilisateur authentifie" as User
 actor "Administrateur" as Admin
 actor "Operateur" as Operator
 actor "Technicien" as Technician
-actor "Service Google OAuth" as Google
-actor "Service Email" as Email
+actor "Machine" as MachineActor
+actor "Service de messagerie" as Messaging
+actor "Module IA (assistant correctif)" as AI
 actor "Planificateur automatique" as Scheduler
 
 User <|-- Admin
@@ -25,116 +26,90 @@ User <|-- Operator
 User <|-- Technician
 
 rectangle "Systeme GMAO" {
-  package "Authentification et compte" {
+
+  package "Authentification et comptes" {
     usecase "S'inscrire" as UC_Register
-    usecase "Verifier l'email" as UC_VerifyEmail
+    usecase "Verifier email" as UC_VerifyEmail
     usecase "Se connecter" as UC_Login
     usecase "Se connecter avec Google" as UC_GoogleLogin
-    usecase "Rafraichir la session" as UC_Refresh
+    usecase "Rafraichir session" as UC_Refresh
     usecase "Se deconnecter" as UC_Logout
-    usecase "Reinitialiser le mot de passe" as UC_ResetPassword
+    usecase "Mot de passe oublie" as UC_ForgotPassword
+    usecase "Reinitialiser mot de passe" as UC_ResetPassword
     usecase "Gerer son profil" as UC_Profile
-    usecase "Televerser une photo" as UC_UploadPhoto
   }
 
-  package "Tableaux de bord et pilotage" {
-    usecase "Consulter le tableau de bord global" as UC_AdminDashboard
-    usecase "Consulter les statistiques et KPI" as UC_KPI
-    usecase "Consulter l'etat du systeme" as UC_Health
-    usecase "Consulter le calendrier de maintenance" as UC_Calendar
-    usecase "Recevoir les notifications calendrier" as UC_CalendarNotifications
-    usecase "Consulter l'assistant correctif" as UC_CorrectiveAssistant
+  package "Administration" {
+    usecase "Gerer utilisateurs" as UC_ManageUsers
+    usecase "Gerer machines" as UC_ManageMachines
+    usecase "Gerer types de machines" as UC_ManageMachineTypes
+    usecase "Gerer modules" as UC_ManageModules
+    usecase "Gerer types de modules" as UC_ManageModuleTypes
+    usecase "Gerer plans de maintenance" as UC_ManagePlans
+    usecase "Gerer checklist preventive" as UC_ManagePreventiveTasks
+    usecase "Synchroniser checklist depuis plans" as UC_SyncChecklist
   }
 
-  package "Administration des utilisateurs" {
-    usecase "Gerer les utilisateurs" as UC_ManageUsers
-    usecase "Activer ou modifier un compte" as UC_UpdateUser
-    usecase "Supprimer un utilisateur" as UC_DeleteUser
+  package "Interventions et ordres de travail" {
+    usecase "Gerer ordres de travail" as UC_ManageWO
+    usecase "Creer ordre de travail" as UC_CreateWO
+    usecase "Mettre a jour ordre de travail" as UC_UpdateWO
+    usecase "Valider ordre de travail" as UC_ValidateWO
+    usecase "Consulter rapports d'intervention" as UC_ViewReports
   }
 
-  package "Patrimoine industriel" {
-    usecase "Gerer les machines" as UC_ManageMachines
-    usecase "Gerer les types de machines" as UC_ManageMachineTypes
-    usecase "Gerer les modules" as UC_ManageModules
-    usecase "Gerer les types de modules" as UC_ManageModuleTypes
-    usecase "Gerer les pieces standards par module" as UC_ManageModulePieces
-    usecase "Consulter ses machines affectees" as UC_MyMachines
+  package "Maintenance preventive" {
+    usecase "Traiter maintenance preventive" as UC_PreventiveFlow
+    usecase "Planifier premiere occurrence" as UC_ScheduleFirst
+    usecase "Executer occurrence preventive" as UC_ExecutePreventive
+    usecase "Soumettre intervention preventive" as UC_SubmitPreventive
+    usecase "Valider intervention preventive" as UC_ApprovePreventive
+    usecase "Replanifier occurrence preventive" as UC_ReschedulePreventive
+    usecase "Generer prochaine echeance automatiquement" as UC_GenerateNextDue
+    usecase "Consulter etat preventif machine" as UC_PreventiveState
   }
 
-  package "Maintenance" {
-    usecase "Gerer les ordres de travail" as UC_ManageWorkOrders
-    usecase "Creer un ordre de travail" as UC_CreateWO
-    usecase "Mettre a jour un ordre de travail" as UC_UpdateWO
-    usecase "Cloturer un ordre de travail" as UC_CompleteWO
-    usecase "Valider un ordre de travail" as UC_ValidateWO
-    usecase "Replanifier une maintenance preventive" as UC_RescheduleWO
-    usecase "Gerer les plans de maintenance" as UC_ManagePlans
-    usecase "Gerer la checklist preventive" as UC_ManagePreventiveTasks
-    usecase "Synchroniser les taches depuis les plans" as UC_SyncPreventiveTasks
-    usecase "Gerer les rapports d'intervention" as UC_ManageReports
-    usecase "Consulter l'historique des interventions" as UC_InterventionHistory
+  package "Maintenance corrective" {
+    usecase "Traiter maintenance corrective" as UC_CorrectiveFlow
+    usecase "Signaler panne et creer OT corrective" as UC_ReportFault
+    usecase "Executer intervention corrective" as UC_ExecuteCorrective
+    usecase "Valider intervention corrective" as UC_ApproveCorrective
+    usecase "Demander pieces" as UC_RequestParts
+    usecase "Decider demande pieces" as UC_DecideParts
+    usecase "Consommer pieces et decrementer stock" as UC_ConsumeStock
+    usecase "Consulter assistant correctif" as UC_CorrectiveAssistant
+    usecase "Proposer solutions de panne" as UC_ProposeFaultSolutions
   }
 
-  package "Espace operateur" {
-    usecase "Consulter son tableau de bord" as UC_OperatorDashboard
-    usecase "Consulter ses ordres de travail" as UC_MyWorkOrders
-    usecase "Demarrer une maintenance preventive" as UC_StartPreventive
-    usecase "Planifier une preventive" as UC_SchedulePreventive
-    usecase "Demarrer une maintenance corrective" as UC_StartCorrective
-    usecase "Signaler un probleme" as UC_ReportProblem
-    usecase "Consulter ses rapports" as UC_MyReports
-    usecase "Consulter les pannes et solutions" as UC_ViewFaultHelp
-    usecase "Consulter ses manuels techniques" as UC_OperatorManuals
+  package "Stocks et catalogue" {
+    usecase "Gerer stock" as UC_ManageStock
+    usecase "Gerer catalogue des pieces" as UC_ManageCatalog
+    usecase "Gerer pieces liees aux OT" as UC_ManageOtPieces
+    usecase "Gerer lubrifiants" as UC_ManageLubricants
+    usecase "Gerer journaux de lubrification" as UC_ManageLubLogs
   }
 
-  package "Espace technicien" {
-    usecase "Consulter son tableau de bord technicien" as UC_TechDashboard
-    usecase "Consulter les OT assignes ou disponibles" as UC_TechWorkOrders
-    usecase "Prendre en charge un OT" as UC_ClaimWO
-    usecase "Analyser ou retourner une demande" as UC_ReviewWO
-    usecase "Demarrer l'intervention" as UC_StartIntervention
-    usecase "Mettre en attente de pieces" as UC_WaitingParts
-    usecase "Reprendre l'intervention" as UC_ResumeIntervention
-    usecase "Renseigner le rapport technique" as UC_UpdateTechReport
-    usecase "Declarer les pieces utilisees" as UC_DeclareParts
-    usecase "Fermer l'intervention" as UC_CloseIntervention
-    usecase "Consulter les manuels machine" as UC_TechManuals
-    usecase "Consulter les pieces disponibles" as UC_TechParts
+  package "Documents" {
+    usecase "Gerer documents techniques" as UC_ManageDocuments
+    usecase "Televerser document" as UC_UploadDocument
+    usecase "Consulter document" as UC_ViewDocument
+    usecase "Consulter manuels machine" as UC_ViewManuals
   }
 
-  package "Pannes et aide au diagnostic" {
-    usecase "Gerer les pannes" as UC_ManageFaults
-    usecase "Gerer les solutions de pannes" as UC_ManageFaultSolutions
-    usecase "Rechercher une panne" as UC_SearchFault
-    usecase "Consulter une solution" as UC_ViewSolution
+  package "Notifications et messagerie" {
+    usecase "Consulter notifications" as UC_ViewNotifications
+    usecase "Marquer notifications comme lues" as UC_ReadNotifications
+    usecase "Generer notifications automatiques" as UC_AutoNotifications
+    usecase "Envoyer emails transactionnels" as UC_SendEmails
   }
 
-  package "Stock, catalogue et lubrification" {
-    usecase "Gerer le catalogue des pieces" as UC_ManageCatalog
-    usecase "Gerer les stocks" as UC_ManageStocks
-    usecase "Associer les pieces aux OT" as UC_ManageOtPieces
-    usecase "Gerer les lubrifiants" as UC_ManageLubricants
-    usecase "Gerer les journaux de lubrification" as UC_ManageLubLogs
-    usecase "Decrementer le stock apres utilisation" as UC_DecrementStock
-  }
-
-  package "Supervision IoT" {
-    usecase "Gerer les capteurs" as UC_ManageSensors
-    usecase "Gerer les mesures" as UC_ManageMeasures
-    usecase "Suivre l'etat des machines" as UC_MonitorMachines
-  }
-
-  package "Documentation technique" {
-    usecase "Gerer les documents" as UC_ManageDocuments
-    usecase "Televerser un document" as UC_UploadDocument
-    usecase "Consulter un document" as UC_ViewDocument
-    usecase "Consulter les manuels lies aux machines" as UC_ViewManuals
-  }
-
-  package "Automatisation" {
-    usecase "Generer les OT preventifs planifies" as UC_AutoGenerateWO
-    usecase "Mettre a jour les rappels de maintenance" as UC_AutoReminders
-    usecase "Envoyer les emails transactionnels" as UC_SendEmail
+  package "Capteurs et KPI" {
+    usecase "Gerer capteurs" as UC_ManageSensors
+    usecase "Gerer mesures" as UC_ManageMeasures
+    usecase "Collecter mesures machine" as UC_CollectMeasures
+    usecase "Surveiller alertes capteurs" as UC_SensorAlerts
+    usecase "Consulter KPI" as UC_ViewKPI
+    usecase "Mettre a jour KPI automatiquement" as UC_RefreshKPI
   }
 }
 
@@ -142,113 +117,102 @@ Visitor --> UC_Register
 Visitor --> UC_Login
 Visitor --> UC_GoogleLogin
 Visitor --> UC_VerifyEmail
+Visitor --> UC_ForgotPassword
 Visitor --> UC_ResetPassword
 
 User --> UC_Refresh
 User --> UC_Logout
 User --> UC_Profile
-UC_Profile ..> UC_UploadPhoto : <<include>>
 
-Google --> UC_GoogleLogin
-Email --> UC_VerifyEmail
-Email --> UC_ResetPassword
-Email --> UC_SendEmail
-
-Admin --> UC_AdminDashboard
-Admin --> UC_KPI
-Admin --> UC_Health
-Admin --> UC_Calendar
-Admin --> UC_CalendarNotifications
-Admin --> UC_CorrectiveAssistant
 Admin --> UC_ManageUsers
 Admin --> UC_ManageMachines
 Admin --> UC_ManageMachineTypes
 Admin --> UC_ManageModules
 Admin --> UC_ManageModuleTypes
-Admin --> UC_ManageModulePieces
-Admin --> UC_ManageWorkOrders
-Admin --> UC_ValidateWO
-Admin --> UC_RescheduleWO
 Admin --> UC_ManagePlans
 Admin --> UC_ManagePreventiveTasks
-Admin --> UC_ManageReports
-Admin --> UC_ManageFaults
-Admin --> UC_ManageFaultSolutions
+Admin --> UC_ManageWO
+Admin --> UC_ValidateWO
+Admin --> UC_ViewReports
+Admin --> UC_ManageStock
 Admin --> UC_ManageCatalog
-Admin --> UC_ManageStocks
 Admin --> UC_ManageOtPieces
 Admin --> UC_ManageLubricants
 Admin --> UC_ManageLubLogs
+Admin --> UC_ManageDocuments
+Admin --> UC_ViewKPI
 Admin --> UC_ManageSensors
 Admin --> UC_ManageMeasures
-Admin --> UC_ManageDocuments
+Admin --> UC_CorrectiveAssistant
+Admin --> UC_ViewNotifications
 
-Operator --> UC_OperatorDashboard
-Operator --> UC_MyMachines
-Operator --> UC_MyWorkOrders
-Operator --> UC_Calendar
-Operator --> UC_StartPreventive
-Operator --> UC_SchedulePreventive
-Operator --> UC_StartCorrective
-Operator --> UC_ReportProblem
-Operator --> UC_MyReports
-Operator --> UC_ViewFaultHelp
-Operator --> UC_OperatorManuals
+Operator --> UC_PreventiveFlow
+Operator --> UC_CorrectiveFlow
+Operator --> UC_PreventiveState
+Operator --> UC_ViewManuals
+Operator --> UC_ViewNotifications
+Operator --> UC_ViewKPI
 
-Technician --> UC_TechDashboard
-Technician --> UC_TechWorkOrders
-Technician --> UC_ClaimWO
-Technician --> UC_ReviewWO
-Technician --> UC_StartIntervention
-Technician --> UC_WaitingParts
-Technician --> UC_ResumeIntervention
-Technician --> UC_UpdateTechReport
-Technician --> UC_DeclareParts
-Technician --> UC_CloseIntervention
-Technician --> UC_TechManuals
-Technician --> UC_TechParts
-Technician --> UC_InterventionHistory
+Technician --> UC_ApprovePreventive
+Technician --> UC_ExecuteCorrective
+Technician --> UC_ApproveCorrective
+Technician --> UC_DecideParts
+Technician --> UC_ConsumeStock
+Technician --> UC_ViewManuals
+Technician --> UC_ViewReports
+Technician --> UC_ViewNotifications
 
-Scheduler --> UC_AutoGenerateWO
-Scheduler --> UC_AutoReminders
-Scheduler --> UC_SendEmail
+MachineActor --> UC_CollectMeasures
+Messaging --> UC_SendEmails
+AI --> UC_ProposeFaultSolutions
+Scheduler --> UC_GenerateNextDue
+Scheduler --> UC_AutoNotifications
+Scheduler --> UC_SensorAlerts
+Scheduler --> UC_RefreshKPI
 
-UC_ManageUsers ..> UC_UpdateUser : <<include>>
-UC_ManageUsers ..> UC_DeleteUser : <<include>>
-UC_ManageWorkOrders ..> UC_CreateWO : <<include>>
-UC_ManageWorkOrders ..> UC_UpdateWO : <<include>>
-UC_ManageWorkOrders ..> UC_CompleteWO : <<include>>
-UC_ManagePreventiveTasks ..> UC_SyncPreventiveTasks : <<extend>>
-UC_StartPreventive ..> UC_SchedulePreventive : <<include>>
-UC_StartCorrective ..> UC_ReportProblem : <<include>>
-UC_ViewFaultHelp ..> UC_SearchFault : <<include>>
-UC_ViewFaultHelp ..> UC_ViewSolution : <<include>>
-UC_DeclareParts ..> UC_DecrementStock : <<include>>
+UC_ManageWO ..> UC_CreateWO : <<include>>
+UC_ManageWO ..> UC_UpdateWO : <<include>>
+UC_ManageWO ..> UC_ValidateWO : <<include>>
+
+UC_ManagePreventiveTasks ..> UC_SyncChecklist : <<extend>>
+
+UC_PreventiveFlow ..> UC_ScheduleFirst : <<include>>
+UC_PreventiveFlow ..> UC_ExecutePreventive : <<include>>
+UC_PreventiveFlow ..> UC_SubmitPreventive : <<include>>
+UC_PreventiveFlow ..> UC_ApprovePreventive : <<include>>
+UC_PreventiveFlow ..> UC_PreventiveState : <<include>>
+UC_ApprovePreventive ..> UC_GenerateNextDue : <<include>>
+UC_ReschedulePreventive ..> UC_ScheduleFirst : <<extend>>
+
+UC_CorrectiveFlow ..> UC_ReportFault : <<include>>
+UC_CorrectiveFlow ..> UC_ExecuteCorrective : <<include>>
+UC_CorrectiveFlow ..> UC_ApproveCorrective : <<include>>
+UC_CorrectiveFlow ..> UC_RequestParts : <<extend>>
+UC_DecideParts ..> UC_ConsumeStock : <<include>>
+UC_CorrectiveAssistant ..> UC_ProposeFaultSolutions : <<include>>
+
 UC_ManageDocuments ..> UC_UploadDocument : <<include>>
-UC_OperatorManuals ..> UC_ViewManuals : <<include>>
-UC_TechManuals ..> UC_ViewManuals : <<include>>
 UC_ViewManuals ..> UC_ViewDocument : <<include>>
-UC_MonitorMachines ..> UC_ManageSensors : <<include>>
-UC_MonitorMachines ..> UC_ManageMeasures : <<include>>
-UC_AutoGenerateWO ..> UC_ManageWorkOrders : <<include>>
-UC_AutoReminders ..> UC_CalendarNotifications : <<include>>
 
-note right of Admin
-  Role avec acces global:
-  referentiels, maintenance,
-  stock, IoT, documents, KPI.
+UC_AutoNotifications ..> UC_SendEmails : <<extend>>
+UC_ViewNotifications ..> UC_ReadNotifications : <<extend>>
+
+UC_ManageMeasures ..> UC_CollectMeasures : <<include>>
+UC_SensorAlerts ..> UC_CollectMeasures : <<include>>
+UC_RefreshKPI ..> UC_ViewKPI : <<extend>>
+
+note right of UC_PreventiveFlow
+Flux preventif implemente:
+1) planification de la premiere occurrence
+2) execution/soumission par l'operateur
+3) validation par technicien/admin
+4) generation automatique de la prochaine echeance
 end note
 
-note right of Operator
-  Role centre sur les machines affectees:
-  signalement, preventive/corrective,
-  calendrier, rapports et manuels.
-end note
-
-note right of Technician
-  Role centre sur l'execution:
-  prise en charge, intervention,
-  pieces, rapport et cloture.
+note right of UC_CorrectiveFlow
+Flux correctif implemente:
+signalement panne, intervention,
+validation, pieces et impact stock.
 end note
 
 @enduml

@@ -12,24 +12,33 @@ jest.mock('bcrypt', () => ({
 }));
 
 function createQuery<T>(result: T) {
-  return {
+  const query: { session: jest.Mock; exec: jest.Mock } = {
+    session: jest.fn(),
     exec: jest.fn().mockResolvedValue(result),
   };
+  query.session.mockReturnValue(query);
+  return query;
 }
 
 describe('UsersService', () => {
   let service: UsersService;
+  let session: { withTransaction: jest.Mock; endSession: jest.Mock };
   let userModel: jest.Mock & {
     findOne: jest.Mock;
     findById: jest.Mock;
     find: jest.Mock;
     countDocuments: jest.Mock;
     findOneAndUpdate: jest.Mock;
+    db: { startSession: jest.Mock };
   };
   let savedDocuments: Array<Record<string, unknown>>;
 
   beforeEach(async () => {
     savedDocuments = [];
+    session = {
+      withTransaction: jest.fn(async (fn: () => Promise<unknown>) => fn()),
+      endSession: jest.fn().mockResolvedValue(undefined),
+    };
     userModel = jest
       .fn()
       .mockImplementation((document: Record<string, unknown>) => {
@@ -44,6 +53,7 @@ describe('UsersService', () => {
     userModel.find = jest.fn();
     userModel.countDocuments = jest.fn();
     userModel.findOneAndUpdate = jest.fn();
+    userModel.db = { startSession: jest.fn().mockResolvedValue(session) };
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
     const module: TestingModule = await Test.createTestingModule({
@@ -389,6 +399,36 @@ describe('UsersService', () => {
     expect(result.totalItems).toBe(1);
   });
 
+  it('sorts the administrator users list by an allow-listed field and direction', async () => {
+    const chain = createFindChain([createUserDocument()]);
+    userModel.find.mockReturnValue(chain);
+    userModel.countDocuments.mockReturnValue(createQuery(1));
+
+    await service.findAll(1, 10, 0, { sort: '-nom_complet' });
+
+    expect(chain.sort).toHaveBeenCalledWith({ nom_complet: -1 });
+  });
+
+  it('falls back to the default sort when an unlisted field is requested', async () => {
+    const chain = createFindChain([createUserDocument()]);
+    userModel.find.mockReturnValue(chain);
+    userModel.countDocuments.mockReturnValue(createQuery(1));
+
+    await service.findAll(1, 10, 0, { sort: 'password' as never });
+
+    expect(chain.sort).toHaveBeenCalledWith({ created_at: -1 });
+  });
+
+  it('defaults to newest-first when no sort is requested', async () => {
+    const chain = createFindChain([createUserDocument()]);
+    userModel.find.mockReturnValue(chain);
+    userModel.countDocuments.mockReturnValue(createQuery(1));
+
+    await service.findAll(1, 10, 0, {});
+
+    expect(chain.sort).toHaveBeenCalledWith({ created_at: -1 });
+  });
+
   it('blocks approval until email verification is complete', async () => {
     userModel.findById.mockReturnValue(
       createQuery(
@@ -560,5 +600,98 @@ describe('UsersService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  describe('bulkApproveUsers / bulkRejectUsers — transactional bulk actions', () => {
+    const adminId = new Types.ObjectId().toString();
+
+    it('rejects an empty selection without opening a transaction', async () => {
+      await expect(service.bulkApproveUsers([], adminId)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(userModel.db.startSession).not.toHaveBeenCalled();
+    });
+
+    it('approves every id inside one transaction and reports them all as succeeded', async () => {
+      const ids = [new Types.ObjectId().toString(), new Types.ObjectId().toString()];
+      userModel.findById.mockReturnValue(
+        createQuery(createUserDocument({ is_verified: true, profile_completed: true })),
+      );
+      userModel.findOneAndUpdate.mockReturnValue(
+        createQuery(createUserDocument({ approval_status: ApprovalStatus.APPROVED })),
+      );
+
+      const result = await service.bulkApproveUsers(ids, adminId);
+
+      expect(userModel.db.startSession).toHaveBeenCalled();
+      expect(session.withTransaction).toHaveBeenCalled();
+      expect(session.endSession).toHaveBeenCalled();
+      expect(userModel.findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ code: 'BULK_APPROVAL_COMPLETE', succeeded: ids });
+    });
+
+    it('deduplicates repeated ids in the same request', async () => {
+      const id = new Types.ObjectId().toString();
+      userModel.findById.mockReturnValue(
+        createQuery(createUserDocument({ is_verified: true, profile_completed: true })),
+      );
+      userModel.findOneAndUpdate.mockReturnValue(
+        createQuery(createUserDocument({ approval_status: ApprovalStatus.APPROVED })),
+      );
+
+      await service.bulkApproveUsers([id, id], adminId);
+
+      expect(userModel.findOneAndUpdate).toHaveBeenCalledTimes(1);
+    });
+
+    it('rolls back the whole transaction and annotates the failure with the offending id when one row fails validation', async () => {
+      const okId = new Types.ObjectId().toString();
+      const badId = new Types.ObjectId().toString();
+      userModel.findById
+        .mockReturnValueOnce(
+          createQuery(createUserDocument({ is_verified: true, profile_completed: true })),
+        )
+        .mockReturnValueOnce(
+          createQuery(createUserDocument({ is_verified: false, profile_completed: true })),
+        );
+      userModel.findOneAndUpdate.mockReturnValue(
+        createQuery(createUserDocument({ approval_status: ApprovalStatus.APPROVED })),
+      );
+      session.withTransaction.mockImplementation(async (fn: () => Promise<unknown>) => {
+        try {
+          return await fn();
+        } finally {
+          // A real Mongo transaction aborts and rolls back every write on
+          // failure — this test only asserts the error propagates with
+          // enough context to identify the offending row.
+        }
+      });
+
+      await expect(service.bulkApproveUsers([okId, badId], adminId)).rejects.toMatchObject({
+        response: expect.objectContaining({ targetId: badId, code: 'EMAIL_VERIFICATION_REQUIRED_BEFORE_APPROVAL' }),
+      });
+      expect(session.endSession).toHaveBeenCalled();
+    });
+
+    it('bulkRejectUsers reuses rejectUser validation per row inside one transaction', async () => {
+      const ids = [new Types.ObjectId().toString(), new Types.ObjectId().toString()];
+      userModel.findById.mockReturnValue(createQuery(createUserDocument()));
+      userModel.findOneAndUpdate.mockReturnValue(
+        createQuery(createUserDocument({ approval_status: ApprovalStatus.REJECTED })),
+      );
+
+      const result = await service.bulkRejectUsers(ids, adminId, 'Duplicate accounts');
+
+      expect(userModel.db.startSession).toHaveBeenCalled();
+      expect(userModel.findOneAndUpdate).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ code: 'BULK_REJECTION_COMPLETE', succeeded: ids });
+    });
+
+    it('bulkRejectUsers rejects an empty selection without opening a transaction', async () => {
+      await expect(service.bulkRejectUsers([], adminId, 'reason')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(userModel.db.startSession).not.toHaveBeenCalled();
+    });
   });
 });

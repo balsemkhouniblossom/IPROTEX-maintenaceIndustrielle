@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRoles } from '../auth/decorators/roles.decorator';
 import { normalizePagination } from '../common/pagination';
@@ -63,6 +64,7 @@ export class NotificationCenterController {
   }
 
   @Get('unread-count')
+  @Throttle({ default: { limit: 300, ttl: 60000 } })
   async unreadCount(@Req() req: AuthenticatedRequest) {
     const { userId, role } = this.identity(req);
     const count = await this.notificationCenterService.unreadCount(

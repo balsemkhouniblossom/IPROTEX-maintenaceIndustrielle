@@ -22,6 +22,7 @@ interface User {
   language?: string;
   photo?: string;
   profile_completed?: boolean;
+  approval_status?: string;
 }
 
 interface AuthContextType {

@@ -34,7 +34,6 @@ const requiredGoogleAuthKeys = [
   "completeProfileSubmit",
   "completeProfileSaving",
   "completeProfileSaveFailed",
-  "completeProfilePosition",
   "completeProfileLanguage",
   "completeProfileRequestedRole",
 ];
@@ -108,6 +107,8 @@ test("Google exchange redirects approved completed users to selected role dashbo
     nom_complet: "Google User",
     email: "google@example.com",
     is_active: true,
+    is_verified: true,
+    approval_status: "approved",
     created_at: "2026-01-01T00:00:00.000Z",
     profile_completed: true,
   };
@@ -119,6 +120,25 @@ test("Google exchange redirects approved completed users to selected role dashbo
   assert.equal(
     getGooglePostExchangeRedirect("fr", { ...base, role: "technician" }),
     "/fr/technician",
+  );
+});
+
+test("Google exchange redirects a completed-but-pending profile to the pending-approval destination", () => {
+  const pendingCompleted = {
+    _id: "user-id",
+    nom_complet: "Google User",
+    email: "google@example.com",
+    role: "operator",
+    is_active: false,
+    is_verified: true,
+    approval_status: "pending",
+    created_at: "2026-01-01T00:00:00.000Z",
+    profile_completed: true,
+  };
+
+  assert.equal(
+    getGooglePostExchangeRedirect("de", pendingCompleted),
+    "/de/auth/login?error=pending-approval",
   );
 });
 

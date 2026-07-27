@@ -9,6 +9,7 @@ import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 import { resolveManagedFileUrl } from "@/services/managedFileUrls";
+import { extractApiErrorMessage } from "@/services/apiErrors";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -176,20 +177,6 @@ function OperatorCorrectivePageContent() {
         return submitValidationReason;
     }
   }, [submitValidationReason, t, tCommon]);
-
-  function extractApiErrorMessage(error: unknown, fallback: string): string {
-    const apiError = error as {
-      response?: { status?: number; data?: { message?: string | string[] } };
-    };
-    const raw = apiError?.response?.data?.message;
-    if (Array.isArray(raw) && raw.length) {
-      return raw.join(" ");
-    }
-    if (typeof raw === "string" && raw.trim()) {
-      return raw;
-    }
-    return fallback;
-  }
 
   const initialTypeId = searchParams.get("type") || "";
   const initialMachineId = searchParams.get("machine") || "";

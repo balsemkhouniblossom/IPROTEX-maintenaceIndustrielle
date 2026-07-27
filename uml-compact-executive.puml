@@ -1,0 +1,259 @@
+@startuml
+title GMAO Industrielle - Diagramme de classes compact (executif)
+
+left to right direction
+hide empty members
+hide circle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+' =============================
+' ENUMS (version compacte)
+' =============================
+enum Role {
+  ADMIN
+  TECHNICIAN
+  OPERATOR
+}
+
+enum MaintenancePlanStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+  COMPLETED
+}
+
+enum PartRequestStatus {
+  PENDING
+  RESERVED
+  FULFILLED
+  CANCELLED
+}
+
+' =============================
+' IDENTITE & ACCES
+' =============================
+package "Identite & Acces" {
+  class User {
+    +_id: ObjectId <<PK>>
+    +user_id: String <<UK>>
+    +email: String <<UK>>
+    +nom_complet: String
+    +role: Role
+    +is_active: Boolean
+    +is_verified: Boolean
+  }
+}
+
+' =============================
+' ACTIFS INDUSTRIELS
+' =============================
+package "Actifs" {
+  class MachineType {
+    +_id: ObjectId <<PK>>
+    +type_id: Number <<UK>>
+    +name: String
+  }
+
+  class Machine {
+    +_id: ObjectId <<PK>>
+    +machine_id: String <<UK>>
+    +type_id: ObjectId <<FK MachineType>>
+    +serial_no: String
+    +status: String
+  }
+
+  class ModuleType {
+    +_id: ObjectId <<PK>>
+    +mod_type_id: String <<UK>>
+    +type_id: ObjectId <<FK MachineType>>
+    +nom_module: String
+  }
+
+  class Module {
+    +_id: ObjectId <<PK>>
+    +module_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +mod_type_id: ObjectId <<FK ModuleType>>
+    +parent_module_id: ObjectId? <<FK Module>>
+  }
+
+  class Capteur {
+    +_id: ObjectId <<PK>>
+    +capteur_id: String <<UK>>
+    +module_id: ObjectId <<FK Module>>
+    +type_capteur: String
+    +is_active: Boolean
+  }
+
+  class Mesure {
+    +_id: ObjectId <<PK>>
+    +mesure_id: String <<UK>>
+    +capteur_id: ObjectId <<FK Capteur>>
+    +valeur: Number
+    +timestamp: Date
+    +status: String
+  }
+}
+
+' =============================
+' MAINTENANCE & EXECUTION
+' =============================
+package "Maintenance & Execution" {
+  class MaintenancePlan {
+    +_id: ObjectId <<PK>>
+    +plan_id: String <<UK>>
+    +module_id: ObjectId <<FK Module>>
+    +type_maintenance: String
+    +frequence: Number
+    +unite_frequence: String
+    +status: MaintenancePlanStatus?
+  }
+
+  class WorkOrder {
+    +_id: ObjectId <<PK>>
+    +ot_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +module_id: ObjectId? <<FK Module>>
+    +technician_id: ObjectId? <<FK User>>
+    +plan_id: ObjectId? <<FK MaintenancePlan>>
+    +status: String
+    +due_date: Date?
+    +scheduled_date: Date?
+  }
+
+  class InterventionReport {
+    +_id: ObjectId <<PK>>
+    +report_id: String <<UK>>
+    +ot_id: ObjectId <<FK WorkOrder>>
+    +technician_id: ObjectId <<FK User>>
+    +date_debut: Date
+    +date_fin: Date
+  }
+
+  class KPI {
+    +_id: ObjectId <<PK>>
+    +kpi_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +mtbf_value: Number?
+    +mttr_value: Number?
+    +availability_rate: Number?
+  }
+}
+
+' =============================
+' PIECES, STOCK & DOCUMENTS
+' =============================
+package "Pieces, Stock & Documents" {
+  class Catalogue {
+    +_id: ObjectId <<PK>>
+    +part_id: String <<UK>>
+    +nom_piece: String
+    +ref_constructeur: String
+  }
+
+  class Stock {
+    +_id: ObjectId <<PK>>
+    +stock_id: String <<UK>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +quantite_en_stock: Number
+    +quantite_reservee: Number
+  }
+
+  class PartRequest {
+    +_id: ObjectId <<PK>>
+    +request_id: String <<UK>>
+    +ot_id: ObjectId <<FK WorkOrder>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +requested_by: ObjectId <<FK User>>
+    +quantity: Number
+    +status: PartRequestStatus
+  }
+
+  class DocumentEntity {
+    +_id: ObjectId <<PK>>
+    +document_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +type_document: String
+    +file_name: String
+  }
+}
+
+' =============================
+' ALERTES & PILOTAGE
+' =============================
+package "Alertes & Pilotage" {
+  class Notification {
+    +_id: ObjectId <<PK>>
+    +notification_id: String <<UK>>
+    +type: String
+    +recipient_user_id: ObjectId? <<FK User>>
+    +work_order_id: ObjectId? <<FK WorkOrder>>
+    +machine_id: ObjectId? <<FK Machine>>
+    +is_read: Boolean
+  }
+
+  class WorkOrdersService <<service>> {
+    +triggerScheduler(...)
+    +getCalendarEvents(...)
+    +reschedulePreventiveOccurrence(...)
+    +getCorrectiveAssistant(...)
+  }
+
+  class AutomationSchedulerService <<service>> {
+    +runNightlyJobs()
+    +runHourlyJobs()
+    +runTenMinuteJobs()
+  }
+}
+
+' =============================
+' RELATIONS CLES (slide-friendly)
+' =============================
+MachineType "1" -- "0..*" Machine
+MachineType "1" -- "0..*" ModuleType
+Machine "1" -- "0..*" Module
+ModuleType "1" -- "0..*" Module
+Module "0..1" <-- "0..*" Module : parent
+Module "1" -- "0..*" Capteur
+Capteur "1" -- "0..*" Mesure
+
+Module "1" -- "0..*" MaintenancePlan
+Machine "1" -- "0..*" WorkOrder
+MaintenancePlan "0..1" <-- "0..*" WorkOrder
+User "0..1" <-- "0..*" WorkOrder : technician
+WorkOrder "1" -- "0..*" InterventionReport
+Machine "1" -- "0..*" KPI
+
+Catalogue "1" -- "0..*" Stock
+WorkOrder "1" -- "0..*" PartRequest
+Catalogue "1" -- "0..*" PartRequest
+User "1" -- "0..*" PartRequest
+Machine "1" -- "0..*" DocumentEntity
+
+User "0..1" <-- "0..*" Notification
+WorkOrder "0..1" <-- "0..*" Notification
+Machine "0..1" <-- "0..*" Notification
+
+AutomationSchedulerService ..> WorkOrdersService
+WorkOrdersService ..> WorkOrder
+WorkOrdersService ..> MaintenancePlan
+WorkOrdersService ..> KPI
+WorkOrdersService ..> Notification
+
+legend right
+  <<PK>> Cle primaire
+  <<FK X>> Cle etrangere vers X
+  <<UK>> Contrainte unique
+  <<service>> Service metier
+end legend
+
+note bottom
+  Version compacte executive pour slide PFE.
+  Basee sur les entites et flux implementes dans le backend actuel.
+end note
+
+@enduml

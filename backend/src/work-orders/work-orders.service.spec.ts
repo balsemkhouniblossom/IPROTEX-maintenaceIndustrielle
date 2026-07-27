@@ -108,6 +108,7 @@ describe('WorkOrdersService.createCorrectiveReportForOperator', () => {
       {} as never,
       notificationCenterService as never,
       {} as never,
+      {} as never,
     );
   });
 
@@ -309,6 +310,7 @@ describe('WorkOrdersService.submitPreventiveMaintenanceForOperator', () => {
       {} as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
       {} as never,
+      {} as never,
     );
   });
 
@@ -391,7 +393,7 @@ describe('WorkOrdersService.submitPreventiveMaintenanceForOperator', () => {
     expect(workOrderModel.db.startSession).not.toHaveBeenCalled();
   });
 
-  it('rejects a non-preventive work order', async () => {
+  it('rejects a corrective work order', async () => {
     workOrderModel.findById.mockReturnValue(
       execResult(scheduledOrder({ type_maintenance: 'corrective' })),
     );
@@ -406,6 +408,25 @@ describe('WorkOrdersService.submitPreventiveMaintenanceForOperator', () => {
     ).rejects.toThrow(BadRequestException);
     expect(workOrderModel.db.startSession).not.toHaveBeenCalled();
   });
+
+  it.each(['lubrication', 'inspection', 'annual-calibration'])(
+    'accepts a %s work order the same as preventive',
+    async (type) => {
+      workOrderModel.findById.mockReturnValue(
+        execResult(scheduledOrder({ type_maintenance: type })),
+      );
+
+      const result = await service.submitPreventiveMaintenanceForOperator({
+        operatorId,
+        workOrderId: workOrderId.toHexString(),
+        tasksCompleted: ['Check belt tension'],
+        condition: 'good',
+      });
+
+      expect(result.workOrder).toBeDefined();
+      expect(workOrderModel.db.startSession).toHaveBeenCalled();
+    },
+  );
 
   it('rejects an occurrence not assigned to this operator', async () => {
     workOrderModel.findById.mockReturnValue(
@@ -572,6 +593,7 @@ describe('WorkOrdersService.requestPartsForOperator', () => {
       counterService as never,
       {} as never,
       notificationCenterService as never,
+      {} as never,
       {} as never,
     );
   });
@@ -788,6 +810,7 @@ describe('WorkOrdersService operator-scoped calendar actions', () => {
       new MaintenanceSchedulingService() as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
       {} as never,
+      {} as never,
     );
   });
 
@@ -856,6 +879,20 @@ describe('WorkOrdersService operator-scoped calendar actions', () => {
       ).rejects.toThrow(ConflictException);
       expect(workOrderModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
+
+    it.each(['lubrication', 'inspection', 'annual-calibration'])(
+      'rejects a %s occurrence, directing it to the dedicated submission endpoint same as preventive',
+      async (type) => {
+        workOrderModel.findById.mockReturnValue(
+          chain(ownedOrder({ type_maintenance: type, status: 'in_progress' })),
+        );
+
+        await expect(
+          service.completeWorkOrderForOperator({ operatorId, workOrderId: workOrderId.toHexString() }),
+        ).rejects.toThrow(ConflictException);
+        expect(workOrderModel.findOneAndUpdate).not.toHaveBeenCalled();
+      },
+    );
 
     it('rejects completing a work order that is not currently in progress', async () => {
       workOrderModel.findById.mockReturnValue(chain(ownedOrder({ status: 'scheduled' })));
@@ -1057,6 +1094,93 @@ describe('WorkOrdersService operator-scoped calendar actions', () => {
   });
 });
 
+describe('WorkOrdersService.reschedulePreventiveOccurrence', () => {
+  const workOrderId = new Types.ObjectId();
+
+  function reschedulableOrder(overrides: Record<string, unknown> = {}) {
+    return {
+      _id: workOrderId,
+      type_maintenance: 'preventive',
+      status: 'scheduled',
+      ...overrides,
+    };
+  }
+
+  let workOrderModel: { findById: jest.Mock; findByIdAndUpdate: jest.Mock };
+  let service: WorkOrdersService;
+
+  beforeEach(() => {
+    workOrderModel = {
+      findById: jest.fn().mockReturnValue(execResult(reschedulableOrder())),
+      findByIdAndUpdate: jest.fn().mockReturnValue(
+        execResult(reschedulableOrder({ status: 'scheduled' })),
+      ),
+    };
+
+    service = new WorkOrdersService(
+      workOrderModel as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      new MaintenanceSchedulingService() as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+  });
+
+  it.each(['preventive', 'lubrication', 'inspection', 'annual-calibration'])(
+    'allows rescheduling a %s occurrence',
+    async (type) => {
+      workOrderModel.findById.mockReturnValue(
+        execResult(reschedulableOrder({ type_maintenance: type })),
+      );
+
+      const result = await service.reschedulePreventiveOccurrence({
+        workOrderId: workOrderId.toHexString(),
+        newDueDate: '2026-08-01T08:00:00.000Z',
+        reason: 'Machine unavailable',
+        userId: new Types.ObjectId().toHexString(),
+        role: 'operator',
+      });
+
+      expect(result.occurrence).toBeDefined();
+      expect(workOrderModel.findByIdAndUpdate).toHaveBeenCalled();
+    },
+  );
+
+  it('rejects rescheduling a corrective occurrence', async () => {
+    workOrderModel.findById.mockReturnValue(
+      execResult(reschedulableOrder({ type_maintenance: 'corrective' })),
+    );
+
+    await expect(
+      service.reschedulePreventiveOccurrence({
+        workOrderId: workOrderId.toHexString(),
+        newDueDate: '2026-08-01T08:00:00.000Z',
+        reason: 'Machine unavailable',
+        userId: new Types.ObjectId().toHexString(),
+        role: 'operator',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(workOrderModel.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
 describe('WorkOrdersService.applyValidationAction notifications', () => {
   const workOrderId = new Types.ObjectId().toHexString();
   const technicianId = new Types.ObjectId();
@@ -1112,11 +1236,14 @@ describe('WorkOrdersService.applyValidationAction notifications', () => {
       {} as never,
       notificationCenterService as never,
       {} as never,
+      {} as never,
     );
   });
 
+  const validatorId = new Types.ObjectId().toHexString();
+
   it('notifies the assigned technician that their report was approved', async () => {
-    await service.applyValidationAction(workOrderId, 'approve');
+    await service.applyValidationAction(workOrderId, 'approve', validatorId);
 
     expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1139,7 +1266,7 @@ describe('WorkOrdersService.applyValidationAction notifications', () => {
       }),
     );
 
-    await service.applyValidationAction(workOrderId, 'reject');
+    await service.applyValidationAction(workOrderId, 'reject', validatorId);
 
     expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1162,9 +1289,73 @@ describe('WorkOrdersService.applyValidationAction notifications', () => {
       }),
     );
 
-    await service.applyValidationAction(workOrderId, 'request_correction');
+    await service.applyValidationAction(workOrderId, 'request_correction', validatorId);
 
     expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
+  });
+
+  it('rejects an approve action where the validator is the same person who performed the work', async () => {
+    await expect(
+      service.applyValidationAction(workOrderId, 'approve', technicianId.toString()),
+    ).rejects.toThrow(ForbiddenException);
+    expect(workOrderModel.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('prefers the intervention report author over the work order technician_id when determining the performer', async () => {
+    const reportAuthorId = new Types.ObjectId();
+    interventionReportModel.findOne.mockReturnValue(
+      findOneChain({ _id: new Types.ObjectId(), technician_id: reportAuthorId }),
+    );
+
+    // The work order's own technician_id (technicianId) differs from the
+    // report's author (reportAuthorId) — validating as the WO's
+    // technician_id must be allowed, since the report author is who
+    // actually performed the work.
+    await expect(
+      service.applyValidationAction(workOrderId, 'approve', technicianId.toString()),
+    ).resolves.toBeDefined();
+
+    await expect(
+      service.applyValidationAction(workOrderId, 'approve', reportAuthorId.toString()),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('stamps validated_by/validated_at on the report instead of overwriting its technician_id', async () => {
+    interventionReportModel.findOne.mockReturnValue(
+      findOneChain({ _id: new Types.ObjectId('507f1f77bcf86cd799439011') }),
+    );
+
+    await service.applyValidationAction(workOrderId, 'approve', validatorId);
+
+    expect(interventionReportModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        validation_responsable: 'validated',
+        validated_by: validatorId,
+        validated_at: expect.any(Date),
+      }),
+      expect.anything(),
+    );
+    const reportUpdatePayload = interventionReportModel.findByIdAndUpdate.mock.calls[0][1];
+    expect(reportUpdatePayload).not.toHaveProperty('technician_id');
+  });
+
+  it('appends a lifecycle_history entry recording the actor and status transition', async () => {
+    await service.applyValidationAction(workOrderId, 'approve', validatorId);
+
+    expect(workOrderModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      workOrderId,
+      expect.objectContaining({
+        $push: {
+          lifecycle_history: expect.objectContaining({
+            action: 'validated',
+            to_status: 'validated',
+            actor_user_id: expect.any(Types.ObjectId),
+          }),
+        },
+      }),
+      expect.anything(),
+    );
   });
 });
 
@@ -1243,6 +1434,7 @@ describe('WorkOrdersService.decidePartRequest', () => {
       {} as never,
       notificationCenterService as never,
       stockMovementsService as never,
+      {} as never,
     );
   });
 
@@ -1462,6 +1654,7 @@ describe('WorkOrdersService.create notifications', () => {
       {} as never,
       notificationCenterService as never,
       {} as never,
+      {} as never,
     );
   });
 
@@ -1561,6 +1754,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
       new MaintenanceSchedulingService() as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
       {} as never,
+      {} as never,
     );
   });
 
@@ -1610,6 +1804,37 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
     },
   );
 
+  it.each(['lubrication', 'inspection', 'annual-calibration'])(
+    'creates the next occurrence for a %s occurrence, same as preventive',
+    async (type) => {
+      maintenancePlanModel.findById.mockReturnValue(
+        execResult({ status: 'active', frequence: 1, unite_frequence: 'month' }),
+      );
+
+      const created = await callEnsureNext(
+        schedulableWorkOrder({ type_maintenance: type }),
+      );
+
+      expect(created).toBe(true);
+      expect(workOrderModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type_maintenance: type }),
+      );
+    },
+  );
+
+  it('does not create a next occurrence for a corrective occurrence', async () => {
+    maintenancePlanModel.findById.mockReturnValue(
+      execResult({ status: 'active', frequence: 1, unite_frequence: 'month' }),
+    );
+
+    const created = await callEnsureNext(
+      schedulableWorkOrder({ type_maintenance: 'corrective' }),
+    );
+
+    expect(created).toBe(false);
+    expect(workOrderModel.create).not.toHaveBeenCalled();
+  });
+
   describe('scheduleFirstPreventiveOccurrence plan status guard', () => {
     let machineModel: { findById: jest.Mock };
     let moduleModel: { findOne: jest.Mock };
@@ -1652,6 +1877,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
         new MaintenanceSchedulingService() as never,
         { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
         {} as never,
+        {} as never,
       );
     });
 
@@ -1686,6 +1912,52 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
 
       expect(workOrderModel.create).toHaveBeenCalled();
     });
+
+    it.each(['lubrication', 'inspection', 'annual-calibration'])(
+      'allows manual scheduling against an Active %s plan, preserving its type',
+      async (type) => {
+        maintenancePlanModel.findById.mockReturnValue(
+          execResult({
+            _id: planId,
+            type_maintenance: type,
+            module_id: moduleId,
+            status: 'active',
+          }),
+        );
+
+        await service.scheduleFirstPreventiveOccurrence({
+          machineId: machineId.toHexString(),
+          planId: planId.toHexString(),
+          scheduledDate: '2026-08-01T08:00:00.000Z',
+          operatorId: new Types.ObjectId().toHexString(),
+        });
+
+        expect(workOrderModel.create).toHaveBeenCalledWith(
+          expect.objectContaining({ type_maintenance: type }),
+        );
+      },
+    );
+
+    it('rejects manual scheduling against a corrective plan', async () => {
+      maintenancePlanModel.findById.mockReturnValue(
+        execResult({
+          _id: planId,
+          type_maintenance: 'corrective',
+          module_id: moduleId,
+          status: 'active',
+        }),
+      );
+
+      await expect(
+        service.scheduleFirstPreventiveOccurrence({
+          machineId: machineId.toHexString(),
+          planId: planId.toHexString(),
+          scheduledDate: '2026-08-01T08:00:00.000Z',
+          operatorId: new Types.ObjectId().toHexString(),
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(workOrderModel.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('createInitialOccurrenceForPlan', () => {
@@ -1718,6 +1990,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
         counterService as never,
         new MaintenanceSchedulingService() as never,
         { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
+        {} as never,
         {} as never,
       );
       maintenancePlanModel.findById.mockReturnValue(
@@ -1764,7 +2037,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
       expect(workOrderModel.create).not.toHaveBeenCalled();
     });
 
-    it('skips (returns null) for a non-preventive plan', async () => {
+    it('skips (returns null) for a corrective plan', async () => {
       maintenancePlanModel.findById.mockReturnValue(
         execResult({ _id: planId, type_maintenance: 'corrective', module_id: moduleId }),
       );
@@ -1779,5 +2052,157 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
       expect(created).toBeNull();
       expect(workOrderModel.create).not.toHaveBeenCalled();
     });
+
+    it.each(['lubrication', 'inspection', 'annual-calibration'])(
+      'creates a due-now first occurrence for a schedulable %s plan, preserving its type',
+      async (type) => {
+        maintenancePlanModel.findById.mockReturnValue(
+          execResult({
+            _id: planId,
+            type_maintenance: type,
+            module_id: moduleId,
+            instruction: 'Check and record readings',
+          }),
+        );
+        (workOrderModel as unknown as { exists: jest.Mock }).exists = jest
+          .fn()
+          .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+
+        const created = await service.createInitialOccurrenceForPlan(
+          planId.toHexString(),
+        );
+
+        expect(created).not.toBeNull();
+        expect(workOrderModel.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            plan_id: planId,
+            machine_id: machineId,
+            module_id: moduleId,
+            type_maintenance: type,
+            status: 'scheduled',
+          }),
+        );
+      },
+    );
+  });
+});
+
+describe('WorkOrdersService.findAll — server-side filtering, search, and sort', () => {
+  function findAllChain<T>(value: T) {
+    const result: {
+      sort: jest.Mock;
+      skip: jest.Mock;
+      limit: jest.Mock;
+      populate: jest.Mock;
+      exec: jest.Mock;
+    } = {
+      sort: jest.fn(),
+      skip: jest.fn(),
+      limit: jest.fn(),
+      populate: jest.fn(),
+      exec: jest.fn().mockResolvedValue(value),
+    };
+    result.sort.mockReturnValue(result);
+    result.skip.mockReturnValue(result);
+    result.limit.mockReturnValue(result);
+    result.populate.mockReturnValue(result);
+    return result;
+  }
+
+  let workOrderModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let service: WorkOrdersService;
+
+  beforeEach(() => {
+    workOrderModel = {
+      find: jest.fn().mockReturnValue(findAllChain([])),
+      countDocuments: jest.fn().mockReturnValue(execResult(0)),
+    };
+
+    service = new WorkOrdersService(
+      workOrderModel as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+  });
+
+  it('applies status and priority as $in filters from comma-separated query params', async () => {
+    await service.findAll(1, 10, 0, { status: 'open, in_progress', priority: 'high,critical' } as never);
+
+    expect(workOrderModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: { $in: ['open', 'in_progress'] },
+        priorite: { $in: ['high', 'critical'] },
+      }),
+    );
+  });
+
+  it('escapes search input and searches ot_id/description/code_panne', async () => {
+    await service.findAll(1, 10, 0, { search: 'a.b+c' } as never);
+
+    const [filter] = workOrderModel.find.mock.calls[0] as [
+      { $or: Array<Record<string, RegExp>> },
+    ];
+    expect(filter.$or).toHaveLength(3);
+    expect(filter.$or[0].ot_id.source).toBe('a\\.b\\+c');
+  });
+
+  it('builds a date_created range filter from dateFrom/dateTo', async () => {
+    await service.findAll(1, 10, 0, {
+      dateFrom: '2026-01-01T00:00:00.000Z',
+      dateTo: '2026-02-01T00:00:00.000Z',
+    } as never);
+
+    expect(workOrderModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date_created: {
+          $gte: new Date('2026-01-01T00:00:00.000Z'),
+          $lte: new Date('2026-02-01T00:00:00.000Z'),
+        },
+      }),
+    );
+  });
+
+  it('sorts by an allow-listed field and direction', async () => {
+    const chain = findAllChain([]);
+    workOrderModel.find.mockReturnValue(chain);
+
+    await service.findAll(1, 10, 0, { sort: '-priorite' } as never);
+
+    expect(chain.sort).toHaveBeenCalledWith({ priorite: -1 });
+  });
+
+  it('defaults to newest-first when sort is absent or not allow-listed', async () => {
+    const chain = findAllChain([]);
+    workOrderModel.find.mockReturnValue(chain);
+
+    await service.findAll(1, 10, 0, { sort: 'ot_id' } as never);
+
+    expect(chain.sort).toHaveBeenCalledWith({ date_created: -1 });
+  });
+
+  it('ignores an invalid machineId/technicianId instead of throwing', async () => {
+    await service.findAll(1, 10, 0, { machineId: 'not-an-object-id' } as never);
+
+    const [filter] = workOrderModel.find.mock.calls[0] as [Record<string, unknown>];
+    expect(filter.machine_id).toBeUndefined();
   });
 });

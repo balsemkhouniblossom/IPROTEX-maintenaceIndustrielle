@@ -64,6 +64,7 @@ import { OperatorModule } from './operator/operator.module';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { EmailModule } from './email/email.module';
 import { RequestContextModule } from './common/request-context.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -74,8 +75,16 @@ import { MesuresModule } from './mesures/mesures.module';
 import { ModulePiecesModule } from './module-pieces/module-pieces.module';
 import { PreventiveTasksModule } from './preventive-tasks/preventive-tasks.module';
 import { TechnicianModule } from './technician/technician.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { DeviceMonitoringModule } from './device-monitoring/device-monitoring.module';
+import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
+import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive-maintenance.module';
+import { ReportsModule } from './reports/reports.module';
+import { SavedViewsModule } from './saved-views/saved-views.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
+import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
 const mongoLogger = new Logger('MongoDB');
 
 @Module({
@@ -91,6 +100,31 @@ const mongoLogger = new Logger('MongoDB');
     RequestContextModule,
     ScheduleModule.forRoot(),
     CounterModule,
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          {
+            name: 'default',
+            ttl: configService.get<number>('THROTTLE_DEFAULT_TTL_MS') ?? 60000,
+            limit: configService.get<number>('THROTTLE_DEFAULT_LIMIT') ?? 120,
+          },
+          {
+            name: 'device',
+            ttl: configService.get<number>('THROTTLE_DEVICE_TTL_MS') ?? 60000,
+            limit: configService.get<number>('THROTTLE_DEVICE_LIMIT') ?? 120,
+          },
+        ],
+        skipIf: () => {
+          const enabled = configService.get<string>('THROTTLE_ENABLED');
+          if (process.env.NODE_ENV === 'test') {
+            return enabled !== 'true';
+          }
+          return false;
+        },
+      }),
+    }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
@@ -175,6 +209,13 @@ const mongoLogger = new Logger('MongoDB');
     ModulePiecesModule,
     PreventiveTasksModule,
     TechnicianModule,
+    DashboardModule,
+    KnowledgeBaseModule,
+    DeviceMonitoringModule,
+    AiAssistantModule,
+    PredictiveMaintenanceModule,
+    ReportsModule,
+    SavedViewsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -186,6 +227,10 @@ const mongoLogger = new Logger('MongoDB');
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AppThrottlerGuard,
     },
   ],
 })

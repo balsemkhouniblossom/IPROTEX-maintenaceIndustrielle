@@ -443,7 +443,7 @@ export default function PreventiveTaskChecklistPage() {
               <div className="text-3xl font-bold text-amber-600">{stats.pending}</div>
             </div>
             <div className="panel bento-item">
-              <div className="text-sm text-slate-600">{t("table.status")}</div>
+              <div className="text-sm text-slate-600">{t("completionRate")}</div>
               <div className="text-3xl font-bold text-blue-600">{completionRate}%</div>
             </div>
           </div>
@@ -529,34 +529,46 @@ export default function PreventiveTaskChecklistPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="flex justify-end gap-2">
+                          <div className="flex flex-wrap justify-end gap-2">
                             <button
+                              type="button"
                               onClick={() => toggleTaskCompletion(task)}
+                              aria-label={task.completed ? t("status.completed") : t("actions.complete")}
                               title={task.completed ? t("status.completed") : t("actions.complete")}
-                              className="btn-secondary p-2"
+                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                             >
-                              <CheckIcon className="w-4 h-4" />
+                              <CheckIcon className="h-4 w-4 shrink-0" />
+                              <span>{task.completed ? t("status.completed") : t("actions.complete")}</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => openEditForm(task)}
+                              aria-label={tCommon("edit")}
                               title={tCommon("edit")}
-                              className="btn-secondary p-2"
+                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                             >
-                              <PencilIcon className="w-4 h-4" />
+                              <PencilIcon className="h-4 w-4 shrink-0" />
+                              <span>{tCommon("edit")}</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => openTaskDetails(task)}
+                              aria-label={t("actions.view")}
                               title={t("actions.view")}
-                              className="btn-secondary p-2"
+                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                             >
-                              <EyeIcon className="w-4 h-4" />
+                              <EyeIcon className="h-4 w-4 shrink-0" />
+                              <span>{t("actions.view")}</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => void deleteTask(task)}
+                              aria-label={t("actions.delete")}
                               title={t("actions.delete")}
-                              className="btn-danger p-2"
+                              className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                             >
-                              <TrashIcon className="w-4 h-4" />
+                              <TrashIcon className="h-4 w-4 shrink-0" />
+                              <span>{t("actions.delete")}</span>
                             </button>
                           </div>
                         </td>

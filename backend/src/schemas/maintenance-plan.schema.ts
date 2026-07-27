@@ -124,3 +124,5 @@ export const MaintenancePlanSchema =
   SchemaFactory.createForClass(MaintenancePlan);
 MaintenancePlanSchema.index({ module_id: 1, type_maintenance: 1 });
 MaintenancePlanSchema.index({ status: 1 });
+// Supports the Admin maintenance plans list's default newest-first sort.
+MaintenancePlanSchema.index({ createdAt: -1 });

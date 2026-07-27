@@ -51,6 +51,29 @@ describe('LocalFileStorageProvider', () => {
     expect(result.relativePath).toBe('/uploads/photo.webp');
   });
 
+  it('stores rejected uploads in a quarantine location outside the servable uploads tree', async () => {
+    const result = await provider.save({
+      buffer: Buffer.from('rejected'),
+      fileName: 'rejected-1.rejected',
+      folder: 'quarantine',
+      contentType: 'application/octet-stream',
+    });
+
+    expect(result.relativePath).toBe('/quarantine/rejected-1.rejected');
+    // Written to a directory named after the cwd's own "quarantine" folder,
+    // never under "uploads" — ownsFile()/readProtectedFile() below confirm
+    // this path can never be resolved back through the document proxy.
+    expect(mockedFs.writeFile).toHaveBeenCalledWith(
+      expect.stringContaining('quarantine'),
+      Buffer.from('rejected'),
+    );
+  });
+
+  it('never treats a quarantine reference as an ownable/servable document file', () => {
+    expect(provider.ownsFile('/quarantine/rejected-1.rejected')).toBe(false);
+    expect(provider.ownsFile('quarantine/rejected-1.rejected')).toBe(false);
+  });
+
   it('deletes managed files by relative path only', async () => {
     await provider.delete('/files/uploads/avatars/avatar-1.webp');
 
@@ -89,6 +112,13 @@ describe('LocalFileStorageProvider', () => {
     );
     expect(mockedFs.readFile).toHaveBeenCalledWith(
       expect.stringContaining('manual.pdf'),
+    );
+  });
+
+  it('recognizes xlsx as its own spreadsheet content type rather than falling back to octet-stream', async () => {
+    const result = await provider.readProtectedFile('/uploads/report.xlsx');
+    expect(result.contentType).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
   });
 

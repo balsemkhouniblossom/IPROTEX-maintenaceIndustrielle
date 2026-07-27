@@ -265,20 +265,26 @@ export default function ModuleTypesPage() {
                       <td>{module.compatibility?.join(', ') || 'N/A'}</td>
                       <td>{module.specifications || 'N/A'}</td>
                       <td>
-                        <div className="flex space-x-2">
+                        <div className="flex gap-2">
                           <button
+                            type="button"
                             onClick={() => handleEdit(module)}
-                            className="btn-secondary p-2"
+                            aria-label="Edit"
                             title="Edit"
+                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <PencilIcon className="w-4 h-4" />
+                            <PencilIcon className="h-4 w-4 shrink-0" />
+                            <span>Edit</span>
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(module._id)}
-                            className="btn-danger p-2"
+                            aria-label="Delete"
                             title="Delete"
+                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="h-4 w-4 shrink-0" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </td>

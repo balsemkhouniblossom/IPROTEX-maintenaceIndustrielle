@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
@@ -350,21 +350,36 @@ export default function CapteursPage() {
         {/* Capteurs Table */}
         <div className="col-span-full bento-item panel">
           <div className="card-title">{tCapteurs('allSensors')}</div>
-          <div className="overflow-x-auto">
-            <table className="table min-w-full md:min-w-375">
+          <div className="wide-table-scroll" tabIndex={0}>
+            <table className="table wide-table">
+              <colgroup>
+                <col className="capteurs-table__reference" />
+                <col className="capteurs-table__code" />
+                <col className="capteurs-table__type" />
+                <col className="capteurs-table__module" />
+                <col className="capteurs-table__unit" />
+                <col className="capteurs-table__mqtt" />
+                <col className="capteurs-table__warning" />
+                <col className="capteurs-table__critical" />
+                <col className="capteurs-table__sampling" />
+                <col className="capteurs-table__firmware" />
+                <col className="capteurs-table__lastseen" />
+                <col className="capteurs-table__status" />
+                <col className="capteurs-table__actions" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>{tCapteurs('table.sensorReference', { default: 'Sensor Reference' })}</th>
                   <th>{tCapteurs('table.code')}</th>
                   <th>{tCapteurs('table.type')}</th>
                   <th>{tCapteurs('table.module')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.unit')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.mqttTopic')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.warningThreshold')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.criticalThreshold')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.samplingFrequency')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.firmwareVersion')}</th>
-                  <th className="hidden md:table-cell">{tCapteurs('table.lastSeen')}</th>
+                  <th>{tCapteurs('table.unit')}</th>
+                  <th>{tCapteurs('table.mqttTopic')}</th>
+                  <th>{tCapteurs('table.warningThreshold')}</th>
+                  <th>{tCapteurs('table.criticalThreshold')}</th>
+                  <th>{tCapteurs('table.samplingFrequency')}</th>
+                  <th>{tCapteurs('table.firmwareVersion')}</th>
+                  <th>{tCapteurs('table.lastSeen')}</th>
                   <th>{tCapteurs('table.status')}</th>
                   <th>{tCommon('table.actions')}</th>
                 </tr>
@@ -378,66 +393,55 @@ export default function CapteursPage() {
                   </tr>
                 ) : (
                   filteredCapteurs.map((capteur) => (
-                    <Fragment key={capteur._id}>
-                      <tr>
-                        <td>{capteur.capteur_id || tCapteurs('na')}</td>
-                        <td>{capteur.code_capteur || tCapteurs('na')}</td>
-                        <td>{capteur.type_capteur || tCapteurs('na')}</td>
-                        <td>{moduleLabel(capteur.module_id)}</td>
-                        <td className="hidden md:table-cell">{capteur.unite_mesure || tCapteurs('na')}</td>
-                        <td className="hidden md:table-cell max-w-60 truncate" title={capteur.mqtt_topic || ''}>{capteur.mqtt_topic || tCapteurs('na')}</td>
-                        <td className="hidden md:table-cell">{capteur.seuil_avertissement ?? tCapteurs('na')}</td>
-                        <td className="hidden md:table-cell">{capteur.seuil_critique ?? tCapteurs('na')}</td>
-                        <td className="hidden md:table-cell">{capteur.frequence_echantillonnage ?? tCapteurs('na')}</td>
-                        <td className="hidden md:table-cell">{capteur.firmware_version || tCapteurs('na')}</td>
-                        <td className="hidden md:table-cell">
-                          {capteur.last_seen_at
-                            ? new Date(capteur.last_seen_at).toLocaleString()
-                            : tCapteurs('na')}
-                        </td>
-                        <td>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${capteur.is_active !== false
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                            }`}>
-                            {capteur.is_active !== false ? tCapteurs('active') : tCapteurs('inactive')}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => openEditModal(capteur)}
-                              className="btn-secondary p-2"
-                              title={tCommon('edit')}
-                            >
-                              <PencilIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(capteur._id)}
-                              className="btn-danger p-2"
-                              title={tCommon('delete')}
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr className="md:hidden">
-                        <td colSpan={13} className="pb-4 pt-0">
-                          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                              <div><span className="font-medium">{tCapteurs('table.unit')}:</span> {capteur.unite_mesure || tCapteurs('na')}</div>
-                              <div className="sm:col-span-2"><span className="font-medium">{tCapteurs('table.mqttTopic')}:</span> {capteur.mqtt_topic || tCapteurs('na')}</div>
-                              <div><span className="font-medium">{tCapteurs('table.warningThreshold')}:</span> {capteur.seuil_avertissement ?? tCapteurs('na')}</div>
-                              <div><span className="font-medium">{tCapteurs('table.criticalThreshold')}:</span> {capteur.seuil_critique ?? tCapteurs('na')}</div>
-                              <div><span className="font-medium">{tCapteurs('table.samplingFrequency')}:</span> {capteur.frequence_echantillonnage ?? tCapteurs('na')}</div>
-                              <div><span className="font-medium">{tCapteurs('table.firmwareVersion')}:</span> {capteur.firmware_version || tCapteurs('na')}</div>
-                              <div className="sm:col-span-2"><span className="font-medium">{tCapteurs('table.lastSeen')}:</span> {capteur.last_seen_at ? new Date(capteur.last_seen_at).toLocaleString() : tCapteurs('na')}</div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    </Fragment>
+                    <tr key={capteur._id}>
+                      <td>{capteur.capteur_id || tCapteurs('na')}</td>
+                      <td>{capteur.code_capteur || tCapteurs('na')}</td>
+                      <td>{capteur.type_capteur || tCapteurs('na')}</td>
+                      <td>{moduleLabel(capteur.module_id)}</td>
+                      <td>{capteur.unite_mesure || tCapteurs('na')}</td>
+                      <td title={capteur.mqtt_topic || ''}>{capteur.mqtt_topic || tCapteurs('na')}</td>
+                      <td>{capteur.seuil_avertissement ?? tCapteurs('na')}</td>
+                      <td>{capteur.seuil_critique ?? tCapteurs('na')}</td>
+                      <td>{capteur.frequence_echantillonnage ?? tCapteurs('na')}</td>
+                      <td>{capteur.firmware_version || tCapteurs('na')}</td>
+                      <td>
+                        {capteur.last_seen_at
+                          ? new Date(capteur.last_seen_at).toLocaleString()
+                          : tCapteurs('na')}
+                      </td>
+                      <td>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${capteur.is_active !== false
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                          }`}>
+                          {capteur.is_active !== false ? tCapteurs('active') : tCapteurs('inactive')}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(capteur)}
+                            aria-label={`${tCommon('edit')} ${capteur.capteur_id}`}
+                            title={tCommon('edit')}
+                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                          >
+                            <PencilIcon className="h-4 w-4 shrink-0" />
+                            <span>{tCommon('edit')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(capteur._id)}
+                            aria-label={`${tCommon('delete')} ${capteur.capteur_id}`}
+                            title={tCommon('delete')}
+                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                          >
+                            <TrashIcon className="h-4 w-4 shrink-0" />
+                            <span>{tCommon('delete')}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))
                 )}
               </tbody>

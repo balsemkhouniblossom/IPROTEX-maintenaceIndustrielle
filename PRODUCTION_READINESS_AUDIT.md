@@ -4,6 +4,13 @@
 **Date**: June 22, 2026  
 **Status**: PRODUCTION-READY (with items completed)
 
+> **⚠ SUPERSEDED — HISTORICAL DOCUMENT ONLY**
+> This report's Docker Compose / containerized-deployment items describe an
+> earlier architecture that is **no longer used**. The project now runs
+> natively on Render + Vercel + MongoDB Atlas + Supabase Storage, with no
+> Docker anywhere. See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the current
+> deployment process. Kept only as a historical record.
+
 ---
 
 ## Executive Summary

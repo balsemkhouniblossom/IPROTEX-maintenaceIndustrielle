@@ -303,8 +303,16 @@ export default function CataloguesPage() {
             />
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="table">
+          <div className="wide-table-scroll" tabIndex={0}>
+            <table className="table wide-table">
+              <colgroup>
+                <col className="catalogues-table__code" />
+                <col className="catalogues-table__name" />
+                <col className="catalogues-table__manufacturer-ref" />
+                <col className="catalogues-table__manufacturer" />
+                <col className="catalogues-table__category" />
+                <col className="catalogues-table__actions" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>{t('table.partCode', { default: 'Part Code' })}</th>
@@ -331,20 +339,26 @@ export default function CataloguesPage() {
                       <td>{part.fabricant || t('common.notAvailable')}</td>
                       <td>{part.categorie_piece || t('common.notAvailable')}</td>
                       <td>
-                        <div className="flex space-x-2">
+                        <div className="flex gap-2">
                           <button
+                            type="button"
                             onClick={() => openEditModal(part)}
-                            className="btn-secondary p-2"
+                            aria-label={`${t('actions.edit')} ${part.part_id}`}
                             title={t('actions.edit')}
+                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <PencilIcon className="w-4 h-4" />
+                            <PencilIcon className="h-4 w-4 shrink-0" />
+                            <span>{t('actions.edit')}</span>
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(part._id)}
-                            className="btn-danger p-2"
+                            aria-label={`${t('actions.delete')} ${part.part_id}`}
                             title={t('actions.delete')}
+                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="h-4 w-4 shrink-0" />
+                            <span>{t('actions.delete')}</span>
                           </button>
                         </div>
                       </td>

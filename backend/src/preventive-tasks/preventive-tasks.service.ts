@@ -12,6 +12,7 @@ import {
 } from '../schemas/preventive-task.schema';
 import { CreatePreventiveTaskDto } from './dto/create-preventive-task.dto';
 import { UpdatePreventiveTaskDto } from './dto/update-preventive-task.dto';
+import { NOT_CORRECTIVE_TYPE_FILTER } from '../common/maintenance-type';
 
 @Injectable()
 export class PreventiveTasksService {
@@ -33,7 +34,7 @@ export class PreventiveTasksService {
   async syncPlans() {
     const plans = await this.planModel
       .find({
-        type_maintenance: /prevent/i,
+        ...NOT_CORRECTIVE_TYPE_FILTER,
         instruction: { $exists: true, $ne: '' },
       })
       .lean()

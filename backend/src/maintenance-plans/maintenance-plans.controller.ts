@@ -21,6 +21,7 @@ import {
   TransitionMaintenancePlanDto,
 } from './dto/create-maintenance-plan.dto';
 import { UpdateMaintenancePlanDto } from './dto/update-maintenance-plan.dto';
+import { MaintenancePlansQueryDto } from './dto/maintenance-plans-query.dto';
 
 interface AuthenticatedRequest extends Request {
   user?: { userId?: string; role?: string };
@@ -44,12 +45,13 @@ export class MaintenancePlansController {
 
   @Get()
   @AdminOnly()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    const pagination = normalizePagination(page, limit);
+  findAll(@Query() query: MaintenancePlansQueryDto) {
+    const pagination = normalizePagination(query.page, query.limit);
     return this.maintenancePlansService.findAll(
       pagination.page,
       pagination.limit,
       pagination.skip,
+      query,
     );
   }
 

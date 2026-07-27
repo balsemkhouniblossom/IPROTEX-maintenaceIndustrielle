@@ -8,11 +8,71 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
+import { FilterQuery, Model, Types } from 'mongoose';
+import {
+  WorkOrder,
+  WorkOrderDocument,
+  WorkOrderLifecycleAction,
+} from '../schemas/work-order.schema';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
+import { WorkOrdersQueryDto } from './dto/work-orders-query.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import {
+  buildCaseInsensitiveSearchFilter,
+  parseCsvParam,
+  parseSortParam,
+} from '../common/query-params.util';
+import {
+  isCorrectiveMaintenanceType,
+  isSchedulableMaintenanceType,
+  NOT_CORRECTIVE_TYPE_FILTER,
+} from '../common/maintenance-type';
+
+export const WORK_ORDERS_SORT_ALLOWED_FIELDS = [
+  'date_created',
+  'due_date',
+  'priorite',
+  'status',
+] as const;
+const WORK_ORDERS_DEFAULT_SORT: Record<string, 1 | -1> = { date_created: -1 };
+
+function buildWorkOrdersFilter(
+  query: WorkOrdersQueryDto = {},
+): FilterQuery<WorkOrderDocument> {
+  const filter: FilterQuery<WorkOrderDocument> = {};
+
+  const statuses = parseCsvParam(query.status);
+  if (statuses) filter.status = { $in: statuses };
+
+  const priorities = parseCsvParam(query.priority);
+  if (priorities) filter.priorite = { $in: priorities };
+
+  if (query.machineId && Types.ObjectId.isValid(query.machineId)) {
+    filter.machine_id = new Types.ObjectId(query.machineId);
+  }
+  if (query.technicianId && Types.ObjectId.isValid(query.technicianId)) {
+    filter.technician_id = new Types.ObjectId(query.technicianId);
+  }
+
+  if (query.dateFrom || query.dateTo) {
+    filter.date_created = {
+      ...(query.dateFrom ? { $gte: new Date(query.dateFrom) } : {}),
+      ...(query.dateTo ? { $lte: new Date(query.dateTo) } : {}),
+    };
+  }
+
+  if (query.search) {
+    const searchRegex = buildCaseInsensitiveSearchFilter(query.search);
+    filter.$or = [
+      { ot_id: searchRegex },
+      { description: searchRegex },
+      { code_panne: searchRegex },
+    ];
+  }
+
+  return filter;
+}
 import { Machine, MachineDocument } from '../schemas/machine.schema';
 import {
   Module as ModuleEntity,
@@ -57,6 +117,7 @@ import { MaintenanceSchedulingService } from './maintenance-scheduling.service';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
 import { StockMovementsService } from '../stock-movements/stock-movements.service';
+import { KpiService } from '../kpi/kpi.service';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 type ValidationAction = 'approve' | 'reject' | 'request_correction';
@@ -233,6 +294,7 @@ export class WorkOrdersService {
     private schedulingService: MaintenanceSchedulingService,
     private notificationCenterService: NotificationCenterService,
     private stockMovementsService: StockMovementsService,
+    private kpiService: KpiService,
   ) {}
 
   async create(createWorkOrderDto: CreateWorkOrderDto): Promise<WorkOrder> {
@@ -286,18 +348,27 @@ export class WorkOrdersService {
     page: number,
     limit: number,
     skip: number,
+    query: WorkOrdersQueryDto = {},
   ): Promise<PaginatedResponse<WorkOrder>> {
+    const filter = buildWorkOrdersFilter(query);
+    const sort = parseSortParam(
+      query.sort,
+      WORK_ORDERS_SORT_ALLOWED_FIELDS,
+      WORK_ORDERS_DEFAULT_SORT,
+    );
+
     try {
       const [items, totalItems] = await Promise.all([
         this.workOrderModel
-          .find()
+          .find(filter)
+          .sort(sort)
           .skip(skip)
           .limit(limit)
           .populate('machine_id')
           .populate('module_id')
           .populate('technician_id')
           .exec(),
-        this.workOrderModel.countDocuments().exec(),
+        this.workOrderModel.countDocuments(filter).exec(),
       ]);
 
       return toPaginatedResponse(items, totalItems, page, limit);
@@ -305,8 +376,8 @@ export class WorkOrdersService {
       // If populate fails, return work orders without population
       console.warn('Failed to populate work order references:', error);
       const [items, totalItems] = await Promise.all([
-        this.workOrderModel.find().skip(skip).limit(limit).exec(),
-        this.workOrderModel.countDocuments().exec(),
+        this.workOrderModel.find(filter).sort(sort).skip(skip).limit(limit).exec(),
+        this.workOrderModel.countDocuments(filter).exec(),
       ]);
 
       return toPaginatedResponse(items, totalItems, page, limit);
@@ -357,45 +428,28 @@ export class WorkOrdersService {
     return this.workOrderModel.findByIdAndDelete(id).exec();
   }
 
+  /**
+   * The Admin dashboard's legacy statistics endpoint — kept alive for any
+   * existing caller, but every number here is now delegated to
+   * `KpiService` (the single shared source for these calculations) rather
+   * than re-implementing its own month-boundary/status-filter logic.
+   * `GET /dashboard/admin` (`KpiService.getAdminDashboard()`) is the fuller,
+   * canonical replacement new frontend code should prefer.
+   */
   async getStatistics() {
-    const now = new Date();
-    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-    // Get work orders for current month
-    const currentMonthOrders = await this.workOrderModel
-      .find({
-        date_created: { $gte: currentMonth, $lt: nextMonth },
-      })
-      .exec();
-
-    // Get work orders for last month
-    const lastMonthOrders = await this.workOrderModel
-      .find({
-        date_created: { $gte: lastMonth, $lt: currentMonth },
-      })
-      .exec();
-
-    // Get pending work orders (assuming 'pending' or 'open' status indicates due maintenance)
+    const adminDashboard = await this.kpiService.getAdminDashboard();
     const pendingOrders = await this.workOrderModel
-      .find({
+      .countDocuments({
         status: { $in: ['pending', 'open', 'in_progress'] },
       })
       .exec();
 
-    // Calculate percentage change
-    const currentCount = currentMonthOrders.length;
-    const lastCount = lastMonthOrders.length;
-    const percentageChange =
-      lastCount > 0 ? ((currentCount - lastCount) / lastCount) * 100 : 0;
-
     return {
-      currentMonthWorkOrders: currentCount,
-      lastMonthWorkOrders: lastCount,
-      percentageChange: Math.round(percentageChange * 100) / 100, // Round to 2 decimal places
-      pendingMaintenance: pendingOrders.length,
-      totalWorkOrders: await this.workOrderModel.countDocuments().exec(),
+      currentMonthWorkOrders: adminDashboard.workOrders.currentMonthCount,
+      lastMonthWorkOrders: adminDashboard.workOrders.lastMonthCount,
+      percentageChange: adminDashboard.workOrders.percentageChange,
+      pendingMaintenance: pendingOrders,
+      totalWorkOrders: adminDashboard.workOrders.totalCount,
     };
   }
 
@@ -414,11 +468,26 @@ export class WorkOrdersService {
   async applyValidationAction(
     workOrderId: string,
     action: ValidationAction,
-    technicianId?: string,
+    validatorId?: string,
   ) {
     const workOrder = await this.workOrderModel.findById(workOrderId).exec();
     if (!workOrder) {
       return null;
+    }
+
+    const report = await this.interventionReportModel
+      .findOne({ ot_id: workOrder._id })
+      .sort({ date_fin: -1 })
+      .exec();
+
+    // The report's technician_id is the authoritative "who performed this
+    // work" record once a report exists (it's never overwritten by a
+    // validation decision — see below); fall back to the work order's own
+    // technician_id only when no report has been filed yet.
+    const performerId =
+      report?.technician_id?.toString() ?? workOrder.technician_id?.toString();
+    if (action === 'approve' && validatorId && performerId === validatorId) {
+      throw new ForbiddenException('You cannot approve your own work');
     }
 
     const statusByAction: Record<ValidationAction, string> = {
@@ -433,14 +502,42 @@ export class WorkOrdersService {
       request_correction: 'request_correction',
     };
 
-    const nextStatus = statusByAction[action];
-    const updatedWorkOrder = await this.workOrderModel
-      .findByIdAndUpdate(workOrderId, { status: nextStatus }, { new: true })
-      .exec();
+    const lifecycleActionByAction: Record<
+      ValidationAction,
+      WorkOrderLifecycleAction
+    > = {
+      approve: 'validated',
+      reject: 'rejected',
+      request_correction: 'returned',
+    };
 
-    const report = await this.interventionReportModel
-      .findOne({ ot_id: workOrder._id })
-      .sort({ date_fin: -1 })
+    const nextStatus = statusByAction[action];
+    const validatorObjectId =
+      validatorId && Types.ObjectId.isValid(validatorId)
+        ? new Types.ObjectId(validatorId)
+        : undefined;
+    const updatedWorkOrder = await this.workOrderModel
+      .findByIdAndUpdate(
+        workOrderId,
+        {
+          $set: {
+            status: nextStatus,
+            ...(action === 'approve' && validatorObjectId
+              ? { validated_by: validatorObjectId, validated_at: new Date() }
+              : {}),
+          },
+          $push: {
+            lifecycle_history: {
+              action: lifecycleActionByAction[action],
+              from_status: workOrder.status,
+              to_status: nextStatus,
+              actor_user_id: validatorObjectId,
+              at: new Date(),
+            },
+          },
+        },
+        { new: true },
+      )
       .exec();
 
     if (report) {
@@ -449,7 +546,9 @@ export class WorkOrdersService {
           report._id,
           {
             validation_responsable: reportStatusByAction[action],
-            ...(technicianId ? { technician_id: technicianId } : {}),
+            ...(validatorId
+              ? { validated_by: validatorId, validated_at: new Date() }
+              : {}),
           },
           { new: true },
         )
@@ -508,7 +607,7 @@ export class WorkOrdersService {
     const plans = await this.maintenancePlanModel
       .find({
         module_id: { $in: moduleIds },
-        type_maintenance: { $regex: /prevent/i },
+        ...NOT_CORRECTIVE_TYPE_FILTER,
       })
       .sort({ maintenance_code: 1, plan_id: 1 })
       .exec();
@@ -516,7 +615,7 @@ export class WorkOrdersService {
     const orders = await this.workOrderModel
       .find({
         machine_id: new Types.ObjectId(machineId),
-        type_maintenance: { $regex: /prevent/i },
+        ...NOT_CORRECTIVE_TYPE_FILTER,
       })
       .sort({
         due_date: 1,
@@ -638,7 +737,7 @@ export class WorkOrdersService {
       dueDate: scheduledDate.toISOString(),
     });
 
-    const otId = await this.generateWorkOrderCode('preventive');
+    const otId = await this.generateWorkOrderCode(plan.type_maintenance);
     const created = await this.workOrderModel.create({
       ot_id: otId,
       machine_id: machine._id,
@@ -646,7 +745,7 @@ export class WorkOrdersService {
       technician_id: new Types.ObjectId(input.operatorId),
       plan_id: plan._id,
       description: plan.instruction || 'Preventive maintenance task',
-      type_maintenance: 'preventive',
+      type_maintenance: plan.type_maintenance,
       status: 'scheduled',
       priorite: 'medium',
       date_created: new Date(),
@@ -668,16 +767,17 @@ export class WorkOrdersService {
   /**
    * Creates the one-and-only first occurrence for a plan that has just
    * been activated, when appropriate — appropriate meaning: the plan is
-   * actually schedulable (preventive-type), and it does not already have
-   * any occurrence at all (idempotent: re-activating, e.g. Draft->Active
-   * after the very first activation somehow raced, never creates a
-   * second). Unlike the Operator-driven `scheduleFirstPreventiveOccurrence`
-   * (which takes an explicit chosen date), this is Admin-triggered with no
-   * date input, so the occurrence is due immediately — the plan just went
-   * live, so its first maintenance is due now. Returns `null` (not an
-   * error) whenever creation is skipped, since skipping is the normal,
-   * expected outcome for a non-preventive plan or one that already has an
-   * occurrence.
+   * actually schedulable (any non-corrective type: preventive, lubrication,
+   * inspection, or a custom scheduled-maintenance label), and it does not
+   * already have any occurrence at all (idempotent: re-activating, e.g.
+   * Draft->Active after the very first activation somehow raced, never
+   * creates a second). Unlike the Operator-driven
+   * `scheduleFirstPreventiveOccurrence` (which takes an explicit chosen
+   * date), this is Admin-triggered with no date input, so the occurrence is
+   * due immediately — the plan just went live, so its first maintenance is
+   * due now. Returns `null` (not an error) whenever creation is skipped,
+   * since skipping is the normal, expected outcome for a corrective plan or
+   * one that already has an occurrence.
    */
   async createInitialOccurrenceForPlan(
     planId: string,
@@ -687,7 +787,7 @@ export class WorkOrdersService {
     }
 
     const plan = await this.maintenancePlanModel.findById(planId).exec();
-    if (!plan || !(plan.type_maintenance || '').toLowerCase().includes('prevent')) {
+    if (!plan || !isSchedulableMaintenanceType(plan.type_maintenance)) {
       return null;
     }
 
@@ -704,14 +804,14 @@ export class WorkOrdersService {
     }
 
     const now = new Date();
-    const otId = await this.generateWorkOrderCode('preventive');
+    const otId = await this.generateWorkOrderCode(plan.type_maintenance);
     return this.workOrderModel.create({
       ot_id: otId,
       machine_id: moduleEntity.machine_id,
       module_id: moduleEntity._id,
       plan_id: plan._id,
       description: plan.instruction || 'Preventive maintenance task',
-      type_maintenance: 'preventive',
+      type_maintenance: plan.type_maintenance,
       status: 'scheduled',
       priorite: 'medium',
       date_created: now,
@@ -739,9 +839,9 @@ export class WorkOrdersService {
     if (!workOrder) {
       throw new NotFoundException('Work order not found');
     }
-    if (!(workOrder.type_maintenance || '').toLowerCase().includes('prevent')) {
+    if (!isSchedulableMaintenanceType(workOrder.type_maintenance)) {
       throw new BadRequestException(
-        'Only preventive occurrences can be rescheduled',
+        'Only preventive, lubrication, or inspection occurrences can be rescheduled',
       );
     }
     if (this.isCompletedStatus(workOrder.status)) {
@@ -976,9 +1076,9 @@ export class WorkOrdersService {
     if (!existing) {
       throw new NotFoundException('Work order not found');
     }
-    if (!(existing.type_maintenance || '').toLowerCase().includes('prevent')) {
+    if (!isSchedulableMaintenanceType(existing.type_maintenance)) {
       throw new BadRequestException(
-        'Only preventive occurrences can be submitted through this endpoint',
+        'Only preventive, lubrication, or inspection occurrences can be submitted through this endpoint',
       );
     }
     if (
@@ -1484,20 +1584,21 @@ export class WorkOrdersService {
    * Technician/Admin review — never straight to `completed`, since an
    * Operator is never the final approval authority in this system.
    *
-   * Preventive occurrences are intentionally rejected here: they must go
-   * through `submitPreventiveMaintenanceForOperator`, which is the only
-   * path that captures the checklist/lubrication data and computes the
-   * next recurrence from the real execution date. Allowing this generic
-   * action to complete a preventive occurrence would silently skip both.
+   * Preventive, lubrication, and inspection occurrences are intentionally
+   * rejected here: they must go through
+   * `submitPreventiveMaintenanceForOperator`, which is the only path that
+   * captures the checklist/lubrication data and computes the next
+   * recurrence from the real execution date. Allowing this generic action
+   * to complete a schedulable occurrence would silently skip both.
    */
   async completeWorkOrderForOperator(
     scope: OperatorCalendarScope,
   ): Promise<WorkOrderDocument> {
     const workOrder = await this.loadOwnedWorkOrderOrThrow(scope);
 
-    if ((workOrder.type_maintenance || '').toLowerCase().includes('prevent')) {
+    if (isSchedulableMaintenanceType(workOrder.type_maintenance)) {
       throw new ConflictException(
-        'Preventive occurrences must be completed through the preventive maintenance submission endpoint',
+        'Preventive, lubrication, or inspection occurrences must be completed through the preventive maintenance submission endpoint',
       );
     }
 
@@ -1847,34 +1948,17 @@ export class WorkOrdersService {
   }
 
   async getDashboardCalendarWidget(scope?: { technicianId?: string }) {
-    const timeZone = scope?.technicianId
-      ? this.schedulingService.getBusinessTimezone()
-      : undefined;
+    // Always business-timezone-aware — regardless of whether this is an
+    // Admin's unscoped fleet-wide view or an Operator/Technician's own
+    // scoped view, "today" must mean the same instant everywhere.
+    const timeZone = this.schedulingService.getBusinessTimezone();
     const now = new Date();
-    const todayStart = timeZone
-      ? this.schedulingService.startOfBusinessDay(now, timeZone)
-      : (() => {
-          const value = new Date(now);
-          value.setHours(0, 0, 0, 0);
-          return value;
-        })();
+    const todayStart = this.schedulingService.startOfBusinessDay(now, timeZone);
 
     const addDays = (value: Date, days: number) =>
-      timeZone
-        ? this.schedulingService.addBusinessDays(value, days, timeZone)
-        : (() => {
-            const result = new Date(value);
-            result.setDate(result.getDate() + days);
-            return result;
-          })();
+      this.schedulingService.addBusinessDays(value, days, timeZone);
     const addMonths = (value: Date, months: number) =>
-      timeZone
-        ? this.schedulingService.addBusinessMonths(value, months, timeZone)
-        : (() => {
-            const result = new Date(value);
-            result.setMonth(result.getMonth() + months);
-            return result;
-          })();
+      this.schedulingService.addBusinessMonths(value, months, timeZone);
 
     const todayEnd = addDays(todayStart, 1);
     const weekEnd = addDays(todayStart, 7);
@@ -1981,33 +2065,14 @@ export class WorkOrdersService {
   }
 
   async getNotificationCards(scope?: { technicianId?: string }) {
-    const timeZone = scope?.technicianId
-      ? this.schedulingService.getBusinessTimezone()
-      : undefined;
+    // Always business-timezone-aware — see getDashboardCalendarWidget for
+    // why this can no longer fall back to server-local boundaries just
+    // because no technician scope was supplied (the Admin-facing route).
+    const timeZone = this.schedulingService.getBusinessTimezone();
     const now = new Date();
-    const dayStart = timeZone
-      ? this.schedulingService.startOfBusinessDay(now, timeZone)
-      : (() => {
-          const value = new Date(now);
-          value.setHours(0, 0, 0, 0);
-          return value;
-        })();
-
-    const dayEnd = timeZone
-      ? this.schedulingService.addBusinessDays(dayStart, 1, timeZone)
-      : (() => {
-          const value = new Date(dayStart);
-          value.setDate(value.getDate() + 1);
-          return value;
-        })();
-
-    const upcomingLimit = timeZone
-      ? this.schedulingService.addBusinessDays(now, 7, timeZone)
-      : (() => {
-          const value = new Date(now);
-          value.setDate(value.getDate() + 7);
-          return value;
-        })();
+    const dayStart = this.schedulingService.startOfBusinessDay(now, timeZone);
+    const dayEnd = this.schedulingService.addBusinessDays(dayStart, 1, timeZone);
+    const upcomingLimit = this.schedulingService.addBusinessDays(now, 7, timeZone);
 
     const ordersQuery: Record<string, unknown> = {
       $or: [
@@ -2193,24 +2258,21 @@ export class WorkOrdersService {
     const modules = await this.moduleModel.find().exec();
     const machines = await this.machineModel.find().exec();
     const existingPreventiveOrders = await this.workOrderModel
-      .find(
-        { type_maintenance: 'preventive' },
-        {
-          _id: 1,
-          machine_id: 1,
-          module_id: 1,
-          plan_id: 1,
-          type_maintenance: 1,
-          status: 1,
-          date_start: 1,
-          date_created: 1,
-          date_end: 1,
-          date_closed: 1,
-          technician_id: 1,
-          description: 1,
-          priorite: 1,
-        },
-      )
+      .find(NOT_CORRECTIVE_TYPE_FILTER, {
+        _id: 1,
+        machine_id: 1,
+        module_id: 1,
+        plan_id: 1,
+        type_maintenance: 1,
+        status: 1,
+        date_start: 1,
+        date_created: 1,
+        date_end: 1,
+        date_closed: 1,
+        technician_id: 1,
+        description: 1,
+        priorite: 1,
+      })
       .lean()
       .exec();
 
@@ -2252,8 +2314,8 @@ export class WorkOrdersService {
 
     for (const plan of plans) {
       summary.plansEvaluated += 1;
-      const planType = (plan.type_maintenance || '').toLowerCase();
-      if (planType && !planType.includes('prevent')) {
+      const planType = plan.type_maintenance || '';
+      if (planType && isCorrectiveMaintenanceType(planType)) {
         continue;
       }
 
@@ -2316,14 +2378,14 @@ export class WorkOrdersService {
       return false;
     }
 
-    const otId = await this.generateWorkOrderCode('preventive');
+    const otId = await this.generateWorkOrderCode(plan.type_maintenance);
     const created = await this.workOrderModel.create({
       ot_id: otId,
       machine_id: this.objectIdString(machine),
       module_id: this.objectIdString(moduleEntity),
       plan_id: this.objectIdString(plan),
       description: plan.instruction || 'Preventive maintenance task',
-      type_maintenance: 'preventive',
+      type_maintenance: plan.type_maintenance,
       status: 'pending',
       priorite: 'medium',
       date_created: new Date(),
@@ -2341,8 +2403,7 @@ export class WorkOrdersService {
     dueKeySet?: Set<string>,
     latestOrderByPlanKey?: Map<string, any>,
   ): Promise<boolean> {
-    const type = (workOrder.type_maintenance || '').toLowerCase();
-    if (!type.includes('prevent')) {
+    if (!isSchedulableMaintenanceType(workOrder.type_maintenance)) {
       return false;
     }
 
@@ -2402,7 +2463,9 @@ export class WorkOrdersService {
       return false;
     }
 
-    const nextOtId = await this.generateWorkOrderCode('preventive');
+    const nextOtId = await this.generateWorkOrderCode(
+      workOrder.type_maintenance,
+    );
     const created = await this.workOrderModel.create({
       ot_id: nextOtId,
       machine_id: workOrder.machine_id,
@@ -2485,11 +2548,11 @@ export class WorkOrdersService {
     const completed = orders.filter((order) =>
       this.isCompletedStatus(order.status),
     );
-    const corrective = completed.filter(
-      (order) => (order.type_maintenance || '').toLowerCase() === 'corrective',
+    const corrective = completed.filter((order) =>
+      isCorrectiveMaintenanceType(order.type_maintenance),
     );
     const preventive = completed.filter((order) =>
-      (order.type_maintenance || '').toLowerCase().includes('prevent'),
+      isSchedulableMaintenanceType(order.type_maintenance),
     );
 
     const now = new Date();
@@ -2987,8 +3050,10 @@ export class WorkOrdersService {
     if (!plan) {
       throw new NotFoundException('Maintenance plan not found');
     }
-    if (!(plan.type_maintenance || '').toLowerCase().includes('prevent')) {
-      throw new BadRequestException('Maintenance plan is not preventive');
+    if (!isSchedulableMaintenanceType(plan.type_maintenance)) {
+      throw new BadRequestException(
+        'Maintenance plan is not schedulable (corrective plans cannot be scheduled this way)',
+      );
     }
 
     const moduleEntity = await this.moduleModel
@@ -3033,7 +3098,7 @@ export class WorkOrdersService {
     const query: Record<string, unknown> = {
       machine_id: new Types.ObjectId(input.machineId),
       plan_id: new Types.ObjectId(input.planId),
-      type_maintenance: { $regex: /prevent/i },
+      ...NOT_CORRECTIVE_TYPE_FILTER,
       status: {
         $nin: ['completed', 'validated', 'cancelled', 'canceled', 'rejected'],
       },
@@ -3205,16 +3270,8 @@ export class WorkOrdersService {
   }
 
   private async stockAlertCount() {
-    const stocks = await this.stockModel.find().exec();
-    return stocks.filter((stock) => {
-      const threshold =
-        typeof stock.seuil_alerte_stock === 'number'
-          ? stock.seuil_alerte_stock
-          : stock.quantite_minimale;
-      return (
-        typeof threshold === 'number' && stock.quantite_en_stock <= threshold
-      );
-    }).length;
+    const { count } = await this.kpiService.computeStockAlerts();
+    return count;
   }
 
   private isMaintenanceDocumentType(type?: string) {

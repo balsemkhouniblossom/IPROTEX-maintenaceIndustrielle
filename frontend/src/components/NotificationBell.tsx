@@ -124,11 +124,14 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) text-cyan-800 dark:text-cyan-600 backdrop-blur-xl shadow-(--shadow) transition hover:-translate-y-0.5 hover:border-cyan-700/55"
-        aria-label={t("title")}
+        aria-label={unreadCount > 0 ? `${t("title")} (${unreadCount})` : t("title")}
       >
         <BellAlertIcon className="h-5 w-5" />
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">
+          <span
+            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white"
+            aria-hidden="true"
+          >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         ) : null}

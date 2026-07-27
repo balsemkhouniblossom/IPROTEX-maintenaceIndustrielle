@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from "@/services/dynamicSearch";
+import { extractApiErrorDetails as extractApiErrorMessage } from "@/services/apiErrors";
 import { useTranslations } from "next-intl";
 import {
   CheckCircleIcon,
@@ -66,20 +67,6 @@ function partLabel(part: StockItem["part_id"]): string {
   return displayText(part.part_id ?? part.nom_piece, "N/A");
 }
 
-function extractApiErrorMessage(error: unknown, fallback: string): { message: string; status?: number } {
-  const apiError = error as {
-    response?: { status?: number; data?: { message?: string | string[] } };
-  };
-  const raw = apiError?.response?.data?.message;
-  const status = apiError?.response?.status;
-  if (Array.isArray(raw) && raw.length) {
-    return { message: raw.join(" "), status };
-  }
-  if (typeof raw === "string" && raw.trim()) {
-    return { message: raw, status };
-  }
-  return { message: fallback, status };
-}
 
 function available(item: StockItem): number {
   return (item.quantite_en_stock ?? 0) - (item.quantite_reservee ?? 0);

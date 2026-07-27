@@ -1,11 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { ClientSession, FilterQuery, Model, Types } from 'mongoose';
 import {
   ApprovalStatus,
   GoogleAuthHistoryEntry,
@@ -20,6 +21,20 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { PendingApprovalsQueryDto } from './dto/pending-approvals-query.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { resolveApprovalStatus } from './approval-status.utils';
+import {
+  buildCaseInsensitiveSearchFilter,
+  escapeRegExp,
+  parseSortParam,
+} from '../common/query-params.util';
+
+export const USERS_SORT_ALLOWED_FIELDS = [
+  'nom_complet',
+  'email',
+  'created_at',
+  'role',
+  'approval_status',
+] as const;
+const USERS_DEFAULT_SORT: Record<string, 1 | -1> = { created_at: -1 };
 
 export type ApprovalActionCode =
   | 'ACCOUNT_APPROVED'
@@ -55,6 +70,47 @@ export type ApprovalActionResult = {
 export type PendingApprovalsResult = PaginatedResponse<ApprovalSafeUser> & {
   code: 'PENDING_APPROVALS_RETRIEVED';
 };
+
+export type BulkApprovalResult = {
+  code: 'BULK_APPROVAL_COMPLETE';
+  succeeded: string[];
+};
+
+export type BulkRejectionResult = {
+  code: 'BULK_REJECTION_COMPLETE';
+  succeeded: string[];
+};
+
+/**
+ * Re-throws a per-item failure inside a bulk transaction with the failing
+ * id folded into both the message text and a `targetId` field, so the
+ * caller learns *which* row blocked the whole batch instead of just
+ * "something failed". `targetId` is on the response body for callers that
+ * parse it directly (e.g. this service's own tests); `AllExceptionsFilter`
+ * only ever forwards `message`/`code` to the actual HTTP response body, so
+ * the id is also appended to `message` to survive that boundary.
+ */
+function annotateBulkFailure(error: unknown, targetId: string): never {
+  if (error instanceof HttpException) {
+    const response = error.getResponse();
+    const original =
+      typeof response === 'object' && response !== null
+        ? (response as Record<string, unknown>)
+        : { message: response };
+    const originalMessage =
+      typeof original.message === 'string' ? original.message : String(original.message ?? '');
+    // Re-thrown as the plain base class (not `new error.constructor(...)`)
+    // because subclasses like ConflictException fix their own status code
+    // and interpret a second constructor argument as a description, not a
+    // raw status override — HttpException itself is the only signature
+    // that reliably accepts `(body, status)` for an arbitrary status.
+    throw new HttpException(
+      { ...original, message: `${originalMessage} (user ${targetId})`, targetId },
+      error.getStatus(),
+    );
+  }
+  throw error;
+}
 
 export type PendingApprovalCountResult = {
   code: 'PENDING_APPROVAL_COUNT_RETRIEVED';
@@ -140,10 +196,16 @@ export class UsersService {
     query: UsersQueryDto = {},
   ): Promise<PaginatedResponse<UserDocument>> {
     const filter = this.buildUsersFilter(query);
+    const sort = parseSortParam(
+      query.sort,
+      USERS_SORT_ALLOWED_FIELDS,
+      USERS_DEFAULT_SORT,
+    );
     const [items, totalItems] = await Promise.all([
       this.userModel
         .find(filter)
         .select('-password -refresh_token_hash')
+        .sort(sort)
         .skip(skip)
         .limit(limit)
         .exec(),
@@ -514,11 +576,12 @@ export class UsersService {
     targetId: string,
     administratorId: string,
     decisionAt: Date = new Date(),
+    session?: ClientSession,
   ): Promise<ApprovalActionResult> {
     this.validateObjectId(targetId);
     this.validateObjectId(administratorId);
 
-    const target = await this.userModel.findById(targetId).exec();
+    const target = await this.userModel.findById(targetId).session(session ?? null).exec();
     if (!target) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
@@ -579,7 +642,7 @@ export class UsersService {
             refresh_token_hash: '',
           },
         },
-        { new: true },
+        { new: true, session: session ?? undefined },
       )
       .exec();
 
@@ -601,6 +664,7 @@ export class UsersService {
     administratorId: string,
     reason: string,
     decisionAt: Date = new Date(),
+    session?: ClientSession,
   ): Promise<ApprovalActionResult> {
     this.validateObjectId(targetId);
     this.validateObjectId(administratorId);
@@ -620,7 +684,7 @@ export class UsersService {
       });
     }
 
-    const target = await this.userModel.findById(targetId).exec();
+    const target = await this.userModel.findById(targetId).session(session ?? null).exec();
     if (!target) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
@@ -657,7 +721,7 @@ export class UsersService {
             refresh_token_hash: '',
           },
         },
-        { new: true },
+        { new: true, session: session ?? undefined },
       )
       .exec();
 
@@ -675,6 +739,80 @@ export class UsersService {
           : 'ACCOUNT_REJECTED',
       user: sanitizeApprovalUser(updated),
     };
+  }
+
+  /**
+   * Approves every listed user inside one Mongo transaction, calling the
+   * exact same `approveUser` validation (email-verified, profile-complete,
+   * not-already-admin, optimistic status guard) per row — this duplicates
+   * no business logic, it just runs the single-item path N times and
+   * commits (or rolls every row back) atomically, so a bulk action never
+   * leaves half the selection approved and half untouched.
+   */
+  async bulkApproveUsers(
+    targetIds: string[],
+    administratorId: string,
+  ): Promise<BulkApprovalResult> {
+    const uniqueIds = [...new Set(targetIds)];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException({
+        code: 'EMPTY_BULK_SELECTION',
+        message: 'No users were selected.',
+      });
+    }
+
+    const decisionAt = new Date();
+    const session = await this.userModel.db.startSession();
+    try {
+      await session.withTransaction(async () => {
+        for (const targetId of uniqueIds) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await this.approveUser(targetId, administratorId, decisionAt, session);
+          } catch (error) {
+            annotateBulkFailure(error, targetId);
+          }
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return { code: 'BULK_APPROVAL_COMPLETE', succeeded: uniqueIds };
+  }
+
+  /** Same all-or-nothing transactional pattern as `bulkApproveUsers`, reusing `rejectUser`'s validation per row. */
+  async bulkRejectUsers(
+    targetIds: string[],
+    administratorId: string,
+    reason: string,
+  ): Promise<BulkRejectionResult> {
+    const uniqueIds = [...new Set(targetIds)];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException({
+        code: 'EMPTY_BULK_SELECTION',
+        message: 'No users were selected.',
+      });
+    }
+
+    const decisionAt = new Date();
+    const session = await this.userModel.db.startSession();
+    try {
+      await session.withTransaction(async () => {
+        for (const targetId of uniqueIds) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            await this.rejectUser(targetId, administratorId, reason, decisionAt, session);
+          } catch (error) {
+            annotateBulkFailure(error, targetId);
+          }
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return { code: 'BULK_REJECTION_COMPLETE', succeeded: uniqueIds };
   }
 
   private buildPendingApprovalsFilter(
@@ -698,7 +836,7 @@ export class UsersService {
     }
 
     if (query.search) {
-      const searchRegex = new RegExp(escapeRegExp(query.search), 'i');
+      const searchRegex = buildCaseInsensitiveSearchFilter(query.search);
       filter.$or = [
         { nom_complet: searchRegex },
         { email: searchRegex },
@@ -730,7 +868,7 @@ export class UsersService {
     }
 
     if (query.search) {
-      const searchRegex = new RegExp(escapeRegExp(query.search), 'i');
+      const searchRegex = buildCaseInsensitiveSearchFilter(query.search);
       filter.$or = [
         { nom_complet: searchRegex },
         { email: searchRegex },
@@ -824,10 +962,6 @@ export type CreateUserInternalInput = {
   approval_status?: ApprovalStatus;
   assigned_machine_ids?: string[];
 };
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 function normalizePositiveInteger(value: unknown, fallback: number): number {
   const numberValue = Number(value);

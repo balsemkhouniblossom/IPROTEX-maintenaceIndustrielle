@@ -24,6 +24,7 @@ import {
 import { User, UserDocument, Role } from '../schemas/user.schema';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
+import { KpiService } from '../kpi/kpi.service';
 
 interface JobResult {
   processed: number;
@@ -55,6 +56,7 @@ export class AutomationSchedulerService {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly notificationCenterService: NotificationCenterService,
+    private readonly kpiService: KpiService,
   ) {
     this.logger.log('Background scheduler initialized (automatic mode).');
   }
@@ -385,50 +387,31 @@ export class AutomationSchedulerService {
     };
   }
 
+  /**
+   * Uses `KpiService.computeStockAlerts()` — the same reservation-aware
+   * "available = on-hand minus reserved" formula the Admin dashboard's
+   * stock-alert card shows — instead of its own copy of the threshold
+   * comparison, so a stock never alerts here but not on the dashboard (or
+   * vice versa).
+   */
   private async jobStockMonitoring(): Promise<JobResult> {
-    const stocks = await this.stockModel
-      .find(
-        {},
-        {
-          _id: 1,
-          stock_id: 1,
-          part_id: 1,
-          quantite_en_stock: 1,
-          seuil_alerte_stock: 1,
-          quantite_minimale: 1,
-        },
-      )
-      .lean()
-      .exec();
+    const { items } = await this.kpiService.computeStockAlerts();
 
     let alerts = 0;
-
-    for (const stock of stocks) {
-      const threshold =
-        typeof stock.seuil_alerte_stock === 'number'
-          ? stock.seuil_alerte_stock
-          : stock.quantite_minimale;
-
-      if (typeof threshold !== 'number') {
-        continue;
-      }
-
-      if (stock.quantite_en_stock <= threshold) {
-        const stockId = this.objectIdString(stock._id) || stock.stock_id;
-        const created = await this.notificationCenterService.createIfNotExists({
-          dedupeKey: `stock_alert:${stockId}:${stock.quantite_en_stock}`,
-          type: NotificationType.STOCK_ALERT,
-          title: `Stock alert for ${stock.stock_id}: quantity ${stock.quantite_en_stock} <= threshold ${threshold}`,
-          referenceId: this.objectIdString(stock.part_id) || undefined,
-          recipientRole: Role.ADMIN,
-        });
-        if (created) {
-          alerts += 1;
-        }
+    for (const item of items) {
+      const created = await this.notificationCenterService.createIfNotExists({
+        dedupeKey: `stock_alert:${item.stockId}:${item.available}`,
+        type: NotificationType.STOCK_ALERT,
+        title: `Stock alert for ${item.stockCode}: available ${item.available} <= threshold ${item.threshold}`,
+        referenceId: item.partId,
+        recipientRole: Role.ADMIN,
+      });
+      if (created) {
+        alerts += 1;
       }
     }
 
-    return { processed: alerts, details: { scanned: stocks.length } };
+    return { processed: alerts, details: { scanned: items.length } };
   }
 
   private async jobLubricationReminders(): Promise<JobResult> {

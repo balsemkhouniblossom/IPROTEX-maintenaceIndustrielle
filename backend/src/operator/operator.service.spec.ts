@@ -146,6 +146,7 @@ describe('OperatorService machine scoping', () => {
       panneModel as never,
       panneSolutionModel as never,
       workOrdersService as never,
+      {} as never,
     );
   });
 

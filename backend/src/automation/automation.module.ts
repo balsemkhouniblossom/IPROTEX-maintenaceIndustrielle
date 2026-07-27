@@ -19,11 +19,13 @@ import { KPI, KPISchema } from '../schemas/kpi.schema';
 import { User, UserSchema } from '../schemas/user.schema';
 import { AutomationSchedulerService } from './automation.scheduler.service';
 import { NotificationCenterModule } from '../notification-center/notification-center.module';
+import { KpiModule } from '../kpi/kpi.module';
 
 @Module({
   imports: [
     WorkOrdersModule,
     NotificationCenterModule,
+    KpiModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: MaintenancePlan.name, schema: MaintenancePlanSchema },

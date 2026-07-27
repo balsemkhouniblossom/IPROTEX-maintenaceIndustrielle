@@ -20,6 +20,7 @@ import {
   GoogleLoginExchange,
   GoogleLoginExchangeDocument,
 } from '../src/auth/schemas/google-login-exchange.schema';
+import { GoogleLoginExchangeService } from '../src/auth/google-login-exchange.service';
 import {
   ApprovalStatus,
   Role,
@@ -63,6 +64,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
   let app: INestApplication<App>;
   let jwtService: JwtService;
   let authService: AuthService;
+  let googleLoginExchangeService: GoogleLoginExchangeService;
   let emailService: EmailService;
   let connection: Connection;
   let users: Model<UserDocument>;
@@ -112,6 +114,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
 
     jwtService = app.get(JwtService);
     authService = app.get(AuthService);
+    googleLoginExchangeService = app.get(GoogleLoginExchangeService);
     emailService = app.get(EmailService);
     connection = app.get(getConnectionToken());
     users = app.get(getModelToken(User.name));
@@ -679,10 +682,15 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
 
     const storedReport = await reports.findById(report._id);
     expect(storedReport?.validation_responsable).toBe('validated');
-    expect(storedReport?.technician_id?.toString()).toBe(admin._id.toString());
-    expect(storedReport?.technician_id?.toString()).not.toBe(
+    // The validator's identity is derived from the authenticated admin (not
+    // the forged `technician_id` in the request body) and recorded as
+    // `validated_by` — it must never overwrite `technician_id`, which keeps
+    // recording who actually performed the work (the operator).
+    expect(storedReport?.validated_by?.toString()).toBe(admin._id.toString());
+    expect(storedReport?.validated_by?.toString()).not.toBe(
       technician._id.toString(),
     );
+    expect(storedReport?.technician_id?.toString()).toBe(operator._id.toString());
   });
 
   it('J3: preserves valid scoped operator and technician workflows', async () => {
@@ -1966,7 +1974,6 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         phone: '+21612345678',
         role: Role.TECHNICIAN,
         department: 'Maintenance',
-        position: 'Shift Lead',
         language: 'fr',
       })
       .expect(200);
@@ -1979,7 +1986,6 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
           'phone',
           'role',
           'department',
-          'position',
           'language',
         ],
       }),
@@ -1991,7 +1997,6 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         role: Role.TECHNICIAN,
         phone: '+21612345678',
         department: 'Maintenance',
-        position: 'Shift Lead',
         language: 'fr',
         profile_completed: true,
         is_active: false,
@@ -2050,6 +2055,80 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .get('/technician/dashboard')
       .set('Authorization', `Bearer ${secondExchange.body.access_token}`)
       .expect(200);
+  });
+
+  it('T2: an incomplete Google profile can restore its session via refresh, but only reaches profile completion (never business APIs), and refresh reverts to blocked once pending approval starts', async () => {
+    const incompleteGoogleUser = await createApprovalUser({
+      email: 'refresh-restore-e2e@example.test',
+      role: Role.OPERATOR,
+      google_id: 'google-refresh-restore-e2e',
+      is_active: false,
+      is_verified: true,
+      approval_status: ApprovalStatus.PENDING,
+      profile_completed: false,
+    });
+
+    const loginResult = await authService.login(incompleteGoogleUser);
+    const exchangeCode = await googleLoginExchangeService.createExchange(
+      loginResult,
+    );
+
+    const exchange = await request(app.getHttpServer())
+      .post('/auth/google/exchange')
+      .send({ code: exchangeCode })
+      .expect(200);
+    expect(exchange.body.user.profile_completed).toBe(false);
+    expectRefreshCookie(exchange);
+    const csrfToken = getCookieValueFromSetCookie(exchange, 'csrf_token');
+
+    // This is the exact request AuthContext fires on every page load/refresh.
+    // Before this fix it returned 403 ACCOUNT_PENDING_APPROVAL and wiped the
+    // session; it must now succeed and keep reporting profile_completed:false.
+    const refreshed = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', getAuthCookieHeader(exchange))
+      .set('X-CSRF-Token', csrfToken)
+      .expect(200);
+    expect(refreshed.body.user).toEqual(
+      expect.objectContaining({
+        profile_completed: false,
+        approval_status: ApprovalStatus.PENDING,
+        is_active: false,
+      }),
+    );
+    expectRefreshCookie(refreshed);
+
+    // The restored session still cannot reach business endpoints - only
+    // route-level authorization decides that, session restoration does not.
+    const blocked = await request(app.getHttpServer())
+      .get('/documents')
+      .set('Authorization', `Bearer ${refreshed.body.access_token}`)
+      .expect(403);
+    expect(blocked.body.code).toBe('PROFILE_COMPLETION_REQUIRED');
+
+    // ...but it can still complete the profile with the token obtained from
+    // the restored (refreshed) session.
+    await request(app.getHttpServer())
+      .post('/auth/complete-profile')
+      .set('Authorization', `Bearer ${refreshed.body.access_token}`)
+      .send({
+        phone: '+21612345678',
+        role: Role.OPERATOR,
+        department: 'Maintenance',
+        language: 'en',
+      })
+      .expect(200);
+
+    // Established behavior preserved: once the profile is complete, the
+    // account is a normal "pending admin approval" account, and refresh is
+    // blocked exactly like it always was for pending accounts.
+    const refreshedCsrfToken = getCookieValueFromSetCookie(refreshed, 'csrf_token');
+    const pendingRefresh = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', getAuthCookieHeader(refreshed))
+      .set('X-CSRF-Token', refreshedCsrfToken)
+      .expect(403);
+    expect(pendingRefresh.body.code).toBe('ACCOUNT_PENDING_APPROVAL');
   });
 
   it('U: approved Google user receives one-time exchange only and the exchange cannot be reused', async () => {

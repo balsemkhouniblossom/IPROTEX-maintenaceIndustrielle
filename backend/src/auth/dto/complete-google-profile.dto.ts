@@ -27,10 +27,6 @@ export class CompleteGoogleProfileDto {
   department: string;
 
   @IsString()
-  @IsNotEmpty()
-  position: string;
-
-  @IsString()
   @IsIn(SUPPORTED_PROFILE_LANGUAGES)
   language: (typeof SUPPORTED_PROFILE_LANGUAGES)[number];
 }

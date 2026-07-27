@@ -243,6 +243,12 @@ export class OperatorController {
     });
   }
 
+  @Get('dashboard')
+  getDashboard(@Req() req: AuthenticatedRequest) {
+    const userId = this.ensureOperator(req);
+    return this.operatorService.getDashboard(userId);
+  }
+
   @Get('calendar/widget')
   getCalendarWidget(@Req() req: AuthenticatedRequest) {
     const userId = this.ensureOperator(req);

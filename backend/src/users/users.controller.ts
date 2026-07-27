@@ -27,6 +27,8 @@ import { AdminAccountGuard } from '../auth/guards/admin-account.guard';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { PendingApprovalsQueryDto } from './dto/pending-approvals-query.dto';
 import { RejectUserDto } from './dto/reject-user.dto';
+import { BulkApproveUsersDto } from './dto/bulk-approve-users.dto';
+import { BulkRejectUsersDto } from './dto/bulk-reject-users.dto';
 import { UpdateGoogleAuthDto } from './dto/update-google-auth.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import {
@@ -206,6 +208,31 @@ export class UsersController {
       id,
       req.currentUser?._id.toString() ?? '',
       rejectUserDto.reason,
+    );
+  }
+
+  @Post('bulk-approve')
+  @UseGuards(JwtAuthGuard, AdminAccountGuard)
+  async bulkApproveUsers(
+    @Body() dto: BulkApproveUsersDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.bulkApproveUsers(
+      dto.userIds,
+      req.currentUser?._id.toString() ?? '',
+    );
+  }
+
+  @Post('bulk-reject')
+  @UseGuards(JwtAuthGuard, AdminAccountGuard)
+  async bulkRejectUsers(
+    @Body() dto: BulkRejectUsersDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.bulkRejectUsers(
+      dto.userIds,
+      req.currentUser?._id.toString() ?? '',
+      dto.reason,
     );
   }
 

@@ -26,4 +26,9 @@ export class UsersQueryDto {
   @IsOptional()
   @IsIn(Object.values(ApprovalStatus))
   approvalStatus?: ApprovalStatus;
+
+  /** `field` for ascending, `-field` for descending; restricted server-side to an allow-list (see `USERS_SORT_ALLOWED_FIELDS`). */
+  @IsOptional()
+  @IsString()
+  sort?: string;
 }

@@ -15,6 +15,7 @@ export type LoginUser = {
   language?: string;
   photo?: string;
   profile_completed?: boolean;
+  approval_status?: string;
 };
 
 export type LoginSession = {

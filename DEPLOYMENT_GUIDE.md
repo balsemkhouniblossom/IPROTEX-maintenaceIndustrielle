@@ -1,5 +1,13 @@
 # GMAO Production Deployment Guide
 
+> **⚠ SUPERSEDED — HISTORICAL DOCUMENT ONLY**
+> This guide describes an earlier Docker Compose + Nginx deployment that is
+> **no longer used**. The project now runs natively: Render (backend) +
+> Vercel (frontend) + MongoDB Atlas + Supabase Storage, with no Docker,
+> containers, or self-hosted Nginx anywhere. See [`DEPLOYMENT.md`](./DEPLOYMENT.md)
+> for the current, canonical deployment process. Kept only as a historical
+> record of the prior architecture.
+
 ## Overview
 
 This guide covers deploying GMAO (Gestion de Maintenance Assistée par

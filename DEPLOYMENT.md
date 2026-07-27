@@ -1,34 +1,84 @@
 # Deployment Environment
 
-This project uses Render for the NestJS backend and Vercel for the Next.js frontend.
+This is the canonical deployment document for the GMAO project. The project
+runs entirely natively — there is no Docker, Docker Compose, container, or
+self-hosted Nginx anywhere in local development or production.
+
+- **Frontend**: Next.js, deployed on **Vercel**
+- **Backend**: NestJS, deployed on **Render**
+- **Database**: **MongoDB Atlas**, via a direct `mongodb+srv://` connection
+- **File storage**: **Supabase Storage**
+- **TLS and routing**: handled by Render and Vercel directly
 
 ## Local Development
 
-Backend local `.env` example:
+Backend:
 
-```env
-NODE_ENV=development
-PORT=3001
-MONGODB_URI=mongodb://localhost:27017/GMAO_IPROTEX
-JWT_SECRET=replace-with-strong-random-secret
-JWT_REFRESH_SECRET=replace-with-strong-random-refresh-secret
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
-EMAIL_VERIFICATION_SECRET=replace-with-strong-random-email-verification-secret
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
-BACKEND_URL=http://localhost:3001
-FRONTEND_BASE_URL=http://localhost:3000
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-FILE_STORAGE_DRIVER=local
+```bash
+cd backend
+npm install
+npm run start:dev
 ```
 
-Frontend local `frontend/.env.local` example:
+Frontend:
 
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+```bash
+cd frontend
+npm install
+npm run dev
 ```
+
+Local endpoints:
+
+```text
+Frontend: http://localhost:3000
+Backend:  http://localhost:3001
+```
+
+The backend loads its configuration only from files in the `backend/`
+directory (see `backend/src/load-env.ts`): `backend/.env`, then
+`backend/.env.local`, then `backend/.env.<NODE_ENV>` (e.g.
+`backend/.env.production`). A repository-root `.env` file is never read.
+Use `backend/.env.example` as the template for `backend/.env`.
+
+The frontend loads its configuration from `frontend/.env.local` (see
+`frontend/.env.example` for the template).
+
+## Database
+
+The backend connects directly to **MongoDB Atlas** through:
+
+```text
+MONGODB_URI
+```
+
+No local MongoDB installation and no MongoDB container are required for
+normal development. (The single exception is the backend's automated test
+suite, which defaults to `mongodb://localhost:27017/GMAO_IPROTEX_TEST` only
+when `NODE_ENV=test` and no `MONGODB_URI` is supplied — the e2e suite uses an
+in-process `mongodb-memory-server` for this, not a container.)
+
+## File Storage
+
+Uploaded files are stored in **Supabase Storage**, configured through:
+
+```text
+FILE_STORAGE_DRIVER=supabase
+SUPABASE_URL
+SUPABASE_SECRET_KEY
+SUPABASE_STORAGE_BUCKET
+SUPABASE_STORAGE_BUCKET_PUBLIC
+SUPABASE_SIGNED_URL_EXPIRES_IN_SECONDS
+```
+
+`SUPABASE_SECRET_KEY` is a service-role secret. It belongs **only** in
+`backend/.env` (local) or Render's backend environment/secrets (production).
+**Never** expose it to the frontend or configure it in Vercel.
+
+Production startup requires `FILE_STORAGE_DRIVER=supabase` plus
+`SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `SUPABASE_STORAGE_BUCKET`. If any
+are missing or the driver is not `supabase`, the backend exits during startup
+validation.
 
 ## Production Backend: Render
 
@@ -57,7 +107,8 @@ SUPABASE_STORAGE_BUCKET_PUBLIC=false
 SUPABASE_SIGNED_URL_EXPIRES_IN_SECONDS=604800
 ```
 
-Production startup requires `FILE_STORAGE_DRIVER=supabase` plus `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `SUPABASE_STORAGE_BUCKET`. If any are missing or the driver is not `supabase`, the backend exits during startup validation.
+Render terminates TLS and routes traffic to the backend directly — no
+self-hosted Nginx or reverse proxy is used.
 
 ## Production Frontend: Vercel
 
@@ -67,4 +118,14 @@ Configure only public frontend variables in Vercel:
 NEXT_PUBLIC_API_BASE_URL=https://your-backend.onrender.com
 ```
 
-Do not configure `SUPABASE_SECRET_KEY`, `SUPABASE_URL`, `SUPABASE_STORAGE_BUCKET`, or `FILE_STORAGE_DRIVER` in Vercel. Supabase Storage is accessed only by the NestJS backend.
+Do not configure `SUPABASE_SECRET_KEY`, `SUPABASE_URL`,
+`SUPABASE_STORAGE_BUCKET`, or `FILE_STORAGE_DRIVER` in Vercel. Supabase
+Storage is accessed only by the NestJS backend. Vercel terminates TLS and
+serves the frontend directly — no self-hosted Nginx is used.
+
+## Historical documents
+
+`DEPLOYMENT_GUIDE.md`, `PRODUCTION_READINESS_AUDIT.md`, and
+`SECURITY_HARDENING_REPORT.md` describe an earlier Docker Compose + Nginx
+deployment that is **no longer used**. They are marked superseded by this
+document and kept only as historical record.

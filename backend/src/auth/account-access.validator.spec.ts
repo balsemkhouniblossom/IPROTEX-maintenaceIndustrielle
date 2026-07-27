@@ -1,6 +1,9 @@
 import { ForbiddenException } from '@nestjs/common';
 import { ApprovalStatus, Role } from '../schemas/user.schema';
-import { validateAccountAccess } from './account-access.validator';
+import {
+  validateAccountAccess,
+  validateSessionRestoreAccess,
+} from './account-access.validator';
 import { AccountAccessErrorCode } from './account-access-error-code';
 
 function expectAccessCode(
@@ -132,5 +135,90 @@ describe('validateAccountAccess', () => {
       },
       AccountAccessErrorCode.ACCOUNT_ROLE_NOT_ALLOWED,
     );
+  });
+});
+
+describe('validateSessionRestoreAccess', () => {
+  it('allows an incomplete Google profile to restore its session', () => {
+    expect(() =>
+      validateSessionRestoreAccess({
+        approval_status: ApprovalStatus.PENDING,
+        is_active: false,
+        is_verified: true,
+        role: Role.OPERATOR,
+        profile_completed: false,
+      }),
+    ).not.toThrow();
+  });
+
+  it('still blocks a rejected account even with an incomplete profile', () => {
+    try {
+      validateSessionRestoreAccess({
+        approval_status: ApprovalStatus.REJECTED,
+        is_active: false,
+        is_verified: true,
+        role: Role.OPERATOR,
+        profile_completed: false,
+      });
+      throw new Error('Expected session restoration to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ForbiddenException);
+      expect((error as ForbiddenException).getResponse()).toEqual(
+        expect.objectContaining({
+          code: AccountAccessErrorCode.ACCOUNT_REJECTED,
+        }),
+      );
+    }
+  });
+
+  it('keeps the established behavior for a completed profile still pending approval', () => {
+    try {
+      validateSessionRestoreAccess({
+        approval_status: ApprovalStatus.PENDING,
+        is_active: false,
+        is_verified: true,
+        role: Role.OPERATOR,
+        profile_completed: true,
+      });
+      throw new Error('Expected session restoration to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ForbiddenException);
+      expect((error as ForbiddenException).getResponse()).toEqual(
+        expect.objectContaining({
+          code: AccountAccessErrorCode.ACCOUNT_PENDING_APPROVAL,
+        }),
+      );
+    }
+  });
+
+  it('keeps the established behavior when profile completion is unknown (legacy/non-Google accounts)', () => {
+    try {
+      validateSessionRestoreAccess({
+        approval_status: ApprovalStatus.PENDING,
+        is_active: false,
+        is_verified: true,
+        role: Role.OPERATOR,
+      });
+      throw new Error('Expected session restoration to fail');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ForbiddenException);
+      expect((error as ForbiddenException).getResponse()).toEqual(
+        expect.objectContaining({
+          code: AccountAccessErrorCode.ACCOUNT_PENDING_APPROVAL,
+        }),
+      );
+    }
+  });
+
+  it('allows a fully approved active account to restore its session as before', () => {
+    expect(() =>
+      validateSessionRestoreAccess({
+        approval_status: ApprovalStatus.APPROVED,
+        is_active: true,
+        is_verified: true,
+        role: Role.OPERATOR,
+        profile_completed: true,
+      }),
+    ).not.toThrow();
   });
 });

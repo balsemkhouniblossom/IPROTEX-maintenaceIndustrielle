@@ -13,7 +13,7 @@ interface JwtPayload {
   user_id: string;
 }
 
-function resolveJwtSecret(configService: ConfigService): string {
+export function resolveJwtSecret(configService: ConfigService): string {
   const secret = configService.get<string>('JWT_SECRET')?.trim();
   if (secret) {
     return secret;

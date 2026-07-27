@@ -13,6 +13,7 @@ import ThemeToggle from '@/components/theme/ThemeToggle';
 import { useParams } from 'next/navigation';
 import LiveClock from '@/components/LiveClock';
 import NotificationBell from '@/components/NotificationBell';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { getPendingApprovalCount } from '@/services/userApprovals';
 
 import {
@@ -31,6 +32,7 @@ import {
   BuildingStorefrontIcon,
   CubeIcon,
   DocumentTextIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 
 interface DashboardLayoutProps {
@@ -133,6 +135,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.machines'), href: '/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
       { name: t('navigation.machineTypes'), href: '/machine-types', icon: CubeIcon, categoryKey: 'categories.equipmentTypes', domain: 'assets' },
       { name: t('navigation.moduleTypes'), href: '/module-types', icon: DocumentTextIcon, categoryKey: 'categories.systemModules', domain: 'assets' },
+      { name: t('navigation.devices'), href: '/devices', icon: CpuChipIcon, categoryKey: 'categories.equipment', domain: 'assets' },
       { name: t('navigation.workOrders'), href: '/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.preventiveTaskChecklist'), href: '/preventive-task-checklist', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
@@ -147,7 +150,9 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.lubrifiants'), href: '/lubrifiants', icon: CubeIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
       { name: t('navigation.lubrificationLogs'), href: '/lubrification-logs', icon: ClipboardDocumentListIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
       { name: t('navigation.otPieces'), href: '/ot-pieces', icon: ClipboardDocumentListIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
+      { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
+      { name: t('navigation.knowledgeBase'), href: '/knowledge-base', icon: BookOpenIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
+      { name: t('navigation.reports'), href: '/reports', icon: ChartBarIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
     ];
 
     const technicianNav: NavItem[] = [
@@ -156,7 +161,8 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: tTechnician('dashboard.sections.current'), href: '/technician/interventions', icon: CogIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: tTechnician('dashboard.sections.waitingPartsTasks'), href: '/technician/waiting-parts', icon: BuildingStorefrontIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: tTechnician('dashboard.sections.recent'), href: '/technician/history', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: tTechnician('manuals.title'), href: '/technician/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
+      { name: tTechnician('manuals.title'), href: '/technician/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
+      { name: t('navigation.knowledgeBase'), href: '/technician/knowledge-base', icon: BookOpenIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
     ];
 
     const operatorNav: NavItem[] = [
@@ -167,6 +173,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.smartMaintenanceCalendar'), href: '/operator/smart-maintenance-calendar', icon: CalendarDaysIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.machines'), href: '/operator/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
       { name: t('navigation.manuals'), href: '/operator/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
+      { name: t('navigation.knowledgeBase'), href: '/operator/knowledge-base', icon: BookOpenIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
       { name: t('navigation.myReports'), href: '/operator/my-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
     ];
 
@@ -199,6 +206,12 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
   return (
     <div className="dashboard-grid relative overflow-x-hidden overflow-y-visible" >
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:start-2 focus:z-1001 focus:rounded-md focus:bg-[var(--primary)] focus:px-4 focus:py-2 focus:text-white"
+      >
+        {tCommon('skipToContent')}
+      </a>
       <Image
         src="/Iprotex logo.png"
         alt="IPROTEX Logo Background"
@@ -219,7 +232,6 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
               width={200}
               height={200}
               className="w-50 h-50 object-contain cursor-pointer hover:opacity-80 transition-opacity"
-              style={{ width: 'auto', height: 'auto' }}
               loading="eager"
               priority
               onClick={handleLogoClick}
@@ -236,22 +248,26 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
             <SignalIcon className="h-4 w-4 shrink-0 text-green-500" />
             <span title={t('systemStatus.online')}>{t('systemStatus.online')}</span>
           </div>
-          <div className="status-item-modern warning">
-            <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-amber-500" />
-            <span title={statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}>{statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}</span>
-          </div>
-          <div className="status-item-modern success">
-            <ChartBarIcon className="h-4 w-4 shrink-0 text-green-500" />
-            <span title={statistics ? String(statistics.percentageChange) : t('systemStatus.loading')}>
-              {statistics ? (
-                statistics.percentageChange >= 0
-                  ? t('systemStatus.percentageChange.positive', { value: statistics.percentageChange })
-                  : t('systemStatus.percentageChange.negative', { value: statistics.percentageChange })
-              ) : (
-                t('systemStatus.loading')
-              )}
-            </span>
-          </div>
+          {role === 'admin' && (
+            <>
+              <div className="status-item-modern warning">
+                <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-amber-500" />
+                <span title={statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}>{statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}</span>
+              </div>
+              <div className="status-item-modern success">
+                <ChartBarIcon className="h-4 w-4 shrink-0 text-green-500" />
+                <span title={statistics ? String(statistics.percentageChange) : t('systemStatus.loading')}>
+                  {statistics ? (
+                    statistics.percentageChange >= 0
+                      ? t('systemStatus.percentageChange.positive', { value: statistics.percentageChange })
+                      : t('systemStatus.percentageChange.negative', { value: statistics.percentageChange })
+                  ) : (
+                    t('systemStatus.loading')
+                  )}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Navigation */}
@@ -359,6 +375,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
                 <button
                   onClick={logout}
+                  aria-label={tCommon('auth.logout')}
                   className="toolbar-action"
                 >
                   <ArrowRightOnRectangleIcon className="w-5 h-5" />
@@ -368,6 +385,8 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label={sidebarOpen ? tCommon('closeMenu') : tCommon('openMenu')}
+                aria-expanded={sidebarOpen}
                 className="mobile-menu-btn toolbar-action md:hidden"
               >
                 {sidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
@@ -376,7 +395,8 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
           </div>
         </header>
 
-        <main className="relative z-0 p-4 md:p-6 lg:p-8">{children}</main>
+        <OfflineBanner />
+        <main id="main-content" className="relative z-0 p-4 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
 

@@ -1,13 +1,18 @@
 'use client';
 import Pagination from '@/components/Pagination';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import DashboardLayout from '@/components/DashboardLayout';
-import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
+import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
+import type { MachineHealthSummary } from '@/hooks/usePredictiveHealth';
 import { displayText } from '@/services/displayValues';
-import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
+import { extractApiErrorMessage } from '@/services/apiErrors';
+import { StatusBadge } from '@/components/StatusBadge';
+import { VirtualizedDataTable, DataTableColumn } from '@/components/VirtualizedDataTable';
+import { SavedViewsBar, SavedView } from '@/components/SavedViewsBar';
+import { useServerTable, ServerTableQuery } from '@/hooks/useServerTable';
 import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
@@ -42,6 +47,19 @@ interface MaintenancePlan {
   version?: number;
 }
 
+interface MaintenancePlansFilters {
+  status: string;
+  typeMaintenance: string;
+  [key: string]: string;
+}
+
+type SavedMaintenancePlansQuery = {
+  search?: string;
+  status?: string;
+  typeMaintenance?: string;
+  sort?: string;
+};
+
 const STATUS_BADGE_CLASSES: Record<MaintenancePlanStatus, string> = {
   draft: 'bg-slate-100 text-slate-700 border-slate-200',
   active: 'bg-green-100 text-green-800 border-green-200',
@@ -63,20 +81,6 @@ const AVAILABLE_TRANSITIONS: Record<
   completed: ['archive'],
   archived: [],
 };
-
-function extractApiErrorMessage(error: unknown, fallback: string): string {
-  const apiError = error as {
-    response?: { status?: number; data?: { message?: string | string[] } };
-  };
-  const raw = apiError?.response?.data?.message;
-  if (Array.isArray(raw) && raw.length) {
-    return raw.join(' ');
-  }
-  if (typeof raw === 'string' && raw.trim()) {
-    return raw;
-  }
-  return fallback;
-}
 
 const CUSTOM_OPTION = '__custom__';
 
@@ -139,19 +143,14 @@ export default function MaintenancePlansPage() {
   const t = useTranslations('maintenancePlans');
   const tCommon = useTranslations('common');
 
-  const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [modules, setModules] = useState<ModuleEntity[]>([]);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MaintenancePlan | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [planHealth, setPlanHealth] = useState<Record<string, MachineHealthSummary>>({});
+  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  const [activeSavedViewId, setActiveSavedViewId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     plan_id: '',
     module_id: '',
@@ -165,44 +164,85 @@ export default function MaintenancePlansPage() {
     huile_graisse: '',
     documentation: '',
   });
-  const loadData = async () => {
-    try {
-      setLoading(true);
 
-      const [plansResponse, modulesResponse] = await Promise.all([
-        apiService.getMaintenancePlans({ page, limit }),
-        apiService.getModules(),
-      ]);
-
-      const loadedPlans = plansResponse.data.items ?? [];
-      setPlans(
-        loadedPlans.map((plan: MaintenancePlan) => ({
-          ...plan,
-          instruction: cleanInstruction(plan.instruction),
-          responsable: cleanResponsable(plan.responsable),
-        })),
+  const fetcher = useCallback(
+    async (query: ServerTableQuery<MaintenancePlansFilters>, signal: AbortSignal) => {
+      const response = await apiService.getMaintenancePlans(
+        {
+          page: query.page,
+          limit: query.limit,
+          search: query.search || undefined,
+          sort: query.sort,
+          status: query.filters.status || undefined,
+          typeMaintenance: query.filters.typeMaintenance || undefined,
+        },
+        { signal },
       );
-      setTotalItems(plansResponse.data.totalItems ?? 0);
-      setTotalPages(plansResponse.data.totalPages ?? 1);
+      const items = (response.data.items ?? []).map((plan: MaintenancePlan) => ({
+        ...plan,
+        instruction: cleanInstruction(plan.instruction),
+        responsable: cleanResponsable(plan.responsable),
+      }));
+      return {
+        items,
+        page: response.data.page ?? query.page,
+        limit: response.data.limit ?? query.limit,
+        totalItems: response.data.totalItems ?? 0,
+        totalPages: response.data.totalPages ?? 1,
+      };
+    },
+    [],
+  );
 
+  const table = useServerTable<MaintenancePlan, MaintenancePlansFilters>({
+    fetcher,
+    initialFilters: { status: '', typeMaintenance: '' },
+    pageSize: 10,
+  });
+
+  const loadFormOptions = useCallback(async () => {
+    try {
+      const modulesResponse = await apiService.getModules();
       const modulesData = Array.isArray(modulesResponse.data)
         ? modulesResponse.data
         : modulesResponse.data?.items ??
         modulesResponse.data?.data ??
         modulesResponse.data?.modules ??
         [];
-
       setModules(modulesData);
     } catch (error) {
-      console.error('Error loading maintenance plans:', error);
-      showNotification('error', t('notifications.loadFailed'));
-    } finally {
-      setLoading(false);
+      console.error('Error loading modules:', error);
     }
-  };
+  }, []);
+
   useEffect(() => {
-    loadData();
-  }, [page]);
+    void loadFormOptions();
+  }, [loadFormOptions]);
+
+  useEffect(() => {
+    apiService
+      .getPredictivePlansSummary()
+      .then((response) => {
+        setPlanHealth(response.data && typeof response.data === 'object' ? response.data : {});
+      })
+      .catch((error) => {
+        console.error('Failed to load predictive maintenance plan health summary', error);
+        setPlanHealth({});
+      });
+  }, []);
+
+  const loadSavedViews = useCallback(async () => {
+    try {
+      const response = await apiService.getSavedViews('maintenance-plans');
+      setSavedViews(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      // Non-fatal — the saved-views bar just stays empty.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSavedViews();
+  }, [loadSavedViews]);
 
   function showNotification(type: 'success' | 'error', message: string) {
     setNotification({ type, message });
@@ -280,7 +320,7 @@ export default function MaintenancePlansPage() {
     try {
       await apiService.deleteMaintenancePlan(plan._id, plan.version);
       showNotification('success', t('notifications.deleteSuccess'));
-      await loadData();
+      await table.reload();
     } catch (error) {
       console.error('Error deleting maintenance plan:', error);
       showNotification('error', extractApiErrorMessage(error, t('notifications.deleteFailed')));
@@ -301,7 +341,7 @@ export default function MaintenancePlansPage() {
     try {
       await apiService.transitionMaintenancePlan(plan._id, action);
       showNotification('success', t('notifications.transitionSuccess'));
-      await loadData();
+      await table.reload();
     } catch (error) {
       console.error('Error transitioning maintenance plan:', error);
       showNotification('error', extractApiErrorMessage(error, t('notifications.transitionFailed')));
@@ -341,7 +381,7 @@ export default function MaintenancePlansPage() {
 
       setShowModal(false);
       resetForm();
-      await loadData();
+      await table.reload();
     } catch (error) {
       console.error('Error saving maintenance plan:', error);
       showNotification('error', extractApiErrorMessage(error, t('notifications.saveFailed')));
@@ -350,44 +390,177 @@ export default function MaintenancePlansPage() {
     }
   }
 
-  const searchablePlans = useMemo(
-    () =>
-      plans.map((plan) => ({
-        ...plan,
-        module_label: getModuleLabel(plan.module_id, modules, tCommon('notAvailable')),
-      })),
-    [plans, modules, tCommon],
-  );
+  function applySavedView(view: SavedView) {
+    const query = view.query as SavedMaintenancePlansQuery;
+    setActiveSavedViewId(view._id);
+    table.setSearchInput(query.search ?? '');
+    table.setFilters({ status: query.status ?? '', typeMaintenance: query.typeMaintenance ?? '' });
+    table.setSort(query.sort);
+    table.setPage(1);
+  }
 
-  const searchableFields = useMemo(() => getSearchableFields(searchablePlans), [searchablePlans]);
+  async function saveCurrentView(name: string) {
+    try {
+      const query: SavedMaintenancePlansQuery = {
+        search: table.searchInput || undefined,
+        status: table.filters.status || undefined,
+        typeMaintenance: table.filters.typeMaintenance || undefined,
+        sort: table.sort,
+      };
+      const response = await apiService.createSavedView({ pageKey: 'maintenance-plans', name, query });
+      setSavedViews((prev) => [response.data, ...prev]);
+    } catch (error) {
+      showNotification('error', extractApiErrorMessage(error, tCommon('savedViews.save')));
+    }
+  }
 
-  const filteredPlans = useMemo(() => {
-    const filtered = searchablePlans.filter((plan) =>
-      matchesDynamicSearch(plan, searchTerm, selectedSearchField)
-    );
+  async function deleteSavedView(view: SavedView) {
+    try {
+      await apiService.deleteSavedView(view._id);
+      setSavedViews((prev) => prev.filter((v) => v._id !== view._id));
+      if (activeSavedViewId === view._id) setActiveSavedViewId(null);
+    } catch (error) {
+      showNotification('error', extractApiErrorMessage(error, tCommon('savedViews.delete')));
+    }
+  }
 
-    return filtered;
-  }, [searchablePlans, searchTerm, selectedSearchField]);
-
-  const planIdOptions = useMemo(() => mergeOptions(plans.map((plan) => plan.plan_id)), [plans]);
+  const planIdOptions = useMemo(() => mergeOptions(table.items.map((plan) => plan.plan_id)), [table.items]);
   const maintenanceCodeOptions = useMemo(
-    () => mergeOptions(plans.map((plan) => plan.maintenance_code), ['W1', 'W2', 'W3', 'W4', 'W5', 'W6']),
-    [plans],
+    () => mergeOptions(table.items.map((plan) => plan.maintenance_code), ['W1', 'W2', 'W3', 'W4', 'W5', 'W6']),
+    [table.items],
   );
   const frequenceLabelOptions = useMemo(
-    () => mergeOptions(plans.map((plan) => plan.frequence_label), ['Monthly', 'Quarterly', 'Semi-annual', 'Annual']),
-    [plans],
+    () => mergeOptions(table.items.map((plan) => plan.frequence_label), ['Monthly', 'Quarterly', 'Semi-annual', 'Annual']),
+    [table.items],
   );
 
-  if (loading) {
-    return (
-      <DashboardLayout title={t('title')}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-24 w-24 border-b-2 border-blue-600"></div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const columns: DataTableColumn<MaintenancePlan>[] = useMemo(
+    () => [
+      {
+        key: 'plan_id',
+        header: t('table.planCode', { default: 'Plan Code' }),
+        width: '9rem',
+        render: (plan) => <span className="font-medium">{displayText(plan.plan_id, tCommon('notAvailable'))}</span>,
+      },
+      {
+        key: 'module_id',
+        header: t('table.module'),
+        width: '9rem',
+        render: (plan) => getModuleLabel(plan.module_id, modules, tCommon('notAvailable')),
+      },
+      {
+        key: 'status',
+        header: t('table.status', { default: 'Status' }),
+        sortable: true,
+        width: '9rem',
+        render: (plan) => {
+          const status = plan.status || 'active';
+          return <StatusBadge label={t(`status.${status}`, { default: status })} colorClassName={STATUS_BADGE_CLASSES[status]} />;
+        },
+      },
+      {
+        key: 'type_maintenance',
+        header: t('table.maintenanceType'),
+        width: '8rem',
+        render: (plan) => plan.type_maintenance,
+      },
+      {
+        key: 'frequence',
+        header: t('table.frequency'),
+        width: '6rem',
+        render: (plan) => plan.frequence,
+      },
+      {
+        key: 'unite_frequence',
+        header: t('table.frequencyUnit'),
+        width: '7rem',
+        render: (plan) => plan.unite_frequence,
+      },
+      {
+        key: 'instruction',
+        header: t('table.instruction'),
+        width: 'minmax(10rem, 1.5fr)',
+        render: (plan) => cleanInstruction(plan.instruction) || tCommon('notAvailable'),
+      },
+      {
+        key: 'responsable',
+        header: t('table.responsable'),
+        width: '8rem',
+        render: (plan) => cleanResponsable(plan.responsable) || tCommon('notAvailable'),
+      },
+      {
+        key: 'huile_graisse',
+        header: t('table.huileGraisse'),
+        width: '7rem',
+        render: (plan) => plan.huile_graisse || tCommon('notAvailable'),
+      },
+      {
+        key: 'documentation',
+        header: t('table.documentation'),
+        width: '9rem',
+        render: (plan) => plan.documentation || tCommon('notAvailable'),
+      },
+      {
+        key: 'machine_health',
+        header: t('table.machineHealth', { default: 'Machine Health' }),
+        width: '7rem',
+        render: (plan) => <MachineHealthBadge status={planHealth[plan._id]} />,
+      },
+      {
+        key: 'actions',
+        header: tCommon('table.actions'),
+        align: 'end',
+        // Wide enough to fit the worst case (3 transition buttons + edit +
+        // delete, for an active plan) on a single line. These buttons must
+        // never wrap: rows are absolutely positioned at fixed intervals by
+        // the virtualizer (no dynamic remeasurement), so a row that wraps
+        // to two lines grows taller than its allotted slot and visually
+        // overlaps the row below it.
+        width: 'minmax(24rem, 40rem)',
+        render: (plan) => {
+          const status = plan.status || 'active';
+          const isArchived = status === 'archived';
+          const availableActions = AVAILABLE_TRANSITIONS[status] || [];
+          return (
+            <div className="flex flex-nowrap justify-end gap-2">
+              {availableActions.map((action) => (
+                <button
+                  key={action}
+                  className="btn-secondary whitespace-nowrap px-2 py-1 text-xs"
+                  title={t(`actions.${action}`)}
+                  onClick={() => handleTransition(plan, action)}
+                >
+                  {t(`actions.${action}`)}
+                </button>
+              ))}
+              {!isArchived ? (
+                <button
+                  className="btn-secondary p-2"
+                  title={t('actions.edit')}
+                  aria-label={`${t('actions.edit')} ${plan.plan_id}`}
+                  onClick={() => handleEdit(plan)}
+                >
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+              ) : null}
+              {!isArchived ? (
+                <button
+                  className="btn-danger p-2"
+                  title={t('actions.delete')}
+                  aria-label={`${t('actions.delete')} ${plan.plan_id}`}
+                  onClick={() => handleDelete(plan)}
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              ) : null}
+            </div>
+          );
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, tCommon, planHealth, modules],
+  );
 
   return (
     <DashboardLayout title={t('title')}>
@@ -400,7 +573,12 @@ export default function MaintenancePlansPage() {
         >
           {notification.type === 'success' ? <CheckCircleIcon className="w-5 h-5" /> : <ExclamationTriangleIcon className="w-5 h-5" />}
           <span>{notification.message}</span>
-          <button className="ml-2 text-gray-600 hover:text-gray-800" onClick={() => setNotification(null)}>
+          <button
+            className="ml-2 flex items-center justify-center text-gray-600 hover:text-gray-800"
+            style={{ minWidth: 24, minHeight: 24 }}
+            aria-label={tCommon('dismiss')}
+            onClick={() => setNotification(null)}
+          >
             ×
           </button>
         </div>
@@ -417,7 +595,7 @@ export default function MaintenancePlansPage() {
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <div className="text-3xl font-bold text-blue-600">
-                    {totalItems}
+                    {table.totalItems}
                   </div>
                   <div className="text-sm text-slate-500">{t('totalPlans')}</div>
                 </div>
@@ -431,107 +609,84 @@ export default function MaintenancePlansPage() {
         </div>
 
         <div className="col-span-full bento-item panel">
-          <div className="flex items-center justify-between mb-4 gap-4">
+          <div className="flex flex-wrap items-center justify-between mb-4 gap-4">
             <div className="card-title">{t('allPlans')}</div>
-            <DynamicSearchControls
-              className=""
-              selectClassName="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              inputClassName="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-              selectedField={selectedSearchField}
-              onSelectedFieldChange={setSelectedSearchField}
-              searchableFields={searchableFields}
-              allFieldsLabel={tCommon('table.allFields', { default: 'All fields' })}
-              searchTerm={searchTerm}
-              onSearchTermChange={setSearchTerm}
-              searchPlaceholder={t('searchPlaceholder')}
-            />
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('table.status', { default: 'Status' })}</th>
-                  <th>{t('table.maintenanceType')}</th>
-                  <th>{t('table.frequency')}</th>
-                  <th>{t('table.frequencyUnit')}</th>
-                  <th>{t('table.instruction')}</th>
-                  <th>{t('table.responsable')}</th>
-                  <th>{t('table.huileGraisse')}</th>
-                  <th>{t('table.documentation')}</th>
-                  <th>{tCommon('table.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPlans.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="text-center py-8 text-gray-500">
-                      {searchTerm ? t('empty.search') : t('empty.default')}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPlans.map((plan) => {
-                    const status = plan.status || 'active';
-                    const isArchived = status === 'archived';
-                    const availableActions = AVAILABLE_TRANSITIONS[status] || [];
-
-                    return (
-                      <tr key={plan._id}>
-                        <td>
-                          <span
-                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${STATUS_BADGE_CLASSES[status]}`}
-                          >
-                            {t(`status.${status}`, { default: status })}
-                          </span>
-                        </td>
-                        <td>{plan.type_maintenance}</td>
-                        <td>{plan.frequence}</td>
-                        <td>{plan.unite_frequence}</td>
-                        <td>{cleanInstruction(plan.instruction) || tCommon('notAvailable')}</td>
-                        <td>{cleanResponsable(plan.responsable) || tCommon('notAvailable')}</td>
-                        <td>{plan.huile_graisse || tCommon('notAvailable')}</td>
-                        <td>{plan.documentation || tCommon('notAvailable')}</td>
-                        <td>
-                          <div className="flex flex-wrap gap-2">
-                            {availableActions.map((action) => (
-                              <button
-                                key={action}
-                                className="btn-secondary px-2 py-1 text-xs"
-                                title={t(`actions.${action}`)}
-                                onClick={() => handleTransition(plan, action)}
-                              >
-                                {t(`actions.${action}`)}
-                              </button>
-                            ))}
-                            {!isArchived ? (
-                              <button className="btn-secondary p-2" title={t('actions.edit')} onClick={() => handleEdit(plan)}>
-                                <PencilIcon className="w-4 h-4" />
-                              </button>
-                            ) : null}
-                            {!isArchived ? (
-                              <button className="btn-danger p-2" title={t('actions.delete')} onClick={() => handleDelete(plan)}>
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            <div className="col-span-full">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                limit={limit}
-                onPageChange={setPage}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={table.searchInput}
+                onChange={(e) => table.setSearchInput(e.target.value)}
+                className="input-field"
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchPlaceholder')}
               />
+              <select
+                value={table.filters.status}
+                onChange={(e) => { table.setFilters({ ...table.filters, status: e.target.value }); table.setPage(1); }}
+                className="input-field"
+                aria-label={t('table.status', { default: 'Status' })}
+              >
+                <option value="">{t('filters.allStatuses')}</option>
+                {(Object.keys(STATUS_BADGE_CLASSES) as MaintenancePlanStatus[]).map((status) => (
+                  <option key={status} value={status}>
+                    {t(`status.${status}`, { default: status })}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={table.filters.typeMaintenance}
+                onChange={(e) => { table.setFilters({ ...table.filters, typeMaintenance: e.target.value }); table.setPage(1); }}
+                className="input-field"
+                aria-label={t('table.maintenanceType')}
+              >
+                <option value="">{t('filters.allTypes')}</option>
+                {MAINTENANCE_TYPE_OPTIONS.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
+          <div className="mb-4">
+            <SavedViewsBar
+              views={savedViews}
+              activeViewId={activeSavedViewId}
+              onApply={applySavedView}
+              onSaveCurrent={(name) => void saveCurrentView(name)}
+              onDelete={(view) => void deleteSavedView(view)}
+              saveLabel={tCommon('savedViews.save')}
+              namePlaceholder={tCommon('savedViews.namePlaceholder')}
+              emptyLabel={tCommon('savedViews.empty')}
+              deleteLabel={tCommon('savedViews.delete')}
+            />
+          </div>
+
+          <VirtualizedDataTable
+            columns={columns}
+            rows={table.items}
+            rowKey={(plan) => plan._id}
+            loading={table.loading}
+            error={table.error}
+            onRetry={table.reload}
+            emptyMessage={table.searchInput ? t('empty.search') : t('empty.default')}
+            loadingLabel={tCommon('loading')}
+            errorRetryLabel={tCommon('retry')}
+            sortField={table.sortField}
+            sortDirection={table.sortDirection}
+            onSortChange={table.toggleSort}
+            ariaLabel={t('allPlans')}
+          />
+
+          <div className="col-span-full mt-4">
+            <Pagination
+              page={table.page}
+              totalPages={table.totalPages}
+              totalItems={table.totalItems}
+              limit={table.limit}
+              onPageChange={table.setPage}
+            />
+          </div>
         </div>
       </div>
 

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { getLocale } from "next-intl/server";
 import { Montserrat, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import GlobalApiErrorBanner from "@/components/GlobalApiErrorBanner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { isRtlLocale } from "@/i18n/config";
 import {
   isThemePreference,
   THEME_COOKIE_NAME,
@@ -64,9 +66,14 @@ export default async function RootLayout({
   const cookieTheme = cookieStore.get(THEME_COOKIE_NAME)?.value;
   const themePreference = isThemePreference(cookieTheme) ? cookieTheme : 'system';
   const initialTheme = themePreference === 'light' || themePreference === 'dark' ? themePreference : undefined;
+  // Falls back to "en" outside a [locale] route (e.g. the bare "/" redirect
+  // page), where next-intl's middleware never sets a request locale.
+  const locale = await getLocale().catch(() => 'en');
 
   return (
     <html
+      lang={locale}
+      dir={isRtlLocale(locale) ? 'rtl' : 'ltr'}
       suppressHydrationWarning
       data-theme={initialTheme}
       data-theme-preference={themePreference}

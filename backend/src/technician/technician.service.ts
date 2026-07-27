@@ -28,15 +28,13 @@ import { DocumentAccessService } from '../documents/document-access.service';
 import { Role } from '../schemas/user.schema';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
+import {
+  CLOSED_WORK_ORDER_STATUSES,
+  COMPLETED_WORK_ORDER_STATUSES,
+} from '../common/work-order-status';
+import { KpiService } from '../kpi/kpi.service';
 
-const CLOSED_STATUSES = [
-  'completed',
-  'validated',
-  'cancelled',
-  'canceled',
-  'CLOTURE',
-  'ANNULE',
-];
+const CLOSED_STATUSES = CLOSED_WORK_ORDER_STATUSES;
 const REVIEW_STATUSES = [
   'waiting_validation',
   'technician_required',
@@ -51,7 +49,7 @@ const STARTABLE_STATUSES = [
 const STATUS_FILTERS: Record<string, string[]> = {
   in_progress: ['in_progress', 'EN_COURS'],
   waiting_parts: ['waiting_parts', 'EN_ATTENTE_PIECES'],
-  completed: ['completed', 'validated', 'CLOTURE'],
+  completed: COMPLETED_WORK_ORDER_STATUSES,
   cancelled: ['cancelled', 'canceled', 'ANNULE'],
 };
 const MANUAL_DOCUMENT_FILTER: FilterQuery<DocumentDocument> = {
@@ -106,6 +104,7 @@ export class TechnicianService {
     private readonly documentAccessService: DocumentAccessService,
     private readonly notificationCenterService: NotificationCenterService,
     private readonly stockMovementsService: StockMovementsService,
+    private readonly kpiService: KpiService,
   ) {}
 
   private objectId(id: string, label: string): Types.ObjectId {
@@ -184,17 +183,13 @@ export class TechnicianService {
 
   async dashboard(technicianId: string) {
     const scope = { technician_id: this.technicianScope(technicianId) };
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const [
       assigned,
       inProgress,
       waitingParts,
       waitingReview,
-      completedToday,
+      kpiCounts,
       urgent,
       current,
       waiting,
@@ -216,14 +211,10 @@ export class TechnicianService {
         ...(await this.actionableScope(technicianId)),
         status: { $in: REVIEW_STATUSES },
       }),
-      this.workOrdersModel.countDocuments({
-        ...scope,
-        status: { $in: STATUS_FILTERS.completed },
-        $or: [
-          { date_closed: { $gte: today, $lt: tomorrow } },
-          { date_end: { $gte: today, $lt: tomorrow } },
-        ],
-      }),
+      // overdue/dueToday/waitingValidation/completedToday: computed by the
+      // shared KpiService (business-timezone-aware boundaries), the same
+      // way every other dashboard in the app computes these four numbers.
+      this.kpiService.getTechnicianDashboardCounts(technicianId),
       this.workOrdersModel.countDocuments({
         ...(await this.actionableScope(technicianId)),
         priorite: { $regex: /^urgent$/i },
@@ -279,8 +270,11 @@ export class TechnicianService {
         inProgress,
         waitingParts,
         waitingReview,
-        completedToday,
+        completedToday: kpiCounts.completedTodayCount,
         urgent,
+        overdue: kpiCounts.overdueCount,
+        dueToday: kpiCounts.dueTodayCount,
+        waitingValidation: kpiCounts.waitingValidationCount,
       },
       urgentTasks: urgentWithOperators,
       current: currentWithOperators,
@@ -575,12 +569,22 @@ export class TechnicianService {
     return claimed;
   }
 
+  /**
+   * A technician's own "review" of a work order actionable in their scope
+   * can never include final approval: `actionableScope` only ever matches
+   * work orders assigned to this same technician (or unclaimed ones), so an
+   * 'approve' here would always be self-approval. Final validation is
+   * reserved for an independent authorized user via
+   * `WorkOrdersService.applyValidationAction` through the Admin-only
+   * validation endpoint. Only sending it back for correction, or starting
+   * work on it, are legitimate self-service actions here.
+   */
   async review(
     technicianId: string,
     workOrderId: string,
-    action?: 'approve' | 'return' | 'intervene',
+    action?: 'return' | 'intervene',
   ) {
-    if (!action || !['approve', 'return', 'intervene'].includes(action))
+    if (!action || !['return', 'intervene'].includes(action))
       throw new BadRequestException('Invalid review action');
     if (action === 'intervene') return this.start(technicianId, workOrderId);
     const id = this.objectId(workOrderId, 'work order');
@@ -595,7 +599,7 @@ export class TechnicianService {
       throw new ConflictException('Report is no longer awaiting review');
     const updated = await this.workOrdersService.applyValidationAction(
       workOrderId,
-      action === 'approve' ? 'approve' : 'request_correction',
+      'request_correction',
       technicianId,
     );
     return updated;
@@ -783,6 +787,16 @@ export class TechnicianService {
     }
   }
 
+  /**
+   * Finishes the technician's own hands-on work and submits it for
+   * independent validation — it never self-finalizes to `completed`. A
+   * technician can never be the one who validates their own corrective or
+   * preventive work: only `WorkOrdersService.applyValidationAction` (reached
+   * via the Admin-only `/work-orders/:id/validation` endpoint) can move a
+   * `waiting_validation` order on to `validated`, and that method refuses to
+   * let the performer validate themselves. This mirrors how an Operator's
+   * own submission already works — never straight to a terminal status.
+   */
   async close(technicianId: string, workOrderId: string) {
     const id = this.objectId(workOrderId, 'work order');
     const report = await this.reportsModel.findOne({ ot_id: id }).exec();
@@ -797,7 +811,22 @@ export class TechnicianService {
           technician_id: this.technicianScope(technicianId),
           status: 'in_progress',
         },
-        { $set: { status: 'completed', date_end: now, date_closed: now } },
+        {
+          $set: {
+            status: 'waiting_validation',
+            date_end: now,
+            date_closed: now,
+          },
+          $push: {
+            lifecycle_history: {
+              action: 'closed_for_validation',
+              from_status: 'in_progress',
+              to_status: 'waiting_validation',
+              actor_user_id: this.objectId(technicianId, 'technician'),
+              at: now,
+            },
+          },
+        },
         { new: true },
       )
       .exec();
@@ -808,14 +837,16 @@ export class TechnicianService {
     await this.reportsModel
       .updateOne(
         { _id: report._id },
-        { $set: { date_fin: now, validation_responsable: 'validated' } },
+        {
+          $set: { date_fin: now, validation_responsable: 'waiting_validation' },
+        },
       )
       .exec();
 
     await this.notificationCenterService.createIfNotExists({
       dedupeKey: `intervention_completed:${id.toString()}`,
       type: NotificationType.INTERVENTION_COMPLETED,
-      title: `Intervention completed for work order ${updated.ot_id}`,
+      title: `Intervention completed for work order ${updated.ot_id} — awaiting validation`,
       recipientRole: Role.ADMIN,
       workOrderId: id.toString(),
       machineId: updated.machine_id?.toString(),

@@ -7,6 +7,8 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated } from "@/services/pagination";
+import { extractApiErrorMessage } from "@/services/apiErrors";
+import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
 import {
   CalendarDaysIcon,
   FunnelIcon,
@@ -354,20 +356,6 @@ export default function SmartMaintenanceCalendarPage() {
       setFilters((prev) => ({ ...prev, machineId: "" }));
     }
   }, [filters.machineId, machineOptions]);
-
-  function extractApiErrorMessage(error: unknown, fallback: string): string {
-    const apiError = error as {
-      response?: { status?: number; data?: { message?: string | string[] } };
-    };
-    const raw = apiError?.response?.data?.message;
-    if (Array.isArray(raw) && raw.length) {
-      return raw.join(" ");
-    }
-    if (typeof raw === "string" && raw.trim()) {
-      return raw;
-    }
-    return fallback;
-  }
 
   function showNotification(type: "success" | "error", message: string): void {
     setNotification({ type, message });
@@ -763,7 +751,7 @@ export default function SmartMaintenanceCalendarPage() {
                                 : event.status}
                       </span>
                       <span className="rounded-full border border-slate-300 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                        {event.type === "preventive" ? tCalendar("preventive") : tCalendar("corrective")}
+                        {!isCorrectiveMaintenanceType(event.type) ? tCalendar("preventive") : tCalendar("corrective")}
                       </span>
                     </div>
                     <div className="space-y-1 text-sm">
@@ -855,7 +843,7 @@ export default function SmartMaintenanceCalendarPage() {
                     <div><strong>{tCalendar("machine")}:</strong> {selectedEventDetails.machine.code || tCommon("notAvailable")}</div>
                     <div><strong>{tCalendar("machineType")}:</strong> {selectedEventDetails.machineType.name || tCommon("notAvailable")}</div>
                     <div><strong>{tCalendar("module")}:</strong> {selectedEventDetails.module.code || selectedEventDetails.module.location || tCommon("notAvailable")}</div>
-                    <div><strong>{tCalendar("maintenanceType")}:</strong> {selectedEventDetails.maintenanceType === "preventive" ? tCalendar("preventive") : tCalendar("corrective")}</div>
+                    <div><strong>{tCalendar("maintenanceType")}:</strong> {!isCorrectiveMaintenanceType(selectedEventDetails.maintenanceType) ? tCalendar("preventive") : tCalendar("corrective")}</div>
                     <div><strong>{tCalendar("descriptionLabel")}:</strong> {selectedEventDetails.description || tCommon("notAvailable")}</div>
                     <div><strong>{tCalendar("frequency")}:</strong> {selectedEventDetails.frequency.label || tCommon("notAvailable")}</div>
                     <div><strong>{tCalendar("assignedOperator")}:</strong> {selectedEventDetails.assignedOperator?.name || tCommon("notAvailable")}</div>
@@ -896,7 +884,7 @@ export default function SmartMaintenanceCalendarPage() {
                       onClick={() => {
                         if (!selectedEventDetails) return;
                         const base = `/${locale}/operator`;
-                        if (selectedEventDetails.maintenanceType === "preventive") {
+                        if (!isCorrectiveMaintenanceType(selectedEventDetails.maintenanceType)) {
                           router.push(`${base}/preventive?workOrderId=${selectedEventDetails.id}`);
                           return;
                         }

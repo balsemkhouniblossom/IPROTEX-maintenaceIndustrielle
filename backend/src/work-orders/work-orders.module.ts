@@ -35,12 +35,14 @@ import { PartRequest, PartRequestSchema } from '../schemas/part-request.schema';
 import { MaintenanceSchedulingService } from './maintenance-scheduling.service';
 import { NotificationCenterModule } from '../notification-center/notification-center.module';
 import { StockMovementsModule } from '../stock-movements/stock-movements.module';
+import { KpiModule } from '../kpi/kpi.module';
 
 @Module({
   imports: [
     CounterModule,
     NotificationCenterModule,
     StockMovementsModule,
+    KpiModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: Machine.name, schema: MachineSchema },

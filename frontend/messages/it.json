@@ -123,9 +123,10 @@
     "completeProfileSubmit": "Invia per approvazione",
     "completeProfileSaving": "Salvataggio...",
     "completeProfileSaveFailed": "Impossibile salvare il profilo.",
-    "completeProfilePosition": "Posizione",
     "completeProfileLanguage": "Lingua",
-    "completeProfileRequestedRole": "Ruolo richiesto"
+    "completeProfileRequestedRole": "Ruolo richiesto",
+    "showPassword": "Mostra password",
+    "hidePassword": "Nascondi password"
   },
   "dashboard": {
     "status": {
@@ -160,7 +161,13 @@
         "totalMachines": "Macchine totali",
         "activeUsers": "Utenti attivi",
         "activeWorkOrders": "Ordini di lavoro attivi",
-        "completedThisMonth": "Completati questo mese"
+        "completedThisMonth": "Completati questo mese",
+        "fleetTotal": "Totale flotta",
+        "totalUsers": "Totale utenti",
+        "openMaintenance": "Manutenzione aperta",
+        "openMaintenanceHint": "{overdue} in ritardo, {dueToday} in scadenza oggi",
+        "completedToday": "Completate oggi",
+        "outOfTotal": "su {total} totali"
       },
       "databaseSummary": {
         "title": "Riepilogo del database",
@@ -184,6 +191,43 @@
         "catalogues": "Cataloghi",
         "machineTypes": "Tipi",
         "types": "Tipi"
+      },
+      "workOrders": {
+        "overdue": "In ritardo",
+        "dueToday": "In scadenza oggi",
+        "waitingValidation": "In attesa di validazione",
+        "completedTodayLabel": "Completate oggi",
+        "completionRateHint": "Manutenzione preventiva completata in tempo o prima della scadenza",
+        "recent": "Ordini di Lavoro Recenti",
+        "completionRate": "Tasso di Completamento Ordini di Lavoro",
+        "distribution": "Distribuzione Ordini di Lavoro",
+        "outOf": "su"
+      },
+      "machines": {
+        "availabilityHint": "Basato sul tempo medio tra i guasti e il tempo medio di riparazione",
+        "availability": "Disponibilita Macchine",
+        "overview": "Panoramica Macchine",
+        "online": "macchine online"
+      },
+      "quickKpis": {
+        "stockAlerts": "Avvisi di magazzino",
+        "correctiveResponseTime": "Tempo di risposta correttivo",
+        "mttr": "MTTR (tempo medio di riparazione)",
+        "mtbf": "MTBF (tempo medio tra guasti)",
+        "hoursValue": "{hours} h",
+        "title": "KPI Rapidi",
+        "machineAvailability": "Disponibilita Macchine",
+        "completionRate": "Tasso di Completamento",
+        "activeWorkOrders": "Ordini di Lavoro Attivi",
+        "activeUsers": "Utenti Attivi"
+      },
+      "stockAlerts": {
+        "title": "Avvisi di magazzino",
+        "availableOf": "{available} disponibile (soglia {threshold})"
+      },
+      "workload": {
+        "title": "Carico di lavoro del team",
+        "openCount": "{count} aperte"
       }
     },
     "operator": {
@@ -201,7 +245,8 @@
         "underYourCare": "Sotto la tua responsabilità",
         "inProgress": "In corso",
         "waitingValidation": "In attesa di validazione",
-        "overdue": "In ritardo"
+        "overdue": "In ritardo",
+        "dueToday": "In scadenza oggi"
       },
       "dashboard": {
         "operatorConsole": "Console operatore",
@@ -547,7 +592,20 @@
     },
     "logout": "Logout",
     "notAvailable": "N/D",
-    "saving": "Salvataggio..."
+    "saving": "Salvataggio...",
+    "skipToContent": "Vai al contenuto principale",
+    "offlineBanner": "Sei offline. Alcune funzioni potrebbero non funzionare finche la connessione non viene ripristinata.",
+    "refresh": "Aggiorna",
+    "retry": "Riprova",
+    "openMenu": "Apri menu",
+    "closeMenu": "Chiudi menu",
+    "dismiss": "Chiudi",
+    "savedViews": {
+      "save": "Salva vista",
+      "namePlaceholder": "Nome della vista",
+      "empty": "Nessuna vista salvata.",
+      "delete": "Elimina vista"
+    }
   },
   "navigation": {
     "menu": {
@@ -852,7 +910,10 @@
     },
     "actions": {
       "update": "Aggiorna ordine di lavoro",
-      "create": "Crea ordine di lavoro"
+      "create": "Crea ordine di lavoro",
+      "approve": "Approva",
+      "reject": "Rifiuta",
+      "requestCorrection": "Richiedi correzione"
     },
     "validation": {
       "workOrderIdRequired": "Il numero OT è obbligatorio",
@@ -865,7 +926,13 @@
       "deleteFailed": "Errore durante l'eliminazione dell'ordine di lavoro",
       "updated": "Ordine di lavoro aggiornato con successo",
       "created": "Ordine di lavoro creato con successo",
-      "saveFailed": "Errore durante il salvataggio dell'ordine di lavoro"
+      "saveFailed": "Errore durante il salvataggio dell'ordine di lavoro",
+      "approved": "Ordine di lavoro approvato con successo",
+      "approveFailed": "Errore durante l'approvazione dell'ordine di lavoro",
+      "rejected": "Ordine di lavoro rifiutato con successo",
+      "rejectFailed": "Errore durante il rifiuto dell'ordine di lavoro",
+      "correctionRequested": "Richiesta di correzione inviata con successo",
+      "correctionFailed": "Errore durante la richiesta di correzione"
     },
     "sort": {
       "priorityHighToLow": "Ordina priorit? da alta a bassa",
@@ -878,7 +945,14 @@
       "startOldestToNewest": "Ordina data inizio dalla pi? vecchia alla pi? recente",
       "endNewestToOldest": "Ordina data fine dalla pi? recente alla pi? vecchia",
       "endOldestToNewest": "Ordina data fine dalla pi? vecchia alla pi? recente"
-    }
+    },
+    "filters": {
+      "allStatuses": "Tutti gli stati",
+      "allPriorities": "Tutte le priorita"
+    },
+    "confirmApprove": "Approvare questo ordine di lavoro?",
+    "confirmReject": "Rifiutare questo ordine di lavoro?",
+    "confirmRequestCorrection": "Rinviare questo ordine di lavoro per la correzione?"
   },
   "catalogues": {
     "title": "Catalogo ricambi",
@@ -1174,6 +1248,31 @@
       "lowercase": "Una lettera minuscola",
       "number": "Un numero",
       "special": "Un carattere speciale"
+    },
+    "savedViews": {
+      "title": "Viste salvate",
+      "save": "Salva vista",
+      "namePlaceholder": "Nome della vista",
+      "empty": "Nessuna vista salvata.",
+      "delete": "Elimina vista",
+      "saved": "Vista salvata.",
+      "saveFailed": "Impossibile salvare la vista.",
+      "deleted": "Vista eliminata.",
+      "deleteFailed": "Impossibile eliminare la vista."
+    },
+    "bulk": {
+      "selectAll": "Seleziona tutto in questa pagina",
+      "selectRow": "Seleziona {name}",
+      "selectedCount": "{count} selezionato/i",
+      "approve": "Approva selezionati",
+      "reject": "Rifiuta selezionati",
+      "reasonPlaceholder": "Motivo del rifiuto di tutti gli account selezionati",
+      "clearSelection": "Cancella selezione",
+      "approveSuccess": "{count} account approvati.",
+      "approveFailed": "Impossibile approvare gli account selezionati.",
+      "rejectSuccess": "{count} account rifiutati.",
+      "rejectFailed": "Impossibile rifiutare gli account selezionati.",
+      "reasonRequired": "E richiesto un motivo di rifiuto."
     }
   },
   "sidebar": {
@@ -1236,7 +1335,10 @@
       },
       "interventionReports": "Report di intervento",
       "pannes": "Guasti",
-      "panneSolutions": "Soluzioni guasti"
+      "panneSolutions": "Soluzioni guasti",
+      "knowledgeBase": "Base di conoscenza",
+      "devices": "Dispositivi",
+      "reports": "Report"
     }
   },
   "machines": {
@@ -1485,7 +1587,11 @@
       "add": "Carica documento",
       "view": "Visualizza",
       "edit": "Modifica",
-      "delete": "Elimina"
+      "delete": "Elimina",
+      "publish": "Pubblica",
+      "archive": "Archivia",
+      "replace": "Sostituisci",
+      "history": "Cronologia versioni"
     },
     "table": {
       "documentId": "ID documento",
@@ -1493,7 +1599,9 @@
       "type": "Tipo",
       "machine": "Macchina",
       "uploadedBy": "Caricato da",
-      "dateAdded": "Data di aggiunta"
+      "dateAdded": "Data di aggiunta",
+      "status": "Stato",
+      "revision": "Revisione"
     },
     "empty": {
       "search": "Nessun documento corrisponde alla ricerca.",
@@ -1502,28 +1610,33 @@
     "modal": {
       "uploadTitle": "Carica documento",
       "editTitle": "Modifica documento",
-      "viewTitle": "Visualizza documento"
+      "viewTitle": "Visualizza documento",
+      "replaceTitle": "Sostituisci documento",
+      "historyTitle": "Cronologia versioni"
     },
     "form": {
-      "file": "Seleziona file PDF",
+      "file": "Seleziona file PDF o Office",
       "machine": "Macchina",
       "type": "Tipo di documento",
       "description": "Descrizione",
       "tags": "Tag (separati da virgole)",
-      "uploadedBy": "Caricato da"
+      "uploadedBy": "Caricato da",
+      "reason": "Motivo"
     },
     "placeholders": {
       "selectMachine": "Seleziona una macchina...",
       "type": "es. Manuale, Specifica, Guida di manutenzione",
       "description": "Inserisci la descrizione del documento...",
       "tags": "es. preventivo, elettrico, motore",
-      "uploadedBy": "Inserisci il tuo nome o nome utente..."
+      "uploadedBy": "Inserisci il tuo nome o nome utente...",
+      "reason": "Spiega questa sostituzione"
     },
     "buttons": {
       "upload": "Carica documento",
       "update": "Aggiorna documento",
       "cancel": "Annulla",
-      "save": "Salva"
+      "save": "Salva",
+      "replace": "Sostituisci"
     },
     "viewer": {
       "title": "Visualizzatore documenti",
@@ -1535,7 +1648,7 @@
       "unsupported": "Questo tipo di file non e supportato per l'anteprima."
     },
     "notifications": {
-      "fileRequired": "Seleziona un file PDF",
+      "fileRequired": "Seleziona un file",
       "machineRequired": "Seleziona una macchina",
       "typeRequired": "Inserisci il tipo di documento",
       "created": "Documento caricato con successo",
@@ -1543,7 +1656,28 @@
       "deleted": "Documento eliminato con successo",
       "saveFailed": "Salvataggio del documento non riuscito",
       "deleteFailed": "Eliminazione del documento non riuscita",
-      "confirmDelete": "Sei sicuro di voler eliminare questo documento? Questa azione non puo essere annullata."
+      "confirmDelete": "Eliminare questo documento? Possibile solo per una bozza mai modificata e priva di cronologia versioni.",
+      "confirmPublish": "Pubblicare questo documento? Diventera la versione attuale e citabile per la macchina collegata.",
+      "publishSuccess": "Documento pubblicato con successo",
+      "publishFailed": "Pubblicazione del documento non riuscita",
+      "confirmArchive": "Archiviare questo documento? Diventera di sola lettura, ma la cronologia viene conservata.",
+      "archiveSuccess": "Documento archiviato con successo",
+      "archiveFailed": "Archiviazione del documento non riuscita",
+      "confirmReplace": "Sostituire \"{fileName}\" con un nuovo file? La versione attuale verra contrassegnata come sostituita e conservata nella cronologia.",
+      "replaceSuccess": "Documento sostituito con successo",
+      "replaceFailed": "Sostituzione del documento non riuscita",
+      "historyLoadFailed": "Caricamento della cronologia versioni non riuscito"
+    },
+    "filterAllStatuses": "Tutti gli stati",
+    "status": {
+      "draft": "Bozza",
+      "published": "Pubblicato",
+      "archived": "Archiviato",
+      "superseded": "Sostituito"
+    },
+    "history": {
+      "empty": "Nessuna cronologia versioni disponibile.",
+      "current": "attuale"
     }
   },
   "maintenancePlans": {
@@ -1567,7 +1701,9 @@
       "documentation": "Documentazione",
       "maintenanceCode": "Codice manutenzione",
       "frequencyLabel": "Etichetta frequenza",
-      "planCode": "Codice piano"
+      "planCode": "Codice piano",
+      "machineHealth": "Salute della macchina",
+      "status": "Stato"
     },
     "custom": "Personalizzato",
     "empty": {
@@ -1647,6 +1783,10 @@
       "paused": "In pausa",
       "archived": "Archiviato",
       "completed": "Completato"
+    },
+    "filters": {
+      "allStatuses": "Tutti gli stati",
+      "allTypes": "Tutti i tipi"
     }
   },
   "stocks": {
@@ -1789,6 +1929,7 @@
     "completedTasks": "Attivita completate",
     "pendingTasks": "Attivita in attesa",
     "taskStatus": "Stato attivita",
+    "completionRate": "Tasso di completamento",
     "table": {
       "planId": "ID piano",
       "machine": "Macchina",
@@ -1894,7 +2035,6 @@
       "next": "Successivo",
       "saveReport": "Salva rapporto",
       "addPart": "Aggiungi ricambio",
-      "approve": "Approva rapporto",
       "return": "Restituisci rapporto",
       "intervene": "Avvia intervento",
       "start": "Avvia intervento",
@@ -1983,7 +2123,8 @@
     },
     "messages": {
       "confirmClose": "Chiudere questo ordine? Il rapporto deve essere completo.",
-      "completed": "Intervento completato."
+      "completed": "Intervento completato.",
+      "awaitingValidation": "Questo lavoro è completo ed è in attesa di convalida indipendente da parte di un altro utente autorizzato."
     }
   },
   "miniAvatar": {
@@ -2035,5 +2176,315 @@
     "clear": "Cancella",
     "loading": "Caricamento...",
     "empty": "Nessuna notifica"
+  },
+  "knowledgeBase": {
+    "title": "Base di conoscenza",
+    "heading": "Base di conoscenza per la manutenzione",
+    "description": "Articoli di risoluzione dei problemi, procedure, spiegazioni dei codici di guasto, istruzioni di lubrificazione e documenti di sicurezza.",
+    "readerIntro": "Sfoglia gli articoli di risoluzione dei problemi, le procedure e i documenti di sicurezza pubblicati rilevanti per le tue macchine.",
+    "searchPlaceholder": "Cerca per titolo, tag o codice di guasto...",
+    "filterAllCategories": "Tutte le categorie",
+    "filterAllStatuses": "Tutti gli stati",
+    "categories": {
+      "troubleshooting": "Risoluzione dei problemi",
+      "procedure": "Procedura",
+      "fault_code": "Codice di guasto",
+      "lubrication": "Lubrificazione",
+      "safety": "Sicurezza"
+    },
+    "status": {
+      "draft": "Bozza",
+      "published": "Pubblicato",
+      "archived": "Archiviato"
+    },
+    "table": {
+      "revision": "Revisione",
+      "category": "Categoria",
+      "machine": "Macchina",
+      "faultCodes": "Codici di guasto"
+    },
+    "form": {
+      "articleId": "ID articolo",
+      "category": "Categoria",
+      "title": "Titolo",
+      "summary": "Riepilogo",
+      "content": "Contenuto",
+      "machineType": "Tipo di macchina",
+      "machine": "Macchina",
+      "maintenancePlan": "Piano di manutenzione",
+      "tags": "Tag",
+      "faultCodes": "Codici di guasto",
+      "errorCodes": "Codici di errore"
+    },
+    "placeholders": {
+      "articleId": "es. KB-CUSCINETTO-001",
+      "title": "Titolo dell'articolo",
+      "summary": "Breve riepilogo mostrato negli elenchi",
+      "content": "Contenuto completo dell'articolo",
+      "none": "Nessuno",
+      "tags": "Tag separati da virgola",
+      "faultCodes": "Codici di guasto separati da virgola",
+      "errorCodes": "Codici di errore separati da virgola"
+    },
+    "actions": {
+      "add": "Nuovo articolo",
+      "view": "Visualizza",
+      "history": "Cronologia versioni",
+      "edit": "Modifica",
+      "publish": "Pubblica",
+      "revise": "Rivedi",
+      "archive": "Archivia",
+      "delete": "Elimina"
+    },
+    "modal": {
+      "createTitle": "Nuovo articolo della conoscenza",
+      "editTitle": "Modifica articolo",
+      "reviseTitle": "Rivedi articolo pubblicato",
+      "reviseHint": "Questo crea una nuova versione bozza. L'articolo attualmente pubblicato rimane invariato finche non pubblichi questa revisione.",
+      "historyTitle": "Cronologia versioni"
+    },
+    "buttons": {
+      "create": "Crea",
+      "update": "Salva modifiche",
+      "revise": "Crea revisione"
+    },
+    "history": {
+      "empty": "Nessuna cronologia versioni disponibile.",
+      "current": "attuale"
+    },
+    "viewer": {
+      "title": "Articolo"
+    },
+    "empty": {
+      "search": "Nessun articolo corrisponde alla tua ricerca.",
+      "default": "Ancora nessun articolo nella base di conoscenza."
+    },
+    "notifications": {
+      "loadFailed": "Impossibile caricare gli articoli.",
+      "saveFailed": "Impossibile salvare l'articolo.",
+      "created": "Articolo creato.",
+      "updated": "Articolo aggiornato.",
+      "revised": "Revisione creata.",
+      "deleted": "Articolo eliminato.",
+      "deleteFailed": "Impossibile eliminare l'articolo.",
+      "articleIdRequired": "L'ID dell'articolo e obbligatorio.",
+      "titleRequired": "Il titolo e obbligatorio.",
+      "contentRequired": "Il contenuto e obbligatorio.",
+      "confirmPublish": "Pubblicare questo articolo?",
+      "publishSuccess": "Articolo pubblicato.",
+      "publishFailed": "Impossibile pubblicare l'articolo.",
+      "confirmArchive": "Archiviare questo articolo?",
+      "archiveSuccess": "Articolo archiviato.",
+      "archiveFailed": "Impossibile archiviare l'articolo.",
+      "confirmDelete": "Eliminare questo articolo? Questa azione non puo essere annullata.",
+      "historyLoadFailed": "Impossibile caricare la cronologia delle versioni."
+    },
+    "suggestions": {
+      "title": "Conoscenze correlate"
+    }
+  },
+  "aiAssistant": {
+    "title": "Assistente IA (solo consultivo)",
+    "disclaimer": "Solo a scopo consultivo: questo assistente suggerisce solo possibilita in base ai dati disponibili. Non modifica mai un ordine di lavoro, lo stock o lo stato di una macchina -- verificare sempre prima di agire.",
+    "questionPlaceholder": "Descrivi il sintomo o poni una domanda di risoluzione dei problemi...",
+    "ask": "Chiedi",
+    "asking": "Invio in corso...",
+    "requestFailed": "Impossibile contattare l'assistente IA. Riprova.",
+    "statusDisabled": "L'assistente IA non e abilitato in questo ambiente.",
+    "statusRateLimited": "Hai raggiunto il limite di richieste per l'assistente IA. Riprova piu tardi.",
+    "statusUnavailable": "L'assistente IA non e riuscito a generare una risposta al momento. Riprova o continua manualmente.",
+    "knownFacts": "Fatti noti",
+    "probableCauses": "Cause probabili",
+    "recommendedChecks": "Controlli consigliati",
+    "safetyWarnings": "Avvisi di sicurezza",
+    "uncertainty": "Incertezza"
+  },
+  "deviceMonitoring": {
+    "title": "Dispositivi",
+    "heading": "Dispositivi di monitoraggio delle macchine",
+    "description": "Registra gateway OpenPLC o simulatori per trasmettere in tempo reale telemetria, heartbeat ed eventi di guasto di una macchina.",
+    "empty": "Nessun dispositivo ancora registrato.",
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "active": "Attivo",
+      "inactive": "Inattivo"
+    },
+    "deviceTypes": {
+      "openplc": "OpenPLC",
+      "simulator": "Simulatore",
+      "gateway": "Gateway"
+    },
+    "table": {
+      "liveStatus": "Stato in tempo reale"
+    },
+    "lastSignal": "Ultimo segnale",
+    "lastSignalValue": "{value} fa",
+    "never": "mai",
+    "activeAlarms": "Allarmi attivi",
+    "form": {
+      "deviceId": "ID dispositivo",
+      "deviceType": "Tipo di dispositivo",
+      "machine": "Macchina",
+      "label": "Etichetta",
+      "heartbeatInterval": "Intervallo heartbeat (secondi)"
+    },
+    "placeholders": {
+      "deviceId": "es. PLC-LINEA1-01",
+      "selectMachine": "Seleziona una macchina",
+      "label": "Nome descrittivo mostrato agli amministratori"
+    },
+    "actions": {
+      "register": "Registra dispositivo",
+      "activate": "Attiva",
+      "deactivate": "Disattiva",
+      "rotateKey": "Rinnova chiave API",
+      "delete": "Elimina"
+    },
+    "modal": {
+      "registerTitle": "Registra un nuovo dispositivo",
+      "apiKeyTitle": "Chiave API del dispositivo",
+      "apiKeyWarning": "Questa chiave viene mostrata una sola volta. Copiala ora e conservala in modo sicuro: non potra piu essere recuperata."
+    },
+    "buttons": {
+      "register": "Registra",
+      "doneCopying": "Ho copiato la chiave"
+    },
+    "notifications": {
+      "loadFailed": "Impossibile caricare i dispositivi.",
+      "saveFailed": "Impossibile salvare il dispositivo.",
+      "registerValidation": "ID dispositivo e macchina sono obbligatori.",
+      "registered": "Dispositivo registrato.",
+      "activated": "Dispositivo attivato.",
+      "deactivated": "Dispositivo disattivato.",
+      "confirmRotate": "Rinnovare la chiave API di questo dispositivo? La vecchia chiave smettera di funzionare immediatamente.",
+      "rotated": "Chiave API rinnovata.",
+      "confirmDelete": "Eliminare questa registrazione del dispositivo? Questa azione non puo essere annullata.",
+      "deleted": "Dispositivo eliminato.",
+      "deleteFailed": "Impossibile eliminare il dispositivo."
+    },
+    "suggestions": {}
+  },
+  "predictiveMaintenance": {
+    "table": {
+      "health": "Salute"
+    },
+    "panelTitle": "Salute predittiva",
+    "disclaimer": "Solo a scopo consultivo: sono stime del modello basate su dati storici, non diagnosi verificate. Verificare sempre con un tecnico prima di agire.",
+    "measuredFacts": "Fatti misurati",
+    "modelOutput": "Output del modello",
+    "uncertainty": "Incertezza",
+    "confidence": "Fiducia",
+    "healthScoreValue": "{value}%",
+    "riskLevelTooltip": "Livello di rischio: {level}",
+    "riskLevels": {
+      "low": "Rischio basso",
+      "medium": "Rischio medio",
+      "high": "Rischio alto",
+      "critical": "Rischio critico",
+      "insufficient_data": "Dati insufficienti"
+    },
+    "modelTypes": {
+      "zscore": "Baseline Z-Score",
+      "isolation_forest": "Isolation Forest",
+      "dbscan": "Clustering di densita DBSCAN",
+      "autoencoder": "Autoencoder (errore di ricostruzione)"
+    }
+  },
+  "reports": {
+    "pageTitle": "Report",
+    "heading": "Report",
+    "description": "Genera esportazioni PDF, Excel e CSV a partire dai dati esistenti di manutenzione, magazzino e previsione.",
+    "builder": {
+      "title": "Genera report",
+      "type": "Tipo di report",
+      "format": "Formato",
+      "machine": "Macchina",
+      "allAccessibleMachines": "Tutte le macchine accessibili",
+      "dateFrom": "Data da",
+      "dateTo": "Data a",
+      "generate": "Genera report",
+      "generating": "Generazione in corso..."
+    },
+    "charts": {
+      "byType": "Report per tipo",
+      "byStatus": "Report per stato"
+    },
+    "history": {
+      "title": "Report generati",
+      "scope": "Ambito",
+      "scopeAll": "Tutti i report",
+      "scopeMine": "I miei report",
+      "refresh": "Aggiorna",
+      "download": "Scarica",
+      "table": {
+        "type": "Tipo",
+        "format": "Formato",
+        "status": "Stato",
+        "rows": "Righe",
+        "requested": "Richiesto",
+        "actions": "Azioni"
+      }
+    },
+    "schedules": {
+      "title": "Report pianificati",
+      "frequency": "Frequenza",
+      "rangeDays": "Finestra mobile (giorni)",
+      "create": "Crea pianificazione",
+      "creating": "Creazione in corso...",
+      "nextRun": "Prossima esecuzione",
+      "active": "Attivo",
+      "empty": "Nessun report pianificato.",
+      "activeLabel": "Attivo",
+      "pausedLabel": "In pausa"
+    },
+    "types": {
+      "machine_history": "Storico macchina",
+      "preventive_compliance": "Conformita preventiva",
+      "corrective_downtime": "Tempo di fermo correttivo",
+      "mttr_mtbf_trends": "Tendenze MTTR / MTBF",
+      "stock_movements": "Movimenti di magazzino",
+      "maintenance_costs": "Costi di manutenzione",
+      "technician_workload": "Carico di lavoro del tecnico",
+      "fault_frequency": "Frequenza dei guasti",
+      "audit_history": "Cronologia di audit",
+      "predictive_risk": "Rischio predittivo"
+    },
+    "formats": {
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV"
+    },
+    "frequencies": {
+      "daily": "Giornaliero",
+      "weekly": "Settimanale",
+      "monthly": "Mensile"
+    },
+    "status": {
+      "pending": "In attesa",
+      "processing": "In elaborazione",
+      "completed": "Completato",
+      "failed": "Fallito"
+    },
+    "empty": {
+      "default": "Nessun dato disponibile."
+    },
+    "notifications": {
+      "loadFailed": "Impossibile caricare i report.",
+      "scheduleLoadFailed": "Impossibile caricare i report pianificati.",
+      "machineRequired": "Selezionare una macchina.",
+      "requested": "Report richiesto. Comparira di seguito una volta generato.",
+      "requestFailed": "Impossibile richiedere il report.",
+      "downloadFailed": "Impossibile scaricare il report.",
+      "confirmDelete": "Eliminare questo report?",
+      "deleted": "Report eliminato.",
+      "deleteFailed": "Impossibile eliminare il report.",
+      "scheduleCreated": "Pianificazione creata.",
+      "scheduleCreateFailed": "Impossibile creare la pianificazione.",
+      "scheduleUpdateFailed": "Impossibile aggiornare la pianificazione.",
+      "confirmScheduleDelete": "Eliminare questa pianificazione?",
+      "scheduleDeleted": "Pianificazione eliminata.",
+      "scheduleDeleteFailed": "Impossibile eliminare la pianificazione."
+    }
   }
 }

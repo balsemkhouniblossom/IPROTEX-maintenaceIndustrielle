@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import {
   MaintenancePlan,
   MaintenancePlanDocument,
@@ -19,7 +19,44 @@ import {
   TransitionMaintenancePlanDto,
 } from './dto/create-maintenance-plan.dto';
 import { UpdateMaintenancePlanDto } from './dto/update-maintenance-plan.dto';
+import { MaintenancePlansQueryDto } from './dto/maintenance-plans-query.dto';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import {
+  buildCaseInsensitiveSearchFilter,
+  parseCsvParam,
+  parseSortParam,
+} from '../common/query-params.util';
+
+export const MAINTENANCE_PLANS_SORT_ALLOWED_FIELDS = [
+  'createdAt',
+  'status',
+  'maintenance_code',
+] as const;
+const MAINTENANCE_PLANS_DEFAULT_SORT: Record<string, 1 | -1> = { createdAt: -1 };
+
+function buildMaintenancePlansFilter(
+  query: MaintenancePlansQueryDto = {},
+): FilterQuery<MaintenancePlanDocument> {
+  const filter: FilterQuery<MaintenancePlanDocument> = {};
+
+  const statuses = parseCsvParam(query.status);
+  if (statuses) filter.status = { $in: statuses };
+
+  const types = parseCsvParam(query.typeMaintenance);
+  if (types) filter.type_maintenance = { $in: types };
+
+  if (query.search) {
+    const searchRegex = buildCaseInsensitiveSearchFilter(query.search);
+    filter.$or = [
+      { plan_id: searchRegex },
+      { maintenance_code: searchRegex },
+      { instruction: searchRegex },
+      { responsable: searchRegex },
+    ];
+  }
+
+  return filter;
+}
 
 function cleanInstruction(value?: string): string | undefined {
   if (typeof value !== 'string') return value;
@@ -104,15 +141,24 @@ export class MaintenancePlansService {
     page: number,
     limit: number,
     skip: number,
+    query: MaintenancePlansQueryDto = {},
   ): Promise<PaginatedResponse<MaintenancePlan>> {
+    const filter = buildMaintenancePlansFilter(query);
+    const sort = parseSortParam(
+      query.sort,
+      MAINTENANCE_PLANS_SORT_ALLOWED_FIELDS,
+      MAINTENANCE_PLANS_DEFAULT_SORT,
+    );
+
     const [items, totalItems] = await Promise.all([
       this.maintenancePlanModel
-        .find()
+        .find(filter)
+        .sort(sort)
         .skip(skip)
         .limit(limit)
         .populate('module_id')
         .exec(),
-      this.maintenancePlanModel.countDocuments().exec(),
+      this.maintenancePlanModel.countDocuments(filter).exec(),
     ]);
 
     return toPaginatedResponse(items, totalItems, page, limit);

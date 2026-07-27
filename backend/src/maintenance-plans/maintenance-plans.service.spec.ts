@@ -312,3 +312,81 @@ describe('MaintenancePlansService', () => {
     });
   });
 });
+
+describe('MaintenancePlansService.findAll — server-side filtering, search, and sort', () => {
+  function findAllChain<T>(value: T) {
+    const result: {
+      sort: jest.Mock;
+      skip: jest.Mock;
+      limit: jest.Mock;
+      populate: jest.Mock;
+      exec: jest.Mock;
+    } = {
+      sort: jest.fn(),
+      skip: jest.fn(),
+      limit: jest.fn(),
+      populate: jest.fn(),
+      exec: jest.fn().mockResolvedValue(value),
+    };
+    result.sort.mockReturnValue(result);
+    result.skip.mockReturnValue(result);
+    result.limit.mockReturnValue(result);
+    result.populate.mockReturnValue(result);
+    return result;
+  }
+
+  let maintenancePlanModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let service: MaintenancePlansService;
+
+  beforeEach(() => {
+    maintenancePlanModel = {
+      find: jest.fn().mockReturnValue(findAllChain([])),
+      countDocuments: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+    };
+
+    service = new MaintenancePlansService(
+      maintenancePlanModel as never,
+      {} as never,
+      {} as never,
+    );
+  });
+
+  it('applies status and type_maintenance as $in filters from comma-separated query params', async () => {
+    await service.findAll(1, 10, 0, { status: 'active,paused', typeMaintenance: 'preventive' });
+
+    expect(maintenancePlanModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: { $in: ['active', 'paused'] },
+        type_maintenance: { $in: ['preventive'] },
+      }),
+    );
+  });
+
+  it('escapes search input and searches plan_id/maintenance_code/instruction/responsable', async () => {
+    await service.findAll(1, 10, 0, { search: 'a.b+c' });
+
+    const [filter] = maintenancePlanModel.find.mock.calls[0] as [
+      { $or: Array<Record<string, RegExp>> },
+    ];
+    expect(filter.$or).toHaveLength(4);
+    expect(filter.$or[0].plan_id.source).toBe('a\\.b\\+c');
+  });
+
+  it('sorts by an allow-listed field and direction', async () => {
+    const chain = findAllChain([]);
+    maintenancePlanModel.find.mockReturnValue(chain);
+
+    await service.findAll(1, 10, 0, { sort: 'status' });
+
+    expect(chain.sort).toHaveBeenCalledWith({ status: 1 });
+  });
+
+  it('defaults to newest-first when sort is absent or not allow-listed', async () => {
+    const chain = findAllChain([]);
+    maintenancePlanModel.find.mockReturnValue(chain);
+
+    await service.findAll(1, 10, 0, { sort: 'frequence' });
+
+    expect(chain.sort).toHaveBeenCalledWith({ createdAt: -1 });
+  });
+});

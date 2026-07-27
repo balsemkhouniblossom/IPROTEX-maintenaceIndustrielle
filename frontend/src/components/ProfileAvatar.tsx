@@ -46,7 +46,7 @@ export default function ProfileAvatar({
   const showImage = Boolean(resolvedPhotoUrl) && imageStatus !== 'error';
 
   return (
-    <div className={baseClass} aria-label={alt || name}>
+    <div className={baseClass} role="img" aria-label={alt || name}>
       <span className={`absolute inset-0 flex items-center justify-center rounded-full ${fallbackClass}`} aria-hidden="true">
         {initial ? (
           <span className="flex items-center justify-center w-full h-full font-semibold leading-none text-white translate-y-px select-none">

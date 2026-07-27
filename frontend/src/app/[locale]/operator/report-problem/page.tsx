@@ -9,6 +9,9 @@ import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 import { resolveManagedFileUrl } from "@/services/managedFileUrls";
+import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
+import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
+import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -312,6 +315,9 @@ export default function OperatorReportProblemPage() {
       }
 
       await uploadPhotoIfPresent(selectedMachine);
+      // The Admin Work Orders list has no way to know a new corrective
+      // work order exists otherwise — it only ever reloads itself.
+      invalidateList(LIST_EVENTS.workOrders);
       showNotification("success", t("notifications.submitSuccess"));
       setShowSuccessActions(true);
     } catch (error) {
@@ -466,6 +472,20 @@ export default function OperatorReportProblemPage() {
             </div>
           </div>
 
+          <div className="col-span-full">
+            <KnowledgeSuggestions
+              machineId={selectedMachine || undefined}
+              faultCode={selectedFault?.code_panne}
+            />
+          </div>
+
+          <div className="col-span-full">
+            <AiAssistantPanel
+              machineId={selectedMachine || undefined}
+              faultCode={selectedFault?.code_panne}
+            />
+          </div>
+
           <div className="col-span-full panel">
             <div className="card-title mb-3">{t("openManual")}</div>
             {manualDocument ? (
@@ -509,7 +529,7 @@ export default function OperatorReportProblemPage() {
               disabled={submitting}
               onClick={() => void submitReport()}
               data-testid="report-problem-submit-button"
-              className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
+              className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white"
             >
               {submitting ? tCommon("saving") : t("generateReport")}
             </button>

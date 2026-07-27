@@ -394,20 +394,26 @@ export default function InterventionReportsPage() {
                       <td>{report.date_fin ? new Date(report.date_fin).toLocaleString() : tCommon('notAvailable')}</td>
                       <td>{report.etat_final || tCommon('notAvailable')}</td>
                       <td>
-                        <div className="flex space-x-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
+                            type="button"
                             onClick={() => openEditModal(report)}
-                            className="btn-secondary p-2"
+                            aria-label={`${t('actions.edit')} ${report.report_id}`}
                             title={t('actions.edit')}
+                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <PencilIcon className="w-4 h-4" />
+                            <PencilIcon className="h-4 w-4 shrink-0" />
+                            <span>{t('actions.edit')}</span>
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(report._id)}
-                            className="btn-danger p-2"
+                            aria-label={`${t('actions.delete')} ${report.report_id}`}
                             title={t('actions.delete')}
+                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="h-4 w-4 shrink-0" />
+                            <span>{t('actions.delete')}</span>
                           </button>
                         </div>
                       </td>

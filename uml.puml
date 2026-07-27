@@ -1,363 +1,636 @@
 @startuml
+title GMAO Industrielle - Diagramme de classes global (implémentation réelle)
 
+hide empty members
+hide circle
+left to right direction
 skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
 
 ' =============================
-'       BASE UTILISATEUR
+' ENUMERATIONS
 ' =============================
-class Utilisateur {
-    - id: int
-    - email: String {unique}
-    - nom: String
-    - prenom: String
-    - telephone: String
-    - adresse: String
-    - date_naissance: Date
-    - photo_profil: ImageField
-    - date_creation: DateTime
-    - derniere_connexion: DateTime
-    + __str__(): String
+enum Role {
+    ADMIN
+    TECHNICIAN
+    OPERATOR
 }
 
-Utilisateur <|-- Formateur
-Utilisateur <|-- Apprenant
-Utilisateur <|-- Administrateur
-
-class Formateur {
-    - utilisateur: OneToOneField(Utilisateur)
-    - cv: FileField
-    - competences: String
-    - experience: int
-    - description: String
-    - tarif_horaire: Decimal
-    - disponible: boolean
-    + __str__(): String
+enum ApprovalStatus {
+    PENDING
+    APPROVED
+    REJECTED
 }
 
-class Apprenant {
-    - utilisateur: OneToOneField(Utilisateur)
-    - entreprise: String
-    - poste: String
-    - niveau_etude: String
-    - objectifs: String
-    - date_inscription: DateTime
-    + __str__(): String
+enum MaintenancePlanStatus {
+    DRAFT
+    ACTIVE
+    PAUSED
+    ARCHIVED
+    COMPLETED
 }
 
-class Administrateur {
-    - utilisateur: OneToOneField(Utilisateur)
-    - niveau_acces: String {super, admin, moderateur}
-    - departement: String
-    + __str__(): String
+enum PartRequestStatus {
+    PENDING
+    RESERVED
+    FULFILLED
+    CANCELLED
 }
 
-' =============================
-'       FORMATION SYSTEM
-' =============================
-class Formation {
-    - id: int
-    - titre: String
-    - description: String
-    - objectifs: String
-    - duree_heures: int
-    - niveau: String {debutant, intermediaire, avance, expert}
-    - prix: Decimal
-    - participants_max: int
-    - prerequisites: String
-    - statut: String {brouillon, publiee, en_cours, terminee, annulee}
-    - date_creation: DateTime
-    - date_debut: DateTime
-    - date_fin: DateTime
-    + participants_inscrits(): int
-    + places_restantes(): int
-    + __str__(): String
+enum StockMovementType {
+    RESERVATION
+    CONSUMPTION
+    RETURN
+    ADJUSTMENT
+    CANCELLATION
 }
 
-class Salle {
-    - id: int
-    - nom: String
-    - capacite: int
-    - localisation: String
-    - equipements: String
-    - disponible: boolean
-    + __str__(): String
-}
-
-class Planning {
-    - id: int
-    - date_session: DateTime
-    - duree_session: int
-    - sujet: String
-    - description: String
-    - code_presence: String
-    + __str__(): String
-}
-
-class Presence {
-    - id: int
-    - present: boolean
-    - heure_arrivee: DateTime
-    - heure_depart: DateTime
-    - commentaire: String
-    + __str__(): String
-}
-
-class Evaluation {
-    - id: int
-    - note_contenu: int {1-5}
-    - note_formateur: int {1-5}
-    - note_organisation: int {1-5}
-    - note_globale: int {1-5}
-    - commentaire: String
-    - recommande: boolean
-    - date_evaluation: DateTime
-    + __str__(): String
-}
-
-class Attestation {
-    - id: int
-    - numero_attestation: String {unique}
-    - date_emission: DateTime
-    - note_obtenue: Decimal
-    - competences_acquises: String
-    - fichier_pdf: FileField
-    + __str__(): String
+enum NotificationType {
+    WORK_ORDER_CREATED
+    PREVENTIVE_DUE
+    PREVENTIVE_OVERDUE
+    OVERDUE_ESCALATION
+    CORRECTIVE_AWAITING_VALIDATION
+    VALIDATION_APPROVED
+    VALIDATION_REJECTED
+    INTERVENTION_COMPLETED
+    PART_REQUEST_CREATED
+    PART_REQUEST_DECISION
+    STOCK_ALERT
+    LUBRICATION_DUE
+    SENSOR_ALERT
+    DUPLICATE_WORK_ORDER
 }
 
 ' =============================
-'       COURS SYSTEM
+' AUTHENTIFICATION & UTILISATEURS
 ' =============================
-class Cours {
-    - id: int
-    - titre: String
-    - description: String
-    - contenu: String
-    - duree_minutes: int
-    - niveau: String {debutant, intermediaire, avance, expert}
-    - categorie: String
-    - mots_cles: String
-    - image_couverture: ImageField
-    - prix: Decimal
-    - gratuit: boolean
-    - publie: boolean
-    - date_creation: DateTime
-    - date_publication: DateTime
-    - nb_vues: int
-    + nombre_inscrits(): int
-    + note_moyenne(): float
-    + __str__(): String
-}
+package "Authentification & Utilisateurs" {
+    class User {
+        +_id: ObjectId <<PK>>
+        +user_id: String <<UK>>
+        +nom_complet: String
+        +email: String <<UK>>
+        +password: String?
+        +google_id: String? <<UK,sparse>>
+        +google_linked_at: Date?
+        +google_unlinked_at: Date?
+        +refresh_token_hash: String?
+        +reset_password_token: String?
+        +reset_password_expires: Date?
+        +role: Role
+        +is_active: Boolean
+        +last_login: Date?
+        +login_history: Date[]
+        +created_at: Date
+        +phone: String?
+        +department: String?
+        +position: String?
+        +language: String?
+        +profile_completed: Boolean
+        +photo: String?
+        +photo_storage_path: String?
+        +photo_url: String?
+        +assigned_machine_ids: ObjectId[] <<FK Machine>>
+        +is_verified: Boolean
+        +approval_status: ApprovalStatus?
+        +approved_by: ObjectId? <<FK User>>
+        +approved_at: Date?
+        +rejected_by: ObjectId? <<FK User>>
+        +rejected_at: Date?
+        +rejection_reason: String?
+    }
 
-class RessourceCours {
-    - id: int
-    - titre: String
-    - type_ressource: String {video, document, audio, lien, exercice, quiz}
-    - fichier: FileField
-    - lien_externe: URLField
-    - description: String
-    - ordre: int
-    - obligatoire: boolean
-    + __str__(): String
-}
+    class GoogleAuthHistoryEntry {
+        +action: String {linked|unlinked|relinked}
+        +google_id: String?
+        +previous_google_id: String?
+        +actor_user_id: ObjectId? <<FK User>>
+        +at: Date
+    }
 
-class ProgressionCours {
-    - id: int
-    - date_inscription: DateTime
-    - progression_pourcentage: int
-    - temps_passe_minutes: int
-    - derniere_activite: DateTime
-    - termine: boolean
-    - date_completion: DateTime
-    + __str__(): String
-}
+    class GoogleLoginExchange {
+        +_id: ObjectId <<PK>>
+        +code_hash: String <<UK>>
+        +encrypted_payload: String
+        +encryption_iv: String
+        +encryption_tag: String
+        +created_at: Date
+        +expires_at: Date <<TTL>>
+    }
 
-class CommentaireCours {
-    - id: int
-    - note: int {1-5}
-    - commentaire: String
-    - date_creation: DateTime
-    - approuve: boolean
-    + __str__(): String
-}
-
-' =============================
-'       MESSAGING SYSTEM
-' =============================
-class Message {
-    - id: int
-    - sujet: String
-    - contenu: String
-    - fichier_joint: FileField
-    - date_envoi: DateTime
-    - lu: boolean
-    - date_lecture: DateTime
-    - important: boolean
-    - archive: boolean
-    + __str__(): String
-}
-
-class GroupeChat {
-    - id: int
-    - nom: String
-    - description: String
-    - prive: boolean
-    - date_creation: DateTime
-    - actif: boolean
-    + __str__(): String
-}
-
-class MessageGroupe {
-    - id: int
-    - contenu: String
-    - fichier_joint: FileField
-    - date_envoi: DateTime
-    - modifie: boolean
-    - date_modification: DateTime
-    + __str__(): String
-}
-
-class FilDiscussion {
-    - id: int
-    - titre: String
-    - contenu: String
-    - epingle: boolean
-    - ferme: boolean
-    - date_creation: DateTime
-    - derniere_reponse: DateTime
-    - nb_vues: int
-    + nb_reponses(): int
-    + __str__(): String
-}
-
-class ReponseDiscussion {
-    - id: int
-    - contenu: String
-    - fichier_joint: FileField
-    - date_creation: DateTime
-    - modifie: boolean
-    - date_modification: DateTime
-    + __str__(): String
+    class Counter {
+        +_id: String <<PK>>
+        +seq: Number
+    }
 }
 
 ' =============================
-'       PAYMENT SYSTEM
+' ACTIFS INDUSTRIELS
 ' =============================
-class Organisation {
-    - id: int
-    - nom: String
-    - secteur_activite: String
-    - adresse: String
-    - telephone: String
-    - email: String
-    - site_web: URLField
-    - contact_principal: String
-    - numero_siret: String
-    - tva_applicable: boolean
-    - taux_tva: Decimal
-    - date_creation: DateTime
-    - active: boolean
-    + __str__(): String
+package "Actifs (machines, modules, capteurs, mesures)" {
+    class MachineType {
+        +_id: ObjectId <<PK>>
+        +type_id: Number <<UK>>
+        +name: String
+        +description: String?
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class Machine {
+        +_id: ObjectId <<PK>>
+        +machine_id: String <<UK>>
+        +type_id: ObjectId <<FK MachineType>>
+        +serial_no: String
+        +reference: String?
+        +installation_date: Date?
+        +poids_kg: Number?
+        +fabricant: String?
+        +model: String?
+        +location: String?
+        +status: String
+    }
+
+    class ModuleType {
+        +_id: ObjectId <<PK>>
+        +mod_type_id: String <<UK>>
+        +type_id: ObjectId <<FK MachineType>>
+        +nom_module: String
+        +categorie_module: String?
+    }
+
+    class Module {
+        +_id: ObjectId <<PK>>
+        +module_id: String <<UK>>
+        +machine_id: ObjectId <<FK Machine>>
+        +mod_type_id: ObjectId <<FK ModuleType>>
+        +parent_module_id: ObjectId? <<FK Module>>
+        +localisation: String?
+    }
+
+    class Capteur {
+        +_id: ObjectId <<PK>>
+        +capteur_id: String <<UK>>
+        +module_id: ObjectId <<FK Module>>
+        +code_capteur: String
+        +type_capteur: String
+        +unite_mesure: String?
+        +mqtt_topic: String?
+        +seuil_avertissement: Number?
+        +seuil_critique: Number?
+        +frequence_echantillonnage: Number?
+        +is_active: Boolean
+        +last_seen_at: Date?
+        +firmware_version: String?
+    }
+
+    class Mesure {
+        +_id: ObjectId <<PK>>
+        +mesure_id: String <<UK>>
+        +capteur_id: ObjectId <<FK Capteur>>
+        +valeur: Number
+        +timestamp: Date
+        +status: String
+        +createdAt: Date
+        +updatedAt: Date
+    }
 }
 
-class Paiement {
-    - id: int
-    - montant: Decimal
-    - mode_paiement: String {carte, virement, cheque, especes, paypal}
-    - statut: String {en_attente, valide, refuse, rembourse}
-    - reference_transaction: String {unique}
-    - date_paiement: DateTime
-    + __str__(): String
+' =============================
+' CATALOGUE, STOCK & PIECES
+' =============================
+package "Catalogue, Stock & Pieces" {
+    class Catalogue {
+        +_id: ObjectId <<PK>>
+        +part_id: String <<UK>>
+        +nom_piece: String
+        +ref_constructeur: String
+        +fabricant: String?
+        +categorie_piece: String?
+    }
+
+    class Stock {
+        +_id: ObjectId <<PK>>
+        +stock_id: String <<UK>>
+        +part_id: ObjectId <<FK Catalogue>>
+        +quantite_en_stock: Number
+        +quantite_reservee: Number
+        +seuil_alerte_stock: Number?
+        +quantite_minimale: Number?
+        +emplacement: String?
+        +version: Number?
+    }
+
+    class StockMovement {
+        +_id: ObjectId <<PK>>
+        +movement_id: String <<UK>>
+        +type: StockMovementType
+        +stock_id: ObjectId <<FK Stock>>
+        +part_id: ObjectId <<FK Catalogue>>
+        +quantity_delta: Number
+        +reserved_delta: Number
+        +quantite_en_stock_after: Number
+        +quantite_reservee_after: Number
+        +work_order_id: ObjectId? <<FK WorkOrder>>
+        +part_request_id: ObjectId? <<FK PartRequest>>
+        +actor_user_id: ObjectId? <<FK User>>
+        +reason: String?
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class ModulePieces {
+        +_id: ObjectId <<PK>>
+        +mod_type_id: ObjectId <<FK ModuleType>>
+        +part_id: ObjectId <<FK Catalogue>>
+        +quantite_standard: Number
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class OTPieces {
+        +_id: ObjectId <<PK>>
+        +ot_id: ObjectId <<FK WorkOrder>>
+        +part_id: ObjectId <<FK Catalogue>>
+        +quantite: Number
+    }
+
+    class PartRequest {
+        +_id: ObjectId <<PK>>
+        +request_id: String <<UK>>
+        +ot_id: ObjectId <<FK WorkOrder>>
+        +part_id: ObjectId <<FK Catalogue>>
+        +quantity: Number
+        +requested_by: ObjectId <<FK User>>
+        +status: PartRequestStatus
+        +requested_at: Date
+        +createdAt: Date
+        +updatedAt: Date
+    }
 }
 
 ' =============================
-'       NOTIFICATION SYSTEM
+' MAINTENANCE & ORDRES DE TRAVAIL
 ' =============================
-class Notification {
-    - id: int
-    - titre: String
-    - message: String
-    - type_notification: String {info, warning, success, error}
-    - lu: boolean
-    - date_creation: DateTime
-    + __str__(): String
+package "Maintenance, calendrier intelligent & interventions" {
+    class MaintenancePlan {
+        +_id: ObjectId <<PK>>
+        +plan_id: String <<UK>>
+        +module_id: ObjectId <<FK Module>>
+        +type_maintenance: String
+        +frequence: Number
+        +unite_frequence: String
+        +instruction: String?
+        +responsable: String?
+        +huile_graisse: String?
+        +documentation: String?
+        +maintenance_code: String?
+        +frequence_label: String?
+        +status: MaintenancePlanStatus?
+        +version: Number?
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class MaintenancePlanLifecycleEntry {
+        +action: String {created|activated|paused|resumed|archived|completed|updated}
+        +from_status: MaintenancePlanStatus?
+        +to_status: MaintenancePlanStatus
+        +actor_user_id: ObjectId? <<FK User>>
+        +reason: String?
+        +at: Date
+    }
+
+    class PreventiveTask {
+        +_id: ObjectId <<PK>>
+        +task_id: String <<UK>>
+        +plan_id: ObjectId? <<FK MaintenancePlan>>
+        +plan_code: String?
+        +module_id: ObjectId? <<FK Module>>
+        +instruction: String
+        +responsable: String?
+        +status: String {pending|completed}
+        +notes: String?
+        +completed_at: Date?
+        +source: String {plan|manual}
+        +source_key: String? <<UK,sparse>>
+        +deleted_at: Date?
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class WorkOrder {
+        +_id: ObjectId <<PK>>
+        +ot_id: String <<UK>>
+        +machine_id: ObjectId <<FK Machine>>
+        +module_id: ObjectId? <<FK Module>>
+        +technician_id: ObjectId? <<FK User>>
+        +plan_id: ObjectId? <<FK MaintenancePlan>>
+        +description: String?
+        +type_maintenance: String?
+        +status: String
+        +priorite: String?
+        +code_panne: String?
+        +date_created: Date
+        +date_start: Date?
+        +scheduled_date: Date?
+        +due_date: Date?
+        +execution_date: Date?
+        +date_end: Date?
+        +date_closed: Date?
+        +recurrence_source_occurrence_id: ObjectId? <<FK WorkOrder>>
+        +original_due_date: Date?
+        +reschedule_reason: String?
+        +rescheduled_by: ObjectId? <<FK User>>
+        +rescheduled_at: Date?
+    }
+
+    class InterventionReport {
+        +_id: ObjectId <<PK>>
+        +report_id: String <<UK>>
+        +ot_id: ObjectId <<FK WorkOrder>>
+        +technician_id: ObjectId <<FK User>>
+        +date_debut: Date
+        +date_fin: Date
+        +cause_racine: String?
+        +description_action: String?
+        +etat_final: String?
+        +validation_responsable: String?
+    }
+
+    class KPI {
+        +_id: ObjectId <<PK>>
+        +kpi_id: String <<UK>>
+        +machine_id: ObjectId <<FK Machine>>
+        +mtbf_value: Number?
+        +mttr_value: Number?
+        +availability_rate: Number?
+        +date_calcul: Date
+        +periode_debut: Date
+        +periode_fin: Date
+    }
 }
 
-class Reclamation {
-    - id: int
-    - sujet: String
-    - description: String
-    - statut: String {ouverte, en_cours, resolue, fermee}
-    - priorite: String {basse, normale, haute, urgente}
-    - date_creation: DateTime
-    - date_resolution: DateTime
-    + __str__(): String
+' =============================
+' LUBRIFICATION, PANNES, DOCS, NOTIFICATIONS
+' =============================
+package "Lubrification, pannes, documents, notifications" {
+    class Lubrifiant {
+        +_id: ObjectId <<PK>>
+        +lubrifiant_id: String <<UK>>
+        +nom: String
+        +type: String
+        +viscosite: String?
+        +usage: String?
+    }
+
+    class LubrificationLog {
+        +_id: ObjectId <<PK>>
+        +log_id: String <<UK>>
+        +module_id: ObjectId <<FK Module>>
+        +lubrifiant_id: ObjectId <<FK Lubrifiant>>
+        +date_application: Date
+        +quantite: Number
+        +technician_id: ObjectId <<FK User>>
+    }
+
+    class Panne {
+        +_id: ObjectId <<PK>>
+        +panne_id: String <<UK>>
+        +code_panne: String
+        +description: String
+        +gravite: String?
+    }
+
+    class PanneSolution {
+        +_id: ObjectId <<PK>>
+        +solution_id: String <<UK>>
+        +panne_id: ObjectId <<FK Panne>>
+        +cause_probable: String?
+        +solution_recommandee: String?
+    }
+
+    class DocumentEntity {
+        +_id: ObjectId <<PK>>
+        +document_id: String <<UK>>
+        +machine_id: ObjectId <<FK Machine>>
+        +type_document: String
+        +file_path: String
+        +storage_path: String?
+        +file_url: String?
+        +file_name: String
+        +preview_path: String?
+        +description: String?
+        +tags: String[]
+        +uploaded_by: String
+        +date_ajout: Date
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    class Notification {
+        +_id: ObjectId <<PK>>
+        +notification_id: String <<UK>>
+        +type: NotificationType
+        +title: String
+        +message: String?
+        +recipient_user_id: ObjectId? <<FK User>>
+        +recipient_role: Role?
+        +work_order_id: ObjectId? <<FK WorkOrder>>
+        +machine_id: ObjectId? <<FK Machine>>
+        +reference_id: ObjectId?
+        +dedupe_key: String <<UK>>
+        +is_read: Boolean
+        +read_at: Date?
+        +createdAt: Date
+        +updatedAt: Date
+    }
 }
 
 ' =============================
-'       RELATIONSHIPS
+' SERVICES METIER CLES (METHODES PRINCIPALES)
+' =============================
+package "Services metier (backend)" {
+    class AuthService <<service>> {
+        +register(...)
+        +login(...)
+        +refreshToken(...)
+        +verifyEmail(...)
+        +forgotPassword(...)
+        +resetPassword(...)
+        +googleLogin(...)
+        +exchangeGoogleLogin(...)
+        +completeGoogleProfile(...)
+        +logout(...)
+    }
+
+    class MaintenancePlansService <<service>> {
+        +create(...)
+        +findAll(...)
+        +findOne(...)
+        +update(...)
+        +remove(...)
+        +transition(...)
+    }
+
+    class WorkOrdersService <<service>> {
+        +create(...)
+        +findAll(...)
+        +update(...)
+        +triggerScheduler(...)
+        +scheduleFirstPreventiveOccurrence(...)
+        +createInitialOccurrenceForPlan(...)
+        +reschedulePreventiveOccurrence(...)
+        +applyValidationAction(...)
+        +requestPartsForOperator(...)
+        +decidePartRequest(...)
+        +submitPreventiveMaintenanceForOperator(...)
+        +createCorrectiveReportForOperator(...)
+        +getCalendarEvents(...)
+        +getTimeline(...)
+        +getDashboardCalendarWidget(...)
+        +getCorrectiveAssistant(...)
+    }
+
+    class AutomationSchedulerService <<service>> {
+        +runNightlyJobs()
+        +runHourlyJobs()
+        +runTenMinuteJobs()
+    }
+
+    class StockMovementsService <<service>> {
+        +reserve(...)
+        +cancelReservation(...)
+        +recordUsageChange(...)
+        +adjust(...)
+        +recordCreation(...)
+        +listForStock(...)
+    }
+
+    class NotificationCenterService <<service>> {
+        +createIfNotExists(...)
+        +listForUser(...)
+        +unreadCount(...)
+        +markAsRead(...)
+        +markAllAsRead(...)
+        +clearOne(...)
+        +clearAll(...)
+    }
+
+    class DocumentsService <<service>> {
+        +create(...)
+        +findAll(...)
+        +findOne(...)
+        +findByMachine(...)
+        +update(...)
+        +remove(...)
+        +readProtectedFile(...)
+    }
+}
+
+' =============================
+' RELATIONS STRUCTURELLES
 ' =============================
 
-' Formation relationships
-Formation "1" o-- "1" Formateur : created_by
-Formation "*" o-- "*" Apprenant : participants
-Formation "1" -- "*" Planning : sessions
-Formation "1" -- "*" Evaluation : evaluations
-Formation "1" -- "*" Attestation : certificates
+' Auth/utilisateurs
+User "1" *-- "0..*" GoogleAuthHistoryEntry : google_auth_history
+User "0..*" -- "0..*" Machine : assigned_machine_ids
+User "0..*" --> "0..1" User : approved_by
+User "0..*" --> "0..1" User : rejected_by
+GoogleAuthHistoryEntry "0..*" --> "0..1" User : actor_user_id
 
-' Planning relationships
-Planning "1" o-- "1" Salle : room
-Planning "1" -- "*" Presence : attendance
+' Actifs
+MachineType "1" -- "0..*" Machine : type_id
+MachineType "1" -- "0..*" ModuleType : type_id
+Machine "1" -- "0..*" Module : machine_id
+ModuleType "1" -- "0..*" Module : mod_type_id
+Module "0..1" <-- "0..*" Module : parent_module_id
+Module "1" -- "0..*" Capteur : module_id
+Capteur "1" -- "0..*" Mesure : capteur_id
 
-' Presence relationships
-Presence "*" o-- "1" Apprenant : student
+' Maintenance & ordres de travail
+Module "1" -- "0..*" MaintenancePlan : module_id
+MaintenancePlan "1" *-- "0..*" MaintenancePlanLifecycleEntry : lifecycle_history
+MaintenancePlanLifecycleEntry "0..*" --> "0..1" User : actor_user_id
+MaintenancePlan "0..1" <-- "0..*" PreventiveTask : plan_id
+Module "0..1" <-- "0..*" PreventiveTask : module_id
+Machine "1" -- "0..*" WorkOrder : machine_id
+Module "0..1" <-- "0..*" WorkOrder : module_id
+User "0..1" <-- "0..*" WorkOrder : technician_id
+MaintenancePlan "0..1" <-- "0..*" WorkOrder : plan_id
+WorkOrder "0..1" <-- "0..*" WorkOrder : recurrence_source_occurrence_id
+User "0..1" <-- "0..*" WorkOrder : rescheduled_by
+WorkOrder "1" -- "0..*" InterventionReport : ot_id
+User "1" -- "0..*" InterventionReport : technician_id
+Machine "1" -- "0..*" KPI : machine_id
 
-' Evaluation relationships
-Evaluation "*" o-- "1" Apprenant : evaluated_by
+' Catalogue / stock / pieces
+Catalogue "1" -- "0..*" Stock : part_id
+Stock "1" -- "0..*" StockMovement : stock_id
+Catalogue "1" -- "0..*" StockMovement : part_id
+WorkOrder "0..1" <-- "0..*" StockMovement : work_order_id
+PartRequest "0..1" <-- "0..*" StockMovement : part_request_id
+User "0..1" <-- "0..*" StockMovement : actor_user_id
+WorkOrder "1" -- "0..*" PartRequest : ot_id
+Catalogue "1" -- "0..*" PartRequest : part_id
+User "1" -- "0..*" PartRequest : requested_by
+WorkOrder "1" -- "0..*" OTPieces : ot_id
+Catalogue "1" -- "0..*" OTPieces : part_id
+ModuleType "1" -- "0..*" ModulePieces : mod_type_id
+Catalogue "1" -- "0..*" ModulePieces : part_id
 
-' Attestation relationships
-Attestation "*" o-- "1" Apprenant : awarded_to
+' Lubrification / pannes / documents / notifications
+Module "1" -- "0..*" LubrificationLog : module_id
+Lubrifiant "1" -- "0..*" LubrificationLog : lubrifiant_id
+User "1" -- "0..*" LubrificationLog : technician_id
+Panne "1" -- "0..*" PanneSolution : panne_id
+Machine "1" -- "0..*" DocumentEntity : machine_id
+User "0..1" <-- "0..*" Notification : recipient_user_id
+WorkOrder "0..1" <-- "0..*" Notification : work_order_id
+Machine "0..1" <-- "0..*" Notification : machine_id
 
-' Course relationships
-Cours "1" o-- "1" Formateur : created_by
-Cours "1" -- "*" RessourceCours : resources
-Cours "1" -- "*" ProgressionCours : progress
-Cours "1" -- "*" CommentaireCours : comments
+' Services -> entites (dependances majeures)
+AuthService ..> User
+AuthService ..> GoogleLoginExchange
+MaintenancePlansService ..> MaintenancePlan
+MaintenancePlansService ..> WorkOrder
+WorkOrdersService ..> WorkOrder
+WorkOrdersService ..> MaintenancePlan
+WorkOrdersService ..> PartRequest
+WorkOrdersService ..> InterventionReport
+WorkOrdersService ..> KPI
+WorkOrdersService ..> Notification
+WorkOrdersService ..> LubrificationLog
+AutomationSchedulerService ..> WorkOrdersService
+AutomationSchedulerService ..> WorkOrder
+AutomationSchedulerService ..> MaintenancePlan
+AutomationSchedulerService ..> Stock
+AutomationSchedulerService ..> Capteur
+AutomationSchedulerService ..> Mesure
+AutomationSchedulerService ..> NotificationCenterService
+StockMovementsService ..> Stock
+StockMovementsService ..> StockMovement
+StockMovementsService ..> PartRequest
+StockMovementsService ..> WorkOrder
+NotificationCenterService ..> Notification
+DocumentsService ..> DocumentEntity
 
-' Progress relationships
-ProgressionCours "*" o-- "1" Apprenant : student
-ProgressionCours "*" o-- "*" RessourceCours : completed_resources
+legend right
+    <<PK>>  Cle primaire
+    <<FK X>>  Cle etrangere vers X
+    <<UK>>  Contrainte unique
+    <<TTL>>  Expiration automatique MongoDB
+    <<service>>  Classe applicative/metier
+end legend
 
-' Comment relationships
-CommentaireCours "*" o-- "1" Apprenant : author
-
-' Messaging relationships
-Message "*" o-- "1" Utilisateur : sender
-Message "*" o-- "1" Utilisateur : receiver
-
-GroupeChat "*" o-- "1" Utilisateur : creator
-GroupeChat "*" o-- "*" Utilisateur : members
-GroupeChat "*" o-- "0..1" Formation : related_to
-GroupeChat "1" -- "*" MessageGroupe : messages
-
-MessageGroupe "*" o-- "1" Utilisateur : author
-
-FilDiscussion "*" o-- "1" Formation : forum
-FilDiscussion "*" o-- "1" Utilisateur : author
-FilDiscussion "1" -- "*" ReponseDiscussion : replies
-
-ReponseDiscussion "*" o-- "1" Utilisateur : author
-
-' Payment relationships
-Paiement "*" o-- "1" Formation : for_formation
-Paiement "*" o-- "0..1" Apprenant : individual_payment
-Paiement "*" o-- "0..1" Organisation : corporate_payment
-
-Organisation "1" -- "*" Apprenant : sponsors
-
-' Notification relationships
-Notification "*" o-- "1" Utilisateur : recipient
-
-' Complaint relationships
-Reclamation "*" o-- "1" Utilisateur : complainant
+note bottom
+    Diagramme reconstruit a partir des schemas/backend services reels
+    (NestJS + Mongoose) : backend/src/schemas/*.schema.ts,
+    backend/src/auth/schemas/google-login-exchange.schema.ts,
+    backend/src/counters/counter.schema.ts et services metier associes.
+end note
 
 @enduml

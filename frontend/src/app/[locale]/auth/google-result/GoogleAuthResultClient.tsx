@@ -90,15 +90,8 @@ export default function GoogleAuthResultClient() {
           session.refreshToken,
         );
 
-        const dashboardPath = getGooglePostExchangeRedirect(locale, session.user);
-
-        if (!dashboardPath) {
-          clearSession();
-          setExchangeError(true);
-          return;
-        }
-
-        window.location.replace(dashboardPath);
+        const destination = getGooglePostExchangeRedirect(locale, session.user);
+        window.location.replace(destination);
       })
       .catch(() => {
         clearSession();

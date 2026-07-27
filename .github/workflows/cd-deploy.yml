@@ -32,16 +32,6 @@ jobs:
               env:
                   NODE_ENV: test
 
-            - name: Build backend Docker image
-              run: |
-                  docker build -f Dockerfile.backend \
-                    -t gmao-backend:${{ github.sha }} \
-                    -t gmao-backend:latest \
-                    .
-
-            - name: Verify Docker image
-              run: docker run --rm gmao-backend:latest node --version
-
     deploy-frontend:
         runs-on: ubuntu-latest
         steps:

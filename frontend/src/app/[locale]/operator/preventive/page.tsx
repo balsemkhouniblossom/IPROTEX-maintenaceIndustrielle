@@ -9,6 +9,9 @@ import { apiService } from "@/services/api";
 import { fetchAllPaginated } from "@/services/pagination";
 import { Modal } from "@/components/Modal";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
+import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
+import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
+import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -511,10 +514,11 @@ export default function OperatorPreventivePage() {
 
   const preventivePlans = useMemo(
     () =>
-      plans.filter((plan) => {
-        const maintenanceType = (plan.type_maintenance ?? "").toLowerCase();
-        return moduleIdSet.has(refId(plan.module_id)) && maintenanceType.includes("prevent");
-      }),
+      plans.filter(
+        (plan) =>
+          moduleIdSet.has(refId(plan.module_id)) &&
+          !isCorrectiveMaintenanceType(plan.type_maintenance),
+      ),
     [plans, moduleIdSet],
   );
 
@@ -931,6 +935,9 @@ export default function OperatorPreventivePage() {
       }
 
       await uploadPhotoIfPresent(selectedMachine);
+      // The submitted work order's status changed server-side — the Admin
+      // Work Orders list has no other way to learn that.
+      invalidateList(LIST_EVENTS.workOrders);
       addGeneratedReport({
         id: `${workOrderId}-${reportId}`,
         type: "preventive",
@@ -1073,6 +1080,12 @@ export default function OperatorPreventivePage() {
               </div>
             </div>
           </div>
+
+          {selectedMachine ? (
+            <div className="col-span-full">
+              <KnowledgeSuggestions machineId={selectedMachine} />
+            </div>
+          ) : null}
 
           <div className="col-span-full grid grid-cols-1 gap-4 xl:grid-cols-2">
             {renderOccurrenceSection(t("lifecycle.dueToday"), preventiveSections?.dueToday)}
@@ -1394,7 +1407,7 @@ export default function OperatorPreventivePage() {
                 disabled={submitting}
                 onClick={() => void submitPreventiveMaintenance(selectedDraftId || undefined)}
                 data-testid="preventive-submit-button"
-                className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
+                className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white"
               >
                 {submitting ? tCommon("saving") : t("generateReport")}
               </button>

@@ -16,6 +16,7 @@ import { WorkOrdersModule } from '../work-orders/work-orders.module';
 import { DocumentsModule } from '../documents/documents.module';
 import { NotificationCenterModule } from '../notification-center/notification-center.module';
 import { StockMovementsModule } from '../stock-movements/stock-movements.module';
+import { KpiModule } from '../kpi/kpi.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { StockMovementsModule } from '../stock-movements/stock-movements.module'
     DocumentsModule,
     NotificationCenterModule,
     StockMovementsModule,
+    KpiModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: InterventionReport.name, schema: InterventionReportSchema },

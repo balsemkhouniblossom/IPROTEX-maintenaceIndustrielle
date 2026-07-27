@@ -32,6 +32,7 @@ import { resolveApprovalStatus } from '../users/approval-status.utils';
 import {
   throwInvalidCredentials,
   validateAccountAccess,
+  validateSessionRestoreAccess,
 } from './account-access.validator';
 import { AccountAccessErrorCode } from './account-access-error-code';
 import { GoogleLoginExchangeService } from './google-login-exchange.service';
@@ -291,7 +292,7 @@ export class AuthService {
       );
     }
 
-    validateAccountAccess(user);
+    validateSessionRestoreAccess(user);
 
     const storedRefreshHash = user.refresh_token_hash;
     if (!storedRefreshHash) {
@@ -804,7 +805,6 @@ export class AuthService {
             phone: dto.phone.trim(),
             role: dto.role,
             department: dto.department.trim(),
-            position: dto.position.trim(),
             language: dto.language,
             profile_completed: true,
             approval_status: ApprovalStatus.PENDING,
@@ -842,7 +842,6 @@ export class AuthService {
       'phone',
       'role',
       'department',
-      'position',
       'language',
     ];
   }
@@ -856,7 +855,6 @@ export class AuthService {
         user.phone?.trim() &&
         (user.role === Role.OPERATOR || user.role === Role.TECHNICIAN) &&
         user.department?.trim() &&
-        user.position?.trim() &&
         user.language?.trim() &&
         SUPPORTED_PROFILE_LANGUAGES.includes(
           user.language as (typeof SUPPORTED_PROFILE_LANGUAGES)[number],

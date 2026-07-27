@@ -85,12 +85,12 @@ test("Maintenance plans page hides Edit and Delete once a plan is Archived (read
   );
   assert.match(
     source,
-    /!isArchived \? \(\s*<button className="btn-secondary p-2" title=\{t\('actions\.edit'\)\}/,
+    /!isArchived \? \(\s*<button\s*\n?\s*className="btn-secondary p-2"\s*\n?\s*title=\{t\('actions\.edit'\)\}/,
     `${PAGE_PATH} must only render the Edit button when the plan is not archived`,
   );
   assert.match(
     source,
-    /!isArchived \? \(\s*<button className="btn-danger p-2" title=\{t\('actions\.delete'\)\}/,
+    /!isArchived \? \(\s*<button\s*\n?\s*className="btn-danger p-2"\s*\n?\s*title=\{t\('actions\.delete'\)\}/,
     `${PAGE_PATH} must only render the Delete button when the plan is not archived`,
   );
 });
@@ -133,5 +133,12 @@ test("all supported locales contain the new maintenance plan lifecycle translati
         `${locale}.json maintenancePlans.notifications.${key} must be a non-empty string`,
       );
     }
+    // Regression guard: t('table.status', { default: 'Status' }) still
+    // throws MISSING_MESSAGE when the key is absent - next-intl's `t()` has
+    // no such fallback option, so the real key must actually exist.
+    assert.ok(
+      typeof plans.table?.status === "string" && plans.table.status.length > 0,
+      `${locale}.json maintenancePlans.table.status must be a non-empty string`,
+    );
   }
 });

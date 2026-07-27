@@ -116,7 +116,7 @@ export default function RegisterPage() {
         <LanguageSwitcher />
       </div>
 
-      <div className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12 lg:p-16">
+      <main className="auth-side-panel w-full lg:w-2/5 flex items-center justify-center p-12 lg:p-16">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center mb-6">
@@ -249,8 +249,11 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="auth-icon-button absolute inset-y-0 inset-e-0 pe-4 flex items-center"
+                    className="auth-icon-button absolute inset-y-0 inset-e-0 flex items-center justify-center p-2"
+                    style={{ minWidth: 24, minHeight: 24 }}
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                    aria-pressed={showPassword}
                   >
                     {showPassword ? (
                       <EyeSlashIcon className="h-5 w-5" />
@@ -290,8 +293,11 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="auth-icon-button absolute inset-y-0 inset-e-0 pe-4 flex items-center"
+                    className="auth-icon-button absolute inset-y-0 inset-e-0 flex items-center justify-center p-2"
+                    style={{ minWidth: 24, minHeight: 24 }}
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? t('hidePassword') : t('showPassword')}
+                    aria-pressed={showConfirmPassword}
                   >
                     {showConfirmPassword ? (
                       <EyeSlashIcon className="h-5 w-5" />
@@ -328,7 +334,7 @@ export default function RegisterPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <div className="hidden lg:flex lg:w-3/5 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-blue-800 via-blue-900 to-[#0F172A] relative overflow-hidden">
         <div className="absolute inset-0 hero-split-panel bg-cover bg-center opacity-80" />

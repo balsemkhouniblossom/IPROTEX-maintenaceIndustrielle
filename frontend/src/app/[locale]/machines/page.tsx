@@ -5,6 +5,10 @@ import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import Pagination from '@/components/Pagination';
+import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
+import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
+import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
+import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import { apiService } from '@/services/api';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
@@ -34,6 +38,10 @@ interface MachineType {
 export default function MachinesPage() {
   const tMachines = useTranslations('machines');
   const tCommon = useTranslations('common');
+  const tDeviceMonitoring = useTranslations('deviceMonitoring');
+  const tPredictiveMaintenance = useTranslations('predictiveMaintenance');
+  const { statusByMachine, subscribeToMachine } = useLiveMonitoring();
+  const { healthByMachine } = usePredictiveHealth();
   const router = useRouter();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
@@ -304,6 +312,7 @@ export default function MachinesPage() {
           <div className="panel">
             <div className="flex items-center justify-between">
               <div>
+                <h1 className="text-2xl font-bold text-slate-800">{tMachines('heading')}</h1>
                 <p className="text-slate-600 mt-1">{tMachines('description')}</p>
               </div>
               <div className="flex items-center space-x-4">
@@ -313,9 +322,9 @@ export default function MachinesPage() {
                 </div>
                 <button
                   onClick={handleCreate}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white font-medium shadow-md hover:bg-blue-700 transition-all duration-200"
+                  className="btn-primary flex items-center space-x-2"
                 >
-                  <PlusIcon className="w-5 h-5" />
+                  <PlusIcon className="w-4 h-4" />
                   <span>{tMachines('addMachine')}</span>
                 </button>
               </div>
@@ -337,8 +346,22 @@ export default function MachinesPage() {
         {/* Machines Table */}
         <div className="col-span-full bento-item panel">
           <div className="card-title">{tMachines('allMachines')}</div>
-          <div className="overflow-x-auto">
-            <table className="table">
+          <div className="wide-table-scroll" tabIndex={0}>
+            <table className="table wide-table">
+              <colgroup>
+                <col className="machines-table__code" />
+                <col className="machines-table__serial" />
+                <col className="machines-table__manufacturer" />
+                <col className="machines-table__model" />
+                <col className="machines-table__type" />
+                <col className="machines-table__status" />
+                <col className="machines-table__live-status" />
+                <col className="machines-table__health" />
+                <col className="machines-table__date" />
+                <col className="machines-table__weight" />
+                <col className="machines-table__location" />
+                <col className="machines-table__actions" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>{tMachines('table.machineCode', { default: 'Machine Code' })}</th>
@@ -347,6 +370,8 @@ export default function MachinesPage() {
                   <th>{tMachines('table.model')}</th>
                   <th>{tMachines('table.type')}</th>
                   <th>{tMachines('table.status')}</th>
+                  <th>{tDeviceMonitoring('table.liveStatus')}</th>
+                  <th>{tPredictiveMaintenance('table.health')}</th>
                   <th>{tMachines('table.installationDate')}</th>
                   <th>{tMachines('table.weight')}</th>
                   <th>{tMachines('table.location')}</th>
@@ -356,7 +381,7 @@ export default function MachinesPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-8 text-gray-500">
+                    <td colSpan={12} className="text-center py-8 text-gray-500">
                       {searchTerm ? tMachines('empty.search') : tMachines('empty.default')}
                     </td>
                   </tr>
@@ -380,6 +405,16 @@ export default function MachinesPage() {
                           </span>
                         </td>
                         <td>
+                          <LiveStatusBadge
+                            machineId={machine._id}
+                            status={statusByMachine[machine._id]}
+                            onSubscribe={subscribeToMachine}
+                          />
+                        </td>
+                        <td>
+                          <MachineHealthBadge status={healthByMachine[machine._id]} />
+                        </td>
+                        <td>
                           {machine.installation_date
                             ? new Date(machine.installation_date).getFullYear()
                             : tCommon('notAvailable')}
@@ -395,20 +430,26 @@ export default function MachinesPage() {
                         </td>
 
                         <td>
-                          <div className="flex space-x-2">
+                          <div className="flex gap-2">
                             <button
+                              type="button"
                               onClick={() => handleEdit(machine)}
-                              className="btn-secondary p-2"
+                              aria-label={tCommon('edit')}
                               title={tCommon('edit')}
+                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                             >
-                              <PencilIcon className="w-4 h-4" />
+                              <PencilIcon className="h-4 w-4 shrink-0" />
+                              <span>{tCommon('edit')}</span>
                             </button>
                             <button
+                              type="button"
                               onClick={() => handleDelete(machine._id)}
-                              className="btn-danger p-2"
+                              aria-label={tCommon('delete')}
                               title={tCommon('delete')}
+                              className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                             >
-                              <TrashIcon className="w-4 h-4" />
+                              <TrashIcon className="h-4 w-4 shrink-0" />
+                              <span>{tCommon('delete')}</span>
                             </button>
                           </div>
                         </td>

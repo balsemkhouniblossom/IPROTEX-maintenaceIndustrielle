@@ -167,3 +167,6 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.index({ role: 1, is_active: 1 });
+// Supports the Admin users list's approval-status filter and the
+// pending-approvals queue's chronological sort/pagination.
+UserSchema.index({ approval_status: 1, created_at: -1 });

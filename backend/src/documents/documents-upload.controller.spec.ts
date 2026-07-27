@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   InternalServerErrorException,
+  PayloadTooLargeException,
+  UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import sharp from 'sharp';
 import { Types } from 'mongoose';
@@ -26,7 +28,7 @@ describe('DocumentsUploadController', () => {
     },
   } as AuthenticatedRequest;
 
-  let documentsService: { create: jest.Mock };
+  let documentsService: { create: jest.Mock; recordRejection: jest.Mock };
   let fileStorageService: { save: jest.Mock; delete: jest.Mock };
   let documentAccessService: { assertCanAccessMachine: jest.Mock };
   let controller: DocumentsUploadController;
@@ -64,6 +66,7 @@ describe('DocumentsUploadController', () => {
 
     documentsService = {
       create: jest.fn(),
+      recordRejection: jest.fn().mockResolvedValue(undefined),
     };
     fileStorageService = {
       save: jest.fn().mockImplementation((input) =>
@@ -132,6 +135,7 @@ describe('DocumentsUploadController', () => {
         file_name: 'fault.png',
         uploaded_by: request.user?.userId,
       }),
+      request.user?.userId,
     );
     expect(fileStorageService.delete).not.toHaveBeenCalled();
   });
@@ -267,6 +271,7 @@ describe('DocumentsUploadController', () => {
         storage_path: 'uploads/photo.webp',
         file_url: undefined,
       }),
+      request.user?.userId,
     );
   });
 
@@ -297,6 +302,7 @@ describe('DocumentsUploadController', () => {
         storage_path: 'uploads/photo.webp',
         file_url: undefined,
       }),
+      request.user?.userId,
     );
   });
 
@@ -361,6 +367,114 @@ describe('DocumentsUploadController', () => {
         ),
         file_name: 'manual.pdf',
       }),
+      request.user?.userId,
     );
+  });
+
+  describe('rejected non-photo uploads', () => {
+    it('quarantines an executable renamed as a PDF, records the rejection, and never creates a document', async () => {
+      const exeBuffer = Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
+
+      await expect(
+        controller.uploadFile(
+          {
+            originalname: 'renamed.pdf',
+            mimetype: 'application/pdf',
+            buffer: exeBuffer,
+            size: exeBuffer.length,
+          } as Express.Multer.File,
+          {
+            document_id: 'DOC-REJECTED',
+            machine_id: machineId,
+            type_document: 'manual',
+          },
+          request,
+        ),
+      ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
+
+      expect(fileStorageService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ buffer: exeBuffer, folder: 'quarantine' }),
+      );
+      expect(documentsService.recordRejection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          machineId,
+          originalFileName: 'renamed.pdf',
+          reason: expect.stringContaining('does not match its declared type'),
+          rejectedBy: request.user?.userId,
+        }),
+      );
+      expect(documentsService.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unsupported file extension without ever touching managed storage', async () => {
+      const buffer = Buffer.from('MZ-fake-binary');
+
+      await expect(
+        controller.uploadFile(
+          {
+            originalname: 'setup.exe',
+            mimetype: 'application/octet-stream',
+            buffer,
+            size: buffer.length,
+          } as Express.Multer.File,
+          {
+            document_id: 'DOC-REJECTED-2',
+            machine_id: machineId,
+            type_document: 'manual',
+          },
+          request,
+        ),
+      ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
+
+      expect(documentsService.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a file whose size exceeds the configured limit with a 413, and quarantines nothing further than the audit trail', async () => {
+      const oversized = Buffer.alloc(11 * 1024 * 1024, 1);
+
+      await expect(
+        controller.uploadFile(
+          {
+            originalname: 'huge.pdf',
+            mimetype: 'application/pdf',
+            buffer: oversized,
+            size: oversized.length,
+          } as Express.Multer.File,
+          {
+            document_id: 'DOC-HUGE',
+            machine_id: machineId,
+            type_document: 'manual',
+          },
+          request,
+        ),
+      ).rejects.toBeInstanceOf(PayloadTooLargeException);
+
+      expect(documentsService.create).not.toHaveBeenCalled();
+    });
+
+    it('still throws the rejection exception even when quarantining the file itself fails', async () => {
+      fileStorageService.save.mockRejectedValueOnce(new Error('quarantine storage unavailable'));
+      const exeBuffer = Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
+
+      await expect(
+        controller.uploadFile(
+          {
+            originalname: 'renamed.pdf',
+            mimetype: 'application/pdf',
+            buffer: exeBuffer,
+            size: exeBuffer.length,
+          } as Express.Multer.File,
+          {
+            document_id: 'DOC-REJECTED-3',
+            machine_id: machineId,
+            type_document: 'manual',
+          },
+          request,
+        ),
+      ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
+
+      expect(documentsService.recordRejection).toHaveBeenCalled();
+      expect(documentsService.create).not.toHaveBeenCalled();
+    });
   });
 });

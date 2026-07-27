@@ -26,9 +26,14 @@ function formatClock(locale: string, now: Date) {
 }
 
 export default function LiveClock({ locale = 'en' }: LiveClockProps) {
-  const [now, setNow] = useState(() => new Date());
+  // `now` starts `null` so the server render and the client's pre-hydration
+  // render produce identical markup — seeding it with `new Date()` here
+  // would make the server's timestamp and the client's differ by however
+  // long hydration took, failing the hydration check on the seconds digit.
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const timer = window.setInterval(() => {
       setNow(new Date());
     }, 1000);
@@ -36,7 +41,7 @@ export default function LiveClock({ locale = 'en' }: LiveClockProps) {
     return () => window.clearInterval(timer);
   }, []);
 
-  const { time, date } = formatClock(locale, now);
+  const { time, date } = now ? formatClock(locale, now) : { time: '--:--:--', date: '' };
 
   return (
     <div className="flex min-w-48 items-center gap-3 rounded-2xl border border-border bg-surface-secondary px-4 py-2 text-sm text-text-secondary shadow-sm transition-colors duration-200 hover:bg-surface">

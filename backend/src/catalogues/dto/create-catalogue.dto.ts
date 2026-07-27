@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateCatalogueDto {
   @IsString()
@@ -20,4 +20,9 @@ export class CreateCatalogueDto {
   @IsString()
   @IsOptional()
   categorie_piece?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  unit_cost?: number;
 }

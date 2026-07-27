@@ -13,6 +13,7 @@ describe('AutomationSchedulerService notification persistence', () => {
   let workOrderModel: { find: jest.Mock; updateMany: jest.Mock };
   let stockModel: { find: jest.Mock };
   let notificationCenterService: { createIfNotExists: jest.Mock };
+  let kpiService: { computeStockAlerts: jest.Mock };
   let service: AutomationSchedulerService;
 
   beforeEach(() => {
@@ -25,6 +26,9 @@ describe('AutomationSchedulerService notification persistence', () => {
     };
     notificationCenterService = {
       createIfNotExists: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+    };
+    kpiService = {
+      computeStockAlerts: jest.fn().mockResolvedValue({ count: 0, items: [] }),
     };
 
     service = new AutomationSchedulerService(
@@ -39,6 +43,7 @@ describe('AutomationSchedulerService notification persistence', () => {
       {} as never,
       {} as never,
       notificationCenterService as never,
+      kpiService as never,
     );
   });
 
@@ -140,41 +145,42 @@ describe('AutomationSchedulerService notification persistence', () => {
   });
 
   describe('jobStockMonitoring', () => {
-    it('broadcasts a STOCK_ALERT to Admins when quantity is at or below threshold', async () => {
-      stockModel.find.mockReturnValue(
-        leanExec([
+    it('broadcasts a STOCK_ALERT to Admins for every alerting stock KpiService reports', async () => {
+      const stockId = new Types.ObjectId().toString();
+      const partId = new Types.ObjectId().toString();
+      kpiService.computeStockAlerts.mockResolvedValue({
+        count: 1,
+        items: [
           {
-            _id: new Types.ObjectId(),
-            stock_id: 'STOCK-001',
-            part_id: new Types.ObjectId(),
-            quantite_en_stock: 2,
-            seuil_alerte_stock: 5,
+            stockId,
+            stockCode: 'STOCK-001',
+            partId,
+            partLabel: 'Drive belt',
+            quantiteEnStock: 2,
+            quantiteReservee: 0,
+            available: 2,
+            threshold: 5,
           },
-        ]),
-      );
+        ],
+      });
 
       const result = await (
         service as unknown as { jobStockMonitoring(): Promise<{ processed: number }> }
       ).jobStockMonitoring();
 
       expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'stock_alert', recipientRole: 'admin' }),
+        expect.objectContaining({
+          type: 'stock_alert',
+          recipientRole: 'admin',
+          dedupeKey: `stock_alert:${stockId}:2`,
+          referenceId: partId,
+        }),
       );
       expect(result.processed).toBe(1);
     });
 
-    it('does not alert when stock is above threshold', async () => {
-      stockModel.find.mockReturnValue(
-        leanExec([
-          {
-            _id: new Types.ObjectId(),
-            stock_id: 'STOCK-002',
-            part_id: new Types.ObjectId(),
-            quantite_en_stock: 50,
-            seuil_alerte_stock: 5,
-          },
-        ]),
-      );
+    it('does not alert when KpiService reports no alerting stocks', async () => {
+      kpiService.computeStockAlerts.mockResolvedValue({ count: 0, items: [] });
 
       const result = await (
         service as unknown as { jobStockMonitoring(): Promise<{ processed: number }> }

@@ -19,7 +19,7 @@ export default function ThemeToggle() {
       title={nextThemeLabel}
     >
       {isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-      <span className="hidden lg:inline">{isDark ? t('dark') : t('light')}</span>
+      <span className="hidden lg:inline" aria-hidden="true">{isDark ? t('dark') : t('light')}</span>
     </button>
   );
 }

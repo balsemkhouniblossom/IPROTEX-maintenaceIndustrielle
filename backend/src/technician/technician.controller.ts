@@ -109,7 +109,7 @@ export class TechnicianController {
   review(
     @Req() req: TechnicianRequest,
     @Param('id') id: string,
-    @Body() body: { action?: 'approve' | 'return' | 'intervene' },
+    @Body() body: { action?: 'return' | 'intervene' },
   ) {
     return this.technicianService.review(
       this.technicianId(req),

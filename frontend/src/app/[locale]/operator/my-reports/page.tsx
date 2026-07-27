@@ -12,6 +12,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Modal } from "@/components/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
+import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems, readPaginationMeta } from "@/services/pagination";
 
@@ -548,7 +549,7 @@ export default function OperatorMyReportsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="font-semibold text-slate-900">{report.report_id}</div>
                       <div className="rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                        {workOrder?.type_maintenance === "preventive" ? t("preventive") : t("corrective")}
+                        {!isCorrectiveMaintenanceType(workOrder?.type_maintenance) ? t("preventive") : t("corrective")}
                       </div>
                     </div>
                     <div className="text-sm text-slate-500 mt-1">{t("workOrder")}: {workOrder?.ot_id ?? tCommon("notAvailable")}</div>

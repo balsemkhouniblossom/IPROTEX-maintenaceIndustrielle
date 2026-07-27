@@ -21,7 +21,10 @@ import { Modal } from '@/components/Modal';
 import Pagination from '@/components/Pagination';
 import ProfileAvatar from '@/components/ProfileAvatar';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { BulkActionToolbar } from '@/components/BulkActionToolbar';
+import { SavedViewsBar, SavedView } from '@/components/SavedViewsBar';
 import { apiService } from '@/services/api';
+import { extractApiErrorMessage } from '@/services/apiErrors';
 import {
   ApprovalRole,
   ApprovalStatus,
@@ -147,6 +150,16 @@ function UsersPageContent() {
   const [historyUser, setHistoryUser] = useState<User | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Bulk approve/reject — only meaningful on the pending queue, backed by
+  // the transactional /users/bulk-approve and /users/bulk-reject endpoints.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  // Saved views — per-user search/filter/sort presets for this page.
+  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  const [activeSavedViewId, setActiveSavedViewId] = useState<string | null>(null);
 
   const emptyForm: UserFormData = {
     nom_complet: '',
@@ -277,6 +290,23 @@ function UsersPageContent() {
   useEffect(() => {
     void loadPendingCount();
   }, [loadPendingCount]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [activeView, page]);
+
+  const loadSavedViews = useCallback(async () => {
+    try {
+      const response = await apiService.getSavedViews('users');
+      setSavedViews(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      // Non-fatal — the saved-views bar just stays empty.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSavedViews();
+  }, [loadSavedViews]);
 
   const refreshAfterDecision = useCallback(async () => {
     await Promise.all([loadCurrentView(), loadPendingCount()]);
@@ -525,6 +555,111 @@ function UsersPageContent() {
     setReasonError('');
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds(checked ? new Set(items.map((user) => getActionId(user))) : new Set());
+  }
+
+  async function handleBulkApprove() {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || bulkSubmitting) return;
+    setBulkSubmitting(true);
+    const previousItems = items;
+    // Optimistic: approved users leave the pending queue immediately;
+    // rolled back below if the transaction fails.
+    setItems((prev) => prev.filter((user) => !selectedIds.has(getActionId(user))));
+    try {
+      await apiService.bulkApproveUsers(ids);
+      showNotification('success', tUsers('bulk.approveSuccess', { count: ids.length }));
+      setSelectedIds(new Set());
+      await refreshAfterDecision();
+    } catch (error) {
+      setItems(previousItems);
+      showNotification('error', extractApiErrorMessage(error, tUsers('bulk.approveFailed')));
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }
+
+  async function handleBulkReject() {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || bulkSubmitting) return;
+    const trimmedReason = bulkRejectReason.trim();
+    if (!trimmedReason) {
+      showNotification('error', tUsers('bulk.reasonRequired'));
+      return;
+    }
+    setBulkSubmitting(true);
+    const previousItems = items;
+    setItems((prev) => prev.filter((user) => !selectedIds.has(getActionId(user))));
+    try {
+      await apiService.bulkRejectUsers(ids, trimmedReason);
+      showNotification('success', tUsers('bulk.rejectSuccess', { count: ids.length }));
+      setSelectedIds(new Set());
+      setBulkRejectReason('');
+      await refreshAfterDecision();
+    } catch (error) {
+      setItems(previousItems);
+      showNotification('error', extractApiErrorMessage(error, tUsers('bulk.rejectFailed')));
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }
+
+  function applySavedView(view: SavedView) {
+    const query = view.query as {
+      view?: ApprovalView;
+      search?: string;
+      role?: ApprovalRole | 'all';
+      verification?: EmailVerificationFilter;
+      sortOrder?: 'asc' | 'desc';
+    };
+    setActiveSavedViewId(view._id);
+    if (query.view) setActiveView(query.view);
+    setSearchInput(query.search ?? '');
+    setDebouncedSearch(query.search ?? '');
+    if (query.role) setRoleFilter(query.role);
+    if (query.verification) setVerificationFilter(query.verification);
+    if (query.sortOrder) setSortOrder(query.sortOrder);
+    setPage(1);
+  }
+
+  async function saveCurrentView(name: string) {
+    try {
+      const query = {
+        view: activeView,
+        search: debouncedSearch,
+        role: roleFilter,
+        verification: verificationFilter,
+        sortOrder,
+      };
+      const response = await apiService.createSavedView({ pageKey: 'users', name, query });
+      setSavedViews((prev) => [response.data, ...prev]);
+      showNotification('success', tUsers('savedViews.saved'));
+    } catch (error) {
+      showNotification('error', extractApiErrorMessage(error, tUsers('savedViews.saveFailed')));
+    }
+  }
+
+  async function deleteSavedView(view: SavedView) {
+    try {
+      await apiService.deleteSavedView(view._id);
+      setSavedViews((prev) => prev.filter((v) => v._id !== view._id));
+      if (activeSavedViewId === view._id) setActiveSavedViewId(null);
+      showNotification('success', tUsers('savedViews.deleted'));
+    } catch (error) {
+      showNotification('error', extractApiErrorMessage(error, tUsers('savedViews.deleteFailed')));
+    }
+  }
+
   const activeTitle = tUsers(`approvals.tabs.${activeView}`);
   const isPending = activeView === 'pending';
 
@@ -589,6 +724,7 @@ function UsersPageContent() {
                   role="tab"
                   aria-selected={activeView === view}
                   onClick={() => switchView(view)}
+                  style={{ minHeight: 24 }}
                   className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
                     activeView === view
                       ? 'border-blue-600 bg-blue-600 text-white'
@@ -681,6 +817,20 @@ function UsersPageContent() {
                 </select>
               )}
             </div>
+
+            <div className="mt-4">
+              <SavedViewsBar
+                views={savedViews}
+                activeViewId={activeSavedViewId}
+                onApply={applySavedView}
+                onSaveCurrent={(name) => void saveCurrentView(name)}
+                onDelete={(view) => void deleteSavedView(view)}
+                saveLabel={tUsers('savedViews.save')}
+                namePlaceholder={tUsers('savedViews.namePlaceholder')}
+                emptyLabel={tUsers('savedViews.empty')}
+                deleteLabel={tUsers('savedViews.delete')}
+              />
+            </div>
           </div>
         </div>
 
@@ -709,9 +859,43 @@ function UsersPageContent() {
             <EmptyState view={activeView} search={debouncedSearch} tUsers={tUsers} />
           ) : (
             <>
+              {isPending && (
+                <BulkActionToolbar
+                  selectedCount={selectedIds.size}
+                  onClearSelection={() => setSelectedIds(new Set())}
+                  clearLabel={tUsers('bulk.clearSelection')}
+                  countLabel={(count) => tUsers('bulk.selectedCount', { count })}
+                >
+                  <button
+                    type="button"
+                    onClick={() => void handleBulkApprove()}
+                    disabled={bulkSubmitting}
+                    className="btn-primary px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {tUsers('bulk.approve')}
+                  </button>
+                  <input
+                    value={bulkRejectReason}
+                    onChange={(e) => setBulkRejectReason(e.target.value)}
+                    placeholder={tUsers('bulk.reasonPlaceholder')}
+                    className="input-field h-8 w-56 text-xs"
+                    aria-label={tUsers('bulk.reasonPlaceholder')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleBulkReject()}
+                    disabled={bulkSubmitting}
+                    className="btn-danger px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {tUsers('bulk.reject')}
+                  </button>
+                </BulkActionToolbar>
+              )}
+
               <div className="users-table-scroll hidden lg:block" tabIndex={0}>
                 <table className="table users-table">
                   <colgroup>
+                    {isPending && <col className="users-table__select" />}
                     <col className="users-table__photo" />
                     <col className="users-table__name" />
                     <col className="users-table__email" />
@@ -735,6 +919,16 @@ function UsersPageContent() {
                   </colgroup>
                   <thead>
                     <tr>
+                      {isPending && (
+                        <th>
+                          <input
+                            type="checkbox"
+                            checked={items.length > 0 && items.every((user) => selectedIds.has(getActionId(user)))}
+                            onChange={(e) => toggleSelectAll(e.target.checked)}
+                            aria-label={tUsers('bulk.selectAll')}
+                          />
+                        </th>
+                      )}
                       <th>{tUsers('table.photo')}</th>
                       <th>{tUsers('table.name')}</th>
                       <th>{tUsers('table.email')}</th>
@@ -775,6 +969,9 @@ function UsersPageContent() {
                           setHistoryUser(target);
                           setIsHistoryModalOpen(true);
                         }}
+                        selectable={isPending}
+                        selected={selectedIds.has(getActionId(user))}
+                        onToggleSelect={() => toggleSelect(getActionId(user))}
                         tUsers={tUsers}
                         tCommon={tCommon}
                       />
@@ -801,6 +998,9 @@ function UsersPageContent() {
                       setHistoryUser(target);
                       setIsHistoryModalOpen(true);
                     }}
+                    selectable={isPending}
+                    selected={selectedIds.has(getActionId(user))}
+                    onToggleSelect={() => toggleSelect(getActionId(user))}
                     tUsers={tUsers}
                   />
                 ))}
@@ -1034,6 +1234,9 @@ function UserRow({
   onEdit,
   onDelete,
   onHistory,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
   tUsers,
   tCommon,
 }: {
@@ -1046,6 +1249,9 @@ function UserRow({
   onEdit: (user: User) => void;
   onDelete: (id?: string) => void;
   onHistory: (user: User) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
   tUsers: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
 }) {
@@ -1054,7 +1260,17 @@ function UserRow({
   const approveDisabled = actionLoading || !user.is_verified;
 
   return (
-    <tr>
+    <tr aria-selected={selectable ? selected : undefined}>
+      {selectable && (
+        <td>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={tUsers('bulk.selectRow', { name: user.nom_complet || user.email || '' })}
+          />
+        </td>
+      )}
       <td>
         <ProfileAvatar
           name={user.nom_complet}
@@ -1208,6 +1424,9 @@ function UserCard(props: {
   onEdit: (user: User) => void;
   onDelete: (id?: string) => void;
   onHistory: (user: User) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
   tUsers: ReturnType<typeof useTranslations>;
 }) {
   const {
@@ -1220,6 +1439,9 @@ function UserCard(props: {
     onEdit,
     onDelete,
     onHistory,
+    selectable = false,
+    selected = false,
+    onToggleSelect,
     tUsers,
   } = props;
   const actionLoading = rowActionId === getActionId(user);
@@ -1227,6 +1449,15 @@ function UserCard(props: {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={tUsers('bulk.selectRow', { name: user.nom_complet || user.email || '' })}
+            className="mt-1"
+          />
+        )}
         <UserIdentity user={user} tUsers={tUsers} />
         <ApprovalStatusBadge status={user.approval_status} tUsers={tUsers} />
       </div>

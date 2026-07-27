@@ -31,6 +31,7 @@ import {
   PanneSolutionDocument,
 } from '../schemas/panne-solution.schema';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { KpiService } from '../kpi/kpi.service';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -87,6 +88,7 @@ export class OperatorService {
     @InjectModel(PanneSolution.name)
     private readonly panneSolutionModel: Model<PanneSolutionDocument>,
     private readonly workOrdersService: WorkOrdersService,
+    private readonly kpiService: KpiService,
   ) {}
 
   private toObjectId(id: string): Types.ObjectId {
@@ -539,6 +541,17 @@ export class OperatorService {
       throw new NotFoundException('Work order not found');
     }
     await this.assertCanAccessMachine(userId, this.toIdString(target.machine_id));
+  }
+
+  /**
+   * The Operator dashboard's KPI numbers — status counts scoped to the
+   * operator's own work orders, computed by the same shared `KpiService`
+   * every other role's dashboard uses. Replaces the previous pattern of
+   * fetching every page of the operator's work orders/reports and
+   * re-deriving these counts in the browser.
+   */
+  async getDashboard(userId: string) {
+    return this.kpiService.getOperatorDashboard(userId);
   }
 
   async getCalendarWidget(userId: string) {

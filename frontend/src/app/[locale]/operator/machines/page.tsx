@@ -13,6 +13,10 @@ import {
     WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
+import LiveStatusBadge from "@/components/device-monitoring/LiveStatusBadge";
+import MachineHealthBadge from "@/components/predictive-maintenance/MachineHealthBadge";
+import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
+import { usePredictiveHealth } from "@/hooks/usePredictiveHealth";
 
 interface Machine {
     _id: string;
@@ -39,7 +43,8 @@ function OperatorMachinesPageContent() {
     const tMachines = useTranslations("operatorMachines");
     const tOperator = useTranslations("dashboard.operator");
     const tCommon = useTranslations("common");
-
+    const { statusByMachine, subscribeToMachine } = useLiveMonitoring();
+    const { healthByMachine } = usePredictiveHealth();
 
     const [machines, setMachines] = useState<Machine[]>([]);
     const [category, setCategory] = useState<MachineType | null>(null);
@@ -166,6 +171,17 @@ function OperatorMachinesPageContent() {
                                         {tMachines(`status.${machine.status}`)}
                                     </span>
                                 </div>
+                            </div>
+
+                            <div className="mb-3">
+                                <LiveStatusBadge
+                                    machineId={machine._id}
+                                    status={statusByMachine[machine._id]}
+                                    onSubscribe={subscribeToMachine}
+                                />
+                            </div>
+                            <div className="mb-3">
+                                <MachineHealthBadge status={healthByMachine[machine._id]} />
                             </div>
 
                             {/* INFO GRID (clean structured layout) */}

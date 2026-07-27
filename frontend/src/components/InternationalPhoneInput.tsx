@@ -103,7 +103,9 @@ export default function InternationalPhoneInput({
         <div className="relative min-w-0">
           <button
             type="button"
-            aria-label="Phone country"
+            aria-label={`Phone country: ${selectedOption.label} ${selectedOption.dialCode}`}
+            aria-haspopup="listbox"
+            aria-expanded={isOpen}
             disabled={disabled}
             onClick={() => setIsOpen((open) => !open)}
             className={`input-field inline-flex w-full items-center justify-between px-3 ${selectClassName}`}

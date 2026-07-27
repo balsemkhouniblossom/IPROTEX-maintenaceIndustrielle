@@ -8,6 +8,7 @@ export type AccountAccessUser = {
   is_active?: boolean;
   is_verified?: boolean;
   role?: string;
+  profile_completed?: boolean;
 };
 
 export function throwInvalidCredentials(): never {
@@ -61,6 +62,33 @@ export function validateAccountAccess(user: AccountAccessUser): void {
       'Your account role is not allowed.',
     );
   }
+}
+
+/**
+ * Session-restoration is deliberately narrower than full account access.
+ * A Google account mid-onboarding (profile_completed === false) is always
+ * approval_status PENDING / is_active false purely as a "not finished yet"
+ * placeholder, not as an "awaiting admin review" state. Letting these users
+ * restore their identity (so they can reach /auth/complete-profile) does not
+ * grant application access: JwtAuthGuard still blocks every route except
+ * complete-profile/logout for profile_completed === false users. Rejected
+ * accounts are never allowed to restore a session, regardless of profile
+ * completion. Every other lifecycle state keeps the existing, established
+ * validateAccountAccess behavior unchanged.
+ */
+export function validateSessionRestoreAccess(user: AccountAccessUser): void {
+  if (resolveApprovalStatus(user) === ApprovalStatus.REJECTED) {
+    throwAccountAccessDenied(
+      AccountAccessErrorCode.ACCOUNT_REJECTED,
+      'Your account request was rejected.',
+    );
+  }
+
+  if (user.profile_completed === false) {
+    return;
+  }
+
+  validateAccountAccess(user);
 }
 
 function throwAccountAccessDenied(

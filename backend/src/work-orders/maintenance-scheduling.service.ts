@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as businessTime from '../common/business-time';
 
 export type CanonicalFrequency =
   | 'DAILY'
@@ -139,10 +140,10 @@ export class MaintenanceSchedulingService {
     if (status === 'in_progress') return 'in_progress';
 
     if (!input.dueDate) return 'not_scheduled';
-    const due = this.startOfLocalDay(new Date(input.dueDate));
+    const due = businessTime.startOfBusinessDay(new Date(input.dueDate));
     if (Number.isNaN(due.getTime())) return 'not_scheduled';
 
-    const today = this.startOfLocalDay(input.today || new Date());
+    const today = businessTime.startOfBusinessDay(input.today || new Date());
     const diffDays = Math.floor((due.getTime() - today.getTime()) / 86400000);
     if (diffDays < 0) return 'overdue';
     if (diffDays === 0) return 'due_today';
@@ -162,68 +163,21 @@ export class MaintenanceSchedulingService {
    * The IANA timezone the business operates in, used to compute calendar
    * day/week/month/year boundaries that match what an Operator on-site
    * actually experiences as "today", rather than the server host's own
-   * (often UTC) local time.
+   * (often UTC) local time. Delegates to `common/business-time.ts` — the
+   * single canonical implementation shared with `KpiService` and every
+   * other consumer, so "today" never means two different things in two
+   * different parts of the app.
    */
   getBusinessTimezone(): string {
-    return process.env.BUSINESS_TIMEZONE || 'Africa/Tunis';
-  }
-
-  private zonedParts(date: Date, timeZone: string) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }).formatToParts(date);
-    const map: Record<string, string> = {};
-    for (const part of parts) {
-      map[part.type] = part.value;
-    }
-    return {
-      year: Number(map.year),
-      month: Number(map.month),
-      day: Number(map.day),
-      hour: map.hour === '24' ? 0 : Number(map.hour),
-      minute: Number(map.minute),
-      second: Number(map.second),
-    };
-  }
-
-  private zonedWallTimeToUtc(
-    year: number,
-    month: number,
-    day: number,
-    hour: number,
-    minute: number,
-    second: number,
-    timeZone: string,
-  ): Date {
-    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
-    const seenBackInZone = this.zonedParts(new Date(utcGuess), timeZone);
-    const seenAsUtc = Date.UTC(
-      seenBackInZone.year,
-      seenBackInZone.month - 1,
-      seenBackInZone.day,
-      seenBackInZone.hour,
-      seenBackInZone.minute,
-      seenBackInZone.second,
-    );
-    return new Date(utcGuess - (seenAsUtc - utcGuess));
+    return businessTime.getBusinessTimezone();
   }
 
   startOfBusinessDay(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
-    const { year, month, day } = this.zonedParts(value, timeZone);
-    return this.zonedWallTimeToUtc(year, month, day, 0, 0, 0, timeZone);
+    return businessTime.startOfBusinessDay(value, timeZone);
   }
 
   endOfBusinessDay(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
-    return new Date(
-      this.addBusinessDays(this.startOfBusinessDay(value, timeZone), 1, timeZone).getTime() - 1,
-    );
+    return businessTime.endOfBusinessDay(value, timeZone);
   }
 
   addBusinessDays(
@@ -231,21 +185,7 @@ export class MaintenanceSchedulingService {
     days: number,
     timeZone: string = this.getBusinessTimezone(),
   ): Date {
-    const { year, month, day } = this.zonedParts(value, timeZone);
-    // Do the day-count arithmetic at noon UTC (well clear of any DST
-    // transition) before re-projecting through the target timezone, so the
-    // calendar-day shift stays correct across month/year boundaries.
-    const shifted = new Date(Date.UTC(year, month - 1, day + days, 12));
-    const parts = this.zonedParts(shifted, timeZone);
-    return this.zonedWallTimeToUtc(
-      parts.year,
-      parts.month,
-      parts.day,
-      0,
-      0,
-      0,
-      timeZone,
-    );
+    return businessTime.addBusinessDays(value, days, timeZone);
   }
 
   addBusinessMonths(
@@ -253,56 +193,19 @@ export class MaintenanceSchedulingService {
     months: number,
     timeZone: string = this.getBusinessTimezone(),
   ): Date {
-    const { year, month, day, hour, minute, second } = this.zonedParts(
-      value,
-      timeZone,
-    );
-    const totalMonths = month - 1 + months;
-    const targetYear = year + Math.floor(totalMonths / 12);
-    const targetMonth = ((totalMonths % 12) + 12) % 12;
-    const daysInTargetMonth = new Date(
-      Date.UTC(targetYear, targetMonth + 1, 0),
-    ).getUTCDate();
-    const clampedDay = Math.min(day, daysInTargetMonth);
-    return this.zonedWallTimeToUtc(
-      targetYear,
-      targetMonth + 1,
-      clampedDay,
-      hour,
-      minute,
-      second,
-      timeZone,
-    );
+    return businessTime.addBusinessMonths(value, months, timeZone);
   }
 
   startOfBusinessWeek(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
-    const dayStart = this.startOfBusinessDay(value, timeZone);
-    const weekdayName = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      weekday: 'short',
-    }).format(dayStart);
-    const weekdayIndex: Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
-    };
-    const day = weekdayIndex[weekdayName] ?? 0;
-    const diff = day === 0 ? -6 : 1 - day;
-    return this.addBusinessDays(dayStart, diff, timeZone);
+    return businessTime.startOfBusinessWeek(value, timeZone);
   }
 
   startOfBusinessMonth(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
-    const { year, month } = this.zonedParts(value, timeZone);
-    return this.zonedWallTimeToUtc(year, month, 1, 0, 0, 0, timeZone);
+    return businessTime.startOfBusinessMonth(value, timeZone);
   }
 
   startOfBusinessYear(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
-    const { year } = this.zonedParts(value, timeZone);
-    return this.zonedWallTimeToUtc(year, 1, 1, 0, 0, 0, timeZone);
+    return businessTime.startOfBusinessYear(value, timeZone);
   }
 
   private reminderWindowDays(unit?: string): number {

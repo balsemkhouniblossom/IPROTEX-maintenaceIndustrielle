@@ -1,5 +1,6 @@
 type RuntimeMode = 'development' | 'test' | 'production';
 type CorsOrigin = string | RegExp;
+export type TrustProxySetting = boolean | number | string;
 
 type EnvValidationResult = {
   nodeEnv: RuntimeMode;
@@ -14,6 +15,14 @@ type EnvValidationResult = {
   enableLegacyResetTokens: boolean;
   enableEventBasedEmails: boolean;
   fileStorageDriver: 'local' | 'supabase';
+  businessTimezone: string;
+  mqttBrokerUrl?: string;
+  telemetryRetentionSeconds: number;
+  faultEventRetentionSeconds: number;
+  aiAssistantEnabled: boolean;
+  predictiveMaintenanceEnabled: boolean;
+  predictionHistoryRetentionSeconds: number;
+  trustProxy: TrustProxySetting;
 };
 
 function parseNodeEnv(input: string | undefined): RuntimeMode {
@@ -103,6 +112,163 @@ function validateFileStorage(nodeEnv: RuntimeMode): 'local' | 'supabase' {
   requireEnv('SUPABASE_STORAGE_BUCKET');
 
   return 'supabase';
+}
+
+/**
+ * The IANA timezone every "today"/"this month"/overdue boundary in the app
+ * (dashboards, KPIs, calendars) is computed against — see
+ * `common/business-time.ts`. Validated here purely to fail fast at startup
+ * on a typo'd zone name; the runtime value is still read directly from
+ * `process.env.BUSINESS_TIMEZONE` by that module (mirroring how the rest of
+ * this file's already-validated variables are re-read elsewhere), not
+ * threaded through `ConfigService`.
+ */
+function validateBusinessTimezone(value: string | undefined): string {
+  const timezone = value?.trim() || 'Africa/Tunis';
+  try {
+    // Throws a RangeError for an unrecognized IANA zone name.
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+  } catch {
+    throw new Error(
+      `BUSINESS_TIMEZONE must be a valid IANA timezone name (got "${timezone}")`,
+    );
+  }
+  return timezone;
+}
+
+/**
+ * MQTT ingestion is entirely optional infrastructure (see
+ * `MqttIngestionService`) — with no `MQTT_BROKER_URL` set the app simply
+ * never connects to a broker, so this only validates the URL *shape* when
+ * one is actually configured, never requires it.
+ */
+function validateMqttBrokerUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  // MQTT broker URLs use mqtt(s):// / ws(s):// schemes, which the WHATWG
+  // URL parser (used elsewhere in this file via `parseUrl`) accepts fine —
+  // it only rejects genuinely malformed input, not the scheme.
+  try {
+    return new URL(trimmed).toString().replace(/\/$/, '');
+  } catch {
+    throw new Error('MQTT_BROKER_URL must be a valid URL (e.g. mqtt://host:1883)');
+  }
+}
+
+/**
+ * The AI corrective assistant is disabled-by-default optional infrastructure
+ * (same posture as `validateMqttBrokerUrl` above): with `AI_ASSISTANT_ENABLED`
+ * unset or false, the app never calls out to a provider (see `NullAiProvider`
+ * / `AiAssistantModule`'s provider factory) and no key is required anywhere.
+ * The one thing validated here at boot, fail-fast, is that a production
+ * deployment which *does* opt in isn't silently running with no credentials
+ * — `AI_ASSISTANT_TIMEOUT_MS` / `AI_ASSISTANT_RATE_LIMIT_PER_HOUR` are
+ * re-read directly from `ConfigService` at call time by the module (same
+ * pattern as `MqttIngestionService` re-reading `MQTT_BROKER_URL`), so their
+ * shape is validated here without threading the values through this file's
+ * return object.
+ */
+function validateAiAssistant(nodeEnv: RuntimeMode): boolean {
+  const enabled = parseBoolean(process.env.AI_ASSISTANT_ENABLED, false);
+
+  if (enabled && nodeEnv === 'production' && !process.env.ANTHROPIC_API_KEY?.trim()) {
+    throw new Error(
+      'ANTHROPIC_API_KEY is required when AI_ASSISTANT_ENABLED=true in production',
+    );
+  }
+
+  const timeoutMs = process.env.AI_ASSISTANT_TIMEOUT_MS;
+  if (timeoutMs?.trim()) {
+    const parsed = Number(timeoutMs);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new Error(
+        'AI_ASSISTANT_TIMEOUT_MS must be a positive integer number of milliseconds',
+      );
+    }
+  }
+
+  const rateLimit = process.env.AI_ASSISTANT_RATE_LIMIT_PER_HOUR;
+  if (rateLimit?.trim()) {
+    const parsed = Number(rateLimit);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new Error('AI_ASSISTANT_RATE_LIMIT_PER_HOUR must be a positive integer');
+    }
+  }
+
+  return enabled;
+}
+
+/**
+ * Express's `trust proxy` setting, applied in `main.ts`. Left untrusted
+ * (`false`) unless an operator explicitly configures it for their real
+ * reverse-proxy topology — this is the same reason `AuthThrottleService`'s
+ * manual `x-forwarded-for` read (`auth-throttle.service.ts`) is only ever
+ * safe behind a proxy that actually sets/overwrites that header; blindly
+ * trusting it with no proxy in front lets any client spoof their source IP
+ * and bypass every IP-scoped rate limit in the app (this one included, see
+ * `common/throttler/app-throttler.guard.ts`). Accepts a boolean, a hop
+ * count, or any of Express's own string presets/CIDR list syntax — those are
+ * validated lazily by Express itself at request time, not here.
+ */
+function validateTrustProxy(value: string | undefined): TrustProxySetting {
+  const trimmed = value?.trim();
+  if (!trimmed) return false;
+
+  const asBoolean = parseBoolean(trimmed, false);
+  if (['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'].includes(trimmed.toLowerCase())) {
+    return asBoolean;
+  }
+
+  const asNumber = Number(trimmed);
+  if (Number.isInteger(asNumber) && asNumber >= 0) {
+    return asNumber;
+  }
+
+  return trimmed;
+}
+
+/**
+ * Shape-validates the optional global-throttling knobs at boot (fail fast on
+ * garbage), mirroring `validateAiAssistant`/`validateMqttBrokerUrl`'s
+ * "optional, re-read directly via ConfigService at the point of use" style —
+ * `ThrottlerModule`'s factory (`app.module.ts`) and the two guards under
+ * `common/throttler/` read these same variables again rather than threading
+ * resolved values through this file's return object. `THROTTLE_ENABLED`
+ * itself defaults to `false` in the `test` runtime so the large existing
+ * e2e suite (which never sets it) is never retroactively subject to a rate
+ * limit it wasn't written to expect; the one throttling-specific e2e spec
+ * opts back in explicitly.
+ */
+function validateThrottleConfig(): void {
+  const positiveIntVars = [
+    'THROTTLE_DEFAULT_LIMIT',
+    'THROTTLE_DEFAULT_TTL_MS',
+    'THROTTLE_DEVICE_LIMIT',
+    'THROTTLE_DEVICE_TTL_MS',
+  ];
+
+  for (const key of positiveIntVars) {
+    const value = process.env[key];
+    if (!value?.trim()) continue;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new Error(`${key} must be a positive integer`);
+    }
+  }
+}
+
+function validateRetentionSeconds(
+  value: string | undefined,
+  key: string,
+  fallbackSeconds: number,
+): number {
+  if (!value?.trim()) return fallbackSeconds;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${key} must be a positive integer number of seconds`);
+  }
+  return parsed;
 }
 
 function isAtlasUri(uri: string): boolean {
@@ -357,6 +523,33 @@ export function validateEnvironment(): EnvValidationResult {
     false,
   );
   const fileStorageDriver = validateFileStorage(nodeEnv);
+  const businessTimezone = validateBusinessTimezone(process.env.BUSINESS_TIMEZONE);
+  const mqttBrokerUrl = validateMqttBrokerUrl(process.env.MQTT_BROKER_URL);
+  const telemetryRetentionSeconds = validateRetentionSeconds(
+    process.env.TELEMETRY_RETENTION_SECONDS,
+    'TELEMETRY_RETENTION_SECONDS',
+    7 * 24 * 60 * 60,
+  );
+  const faultEventRetentionSeconds = validateRetentionSeconds(
+    process.env.FAULT_EVENT_RETENTION_SECONDS,
+    'FAULT_EVENT_RETENTION_SECONDS',
+    90 * 24 * 60 * 60,
+  );
+  const aiAssistantEnabled = validateAiAssistant(nodeEnv);
+  // Predictive maintenance is pure local computation (no external service,
+  // no secret) — unlike MQTT/AI-assistant this needs no production-gating,
+  // just a simple on/off switch for ops to pause the nightly sweep.
+  const predictiveMaintenanceEnabled = parseBoolean(
+    process.env.PREDICTIVE_MAINTENANCE_ENABLED,
+    true,
+  );
+  const predictionHistoryRetentionSeconds = validateRetentionSeconds(
+    process.env.PREDICTION_HISTORY_RETENTION_SECONDS,
+    'PREDICTION_HISTORY_RETENTION_SECONDS',
+    180 * 24 * 60 * 60,
+  );
+  const trustProxy = validateTrustProxy(process.env.TRUST_PROXY);
+  validateThrottleConfig();
 
   return {
     nodeEnv,
@@ -371,6 +564,14 @@ export function validateEnvironment(): EnvValidationResult {
     enableLegacyResetTokens,
     enableEventBasedEmails,
     fileStorageDriver,
+    businessTimezone,
+    mqttBrokerUrl,
+    telemetryRetentionSeconds,
+    faultEventRetentionSeconds,
+    aiAssistantEnabled,
+    predictiveMaintenanceEnabled,
+    predictionHistoryRetentionSeconds,
+    trustProxy,
   };
 }
 

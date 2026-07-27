@@ -1,6 +1,6 @@
 export type FileStorageDriver = 'local' | 'supabase';
 
-export type ManagedStorageFolder = 'uploads' | 'avatars';
+export type ManagedStorageFolder = 'uploads' | 'avatars' | 'quarantine';
 
 export type StoreFileInput = {
   buffer: Buffer;

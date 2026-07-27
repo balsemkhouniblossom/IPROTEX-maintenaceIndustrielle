@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArchiveBoxIcon,
+  ArrowPathIcon,
   CheckCircleIcon,
+  CheckIcon,
+  ClockIcon,
   CloudArrowUpIcon,
   DocumentIcon,
   ExclamationTriangleIcon,
@@ -11,8 +15,7 @@ import {
   PencilIcon,
   PlusIcon,
   TagIcon,
-  TrashIcon
-
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -20,8 +23,20 @@ import { Modal } from "@/components/Modal";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
+import { extractApiErrorDetails as extractApiErrorMessage } from "@/services/apiErrors";
+import { StatusBadge } from "@/components/StatusBadge";
 
 type MachineRef = string | { _id: string; machine_id?: string };
+
+type DocumentStatus = "draft" | "published" | "archived" | "superseded";
+
+interface DocumentLifecycleEntry {
+  action: string;
+  from_status?: DocumentStatus;
+  to_status: DocumentStatus;
+  reason?: string;
+  at?: string;
+}
 
 interface DocumentType {
   _id: string;
@@ -34,11 +49,49 @@ interface DocumentType {
   tags?: string[];
   uploaded_by?: string;
   date_ajout?: string;
+  status?: DocumentStatus;
+  version?: number;
+  revision?: number;
+  supersedes_document_id?: string;
+  superseded_by_document_id?: string;
+  lifecycle_history?: DocumentLifecycleEntry[];
 }
 
 interface Machine {
   _id: string;
   machine_id: string;
+}
+
+// Only PDF and Office documents pass server-side validation — restrict the
+// picker to match, so a user never has to discover the rejection after
+// the fact.
+const ACCEPTED_DOCUMENT_EXTENSIONS =
+  ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
+
+const STATUS_BADGE_CLASSES: Record<DocumentStatus, string> = {
+  draft: "bg-slate-100 text-slate-700 border-slate-200",
+  published: "bg-green-100 text-green-800 border-green-200",
+  archived: "bg-gray-200 text-gray-600 border-gray-300",
+  superseded: "bg-amber-100 text-amber-800 border-amber-200",
+};
+
+// Mirrors the backend's own transition table exactly, so the UI never
+// offers an action the server would reject.
+function getAvailableActions(status: DocumentStatus): Array<"publish" | "archive" | "replace"> {
+  if (status === "draft") return ["publish", "archive", "replace"];
+  if (status === "published") return ["archive", "replace"];
+  return [];
+}
+
+function canDelete(doc: DocumentType): boolean {
+  const status = doc.status ?? "draft";
+  const historyLength = doc.lifecycle_history?.length ?? 0;
+  return (
+    status === "draft" &&
+    historyLength <= 1 &&
+    !doc.supersedes_document_id &&
+    !doc.superseded_by_document_id
+  );
 }
 
 function machineRefId(machine: MachineRef): string {
@@ -60,6 +113,7 @@ export default function DocumentsPage() {
 
   const [search, setSearch] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
 
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentType | null>(null);
@@ -67,6 +121,16 @@ export default function DocumentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const [replaceTarget, setReplaceTarget] = useState<DocumentType | null>(null);
+  const [replaceFile, setReplaceFile] = useState<File | null>(null);
+  const [replaceReason, setReplaceReason] = useState("");
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyDoc, setHistoryDoc] = useState<DocumentType | null>(null);
+  const [historyVersions, setHistoryVersions] = useState<DocumentType[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -122,8 +186,6 @@ export default function DocumentsPage() {
         apiService.getDocuments(),
         apiService.getMachines(),
       ]);
-      console.log("Documents API response:", docsRes);
-      console.log("Documents API response.data:", docsRes.data);
 
       setDocuments(
         Array.isArray(docsRes.data)
@@ -173,10 +235,11 @@ export default function DocumentsPage() {
         (doc.tags || []).some((tag) => tag.toLowerCase().includes(term));
 
       const matchesMachine = !selectedMachine || machineRefId(doc.machine_id) === selectedMachine;
+      const matchesStatus = !selectedStatus || (doc.status ?? "draft") === selectedStatus;
 
-      return matchesSearch && matchesMachine;
+      return matchesSearch && matchesMachine && matchesStatus;
     });
-  }, [documents, search, selectedMachine]);
+  }, [documents, search, selectedMachine, selectedStatus]);
 
   function validateUploadForm(): boolean {
     if (!file) {
@@ -227,7 +290,7 @@ export default function DocumentsPage() {
       await loadData();
     } catch (error) {
       console.error("Error uploading document:", error);
-      showNotification("error", t("notifications.saveFailed"));
+      showNotification("error", extractApiErrorMessage(error, t("notifications.saveFailed")).message);
     } finally {
       setSubmitting(false);
     }
@@ -257,6 +320,7 @@ export default function DocumentsPage() {
         description: editForm.description.trim(),
         tags: parseTags(editForm.tags_text),
         uploaded_by: editForm.uploaded_by.trim(),
+        expected_version: selectedDoc.version,
       };
 
       await apiService.updateDocument(selectedDoc._id, payload);
@@ -266,22 +330,105 @@ export default function DocumentsPage() {
       await loadData();
     } catch (error) {
       console.error("Error updating document:", error);
-      showNotification("error", t("notifications.saveFailed"));
+      showNotification("error", extractApiErrorMessage(error, t("notifications.saveFailed")).message);
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleDelete(docId: string) {
+  async function handleDelete(doc: DocumentType) {
     if (!confirm(t("notifications.confirmDelete"))) return;
 
     try {
-      await apiService.deleteDocument(docId);
+      await apiService.deleteDocument(doc._id);
       showNotification("success", t("notifications.deleted"));
       await loadData();
     } catch (error) {
       console.error("Error deleting document:", error);
-      showNotification("error", t("notifications.deleteFailed"));
+      showNotification("error", extractApiErrorMessage(error, t("notifications.deleteFailed")).message);
+    }
+  }
+
+  async function handlePublish(doc: DocumentType) {
+    if (!confirm(t("notifications.confirmPublish"))) return;
+
+    try {
+      await apiService.publishDocument(doc._id, { expected_version: doc.version });
+      showNotification("success", t("notifications.publishSuccess"));
+      await loadData();
+    } catch (error) {
+      console.error("Error publishing document:", error);
+      showNotification("error", extractApiErrorMessage(error, t("notifications.publishFailed")).message);
+    }
+  }
+
+  async function handleArchive(doc: DocumentType) {
+    if (!confirm(t("notifications.confirmArchive"))) return;
+
+    try {
+      await apiService.archiveDocument(doc._id, { expected_version: doc.version });
+      showNotification("success", t("notifications.archiveSuccess"));
+      await loadData();
+    } catch (error) {
+      console.error("Error archiving document:", error);
+      showNotification("error", extractApiErrorMessage(error, t("notifications.archiveFailed")).message);
+    }
+  }
+
+  function openReplace(doc: DocumentType) {
+    setReplaceTarget(doc);
+    setReplaceFile(null);
+    setReplaceReason("");
+    setReplaceOpen(true);
+  }
+
+  async function handleReplaceSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!replaceTarget) return;
+    if (!replaceFile) {
+      showNotification("error", t("notifications.fileRequired"));
+      return;
+    }
+
+    const confirmed = confirm(
+      t("notifications.confirmReplace", { fileName: replaceTarget.file_name }),
+    );
+    if (!confirmed) return;
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", replaceFile);
+      formData.append("reason", replaceReason.trim());
+      if (replaceTarget.version !== undefined) {
+        formData.append("expected_version", String(replaceTarget.version));
+      }
+
+      await apiService.replaceDocument(replaceTarget._id, formData);
+      showNotification("success", t("notifications.replaceSuccess"));
+      setReplaceOpen(false);
+      setReplaceTarget(null);
+      await loadData();
+    } catch (error) {
+      console.error("Error replacing document:", error);
+      showNotification("error", extractApiErrorMessage(error, t("notifications.replaceFailed")).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function openHistory(doc: DocumentType) {
+    setHistoryDoc(doc);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    try {
+      const response = await apiService.getDocumentVersions(doc._id);
+      setHistoryVersions(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error loading document version history:", error);
+      showNotification("error", t("notifications.historyLoadFailed"));
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -365,6 +512,20 @@ export default function DocumentsPage() {
               </option>
             ))}
           </select>
+
+          <select
+            className="input-field"
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            title={t("table.status", { default: "Status" })}
+          >
+            <option value="">{t("filterAllStatuses", { default: "All statuses" })}</option>
+            {(["draft", "published", "archived", "superseded"] as DocumentStatus[]).map((status) => (
+              <option key={status} value={status}>
+                {t(`status.${status}`, { default: status })}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -374,11 +535,62 @@ export default function DocumentsPage() {
             {search ? t("empty.search") : t("empty.default")}
           </div>
         ) : (
-          filteredDocuments.map((doc) => (
-            <div key={doc._id} className="panel hover:shadow-lg transition">
-              <div className="flex justify-between items-start">
-                <DocumentIcon className="w-8 h-8 text-blue-600" />
-                <div className="flex items-center gap-2">
+          filteredDocuments.map((doc) => {
+            const status = doc.status ?? "draft";
+            const availableActions = getAvailableActions(status);
+            const deletable = canDelete(doc);
+
+            return (
+              <div key={doc._id} className="panel hover:shadow-lg transition">
+                <div className="flex justify-between items-start">
+                  <DocumentIcon className="w-8 h-8 text-blue-600" />
+                  <StatusBadge
+                    label={t(`status.${status}`, { default: status })}
+                    colorClassName={STATUS_BADGE_CLASSES[status]}
+                  />
+                </div>
+
+                <h3 className="font-bold mt-2 break-all">{doc.file_name}</h3>
+                {doc.revision ? (
+                  <div className="text-xs text-gray-400">
+                    {t("table.revision", { default: "Revision" })} {doc.revision}
+                  </div>
+                ) : null}
+
+                <div className="text-sm text-gray-500 mt-1">
+                  <div>
+                    <span className="font-medium">{t("table.type")}: </span>
+                    {doc.type_document}
+                  </div>
+                  <div>
+                    <span className="font-medium">{t("table.machine")}: </span>
+                    {machineRefLabel(doc.machine_id) || tCommon("notAvailable")}
+                  </div>
+                  <div>
+                    <span className="font-medium">{t("table.uploadedBy")}: </span>
+                    {doc.uploaded_by || tCommon("notAvailable")}
+                  </div>
+                  <div>
+                    <span className="font-medium">{t("table.dateAdded")}: </span>
+                    {doc.date_ajout ? new Date(doc.date_ajout).toLocaleString() : tCommon("notAvailable")}
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600 mt-2">{doc.description || tCommon("notAvailable")}</p>
+
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {(doc.tags || []).map((tag) => (
+                    <span
+                      key={`${doc._id}-${tag}`}
+                      className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1"
+                    >
+                      <TagIcon className="w-3 h-3" />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
                   <button
                     onClick={() => {
                       setSelectedDoc(doc);
@@ -390,58 +602,59 @@ export default function DocumentsPage() {
                     <EyeIcon className="w-5 h-5" />
                   </button>
                   <button
+                    onClick={() => openHistory(doc)}
+                    className="text-slate-600"
+                    title={t("actions.history", { default: "Version history" })}
+                  >
+                    <ClockIcon className="w-5 h-5" />
+                  </button>
+                  {availableActions.includes("publish") && (
+                    <button
+                      onClick={() => handlePublish(doc)}
+                      className="text-green-600"
+                      title={t("actions.publish", { default: "Publish" })}
+                    >
+                      <CheckIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                  {availableActions.includes("replace") && (
+                    <button
+                      onClick={() => openReplace(doc)}
+                      className="text-indigo-600"
+                      title={t("actions.replace", { default: "Replace" })}
+                    >
+                      <ArrowPathIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                  {availableActions.includes("archive") && (
+                    <button
+                      onClick={() => handleArchive(doc)}
+                      className="text-gray-600"
+                      title={t("actions.archive", { default: "Archive" })}
+                    >
+                      <ArchiveBoxIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
                     onClick={() => openEdit(doc)}
                     className="text-amber-600"
                     title={t("actions.edit")}
                   >
                     <PencilIcon className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => handleDelete(doc._id)}
-                    className="text-red-600"
-                    title={t("actions.delete")}
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
+                  {deletable && (
+                    <button
+                      onClick={() => handleDelete(doc)}
+                      className="text-red-600"
+                      title={t("actions.delete")}
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
-
-              <h3 className="font-bold mt-2 break-all">{doc.file_name}</h3>
-
-              <div className="text-sm text-gray-500 mt-1">
-                <div>
-                  <span className="font-medium">{t("table.type")}: </span>
-                  {doc.type_document}
-                </div>
-                <div>
-                  <span className="font-medium">{t("table.machine")}: </span>
-                  {machineRefLabel(doc.machine_id) || tCommon("notAvailable")}
-                </div>
-                <div>
-                  <span className="font-medium">{t("table.uploadedBy")}: </span>
-                  {doc.uploaded_by || tCommon("notAvailable")}
-                </div>
-                <div>
-                  <span className="font-medium">{t("table.dateAdded")}: </span>
-                  {doc.date_ajout ? new Date(doc.date_ajout).toLocaleString() : tCommon("notAvailable")}
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-600 mt-2">{doc.description || tCommon("notAvailable")}</p>
-
-              <div className="flex flex-wrap gap-1 mt-2">
-                {(doc.tags || []).map((tag) => (
-                  <span
-                    key={`${doc._id}-${tag}`}
-                    className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1"
-                  >
-                    <TagIcon className="w-3 h-3" />
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -459,7 +672,7 @@ export default function DocumentsPage() {
             <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.file")}</label>
             <input
               type="file"
-              accept="application/pdf"
+              accept={ACCEPTED_DOCUMENT_EXTENSIONS}
               title={t("form.file")}
               onChange={(e) => setFile(e.target.files?.[0] || null)}
             />
@@ -624,6 +837,99 @@ export default function DocumentsPage() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={replaceOpen}
+        onClose={() => {
+          setReplaceOpen(false);
+          setReplaceTarget(null);
+        }}
+        title={t("modal.replaceTitle", { default: "Replace Document" })}
+        size="lg"
+      >
+        <form onSubmit={handleReplaceSubmit} className="space-y-4">
+          {replaceTarget && (
+            <div className="text-sm text-slate-600">
+              <div className="font-medium text-slate-800">{replaceTarget.file_name}</div>
+              <div>
+                {t("table.revision", { default: "Revision" })} {replaceTarget.revision ?? 1}
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.file")}</label>
+            <input
+              type="file"
+              accept={ACCEPTED_DOCUMENT_EXTENSIONS}
+              title={t("form.file")}
+              onChange={(e) => setReplaceFile(e.target.files?.[0] || null)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.reason", { default: "Reason" })}</label>
+            <textarea
+              className="input-field"
+              value={replaceReason}
+              onChange={(e) => setReplaceReason(e.target.value)}
+              placeholder={t("placeholders.reason", { default: "Explain this replacement" })}
+              rows={3}
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setReplaceOpen(false)}>
+              {tCommon("cancel")}
+            </button>
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? tCommon("saving") : t("buttons.replace", { default: "Replace" })}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        title={t("modal.historyTitle", { default: "Version History" })}
+        size="lg"
+      >
+        {historyDoc && (
+          <div className="mb-3 text-sm font-medium text-slate-800">{historyDoc.file_name}</div>
+        )}
+        {historyLoading ? (
+          <div className="text-sm text-slate-500">{tCommon("loading")}</div>
+        ) : historyVersions.length === 0 ? (
+          <div className="text-sm text-slate-500">
+            {t("history.empty", { default: "No version history available." })}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {historyVersions.map((version) => {
+              const status = version.status ?? "draft";
+              return (
+                <div
+                  key={version._id}
+                  className="flex items-center justify-between rounded-lg border border-gray-100 p-3"
+                >
+                  <div>
+                    <div className="font-medium text-slate-800">
+                      {t("table.revision", { default: "Revision" })} {version.revision ?? 1}
+                      {version._id === historyDoc?._id
+                        ? ` (${t("history.current", { default: "current" })})`
+                        : ""}
+                    </div>
+                    <div className="text-xs text-slate-500">{version.file_name}</div>
+                  </div>
+                  <StatusBadge
+                    label={t(`status.${status}`, { default: status })}
+                    colorClassName={STATUS_BADGE_CLASSES[status]}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Modal>
 
       <Modal

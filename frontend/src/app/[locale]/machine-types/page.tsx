@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import { apiService } from '@/services/api';
-import { ALL_FIELDS_TOKEN, getSearchableFields } from '@/services/dynamicSearch';
+import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import {
   PencilIcon,
   TrashIcon,
@@ -80,7 +80,7 @@ export default function MachineTypesPage() {
 
   function notify(type: 'success' | 'error', message: string) {
     setNotification({ type, message });
-    setTimeout(() => setNotification(null), 4000);
+    setTimeout(() => setNotification(null), 5000);
   }
 
   function openCreate() {
@@ -99,7 +99,10 @@ export default function MachineTypesPage() {
 
   const searchableFields = useMemo(() => getSearchableFields(machineTypes), [machineTypes]);
 
-  const filtered = useMemo(() => machineTypes, [machineTypes]);
+  const filtered = useMemo(
+    () => machineTypes.filter((machineType) => matchesDynamicSearch(machineType, searchTerm, selectedSearchField)),
+    [machineTypes, searchTerm, selectedSearchField],
+  );
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,10 +116,10 @@ export default function MachineTypesPage() {
 
       if (editing) {
         await apiService.updateMachineType(editing._id, payload);
-        notify('success', 'Machine type updated');
+        notify('success', 'Machine type updated successfully');
       } else {
         await apiService.createMachineType(payload);
-        notify('success', 'Machine type created');
+        notify('success', 'Machine type created successfully');
       }
 
       setShowModal(false);
@@ -124,36 +127,40 @@ export default function MachineTypesPage() {
       load();
     } catch (err) {
       console.error(err);
-      notify('error', 'Operation failed');
+      notify('error', 'Failed to save machine type');
     } finally {
       setSubmitting(false);
     }
   }
   async function remove(id: string) {
-    if (!confirm('Delete this machine type?')) return;
-    await apiService.deleteMachineType(id);
-    notify('success', 'Deleted successfully');
-    load();
+    if (!confirm('Are you sure you want to delete this machine type? This action cannot be undone.')) return;
+    try {
+      await apiService.deleteMachineType(id);
+      notify('success', 'Machine type deleted successfully');
+      load();
+    } catch (err) {
+      console.error(err);
+      notify('error', 'Failed to delete machine type');
+    }
   }
 
   if (loading) {
     return (
-      <DashboardLayout title="Machine Types">
-        <div className="flex justify-center items-center min-h-screen">
-          Loading...
+      <DashboardLayout title="MACHINE TYPES MANAGEMENT">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout title="Machine Types">
-      {/* NOTIFICATION */}
+    <DashboardLayout title="MACHINE TYPES MANAGEMENT">
       {notification && (
         <div
-          className={`fixed top-4 right-4 p-3 rounded shadow-lg flex items-center gap-2 ${notification.type === 'success'
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${notification.type === 'success'
+            ? 'bg-green-100 text-green-800 border border-green-200'
+            : 'bg-red-100 text-red-800 border border-red-200'
             }`}
         >
           {notification.type === 'success' ? (
@@ -161,110 +168,159 @@ export default function MachineTypesPage() {
           ) : (
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
-          {notification.message}
+          <span>{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      {/* HEADER */}
-      <div className="flex justify-between mb-4 gap-3">
-        <DynamicSearchControls
-          className="w-full max-w-2xl"
-          selectedField={selectedSearchField}
-          onSelectedFieldChange={setSelectedSearchField}
-          searchableFields={searchableFields}
-          allFieldsLabel="All fields"
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          searchPlaceholder="Search..."
-        />
+      <div className="bento-grid">
+        {/* Header */}
+        <div className="col-span-full mb-6 bento-item">
+          <div className="panel">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Machine Types Management</h1>
+                <p className="text-slate-600 mt-1">Manage the machine types used across your fleet</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
+                  <div className="text-sm text-slate-500">Total Machine Types</div>
+                </div>
+                <button
+                  onClick={openCreate}
+                  className="btn-primary flex items-center space-x-2"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  <span>Add Machine Type</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <button onClick={openCreate} className="btn-primary flex gap-2">
-          <PlusIcon className="w-4 h-4" />
-          Add
-        </button>
-      </div>
-
-      {/* TABLE */}
-      <div className="panel">
-        <table className="table">
-          <thead>
-            <tr>
-
-              <th>Name</th>
-              <th>Description</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="text-center py-6 text-gray-500">
-                  No machine types found
-                </td>
-              </tr>
-            ) : (
-              filtered.map((m) => (
-                <tr key={m._id}>
-                  <td>{m.name}</td>
-                  <td>{m.description || '-'}</td>
-                  <td>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(m)}>
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-
-                      <button onClick={() => remove(m._id)}>
-                        <TrashIcon className="w-4 h-4 text-red-500" />
-                      </button>
-                    </div>
-                  </td>
+        {/* Machine Types Table */}
+        <div className="col-span-full bento-item panel">
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div className="card-title">ALL MACHINE TYPES</div>
+            <DynamicSearchControls
+              className=""
+              selectClassName="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              inputClassName="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+              selectedField={selectedSearchField}
+              onSelectedFieldChange={setSelectedSearchField}
+              searchableFields={searchableFields}
+              allFieldsLabel="All fields"
+              searchTerm={searchTerm}
+              onSearchTermChange={setSearchTerm}
+              searchPlaceholder="Search machine types..."
+            />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Actions</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-        />
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="text-center py-8 text-gray-500">
+                      {searchTerm ? 'No machine types found matching your search.' : 'No machine types available.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((m) => (
+                    <tr key={m._id}>
+                      <td className="font-medium">{m.name || 'N/A'}</td>
+                      <td>{m.description || 'N/A'}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(m)}
+                            aria-label="Edit"
+                            title="Edit"
+                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                          >
+                            <PencilIcon className="h-4 w-4 shrink-0" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => remove(m._id)}
+                            aria-label="Delete"
+                            title="Delete"
+                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                          >
+                            <TrashIcon className="h-4 w-4 shrink-0" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              limit={limit}
+              onPageChange={setPage}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* MODAL */}
       <Modal
         isOpen={showModal}
         onClose={() => {
           setShowModal(false);
           reset();
         }}
-        title={editing ? 'Edit Machine Type' : 'Add Machine Type'}
+        title={editing ? 'Edit Machine Type' : 'Add New Machine Type'}
       >
-        <form onSubmit={submit} className="space-y-3">
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              className="input-field"
+              value={form.name}
+              onChange={(e) =>
+                setForm({ ...form, name: e.target.value })
+              }
+              required
+            />
+          </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              Description
+            </label>
+            <textarea
+              className="input-field"
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              rows={3}
+            />
+          </div>
 
-          <input
-            className="input-field"
-            placeholder="Name"
-            value={form.name}
-            onChange={(e) =>
-              setForm({ ...form, name: e.target.value })
-            }
-            required
-          />
-
-          <textarea
-            className="input-field"
-            placeholder="Description"
-            value={form.description}
-            onChange={(e) =>
-              setForm({ ...form, description: e.target.value })
-            }
-          />
-
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
               className="btn-secondary"
@@ -273,8 +329,15 @@ export default function MachineTypesPage() {
               Cancel
             </button>
 
-            <button className="btn-primary" disabled={submitting}>
-              {submitting ? 'Saving...' : editing ? 'Update' : 'Create'}
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Saving...</span>
+                </div>
+              ) : (
+                `${editing ? 'Update' : 'Create'} Machine Type`
+              )}
             </button>
           </div>
         </form>

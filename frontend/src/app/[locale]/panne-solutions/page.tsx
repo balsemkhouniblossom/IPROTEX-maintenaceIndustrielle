@@ -393,20 +393,26 @@ export default function PanneSolutionsPage() {
                       <td>{solution.cause_probable || tCommon('notAvailable')}</td>
                       <td>{solution.solution_recommandee || tCommon('notAvailable')}</td>
                       <td>
-                        <div className="flex space-x-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
+                            type="button"
                             onClick={() => openEditModal(solution)}
-                            className="btn-secondary p-2"
+                            aria-label={`${t('actions.edit')} ${solution.solution_id}`}
                             title={t('actions.edit')}
+                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <PencilIcon className="w-4 h-4" />
+                            <PencilIcon className="h-4 w-4 shrink-0" />
+                            <span>{t('actions.edit')}</span>
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(solution._id)}
-                            className="btn-danger p-2"
+                            aria-label={`${t('actions.delete')} ${solution.solution_id}`}
                             title={t('actions.delete')}
+                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="h-4 w-4 shrink-0" />
+                            <span>{t('actions.delete')}</span>
                           </button>
                         </div>
                       </td>

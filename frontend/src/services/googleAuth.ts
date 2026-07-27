@@ -1,6 +1,6 @@
 import { getAuthErrorCode } from './authErrors.ts';
-import { getDashboardPath } from './authRedirect.ts';
 import { parseLocalLoginSession, type LoginSession } from './localLogin.ts';
+import { getAuthenticatedAccountDestination } from './sessionGuard.ts';
 
 export type GoogleResultStatus =
   | 'created-pending'
@@ -34,13 +34,15 @@ export function isGoogleResultStatus(
   );
 }
 
+/**
+ * Defers to the same centralized account-lifecycle destination used by
+ * ProtectedRoute and the Complete Profile page, so the Google result page
+ * doesn't maintain its own copy of the incomplete/pending/rejected/inactive
+ * priority rules.
+ */
 export function getGooglePostExchangeRedirect(
   locale: string,
   user: LoginSession['user'],
-): string | null {
-  if (user.profile_completed === false) {
-    return `/${locale}/auth/complete-profile`;
-  }
-
-  return getDashboardPath(locale, user.role);
+): string {
+  return getAuthenticatedAccountDestination(locale, user);
 }

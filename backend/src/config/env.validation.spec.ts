@@ -434,4 +434,199 @@ describe('validateEnvironment', () => {
     expect(env.nodeEnv).toBe('test');
     expect(env.port).toBe(3001);
   });
+
+  it('defaults BUSINESS_TIMEZONE to Africa/Tunis when unset', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.BUSINESS_TIMEZONE;
+
+    const env = validateEnvironment();
+
+    expect(env.businessTimezone).toBe('Africa/Tunis');
+  });
+
+  it('accepts a configured IANA BUSINESS_TIMEZONE', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.BUSINESS_TIMEZONE = 'America/New_York';
+
+    const env = validateEnvironment();
+
+    expect(env.businessTimezone).toBe('America/New_York');
+  });
+
+  it('rejects an invalid BUSINESS_TIMEZONE', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.BUSINESS_TIMEZONE = 'Not/A_Real_Zone';
+
+    expect(() => validateEnvironment()).toThrow(
+      'BUSINESS_TIMEZONE must be a valid IANA timezone name',
+    );
+  });
+
+  it('defaults the AI assistant to disabled', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.AI_ASSISTANT_ENABLED;
+
+    const env = validateEnvironment();
+
+    expect(env.aiAssistantEnabled).toBe(false);
+  });
+
+  it('rejects AI_ASSISTANT_ENABLED=true in production without an ANTHROPIC_API_KEY', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.AI_ASSISTANT_ENABLED = 'true';
+    delete process.env.ANTHROPIC_API_KEY;
+
+    expect(() => validateEnvironment()).toThrow(
+      'ANTHROPIC_API_KEY is required when AI_ASSISTANT_ENABLED=true in production',
+    );
+  });
+
+  it('accepts AI_ASSISTANT_ENABLED=true in production with an ANTHROPIC_API_KEY', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.AI_ASSISTANT_ENABLED = 'true';
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+
+    const env = validateEnvironment();
+
+    expect(env.aiAssistantEnabled).toBe(true);
+  });
+
+  it('rejects a non-numeric AI_ASSISTANT_TIMEOUT_MS', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AI_ASSISTANT_TIMEOUT_MS = 'not-a-number';
+
+    expect(() => validateEnvironment()).toThrow(
+      'AI_ASSISTANT_TIMEOUT_MS must be a positive integer number of milliseconds',
+    );
+  });
+
+  it('rejects a non-positive AI_ASSISTANT_RATE_LIMIT_PER_HOUR', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AI_ASSISTANT_RATE_LIMIT_PER_HOUR = '0';
+
+    expect(() => validateEnvironment()).toThrow(
+      'AI_ASSISTANT_RATE_LIMIT_PER_HOUR must be a positive integer',
+    );
+  });
+
+  it('defaults the predictive maintenance scheduler to enabled', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.PREDICTIVE_MAINTENANCE_ENABLED;
+
+    const env = validateEnvironment();
+
+    expect(env.predictiveMaintenanceEnabled).toBe(true);
+  });
+
+  it('allows disabling the predictive maintenance scheduler', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.PREDICTIVE_MAINTENANCE_ENABLED = 'false';
+
+    const env = validateEnvironment();
+
+    expect(env.predictiveMaintenanceEnabled).toBe(false);
+  });
+
+  it('defaults PREDICTION_HISTORY_RETENTION_SECONDS to 180 days', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.PREDICTION_HISTORY_RETENTION_SECONDS;
+
+    const env = validateEnvironment();
+
+    expect(env.predictionHistoryRetentionSeconds).toBe(180 * 24 * 60 * 60);
+  });
+
+  it('rejects a non-positive PREDICTION_HISTORY_RETENTION_SECONDS', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.PREDICTION_HISTORY_RETENTION_SECONDS = '-1';
+
+    expect(() => validateEnvironment()).toThrow(
+      'PREDICTION_HISTORY_RETENTION_SECONDS must be a positive integer number of seconds',
+    );
+  });
+
+  it('defaults TRUST_PROXY to false when unset', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.TRUST_PROXY;
+
+    const env = validateEnvironment();
+
+    expect(env.trustProxy).toBe(false);
+  });
+
+  it.each([
+    ['true', true],
+    ['false', false],
+    ['1', true],
+    ['0', false],
+    ['yes', true],
+    ['no', false],
+  ])('parses TRUST_PROXY=%s as boolean %s', (value, expected) => {
+    process.env.NODE_ENV = 'test';
+    process.env.TRUST_PROXY = value;
+
+    const env = validateEnvironment();
+
+    expect(env.trustProxy).toBe(expected);
+  });
+
+  it('parses a numeric TRUST_PROXY as a hop count', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.TRUST_PROXY = '2';
+
+    const env = validateEnvironment();
+
+    expect(env.trustProxy).toBe(2);
+  });
+
+  it('accepts a TRUST_PROXY subnet/CIDR string as-is', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.TRUST_PROXY = '10.0.0.0/8';
+
+    const env = validateEnvironment();
+
+    expect(env.trustProxy).toBe('10.0.0.0/8');
+  });
+
+  it.each([
+    'THROTTLE_DEFAULT_LIMIT',
+    'THROTTLE_DEFAULT_TTL_MS',
+    'THROTTLE_DEVICE_LIMIT',
+    'THROTTLE_DEVICE_TTL_MS',
+  ])('rejects a non-positive-integer %s', (key) => {
+    process.env.NODE_ENV = 'test';
+    process.env[key] = '0';
+
+    expect(() => validateEnvironment()).toThrow(`${key} must be a positive integer`);
+  });
+
+  it('allows throttle env vars to be unset, relying on defaults applied at point of use', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.THROTTLE_DEFAULT_LIMIT;
+    delete process.env.THROTTLE_DEFAULT_TTL_MS;
+    delete process.env.THROTTLE_DEVICE_LIMIT;
+    delete process.env.THROTTLE_DEVICE_TTL_MS;
+
+    expect(() => validateEnvironment()).not.toThrow();
+  });
 });

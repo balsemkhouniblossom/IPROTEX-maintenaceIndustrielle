@@ -123,9 +123,10 @@
     "completeProfileSubmit": "????? ????????",
     "completeProfileSaving": "???? ?????...",
     "completeProfileSaveFailed": "???? ??? ????? ??????.",
-    "completeProfilePosition": "??????",
     "completeProfileLanguage": "?????",
-    "completeProfileRequestedRole": "????? ???????"
+    "completeProfileRequestedRole": "????? ???????",
+    "showPassword": "إظهار كلمة المرور",
+    "hidePassword": "إخفاء كلمة المرور"
   },
   "common": {
     "allFields": "كل الحقول",
@@ -204,7 +205,20 @@
     "logout": "Logout",
     "notAvailable": "غير متاح",
     "saving": "جاري الحفظ...",
-    "na": "غير متوفر"
+    "na": "غير متوفر",
+    "skipToContent": "الانتقال إلى المحتوى الرئيسي",
+    "offlineBanner": "أنت غير متصل بالإنترنت. قد لا تعمل بعض الميزات حتى تتم استعادة الاتصال.",
+    "refresh": "تحديث",
+    "retry": "إعادة المحاولة",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة",
+    "dismiss": "إغلاق",
+    "savedViews": {
+      "save": "حفظ العرض",
+      "namePlaceholder": "اسم العرض",
+      "empty": "لا توجد عروض محفوظة بعد.",
+      "delete": "حذف العرض"
+    }
   },
   "dashboard": {
     "status": {
@@ -255,7 +269,13 @@
         "totalMachines": "إجمالي الآلات",
         "activeUsers": "المستخدمون النشطون",
         "activeWorkOrders": "أوامر العمل النشطة",
-        "completedThisMonth": "المكتملة هذا الشهر"
+        "completedThisMonth": "المكتملة هذا الشهر",
+        "fleetTotal": "إجمالي الأسطول",
+        "totalUsers": "إجمالي المستخدمين",
+        "openMaintenance": "صيانة مفتوحة",
+        "openMaintenanceHint": "{overdue} متأخرة، {dueToday} مستحقة اليوم",
+        "completedToday": "مكتملة اليوم",
+        "outOfTotal": "من أصل {total}"
       },
       "quickKpis": {
         "title": "مؤشرات سريعة",
@@ -265,7 +285,12 @@
         "systemHealth": "حالة النظام",
         "completionRate": "نسبة الإتمام",
         "activeWorkOrders": "أوامر العمل النشطة",
-        "activeUsers": "المستخدمون النشطون"
+        "activeUsers": "المستخدمون النشطون",
+        "stockAlerts": "تنبيهات المخزون",
+        "correctiveResponseTime": "زمن الاستجابة التصحيحية",
+        "mttr": "MTTR (متوسط وقت الإصلاح)",
+        "mtbf": "MTBF (متوسط الوقت بين الأعطال)",
+        "hoursValue": "{hours} س"
       },
       "databaseSummary": {
         "title": "ملخص قاعدة البيانات",
@@ -297,12 +322,26 @@
         "inProgress": "قيد التنفيذ",
         "completed": "مكتملة",
         "outOf": "من",
-        "distribution": "التوزيع"
+        "distribution": "التوزيع",
+        "overdue": "متأخرة",
+        "dueToday": "مستحقة اليوم",
+        "waitingValidation": "بانتظار التحقق",
+        "completedTodayLabel": "مكتملة اليوم",
+        "completionRateHint": "الصيانة الوقائية المكتملة في الموعد أو قبله"
       },
       "machines": {
         "overview": "نظرة عامة",
         "availability": "توفر الآلات",
-        "online": "متصل"
+        "online": "متصل",
+        "availabilityHint": "استنادًا إلى متوسط الوقت بين الأعطال ومتوسط وقت الإصلاح"
+      },
+      "stockAlerts": {
+        "title": "تنبيهات المخزون",
+        "availableOf": "{available} متاح (الحد {threshold})"
+      },
+      "workload": {
+        "title": "عبء عمل الفريق",
+        "openCount": "{count} مفتوحة"
       }
     },
     "operator": {
@@ -339,7 +378,8 @@
         "underYourCare": "تحت إشرافك",
         "inProgress": "قيد التنفيذ",
         "waitingValidation": "في انتظار التحقق",
-        "overdue": "متأخر"
+        "overdue": "متأخر",
+        "dueToday": "مستحقة اليوم"
       },
       "dashboard": {
         "operatorConsole": "وحدة تحكم المشغل",
@@ -917,7 +957,10 @@
     },
     "actions": {
       "update": "تحديث أمر العمل",
-      "create": "إنشاء أمر عمل"
+      "create": "إنشاء أمر عمل",
+      "approve": "اعتماد",
+      "reject": "رفض",
+      "requestCorrection": "طلب تصحيح"
     },
     "validation": {
       "workOrderIdRequired": "رقم OT مطلوب",
@@ -930,7 +973,13 @@
       "deleteFailed": "فشل حذف أمر العمل",
       "updated": "تم تحديث أمر العمل بنجاح",
       "created": "تم إنشاء أمر العمل بنجاح",
-      "saveFailed": "فشل حفظ أمر العمل"
+      "saveFailed": "فشل حفظ أمر العمل",
+      "approved": "تم اعتماد أمر العمل بنجاح",
+      "approveFailed": "فشل اعتماد أمر العمل",
+      "rejected": "تم رفض أمر العمل بنجاح",
+      "rejectFailed": "فشل رفض أمر العمل",
+      "correctionRequested": "تم إرسال طلب التصحيح بنجاح",
+      "correctionFailed": "فشل إرسال طلب التصحيح"
     },
     "sort": {
       "priorityHighToLow": "????? ???????? ?? ?????? ??? ??????",
@@ -943,7 +992,14 @@
       "startOldestToNewest": "????? ????? ??????? ?? ?????? ??? ??????",
       "endNewestToOldest": "????? ????? ??????? ?? ?????? ??? ??????",
       "endOldestToNewest": "????? ????? ??????? ?? ?????? ??? ??????"
-    }
+    },
+    "filters": {
+      "allStatuses": "جميع الحالات",
+      "allPriorities": "جميع الأولويات"
+    },
+    "confirmApprove": "هل تريد اعتماد أمر العمل هذا؟",
+    "confirmReject": "هل تريد رفض أمر العمل هذا؟",
+    "confirmRequestCorrection": "هل تريد إعادة أمر العمل هذا لتصحيحه؟"
   },
   "users": {
     "pageTitle": "إدارة المستخدمين",
@@ -1158,6 +1214,31 @@
       "lowercase": "حرف صغير واحد",
       "number": "رقم واحد",
       "special": "رمز خاص واحد"
+    },
+    "savedViews": {
+      "title": "العروض المحفوظة",
+      "save": "حفظ العرض",
+      "namePlaceholder": "اسم العرض",
+      "empty": "لا توجد عروض محفوظة بعد.",
+      "delete": "حذف العرض",
+      "saved": "تم حفظ العرض.",
+      "saveFailed": "فشل حفظ العرض.",
+      "deleted": "تم حذف العرض.",
+      "deleteFailed": "فشل حذف العرض."
+    },
+    "bulk": {
+      "selectAll": "تحديد الكل في هذه الصفحة",
+      "selectRow": "تحديد {name}",
+      "selectedCount": "تم تحديد {count}",
+      "approve": "الموافقة على المحدد",
+      "reject": "رفض المحدد",
+      "reasonPlaceholder": "سبب رفض جميع الحسابات المحددة",
+      "clearSelection": "مسح التحديد",
+      "approveSuccess": "تمت الموافقة على {count} حساب.",
+      "approveFailed": "فشلت الموافقة على الحسابات المحددة.",
+      "rejectSuccess": "تم رفض {count} حساب.",
+      "rejectFailed": "فشل رفض الحسابات المحددة.",
+      "reasonRequired": "سبب الرفض مطلوب."
     }
   },
   "catalogues": {
@@ -1312,7 +1393,10 @@
       },
       "interventionReports": "تقارير التدخل",
       "pannes": "الاعطال",
-      "panneSolutions": "حلول الاعطال"
+      "panneSolutions": "حلول الاعطال",
+      "knowledgeBase": "قاعدة المعرفة",
+      "devices": "الأجهزة",
+      "reports": "التقارير"
     }
   },
   "machines": {
@@ -1566,7 +1650,11 @@
       "add": "تحميل وثيقة",
       "view": "عرض",
       "edit": "تعديل",
-      "delete": "حذف"
+      "delete": "حذف",
+      "publish": "نشر",
+      "archive": "أرشفة",
+      "replace": "استبدال",
+      "history": "سجل الإصدارات"
     },
     "table": {
       "documentId": "معرف الوثيقة",
@@ -1574,7 +1662,9 @@
       "type": "النوع",
       "machine": "الآلة",
       "uploadedBy": "تم التحميل بواسطة",
-      "dateAdded": "تاريخ الإضافة"
+      "dateAdded": "تاريخ الإضافة",
+      "status": "الحالة",
+      "revision": "الإصدار"
     },
     "empty": {
       "search": "لا توجد وثائق مطابقة للبحث.",
@@ -1583,28 +1673,33 @@
     "modal": {
       "uploadTitle": "تحميل وثيقة",
       "editTitle": "تعديل الوثيقة",
-      "viewTitle": "عرض الوثيقة"
+      "viewTitle": "عرض الوثيقة",
+      "replaceTitle": "استبدال الوثيقة",
+      "historyTitle": "سجل الإصدارات"
     },
     "form": {
-      "file": "اختر ملف PDF",
+      "file": "اختر ملف PDF أو Office",
       "machine": "الآلة",
       "type": "نوع الوثيقة",
       "description": "الوصف",
       "tags": "العلامات (مفصولة بفواصل)",
-      "uploadedBy": "تم التحميل بواسطة"
+      "uploadedBy": "تم التحميل بواسطة",
+      "reason": "السبب"
     },
     "placeholders": {
       "selectMachine": "اختر آلة...",
       "type": "مثال: دليل، مواصفات، دليل الصيانة",
       "description": "أدخل وصف الوثيقة...",
       "tags": "مثال: وقاية، كهربائي، محرك",
-      "uploadedBy": "أدخل اسمك أو اسم المستخدم..."
+      "uploadedBy": "أدخل اسمك أو اسم المستخدم...",
+      "reason": "اشرح سبب هذا الاستبدال"
     },
     "buttons": {
       "upload": "تحميل وثيقة",
       "update": "تحديث الوثيقة",
       "cancel": "إلغاء",
-      "save": "حفظ"
+      "save": "حفظ",
+      "replace": "استبدال"
     },
     "viewer": {
       "title": "عارض الوثائق",
@@ -1616,7 +1711,7 @@
       "unsupported": "هذا النوع من الملفات غير مدعوم للمعاينة."
     },
     "notifications": {
-      "fileRequired": "يرجى اختيار ملف PDF",
+      "fileRequired": "يرجى اختيار ملف",
       "machineRequired": "يرجى اختيار آلة",
       "typeRequired": "يرجى إدخال نوع الوثيقة",
       "created": "تم تحميل الوثيقة بنجاح",
@@ -1624,7 +1719,28 @@
       "deleted": "تم حذف الوثيقة بنجاح",
       "saveFailed": "فشل حفظ الوثيقة",
       "deleteFailed": "فشل حذف الوثيقة",
-      "confirmDelete": "هل أنت متأكد من حذف هذه الوثيقة؟ لا يمكن التراجع عن هذا الإجراء."
+      "confirmDelete": "حذف هذه الوثيقة؟ هذا ممكن فقط لمسودة لم يتم لمسها وليس لها سجل إصدارات.",
+      "confirmPublish": "نشر هذه الوثيقة؟ ستصبح النسخة الحالية القابلة للاستشهاد بها للآلة المرتبطة بها.",
+      "publishSuccess": "تم نشر الوثيقة بنجاح",
+      "publishFailed": "فشل نشر الوثيقة",
+      "confirmArchive": "أرشفة هذه الوثيقة؟ ستصبح للقراءة فقط، لكن سجلها محفوظ.",
+      "archiveSuccess": "تم أرشفة الوثيقة بنجاح",
+      "archiveFailed": "فشلت أرشفة الوثيقة",
+      "confirmReplace": "استبدال \"{fileName}\" بملف جديد؟ سيتم وضع علامة على النسخة الحالية كمستبدلة والاحتفاظ بها للسجل.",
+      "replaceSuccess": "تم استبدال الوثيقة بنجاح",
+      "replaceFailed": "فشل استبدال الوثيقة",
+      "historyLoadFailed": "فشل تحميل سجل الإصدارات"
+    },
+    "filterAllStatuses": "جميع الحالات",
+    "status": {
+      "draft": "مسودة",
+      "published": "منشور",
+      "archived": "مؤرشف",
+      "superseded": "مستبدل"
+    },
+    "history": {
+      "empty": "لا يوجد سجل إصدارات متاح.",
+      "current": "الحالي"
     }
   },
   "maintenancePlans": {
@@ -1648,7 +1764,9 @@
       "documentation": "التوثيق",
       "maintenanceCode": "رمز الصيانة",
       "frequencyLabel": "وصف التكرار",
-      "planCode": "??? ?????"
+      "planCode": "??? ?????",
+      "machineHealth": "حالة الآلة",
+      "status": "الحالة"
     },
     "custom": "مخصص",
     "empty": {
@@ -1728,6 +1846,10 @@
       "paused": "متوقف مؤقتاً",
       "archived": "مؤرشف",
       "completed": "مكتمل"
+    },
+    "filters": {
+      "allStatuses": "جميع الحالات",
+      "allTypes": "جميع الأنواع"
     }
   },
   "stocks": {
@@ -1870,6 +1992,7 @@
     "completedTasks": "المهام المكتملة",
     "pendingTasks": "المهام المعلقة",
     "taskStatus": "حالة المهمة",
+    "completionRate": "معدل الإنجاز",
     "table": {
       "planId": "معرف الخطة",
       "machine": "الآلة",
@@ -1975,7 +2098,6 @@
       "next": "التالي",
       "saveReport": "حفظ التقرير",
       "addPart": "إضافة قطعة غيار",
-      "approve": "اعتماد التقرير",
       "return": "إرجاع التقرير",
       "intervene": "بدء التدخل",
       "start": "بدء التدخل",
@@ -2064,7 +2186,8 @@
     },
     "messages": {
       "confirmClose": "إغلاق أمر العمل؟ يجب أن يكون التقرير مكتملاً.",
-      "completed": "اكتمل هذا التدخل."
+      "completed": "اكتمل هذا التدخل.",
+      "awaitingValidation": "اكتمل هذا العمل وهو بانتظار التحقق المستقل من قبل مستخدم آخر مخوّل."
     }
   },
   "miniAvatar": {
@@ -2116,5 +2239,315 @@
     "clear": "مسح",
     "loading": "جارٍ التحميل...",
     "empty": "لا توجد إشعارات"
+  },
+  "knowledgeBase": {
+    "title": "قاعدة المعرفة",
+    "heading": "قاعدة معرفة الصيانة",
+    "description": "مقالات استكشاف الأخطاء وإصلاحها، والإجراءات، وشرح رموز الأعطال، وتعليمات التشحيم، ووثائق السلامة.",
+    "readerIntro": "تصفح مقالات استكشاف الأخطاء وإصلاحها والإجراءات ووثائق السلامة المنشورة ذات الصلة بآلاتك.",
+    "searchPlaceholder": "ابحث حسب العنوان أو الوسم أو رمز العطل...",
+    "filterAllCategories": "جميع الفئات",
+    "filterAllStatuses": "جميع الحالات",
+    "categories": {
+      "troubleshooting": "استكشاف الأخطاء وإصلاحها",
+      "procedure": "إجراء",
+      "fault_code": "رمز العطل",
+      "lubrication": "التشحيم",
+      "safety": "السلامة"
+    },
+    "status": {
+      "draft": "مسودة",
+      "published": "منشور",
+      "archived": "مؤرشف"
+    },
+    "table": {
+      "revision": "المراجعة",
+      "category": "الفئة",
+      "machine": "الآلة",
+      "faultCodes": "رموز الأعطال"
+    },
+    "form": {
+      "articleId": "معرف المقالة",
+      "category": "الفئة",
+      "title": "العنوان",
+      "summary": "الملخص",
+      "content": "المحتوى",
+      "machineType": "نوع الآلة",
+      "machine": "الآلة",
+      "maintenancePlan": "خطة الصيانة",
+      "tags": "الوسوم",
+      "faultCodes": "رموز الأعطال",
+      "errorCodes": "رموز الخطأ"
+    },
+    "placeholders": {
+      "articleId": "مثال: KB-BEARING-001",
+      "title": "عنوان المقالة",
+      "summary": "ملخص قصير يظهر في القوائم",
+      "content": "محتوى المقالة الكامل",
+      "none": "لا شيء",
+      "tags": "وسوم مفصولة بفواصل",
+      "faultCodes": "رموز أعطال مفصولة بفواصل",
+      "errorCodes": "رموز أخطاء مفصولة بفواصل"
+    },
+    "actions": {
+      "add": "مقالة جديدة",
+      "view": "عرض",
+      "history": "سجل الإصدارات",
+      "edit": "تعديل",
+      "publish": "نشر",
+      "revise": "مراجعة",
+      "archive": "أرشفة",
+      "delete": "حذف"
+    },
+    "modal": {
+      "createTitle": "مقالة معرفة جديدة",
+      "editTitle": "تعديل المقالة",
+      "reviseTitle": "مراجعة المقالة المنشورة",
+      "reviseHint": "سينشئ هذا نسخة مسودة جديدة. تبقى المقالة المنشورة حاليًا دون تغيير حتى تنشر هذه المراجعة.",
+      "historyTitle": "سجل الإصدارات"
+    },
+    "buttons": {
+      "create": "إنشاء",
+      "update": "حفظ التغييرات",
+      "revise": "إنشاء مراجعة"
+    },
+    "history": {
+      "empty": "لا يوجد سجل إصدارات متاح.",
+      "current": "الحالي"
+    },
+    "viewer": {
+      "title": "مقالة"
+    },
+    "empty": {
+      "search": "لا توجد مقالات تطابق بحثك.",
+      "default": "لا توجد مقالات في قاعدة المعرفة بعد."
+    },
+    "notifications": {
+      "loadFailed": "فشل تحميل المقالات.",
+      "saveFailed": "فشل حفظ المقالة.",
+      "created": "تم إنشاء المقالة.",
+      "updated": "تم تحديث المقالة.",
+      "revised": "تم إنشاء المراجعة.",
+      "deleted": "تم حذف المقالة.",
+      "deleteFailed": "فشل حذف المقالة.",
+      "articleIdRequired": "معرف المقالة مطلوب.",
+      "titleRequired": "العنوان مطلوب.",
+      "contentRequired": "المحتوى مطلوب.",
+      "confirmPublish": "هل تريد نشر هذه المقالة؟",
+      "publishSuccess": "تم نشر المقالة.",
+      "publishFailed": "فشل نشر المقالة.",
+      "confirmArchive": "هل تريد أرشفة هذه المقالة؟",
+      "archiveSuccess": "تمت أرشفة المقالة.",
+      "archiveFailed": "فشلت أرشفة المقالة.",
+      "confirmDelete": "حذف هذه المقالة؟ لا يمكن التراجع عن هذا الإجراء.",
+      "historyLoadFailed": "فشل تحميل سجل الإصدارات."
+    },
+    "suggestions": {
+      "title": "معرفة ذات صلة"
+    }
+  },
+  "aiAssistant": {
+    "title": "المساعد الذكي (استشاري فقط)",
+    "disclaimer": "لأغراض استشارية فقط: يقترح هذا المساعد احتمالات بناءً على البيانات المتاحة فقط. لا يقوم أبدًا بتغيير أمر عمل أو المخزون أو حالة الآلة -- تحقق دائمًا قبل اتخاذ أي إجراء.",
+    "questionPlaceholder": "صف العرض أو اطرح سؤالاً لاستكشاف الأخطاء وإصلاحها...",
+    "ask": "اسأل",
+    "asking": "جارٍ الإرسال...",
+    "requestFailed": "تعذر الوصول إلى المساعد الذكي. يرجى المحاولة مرة أخرى.",
+    "statusDisabled": "المساعد الذكي غير مفعل في هذه البيئة.",
+    "statusRateLimited": "لقد وصلت إلى حد الطلبات للمساعد الذكي. يرجى المحاولة لاحقًا.",
+    "statusUnavailable": "تعذر على المساعد الذكي إنشاء رد الآن. يرجى المحاولة مرة أخرى أو المتابعة يدويًا.",
+    "knownFacts": "الحقائق المعروفة",
+    "probableCauses": "الأسباب المحتملة",
+    "recommendedChecks": "الفحوصات الموصى بها",
+    "safetyWarnings": "تحذيرات السلامة",
+    "uncertainty": "عدم اليقين"
+  },
+  "deviceMonitoring": {
+    "title": "الأجهزة",
+    "heading": "أجهزة مراقبة الآلات",
+    "description": "سجّل بوابات OpenPLC أو أجهزة المحاكاة لبث القياس عن بُعد المباشر ونبضات الاتصال وأحداث الأعطال لآلة ما.",
+    "empty": "لا توجد أجهزة مسجلة بعد.",
+    "status": {
+      "online": "متصل",
+      "offline": "غير متصل",
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "deviceTypes": {
+      "openplc": "OpenPLC",
+      "simulator": "محاكي",
+      "gateway": "بوابة"
+    },
+    "table": {
+      "liveStatus": "الحالة المباشرة"
+    },
+    "lastSignal": "آخر إشارة",
+    "lastSignalValue": "منذ {value}",
+    "never": "أبدًا",
+    "activeAlarms": "الإنذارات النشطة",
+    "form": {
+      "deviceId": "معرف الجهاز",
+      "deviceType": "نوع الجهاز",
+      "machine": "الآلة",
+      "label": "التسمية",
+      "heartbeatInterval": "فترة نبضة الاتصال (ثوانٍ)"
+    },
+    "placeholders": {
+      "deviceId": "مثال: PLC-LINE1-01",
+      "selectMachine": "اختر آلة",
+      "label": "اسم ودي يظهر للمسؤولين"
+    },
+    "actions": {
+      "register": "تسجيل جهاز",
+      "activate": "تفعيل",
+      "deactivate": "إلغاء التفعيل",
+      "rotateKey": "تدوير مفتاح API",
+      "delete": "حذف"
+    },
+    "modal": {
+      "registerTitle": "تسجيل جهاز جديد",
+      "apiKeyTitle": "مفتاح API الخاص بالجهاز",
+      "apiKeyWarning": "يظهر هذا المفتاح مرة واحدة فقط. انسخه الآن واحتفظ به بأمان — لا يمكن استرجاعه مرة أخرى."
+    },
+    "buttons": {
+      "register": "تسجيل",
+      "doneCopying": "لقد نسخت المفتاح"
+    },
+    "notifications": {
+      "loadFailed": "فشل تحميل الأجهزة.",
+      "saveFailed": "فشل حفظ الجهاز.",
+      "registerValidation": "معرف الجهاز والآلة مطلوبان.",
+      "registered": "تم تسجيل الجهاز.",
+      "activated": "تم تفعيل الجهاز.",
+      "deactivated": "تم إلغاء تفعيل الجهاز.",
+      "confirmRotate": "هل تريد تدوير مفتاح API لهذا الجهاز؟ سيتوقف المفتاح القديم عن العمل فورًا.",
+      "rotated": "تم تدوير مفتاح API.",
+      "confirmDelete": "حذف تسجيل هذا الجهاز؟ لا يمكن التراجع عن هذا الإجراء.",
+      "deleted": "تم حذف الجهاز.",
+      "deleteFailed": "فشل حذف الجهاز."
+    },
+    "suggestions": {}
+  },
+  "predictiveMaintenance": {
+    "table": {
+      "health": "الحالة"
+    },
+    "panelTitle": "الحالة التنبؤية",
+    "disclaimer": "لأغراض استشارية فقط: هذه تقديرات نموذجية بناءً على بيانات تاريخية، وليست تشخيصات موثقة. تحقق دائمًا مع فني قبل اتخاذ أي إجراء.",
+    "measuredFacts": "الحقائق المقاسة",
+    "modelOutput": "مخرجات النموذج",
+    "uncertainty": "عدم اليقين",
+    "confidence": "الثقة",
+    "healthScoreValue": "{value}%",
+    "riskLevelTooltip": "مستوى الخطورة: {level}",
+    "riskLevels": {
+      "low": "خطورة منخفضة",
+      "medium": "خطورة متوسطة",
+      "high": "خطورة عالية",
+      "critical": "خطورة حرجة",
+      "insufficient_data": "بيانات غير كافية"
+    },
+    "modelTypes": {
+      "zscore": "خط الأساس Z-Score",
+      "isolation_forest": "Isolation Forest",
+      "dbscan": "تجميع الكثافة DBSCAN",
+      "autoencoder": "المشفر التلقائي (خطأ إعادة البناء)"
+    }
+  },
+  "reports": {
+    "pageTitle": "التقارير",
+    "heading": "التقارير",
+    "description": "إنشاء تصديرات PDF وExcel وCSV حسب الدور من بيانات الصيانة والمخزون والتنبؤ الحالية.",
+    "builder": {
+      "title": "إنشاء تقرير",
+      "type": "نوع التقرير",
+      "format": "الصيغة",
+      "machine": "الآلة",
+      "allAccessibleMachines": "جميع الآلات المتاحة",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ",
+      "generate": "إنشاء التقرير",
+      "generating": "جارٍ الإنشاء..."
+    },
+    "charts": {
+      "byType": "التقارير حسب النوع",
+      "byStatus": "التقارير حسب الحالة"
+    },
+    "history": {
+      "title": "التقارير المُنشأة",
+      "scope": "النطاق",
+      "scopeAll": "جميع التقارير",
+      "scopeMine": "تقاريري",
+      "refresh": "تحديث",
+      "download": "تنزيل",
+      "table": {
+        "type": "النوع",
+        "format": "الصيغة",
+        "status": "الحالة",
+        "rows": "الصفوف",
+        "requested": "تاريخ الطلب",
+        "actions": "إجراءات"
+      }
+    },
+    "schedules": {
+      "title": "التقارير المجدولة",
+      "frequency": "التكرار",
+      "rangeDays": "نافذة زمنية متحركة (أيام)",
+      "create": "إنشاء الجدولة",
+      "creating": "جارٍ الإنشاء...",
+      "nextRun": "التشغيل التالي",
+      "active": "نشط",
+      "empty": "لا توجد تقارير مجدولة.",
+      "activeLabel": "نشط",
+      "pausedLabel": "متوقف مؤقتاً"
+    },
+    "types": {
+      "machine_history": "سجل الآلة",
+      "preventive_compliance": "الامتثال الوقائي",
+      "corrective_downtime": "زمن التوقف التصحيحي",
+      "mttr_mtbf_trends": "اتجاهات MTTR / MTBF",
+      "stock_movements": "حركات المخزون",
+      "maintenance_costs": "تكاليف الصيانة",
+      "technician_workload": "عبء عمل الفني",
+      "fault_frequency": "تكرار الأعطال",
+      "audit_history": "سجل التدقيق",
+      "predictive_risk": "المخاطر التنبؤية"
+    },
+    "formats": {
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV"
+    },
+    "frequencies": {
+      "daily": "يومي",
+      "weekly": "أسبوعي",
+      "monthly": "شهري"
+    },
+    "status": {
+      "pending": "قيد الانتظار",
+      "processing": "قيد المعالجة",
+      "completed": "مكتمل",
+      "failed": "فشل"
+    },
+    "empty": {
+      "default": "لا توجد بيانات متاحة."
+    },
+    "notifications": {
+      "loadFailed": "فشل تحميل التقارير.",
+      "scheduleLoadFailed": "فشل تحميل التقارير المجدولة.",
+      "machineRequired": "يرجى اختيار آلة.",
+      "requested": "تم طلب التقرير. سيظهر أدناه بمجرد إنشائه.",
+      "requestFailed": "فشل طلب التقرير.",
+      "downloadFailed": "فشل تنزيل التقرير.",
+      "confirmDelete": "حذف هذا التقرير؟",
+      "deleted": "تم حذف التقرير.",
+      "deleteFailed": "فشل حذف التقرير.",
+      "scheduleCreated": "تم إنشاء الجدولة.",
+      "scheduleCreateFailed": "فشل إنشاء الجدولة.",
+      "scheduleUpdateFailed": "فشل تحديث الجدولة.",
+      "confirmScheduleDelete": "حذف هذه الجدولة؟",
+      "scheduleDeleted": "تم حذف الجدولة.",
+      "scheduleDeleteFailed": "فشل حذف الجدولة."
+    }
   }
 }

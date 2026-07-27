@@ -10,6 +10,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   MANAGED_AVATAR_DIRECTORY,
   MANAGED_AVATAR_FILE_PREFIX,
+  MANAGED_QUARANTINE_DIRECTORY,
   toManagedAvatarPath,
   toManagedUploadPath,
 } from '../common/managed-file-url';
@@ -60,14 +61,20 @@ export class SupabaseStorageProvider implements FileStorageProvider {
       throw new InternalServerErrorException('Failed to store uploaded file');
     }
 
-    const url = await this.createReadableUrl(storageKey, true);
+    // Quarantined files (rejected uploads) are write-only evidence: never
+    // generate a public or signed URL for them, regardless of bucket
+    // visibility — that would defeat the point of quarantining them.
+    const url =
+      input.folder === 'quarantine'
+        ? undefined
+        : await this.createReadableUrl(storageKey, true);
 
     return {
       fileName: input.fileName,
       storageKey,
       relativePath: storageKey,
       url,
-      shouldPersistUrl: this.bucketIsPublic,
+      shouldPersistUrl: input.folder !== 'quarantine' && this.bucketIsPublic,
       size: input.buffer.length,
     };
   }
@@ -160,7 +167,9 @@ export class SupabaseStorageProvider implements FileStorageProvider {
     const prefix =
       input.folder === 'avatars'
         ? `uploads/${MANAGED_AVATAR_DIRECTORY}`
-        : 'uploads';
+        : input.folder === 'quarantine'
+          ? MANAGED_QUARANTINE_DIRECTORY
+          : 'uploads';
     return `${prefix}/${input.fileName}`;
   }
 

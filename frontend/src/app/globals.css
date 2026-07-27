@@ -165,18 +165,31 @@
   min-width: 0;
 }
 
-img,
-svg,
-video,
-canvas,
-iframe {
-  max-width: 100%;
-}
+/*
+ * Kept inside Tailwind's `base` layer (rather than as plain unlayered CSS)
+ * so that CSS Cascade Layers order applies: unlayered rules always beat
+ * layered ones regardless of specificity, which previously made this
+ * `height: auto` win over every Tailwind height utility (h-12, h-50, ...)
+ * applied to an <img>/<video> anywhere in the app — forcing the browser to
+ * derive height from the image's real intrinsic aspect ratio instead of the
+ * element's actual box height, and triggering Next/Image's "width or height
+ * modified, but not the other" hydration/aspect-ratio warning whenever a
+ * component's width/height props didn't match that ratio.
+ */
+@layer base {
+  img,
+  svg,
+  video,
+  canvas,
+  iframe {
+    max-width: 100%;
+  }
 
-img,
-video {
-  height: auto;
-  object-fit: contain;
+  img,
+  video {
+    height: auto;
+    object-fit: contain;
+  }
 }
 
 html,
@@ -312,7 +325,10 @@ textarea {
 }
 
 .auth-divider {
-  color: var(--text-muted);
+  /* --text-muted fails WCAG AA contrast (~2.5:1) against the auth card's
+     near-white background at this text-xs size; --text-secondary clears
+     the required 4.5:1 for small text while staying visually de-emphasized. */
+  color: var(--text-secondary);
 }
 
 .auth-divider-line {
@@ -1821,21 +1837,6 @@ a {
   box-shadow: 0 4px 12px rgba(0, 104, 180, 0.3);
 }
 
-.btn-secondary {
-  background: var(--secondary);
-  color: var(--gray-dark);
-  border: 1px solid var(--border);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-secondary:hover {
-  background: var(--hover);
-}
-
 .input-field {
   width: 100%;
   padding: 0.5rem 0.75rem;
@@ -2348,6 +2349,143 @@ textarea,
   display: inline-block;
   max-width: none;
   white-space: nowrap;
+}
+
+/*
+ * Generic wide-table treatment: same scroll/sticky-header/no-wrap behavior
+ * as .users-table-scroll/.users-table, kept under its own name so other
+ * many-column tables (e.g. Machines) can opt in without depending on the
+ * Users page's naming or risking a regression there.
+ */
+.wide-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  border-radius: var(--radius);
+  scrollbar-gutter: stable;
+}
+
+.wide-table-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.wide-table {
+  min-width: 100%;
+  width: max-content;
+  table-layout: auto;
+}
+
+.wide-table th,
+.wide-table td {
+  max-width: none;
+  min-width: max-content;
+  padding: 1rem 1.25rem;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+.wide-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.wide-table tbody tr:hover {
+  transform: none;
+}
+
+.machines-table__code {
+  width: 10rem;
+}
+
+.machines-table__serial,
+.machines-table__manufacturer,
+.machines-table__model,
+.machines-table__type {
+  width: 12rem;
+}
+
+.machines-table__status,
+.machines-table__live-status,
+.machines-table__health {
+  width: 10rem;
+}
+
+.machines-table__date,
+.machines-table__weight {
+  width: 8rem;
+}
+
+.machines-table__location {
+  width: 14rem;
+}
+
+.machines-table__actions {
+  width: 13rem;
+}
+
+.capteurs-table__reference,
+.capteurs-table__code,
+.capteurs-table__type {
+  width: 12rem;
+}
+
+.capteurs-table__module {
+  width: 14rem;
+}
+
+.capteurs-table__unit,
+.capteurs-table__warning,
+.capteurs-table__critical,
+.capteurs-table__sampling {
+  width: 10rem;
+}
+
+.capteurs-table__mqtt {
+  width: 18rem;
+}
+
+.capteurs-table__firmware {
+  width: 10rem;
+}
+
+.capteurs-table__lastseen {
+  width: 13rem;
+}
+
+.capteurs-table__status {
+  width: 9rem;
+}
+
+.capteurs-table__actions {
+  width: 13rem;
+}
+
+.catalogues-table__code {
+  width: 12rem;
+}
+
+.catalogues-table__name {
+  width: 18rem;
+}
+
+.catalogues-table__manufacturer-ref,
+.catalogues-table__manufacturer {
+  width: 14rem;
+}
+
+.catalogues-table__category {
+  width: 12rem;
+}
+
+.catalogues-table__actions {
+  width: 13rem;
 }
 
 .user-table-reason {

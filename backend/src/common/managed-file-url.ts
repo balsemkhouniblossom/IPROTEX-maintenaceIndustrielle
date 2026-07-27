@@ -5,6 +5,11 @@ export const MANAGED_FILE_UPLOAD_ROUTE = '/files/uploads';
 export const MANAGED_AVATAR_DIRECTORY = 'avatars';
 export const MANAGED_AVATAR_FILE_PREFIX = 'avatar-';
 export const MANAGED_AVATAR_ROUTE = `${MANAGED_FILE_UPLOAD_ROUTE}/${MANAGED_AVATAR_DIRECTORY}`;
+// Deliberately not mounted under any Express static route and not a
+// sub-path of `/uploads` — quarantined files (rejected document uploads)
+// must never be resolvable through the public/protected file-serving code
+// paths that key off the `/uploads/...` prefix.
+export const MANAGED_QUARANTINE_DIRECTORY = 'quarantine';
 
 export function getApiBaseUrl(req?: Request): string {
   return (
@@ -19,6 +24,10 @@ export function toManagedUploadPath(fileName: string): string {
 
 export function toManagedAvatarPath(fileName: string): string {
   return `${MANAGED_AVATAR_ROUTE}/${fileName}`;
+}
+
+export function toManagedQuarantinePath(fileName: string): string {
+  return `/${MANAGED_QUARANTINE_DIRECTORY}/${fileName}`;
 }
 
 export function resolveManagedFileUrl(

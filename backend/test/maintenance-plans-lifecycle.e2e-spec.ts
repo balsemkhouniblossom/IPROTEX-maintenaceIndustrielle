@@ -451,4 +451,110 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       expect(occurrence?.status).toBe('scheduled');
     });
   });
+
+  describe('non-preventive schedulable plan types (lubrication, inspection) activate and schedule exactly like preventive', () => {
+    it.each(['lubrication', 'inspection'])(
+      'activates a %s plan and creates its first occurrence, preserving the plan type',
+      async (type) => {
+        const created = await request(app.getHttpServer())
+          .post('/maintenance-plans')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            plan_id: `MP-${type.toUpperCase()}-1`,
+            module_id: moduleEntity._id.toString(),
+            type_maintenance: type,
+            frequence: 1,
+            unite_frequence: 'month',
+          })
+          .expect(201);
+        const planId = created.body._id;
+
+        const response = await request(app.getHttpServer())
+          .patch(`/maintenance-plans/${planId}/transition`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ action: 'activate' })
+          .expect(200);
+
+        expect(response.body.plan.status).toBe('active');
+        expect(response.body.createdOccurrence).toBeTruthy();
+        expect(response.body.createdOccurrence.type_maintenance).toBe(type);
+
+        const occurrence = await workOrders.findOne({
+          plan_id: new Types.ObjectId(planId),
+        });
+        expect(occurrence).not.toBeNull();
+        expect(occurrence?.type_maintenance).toBe(type);
+      },
+    );
+
+    it('activates a corrective plan without creating any occurrence — corrective plans are never auto-scheduled', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/maintenance-plans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          plan_id: 'MP-CORRECTIVE-NO-SCHEDULE-1',
+          module_id: moduleEntity._id.toString(),
+          type_maintenance: 'corrective',
+          frequence: 1,
+          unite_frequence: 'month',
+        })
+        .expect(201);
+      const planId = created.body._id;
+
+      const response = await request(app.getHttpServer())
+        .patch(`/maintenance-plans/${planId}/transition`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ action: 'activate' })
+        .expect(200);
+
+      expect(response.body.plan.status).toBe('active');
+      expect(response.body.createdOccurrence).toBeNull();
+
+      const occurrenceCount = await workOrders.countDocuments({
+        plan_id: new Types.ObjectId(planId),
+      });
+      expect(occurrenceCount).toBe(0);
+    });
+
+    it('lets an Operator explicitly first-schedule a lubrication occurrence, but still rejects a corrective plan', async () => {
+      const lubricationPlan = await request(app.getHttpServer())
+        .post('/maintenance-plans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          plan_id: 'MP-LUBRICATION-MANUAL-SCHEDULE-1',
+          module_id: moduleEntity._id.toString(),
+          type_maintenance: 'lubrication',
+          frequence: 1,
+          unite_frequence: 'month',
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .patch(`/maintenance-plans/${lubricationPlan.body._id}/transition`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ action: 'activate' })
+        .expect(200);
+
+      const correctivePlan = await request(app.getHttpServer())
+        .post('/maintenance-plans')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          plan_id: 'MP-CORRECTIVE-MANUAL-SCHEDULE-1',
+          module_id: moduleEntity._id.toString(),
+          type_maintenance: 'corrective',
+          frequence: 1,
+          unite_frequence: 'month',
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/operator/preventive/schedule')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .send({
+          machine_id: machine._id.toString(),
+          plan_id: correctivePlan.body._id,
+          scheduled_date: '2026-09-01T08:00:00.000Z',
+        })
+        .expect(400);
+    });
+  });
 });

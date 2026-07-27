@@ -10,7 +10,9 @@ import {
   MANAGED_AVATAR_DIRECTORY,
   MANAGED_AVATAR_FILE_PREFIX,
   MANAGED_AVATAR_ROUTE,
+  MANAGED_QUARANTINE_DIRECTORY,
   toManagedAvatarPath,
+  toManagedQuarantinePath,
   toManagedUploadPath,
 } from '../common/managed-file-url';
 import {
@@ -28,7 +30,9 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     const directory =
       input.folder === 'avatars'
         ? join(process.cwd(), 'uploads', MANAGED_AVATAR_DIRECTORY)
-        : join(process.cwd(), 'uploads');
+        : input.folder === 'quarantine'
+          ? join(process.cwd(), MANAGED_QUARANTINE_DIRECTORY)
+          : join(process.cwd(), 'uploads');
     const path = join(directory, input.fileName);
 
     try {
@@ -44,7 +48,9 @@ export class LocalFileStorageProvider implements FileStorageProvider {
       relativePath:
         input.folder === 'avatars'
           ? toManagedAvatarPath(input.fileName)
-          : toManagedUploadPath(input.fileName),
+          : input.folder === 'quarantine'
+            ? toManagedQuarantinePath(input.fileName)
+            : toManagedUploadPath(input.fileName),
       shouldPersistUrl: false,
       size: input.buffer.length,
     };
@@ -136,6 +142,8 @@ function getContentType(fileName: string): string {
       return 'text/plain; charset=utf-8';
     case 'csv':
       return 'text/csv; charset=utf-8';
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     default:
       return 'application/octet-stream';
   }

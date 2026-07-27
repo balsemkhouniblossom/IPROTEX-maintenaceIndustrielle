@@ -37,8 +37,11 @@ export default function Pagination({
   }
 
   return (
-    <div className={`flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between ${className}`}>
-      <div className="min-w-0 text-sm text-text-secondary">
+    <nav
+      aria-label="Pagination"
+      className={`flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between ${className}`}
+    >
+      <div className="min-w-0 text-sm text-text-secondary" aria-live="polite">
         Showing <span className="font-semibold text-text-primary">{start}</span> to{' '}
         <span className="font-semibold text-text-primary">{end}</span> of{' '}
         <span className="font-semibold text-text-primary">{totalItems}</span> items
@@ -62,6 +65,8 @@ export default function Pagination({
               <button
                 type="button"
                 onClick={() => onPageChange(1)}
+                aria-label="Page 1"
+                style={{ minWidth: 40, minHeight: 40 }}
                 className="h-10 min-w-10 rounded-xl border border-border px-3 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary"
               >
                 1
@@ -76,6 +81,8 @@ export default function Pagination({
               type="button"
               onClick={() => onPageChange(currentPage)}
               aria-current={currentPage === page ? 'page' : undefined}
+              aria-label={`Page ${currentPage}`}
+              style={{ minWidth: 40, minHeight: 40 }}
               className={`h-10 min-w-10 rounded-xl border px-3 text-sm font-medium transition ${currentPage === page
                 ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-border text-text-secondary hover:border-(--border-hover) hover:bg-surface-secondary'
@@ -91,6 +98,8 @@ export default function Pagination({
               <button
                 type="button"
                 onClick={() => onPageChange(safeTotalPages)}
+                aria-label={`Page ${safeTotalPages}`}
+                style={{ minWidth: 40, minHeight: 40 }}
                 className="h-10 min-w-10 rounded-xl border border-border px-3 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary"
               >
                 {safeTotalPages}
@@ -110,6 +119,6 @@ export default function Pagination({
           <ChevronRightIcon className="h-4 w-4" />
         </button>
       </div>
-    </div>
+    </nav>
   );
 }

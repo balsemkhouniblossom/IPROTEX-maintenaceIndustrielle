@@ -26,10 +26,12 @@ import {
   PanneSolutionSchema,
 } from '../schemas/panne-solution.schema';
 import { User, UserSchema } from '../schemas/user.schema';
+import { KpiModule } from '../kpi/kpi.module';
 
 @Module({
   imports: [
     WorkOrdersModule,
+    KpiModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: InterventionReport.name, schema: InterventionReportSchema },

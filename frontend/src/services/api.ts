@@ -44,6 +44,14 @@ let refreshRequest: Promise<string> | null = null;
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (axios.isCancel(error)) {
+      // Expected: useServerTable (and similar callers) abort an in-flight
+      // request when filters/pagination change before it resolves. Not a
+      // network failure, so don't scare the console or fire the
+      // network-error UI event for it.
+      return Promise.reject(error);
+    }
+
     if (error.code === 'ERR_NETWORK' || !error.response) {
       console.error('[API] Network/CORS error', {
         baseURL: API_BASE_URL,
@@ -151,6 +159,7 @@ type PaginationParams = {
   limit?: number;
   search?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
+  sort?: string;
 };
 type FilterPaginationParams = PaginationParams & Record<string, string | number | undefined>;
 
@@ -162,6 +171,7 @@ function withPagination(params?: PaginationParams) {
       limit: params.limit,
       search: params.search,
       approvalStatus: params.approvalStatus,
+      sort: params.sort,
     },
   };
 }
@@ -208,6 +218,18 @@ export const apiService = {
   updateMachine: (id: string, data: AnyObject) => api.patch(`/machines/${id}`, data),
   deleteMachine: (id: string) => api.delete(`/machines/${id}`),
 
+  // Device monitoring (Admin registration + role-scoped live status)
+  getDevices: () => api.get('/devices'),
+  getDevice: (id: string) => api.get(`/devices/${id}`),
+  registerDevice: (data: AnyObject) => api.post('/devices', data),
+  updateDevice: (id: string, data: AnyObject) => api.patch(`/devices/${id}`, data),
+  rotateDeviceKey: (id: string) => api.post(`/devices/${id}/rotate-key`),
+  deleteDevice: (id: string) => api.delete(`/devices/${id}`),
+
+  getLiveMonitoringSummary: () => api.get('/live-monitoring/machines'),
+  getMachineLiveStatus: (machineId: string) => api.get(`/live-monitoring/machines/${machineId}`),
+  resolveFaultEvent: (id: string) => api.patch(`/live-monitoring/faults/${id}/resolve`),
+
   // Machine Types
   getMachineTypes: (params?: PaginationParams) => api.get('/machine-types', withPagination(params)),
   createMachineType: (data: AnyObject) => api.post('/machine-types', data),
@@ -227,7 +249,17 @@ export const apiService = {
   deleteModule: (id: string) => api.delete(`/modules/${id}`),
 
   // Maintenance Plans
-  getMaintenancePlans: (params?: PaginationParams) => api.get('/maintenance-plans', withPagination(params)),
+  getMaintenancePlans: (
+    params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      sort?: string;
+      status?: string;
+      typeMaintenance?: string;
+    },
+    options?: { signal?: AbortSignal },
+  ) => api.get('/maintenance-plans', { params, signal: options?.signal }),
   createMaintenancePlan: (data: AnyObject) => api.post('/maintenance-plans', data),
   updateMaintenancePlan: (id: string, data: AnyObject) => api.patch(`/maintenance-plans/${id}`, data),
   deleteMaintenancePlan: (id: string, expectedVersion?: number) =>
@@ -286,7 +318,21 @@ export const apiService = {
   getMachinesTotal: () => api.get('/machines/total'),
 
   // Work Orders
-  getWorkOrders: (params?: PaginationParams) => api.get('/work-orders', withPagination(params)),
+  getWorkOrders: (
+    params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      sort?: string;
+      status?: string;
+      priority?: string;
+      machineId?: string;
+      technicianId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    },
+    options?: { signal?: AbortSignal },
+  ) => api.get('/work-orders', { params, signal: options?.signal }),
   getMyWorkOrders: (params?: PaginationParams) => api.get('/operator/work-orders/my', withPagination(params)),
 
   getCalendarEvents: (params?: AnyObject) =>
@@ -323,13 +369,15 @@ export const apiService = {
   updateWorkOrder: (id: string, data: AnyObject) => api.patch(`/work-orders/${id}`, data),
   deleteWorkOrder: (id: string) => api.delete(`/work-orders/${id}`),
   getWorkOrderStatistics: () => api.get('/work-orders/statistics'),
+  getAdminDashboard: () => api.get('/dashboard/admin'),
+  getOperatorDashboard: () => api.get('/operator/dashboard'),
   getTechnicianDashboard: () => api.get('/technician/dashboard'),
   getTechnicianWorkOrders: (params?: AnyObject) => api.get('/technician/work-orders', { params }),
   getTechnicianWorkOrder: (id: string) => api.get(`/technician/work-orders/${id}`),
   getTechnicianManuals: (params?: AnyObject) => api.get('/technician/manuals', { params }),
   getTechnicianParts: (params?: AnyObject) => api.get('/technician/parts', { params }),
   claimTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/claim`),
-  reviewTechnicianWorkOrder: (id: string, action: 'approve' | 'return' | 'intervene') => api.patch(`/technician/work-orders/${id}/review`, { action }),
+  reviewTechnicianWorkOrder: (id: string, action: 'return' | 'intervene') => api.patch(`/technician/work-orders/${id}/review`, { action }),
   startTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/start`),
   waitForTechnicianParts: (id: string) => api.patch(`/technician/work-orders/${id}/waiting-parts`),
   resumeTechnicianWorkOrder: (id: string) => api.patch(`/technician/work-orders/${id}/resume`),
@@ -401,6 +449,78 @@ export const apiService = {
 
   deleteDocument: (id: string) => api.delete(`/documents/${id}`),
 
+  getDocumentVersions: (id: string) => api.get(`/documents/${id}/versions`),
+
+  publishDocument: (id: string, data?: { reason?: string; expected_version?: number }) =>
+    api.patch(`/documents/${id}/publish`, data ?? {}),
+
+  archiveDocument: (id: string, data?: { reason?: string; expected_version?: number }) =>
+    api.patch(`/documents/${id}/archive`, data ?? {}),
+
+  replaceDocument: (id: string, formData: FormData) =>
+    api.post(`/documents/${id}/replace`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+
+  // Knowledge Base
+  getKnowledgeArticles: (params?: AnyObject) => api.get('/knowledge-base/articles', { params }),
+
+  getKnowledgeArticleSuggestions: (params?: AnyObject) =>
+    api.get('/knowledge-base/articles/suggestions', { params }),
+
+  getKnowledgeArticle: (id: string) => api.get(`/knowledge-base/articles/${id}`),
+
+  getKnowledgeArticleVersions: (id: string) => api.get(`/knowledge-base/articles/${id}/versions`),
+
+  createKnowledgeArticle: (data: AnyObject) => api.post('/knowledge-base/articles', data),
+
+  updateKnowledgeArticle: (id: string, data: AnyObject) =>
+    api.put(`/knowledge-base/articles/${id}`, data),
+
+  publishKnowledgeArticle: (id: string, data?: { reason?: string; expected_version?: number }) =>
+    api.patch(`/knowledge-base/articles/${id}/publish`, data ?? {}),
+
+  archiveKnowledgeArticle: (id: string, data?: { reason?: string; expected_version?: number }) =>
+    api.patch(`/knowledge-base/articles/${id}/archive`, data ?? {}),
+
+  reviseKnowledgeArticle: (id: string, data: AnyObject) =>
+    api.post(`/knowledge-base/articles/${id}/revise`, data),
+
+  deleteKnowledgeArticle: (id: string) => api.delete(`/knowledge-base/articles/${id}`),
+
+  // AI corrective assistant (advisory only — never mutates work orders, stock, or machine status)
+  requestAiAssistantRecommendation: (data: {
+    machineId?: string;
+    workOrderId?: string;
+    faultCode?: string;
+    question: string;
+    locale: string;
+  }) => api.post('/ai-assistant/recommendations', data),
+
+  getAiAssistantHistory: () => api.get('/ai-assistant/history'),
+
+  getAllAiAssistantHistory: () => api.get('/ai-assistant/history/all'),
+
+  // Predictive maintenance (advisory only — read endpoints never mutate a work order, stock, or machine)
+  getPredictiveFleetSummary: () => api.get('/predictive-maintenance/fleet-summary'),
+
+  getPredictivePlansSummary: () => api.get('/predictive-maintenance/plans-summary'),
+
+  getMachineHealthPredictions: (machineId: string) =>
+    api.get(`/predictive-maintenance/machines/${machineId}`),
+
+  getMachineHealthHistory: (machineId: string, params?: AnyObject) =>
+    api.get(`/predictive-maintenance/machines/${machineId}/history`, { params }),
+
+  refreshMachineHealthPrediction: (machineId: string) =>
+    api.post(`/predictive-maintenance/machines/${machineId}/refresh`),
+
+  getPredictionModelVersions: () => api.get('/predictive-maintenance/models'),
+
+  trainPredictionModel: (modelType: string) =>
+    api.post(`/predictive-maintenance/models/${modelType}/train`),
 
   // Get all data for dashboard
   getDashboardData: async (options: { includeUsers?: boolean } = {}) => {
@@ -525,4 +645,58 @@ export const apiService = {
   // Technician/Admin part-request decision
   decidePartRequest: (id: string, action: 'approve' | 'reject') =>
     api.patch(`/work-orders/part-requests/${id}/decision`, { action }),
+
+  // Reports — role-scoped exports built from existing KPI/maintenance/
+  // stock/document/predictive data. Generation is async: `requestReport`
+  // returns a `pending` row immediately, the caller polls `getReport(id)`
+  // for status, then `downloadReportFile(id)` once `status` is `completed`.
+  getReportTypes: () => api.get('/reports/types'),
+  getReports: (
+    params?: { page?: number; limit?: number; type?: string; status?: string; format?: string; sort?: string },
+    options?: { signal?: AbortSignal },
+  ) => api.get('/reports', { params, signal: options?.signal }),
+  getAllReports: (
+    params?: { page?: number; limit?: number; type?: string; status?: string; format?: string; sort?: string },
+    options?: { signal?: AbortSignal },
+  ) => api.get('/reports/all', { params, signal: options?.signal }),
+  getReport: (id: string) => api.get(`/reports/${id}`),
+  requestReport: (data: {
+    type: string;
+    format: string;
+    parameters?: Record<string, unknown>;
+  }) => api.post('/reports', data),
+  deleteReport: (id: string) => api.delete(`/reports/${id}`),
+  // Downloaded as a blob (not a plain <a href>) because the route sits
+  // behind JwtAuthGuard and needs the Authorization header the axios
+  // interceptor attaches — mirrors DocumentAttachmentViewer's pattern.
+  downloadReportFile: (id: string) =>
+    api.get(`/reports/${id}/download`, { responseType: 'blob' }),
+  getReportSchedules: () => api.get('/reports/schedules'),
+  createReportSchedule: (data: {
+    type: string;
+    format: string;
+    frequency: string;
+    parameters?: Record<string, unknown>;
+  }) => api.post('/reports/schedules', data),
+  updateReportSchedule: (
+    id: string,
+    data: { active?: boolean; frequency?: string; parameters?: Record<string, unknown> },
+  ) => api.patch(`/reports/schedules/${id}`, data),
+  deleteReportSchedule: (id: string) => api.delete(`/reports/schedules/${id}`),
+
+  // Saved views — per-user, per-page saved search/filter/sort state.
+  getSavedViews: (pageKey: string) => api.get('/saved-views', { params: { pageKey } }),
+  createSavedView: (data: { pageKey: string; name: string; query: Record<string, unknown>; isDefault?: boolean }) =>
+    api.post('/saved-views', data),
+  updateSavedView: (
+    id: string,
+    data: { name?: string; query?: Record<string, unknown>; isDefault?: boolean },
+  ) => api.patch(`/saved-views/${id}`, data),
+  deleteSavedView: (id: string) => api.delete(`/saved-views/${id}`),
+
+  // Transactional bulk user approve/reject — either every selected user
+  // is approved/rejected or none are (see backend UsersService).
+  bulkApproveUsers: (userIds: string[]) => api.post('/users/bulk-approve', { userIds }),
+  bulkRejectUsers: (userIds: string[], reason: string) =>
+    api.post('/users/bulk-reject', { userIds, reason }),
 };

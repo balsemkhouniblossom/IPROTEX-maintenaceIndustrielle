@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray } from 'class-validator';
+import { IsArray, IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class CreateDocumentDto {
   @IsString()
@@ -6,6 +6,18 @@ export class CreateDocumentDto {
 
   @IsString()
   machine_id: string;
+
+  @IsOptional()
+  @IsMongoId()
+  maintenance_plan_id?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  work_order_id?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  intervention_report_id?: string;
 
   @IsString()
   type_document: string;

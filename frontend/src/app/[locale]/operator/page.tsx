@@ -25,6 +25,20 @@ interface OperatorStats {
     completed: number;
 }
 
+interface OperatorKpiCounts {
+    overdueCount: number;
+    dueTodayCount: number;
+    waitingValidationCount: number;
+    completedTodayCount: number;
+}
+
+const emptyKpiCounts: OperatorKpiCounts = {
+    overdueCount: 0,
+    dueTodayCount: 0,
+    waitingValidationCount: 0,
+    completedTodayCount: 0,
+};
+
 interface WorkOrderItem {
     _id: string;
     ot_id?: string;
@@ -139,6 +153,7 @@ export default function OperatorDashboard() {
         inProgress: 0,
         completed: 0,
     });
+    const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
     const [loading, setLoading] = useState(true);
     const [statsError, setStatsError] = useState(false);
     const now = useMemo(() => new Date(), []);
@@ -218,7 +233,13 @@ export default function OperatorDashboard() {
     }, [activeWorkOrders, eventByWorkOrderId, now]);
 
     const nextTask = operatorTasks[0] || null;
-    const overdueTasksCount = operatorTasks.filter((task) => task.isOverdue).length;
+    // The overdue *count* shown as a KPI badge always comes from the
+    // server (`GET /operator/dashboard`, business-timezone-aware) rather
+    // than from filtering the on-screen task list — the two lists can
+    // legitimately differ (this page only loads a week of calendar
+    // events), so recomputing the badge locally could silently disagree
+    // with every other overdue count in the app.
+    const overdueTasksCount = kpiCounts.overdueCount;
 
     const latestReport = recentReports[0] || null;
     const waitingValidationCount = reports.filter((report) => !report.validation_responsable || report.validation_responsable === "pending").length;
@@ -227,8 +248,9 @@ export default function OperatorDashboard() {
         { label: tOperator("dashboard.todayTasks"), value: operatorTasks.length, icon: ClipboardDocumentListIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: "text-[var(--text-primary)]" },
         { label: tOperator("stats.assignedToYou"), value: stats.assigned, icon: ClipboardDocumentListIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: "text-[var(--text-primary)]" },
         { label: tOperator("stats.inProgress"), value: stats.inProgress, icon: WrenchScrewdriverIcon, accent: "from-cyan-700 via-sky-700 to-indigo-800", textTone: "text-[var(--text-primary)]" },
+        { label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount, icon: ClockIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: "text-[var(--text-primary)]" },
         { label: tOperator("dashboard.overdueTasks"), value: overdueTasksCount, icon: ClockIcon, accent: "from-cyan-700 via-sky-700 to-blue-800", textTone: overdueTasksCount > 0 ? "text-rose-500" : "text-[var(--text-primary)]" },
-        { label: tOperator("stats.completedToday"), value: stats.completed, icon: CheckCircleIcon, accent: "from-cyan-700 via-sky-700 to-indigo-800", textTone: "text-[var(--text-primary)]" },
+        { label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount, icon: CheckCircleIcon, accent: "from-cyan-700 via-sky-700 to-indigo-800", textTone: "text-[var(--text-primary)]" },
     ];
 
     const shellClassName = "p-4 md:p-6 xl:p-8";
@@ -291,13 +313,14 @@ export default function OperatorDashboard() {
 
         const loadOperatorStats = async () => {
             try {
-                const [workOrdersResponse, reportsResponse, calendarResponse] = await Promise.all([
+                const [workOrdersResponse, reportsResponse, calendarResponse, dashboardResponse] = await Promise.all([
                     fetchAllPaginated<WorkOrderItem>((pagination) => apiService.getMyWorkOrders(pagination)),
                     fetchAllPaginated<InterventionReportItem>((pagination) => apiService.getMyInterventionReports(pagination)),
                     apiService.getMyCalendarEvents({
                         view: "week",
                         date: new Date().toISOString().slice(0, 10),
                     }),
+                    apiService.getOperatorDashboard(),
                 ]);
 
                 if (cancelled) {
@@ -313,15 +336,31 @@ export default function OperatorDashboard() {
                 setReports(reportItems);
                 setCalendarEvents(calendarItems);
 
-                const scopedWorkOrders = normalizedWorkOrders;
-                const assigned = scopedWorkOrders.filter((wo) => (wo.status || "").toLowerCase() === "assigned").length;
-                const inProgress = scopedWorkOrders.filter((wo) => (wo.status || "").toLowerCase() === "in_progress").length;
-                const completed = scopedWorkOrders.filter((wo) => isCompletedStatus(wo.status)).length;
+                // Every counter/badge on this page comes from the shared
+                // KpiService via GET /operator/dashboard — never recomputed
+                // client-side from the (necessarily partial, week-scoped)
+                // lists fetched above, which exist only to render the task
+                // list and recent-activity cards.
+                const dashboard = dashboardResponse.data as {
+                    overdueCount: number;
+                    dueTodayCount: number;
+                    waitingValidationCount: number;
+                    completedTodayCount: number;
+                    assignedCount: number;
+                    inProgressCount: number;
+                    completedCount: number;
+                };
 
+                setKpiCounts({
+                    overdueCount: dashboard.overdueCount,
+                    dueTodayCount: dashboard.dueTodayCount,
+                    waitingValidationCount: dashboard.waitingValidationCount,
+                    completedTodayCount: dashboard.completedTodayCount,
+                });
                 setStats({
-                    assigned,
-                    inProgress,
-                    completed,
+                    assigned: dashboard.assignedCount,
+                    inProgress: dashboard.inProgressCount,
+                    completed: dashboard.completedCount,
                 });
             } catch (error) {
                 console.error("Error loading operator stats", error);

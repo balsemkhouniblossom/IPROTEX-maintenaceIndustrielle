@@ -529,4 +529,59 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
     );
     expect(next?.due_date?.toISOString().slice(0, 10)).not.toBe('2026-08-14');
   });
+
+  it.each(['lubrication', 'inspection'])(
+    'submits and, after admin approval, recurs a %s occurrence exactly like a preventive one',
+    async (type) => {
+      const occurrence = await createScheduledOccurrence({
+        type_maintenance: type,
+        due_date: new Date('2026-07-14T08:00:00.000Z'),
+        scheduled_date: new Date('2026-07-14T08:00:00.000Z'),
+        date_start: new Date('2026-07-14T08:00:00.000Z'),
+      });
+
+      const submitResponse = await request(app.getHttpServer())
+        .post('/operator/preventive/submit')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .send({
+          work_order_id: occurrence._id.toString(),
+          tasks_completed: ['Check belt tension'],
+          condition: 'good',
+        })
+        .expect(201);
+
+      expect(submitResponse.body.workOrder.status).toBe('waiting_validation');
+
+      await request(app.getHttpServer())
+        .post(`/work-orders/${occurrence._id.toString()}/validation`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ action: 'approve' })
+        .expect(201);
+
+      const validated = await workOrders.findById(occurrence._id);
+      expect(validated?.status).toBe('validated');
+
+      const next = await workOrders.findOne({
+        recurrence_source_occurrence_id: occurrence._id,
+      });
+      expect(next).not.toBeNull();
+      expect(next?.type_maintenance).toBe(type);
+    },
+  );
+
+  it('rejects submitting a corrective work order through this preventive-only submission endpoint', async () => {
+    const occurrence = await createScheduledOccurrence({
+      type_maintenance: 'corrective',
+    });
+
+    await request(app.getHttpServer())
+      .post('/operator/preventive/submit')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .send({
+        work_order_id: occurrence._id.toString(),
+        tasks_completed: ['Check belt tension'],
+        condition: 'good',
+      })
+      .expect(400);
+  });
 });

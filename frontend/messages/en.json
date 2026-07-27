@@ -124,9 +124,10 @@
     "completeProfileSubmit": "Submit for Approval",
     "completeProfileSaving": "Saving...",
     "completeProfileSaveFailed": "Profile could not be saved.",
-    "completeProfilePosition": "Position",
     "completeProfileLanguage": "Language",
-    "completeProfileRequestedRole": "Requested role"
+    "completeProfileRequestedRole": "Requested role",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "common": {
     "allFields": "All fields",
@@ -199,7 +200,20 @@
     },
     "logout": "Logout",
     "notAvailable": "N/A",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "skipToContent": "Skip to main content",
+    "offlineBanner": "You're offline. Some features may not work until your connection is restored.",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "dismiss": "Dismiss",
+    "savedViews": {
+      "save": "Save view",
+      "namePlaceholder": "View name",
+      "empty": "No saved views yet.",
+      "delete": "Delete view"
+    }
   },
   "dashboard": {
     "status": {
@@ -231,19 +245,30 @@
         "recent": "Recent Work Orders",
         "completionRate": "Work Order Completion Rate",
         "distribution": "Work Order Distribution",
-        "outOf": "out of"
+        "outOf": "out of",
+        "overdue": "Overdue",
+        "dueToday": "Due Today",
+        "waitingValidation": "Waiting Validation",
+        "completedTodayLabel": "Completed Today",
+        "completionRateHint": "Preventive maintenance completed on or before its due date"
       },
       "machines": {
         "availability": "Machine Availability",
         "overview": "Machine Overview",
-        "online": "machines online"
+        "online": "machines online",
+        "availabilityHint": "Based on mean time between failures vs. mean time to repair"
       },
       "quickKpis": {
         "title": "Quick KPIs",
         "machineAvailability": "Machine Availability",
         "completionRate": "Completion Rate",
         "activeWorkOrders": "Active Work Orders",
-        "activeUsers": "Active Users"
+        "activeUsers": "Active Users",
+        "stockAlerts": "Stock Alerts",
+        "correctiveResponseTime": "Corrective Response Time",
+        "mttr": "MTTR (Mean Time To Repair)",
+        "mtbf": "MTBF (Mean Time Between Failures)",
+        "hoursValue": "{hours}h"
       },
       "title": "Full Database Dashboard",
       "searchPlaceholder": "Search across all database records...",
@@ -252,7 +277,13 @@
         "totalMachines": "Total Machines",
         "activeUsers": "Active Users",
         "activeWorkOrders": "Active Work Orders",
-        "completedThisMonth": "Completed This Month"
+        "completedThisMonth": "Completed This Month",
+        "fleetTotal": "Fleet total",
+        "totalUsers": "Total Users",
+        "openMaintenance": "Open Maintenance",
+        "openMaintenanceHint": "{overdue} overdue, {dueToday} due today",
+        "completedToday": "Completed Today",
+        "outOfTotal": "out of {total} total"
       },
       "databaseSummary": {
         "title": "Database Summary",
@@ -276,6 +307,14 @@
         "catalogues": "Catalogues",
         "machineTypes": "Types",
         "types": "Types"
+      },
+      "stockAlerts": {
+        "title": "Stock Alerts",
+        "availableOf": "{available} available (threshold {threshold})"
+      },
+      "workload": {
+        "title": "Team Workload",
+        "openCount": "{count} open"
       }
     },
     "operator": {
@@ -358,7 +397,8 @@
         "underYourCare": "Under your care",
         "inProgress": "In Progress",
         "waitingValidation": "Waiting Validation",
-        "overdue": "Overdue"
+        "overdue": "Overdue",
+        "dueToday": "Due Today"
       },
       "dashboard": {
         "operatorConsole": "Operator Console",
@@ -956,7 +996,10 @@
     },
     "actions": {
       "update": "Update Work Order",
-      "create": "Create Work Order"
+      "create": "Create Work Order",
+      "approve": "Approve",
+      "reject": "Reject",
+      "requestCorrection": "Request correction"
     },
     "validation": {
       "workOrderIdRequired": "OT ID is required",
@@ -970,7 +1013,13 @@
       "deleteFailed": "Failed to delete work order",
       "updated": "Work order updated successfully",
       "created": "Work order created successfully",
-      "saveFailed": "Failed to save work order"
+      "saveFailed": "Failed to save work order",
+      "approved": "Work order approved successfully",
+      "approveFailed": "Failed to approve work order",
+      "rejected": "Work order rejected successfully",
+      "rejectFailed": "Failed to reject work order",
+      "correctionRequested": "Correction requested successfully",
+      "correctionFailed": "Failed to request correction"
     },
     "sort": {
       "priorityHighToLow": "Sort priority high to low",
@@ -983,7 +1032,14 @@
       "startOldestToNewest": "Sort start date oldest to newest",
       "endNewestToOldest": "Sort end date newest to oldest",
       "endOldestToNewest": "Sort end date oldest to newest"
-    }
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "allPriorities": "All priorities"
+    },
+    "confirmApprove": "Approve this work order?",
+    "confirmReject": "Reject this work order?",
+    "confirmRequestCorrection": "Send this work order back for correction?"
   },
   "users": {
     "pageTitle": "User Management",
@@ -1197,6 +1253,31 @@
       "lowercase": "One lowercase letter",
       "number": "One number",
       "special": "One special character"
+    },
+    "savedViews": {
+      "title": "Saved views",
+      "save": "Save view",
+      "namePlaceholder": "View name",
+      "empty": "No saved views yet.",
+      "delete": "Delete view",
+      "saved": "View saved.",
+      "saveFailed": "Failed to save view.",
+      "deleted": "View deleted.",
+      "deleteFailed": "Failed to delete view."
+    },
+    "bulk": {
+      "selectAll": "Select all on this page",
+      "selectRow": "Select {name}",
+      "selectedCount": "{count} selected",
+      "approve": "Approve selected",
+      "reject": "Reject selected",
+      "reasonPlaceholder": "Reason for rejecting all selected accounts",
+      "clearSelection": "Clear selection",
+      "approveSuccess": "{count} accounts approved.",
+      "approveFailed": "Failed to approve the selected accounts.",
+      "rejectSuccess": "{count} accounts rejected.",
+      "rejectFailed": "Failed to reject the selected accounts.",
+      "reasonRequired": "A rejection reason is required."
     }
   },
   "catalogues": {
@@ -1524,7 +1605,10 @@
       },
       "interventionReports": "Intervention Reports",
       "pannes": "Pannes",
-      "panneSolutions": "Panne Solutions"
+      "panneSolutions": "Panne Solutions",
+      "knowledgeBase": "Knowledge Base",
+      "devices": "Devices",
+      "reports": "Reports"
     }
   },
   "machines": {
@@ -1792,11 +1876,22 @@
     "pageTitle": "Technical Documents",
     "searchPlaceholder": "Search documents by name, type, machine, or tags...",
     "filterAllMachines": "All Machines",
+    "filterAllStatuses": "All statuses",
     "actions": {
       "add": "Upload Document",
       "view": "View",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "publish": "Publish",
+      "archive": "Archive",
+      "replace": "Replace",
+      "history": "Version history"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived",
+      "superseded": "Superseded"
     },
     "table": {
       "documentId": "Document ID",
@@ -1804,7 +1899,9 @@
       "type": "Type",
       "machine": "Machine",
       "uploadedBy": "Uploaded By",
-      "dateAdded": "Date Added"
+      "dateAdded": "Date Added",
+      "status": "Status",
+      "revision": "Revision"
     },
     "empty": {
       "search": "No documents match your search.",
@@ -1813,26 +1910,31 @@
     "modal": {
       "uploadTitle": "Upload Document",
       "editTitle": "Edit Document",
-      "viewTitle": "View Document"
+      "viewTitle": "View Document",
+      "replaceTitle": "Replace Document",
+      "historyTitle": "Version History"
     },
     "form": {
-      "file": "Select PDF File",
+      "file": "Select PDF or Office File",
       "machine": "Machine",
       "type": "Document Type",
       "description": "Description",
       "tags": "Tags (comma-separated)",
-      "uploadedBy": "Uploaded By"
+      "uploadedBy": "Uploaded By",
+      "reason": "Reason"
     },
     "placeholders": {
       "selectMachine": "Select a machine...",
       "type": "e.g., Manual, Specification, Maintenance Guide",
       "description": "Enter document description...",
       "tags": "e.g., preventive, electrical, motor",
-      "uploadedBy": "Enter your name or username..."
+      "uploadedBy": "Enter your name or username...",
+      "reason": "Explain this replacement"
     },
     "buttons": {
       "upload": "Upload Document",
       "update": "Update Document",
+      "replace": "Replace",
       "cancel": "Cancel",
       "save": "Save"
     },
@@ -1845,8 +1947,12 @@
       "download": "Download",
       "unsupported": "This file type is not supported for preview."
     },
+    "history": {
+      "empty": "No version history available.",
+      "current": "current"
+    },
     "notifications": {
-      "fileRequired": "Please select a PDF file",
+      "fileRequired": "Please select a file",
       "machineRequired": "Please select a machine",
       "typeRequired": "Please enter document type",
       "created": "Document uploaded successfully",
@@ -1854,7 +1960,17 @@
       "deleted": "Document deleted successfully",
       "saveFailed": "Failed to save document",
       "deleteFailed": "Failed to delete document",
-      "confirmDelete": "Are you sure you want to delete this document? This action cannot be undone."
+      "confirmDelete": "Are you sure you want to delete this document? This is only possible for an untouched draft with no version history.",
+      "confirmPublish": "Publish this document? It will become the current, citable version for its linked machine.",
+      "publishSuccess": "Document published successfully",
+      "publishFailed": "Failed to publish document",
+      "confirmArchive": "Archive this document? It will become read-only, but its history is preserved.",
+      "archiveSuccess": "Document archived successfully",
+      "archiveFailed": "Failed to archive document",
+      "confirmReplace": "Replace \"{fileName}\" with a new file? The current version will be marked as superseded and kept for history.",
+      "replaceSuccess": "Document replaced successfully",
+      "replaceFailed": "Failed to replace document",
+      "historyLoadFailed": "Failed to load version history"
     }
   },
   "maintenancePlans": {
@@ -1878,7 +1994,9 @@
       "documentation": "Documentation",
       "maintenanceCode": "Maintenance Code",
       "frequencyLabel": "Frequency Label",
-      "planCode": "Plan Code"
+      "planCode": "Plan Code",
+      "machineHealth": "Machine Health",
+      "status": "Status"
     },
     "custom": "Custom",
     "empty": {
@@ -1958,6 +2076,10 @@
       "paused": "Paused",
       "archived": "Archived",
       "completed": "Completed"
+    },
+    "filters": {
+      "allStatuses": "All statuses",
+      "allTypes": "All types"
     }
   },
   "stocks": {
@@ -2100,6 +2222,7 @@
     "completedTasks": "Completed Tasks",
     "pendingTasks": "Pending Tasks",
     "taskStatus": "Task Status",
+    "completionRate": "Completion Rate",
     "table": {
       "planId": "Plan ID",
       "machine": "Machine",
@@ -2205,7 +2328,6 @@
       "next": "Next",
       "saveReport": "Save report",
       "addPart": "Add spare part",
-      "approve": "Approve report",
       "return": "Return report",
       "intervene": "Start intervention",
       "start": "Start intervention",
@@ -2294,7 +2416,8 @@
     },
     "messages": {
       "confirmClose": "Close this work order? This action requires a complete report.",
-      "completed": "This intervention is complete."
+      "completed": "This intervention is complete.",
+      "awaitingValidation": "This work is complete and awaiting independent validation by another authorized user."
     }
   },
   "miniAvatar": {
@@ -2346,5 +2469,315 @@
     "clear": "Clear",
     "loading": "Loading...",
     "empty": "No notifications"
+  },
+  "knowledgeBase": {
+    "title": "Knowledge Base",
+    "heading": "Maintenance Knowledge Base",
+    "description": "Troubleshooting articles, procedures, fault-code explanations, lubrication instructions, and safety documents.",
+    "readerIntro": "Browse published troubleshooting articles, procedures, and safety documents relevant to your machines.",
+    "searchPlaceholder": "Search articles by title, tag, or fault code...",
+    "filterAllCategories": "All categories",
+    "filterAllStatuses": "All statuses",
+    "categories": {
+      "troubleshooting": "Troubleshooting",
+      "procedure": "Procedure",
+      "fault_code": "Fault Code",
+      "lubrication": "Lubrication",
+      "safety": "Safety"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "table": {
+      "revision": "Revision",
+      "category": "Category",
+      "machine": "Machine",
+      "faultCodes": "Fault codes"
+    },
+    "form": {
+      "articleId": "Article ID",
+      "category": "Category",
+      "title": "Title",
+      "summary": "Summary",
+      "content": "Content",
+      "machineType": "Machine type",
+      "machine": "Machine",
+      "maintenancePlan": "Maintenance plan",
+      "tags": "Tags",
+      "faultCodes": "Fault codes",
+      "errorCodes": "Error codes"
+    },
+    "placeholders": {
+      "articleId": "e.g. KB-BEARING-001",
+      "title": "Article title",
+      "summary": "Short summary shown in listings",
+      "content": "Full article content",
+      "none": "None",
+      "tags": "Comma-separated tags",
+      "faultCodes": "Comma-separated fault codes",
+      "errorCodes": "Comma-separated error codes"
+    },
+    "actions": {
+      "add": "New Article",
+      "view": "View",
+      "history": "Version history",
+      "edit": "Edit",
+      "publish": "Publish",
+      "revise": "Revise",
+      "archive": "Archive",
+      "delete": "Delete"
+    },
+    "modal": {
+      "createTitle": "New Knowledge Article",
+      "editTitle": "Edit Knowledge Article",
+      "reviseTitle": "Revise Published Article",
+      "reviseHint": "This creates a new draft version. The currently published article stays unchanged until you publish this revision.",
+      "historyTitle": "Version History"
+    },
+    "buttons": {
+      "create": "Create",
+      "update": "Save Changes",
+      "revise": "Create Revision"
+    },
+    "history": {
+      "empty": "No version history available.",
+      "current": "current"
+    },
+    "viewer": {
+      "title": "Article"
+    },
+    "empty": {
+      "search": "No articles match your search.",
+      "default": "No knowledge base articles yet."
+    },
+    "notifications": {
+      "loadFailed": "Failed to load knowledge base articles.",
+      "saveFailed": "Failed to save the article.",
+      "created": "Article created.",
+      "updated": "Article updated.",
+      "revised": "Revision created.",
+      "deleted": "Article deleted.",
+      "deleteFailed": "Failed to delete the article.",
+      "articleIdRequired": "Article ID is required.",
+      "titleRequired": "Title is required.",
+      "contentRequired": "Content is required.",
+      "confirmPublish": "Publish this article?",
+      "publishSuccess": "Article published.",
+      "publishFailed": "Failed to publish the article.",
+      "confirmArchive": "Archive this article?",
+      "archiveSuccess": "Article archived.",
+      "archiveFailed": "Failed to archive the article.",
+      "confirmDelete": "Delete this article? This cannot be undone.",
+      "historyLoadFailed": "Failed to load version history."
+    },
+    "suggestions": {
+      "title": "Related Knowledge"
+    }
+  },
+  "aiAssistant": {
+    "title": "AI Assistant (Advisory Only)",
+    "disclaimer": "Advisory only: this assistant only suggests possibilities based on available data. It never changes a work order, stock, or machine status -- always verify before acting.",
+    "questionPlaceholder": "Describe the symptom or ask a troubleshooting question...",
+    "ask": "Ask",
+    "asking": "Asking...",
+    "requestFailed": "Could not reach the AI assistant. Please try again.",
+    "statusDisabled": "The AI assistant is not enabled in this environment.",
+    "statusRateLimited": "You have reached the request limit for the AI assistant. Please try again later.",
+    "statusUnavailable": "The AI assistant could not generate a response right now. Please try again or continue manually.",
+    "knownFacts": "Known facts",
+    "probableCauses": "Probable causes",
+    "recommendedChecks": "Recommended checks",
+    "safetyWarnings": "Safety warnings",
+    "uncertainty": "Uncertainty"
+  },
+  "deviceMonitoring": {
+    "title": "Devices",
+    "heading": "Machine-Monitoring Devices",
+    "description": "Register OpenPLC gateways or simulators to stream live telemetry, heartbeats, and fault events for a machine.",
+    "empty": "No devices registered yet.",
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "deviceTypes": {
+      "openplc": "OpenPLC",
+      "simulator": "Simulator",
+      "gateway": "Gateway"
+    },
+    "table": {
+      "liveStatus": "Live Status"
+    },
+    "lastSignal": "Last signal",
+    "lastSignalValue": "{value} ago",
+    "never": "never",
+    "activeAlarms": "Active alarms",
+    "form": {
+      "deviceId": "Device ID",
+      "deviceType": "Device Type",
+      "machine": "Machine",
+      "label": "Label",
+      "heartbeatInterval": "Heartbeat Interval (seconds)"
+    },
+    "placeholders": {
+      "deviceId": "e.g. PLC-LINE1-01",
+      "selectMachine": "Select a machine",
+      "label": "Friendly name shown to Admins"
+    },
+    "actions": {
+      "register": "Register Device",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "rotateKey": "Rotate API Key",
+      "delete": "Delete"
+    },
+    "modal": {
+      "registerTitle": "Register a New Device",
+      "apiKeyTitle": "Device API Key",
+      "apiKeyWarning": "This key is shown only once. Copy it now and store it securely — it cannot be retrieved again."
+    },
+    "buttons": {
+      "register": "Register",
+      "doneCopying": "I've Copied the Key"
+    },
+    "notifications": {
+      "loadFailed": "Failed to load devices.",
+      "saveFailed": "Failed to save the device.",
+      "registerValidation": "Device ID and machine are required.",
+      "registered": "Device registered.",
+      "activated": "Device activated.",
+      "deactivated": "Device deactivated.",
+      "confirmRotate": "Rotate this device's API key? The old key will stop working immediately.",
+      "rotated": "API key rotated.",
+      "confirmDelete": "Delete this device registration? This cannot be undone.",
+      "deleted": "Device deleted.",
+      "deleteFailed": "Failed to delete the device."
+    },
+    "suggestions": {}
+  },
+  "predictiveMaintenance": {
+    "table": {
+      "health": "Health"
+    },
+    "panelTitle": "Predictive Health",
+    "disclaimer": "Advisory only: these are model estimates based on historical data, not verified diagnoses. Always confirm with a technician before acting.",
+    "measuredFacts": "Measured Facts",
+    "modelOutput": "Model Output",
+    "uncertainty": "Uncertainty",
+    "confidence": "Confidence",
+    "healthScoreValue": "{value}%",
+    "riskLevelTooltip": "Risk level: {level}",
+    "riskLevels": {
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk",
+      "critical": "Critical risk",
+      "insufficient_data": "Insufficient data"
+    },
+    "modelTypes": {
+      "zscore": "Z-Score Baseline",
+      "isolation_forest": "Isolation Forest",
+      "dbscan": "DBSCAN Density Clustering",
+      "autoencoder": "Autoencoder (Reconstruction Error)"
+    }
+  },
+  "reports": {
+    "pageTitle": "Reports",
+    "heading": "Reports",
+    "description": "Generate role-scoped PDF, Excel, and CSV exports from existing maintenance, stock, and predictive data.",
+    "builder": {
+      "title": "Generate a report",
+      "type": "Report type",
+      "format": "Format",
+      "machine": "Machine",
+      "allAccessibleMachines": "All accessible machines",
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "generate": "Generate report",
+      "generating": "Generating..."
+    },
+    "charts": {
+      "byType": "Reports by type",
+      "byStatus": "Reports by status"
+    },
+    "history": {
+      "title": "Generated reports",
+      "scope": "Scope",
+      "scopeAll": "All reports",
+      "scopeMine": "My reports",
+      "refresh": "Refresh",
+      "download": "Download",
+      "table": {
+        "type": "Type",
+        "format": "Format",
+        "status": "Status",
+        "rows": "Rows",
+        "requested": "Requested",
+        "actions": "Actions"
+      }
+    },
+    "schedules": {
+      "title": "Scheduled reports",
+      "frequency": "Frequency",
+      "rangeDays": "Rolling window (days)",
+      "create": "Create schedule",
+      "creating": "Creating...",
+      "nextRun": "Next run",
+      "active": "Active",
+      "empty": "No scheduled reports.",
+      "activeLabel": "Active",
+      "pausedLabel": "Paused"
+    },
+    "types": {
+      "machine_history": "Machine history",
+      "preventive_compliance": "Preventive compliance",
+      "corrective_downtime": "Corrective downtime",
+      "mttr_mtbf_trends": "MTTR / MTBF trends",
+      "stock_movements": "Stock movements",
+      "maintenance_costs": "Maintenance costs",
+      "technician_workload": "Technician workload",
+      "fault_frequency": "Fault frequency",
+      "audit_history": "Audit history",
+      "predictive_risk": "Predictive risk"
+    },
+    "formats": {
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV"
+    },
+    "frequencies": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "empty": {
+      "default": "No data available."
+    },
+    "notifications": {
+      "loadFailed": "Failed to load reports.",
+      "scheduleLoadFailed": "Failed to load scheduled reports.",
+      "machineRequired": "Please select a machine.",
+      "requested": "Report requested. It will appear below once generated.",
+      "requestFailed": "Failed to request report.",
+      "downloadFailed": "Failed to download report.",
+      "confirmDelete": "Delete this report?",
+      "deleted": "Report deleted.",
+      "deleteFailed": "Failed to delete report.",
+      "scheduleCreated": "Schedule created.",
+      "scheduleCreateFailed": "Failed to create schedule.",
+      "scheduleUpdateFailed": "Failed to update schedule.",
+      "confirmScheduleDelete": "Delete this schedule?",
+      "scheduleDeleted": "Schedule deleted.",
+      "scheduleDeleteFailed": "Failed to delete schedule."
+    }
   }
 }

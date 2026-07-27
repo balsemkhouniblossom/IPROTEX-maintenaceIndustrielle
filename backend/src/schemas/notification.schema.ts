@@ -19,6 +19,9 @@ export enum NotificationType {
   LUBRICATION_DUE = 'lubrication_due',
   SENSOR_ALERT = 'sensor_alert',
   DUPLICATE_WORK_ORDER = 'duplicate_work_order',
+  DEVICE_FAULT = 'device_fault',
+  DEVICE_OFFLINE = 'device_offline',
+  REPORT_READY = 'report_ready',
 }
 
 /**

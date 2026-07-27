@@ -1133,7 +1133,6 @@ describe('AuthService', () => {
       phone: '+21612345678',
       role: Role.TECHNICIAN,
       department: 'Maintenance',
-      position: 'Shift Lead',
       language: 'fr',
       profile_completed: true,
       is_verified: true,
@@ -1150,7 +1149,6 @@ describe('AuthService', () => {
         phone: '+21612345678',
         role: Role.TECHNICIAN,
         department: 'Maintenance',
-        position: 'Shift Lead',
         language: 'fr',
       },
     );
@@ -1162,7 +1160,6 @@ describe('AuthService', () => {
           phone: '+21612345678',
           role: Role.TECHNICIAN,
           department: 'Maintenance',
-          position: 'Shift Lead',
           language: 'fr',
           profile_completed: true,
           approval_status: ApprovalStatus.PENDING,
@@ -1179,7 +1176,6 @@ describe('AuthService', () => {
       'phone',
       'role',
       'department',
-      'position',
       'language',
     ]);
     expect(result.user.profile_completed).toBe(true);
@@ -1415,6 +1411,62 @@ describe('AuthService', () => {
 
     expect(bcrypt.compare).not.toHaveBeenCalled();
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(jwtService.sign).not.toHaveBeenCalled();
+  });
+
+  it('restores a session for an incomplete Google profile without granting full account access', async () => {
+    const incompleteGoogleUser = createUserDocument({
+      google_id: 'google-incomplete',
+      profile_completed: false,
+      approval_status: ApprovalStatus.PENDING,
+      is_active: false,
+      is_verified: true,
+      refresh_token_hash: 'stored-refresh-hash',
+    });
+    jwtService.verify.mockReturnValue({
+      sub: incompleteGoogleUser._id.toString(),
+      type: 'refresh',
+    });
+    jwtService.sign
+      .mockReturnValueOnce('new-access-token')
+      .mockReturnValueOnce('new-refresh-token');
+    userModel.findById.mockReturnValue(createQuery(incompleteGoogleUser));
+    userModel.findOneAndUpdate.mockReturnValue(createQuery(incompleteGoogleUser));
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+    (bcrypt.hash as jest.Mock).mockResolvedValue('new-refresh-hash');
+
+    const result = await service.refreshToken('old-refresh-token');
+
+    expect(result.access_token).toBe('new-access-token');
+    expect(result.refresh_token).toBe('new-refresh-token');
+    expect(result.user.profile_completed).toBe(false);
+    expect(result.user.approval_status).toBe(ApprovalStatus.PENDING);
+    expect(result.user.is_active).toBe(false);
+  });
+
+  it('still blocks a rejected account from restoring a session even with an incomplete profile', async () => {
+    jest.clearAllMocks();
+    const rejectedIncompleteUser = createUserDocument({
+      google_id: 'google-rejected',
+      profile_completed: false,
+      approval_status: ApprovalStatus.REJECTED,
+      is_active: false,
+      is_verified: true,
+      refresh_token_hash: 'stored-refresh-hash',
+    });
+    jwtService.verify.mockReturnValue({
+      sub: rejectedIncompleteUser._id.toString(),
+      type: 'refresh',
+    });
+    userModel.findById.mockReturnValue(createQuery(rejectedIncompleteUser));
+
+    await expectRejectsWithCode(
+      service.refreshToken('refresh-token'),
+      ForbiddenException,
+      'ACCOUNT_REJECTED',
+    );
+
+    expect(bcrypt.compare).not.toHaveBeenCalled();
     expect(jwtService.sign).not.toHaveBeenCalled();
   });
 

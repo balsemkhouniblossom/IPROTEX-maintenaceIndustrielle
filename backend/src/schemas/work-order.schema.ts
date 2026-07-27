@@ -3,6 +3,43 @@ import { Document, Types } from 'mongoose';
 
 export type WorkOrderDocument = WorkOrder & Document;
 
+export type WorkOrderLifecycleAction =
+  | 'closed_for_validation'
+  | 'validated'
+  | 'rejected'
+  | 'returned';
+
+/**
+ * Mirrors `MaintenancePlanLifecycleEntry` (maintenance-plan.schema.ts) so the
+ * same shape can be flattened by the shared Audit History report. Unlike
+ * MaintenancePlan, WorkOrder.status is a free string rather than an enum, so
+ * from_status/to_status stay plain strings here.
+ */
+@Schema({ _id: false })
+export class WorkOrderLifecycleEntry {
+  @Prop({ required: true })
+  action: WorkOrderLifecycleAction;
+
+  @Prop()
+  from_status?: string;
+
+  @Prop({ required: true })
+  to_status: string;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  actor_user_id?: Types.ObjectId;
+
+  @Prop()
+  reason?: string;
+
+  @Prop({ type: Date, default: Date.now, required: true })
+  at: Date;
+}
+
+const WorkOrderLifecycleEntrySchema = SchemaFactory.createForClass(
+  WorkOrderLifecycleEntry,
+);
+
 @Schema()
 export class WorkOrder {
   @Prop({ required: true, unique: true })
@@ -70,6 +107,15 @@ export class WorkOrder {
 
   @Prop({ type: Date })
   rescheduled_at?: Date;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  validated_by?: Types.ObjectId;
+
+  @Prop({ type: Date })
+  validated_at?: Date;
+
+  @Prop({ type: [WorkOrderLifecycleEntrySchema], default: [] })
+  lifecycle_history: WorkOrderLifecycleEntry[];
 }
 
 export const WorkOrderSchema = SchemaFactory.createForClass(WorkOrder);
@@ -83,3 +129,6 @@ WorkOrderSchema.index({
   type_maintenance: 1,
   due_date: 1,
 });
+// Supports the Admin work orders list's status+priority filters and
+// combined-status/date sort.
+WorkOrderSchema.index({ status: 1, priorite: 1, date_created: -1 });

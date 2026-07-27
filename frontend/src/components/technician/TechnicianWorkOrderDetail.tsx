@@ -6,7 +6,13 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Modal } from "@/components/Modal";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
+import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
+import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
+import MachineHealthPanel from "@/components/predictive-maintenance/MachineHealthPanel";
+import LiveStatusBadge from "@/components/device-monitoring/LiveStatusBadge";
+import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
 import { apiService } from "@/services/api";
+import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
 
 type Detail = {
   workOrder: any;
@@ -41,6 +47,7 @@ export default function TechnicianWorkOrderDetail({ id }: { id: string }) {
   });
   const [partId, setPartId] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const { statusByMachine, subscribeToMachine } = useLiveMonitoring();
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -71,6 +78,10 @@ export default function TechnicianWorkOrderDetail({ id }: { id: string }) {
       setSaving(true);
       setError("");
       await action();
+      // Every action here (start/complete/report update) changes this
+      // work order's status server-side — the Admin Work Orders list has
+      // no other way to learn its snapshot is now stale.
+      invalidateList(LIST_EVENTS.workOrders);
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message || t("errors.update"));
@@ -165,8 +176,33 @@ export default function TechnicianWorkOrderDetail({ id }: { id: string }) {
               </div>
             </dl>
           </section>
+          <KnowledgeSuggestions
+            machineId={machine?._id}
+            faultCode={wo.code_panne}
+            maintenancePlanId={
+              wo.plan_id && typeof wo.plan_id === "object" ? wo.plan_id._id : wo.plan_id
+            }
+          />
+
+          <AiAssistantPanel
+            machineId={machine?._id}
+            workOrderId={wo._id}
+            faultCode={wo.code_panne}
+          />
+
+          <MachineHealthPanel machineId={machine?._id} />
+
           <section className="panel">
-            <h2 className="mb-3 text-lg font-semibold">{t("machine.title")}</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">{t("machine.title")}</h2>
+              {machine?._id ? (
+                <LiveStatusBadge
+                  machineId={machine._id}
+                  status={statusByMachine[machine._id]}
+                  onSubscribe={subscribeToMachine}
+                />
+              ) : null}
+            </div>
             <dl className="grid gap-3 text-sm md:grid-cols-3">
               {[
                 "machine_id",
@@ -389,17 +425,9 @@ export default function TechnicianWorkOrderDetail({ id }: { id: string }) {
                 "returned",
               ].includes(status) && (
                 <>
-                  <button
-                    disabled={saving}
-                    className="rounded-lg bg-emerald-700 px-4 py-2 text-white"
-                    onClick={() =>
-                      void act(() =>
-                        apiService.reviewTechnicianWorkOrder(id, "approve"),
-                      )
-                    }
-                  >
-                    {t("actions.approve")}
-                  </button>
+                  <span className="rounded-lg bg-slate-100 px-4 py-2 italic text-slate-600">
+                    {t("messages.awaitingValidation")}
+                  </span>
                   <button
                     disabled={saving}
                     className="rounded-lg bg-amber-700 px-4 py-2 text-white"

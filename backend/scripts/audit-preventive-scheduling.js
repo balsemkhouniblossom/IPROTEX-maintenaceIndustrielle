@@ -10,6 +10,15 @@ const mongoUri =
 const workOrderSchema = new mongoose.Schema({}, { strict: false });
 const WorkOrder = mongoose.model('WorkOrder', workOrderSchema, 'workorders');
 
+// Mirrors backend/src/common/maintenance-type.ts's isCorrectiveMaintenanceType
+// — this plain-JS script (no ts-node build step) can't import the shared TS
+// helper, so the same "is NOT corrective" rule (covers preventive,
+// lubrication, inspection, and any custom scheduled-maintenance label) is
+// duplicated here inline.
+function isCorrectiveType(type) {
+  return /correct/i.test(String(type || ''));
+}
+
 function hasRealDueDate(order) {
   return Boolean(order.due_date || order.scheduled_date || order.date_start);
 }
@@ -20,8 +29,7 @@ function hasHistoricalCompletion(order) {
 }
 
 function classify(order) {
-  const type = String(order.type_maintenance || '').toLowerCase();
-  if (!type.includes('prevent')) {
+  if (isCorrectiveType(order.type_maintenance)) {
     return 'Needs manual review';
   }
 
@@ -58,7 +66,7 @@ async function main() {
   }
 
   const rows = await WorkOrder.find({
-    type_maintenance: /prevent/i,
+    type_maintenance: { $not: /correct/i },
   })
     .sort({ date_created: -1 })
     .lean();
