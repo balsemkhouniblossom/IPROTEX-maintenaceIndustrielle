@@ -52,15 +52,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const requestId = getRequestId(request);
     const pathname = getRequestPathname(request);
-    this.logger.error(
-      `${buildRequestLogMessage({
-        requestId,
-        method: request.method,
-        pathname,
-        status,
-      })} message=${messageText}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    const logMessage = `${buildRequestLogMessage({
+      requestId,
+      method: request.method,
+      pathname,
+      status,
+    })} message=${messageText}`;
+
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(
+        logMessage,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    } else {
+      this.logger.warn(logMessage);
+    }
 
     response.status(status).json({
       statusCode: status,
