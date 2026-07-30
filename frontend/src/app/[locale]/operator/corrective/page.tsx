@@ -111,7 +111,6 @@ function uniqueId(prefix: string): string {
 
 type CorrectiveResult = "solved" | "notSolved" | "technicianRequired" | "custom";
 const REPORTS_STORAGE_KEY = "operator_generated_reports_history";
-const CORRECTIVE_DRAFTS_STORAGE_PREFIX = "operator_corrective_drafts";
 
 function correctiveReportElementId(reportId: string): string {
   return `corrective-report-${reportId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
@@ -152,21 +151,6 @@ function isPhotoNearReport(document: ReportPhotoDocument, reportDate: string): b
   return Math.abs(documentTime - reportTime) <= 10 * 60 * 1000;
 }
 
-interface CorrectiveDraft {
-  id: string;
-  title: string;
-  updatedAt: string;
-  selectedCategory: string;
-  selectedMachine: string;
-  selectedPanne: string;
-  selectedSymptoms: Record<string, boolean>;
-  checkedActions: Record<string, boolean>;
-  customActions: string[];
-  result: CorrectiveResult;
-  customResult: string;
-  comments: string;
-}
-
 function OperatorCorrectivePageContent() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
@@ -205,12 +189,6 @@ function OperatorCorrectivePageContent() {
   const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
   const [selectedGeneratedReport, setSelectedGeneratedReport] = useState<GeneratedReportRow | null>(null);
   const [highlightedReportId, setHighlightedReportId] = useState("");
-  const [drafts, setDrafts] = useState<CorrectiveDraft[]>([]);
-  const [selectedDraftId, setSelectedDraftId] = useState("");
-  const draftStorageKey = useMemo(
-    () => `${CORRECTIVE_DRAFTS_STORAGE_PREFIX}:${user?._id || "anonymous"}`,
-    [user?._id],
-  );
 
   const submitValidationMessage = useMemo(() => {
     if (!submitValidationReason) return "";
@@ -278,61 +256,6 @@ function OperatorCorrectivePageContent() {
       localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
-  }
-
-  function persistDrafts(nextDrafts: CorrectiveDraft[]): void {
-    setDrafts(nextDrafts);
-    localStorage.setItem(draftStorageKey, JSON.stringify(nextDrafts));
-  }
-
-  function saveCurrentAsDraft(): void {
-    const machineLabel = machines.find((item) => item._id === selectedMachine)?.machine_id || t("machine");
-    const draftId = selectedDraftId || uniqueId("DRAFT-COR");
-    const nextDraft: CorrectiveDraft = {
-      id: draftId,
-      title: machineLabel,
-      updatedAt: new Date().toISOString(),
-      selectedCategory,
-      selectedMachine,
-      selectedPanne,
-      selectedSymptoms,
-      checkedActions,
-      customActions,
-      result,
-      customResult,
-      comments,
-    };
-
-    const nextDrafts = selectedDraftId
-      ? drafts.map((item) => (item.id === selectedDraftId ? nextDraft : item))
-      : [nextDraft, ...drafts];
-
-    persistDrafts(nextDrafts);
-    setSelectedDraftId(draftId);
-    showNotification("success", t("notifications.draftSaved"));
-  }
-
-  function openDraft(draft: CorrectiveDraft): void {
-    setSelectedDraftId(draft.id);
-    setSelectedCategory(draft.selectedCategory);
-    setSelectedMachine(draft.selectedMachine);
-    setSelectedPanne(draft.selectedPanne);
-    setSelectedSymptoms(draft.selectedSymptoms);
-    setCheckedActions(draft.checkedActions);
-    setCustomActions(draft.customActions);
-    setResult(draft.result);
-    setCustomResult(draft.customResult);
-    setComments(draft.comments);
-    showNotification("success", t("notifications.draftLoaded"));
-  }
-
-  function deleteDraft(draftId: string): void {
-    const nextDrafts = drafts.filter((item) => item.id !== draftId);
-    persistDrafts(nextDrafts);
-    if (selectedDraftId === draftId) {
-      setSelectedDraftId("");
-    }
-    showNotification("success", t("notifications.draftDeleted"));
   }
 
   useEffect(() => {
@@ -436,24 +359,6 @@ function OperatorCorrectivePageContent() {
     }
   }, []);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(draftStorageKey);
-      if (!saved) {
-        setDrafts([]);
-        return;
-      }
-      const parsed = JSON.parse(saved) as CorrectiveDraft[];
-      if (Array.isArray(parsed)) {
-        setDrafts(parsed);
-      } else {
-        setDrafts([]);
-      }
-    } catch {
-      setDrafts([]);
-    }
-  }, [draftStorageKey]);
-
   const machinesForCategory = useMemo(
     () => machines.filter((machine) => refId(machine.type_id) === selectedCategory),
     [machines, selectedCategory],
@@ -497,11 +402,6 @@ function OperatorCorrectivePageContent() {
   const selectedMachineLabel = useMemo(
     () => machines.find((item) => item._id === selectedMachine)?.machine_id || tCommon("notAvailable"),
     [machines, selectedMachine, tCommon],
-  );
-
-  const selectedCategoryLabel = useMemo(
-    () => machineTypes.find((item) => item._id === selectedCategory)?.name || tCommon("notAvailable"),
-    [machineTypes, selectedCategory, tCommon],
   );
 
   const selectedFaultSolutions = useMemo(
@@ -746,7 +646,7 @@ function OperatorCorrectivePageContent() {
     return normalizeReportPhotoDocument(response.data as ReportPhotoDocument);
   }
 
-  async function submitCorrectiveMaintenance(fromDraftId?: string): Promise<void> {
+  async function submitCorrectiveMaintenance(): Promise<void> {
     if (!user?._id || !selectedMachine) {
       setSubmitValidationReason("missing-user-machine-or-fault");
       showNotification("error", t("notifications.validationFailed"));
@@ -815,12 +715,6 @@ function OperatorCorrectivePageContent() {
       };
       addGeneratedReport(newReport);
       setHighlightedReportId(newReport.id);
-
-      if (fromDraftId) {
-        const nextDrafts = drafts.filter((item) => item.id !== fromDraftId);
-        persistDrafts(nextDrafts);
-        setSelectedDraftId("");
-      }
 
       showNotification("success", t("notifications.submitSuccess"));
       resetCorrectiveState();
@@ -1048,7 +942,7 @@ function OperatorCorrectivePageContent() {
                   ) : null}
 
                   {allTasks.length > 0 ? (
-                    <div className="mt-4 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                    <div className="mt-4 max-h-65 space-y-2 overflow-y-auto pr-1">
                       {allTasks.slice(0, 6).map((task, index) => (
                         <label
                           key={task}

@@ -206,12 +206,12 @@ body {
   color: inherit;
   border-radius: 0.25rem;
   padding: 0 0.1rem;
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, #f59e0b 70%, transparent);
+  box-shadow: inset 0 -1px 0 rgba(245, 158, 11, 0.70);
 }
 
 html[data-theme='dark'] .search-highlight {
   background-color: rgba(251, 191, 36, 0.35);
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, #fbbf24 75%, transparent);
+  box-shadow: inset 0 -1px 0 rgba(251, 191, 36, 0.75);
 }
 
 html {
@@ -296,7 +296,7 @@ textarea {
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  background: var(--surface);
   color: var(--text-primary);
   transition: all 0.2s ease;
 }
@@ -312,7 +312,7 @@ textarea {
 .auth-input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.22);
 }
 
 .auth-icon-button {
@@ -386,15 +386,15 @@ textarea {
 
 .operator-frost-card {
   border: 1px solid var(--border-soft);
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  background: rgba(255, 255, 255, 0.72);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  box-shadow: 0 12px 28px color-mix(in srgb, #0f172a 12%, transparent);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
 }
 
 html[data-theme='dark'] .operator-frost-card {
   border-color: rgba(14, 116, 144, 0.36);
-  background: color-mix(in srgb, #0f172a 44%, transparent);
+  background: rgba(15, 23, 42, 0.44);
   box-shadow: 0 18px 34px rgba(2, 10, 24, 0.42);
 }
 
@@ -564,7 +564,6 @@ html[data-theme='dark'] .operator-frost-card {
     linear-gradient(135deg, rgba(239, 246, 255, 0.94), rgba(236, 253, 245, 0.78)),
     var(--surface);
   border-color: var(--border);
-  border-color: color-mix(in srgb, var(--primary) 20%, var(--border));
   color: var(--text-primary);
 }
 
@@ -673,35 +672,25 @@ html[data-theme='dark'] .technician-order-link:hover {
 
 .work-orders-toast-success {
   background: var(--surface);
-  background: color-mix(in srgb, #10b981 15%, var(--surface));
   border-color: var(--border);
-  border-color: color-mix(in srgb, #10b981 32%, var(--border));
   color: #047857;
-  color: color-mix(in srgb, #047857 86%, var(--text-primary));
 }
 
 .work-orders-toast-error {
   background: var(--surface);
-  background: color-mix(in srgb, #ef4444 14%, var(--surface));
   border-color: var(--border);
-  border-color: color-mix(in srgb, #ef4444 34%, var(--border));
   color: #b91c1c;
-  color: color-mix(in srgb, #b91c1c 86%, var(--text-primary));
 }
 
 html[data-theme='dark'] .work-orders-toast-success {
   background: var(--surface);
-  background: color-mix(in srgb, #10b981 18%, var(--surface));
   border-color: var(--border);
-  border-color: color-mix(in srgb, #10b981 42%, var(--border));
   color: #bbf7d0;
 }
 
 html[data-theme='dark'] .work-orders-toast-error {
   background: var(--surface);
-  background: color-mix(in srgb, #ef4444 18%, var(--surface));
   border-color: var(--border);
-  border-color: color-mix(in srgb, #ef4444 42%, var(--border));
   color: #fecaca;
 }
 
@@ -745,7 +734,7 @@ html[data-theme='dark'] .work-orders-toast-error {
 .work-orders-theme select:focus,
 .work-orders-theme textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.22);
 }
 
 .work-orders-theme .input-field::placeholder,
@@ -756,12 +745,10 @@ html[data-theme='dark'] .work-orders-toast-error {
 
 html[data-theme='dark'] .work-orders-theme .border-green-200 {
   border-color: var(--border) !important;
-  border-color: color-mix(in srgb, #10b981 42%, var(--border)) !important;
 }
 
 html[data-theme='dark'] .work-orders-theme .border-red-200 {
   border-color: var(--border) !important;
-  border-color: color-mix(in srgb, #ef4444 42%, var(--border)) !important;
 }
 
 html[data-theme='dark'] .work-orders-theme .bg-green-100 {
@@ -843,7 +830,7 @@ html[data-theme='dark'] .work-orders-theme .text-red-800 {
 
 [data-theme='dark'] .operator-dashboard-theme .from-white {
   --tw-gradient-from: var(--surface) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: color-mix(in srgb, var(--surface) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: transparent var(--tw-gradient-to-position) !important;
 }
 
 [data-theme='dark'] .operator-dashboard-theme .via-slate-50 {
@@ -851,7 +838,7 @@ html[data-theme='dark'] .work-orders-theme .text-red-800 {
 }
 
 [data-theme='dark'] .operator-dashboard-theme .to-amber-50 {
-  --tw-gradient-to: color-mix(in srgb, #f59e0b 14%, var(--surface-secondary)) var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #2d2a1f var(--tw-gradient-to-position) !important;
 }
 
 [data-theme='dark'] .operator-dashboard-theme .bg-blue-50 {
@@ -1932,10 +1919,9 @@ a {
 
 .mini-avatar-assistant {
   border-color: var(--border);
-  border-color: color-mix(in srgb, var(--border) 72%, #0891b2 28%);
   background:
     radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.10), transparent 42%),
-    linear-gradient(135deg, color-mix(in srgb, var(--surface-elevated) 96%, #ecfeff 4%), var(--surface-elevated));
+    linear-gradient(135deg, var(--surface-elevated), var(--surface-elevated));
   box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
@@ -1956,7 +1942,7 @@ html[data-theme='dark'] .mini-avatar-assistant {
   border-color: rgba(34, 211, 238, 0.18);
   background:
     radial-gradient(circle at 0% 0%, rgba(8, 145, 178, 0.12), transparent 44%),
-    linear-gradient(135deg, color-mix(in srgb, var(--surface-elevated) 95%, #0e7490 5%), var(--surface-elevated));
+    linear-gradient(135deg, var(--surface-elevated), var(--surface-elevated));
   box-shadow: 0 16px 40px rgba(2, 8, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -2263,7 +2249,6 @@ textarea,
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   border-radius: var(--radius);
-  scrollbar-gutter: stable;
 }
 
 .users-table-scroll:focus-visible {
@@ -2364,7 +2349,6 @@ textarea,
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   border-radius: var(--radius);
-  scrollbar-gutter: stable;
 }
 
 .wide-table-scroll:focus-visible {
