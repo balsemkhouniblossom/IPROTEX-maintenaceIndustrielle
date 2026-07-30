@@ -359,6 +359,7 @@ function parseCorsOrigins(
   value: string | undefined,
   fallbackOrigins: CorsOrigin[],
   nodeEnv: RuntimeMode,
+  frontendBaseUrl?: string,
 ): CorsOrigin[] {
   if (!value || !value.trim()) {
     if (nodeEnv === 'production') {
@@ -390,7 +391,26 @@ function parseCorsOrigins(
     );
   }
 
-  return Array.from(new Set(origins));
+  const uniqueOrigins = Array.from(new Set(origins));
+
+  if (nodeEnv === 'production') {
+    if (uniqueOrigins.length !== 1) {
+      throw new Error(
+        'CORS_ORIGINS must contain exactly one Vercel production frontend origin in production',
+      );
+    }
+
+    const frontendOrigin = frontendBaseUrl
+      ? new URL(frontendBaseUrl).origin
+      : undefined;
+    if (frontendOrigin && uniqueOrigins[0] !== frontendOrigin) {
+      throw new Error(
+        'CORS_ORIGINS must exactly match FRONTEND_BASE_URL in production',
+      );
+    }
+  }
+
+  return uniqueOrigins;
 }
 
 export function validateEnvironment(): EnvValidationResult {
@@ -504,6 +524,7 @@ export function validateEnvironment(): EnvValidationResult {
     configuredCorsOrigins,
     buildCorsFallbackOrigins(frontendBaseUrl, backendUrl),
     nodeEnv,
+    frontendBaseUrl,
   );
 
   const emailVerificationSecret =

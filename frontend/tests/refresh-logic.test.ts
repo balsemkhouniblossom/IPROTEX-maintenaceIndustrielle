@@ -5,14 +5,17 @@ import { join } from "node:path";
 import {
   getLoginRedirectForAuthFailure,
   getStableAuthFailureCode,
+  isConfirmedRefreshAuthFailure,
   isRefreshTokenErrorCode,
 } from "../src/services/authErrors.ts";
 import {
   clearAuthSession,
   getAuthSessionPersistence,
+  getStoredAuthSession,
   saveAuthSession,
   updateStoredTokens,
 } from "../src/services/authStorage.ts";
+import { getApiBaseUrl } from "../src/config/api-base-url.ts";
 import { parseLocalLoginSession } from "../src/services/localLogin.ts";
 
 const safeUser = {
@@ -44,6 +47,36 @@ test("refresh error codes are recognized as terminal session failures", () => {
       code,
     );
   }
+});
+
+test("only confirmed refresh authentication failures are session-clearing failures", () => {
+  assert.equal(
+    isConfirmedRefreshAuthFailure({
+      response: { status: 401, data: { code: "REFRESH_TOKEN_EXPIRED" } },
+    }),
+    true,
+  );
+  assert.equal(
+    isConfirmedRefreshAuthFailure({
+      response: { status: 403, data: { code: "ACCOUNT_PENDING_APPROVAL" } },
+    }),
+    true,
+  );
+  assert.equal(
+    isConfirmedRefreshAuthFailure({
+      code: "ERR_NETWORK",
+      message: "Network Error",
+    }),
+    false,
+  );
+  assert.equal(
+    isConfirmedRefreshAuthFailure({ response: { status: 503, data: {} } }),
+    false,
+  );
+  assert.equal(
+    isConfirmedRefreshAuthFailure({ response: { status: 408, data: {} } }),
+    false,
+  );
 });
 
 test("account-state refresh failures map to safe login redirect states", () => {
@@ -150,6 +183,22 @@ test("remember-me sessions stay persistent across refresh recovery", () => {
   assert.equal(session.getItem("token"), null);
 });
 
+test("transient refresh failures can restore the cached session without clearing it", () => {
+  const local = createStorage();
+  const session = createStorage();
+  globalThis.window = {} as typeof window;
+  globalThis.localStorage = local as unknown as Storage;
+  globalThis.sessionStorage = session as unknown as Storage;
+
+  saveAuthSession("cached-access-token", undefined, safeUser, true);
+
+  assert.deepEqual(getStoredAuthSession(), {
+    token: "cached-access-token",
+    user: safeUser,
+    persistent: true,
+  });
+});
+
 test("session-only logins stay in sessionStorage across refresh recovery", () => {
   const local = createStorage();
   const session = createStorage();
@@ -173,8 +222,37 @@ test("API refresh uses credentials and CSRF instead of readable refresh-token bo
 
   assert.match(apiSource, /withCredentials:\s*true/);
   assert.match(apiSource, /X-CSRF-Token/);
+  assert.match(apiSource, /isConfirmedRefreshAuthFailure\(refreshError\)/);
   assert.doesNotMatch(apiSource, /getAuthItem\('refresh_token'\)/);
   assert.doesNotMatch(apiSource, /refresh_token:\s*refreshToken/);
+});
+
+test("production API base URL must be the HTTPS Render backend URL", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const mutableEnv = process.env as Record<string, string | undefined>;
+
+  mutableEnv.NODE_ENV = "production";
+  process.env.NEXT_PUBLIC_API_BASE_URL = "https://gmao-api.onrender.com/";
+  assert.equal(getApiBaseUrl(), "https://gmao-api.onrender.com");
+
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://gmao-api.onrender.com";
+  assert.throws(() => getApiBaseUrl(), /HTTPS Render API URL/);
+
+  process.env.NEXT_PUBLIC_API_BASE_URL = "https://api.example.com";
+  assert.throws(() => getApiBaseUrl(), /Render backend/);
+
+  if (originalNodeEnv === undefined) {
+    delete mutableEnv.NODE_ENV;
+  } else {
+    mutableEnv.NODE_ENV = originalNodeEnv;
+  }
+
+  if (originalApiBaseUrl === undefined) {
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  } else {
+    process.env.NEXT_PUBLIC_API_BASE_URL = originalApiBaseUrl;
+  }
 });
 
 test("unknown refresh errors fail closed to expired-session redirect", () => {

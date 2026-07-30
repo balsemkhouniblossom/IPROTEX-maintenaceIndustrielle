@@ -12,6 +12,27 @@ export function getAuthSessionPersistence() {
   return true;
 }
 
+export function getStoredAuthSession() {
+  if (typeof window === 'undefined') return null;
+
+  const persistent = getAuthSessionPersistence();
+  const source = persistent ? localStorage : sessionStorage;
+  const token = source.getItem('token');
+  const rawUser = source.getItem('user');
+
+  if (!token || !rawUser) return null;
+
+  try {
+    return {
+      token,
+      user: JSON.parse(rawUser) as unknown,
+      persistent,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function saveAuthSession(
   token: string,
   _refreshToken: string | undefined,

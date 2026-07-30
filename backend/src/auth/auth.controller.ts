@@ -340,7 +340,7 @@ export class AuthController {
       httpOnly: true,
       secure,
       sameSite,
-      path: '/auth',
+      path: '/',
       maxAge: this.getRefreshCookieMaxAgeMs(),
     });
     res.cookie(CSRF_COOKIE_NAME, csrfToken, {
@@ -358,7 +358,7 @@ export class AuthController {
   private clearRefreshCookies(res: Response): void {
     const secure = process.env.NODE_ENV === 'production';
     const sameSite = secure ? 'none' : 'lax';
-    const options = { secure, sameSite, path: '/auth' } as const;
+    const options = { secure, sameSite, path: '/' } as const;
 
     res.clearCookie(REFRESH_COOKIE_NAME, {
       ...options,

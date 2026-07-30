@@ -2,8 +2,13 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import api, { getCsrfHeaders } from '../services/api';
-import { clearAuthSession, getAuthSessionPersistence, saveAuthSession } from '../services/authStorage';
-import { getAuthErrorCode } from '../services/authErrors';
+import {
+  clearAuthSession,
+  getAuthSessionPersistence,
+  getStoredAuthSession,
+  saveAuthSession,
+} from '../services/authStorage';
+import { getAuthErrorCode, isConfirmedRefreshAuthFailure } from '../services/authErrors';
 import { getRegistrationErrorCode } from '../services/publicRegistration';
 import { parseLocalLoginSession } from '../services/localLogin';
 
@@ -86,9 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           session.refreshToken,
           getAuthSessionPersistence(),
         );
-      } catch {
+      } catch (error) {
         if (!active) return;
-        clearLocalSession();
+        if (isConfirmedRefreshAuthFailure(error)) {
+          clearLocalSession();
+          return;
+        }
+
+        const storedSession = getStoredAuthSession();
+        if (storedSession) {
+          setToken(storedSession.token);
+          setUser(storedSession.user as User);
+        }
       } finally {
         if (active) setIsLoading(false);
       }

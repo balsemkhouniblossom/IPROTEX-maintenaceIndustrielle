@@ -1612,6 +1612,11 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         (cookie) => /^refresh_token=/.test(cookie) && /HttpOnly/i.test(cookie),
       ),
     ).toBe(true);
+    expect(
+      cookies.some(
+        (cookie) => /^refresh_token=/.test(cookie) && /Path=\//i.test(cookie),
+      ),
+    ).toBe(true);
     expect(cookies.some((cookie) => /^csrf_token=/.test(cookie))).toBe(true);
     expect(
       cookies.some(

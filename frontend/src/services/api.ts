@@ -2,7 +2,11 @@ import axios from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { normalizeApiItems, readPaginationMeta } from './pagination';
 import { clearAuthSession, getAuthItem, updateStoredTokens, updateStoredUser } from './authStorage';
-import { getLoginRedirectForAuthFailure, getStableAuthFailureCode } from './authErrors';
+import {
+  getLoginRedirectForAuthFailure,
+  getStableAuthFailureCode,
+  isConfirmedRefreshAuthFailure,
+} from './authErrors';
 import { parseLocalLoginSession } from './localLogin';
 
 const API_BASE_URL = getApiBaseUrl();
@@ -104,11 +108,13 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${nextToken}`;
         return api(originalRequest);
       }).catch((refreshError) => {
-        const code = getStableAuthFailureCode(refreshError);
-        clearAuthSession();
-        if (typeof window !== 'undefined') {
-          const locale = window.location.pathname.split('/')[1] || 'en';
-          window.location.href = getLoginRedirectForAuthFailure(locale, code);
+        if (isConfirmedRefreshAuthFailure(refreshError)) {
+          const code = getStableAuthFailureCode(refreshError);
+          clearAuthSession();
+          if (typeof window !== 'undefined') {
+            const locale = window.location.pathname.split('/')[1] || 'en';
+            window.location.href = getLoginRedirectForAuthFailure(locale, code);
+          }
         }
         return Promise.reject(refreshError);
       });

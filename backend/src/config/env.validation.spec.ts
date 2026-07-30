@@ -20,8 +20,7 @@ describe('validateEnvironment', () => {
   it('accepts valid production configuration', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '3001';
-    process.env.CORS_ORIGINS =
-      'https://app.example.com,https://preview.example.com';
+    process.env.CORS_ORIGINS = 'https://app.example.com';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
@@ -48,10 +47,7 @@ describe('validateEnvironment', () => {
 
     expect(env.nodeEnv).toBe('production');
     expect(env.port).toBe(3001);
-    expect(env.corsOrigins).toEqual([
-      'https://app.example.com',
-      'https://preview.example.com',
-    ]);
+    expect(env.corsOrigins).toEqual(['https://app.example.com']);
     expect(env.enableLegacyEmailTokens).toBe(false);
     expect(env.enableLegacyResetTokens).toBe(false);
     expect(env.enableEventBasedEmails).toBe(false);
@@ -291,6 +287,32 @@ describe('validateEnvironment', () => {
     );
   });
 
+  it('rejects multiple or mismatched production CORS origins', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.CORS_ORIGINS =
+      'https://app.example.com,https://preview.example.com';
+
+    expect(() => validateEnvironment()).toThrow(
+      'CORS_ORIGINS must contain exactly one Vercel production frontend origin in production',
+    );
+
+    process.env.CORS_ORIGINS = 'https://other.example.com';
+
+    expect(() => validateEnvironment()).toThrow(
+      'CORS_ORIGINS must exactly match FRONTEND_BASE_URL in production',
+    );
+  });
+
   it('keeps flexible wildcard CORS support in development', () => {
     process.env.NODE_ENV = 'development';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
@@ -371,16 +393,12 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.APP_URL = 'https://app.example.com';
-    process.env.ALLOWED_ORIGINS =
-      'https://app.example.com,https://preview.example.com';
+    process.env.ALLOWED_ORIGINS = 'https://app.example.com';
     delete process.env.CORS_ORIGINS;
 
     const env = validateEnvironment();
 
-    expect(env.corsOrigins).toEqual([
-      'https://app.example.com',
-      'https://preview.example.com',
-    ]);
+    expect(env.corsOrigins).toEqual(['https://app.example.com']);
   });
 
   it('allows production when EMAIL_VERIFICATION_SECRET is missing but JWT_SECRET exists', () => {
@@ -415,7 +433,7 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://api.example.com';
     process.env.RENDER_EXTERNAL_URL = 'https://gmao-api.onrender.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://gmao-api.onrender.com';
     delete process.env.FRONTEND_BASE_URL;
     delete process.env.APP_URL;
 

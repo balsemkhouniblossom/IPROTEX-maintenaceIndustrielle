@@ -104,6 +104,22 @@ export function getStableAuthFailureCode(
   return null;
 }
 
+export function isConfirmedRefreshAuthFailure(error: unknown): boolean {
+  const response = (error as { response?: { status?: unknown } })?.response;
+  const status = response?.status;
+  const code = getStableAuthFailureCode(error);
+
+  if (!code) {
+    return false;
+  }
+
+  if (status === 401) {
+    return true;
+  }
+
+  return status === 403 && isAccountAccessErrorCode(code);
+}
+
 export function getLoginRedirectForAuthFailure(
   locale: string,
   code: TerminalRefreshFailureCode | null,
