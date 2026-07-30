@@ -635,6 +635,12 @@
         "module": "الوحدة",
         "descriptionLabel": "الوصف",
         "noItem": "لا توجد عناصر",
+        "dueTodaySection": "مستحق اليوم",
+        "upcomingSection": "القادمة",
+        "advancedFilters": "فلاتر متقدمة",
+        "startTaskAction": "بدء المهمة",
+        "continueAction": "متابعة",
+        "viewDetailsAction": "عرض التفاصيل",
         "operatorFlowNote": "مسار المشغل مؤتمت بالكامل: اختيار، فحص، إكمال. الجدولة وإنشاء التقرير والتذكيرات والاستحقاق التالي تتم تلقائياً."
       },
       "module": "Module"
@@ -953,7 +959,14 @@
       "in_progress": "قيد التنفيذ",
       "completed": "مكتمل",
       "cancelled": "ملغى",
-      "technician_required": "يتطلب تقني"
+      "canceled": "ملغى",
+      "technician_required": "يتطلب تقني",
+      "returned": "مرجع",
+      "waiting_validation": "في انتظار التحقق",
+      "validated": "تم التحقق",
+      "rejected": "مرفوض",
+      "assigned": "معين",
+      "overdue": "متأخر"
     },
     "actions": {
       "update": "تحديث أمر العمل",
@@ -2353,8 +2366,14 @@
     "ask": "اسأل",
     "asking": "جارٍ الإرسال...",
     "requestFailed": "تعذر الوصول إلى المساعد الذكي. يرجى المحاولة مرة أخرى.",
+    "debugDetails": "Debug",
     "statusDisabled": "المساعد الذكي غير مفعل في هذه البيئة.",
     "statusRateLimited": "لقد وصلت إلى حد الطلبات للمساعد الذكي. يرجى المحاولة لاحقًا.",
+    "statusMissingConfiguration": "المساعد الذكي مفعل، لكن Gemini غير مهيأ بالكامل على الخادم.",
+    "statusInvalidCredentials": "رفض Gemini بيانات الاعتماد المهيأة. يرجى التواصل مع مسؤول النظام.",
+    "statusQuotaLimited": "تم الوصول إلى حصة Gemini أو حد الطلبات. يرجى المحاولة لاحقًا.",
+    "statusTimeout": "استغرق Gemini وقتًا طويلًا للرد. يرجى المحاولة مرة أخرى أو المتابعة يدويًا.",
+    "statusTemporaryFailure": "Gemini غير متاح مؤقتًا. يرجى المحاولة مرة أخرى أو المتابعة يدويًا.",
     "statusUnavailable": "تعذر على المساعد الذكي إنشاء رد الآن. يرجى المحاولة مرة أخرى أو المتابعة يدويًا.",
     "knownFacts": "الحقائق المعروفة",
     "probableCauses": "الأسباب المحتملة",

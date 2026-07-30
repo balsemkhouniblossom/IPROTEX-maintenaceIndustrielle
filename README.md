@@ -238,10 +238,16 @@ Create `.env` files for both backend and frontend with appropriate configuration
 # backend/.env
 MONGODB_URI=mongodb://localhost:27017/GMAO_IPROTEX
 PORT=3001
+AI_ASSISTANT_ENABLED=true
+AI_ASSISTANT_PROVIDER=gemini
+GEMINI_MODEL=gemini-flash-lite-latest
 
 # frontend/.env.local
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
+
+Set `GEMINI_API_KEY` only in `backend/.env` or Render backend secrets before
+turning `AI_ASSISTANT_ENABLED=true`; never expose it to frontend variables.
 
 ## Troubleshooting
 

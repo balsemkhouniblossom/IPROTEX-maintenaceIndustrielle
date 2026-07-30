@@ -766,7 +766,7 @@ export class AuthService {
     userId: string,
     dto: CompleteGoogleProfileDto,
   ): Promise<{
-    code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL';
+    code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL' | 'GOOGLE_PROFILE_COMPLETED';
     mandatoryFields: string[];
     user: UserWithoutSensitiveData;
   }> {
@@ -789,9 +789,23 @@ export class AuthService {
       });
     }
 
+    // Once an administrator has approved this account, approval is
+    // permanent and must survive profile edits: submitting/resubmitting the
+    // Google profile form must never silently move an APPROVED account back
+    // to PENDING, deactivate it, or erase its approved_by/approved_at audit
+    // trail. Approval changes are only ever made through
+    // UsersService.approveUser/rejectUser. That guarantee only applies once
+    // an admin has actually made a decision — a brand-new Google signup that
+    // has never been approved still needs to land in PENDING here so it
+    // enters the admin approval queue.
+    const alreadyApproved =
+      resolveApprovalStatus(user) === ApprovalStatus.APPROVED;
+
     if (this.isGoogleProfileComplete(user)) {
       return {
-        code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
+        code: alreadyApproved
+          ? 'GOOGLE_PROFILE_COMPLETED'
+          : 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
         mandatoryFields: this.getMandatoryGoogleProfileFields(),
         user: await this.sanitizeRefreshUser(user),
       };
@@ -807,18 +821,23 @@ export class AuthService {
             department: dto.department.trim(),
             language: dto.language,
             profile_completed: true,
-            approval_status: ApprovalStatus.PENDING,
-            is_active: false,
             is_verified: true,
+            ...(alreadyApproved
+              ? {}
+              : { approval_status: ApprovalStatus.PENDING, is_active: false }),
           },
-          $unset: {
-            refresh_token_hash: '',
-            approved_by: '',
-            approved_at: '',
-            rejected_by: '',
-            rejected_at: '',
-            rejection_reason: '',
-          },
+          ...(alreadyApproved
+            ? {}
+            : {
+                $unset: {
+                  refresh_token_hash: '',
+                  approved_by: '',
+                  approved_at: '',
+                  rejected_by: '',
+                  rejected_at: '',
+                  rejection_reason: '',
+                },
+              }),
         },
         { new: true },
       )
@@ -829,7 +848,9 @@ export class AuthService {
     }
 
     return {
-      code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
+      code: alreadyApproved
+        ? 'GOOGLE_PROFILE_COMPLETED'
+        : 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
       mandatoryFields: this.getMandatoryGoogleProfileFields(),
       user: await this.sanitizeRefreshUser(updated),
     };
@@ -867,24 +888,38 @@ export class AuthService {
   ): Promise<UserDocument> {
     if (user.profile_completed === false) return user;
 
+    // Same rule as completeGoogleProfile: an account an administrator has
+    // already approved must stay approved. Re-detecting an incomplete
+    // profile (e.g. a required field no longer validates) is purely a
+    // "needs profile info" signal, not an approval decision — it must not
+    // silently move an APPROVED account back to PENDING, deactivate it, or
+    // erase its approved_by/approved_at audit trail.
+    const alreadyApproved =
+      resolveApprovalStatus(user) === ApprovalStatus.APPROVED;
+
     const updated = await this.userModel
       .findByIdAndUpdate(
         user._id,
         {
           $set: {
             profile_completed: false,
-            approval_status: ApprovalStatus.PENDING,
-            is_active: false,
             is_verified: true,
+            ...(alreadyApproved
+              ? {}
+              : { approval_status: ApprovalStatus.PENDING, is_active: false }),
           },
-          $unset: {
-            refresh_token_hash: '',
-            approved_by: '',
-            approved_at: '',
-            rejected_by: '',
-            rejected_at: '',
-            rejection_reason: '',
-          },
+          ...(alreadyApproved
+            ? {}
+            : {
+                $unset: {
+                  refresh_token_hash: '',
+                  approved_by: '',
+                  approved_at: '',
+                  rejected_by: '',
+                  rejected_at: '',
+                  rejection_reason: '',
+                },
+              }),
         },
         { new: true },
       )

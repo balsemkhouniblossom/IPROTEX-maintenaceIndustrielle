@@ -116,6 +116,14 @@ export class DocumentAccessService {
     const explicitIds = (operator?.assigned_machine_ids ?? [])
       .map((id) => this.toObjectId(id))
       .filter((id): id is Types.ObjectId => Boolean(id));
+
+    if (!explicitIds.length) {
+      // No explicit assignment configured for this operator — default to
+      // every machine, mirroring OperatorService.getAllowedMachineIds.
+      const allMachineIds = await this.machineModel.distinct('_id').exec();
+      return this.uniqueObjectIds(allMachineIds);
+    }
+
     const workOrderMachineIds = await this.workOrderModel
       .distinct('machine_id', {
         technician_id: this.userReferenceFilter(userId),

@@ -503,6 +503,8 @@ export const apiService = {
 
   getAllAiAssistantHistory: () => api.get('/ai-assistant/history/all'),
 
+  getAiAssistantHealth: () => api.get('/ai-assistant/health'),
+
   // Predictive maintenance (advisory only — read endpoints never mutate a work order, stock, or machine)
   getPredictiveFleetSummary: () => api.get('/predictive-maintenance/fleet-summary'),
 
@@ -588,6 +590,11 @@ export const apiService = {
   getMyCalendarEvents: (params?: AnyObject) => api.get('/operator/calendar/my', { params }),
   getOperatorPreventiveStates: (params: { machineId: string }) =>
     api.get('/operator/preventive/states', { params }),
+  getOperatorPreventiveTaskChecklist: (
+    params?: PaginationParams & { machineId?: string; machineTypeId?: string; status?: string },
+  ) => api.get('/operator/preventive-tasks', { params }),
+  updateOperatorPreventiveTaskChecklist: (id: string, data: { status?: 'pending' | 'completed'; notes?: string }) =>
+    api.patch(`/operator/preventive-tasks/${id}`, data),
   scheduleOperatorPreventive: (data: { machine_id: string; plan_id: string; scheduled_date: string }) =>
     api.post('/operator/preventive/schedule', data),
   createOperatorCorrectiveReport: (data: {

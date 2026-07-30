@@ -17,7 +17,7 @@ import { Machine, MachineDocument } from '../src/schemas/machine.schema';
 import { AI_PROVIDER, AiProvider } from '../src/ai-assistant/ai-provider.interface';
 
 /**
- * Deterministic stand-in for the real Anthropic provider, matching the
+ * Deterministic stand-in for the real Gemini provider, matching the
  * convention already used in `ai-assistant.e2e-spec.ts` — only needed here
  * to exercise scenario 5 (AI assistant's own hourly cap keeps returning a
  * normal 200/`rate_limited` response, never a 429 from the new global guard).

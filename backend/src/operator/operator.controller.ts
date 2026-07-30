@@ -19,6 +19,7 @@ import { CreateCorrectiveReportDto } from './dto/create-corrective-report.dto';
 import { SubmitPreventiveMaintenanceDto } from './dto/submit-preventive-maintenance.dto';
 import { CreatePartRequestDto } from './dto/create-part-request.dto';
 import { RescheduleCalendarEventDto } from './dto/reschedule-calendar-event.dto';
+import { UpdatePreventiveTaskChecklistDto } from './dto/update-preventive-task-checklist.dto';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -148,6 +149,36 @@ export class OperatorController {
       pagination.limit,
       pagination.skip,
     );
+  }
+
+  @Get('preventive-tasks')
+  getPreventiveTaskChecklist(
+    @Req() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('machineId') machineId?: string,
+    @Query('machineTypeId') machineTypeId?: string,
+    @Query('status') status?: string,
+  ) {
+    const userId = this.ensureOperator(req);
+    const pagination = normalizePagination(page, limit, 10, 1000);
+    return this.operatorService.getPreventiveTaskChecklist(
+      userId,
+      pagination.page,
+      pagination.limit,
+      pagination.skip,
+      { machineId, machineTypeId, status },
+    );
+  }
+
+  @Patch('preventive-tasks/:id')
+  updatePreventiveTaskChecklist(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') taskId: string,
+    @Body() dto: UpdatePreventiveTaskChecklistDto,
+  ) {
+    const userId = this.ensureOperator(req);
+    return this.operatorService.updatePreventiveTaskChecklist(userId, taskId, dto);
   }
 
   @Get('lubrifiants')

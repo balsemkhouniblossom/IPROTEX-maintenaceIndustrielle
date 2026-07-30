@@ -1,4 +1,5 @@
 import {
+  AiProviderDiagnostics,
   AiAssistantRequest,
   AiProvider,
   AiProviderResult,
@@ -14,6 +15,16 @@ import {
  */
 export class NullAiProvider implements AiProvider {
   readonly name = 'disabled';
+
+  getDiagnostics(): AiProviderDiagnostics {
+    return {
+      enabled: false,
+      configured: false,
+      provider: this.name,
+      status: 'disabled',
+      message: 'AI assistant is intentionally disabled',
+    };
+  }
 
   async generate(): Promise<AiProviderResult> {
     throw new Error('AI assistant provider is disabled');

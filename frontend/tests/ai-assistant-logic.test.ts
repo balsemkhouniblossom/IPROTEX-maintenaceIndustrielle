@@ -8,7 +8,7 @@ function readSource(relativePath: string): string {
 }
 
 const PANEL = "src/components/ai-assistant/AiAssistantPanel.tsx";
-const REPORT_PROBLEM_PAGE = "src/app/[locale]/operator/report-problem/page.tsx";
+const CORRECTIVE_PAGE = "src/app/[locale]/operator/corrective/page.tsx";
 const TECHNICIAN_DETAIL = "src/components/technician/TechnicianWorkOrderDetail.tsx";
 
 test("apiService exposes the AI assistant recommendation and audit-history endpoints", () => {
@@ -28,6 +28,11 @@ test("apiService exposes the AI assistant recommendation and audit-history endpo
     source,
     /getAllAiAssistantHistory:\s*\(\)\s*=>\s*api\.get\('\/ai-assistant\/history\/all'\)/,
     "apiService.getAllAiAssistantHistory must GET /ai-assistant/history/all",
+  );
+  assert.match(
+    source,
+    /getAiAssistantHealth:\s*\(\)\s*=>\s*api\.get\('\/ai-assistant\/health'\)/,
+    "apiService.getAiAssistantHealth must GET /ai-assistant/health",
   );
 });
 
@@ -99,16 +104,52 @@ test("AiAssistantPanel renders a distinct message per non-OK status instead of s
 
   assert.match(source, /result\.status === "disabled"/);
   assert.match(source, /result\.status === "rate_limited"/);
-  assert.match(source, /result\.status === "timeout" \|\| result\.status === "error"/);
+  for (const status of [
+    "missing_configuration",
+    "invalid_credentials",
+    "quota_limited",
+    "temporary_failure",
+    "timeout",
+    "error",
+  ]) {
+    assert.match(source, new RegExp(`${status}`));
+  }
 });
 
-test("Operator report-problem page renders the AI assistant panel alongside Knowledge Base suggestions", () => {
-  const source = readSource(REPORT_PROBLEM_PAGE);
+test("AiAssistantPanel renders safe backend diagnostics for non-OK assistant responses", () => {
+  const source = readSource(PANEL);
+
+  assert.match(source, /data-testid="ai-assistant-diagnostic"/);
+  assert.match(source, /diagnostic\.provider/);
+  assert.match(source, /diagnostic\.configured/);
+  assert.match(source, /diagnostic\.enabled/);
+  assert.match(source, /diagnostic\.message/);
+  assert.doesNotMatch(source, /apiKey|GEMINI_API_KEY/);
+});
+
+test("frontend never references backend-only Gemini secret names", () => {
+  const filesToCheck = [
+    PANEL,
+    "src/services/api.ts",
+    ...fs
+      .readdirSync(path.join(process.cwd(), "messages"))
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => path.join("messages", file)),
+  ];
+
+  for (const file of filesToCheck) {
+    const source = readSource(file);
+    assert.doesNotMatch(source, /GEMINI_API_KEY/);
+  }
+});
+
+test("Operator corrective page renders the AI assistant panel alongside Knowledge Base suggestions", () => {
+  const source = readSource(CORRECTIVE_PAGE);
 
   assert.match(
     source,
     /<AiAssistantPanel\s+machineId=\{selectedMachine \|\| undefined\}\s+faultCode=\{selectedFault\?\.code_panne\}/,
-    "the report-problem page must pass the selected machine/fault into AiAssistantPanel",
+    "the corrective page must pass the selected machine/fault into AiAssistantPanel",
   );
 });
 
@@ -146,8 +187,14 @@ test("all supported locales define the aiAssistant translation namespace with ma
     "ask",
     "asking",
     "requestFailed",
+    "debugDetails",
     "statusDisabled",
     "statusRateLimited",
+    "statusMissingConfiguration",
+    "statusInvalidCredentials",
+    "statusQuotaLimited",
+    "statusTimeout",
+    "statusTemporaryFailure",
     "statusUnavailable",
     "knownFacts",
     "probableCauses",

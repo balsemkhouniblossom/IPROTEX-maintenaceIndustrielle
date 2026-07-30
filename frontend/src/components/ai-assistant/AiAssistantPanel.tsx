@@ -13,13 +13,30 @@ type AiAssistantAnswer = {
   uncertainty: string;
 };
 
-type AiAssistantStatus = "ok" | "disabled" | "rate_limited" | "timeout" | "error";
+type AiAssistantStatus =
+  | "ok"
+  | "disabled"
+  | "missing_configuration"
+  | "invalid_credentials"
+  | "quota_limited"
+  | "temporary_failure"
+  | "rate_limited"
+  | "timeout"
+  | "error";
 
 type AiRecommendationResponse = {
   status: AiAssistantStatus;
   interactionId: string;
   provider: string;
   retryAfterSeconds?: number;
+  diagnostic?: {
+    enabled: boolean;
+    configured: boolean;
+    provider: string;
+    model?: string;
+    status: string;
+    message: string;
+  };
   answer?: AiAssistantAnswer;
 };
 
@@ -127,25 +144,46 @@ function AiAssistantResult({
 }) {
   if (result.status === "disabled") {
     return (
-      <p className="mt-3 text-sm text-purple-800" data-testid="ai-assistant-status-disabled">
-        {t("statusDisabled")}
-      </p>
+      <StatusMessage
+        className="text-purple-800"
+        testId="ai-assistant-status-disabled"
+        message={t("statusDisabled")}
+        result={result}
+        t={t}
+      />
     );
   }
 
   if (result.status === "rate_limited") {
     return (
-      <p className="mt-3 text-sm text-amber-700" data-testid="ai-assistant-status-rate-limited">
-        {t("statusRateLimited")}
-      </p>
+      <StatusMessage
+        className="text-amber-700"
+        testId="ai-assistant-status-rate-limited"
+        message={t("statusRateLimited")}
+        result={result}
+        t={t}
+      />
     );
   }
 
-  if (result.status === "timeout" || result.status === "error") {
+  const statusMessages: Partial<Record<AiAssistantStatus, string>> = {
+    missing_configuration: t("statusMissingConfiguration"),
+    invalid_credentials: t("statusInvalidCredentials"),
+    quota_limited: t("statusQuotaLimited"),
+    timeout: t("statusTimeout"),
+    temporary_failure: t("statusTemporaryFailure"),
+    error: t("statusUnavailable"),
+  };
+  const statusMessage = statusMessages[result.status];
+  if (statusMessage) {
     return (
-      <p className="mt-3 text-sm text-red-700" data-testid="ai-assistant-status-unavailable">
-        {t("statusUnavailable")}
-      </p>
+      <StatusMessage
+        className="text-red-700"
+        testId="ai-assistant-status-unavailable"
+        message={statusMessage}
+        result={result}
+        t={t}
+      />
     );
   }
 
@@ -186,6 +224,40 @@ function AiAssistantResult({
         <p className="italic text-slate-600" data-testid="ai-assistant-uncertainty">
           <span className="font-semibold not-italic">{t("uncertainty")}: </span>
           {answer.uncertainty}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function StatusMessage({
+  className,
+  testId,
+  message,
+  result,
+  t,
+}: {
+  className: string;
+  testId: string;
+  message: string;
+  result: AiRecommendationResponse;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const diagnostic = result.diagnostic;
+
+  return (
+    <div className={`mt-3 text-sm ${className}`} data-testid={testId}>
+      <p>{message}</p>
+      {diagnostic ? (
+        <p
+          className="mt-1 rounded-md bg-white/70 px-2 py-1 text-xs text-slate-700"
+          data-testid="ai-assistant-diagnostic"
+        >
+          {t("debugDetails")}: status={result.status}; provider=
+          {diagnostic.provider || result.provider}; configured=
+          {String(diagnostic.configured)}; enabled={String(diagnostic.enabled)}
+          {diagnostic.model ? `; model=${diagnostic.model}` : ''}; reason=
+          {diagnostic.message}; interaction={result.interactionId}
         </p>
       ) : null}
     </div>

@@ -171,10 +171,22 @@ function validateMqttBrokerUrl(value: string | undefined): string | undefined {
  */
 function validateAiAssistant(nodeEnv: RuntimeMode): boolean {
   const enabled = parseBoolean(process.env.AI_ASSISTANT_ENABLED, false);
+  const provider =
+    process.env.AI_ASSISTANT_PROVIDER?.trim().toLowerCase() || 'gemini';
 
-  if (enabled && nodeEnv === 'production' && !process.env.ANTHROPIC_API_KEY?.trim()) {
+  if (enabled && provider !== 'gemini') {
+    throw new Error('AI_ASSISTANT_PROVIDER must be "gemini" when AI_ASSISTANT_ENABLED=true');
+  }
+
+  if (enabled && nodeEnv === 'production' && !process.env.GEMINI_API_KEY?.trim()) {
     throw new Error(
-      'ANTHROPIC_API_KEY is required when AI_ASSISTANT_ENABLED=true in production',
+      'GEMINI_API_KEY is required when AI_ASSISTANT_ENABLED=true and AI_ASSISTANT_PROVIDER=gemini in production',
+    );
+  }
+
+  if (enabled && nodeEnv === 'production' && !process.env.GEMINI_MODEL?.trim()) {
+    throw new Error(
+      'GEMINI_MODEL is required when AI_ASSISTANT_ENABLED=true and AI_ASSISTANT_PROVIDER=gemini in production',
     );
   }
 

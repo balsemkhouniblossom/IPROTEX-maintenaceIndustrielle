@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AiInteraction, AiInteractionSchema } from '../schemas/ai-interaction.schema';
@@ -22,11 +22,16 @@ import { SensitiveDataFilterService } from './sensitive-data-filter.service';
 import { AiAssistantThrottleService } from './ai-assistant-throttle.service';
 import { AI_PROVIDER, AiProvider } from './ai-provider.interface';
 import { NullAiProvider } from './providers/null-ai.provider';
-import { AnthropicAiProvider } from './providers/anthropic-ai.provider';
+import {
+  GeminiAiProvider,
+  MisconfiguredAiProvider,
+} from './providers/gemini-ai.provider';
 
 function parseBoolean(value: string | undefined): boolean {
   return ['1', 'true', 'yes', 'on'].includes((value ?? '').trim().toLowerCase());
 }
+
+const aiProviderLogger = new Logger('AiAssistantProvider');
 
 @Module({
   imports: [
@@ -57,19 +62,42 @@ function parseBoolean(value: string | undefined): boolean {
         const enabled = parseBoolean(
           configService.get<string>('AI_ASSISTANT_ENABLED'),
         );
-        const apiKey = configService.get<string>('ANTHROPIC_API_KEY')?.trim();
 
-        if (!enabled || !apiKey) {
+        if (!enabled) {
+          aiProviderLogger.warn(
+            'AI assistant disabled: AI_ASSISTANT_ENABLED is not true',
+          );
           return new NullAiProvider();
         }
 
-        const model =
-          configService.get<string>('AI_ASSISTANT_MODEL')?.trim() ||
-          'claude-opus-4-8';
-        const timeoutMs =
-          Number(configService.get<string>('AI_ASSISTANT_TIMEOUT_MS')) || 12_000;
+        const provider =
+          configService.get<string>('AI_ASSISTANT_PROVIDER')?.trim().toLowerCase() ||
+          'gemini';
+        if (provider !== 'gemini') {
+          aiProviderLogger.error(
+            `AI assistant misconfigured: unsupported provider "${provider}"`,
+          );
+          return new MisconfiguredAiProvider(
+            'invalid_provider',
+            'AI_ASSISTANT_PROVIDER must be "gemini"',
+          );
+        }
 
-        return new AnthropicAiProvider({ apiKey, model, timeoutMs });
+        const apiKey = configService.get<string>('GEMINI_API_KEY')?.trim();
+        const model = configService.get<string>('GEMINI_MODEL')?.trim();
+
+        if (!apiKey || !model) {
+          aiProviderLogger.error(
+            `AI assistant misconfigured: missing ${!apiKey ? 'GEMINI_API_KEY' : ''}${!apiKey && !model ? ' and ' : ''}${!model ? 'GEMINI_MODEL' : ''}`,
+          );
+          return new MisconfiguredAiProvider(
+            'gemini',
+            'GEMINI_API_KEY and GEMINI_MODEL are required when AI assistant is enabled',
+          );
+        }
+
+        aiProviderLogger.log(`AI assistant enabled with provider gemini and model ${model}`);
+        return new GeminiAiProvider({ apiKey, model });
       },
       inject: [ConfigService],
     },

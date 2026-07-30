@@ -1183,6 +1183,145 @@ describe('AuthService', () => {
     expect(result.user.approval_status).toBe(ApprovalStatus.PENDING);
   });
 
+  it('keeps an already-approved Google account approved when it resubmits its profile', async () => {
+    const approvedById = new Types.ObjectId();
+    const approvedAt = new Date('2026-01-15T00:00:00.000Z');
+    const googleUser = createUserDocument({
+      google_id: 'google-reapprove',
+      profile_completed: false,
+      is_verified: true,
+      is_active: true,
+      approval_status: ApprovalStatus.APPROVED,
+      approved_by: approvedById,
+      approved_at: approvedAt,
+    });
+    const updatedUser = createUserDocument({
+      _id: googleUser._id,
+      email: googleUser.email,
+      google_id: 'google-reapprove',
+      phone: '+21612345678',
+      role: Role.TECHNICIAN,
+      department: 'Maintenance',
+      language: 'fr',
+      profile_completed: true,
+      is_verified: true,
+      is_active: true,
+      approval_status: ApprovalStatus.APPROVED,
+      approved_by: approvedById,
+      approved_at: approvedAt,
+    });
+
+    userModel.findById.mockReturnValue(createQuery(googleUser));
+    userModel.findByIdAndUpdate.mockReturnValue(createQuery(updatedUser));
+
+    const result = await service.completeGoogleProfile(
+      googleUser._id.toString(),
+      {
+        phone: '+21612345678',
+        role: Role.TECHNICIAN,
+        department: 'Maintenance',
+        language: 'fr',
+      },
+    );
+
+    const [, updatePayload] = userModel.findByIdAndUpdate.mock.calls[0] as [
+      unknown,
+      { $set: Record<string, unknown>; $unset?: Record<string, unknown> },
+    ];
+    // Profile fields still update, but approval_status/is_active must never
+    // be touched for an account an administrator already approved, and the
+    // approved_by/approved_at audit trail must not be unset.
+    expect(updatePayload.$set).toEqual(
+      expect.objectContaining({
+        phone: '+21612345678',
+        role: Role.TECHNICIAN,
+        department: 'Maintenance',
+        language: 'fr',
+        profile_completed: true,
+        is_verified: true,
+      }),
+    );
+    expect(updatePayload.$set).not.toHaveProperty('approval_status');
+    expect(updatePayload.$set).not.toHaveProperty('is_active');
+    expect(updatePayload.$unset).toBeUndefined();
+    expect(result.code).toBe('GOOGLE_PROFILE_COMPLETED');
+    expect(result.user.approval_status).toBe(ApprovalStatus.APPROVED);
+    expect(result.user.is_active).toBe(true);
+  });
+
+  it('keeps an already-approved account approved when Google login re-detects an incomplete profile', async () => {
+    const approvedById = new Types.ObjectId();
+    const approvedAt = new Date('2026-01-15T00:00:00.000Z');
+    // Approved, verified, active, and previously profile_completed — but
+    // missing a mandatory field (department), so isGoogleProfileComplete
+    // fails and googleLogin routes through markGoogleProfileIncomplete.
+    const approvedUser = createUserDocument({
+      google_id: 'google-approved-incomplete',
+      role: Role.OPERATOR,
+      is_verified: true,
+      is_active: true,
+      profile_completed: true,
+      approval_status: ApprovalStatus.APPROVED,
+      approved_by: approvedById,
+      approved_at: approvedAt,
+      phone: '+21612345678',
+      department: undefined,
+      language: 'en',
+    });
+    const res = createRedirectResponse();
+
+    usersService.findByGoogleId.mockResolvedValue(approvedUser);
+    usersService.findByEmail.mockResolvedValue(approvedUser);
+    usersService.recordSuccessfulLogin.mockResolvedValue(approvedUser);
+    jwtService.sign
+      .mockReturnValueOnce('access-token')
+      .mockReturnValueOnce('refresh-token');
+    (bcrypt.hash as jest.Mock).mockResolvedValue('refresh-token-hash');
+    userModel.findByIdAndUpdate.mockReturnValue(createQuery(null));
+    googleLoginExchangeService.createExchange.mockResolvedValue(
+      'exchange-code',
+    );
+
+    await service.googleLogin(
+      {
+        provider: 'google',
+        google_id: 'google-approved-incomplete',
+        email: approvedUser.email,
+        name: 'Approved User',
+        email_verified: true,
+      },
+      res as never,
+      'en',
+      'https://app.example.com',
+    );
+
+    const updateCalls = userModel.findByIdAndUpdate.mock.calls as Array<
+      [
+        unknown,
+        { $set: Record<string, unknown>; $unset?: Record<string, unknown> },
+      ]
+    >;
+    // The only findByIdAndUpdate call driven by markGoogleProfileIncomplete
+    // is the first one (login's own refresh-token-hash write comes after
+    // and has a different, flat update shape without $set/$unset).
+    const profileIncompleteCall = updateCalls.find(
+      (call) => call[1] && typeof call[1] === 'object' && '$set' in call[1],
+    );
+    expect(profileIncompleteCall?.[1].$set).toEqual(
+      expect.objectContaining({ profile_completed: false }),
+    );
+    expect(profileIncompleteCall?.[1].$set).not.toHaveProperty(
+      'approval_status',
+    );
+    expect(profileIncompleteCall?.[1].$set).not.toHaveProperty('is_active');
+    expect(profileIncompleteCall?.[1].$unset).toBeUndefined();
+    // Still logs the user in via the exchange path (not redirected to a
+    // "pending"/"inactive" status), proving access wasn't revoked either.
+    expect(res.redirect).toHaveBeenCalledWith(
+      'https://app.example.com/en/auth/google-result?exchange=exchange-code',
+    );
+  });
+
   it('fails safely when Google ID and normalized email point to different users', async () => {
     const googleUser = createUserDocument({
       email: 'owner@example.com',

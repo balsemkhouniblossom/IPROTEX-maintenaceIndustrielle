@@ -23,6 +23,13 @@ export enum ApprovalStatus {
   REJECTED = 'rejected',
 }
 
+export type ApprovalHistoryEntry = {
+  status: ApprovalStatus;
+  actor_user_id?: Types.ObjectId;
+  reason?: string;
+  at: Date;
+};
+
 @Schema()
 export class User {
   @Prop({ unique: true })
@@ -163,6 +170,31 @@ export class User {
     maxlength: 500,
   })
   rejection_reason?: string;
+
+  // Append-only audit trail of every admin approval/rejection decision.
+  // Unlike approved_by/approved_at/rejected_*, these entries are never
+  // unset on a subsequent transition, so the full decision history
+  // survives repeated approve/reject cycles.
+  @Prop({
+    type: [
+      {
+        status: {
+          type: String,
+          enum: Object.values(ApprovalStatus),
+          required: true,
+        },
+        actor_user_id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: false,
+        },
+        reason: { type: String, required: false, trim: true, maxlength: 500 },
+        at: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  approval_history?: ApprovalHistoryEntry[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -35,4 +35,11 @@ export class AiAssistantController {
   getAllHistory() {
     return this.aiAssistantService.listAllHistory();
   }
+
+  /** Provider/config diagnostics only; never returns API keys or prompt data. */
+  @Get('health')
+  @AdminOnly()
+  getHealth() {
+    return this.aiAssistantService.getHealth();
+  }
 }

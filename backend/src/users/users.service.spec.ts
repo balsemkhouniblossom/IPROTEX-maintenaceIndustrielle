@@ -29,6 +29,7 @@ describe('UsersService', () => {
     find: jest.Mock;
     countDocuments: jest.Mock;
     findOneAndUpdate: jest.Mock;
+    findByIdAndUpdate: jest.Mock;
     db: { startSession: jest.Mock };
   };
   let savedDocuments: Array<Record<string, unknown>>;
@@ -53,6 +54,7 @@ describe('UsersService', () => {
     userModel.find = jest.fn();
     userModel.countDocuments = jest.fn();
     userModel.findOneAndUpdate = jest.fn();
+    userModel.findByIdAndUpdate = jest.fn();
     userModel.db = { startSession: jest.fn().mockResolvedValue(session) };
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
@@ -494,7 +496,11 @@ describe('UsersService', () => {
     const updateCalls = userModel.findOneAndUpdate.mock.calls as Array<
       [
         Record<string, unknown>,
-        { $set: Record<string, unknown>; $unset: Record<string, unknown> },
+        {
+          $set: Record<string, unknown>;
+          $unset: Record<string, unknown>;
+          $push: Record<string, unknown>;
+        },
         { new: boolean },
       ]
     >;
@@ -517,6 +523,15 @@ describe('UsersService', () => {
       expect.objectContaining({
         refresh_token_hash: '',
         rejection_reason: '',
+      }),
+    );
+    // This transition must land on the append-only audit trail — never just
+    // overwrite approved_by/approved_at, which subsequent transitions unset.
+    expect(updateCalls[0][1].$push.approval_history).toEqual(
+      expect.objectContaining({
+        status: ApprovalStatus.APPROVED,
+        actor_user_id: adminId,
+        at: decisionAt,
       }),
     );
     expect(updateCalls[0][2]).toEqual({ new: true });
@@ -550,7 +565,11 @@ describe('UsersService', () => {
     const updateCalls = userModel.findOneAndUpdate.mock.calls as Array<
       [
         Record<string, unknown>,
-        { $set: Record<string, unknown>; $unset: Record<string, unknown> },
+        {
+          $set: Record<string, unknown>;
+          $unset: Record<string, unknown>;
+          $push: Record<string, unknown>;
+        },
         { new: boolean },
       ]
     >;
@@ -576,10 +595,70 @@ describe('UsersService', () => {
         refresh_token_hash: '',
       }),
     );
+    expect(updateCalls[0][1].$push.approval_history).toEqual(
+      expect.objectContaining({
+        status: ApprovalStatus.REJECTED,
+        actor_user_id: adminId,
+        reason: 'Not eligible',
+        at: decisionAt,
+      }),
+    );
     expect(updateCalls[0][2]).toEqual({ new: true });
     expect(result.code).toBe('ACCOUNT_REJECTED');
     expect(result.user.rejection_reason).toBe('Not eligible');
     expect(result.user).not.toHaveProperty('rejected_by');
+  });
+
+  describe('update() — generic admin edit endpoint', () => {
+    function createUpdateQuery(result: unknown) {
+      const select = jest.fn().mockReturnValue(createQuery(result));
+      return { select };
+    }
+
+    it('applies a legitimate field edit untouched', async () => {
+      const targetId = new Types.ObjectId();
+      const updated = createUserDocument({ _id: targetId, phone: '+21611111111' });
+      userModel.findByIdAndUpdate.mockReturnValue(createUpdateQuery(updated));
+
+      const result = await service.update(targetId.toString(), {
+        phone: '+21611111111',
+      });
+
+      expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        targetId.toString(),
+        { phone: '+21611111111' },
+        { new: true },
+      );
+      expect(result).toBe(updated);
+    });
+
+    it('strips approval fields even if a caller supplies them directly, bypassing the DTO layer', async () => {
+      const targetId = new Types.ObjectId();
+      const adminId = new Types.ObjectId();
+      const updated = createUserDocument({ _id: targetId });
+      userModel.findByIdAndUpdate.mockReturnValue(createUpdateQuery(updated));
+
+      // UpdateUserDto never declares these fields, so NestJS's whitelist
+      // ValidationPipe already strips them from any real HTTP request body.
+      // This proves the service itself is also guarded, for any internal
+      // caller that builds the object without going through that pipe.
+      await service.update(targetId.toString(), {
+        department: 'Ops',
+        approval_status: ApprovalStatus.REJECTED,
+        approved_by: adminId,
+        approved_at: new Date(),
+        rejected_by: adminId,
+        rejected_at: new Date(),
+        rejection_reason: 'smuggled',
+        approval_history: [],
+      } as never);
+
+      expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        targetId.toString(),
+        { department: 'Ops' },
+        { new: true },
+      );
+    });
   });
 
   it('validates identifiers and rejection reasons before atomic rejection', async () => {

@@ -2,7 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { AiAssistantService } from './ai-assistant.service';
 import { AiInteractionStatus } from '../schemas/ai-interaction.schema';
-import { AiProviderResult } from './ai-provider.interface';
+import { AiProviderError, AiProviderResult } from './ai-provider.interface';
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
 
 function emptyGroundedContext() {
@@ -27,7 +27,7 @@ describe('AiAssistantService', () => {
   let sensitiveDataFilter: { redact: jest.Mock };
   let throttleService: { consume: jest.Mock };
   let configService: { get: jest.Mock };
-  let provider: { name: string; generate: jest.Mock };
+  let provider: { name: string; generate: jest.Mock; getDiagnostics?: jest.Mock };
 
   function buildService() {
     return new AiAssistantService(
@@ -113,6 +113,13 @@ describe('AiAssistantService', () => {
     const result = await service.getRecommendation(actor, baseDto());
 
     expect(result.status).toBe(AiInteractionStatus.DISABLED);
+    expect(result.diagnostic).toMatchObject({
+      enabled: false,
+      configured: false,
+      provider: 'disabled',
+      status: 'disabled',
+      message: 'AI assistant is intentionally disabled',
+    });
     expect(result.answer).toBeUndefined();
     expect(contextBuilder.buildContext).not.toHaveBeenCalled();
     expect(provider.generate).not.toHaveBeenCalled();
@@ -194,10 +201,47 @@ describe('AiAssistantService', () => {
     const result = await service.getRecommendation(actor, baseDto());
 
     expect(result.status).toBe(AiInteractionStatus.ERROR);
+    expect(result.diagnostic).toMatchObject({
+      provider: 'fake',
+      message: 'AI assistant failed with an unexpected provider error',
+    });
     expect(result.answer).toBeUndefined();
     expect(interactionModel.create).toHaveBeenCalledWith(
       expect.objectContaining({ status: AiInteractionStatus.ERROR, error_message: 'provider exploded' }),
     );
+  });
+
+  it('returns precise provider statuses for Gemini configuration, credential, quota, and temporary failures', async () => {
+    const cases: Array<[AiProviderError, AiInteractionStatus]> = [
+      [
+        new AiProviderError('missing_configuration', 'missing Gemini config'),
+        AiInteractionStatus.MISSING_CONFIGURATION,
+      ],
+      [
+        new AiProviderError('invalid_credentials', 'Gemini rejected credentials'),
+        AiInteractionStatus.INVALID_CREDENTIALS,
+      ],
+      [
+        new AiProviderError('quota_limited', 'Gemini quota reached'),
+        AiInteractionStatus.QUOTA_LIMITED,
+      ],
+      [
+        new AiProviderError('temporary_failure', 'Gemini temporary failure'),
+        AiInteractionStatus.TEMPORARY_FAILURE,
+      ],
+    ];
+
+    for (const [error, status] of cases) {
+      provider.generate.mockRejectedValueOnce(error);
+      const service = buildService();
+
+      const result = await service.getRecommendation(actor, baseDto());
+
+      expect(result.status).toBe(status);
+      expect(interactionModel.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status, error_message: error.message }),
+      );
+    }
   });
 
   it('returns TIMEOUT status when the provider does not respond within the configured timeout', async () => {
@@ -213,6 +257,28 @@ describe('AiAssistantService', () => {
 
     expect(result.status).toBe(AiInteractionStatus.TIMEOUT);
   }, 10000);
+
+  it('exposes provider health diagnostics without API keys', () => {
+    provider.getDiagnostics = jest.fn().mockReturnValue({
+      enabled: true,
+      configured: true,
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      status: 'ready',
+      message: 'AI assistant is enabled and configured for Google Gemini',
+    });
+    const service = buildService();
+
+    expect(service.getHealth()).toEqual({
+      enabled: true,
+      configured: true,
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      status: 'ready',
+      message: 'AI assistant is enabled and configured for Google Gemini',
+    });
+    expect(JSON.stringify(service.getHealth())).not.toContain('GEMINI_API_KEY');
+  });
 
   it('is advisory only: never calls anything resembling a work-order/stock/machine mutation', () => {
     // Structural guarantee, not a runtime check: AiAssistantService's only

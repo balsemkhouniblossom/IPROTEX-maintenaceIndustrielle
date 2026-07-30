@@ -26,12 +26,18 @@ import {
   PanneSolutionSchema,
 } from '../schemas/panne-solution.schema';
 import { User, UserSchema } from '../schemas/user.schema';
+import {
+  PreventiveTask,
+  PreventiveTaskSchema,
+} from '../schemas/preventive-task.schema';
 import { KpiModule } from '../kpi/kpi.module';
+import { PreventiveTasksModule } from '../preventive-tasks/preventive-tasks.module';
 
 @Module({
   imports: [
     WorkOrdersModule,
     KpiModule,
+    PreventiveTasksModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: InterventionReport.name, schema: InterventionReportSchema },
@@ -47,6 +53,7 @@ import { KpiModule } from '../kpi/kpi.module';
       { name: Panne.name, schema: PanneSchema },
       { name: PanneSolution.name, schema: PanneSolutionSchema },
       { name: User.name, schema: UserSchema },
+      { name: PreventiveTask.name, schema: PreventiveTaskSchema },
     ]),
   ],
   controllers: [OperatorController],

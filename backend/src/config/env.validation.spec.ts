@@ -471,27 +471,17 @@ describe('validateEnvironment', () => {
     expect(env.aiAssistantEnabled).toBe(false);
   });
 
-  it('rejects AI_ASSISTANT_ENABLED=true in production without an ANTHROPIC_API_KEY', () => {
-    process.env.NODE_ENV = 'production';
-    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
-    process.env.JWT_SECRET = 'a'.repeat(32);
-    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
-    process.env.JWT_EXPIRES_IN = '15m';
-    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
-    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+  it('rejects AI_ASSISTANT_ENABLED=true with a non-Gemini provider', () => {
+    process.env.NODE_ENV = 'test';
     process.env.AI_ASSISTANT_ENABLED = 'true';
-    delete process.env.ANTHROPIC_API_KEY;
+    process.env.AI_ASSISTANT_PROVIDER = 'anthropic';
 
     expect(() => validateEnvironment()).toThrow(
-      'ANTHROPIC_API_KEY is required when AI_ASSISTANT_ENABLED=true in production',
+      'AI_ASSISTANT_PROVIDER must be "gemini" when AI_ASSISTANT_ENABLED=true',
     );
   });
 
-  it('accepts AI_ASSISTANT_ENABLED=true in production with an ANTHROPIC_API_KEY', () => {
+  it('rejects AI_ASSISTANT_ENABLED=true in production without a GEMINI_API_KEY', () => {
     process.env.NODE_ENV = 'production';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
@@ -504,7 +494,53 @@ describe('validateEnvironment', () => {
     process.env.APP_URL = 'https://app.example.com';
     process.env.CORS_ORIGINS = 'https://app.example.com';
     process.env.AI_ASSISTANT_ENABLED = 'true';
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key';
+    process.env.AI_ASSISTANT_PROVIDER = 'gemini';
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash';
+    delete process.env.GEMINI_API_KEY;
+
+    expect(() => validateEnvironment()).toThrow(
+      'GEMINI_API_KEY is required when AI_ASSISTANT_ENABLED=true and AI_ASSISTANT_PROVIDER=gemini in production',
+    );
+  });
+
+  it('rejects AI_ASSISTANT_ENABLED=true in production without a GEMINI_MODEL', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.AI_ASSISTANT_ENABLED = 'true';
+    process.env.AI_ASSISTANT_PROVIDER = 'gemini';
+    process.env.GEMINI_API_KEY = 'gemini-test-key';
+    delete process.env.GEMINI_MODEL;
+
+    expect(() => validateEnvironment()).toThrow(
+      'GEMINI_MODEL is required when AI_ASSISTANT_ENABLED=true and AI_ASSISTANT_PROVIDER=gemini in production',
+    );
+  });
+
+  it('accepts AI_ASSISTANT_ENABLED=true in production with Gemini configuration', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.APP_URL = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.AI_ASSISTANT_ENABLED = 'true';
+    process.env.AI_ASSISTANT_PROVIDER = 'gemini';
+    process.env.GEMINI_API_KEY = 'gemini-test-key';
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash';
 
     const env = validateEnvironment();
 

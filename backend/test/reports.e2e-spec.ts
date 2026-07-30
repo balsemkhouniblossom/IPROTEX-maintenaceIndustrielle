@@ -92,7 +92,7 @@ describe('Reports module — export generation (e2e)', () => {
   let technicianToken: string;
   let technician: UserDocument;
   let operatorToken: string; // assigned to `assignedMachine`
-  let otherOperatorToken: string; // assigned to nothing
+  let otherOperatorToken: string; // assigned to `assignedMachine` only, excludes `otherMachine`
   let assignedMachineId: string;
   let otherMachineId: string;
 
@@ -212,7 +212,10 @@ describe('Reports module — export generation (e2e)', () => {
       role: 'operator',
       is_active: true,
       is_verified: true,
-      assigned_machine_ids: [],
+      // Non-empty and deliberately excludes otherMachine: an empty list now
+      // defaults to full visibility, so this must narrow explicitly to still
+      // exercise "operator scoped away from a specific machine".
+      assigned_machine_ids: [assignedMachine._id],
     });
 
     await workOrders.create({

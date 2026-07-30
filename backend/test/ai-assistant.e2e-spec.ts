@@ -16,7 +16,7 @@ import { Machine, MachineDocument } from '../src/schemas/machine.schema';
 import { AI_PROVIDER, AiProvider } from '../src/ai-assistant/ai-provider.interface';
 
 /**
- * A deterministic mocked provider standing in for the real Anthropic
+ * A deterministic mocked provider standing in for the real Gemini
  * provider — the feature requires "mocked-provider e2e tests" explicitly,
  * so this suite exercises the entire request pipeline (auth, role scoping,
  * rate limiting, prompt-injection/sensitive-data handling, audit history)
@@ -27,6 +27,17 @@ class FakeAiProvider implements AiProvider {
   public lastRequest?: { question: string; locale: string };
   public shouldHang = false;
   public shouldReject = false;
+
+  getDiagnostics() {
+    return {
+      enabled: true,
+      configured: true,
+      provider: this.name,
+      model: 'fake-model',
+      status: 'ready' as const,
+      message: 'Fake AI provider is configured for tests',
+    };
+  }
 
   async generate(
     req: { question: string; locale: string },
@@ -184,7 +195,10 @@ describe('AI Assistant — mocked provider (e2e)', () => {
       role: 'operator',
       is_active: true,
       is_verified: true,
-      assigned_machine_ids: [],
+      // Non-empty and deliberately excludes unassignedMachine: an empty list
+      // now defaults to full visibility, so this must narrow explicitly to
+      // still exercise "operator scoped away from a specific machine".
+      assigned_machine_ids: [assignedMachine._id],
     });
     const errorTestUser = await users.create({
       user_id: 'ADMIN-AI-ERR-E2E',
@@ -375,5 +389,27 @@ describe('AI Assistant — mocked provider (e2e)', () => {
 
     expect(Array.isArray(response.body)).toBe(true);
     expect(response.body.length).toBeGreaterThan(0);
+  });
+
+  it('exposes provider health diagnostics only to Admin and never returns secrets', async () => {
+    await request(app.getHttpServer())
+      .get('/ai-assistant/health')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .expect(403);
+
+    const response = await request(app.getHttpServer())
+      .get('/ai-assistant/health')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      enabled: true,
+      configured: true,
+      provider: 'fake',
+      model: 'fake-model',
+      status: 'ready',
+      message: 'Fake AI provider is configured for tests',
+    });
+    expect(JSON.stringify(response.body)).not.toMatch(/API_KEY|secret|key/i);
   });
 });

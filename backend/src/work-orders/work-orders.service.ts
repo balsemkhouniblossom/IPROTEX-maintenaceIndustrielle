@@ -594,7 +594,7 @@ export class WorkOrdersService {
     }
 
     const modules = await this.moduleModel
-      .find({ machine_id: new Types.ObjectId(machineId) })
+      .find(this.moduleMachineFilter(machineId))
       .exec();
     const moduleIds = modules.map((moduleEntity) => moduleEntity._id);
     const moduleById = new Map(
@@ -606,7 +606,12 @@ export class WorkOrdersService {
 
     const plans = await this.maintenancePlanModel
       .find({
-        module_id: { $in: moduleIds },
+        $expr: {
+          $in: [
+            { $toString: '$module_id' },
+            moduleIds.map((moduleId) => moduleId.toString()),
+          ],
+        },
         ...NOT_CORRECTIVE_TYPE_FILTER,
       })
       .sort({ maintenance_code: 1, plan_id: 1 })
@@ -807,7 +812,7 @@ export class WorkOrdersService {
     const otId = await this.generateWorkOrderCode(plan.type_maintenance);
     return this.workOrderModel.create({
       ot_id: otId,
-      machine_id: moduleEntity.machine_id,
+      machine_id: this.toPersistedObjectId(moduleEntity.machine_id),
       module_id: moduleEntity._id,
       plan_id: plan._id,
       description: plan.instruction || 'Preventive maintenance task',
@@ -3059,7 +3064,7 @@ export class WorkOrdersService {
     const moduleEntity = await this.moduleModel
       .findOne({
         _id: plan.module_id,
-        machine_id: machine._id,
+        ...this.moduleMachineFilter(machine._id.toString()),
       })
       .exec();
     if (!moduleEntity) {
@@ -3189,6 +3194,19 @@ export class WorkOrdersService {
     }
 
     return '';
+  }
+
+  private moduleMachineFilter(machineId: string): Record<string, unknown> {
+    return {
+      $expr: {
+        $eq: [{ $toString: '$machine_id' }, machineId],
+      },
+    };
+  }
+
+  private toPersistedObjectId(value: unknown): Types.ObjectId | unknown {
+    const id = this.objectIdString(value);
+    return Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : value;
   }
 
   private buildPlanKey(

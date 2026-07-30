@@ -221,6 +221,18 @@ describe('WorkOrdersService.createCorrectiveReportForOperator', () => {
     expect(workOrderModel.db.startSession).not.toHaveBeenCalled();
   });
 
+  it('rejects a blank fault code before creating a report', async () => {
+    await expect(
+      service.createCorrectiveReportForOperator({
+        operatorId,
+        machineId: machineId.toHexString(),
+        codePanne: '   ',
+        actions: ['Reset breaker'],
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(workOrderModel.db.startSession).not.toHaveBeenCalled();
+  });
+
   it('rejects an invalid machine id before touching the database', async () => {
     await expect(
       service.createCorrectiveReportForOperator({

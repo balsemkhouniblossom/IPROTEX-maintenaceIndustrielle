@@ -20,5 +20,6 @@ import { PreventiveTasksService } from './preventive-tasks.service';
   ],
   controllers: [PreventiveTasksController],
   providers: [PreventiveTasksService],
+  exports: [PreventiveTasksService],
 })
 export class PreventiveTasksModule {}

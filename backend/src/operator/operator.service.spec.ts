@@ -33,6 +33,13 @@ describe('OperatorService machine scoping', () => {
   let documentModel: { find: jest.Mock; countDocuments: jest.Mock };
   let panneModel: { find: jest.Mock; countDocuments: jest.Mock };
   let panneSolutionModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let preventiveTaskModel: {
+    find: jest.Mock;
+    countDocuments: jest.Mock;
+    findOne: jest.Mock;
+    findOneAndUpdate: jest.Mock;
+  };
+  let preventiveTasksService: { syncPlansForModuleIds: jest.Mock };
   let workOrdersService: {
     getMachinePreventiveStates: jest.Mock;
     scheduleFirstPreventiveOccurrence: jest.Mock;
@@ -95,6 +102,15 @@ describe('OperatorService machine scoping', () => {
       find: jest.fn().mockReturnValue(queryResult([])),
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
     };
+    preventiveTaskModel = {
+      find: jest.fn().mockReturnValue(queryResult([])),
+      countDocuments: jest.fn().mockReturnValue(queryResult(0)),
+      findOne: jest.fn().mockReturnValue(queryResult(null)),
+      findOneAndUpdate: jest.fn().mockReturnValue(queryResult(null)),
+    };
+    preventiveTasksService = {
+      syncPlansForModuleIds: jest.fn().mockResolvedValue({ plans: 0, created: 0 }),
+    };
     workOrdersService = {
       getMachinePreventiveStates: jest.fn().mockResolvedValue({ sections: {} }),
       scheduleFirstPreventiveOccurrence: jest.fn().mockResolvedValue({}),
@@ -145,8 +161,10 @@ describe('OperatorService machine scoping', () => {
       documentModel as never,
       panneModel as never,
       panneSolutionModel as never,
+      preventiveTaskModel as never,
       workOrdersService as never,
       {} as never,
+      preventiveTasksService as never,
     );
   });
 

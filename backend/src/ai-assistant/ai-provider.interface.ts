@@ -57,8 +57,38 @@ export interface AiProviderResult {
 
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
 
+export type AiProviderErrorCode =
+  | 'missing_configuration'
+  | 'invalid_credentials'
+  | 'quota_limited'
+  | 'temporary_failure';
+
+export class AiProviderError extends Error {
+  constructor(
+    readonly code: AiProviderErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AiProviderError';
+  }
+}
+
+export interface AiProviderDiagnostics {
+  enabled: boolean;
+  configured: boolean;
+  provider: string;
+  model?: string;
+  status:
+    | 'disabled'
+    | 'ready'
+    | 'missing_configuration'
+    | 'invalid_provider';
+  message: string;
+}
+
 export interface AiProvider {
   readonly name: string;
+  getDiagnostics?(): AiProviderDiagnostics;
   generate(
     request: AiAssistantRequest,
     signal: AbortSignal,

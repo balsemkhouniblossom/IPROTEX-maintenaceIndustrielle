@@ -210,7 +210,10 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
       role: 'operator',
       is_active: true,
       is_verified: true,
-      assigned_machine_ids: [],
+      // Non-empty and deliberately excludes unassignedMachine: an empty list
+      // now defaults to full visibility, so this must narrow explicitly to
+      // still exercise "operator scoped away from a specific machine".
+      assigned_machine_ids: [assignedMachine._id],
     });
     const technician = await users.create({
       user_id: 'TECH-PM-E2E',

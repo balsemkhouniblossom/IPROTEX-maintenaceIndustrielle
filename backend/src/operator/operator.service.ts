@@ -30,8 +30,13 @@ import {
   PanneSolution,
   PanneSolutionDocument,
 } from '../schemas/panne-solution.schema';
+import {
+  PreventiveTask,
+  PreventiveTaskDocument,
+} from '../schemas/preventive-task.schema';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { KpiService } from '../kpi/kpi.service';
+import { PreventiveTasksService } from '../preventive-tasks/preventive-tasks.service';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -87,8 +92,11 @@ export class OperatorService {
     private readonly panneModel: Model<PanneDocument>,
     @InjectModel(PanneSolution.name)
     private readonly panneSolutionModel: Model<PanneSolutionDocument>,
+    @InjectModel(PreventiveTask.name)
+    private readonly preventiveTaskModel: Model<PreventiveTaskDocument>,
     private readonly workOrdersService: WorkOrdersService,
     private readonly kpiService: KpiService,
+    private readonly preventiveTasksService: PreventiveTasksService,
   ) {}
 
   private toObjectId(id: string): Types.ObjectId {
@@ -99,6 +107,14 @@ export class OperatorService {
     return ids
       .filter((id) => Types.ObjectId.isValid(id))
       .map((id) => this.toObjectId(id));
+  }
+
+  private machineIdStringExpr(machineIds: string[]): Record<string, unknown> {
+    return {
+      $expr: {
+        $in: [{ $toString: '$machine_id' }, machineIds],
+      },
+    };
   }
 
   private technicianScopeFilter(
@@ -229,7 +245,7 @@ export class OperatorService {
   ): Promise<PaginatedResponse<Module>> {
     const machineIds = await this.getAllowedMachineIds(userId);
     if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
-    const query = { machine_id: { $in: this.toObjectIdList(machineIds) } };
+    const query = this.machineIdStringExpr(machineIds);
 
     const [items, totalItems] = await Promise.all([
       this.moduleModel
@@ -255,10 +271,15 @@ export class OperatorService {
     const machineIds = await this.getAllowedMachineIds(userId);
     if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
     const modules = await this.moduleModel
-      .find({ machine_id: { $in: this.toObjectIdList(machineIds) } })
+      .find(this.machineIdStringExpr(machineIds))
       .select({ _id: 1 })
       .exec();
-    const query = { module_id: { $in: modules.map((module) => module._id) } };
+    const moduleIds = modules.map((module) => module._id.toString());
+    const query = {
+      $expr: {
+        $in: [{ $toString: '$module_id' }, moduleIds],
+      },
+    };
 
     const [items, totalItems] = await Promise.all([
       this.maintenancePlanModel
@@ -272,6 +293,100 @@ export class OperatorService {
     ]);
 
     return toPaginatedResponse(items, totalItems, page, limit);
+  }
+
+  async getPreventiveTaskChecklist(
+    userId: string,
+    page: number,
+    limit: number,
+    skip: number,
+    filters: { machineId?: string; machineTypeId?: string; status?: string },
+  ): Promise<PaginatedResponse<PreventiveTask>> {
+    const machineIds = await this.getVisibleMachineIds({
+      userId,
+      machineId: filters.machineId,
+      machineTypeId: filters.machineTypeId,
+    });
+    if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
+
+    const modules = await this.moduleModel
+      .find(this.machineIdStringExpr(machineIds))
+      .select({ _id: 1 })
+      .exec();
+    if (!modules.length) return toPaginatedResponse([], 0, page, limit);
+
+    const moduleObjectIds = modules.map((module) => module._id);
+    const moduleIds = moduleObjectIds.map((id) => id.toString());
+    // Checklist rows only exist once someone has run the sync — normally an
+    // admin action on the /preventive-task-checklist page. Operators have no
+    // access to that admin-only endpoint, so lazily materialize rows for
+    // just their own scope here rather than showing a permanently empty
+    // list until an admin happens to visit that page first.
+    await this.preventiveTasksService.syncPlansForModuleIds(moduleObjectIds);
+
+    const query: Record<string, unknown> = {
+      deleted_at: { $exists: false },
+      $expr: {
+        $in: [{ $toString: '$module_id' }, moduleIds],
+      },
+      ...(filters.status ? { status: filters.status } : {}),
+    };
+
+    const [items, totalItems] = await Promise.all([
+      this.preventiveTaskModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('plan_id')
+        .populate('module_id')
+        .exec(),
+      this.preventiveTaskModel.countDocuments(query).exec(),
+    ]);
+
+    return toPaginatedResponse(items, totalItems, page, limit);
+  }
+
+  async updatePreventiveTaskChecklist(
+    userId: string,
+    taskId: string,
+    dto: { status?: 'pending' | 'completed'; notes?: string },
+  ): Promise<PreventiveTaskDocument> {
+    this.assertValidObjectId(taskId, 'task_id');
+    const task = await this.preventiveTaskModel
+      .findOne({ _id: taskId, deleted_at: { $exists: false } })
+      .exec();
+    if (!task) {
+      throw new NotFoundException('Preventive task not found');
+    }
+
+    const taskModule = task.module_id
+      ? await this.moduleModel.findById(task.module_id).select({ machine_id: 1 }).exec()
+      : null;
+    const machineId = taskModule ? this.toIdString(taskModule.machine_id) : '';
+    if (!machineId) {
+      throw new ForbiddenException('This checklist item has no associated machine');
+    }
+    await this.assertCanAccessMachine(userId, machineId);
+
+    const update: Record<string, unknown> = {};
+    if (dto.notes !== undefined) update.notes = dto.notes;
+    if (dto.status) {
+      update.status = dto.status;
+      update.completed_at = dto.status === 'completed' ? new Date() : null;
+    }
+
+    const updated = await this.preventiveTaskModel
+      .findOneAndUpdate(
+        { _id: taskId, deleted_at: { $exists: false } },
+        update,
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!updated) {
+      throw new NotFoundException('Preventive task not found');
+    }
+    return updated;
   }
 
   async getLubrifiants(
@@ -842,6 +957,15 @@ export class OperatorService {
     const explicitIds = (operator?.assigned_machine_ids ?? []).map((id) =>
       this.toIdString(id),
     );
+
+    if (!explicitIds.length) {
+      // No explicit machine assignment configured for this operator — default
+      // to every machine rather than only ones they already have a work order
+      // on, which would otherwise never let them discover a machine to report
+      // a first problem or maintenance task against.
+      const allMachineIds = await this.machineModel.distinct('_id').exec();
+      return allMachineIds.map((id) => this.toIdString(id));
+    }
 
     const workOrderMachineIds = await this.workOrderModel
       .distinct('machine_id', {

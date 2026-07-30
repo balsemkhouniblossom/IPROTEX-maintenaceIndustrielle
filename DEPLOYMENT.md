@@ -105,10 +105,29 @@ SUPABASE_SECRET_KEY=<supabase-service-role-secret>
 SUPABASE_STORAGE_BUCKET=uploads
 SUPABASE_STORAGE_BUCKET_PUBLIC=false
 SUPABASE_SIGNED_URL_EXPIRES_IN_SECONDS=604800
+
+# Optional backend-only AI assistant. Leave disabled unless Gemini is approved.
+AI_ASSISTANT_ENABLED=true
+AI_ASSISTANT_PROVIDER=gemini
+GEMINI_API_KEY=<gemini-api-key>
+GEMINI_MODEL=gemini-flash-lite-latest
+AI_ASSISTANT_TIMEOUT_MS=12000
+AI_ASSISTANT_RATE_LIMIT_PER_HOUR=20
 ```
 
 Render terminates TLS and routes traffic to the backend directly — no
 self-hosted Nginx or reverse proxy is used.
+
+### Render AI Assistant
+
+When `AI_ASSISTANT_ENABLED=true` in production, startup validation requires
+`AI_ASSISTANT_PROVIDER=gemini`, `GEMINI_API_KEY`, and `GEMINI_MODEL`. The
+Gemini key belongs only in Render backend secrets. Do not configure it in
+Vercel or any `NEXT_PUBLIC_*` frontend variable.
+
+Admins can check backend-only assistant diagnostics at
+`GET /ai-assistant/health`; the response reports enabled/configured/provider
+status and model, never the API key.
 
 ## Production Frontend: Vercel
 
@@ -119,7 +138,8 @@ NEXT_PUBLIC_API_BASE_URL=https://your-backend.onrender.com
 ```
 
 Do not configure `SUPABASE_SECRET_KEY`, `SUPABASE_URL`,
-`SUPABASE_STORAGE_BUCKET`, or `FILE_STORAGE_DRIVER` in Vercel. Supabase
+`SUPABASE_STORAGE_BUCKET`, `FILE_STORAGE_DRIVER`, `GEMINI_API_KEY`,
+`AI_ASSISTANT_PROVIDER`, or `GEMINI_MODEL` in Vercel. Supabase
 Storage is accessed only by the NestJS backend. Vercel terminates TLS and
 serves the frontend directly — no self-hosted Nginx is used.
 

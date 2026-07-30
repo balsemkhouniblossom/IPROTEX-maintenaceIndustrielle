@@ -13,14 +13,11 @@ import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter
 import { User, UserDocument } from '../src/schemas/user.schema';
 
 /**
- * No `overrideProvider(AI_PROVIDER)` here, and no `AI_ASSISTANT_ENABLED` /
- * `ANTHROPIC_API_KEY` set — this exercises the module's real provider
- * factory exactly as it runs in production with nothing configured, proving
- * the "disabled-by-default production configuration" requirement end to
- * end: no network call is attempted, and the caller still gets a clean
- * `disabled` result instead of a crash or a fabricated answer.
+ * No provider override and no AI/Gemini configuration. This exercises the
+ * real module factory as it runs with nothing configured: no network call is
+ * attempted, and the caller still gets a clean disabled result.
  */
-describe('AI Assistant — disabled by default with no configuration (e2e)', () => {
+describe('AI Assistant - disabled by default with no configuration (e2e)', () => {
   let mongo: MongoMemoryReplSet;
   let app: INestApplication<App>;
   let jwtService: JwtService;
@@ -36,7 +33,9 @@ describe('AI Assistant — disabled by default with no configuration (e2e)', () 
     process.env.JWT_REFRESH_SECRET = 'e2e-test-refresh-secret';
     process.env.EMAIL_VERIFICATION_SECRET = 'e2e-test-email-secret';
     delete process.env.AI_ASSISTANT_ENABLED;
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.AI_ASSISTANT_PROVIDER;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_MODEL;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -92,5 +91,21 @@ describe('AI Assistant — disabled by default with no configuration (e2e)', () 
     expect(response.body.status).toBe('disabled');
     expect(response.body.provider).toBe('disabled');
     expect(response.body.answer).toBeUndefined();
+  });
+
+  it('reports disabled provider health without exposing any secret', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/ai-assistant/health')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      enabled: false,
+      configured: false,
+      provider: 'disabled',
+      status: 'disabled',
+      message: 'AI assistant is intentionally disabled',
+    });
+    expect(JSON.stringify(response.body)).not.toMatch(/API_KEY|secret|key/i);
   });
 });

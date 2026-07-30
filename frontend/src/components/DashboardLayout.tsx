@@ -169,7 +169,6 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.dashboard'), href: '/operator', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
       { name: t('navigation.startPreventiveMaintenance'), href: '/operator/preventive', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.startCorrectiveMaintenance'), href: '/operator/corrective', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.reportProblem'), href: '/operator/report-problem', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.smartMaintenanceCalendar'), href: '/operator/smart-maintenance-calendar', icon: CalendarDaysIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
       { name: t('navigation.machines'), href: '/operator/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
       { name: t('navigation.manuals'), href: '/operator/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },

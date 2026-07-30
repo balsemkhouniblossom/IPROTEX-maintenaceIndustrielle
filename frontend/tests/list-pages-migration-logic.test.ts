@@ -220,9 +220,9 @@ test("apiService.getWorkOrders and getMaintenancePlans accept an AbortSignal opt
 });
 
 test("Operator corrective/preventive submissions and Technician work-order actions invalidate the shared workOrders list event", () => {
-  const reportProblem = readSource("src/app/[locale]/operator/report-problem/page.tsx");
-  assert.match(reportProblem, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);
-  assert.match(reportProblem, /invalidateList\(LIST_EVENTS\.workOrders\);/);
+  const corrective = readSource("src/app/[locale]/operator/corrective/page.tsx");
+  assert.match(corrective, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);
+  assert.match(corrective, /invalidateList\(LIST_EVENTS\.workOrders\);/);
 
   const preventive = readSource("src/app/[locale]/operator/preventive/page.tsx");
   assert.match(preventive, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);

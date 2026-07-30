@@ -70,6 +70,18 @@ interface Kpi {
   availability_rate?: number;
 }
 
+interface PreventiveTaskChecklistItem {
+  _id: string;
+  task_id: string;
+  instruction: string;
+  responsable?: string;
+  status: "pending" | "completed";
+  notes?: string;
+  completed_at?: string;
+  module_id?: string | { _id?: string; machine_id?: EntityRef };
+  plan_id?: EntityRef | { _id?: string; maintenance_code?: string; plan_id?: string };
+}
+
 interface GeneratedReportRow {
   id: string;
   type: "preventive" | "corrective";
@@ -89,9 +101,6 @@ interface PreventiveDraft {
   customCategory: string;
   selectedMachine: string;
   customMachine: string;
-  checkedTasks: Record<string, boolean>;
-  customTasks: string[];
-  customTaskGroups?: Record<string, string>;
   condition: MachineCondition;
   customCondition: string;
   comments: string;
@@ -150,18 +159,6 @@ interface PreventiveStateResponse {
   };
 }
 
-function tokenizeInstructions(input: string | undefined): string[] {
-  if (!input) return [];
-  return input
-    .split(/\r?\n|[;,]/g)
-    .map((item) => item.replace(/^[-*\u2022\s]+/, "").trim())
-    .filter(Boolean);
-}
-
-function isChecklistHeader(task: string): boolean {
-  return /^Checklist for W\d+[:]?$/i.test(task.trim());
-}
-
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
@@ -169,6 +166,7 @@ function uniqueId(prefix: string): string {
 export default function OperatorPreventivePage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
+  const tChecklist = useTranslations("preventiveTaskChecklist");
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -184,18 +182,16 @@ export default function OperatorPreventivePage() {
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [preventiveState, setPreventiveState] = useState<PreventiveStateResponse | null>(null);
   const [stateLoading, setStateLoading] = useState(false);
+  const [checklistItems, setChecklistItems] = useState<PreventiveTaskChecklistItem[]>([]);
+  const [checklistLoading, setChecklistLoading] = useState(false);
+  const [checklistError, setChecklistError] = useState("");
+  const [checklistNotesDraft, setChecklistNotesDraft] = useState<Record<string, string>>({});
+  const [checklistSavingId, setChecklistSavingId] = useState("");
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
   const [customMachine, setCustomMachine] = useState("");
-
-  const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({});
-  const [selectedTaskToAdd, setSelectedTaskToAdd] = useState("");
-  const [selectedTaskGroup, setSelectedTaskGroup] = useState("");
-  const [customTaskInput, setCustomTaskInput] = useState("");
-  const [customTasks, setCustomTasks] = useState<string[]>([]);
-  const [customTaskGroups, setCustomTaskGroups] = useState<Record<string, string>>({});
 
   const [condition, setCondition] = useState<MachineCondition>("good");
   const [customCondition, setCustomCondition] = useState("");
@@ -209,12 +205,16 @@ export default function OperatorPreventivePage() {
   const [submitValidationReason, setSubmitValidationReason] = useState("");
   const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
   const [selectedOccurrenceId, setSelectedOccurrenceId] = useState("");
+  const [selectedOccurrenceIdsByPlan, setSelectedOccurrenceIdsByPlan] = useState<Record<string, string>>({});
+  const [activePlanStepIndex, setActivePlanStepIndex] = useState(0);
+  const [taskStarted, setTaskStarted] = useState(false);
   const [schedulePlan, setSchedulePlan] = useState<MaintenancePlan | null>(null);
   const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().slice(0, 10));
   const [scheduleReason, setScheduleReason] = useState("");
   const [rescheduleOccurrence, setRescheduleOccurrence] = useState<PreventiveOccurrence | null>(null);
   const [actionSaving, setActionSaving] = useState(false);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
+  const [selectedGeneratedReport, setSelectedGeneratedReport] = useState<GeneratedReportRow | null>(null);
   const [drafts, setDrafts] = useState<PreventiveDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -273,7 +273,7 @@ export default function OperatorPreventivePage() {
     if (!submitValidationReason) return;
 
     setSubmitValidationReason("");
-  }, [selectedMachine, selectedCategory, checkedTasks, submitValidationReason]);
+  }, [selectedMachine, selectedCategory, checklistItems, submitValidationReason]);
 
   function showNotification(type: "success" | "error", message: string): void {
     setNotification({ type, message });
@@ -281,12 +281,6 @@ export default function OperatorPreventivePage() {
 
   function resetPreventiveFlowState(): void {
     setSelectedMachine("");
-    setCheckedTasks({});
-    setSelectedTaskToAdd("");
-    setSelectedTaskGroup("");
-    setCustomTaskInput("");
-    setCustomTasks([]);
-    setCustomTaskGroups({});
     setCondition("good");
     setCustomCondition("");
     setComments("");
@@ -298,16 +292,13 @@ export default function OperatorPreventivePage() {
     setSelectedDraftId("");
     setSelectedPlanIds([]);
     setSelectedOccurrenceId("");
+    setSelectedOccurrenceIdsByPlan({});
+    setActivePlanStepIndex(0);
+    setTaskStarted(false);
     setPreventiveState(null);
   }
 
   function resetMachineSpecificState(): void {
-    setCheckedTasks({});
-    setSelectedTaskToAdd("");
-    setSelectedTaskGroup("");
-    setCustomTaskInput("");
-    setCustomTasks([]);
-    setCustomTaskGroups({});
     setCondition("good");
     setCustomCondition("");
     setComments("");
@@ -319,6 +310,9 @@ export default function OperatorPreventivePage() {
     setSelectedDraftId("");
     setSelectedPlanIds([]);
     setSelectedOccurrenceId("");
+    setSelectedOccurrenceIdsByPlan({});
+    setActivePlanStepIndex(0);
+    setTaskStarted(false);
   }
 
   function addGeneratedReport(report: GeneratedReportRow): void {
@@ -345,9 +339,6 @@ export default function OperatorPreventivePage() {
       customCategory,
       selectedMachine,
       customMachine,
-      checkedTasks,
-      customTasks,
-      customTaskGroups,
       condition,
       customCondition,
       comments,
@@ -372,9 +363,6 @@ export default function OperatorPreventivePage() {
     setCustomCategory(draft.customCategory);
     setSelectedMachine(draft.selectedMachine);
     setCustomMachine(draft.customMachine);
-    setCheckedTasks(draft.checkedTasks);
-    setCustomTasks(draft.customTasks);
-    setCustomTaskGroups(draft.customTaskGroups ?? {});
     setCondition(draft.condition);
     setCustomCondition(draft.customCondition);
     setComments(draft.comments);
@@ -486,6 +474,75 @@ export default function OperatorPreventivePage() {
     void loadPreventiveState();
   }, [selectedMachine]);
 
+  const loadChecklist = useCallback(async () => {
+    if (!selectedMachine && !selectedCategory) {
+      setChecklistItems([]);
+      setChecklistError("");
+      return;
+    }
+
+    try {
+      setChecklistLoading(true);
+      setChecklistError("");
+      const items = await fetchAllPaginated<PreventiveTaskChecklistItem>((params) =>
+        apiService.getOperatorPreventiveTaskChecklist({
+          ...params,
+          machineId: selectedMachine || undefined,
+          // Category-wide view: list every checklist item across the
+          // operator's accessible machines in this category, not just one
+          // machine, once they've picked a category but not yet a machine.
+          machineTypeId: !selectedMachine && selectedCategory ? selectedCategory : undefined,
+        }),
+      );
+      setChecklistItems(items);
+    } catch (error) {
+      console.error("Failed to load preventive task checklist", error);
+      setChecklistItems([]);
+      setChecklistError(extractApiErrorMessage(error, tChecklist("notifications.loadFailed")));
+    } finally {
+      setChecklistLoading(false);
+    }
+  }, [selectedMachine, selectedCategory, tChecklist]);
+
+  useEffect(() => {
+    void loadChecklist();
+  }, [loadChecklist]);
+
+  async function toggleChecklistItem(item: PreventiveTaskChecklistItem): Promise<void> {
+    const nextStatus = item.status === "completed" ? "pending" : "completed";
+    try {
+      setChecklistSavingId(item._id);
+      await apiService.updateOperatorPreventiveTaskChecklist(item._id, {
+        status: nextStatus,
+        notes: checklistNotesDraft[item._id] ?? item.notes,
+      });
+      showNotification("success", tChecklist("notifications.taskUpdated"));
+      await loadChecklist();
+    } catch (error) {
+      console.error("Failed to update preventive task checklist item", error);
+      showNotification("error", extractApiErrorMessage(error, tChecklist("notifications.loadFailed")));
+    } finally {
+      setChecklistSavingId("");
+    }
+  }
+
+  async function saveChecklistNotes(item: PreventiveTaskChecklistItem): Promise<void> {
+    const notes = checklistNotesDraft[item._id];
+    if (notes === undefined || notes === item.notes) return;
+
+    try {
+      setChecklistSavingId(item._id);
+      await apiService.updateOperatorPreventiveTaskChecklist(item._id, { notes });
+      showNotification("success", tChecklist("notifications.taskUpdated"));
+      await loadChecklist();
+    } catch (error) {
+      console.error("Failed to save preventive task checklist notes", error);
+      showNotification("error", extractApiErrorMessage(error, tChecklist("notifications.loadFailed")));
+    } finally {
+      setChecklistSavingId("");
+    }
+  }
+
   async function fetchAllPaginatedItems<T>(
     request: (params?: { page?: number; limit?: number }) => Promise<{ data: unknown }>,
   ): Promise<T[]> {
@@ -497,13 +554,9 @@ export default function OperatorPreventivePage() {
     [machines, selectedCategory],
   );
 
-  const visibleMachineTypes = useMemo(() => {
-    const usedTypeIds = new Set(
-      machines.map((machine) => refId(machine.type_id)).filter(Boolean),
-    );
-
-    return machineTypes.filter((type) => usedTypeIds.has(type._id));
-  }, [machineTypes, machines]);
+  // machineTypes is already scoped server-side (getOperatorMachineTypes) to the
+  // categories the operator can access, with no client-side re-filtering needed.
+  const visibleMachineTypes = machineTypes;
 
   const modulesForMachine = useMemo(
     () => modules.filter((module) => refId(module.machine_id) === selectedMachine),
@@ -520,39 +573,6 @@ export default function OperatorPreventivePage() {
           !isCorrectiveMaintenanceType(plan.type_maintenance),
       ),
     [plans, moduleIdSet],
-  );
-
-  const taskList = useMemo(() => {
-    const generated = preventivePlans.flatMap((plan) => tokenizeInstructions(plan.instruction));
-    return Array.from(new Set(generated));
-  }, [preventivePlans]);
-
-  const checklistGroups = useMemo(() => {
-    const groups: Array<{ header: string; items: string[] }> = [];
-    let currentHeader = "";
-
-    taskList.forEach((task) => {
-      if (isChecklistHeader(task)) {
-        currentHeader = task;
-        groups.push({ header: task, items: [] });
-        return;
-      }
-
-      if (!currentHeader) {
-        groups.push({ header: task, items: [] });
-        return;
-      }
-
-      const currentGroup = groups[groups.length - 1];
-      currentGroup?.items.push(task);
-    });
-
-    return groups;
-  }, [taskList]);
-
-  const checklistHeaders = useMemo(
-    () => checklistGroups.map((group) => group.header).filter((header) => isChecklistHeader(header)),
-    [checklistGroups],
   );
 
   const manualDocument = useMemo(
@@ -620,209 +640,249 @@ export default function OperatorPreventivePage() {
     return new Date(value).toLocaleDateString();
   }
 
-  function renderOccurrenceSection(title: string, items: PreventivePlanState[] = []) {
-    if (!selectedMachine) return null;
-    return (
-      <div className="panel">
-        <div className="card-title mb-3">{title}</div>
-        {stateLoading ? (
-          <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-        ) : items.length === 0 ? (
-          <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {items.map((item) => {
-              const occurrence = item.currentOccurrence;
-              return (
-                <div key={`${item.plan._id}-${item.currentState}`} className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-slate-900">{item.plan.maintenance_code || item.plan.plan_id}</div>
-                      <div className="mt-1 text-sm text-slate-600">{item.plan.instruction || tCommon("notAvailable")}</div>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
-                      {formatPlanStateLabel(item.currentState)}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-2">
-                    <div>{t("lifecycle.lastCompleted")}: {formatDateLabel(item.lastCompletedDate)}</div>
-                    <div>{t("lifecycle.nextDue")}: {formatDateLabel(item.nextDueDate)}</div>
-                    <div>{t("lifecycle.originalDueDate")}: {formatDateLabel(occurrence?.original_due_date)}</div>
-                    <div>{t("lifecycle.reschedulingReason")}: {occurrence?.reschedule_reason || tCommon("notAvailable")}</div>
-                  </div>
-                  {occurrence && ["scheduled", "due_soon", "due_today", "overdue"].includes(item.currentState) ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => performPlanToday(item.plan, occurrence)}
-                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
-                      >
-                        {t("lifecycle.performToday")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRescheduleOccurrence(occurrence);
-                          setScheduleDate((item.nextDueDate || new Date().toISOString()).slice(0, 10));
-                        }}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
-                      >
-                        {t("lifecycle.reschedule")}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
+  function formatReportDate(value?: string): string {
+    if (!value) return tCommon("notAvailable");
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? tCommon("notAvailable") : parsed.toLocaleString();
   }
 
-  const allTaskItems = useMemo(() => {
-    if (!customTasks.length) {
-      return taskList;
+  function formatReportStatus(status: string): string {
+    switch (status) {
+      case "waiting_validation":
+        return t("waitingValidation");
+      case "validated":
+      case "completed":
+        return t("validated");
+      case "returned":
+        return t("returned");
+      case "technician_required":
+        return t("technicianRequired");
+      default:
+        return status || tCommon("notAvailable");
     }
+  }
 
-    const assignedCustom = new Map<string, string[]>();
-    const unassignedCustom: string[] = [];
-
-    customTasks.forEach((task) => {
-      const header = customTaskGroups[task];
-      if (header && checklistHeaders.includes(header)) {
-        assignedCustom.set(header, [...(assignedCustom.get(header) ?? []), task]);
-      } else {
-        unassignedCustom.push(task);
-      }
-    });
-
-    if (!checklistGroups.length) {
-      return [...taskList, ...unassignedCustom];
+  function reportStatusClasses(status: string): string {
+    switch (status) {
+      case "validated":
+      case "completed":
+        return "border-emerald-200 bg-emerald-50 text-emerald-800";
+      case "returned":
+        return "border-amber-200 bg-amber-50 text-amber-800";
+      case "technician_required":
+        return "border-blue-200 bg-blue-50 text-blue-800";
+      case "waiting_validation":
+      default:
+        return "border-slate-200 bg-slate-50 text-slate-700";
     }
+  }
 
-    const result: string[] = [];
-    checklistGroups.forEach((group) => {
-      result.push(group.header, ...group.items, ...(assignedCustom.get(group.header) ?? []));
-    });
-
-    return [...result, ...unassignedCustom];
-  }, [taskList, customTasks, customTaskGroups, checklistGroups, checklistHeaders]);
-
-  const selectedTaskLabels = useMemo(
-    () => allTaskItems.filter((task) => checkedTasks[task]),
-    [allTaskItems, checkedTasks],
+  const preventivePlanStates = useMemo(
+    () =>
+      preventiveSections?.preventivePlan ||
+      preventivePlans.map((plan) => ({
+        plan,
+        module: modules.find((moduleEntity) => refId(plan.module_id) === moduleEntity._id) || null,
+        currentState: "not_scheduled",
+        currentOccurrence: null,
+        lastCompletedDate: null,
+        nextDueDate: null,
+        frequency: {
+          value: plan.frequence,
+          unit: plan.unite_frequence,
+          normalized: plan.unite_frequence,
+        },
+      } satisfies PreventivePlanState)),
+    [modules, preventivePlans, preventiveSections?.preventivePlan],
   );
 
-  const taskLabelsForPlan = useCallback((plan: MaintenancePlan): string[] => {
-    const planTasks = tokenizeInstructions(plan.instruction);
-    const planTaskSet = new Set(planTasks);
-    const code = (plan.maintenance_code || plan.plan_id || "").trim().toLowerCase();
-    const explicitHeader = planTasks.find((task) => isChecklistHeader(task));
-    const explicitHeaderMatches =
-      explicitHeader && selectedTaskLabels.some((task) => task.toLowerCase() === explicitHeader.toLowerCase());
+  const preventivePlanGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { key: string; label: string; states: PreventivePlanState[]; planIds: string[] }
+    >();
 
-    const selectedForPlan = selectedTaskLabels.filter((task) => {
-      if (planTaskSet.has(task)) return true;
-      const group = customTaskGroups[task];
-      if (group && explicitHeader && group.toLowerCase() === explicitHeader.toLowerCase()) return true;
-      return Boolean(code) && task.toLowerCase().includes(code);
-    });
-
-    if (selectedForPlan.length > 0 || explicitHeaderMatches) {
-      return selectedForPlan.filter((task) => !isChecklistHeader(task));
-    }
-
-    return [];
-  }, [customTaskGroups, selectedTaskLabels]);
-
-  const selectedPreventivePlans = useMemo(() => {
-    if (selectedPlanIds.length > 0) {
-      return preventivePlans.filter((plan) => selectedPlanIds.includes(plan._id));
-    }
-
-    const matched = preventivePlans.filter((plan) => taskLabelsForPlan(plan).length > 0);
-    if (matched.length > 0) {
-      return matched;
-    }
-
-    return selectedTaskLabels.length > 0 && preventivePlans[0] ? [preventivePlans[0]] : [];
-  }, [preventivePlans, selectedPlanIds, selectedTaskLabels, taskLabelsForPlan]);
-
-  const availableTaskOptions = useMemo(
-    () => allTaskItems.filter((task) => !checkedTasks[task]),
-    [allTaskItems, checkedTasks],
-  );
-
-  function toggleTask(task: string): void {
-    setCheckedTasks((prev) => {
-      const next = { ...prev };
-      const group = checklistGroups.find((item) => item.header === task);
-
-      if (group && group.items.length > 0) {
-        const shouldCheck = !group.items.every((item) => Boolean(prev[item])) || !prev[task];
-        next[task] = shouldCheck;
-        group.items.forEach((item) => {
-          next[item] = shouldCheck;
-        });
-        return next;
+    preventivePlanStates.forEach((state) => {
+      const label = state.plan.maintenance_code || state.plan.plan_id;
+      const key = label.trim().toUpperCase() || state.plan._id;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.states.push(state);
+        existing.planIds.push(state.plan._id);
+        return;
       }
 
-      next[task] = !prev[task];
-
-      const parentGroup = checklistGroups.find((item) => item.items.includes(task));
-      if (parentGroup) {
-        next[parentGroup.header] = parentGroup.items.every((item) =>
-          item === task ? next[item] : Boolean(next[item]),
-        );
-      }
-
-      return next;
-    });
-  }
-
-  function addTaskFromSelection(): void {
-    const value = selectedTaskToAdd === CUSTOM_OPTION ? customTaskInput.trim() : selectedTaskToAdd.trim();
-    if (!value) return;
-    if (!customTasks.includes(value)) {
-      setCustomTasks((prev) => [...prev, value]);
-    }
-    if (selectedTaskGroup) {
-      setCustomTaskGroups((prev) => ({ ...prev, [value]: selectedTaskGroup }));
-    }
-    setCheckedTasks((prev) => ({ ...prev, [value]: true }));
-    setSelectedTaskToAdd("");
-    setSelectedTaskGroup("");
-    setCustomTaskInput("");
-  }
-
-  function removeCustomTask(task: string): void {
-    setCustomTasks((prev) => prev.filter((item) => item !== task));
-    setCustomTaskGroups((prev) => {
-      const next = { ...prev };
-      delete next[task];
-      return next;
-    });
-    setCheckedTasks((prev) => {
-      const next = { ...prev };
-      delete next[task];
-      return next;
-    });
-  }
-
-  function performPlanToday(plan: MaintenancePlan, occurrence?: PreventiveOccurrence | null): void {
-    setSelectedPlanIds([plan._id]);
-    setSelectedOccurrenceId(occurrence?._id || "");
-    setCompletionDate(new Date().toISOString().slice(0, 16));
-    const planTasks = tokenizeInstructions(plan.instruction).filter((task) => !isChecklistHeader(task));
-    setCheckedTasks((prev) => {
-      const next = { ...prev };
-      planTasks.forEach((task) => {
-        next[task] = true;
+      groups.set(key, {
+        key,
+        label,
+        states: [state],
+        planIds: [state.plan._id],
       });
-      return next;
     });
+
+    return Array.from(groups.values());
+  }, [preventivePlanStates]);
+
+  const selectedPlanId = selectedPlanIds[activePlanStepIndex] || selectedPlanIds[0] || "";
+  const selectedPlanIdsSet = useMemo(() => new Set(selectedPlanIds), [selectedPlanIds]);
+  const selectedPlanState = useMemo(
+    () => preventivePlanStates.find((item) => item.plan._id === selectedPlanId) || null,
+    [preventivePlanStates, selectedPlanId],
+  );
+  const selectedPlanGroup = useMemo(
+    () => preventivePlanGroups.find((group) => group.planIds.some((planId) => selectedPlanIdsSet.has(planId))) || null,
+    [preventivePlanGroups, selectedPlanIdsSet],
+  );
+  const selectedPlanLabel = selectedPlanGroup?.label || selectedPlanState?.plan.maintenance_code || selectedPlanState?.plan.plan_id || "";
+  const selectedPlanStateLabel = selectedPlanState ? formatPlanStateLabel(selectedPlanState.currentState) : tCommon("notAvailable");
+
+  function checklistPlanId(item: PreventiveTaskChecklistItem): string {
+    const planRef = item.plan_id;
+    if (!planRef) return "";
+    return refId(planRef as EntityRef);
+  }
+
+  const groupedChecklistItems = useMemo(
+    () => checklistItems.filter((item) => selectedPlanIdsSet.has(checklistPlanId(item))),
+    [checklistItems, selectedPlanIdsSet],
+  );
+
+  const selectedChecklistItems = useMemo(
+    () => checklistItems.filter((item) => checklistPlanId(item) === selectedPlanId),
+    [checklistItems, selectedPlanId],
+  );
+
+  const completedChecklistLabels = useMemo(
+    () => groupedChecklistItems.filter((item) => item.status === "completed").map((item) => item.instruction),
+    [groupedChecklistItems],
+  );
+
+  const currentCompletedChecklistLabels = useMemo(
+    () => selectedChecklistItems.filter((item) => item.status === "completed").map((item) => item.instruction),
+    [selectedChecklistItems],
+  );
+
+  const focusedProgress = selectedChecklistItems.length > 0
+    ? Math.round((currentCompletedChecklistLabels.length / selectedChecklistItems.length) * 100)
+    : 0;
+
+  const selectedTaskCompleted =
+    selectedChecklistItems.length > 0 &&
+    currentCompletedChecklistLabels.length === selectedChecklistItems.length;
+  const groupTaskCompleted =
+    groupedChecklistItems.length > 0 &&
+    completedChecklistLabels.length === groupedChecklistItems.length;
+  const activePlanStepNumber = selectedPlanGroup ? activePlanStepIndex + 1 : 0;
+  const totalPlanSteps = selectedPlanGroup?.planIds.length || 0;
+  const isLastPlanStep = totalPlanSteps <= 1 || activePlanStepIndex >= totalPlanSteps - 1;
+  const canGoToNextPlanStep = Boolean(taskStarted && selectedTaskCompleted && !isLastPlanStep);
+  const canSubmitFocusedTask = Boolean(taskStarted && groupTaskCompleted && selectedPlanIds.every((planId) => selectedOccurrenceIdsByPlan[planId] || selectedPlanGroup?.states.find((state) => state.plan._id === planId)?.currentOccurrence?._id));
+
+  useEffect(() => {
+    if (!selectedMachine || preventivePlanGroups.length === 0) {
+      if (selectedPlanIds.length > 0) {
+        setSelectedPlanIds([]);
+        setSelectedOccurrenceId("");
+        setSelectedOccurrenceIdsByPlan({});
+        setActivePlanStepIndex(0);
+        setTaskStarted(false);
+      }
+      return;
+    }
+
+    if (!selectedPlanId || !preventivePlanGroups.some((group) => group.planIds.includes(selectedPlanId))) {
+      setSelectedPlanIds(preventivePlanGroups[0].planIds);
+      setSelectedOccurrenceId("");
+      setSelectedOccurrenceIdsByPlan({});
+      setActivePlanStepIndex(0);
+      setTaskStarted(false);
+    }
+  }, [preventivePlanGroups, selectedMachine, selectedPlanId, selectedPlanIds.length]);
+
+  // The single source of truth for "what has this operator actually
+  // completed" is the persisted checklist itself (backend PreventiveTask
+  // rows) rather than a parallel, client-only set of checkboxes, so the
+  // submission payload and the on-page progress indicator both derive from
+  // checklistItems instead of duplicating their own selection state.
+  function performPlanToday(plan: MaintenancePlan, occurrence?: PreventiveOccurrence | null): void {
+    setSelectedPlanIds((current) => (current.includes(plan._id) ? current : [plan._id]));
+    setSelectedOccurrenceId(occurrence?._id || "");
+    if (occurrence?._id) {
+      setSelectedOccurrenceIdsByPlan((current) => ({ ...current, [plan._id]: occurrence._id }));
+    }
+    setTaskStarted(Boolean(occurrence?._id));
+    setCompletionDate(new Date().toISOString().slice(0, 16));
     showNotification("success", `${plan.maintenance_code || plan.plan_id}: ${t("lifecycle.performToday")}`);
+  }
+
+  async function startSelectedTask(): Promise<void> {
+    if (!selectedMachine || !selectedPlanState) return;
+
+    if (selectedPlanState.currentOccurrence?._id) {
+      performPlanToday(selectedPlanState.plan, selectedPlanState.currentOccurrence);
+      return;
+    }
+
+    try {
+      setActionSaving(true);
+      const today = new Date().toISOString().slice(0, 10);
+      const scheduleResponse = await apiService.scheduleOperatorPreventive({
+        machine_id: selectedMachine,
+        plan_id: selectedPlanState.plan._id,
+        scheduled_date: today,
+      });
+      const occurrenceId = scheduleResponse?.data?.occurrence?._id as string | undefined;
+      const response = await apiService.getOperatorPreventiveStates({ machineId: selectedMachine });
+      setPreventiveState((response.data || null) as PreventiveStateResponse | null);
+      setSelectedOccurrenceId(occurrenceId || "");
+      if (occurrenceId) {
+        setSelectedOccurrenceIdsByPlan((current) => ({ ...current, [selectedPlanState.plan._id]: occurrenceId }));
+      }
+      setTaskStarted(Boolean(occurrenceId));
+      setCompletionDate(new Date().toISOString().slice(0, 16));
+      showNotification("success", `${selectedPlanState.plan.maintenance_code || selectedPlanState.plan.plan_id}: ${t("smartCalendar.start")}`);
+    } catch (error) {
+      console.error("Failed to start preventive task", error);
+      showNotification("error", extractApiErrorMessage(error, t("lifecycle.duplicateOccurrence")));
+    } finally {
+      setActionSaving(false);
+    }
+  }
+
+  async function completeSelectedTask(): Promise<void> {
+    if (!selectedChecklistItems.length) {
+      setSubmitValidationReason("no-tasks-selected");
+      return;
+    }
+
+    try {
+      setChecklistSavingId("bulk-complete");
+      await Promise.all(
+        selectedChecklistItems
+          .filter((item) => item.status !== "completed")
+          .map((item) =>
+            apiService.updateOperatorPreventiveTaskChecklist(item._id, {
+              status: "completed",
+              notes: checklistNotesDraft[item._id] ?? item.notes,
+            }),
+          ),
+      );
+      await loadChecklist();
+      showNotification("success", tChecklist("notifications.taskMarkedComplete"));
+    } catch (error) {
+      console.error("Failed to complete selected preventive task", error);
+      showNotification("error", extractApiErrorMessage(error, tChecklist("notifications.loadFailed")));
+    } finally {
+      setChecklistSavingId("");
+    }
+  }
+
+  function goToNextPlanStep(): void {
+    if (!canGoToNextPlanStep) return;
+    setActivePlanStepIndex((current) => Math.min(current + 1, totalPlanSteps - 1));
+    setSelectedOccurrenceId("");
+    setTaskStarted(false);
+    setSubmitValidationReason("");
   }
 
   async function createFirstSchedule(plan: MaintenancePlan): Promise<void> {
@@ -892,16 +952,21 @@ export default function OperatorPreventivePage() {
       return;
     }
 
-    if (selectedTaskLabels.length === 0) {
+    if (completedChecklistLabels.length === 0) {
       setSubmitValidationReason("no-tasks-selected");
-      showNotification("error", t("preventiveTasks"));
+      showNotification("error", tChecklist("heading"));
       return;
     }
 
-    if (!selectedOccurrenceId) {
+    const missingOccurrence = selectedPlanIds.find((planId) => {
+      const stateOccurrence = selectedPlanGroup?.states.find((state) => state.plan._id === planId)?.currentOccurrence?._id;
+      return !selectedOccurrenceIdsByPlan[planId] && !stateOccurrence;
+    });
+
+    if (missingOccurrence) {
       // The Operator must act on an already-scheduled occurrence (via
       // "Perform today" on a due/overdue card) rather than an arbitrary
-      // plan — this endpoint updates an assigned work order, it never
+      // plan. This endpoint updates an assigned work order, it never
       // creates one.
       setSubmitValidationReason("no-occurrence-scheduled");
       showNotification("error", t("validation"));
@@ -914,35 +979,53 @@ export default function OperatorPreventivePage() {
     setSubmitting(true);
     try {
       const machineLabel = machines.find((item) => item._id === selectedMachine)?.machine_id ?? tCommon("notAvailable");
-      const taskSummary = selectedTaskLabels.join(" | ");
+      const taskSummary = completedChecklistLabels.join(" | ");
       const lubrication =
         selectedLubrifiant && lubrificationQty.trim() && Number(lubrificationQty) > 0
           ? { lubrifiant_id: selectedLubrifiant, quantity: Number(lubrificationQty) }
           : undefined;
 
-      const response = await apiService.submitOperatorPreventiveMaintenance({
-        work_order_id: selectedOccurrenceId,
-        tasks_completed: selectedTaskLabels,
-        condition: conditionValue,
-        comments: comments.trim() || undefined,
-        lubrication,
-      });
+      const submissionResults: Array<{ workOrderId: string; reportId: string }> = [];
+      for (const planId of selectedPlanIds) {
+        const planItems = groupedChecklistItems.filter((item) => checklistPlanId(item) === planId);
+        const planLabels = planItems
+          .filter((item) => item.status === "completed")
+          .map((item) => item.instruction);
+        if (planItems.length === 0 || planLabels.length !== planItems.length) {
+          throw new Error("Preventive submission is incomplete");
+        }
 
-      const workOrderId = response?.data?.workOrder?._id as string | undefined;
-      const reportId = response?.data?.report?._id as string | undefined;
-      if (!workOrderId || !reportId) {
-        throw new Error("Preventive submission failed");
+        const stateOccurrence = selectedPlanGroup?.states.find((state) => state.plan._id === planId)?.currentOccurrence?._id;
+        const occurrenceId = selectedOccurrenceIdsByPlan[planId] || stateOccurrence;
+        if (!occurrenceId) {
+          throw new Error("Preventive occurrence is missing");
+        }
+
+        const response = await apiService.submitOperatorPreventiveMaintenance({
+          work_order_id: occurrenceId,
+          tasks_completed: planLabels,
+          condition: conditionValue,
+          comments: comments.trim() || undefined,
+          lubrication,
+        });
+
+        const workOrderId = response?.data?.workOrder?._id as string | undefined;
+        const reportId = response?.data?.report?._id as string | undefined;
+        if (!workOrderId || !reportId) {
+          throw new Error("Preventive submission failed");
+        }
+        submissionResults.push({ workOrderId, reportId });
       }
 
       await uploadPhotoIfPresent(selectedMachine);
-      // The submitted work order's status changed server-side — the Admin
+      // The submitted work order's status changed server-side, so the Admin
       // Work Orders list has no other way to learn that.
       invalidateList(LIST_EVENTS.workOrders);
       addGeneratedReport({
-        id: `${workOrderId}-${reportId}`,
+        id: submissionResults.map((item) => `${item.workOrderId}-${item.reportId}`).join("|"),
         type: "preventive",
-        workOrderId,
-        reportId,
+        workOrderId: submissionResults.map((item) => item.workOrderId).join(","),
+        reportId: submissionResults.map((item) => item.reportId).join(","),
         machine: machineLabel,
         summary: taskSummary,
         createdAt: new Date().toISOString(),
@@ -952,6 +1035,9 @@ export default function OperatorPreventivePage() {
       const refreshedState = await apiService.getOperatorPreventiveStates({ machineId: selectedMachine });
       setPreventiveState((refreshedState.data || null) as PreventiveStateResponse | null);
       setSelectedOccurrenceId("");
+      setSelectedOccurrenceIdsByPlan({});
+      setActivePlanStepIndex(0);
+      setTaskStarted(false);
 
       if (fromDraftId) {
         const nextDrafts = drafts.filter((item) => item.id !== fromDraftId);
@@ -968,6 +1054,8 @@ export default function OperatorPreventivePage() {
       setSubmitting(false);
     }
   }
+
+  const preventiveGeneratedReports = generatedReports.filter((item) => item.type === "preventive");
 
   if (loading) {
     return (
@@ -1060,23 +1148,20 @@ export default function OperatorPreventivePage() {
               />
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-slate-700">{t("progress")}</div>
                   <div className="text-xs text-slate-500">
-                    {selectedTaskLabels.length}/{allTaskItems.length || 1} {t("completed")}
+                    {selectedPlanState
+                      ? `${currentCompletedChecklistLabels.length}/${selectedChecklistItems.length || 1} ${t("completed")}`
+                      : tCommon("table.noData")}
                   </div>
                 </div>
-                <div className="text-sm font-semibold text-slate-900">
-                  {allTaskItems.length > 0 ? Math.round((selectedTaskLabels.length / allTaskItems.length) * 100) : 0}%
-                </div>
+                <div className="text-sm font-semibold text-slate-900">{focusedProgress}%</div>
               </div>
               <div className="mt-3 h-2 rounded-full bg-slate-200">
-                <div
-                  className="h-2 rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${allTaskItems.length > 0 ? Math.round((selectedTaskLabels.length / allTaskItems.length) * 100) : 0}%` }}
-                />
+                <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${focusedProgress}%` }} />
               </div>
             </div>
           </div>
@@ -1087,408 +1172,371 @@ export default function OperatorPreventivePage() {
             </div>
           ) : null}
 
-          <div className="col-span-full grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {renderOccurrenceSection(t("lifecycle.dueToday"), preventiveSections?.dueToday)}
-            {renderOccurrenceSection(t("lifecycle.overdue"), preventiveSections?.overdue)}
-            {renderOccurrenceSection(t("lifecycle.upcoming"), preventiveSections?.upcoming)}
-            {renderOccurrenceSection(t("lifecycle.waitingValidation"), preventiveSections?.waitingValidation)}
-            {renderOccurrenceSection(t("lifecycle.returned"), preventiveSections?.returned)}
-          </div>
-
-          {preventivePlans.length > 0 ? (
+          {selectedMachine ? (
             <div className="col-span-full panel">
-              <div className="card-title mb-3">{t("lifecycle.preventivePlan")}</div>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {(preventiveSections?.preventivePlan || preventivePlans.map((plan) => ({
-                  plan,
-                  module: modules.find((moduleEntity) => refId(plan.module_id) === moduleEntity._id) || null,
-                  currentState: "not_scheduled",
-                  currentOccurrence: null,
-                  lastCompletedDate: null,
-                  nextDueDate: null,
-                  frequency: {
-                    value: plan.frequence,
-                    unit: plan.unite_frequence,
-                    normalized: plan.unite_frequence,
-                  },
-                } satisfies PreventivePlanState))).map((item) => (
-                  <div key={item.plan._id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-lg font-bold text-slate-900">{item.plan.maintenance_code || item.plan.plan_id}</div>
-                        <div className="mt-1 text-sm text-slate-500">{item.plan.responsable || tCommon("notAvailable")}</div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="card-title">{tChecklist("heading")}</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    {selectedPlanState
+                      ? `${selectedPlanLabel} - ${selectedPlanStateLabel}`
+                      : tCommon("table.noData")}
+                  </div>
+                </div>
+                {manualDocument ? (
+                  <button type="button" onClick={() => setPreviewDocument(manualDocument)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white">
+                    {t("openManual")}
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                {preventivePlanGroups.map((group) => (
+                  <button
+                    key={group.key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlanIds(group.planIds);
+                      setSelectedOccurrenceId("");
+                      setSelectedOccurrenceIdsByPlan({});
+                      setActivePlanStepIndex(0);
+                      setTaskStarted(false);
+                    }}
+                    className={`shrink-0 rounded-lg border px-4 py-2 text-left text-sm ${
+                      group.planIds.some((planId) => selectedPlanIdsSet.has(planId))
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    <div className="font-semibold">{group.label}</div>
+                    <div className="text-xs">
+                      {formatPlanStateLabel(group.states[0].currentState)}
+                      {group.states.length > 1 ? ` (${group.states.length})` : ""}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-lg font-bold text-slate-900">
+                        {selectedPlanLabel || t("lifecycle.preventivePlan")}
                       </div>
-                      <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        {item.frequency?.normalized || item.plan.unite_frequence}
+                      <div className="mt-1 text-sm text-slate-500">
+                        {t("lifecycle.nextDue")}: {formatDateLabel(selectedPlanState?.nextDueDate)}
                       </div>
                     </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-700">
-                      <div><span className="font-semibold">{t("preventiveTasks")}: </span>{item.plan.instruction || tCommon("notAvailable")}</div>
-                      <div><span className="font-semibold">{t("module")}: </span>{item.module?.module_id || tCommon("notAvailable")}</div>
-                      <div><span className="font-semibold">{t("lifecycle.lastCompleted")}: </span>{formatDateLabel(item.lastCompletedDate)}</div>
-                      <div><span className="font-semibold">{t("lifecycle.nextDue")}: </span>{formatDateLabel(item.nextDueDate)}</div>
-                      <div><span className="font-semibold">{t("smartCalendar.status")}: </span>{formatPlanStateLabel(item.currentState)}</div>
-                      <div><span className="font-semibold">{t("openManual")}: </span>{item.plan.documentation || tCommon("notAvailable")}</div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
+                      {selectedPlanStateLabel}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-slate-50 p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-slate-700">
+                        {t("progress")} {totalPlanSteps > 1 ? `${activePlanStepNumber}/${totalPlanSteps}` : ""}
+                      </span>
+                      <span className="font-semibold text-slate-900">{focusedProgress}%</span>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => performPlanToday(item.plan, item.currentOccurrence)}
-                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
-                      >
-                        {t("lifecycle.performToday")}
-                      </button>
-                      {item.currentState === "not_scheduled" ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSchedulePlan(item.plan);
-                            setScheduleDate(new Date().toISOString().slice(0, 10));
-                          }}
-                          className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700"
-                        >
-                          {t("lifecycle.setFirstInterventionDate")}
-                        </button>
-                      ) : null}
+                    <div className="mt-2 h-2 rounded-full bg-slate-200">
+                      <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${focusedProgress}%` }} />
                     </div>
                   </div>
-                ))}
+
+                  <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                    {checklistLoading || stateLoading ? (
+                      <div data-testid="preventive-checklist-loading" className="text-sm text-slate-500">{tCommon("loading")}</div>
+                    ) : checklistError ? (
+                      <div data-testid="preventive-checklist-error" className="text-sm text-red-600">{checklistError}</div>
+                    ) : selectedChecklistItems.length === 0 ? (
+                      <div data-testid="preventive-checklist-empty" className="text-sm text-slate-500">{tChecklist("empty.default")}</div>
+                    ) : (
+                      selectedChecklistItems.map((item, index) => (
+                        <div
+                          key={item._id}
+                          data-testid={`preventive-checklist-item-${index}`}
+                          className={`rounded-xl border p-3 ${
+                            item.status === "completed"
+                              ? "border-emerald-400 bg-emerald-50"
+                              : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-sm font-medium text-slate-900">{item.instruction}</div>
+                            <button
+                              type="button"
+                              disabled={checklistSavingId === item._id || !taskStarted}
+                              onClick={() => void toggleChecklistItem(item)}
+                              data-testid={`preventive-checklist-toggle-${index}`}
+                              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 ${
+                                item.status === "completed" ? "bg-slate-600" : "bg-emerald-600"
+                              }`}
+                            >
+                              {item.status === "completed" ? tChecklist("status.pending") : tChecklist("actions.complete")}
+                            </button>
+                          </div>
+                          <input
+                            value={checklistNotesDraft[item._id] ?? item.notes ?? ""}
+                            onChange={(event) =>
+                              setChecklistNotesDraft((prev) => ({ ...prev, [item._id]: event.target.value }))
+                            }
+                            onBlur={() => void saveChecklistNotes(item)}
+                            data-testid={`preventive-checklist-notes-${index}`}
+                            className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+                            placeholder={tChecklist("placeholders.notes")}
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid gap-2 md:grid-cols-4">
+                    <button
+                      type="button"
+                      disabled={!selectedPlanState || actionSaving || taskStarted}
+                      onClick={() => void startSelectedTask()}
+                      className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {actionSaving ? tCommon("saving") : t("smartCalendar.start")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!taskStarted || checklistSavingId === "bulk-complete" || selectedTaskCompleted}
+                      onClick={() => void completeSelectedTask()}
+                      className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {checklistSavingId === "bulk-complete" ? tCommon("saving") : t("smartCalendar.complete")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canGoToNextPlanStep}
+                      onClick={goToNextPlanStep}
+                      data-testid="preventive-next-step-button"
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                    >
+                      {tCommon("next")}
+                    </button>
+                    <button
+                      disabled={!canSubmitFocusedTask || submitting || !isLastPlanStep}
+                      onClick={() => void submitPreventiveMaintenance()}
+                      data-testid="preventive-submit-button"
+                      className="rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {submitting ? tCommon("saving") : t("generateReport")}
+                    </button>
+                  </div>
+                  {submitValidationReason ? (
+                    <div data-testid="preventive-submit-validation" className="mt-3 text-sm text-red-600">
+                      {submitValidationMessage}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("machineCondition")}</label>
+                    <select
+                      value={condition}
+                      onChange={(event) => setCondition(event.target.value as MachineCondition)}
+                      title={t("machineCondition")}
+                      aria-label={t("machineCondition")}
+                      className="mt-2 w-full rounded-lg border px-3 py-2"
+                    >
+                      <option value="good">{t("good")}</option>
+                      <option value="followUp">{t("followUp")}</option>
+                      <option value="technicianRequired">{t("technicianRequired")}</option>
+                      <option value="custom">{t("custom")}</option>
+                    </select>
+                    {condition === "custom" ? (
+                      <input
+                        value={customCondition}
+                        onChange={(event) => setCustomCondition(event.target.value)}
+                        className="mt-2 w-full rounded-lg border px-3 py-2"
+                        placeholder={t("comments")}
+                      />
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("comments")}</label>
+                    <input
+                      value={comments}
+                      onChange={(event) => setComments(event.target.value.slice(0, 180))}
+                      className="mt-2 w-full rounded-lg border px-3 py-2"
+                      placeholder={t("comments")}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("lubricant")}</label>
+                    <select
+                      value={selectedLubrifiant}
+                      onChange={(event) => setSelectedLubrifiant(event.target.value)}
+                      title={t("lubricant")}
+                      aria-label={t("lubricant")}
+                      className="mt-2 w-full rounded-lg border px-3 py-2"
+                    >
+                      <option value="">{tCommon("actions.search")}</option>
+                      {lubrifiants.map((item) => (
+                        <option key={item._id} value={item._id}>
+                          {item.nom} ({item.type})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("quantity")}</label>
+                    <select
+                      value={selectedLubrificationQtyMode}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setSelectedLubrificationQtyMode(value);
+                        setLubrificationQty(value === CUSTOM_OPTION ? "" : value);
+                      }}
+                      title={t("quantity")}
+                      aria-label={t("quantity")}
+                      className="mt-2 w-full rounded-lg border px-3 py-2"
+                    >
+                      <option value="">{tCommon("actions.search")}</option>
+                      {LUBRIFICATION_QTY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                      <option value={CUSTOM_OPTION}>{t("custom")}</option>
+                    </select>
+                    {selectedLubrificationQtyMode === CUSTOM_OPTION ? (
+                      <input
+                        type="number"
+                        min="0"
+                        value={lubrificationQty}
+                        onChange={(event) => setLubrificationQty(event.target.value)}
+                        title={t("quantity")}
+                        aria-label={t("quantity")}
+                        placeholder={t("quantity")}
+                        className="mt-2 w-full rounded-lg border px-3 py-2"
+                      />
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("photoUpload")}</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                      title={t("photoUpload")}
+                      aria-label={t("photoUpload")}
+                      className="mt-2 w-full rounded-lg border px-3 py-2"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                    {t("lifecycle.actualExecutionDate")}: {new Date().toLocaleString()}
+                  </div>
+                  {selectedMachineKpi ? (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg border bg-white p-2">{t("mtbf")}: {selectedMachineKpi.mtbf_value ?? tCommon("notAvailable")}</div>
+                      <div className="rounded-lg border bg-white p-2">{t("mttr")}: {selectedMachineKpi.mttr_value ?? tCommon("notAvailable")}</div>
+                      <div className="rounded-lg border bg-white p-2">{t("availability")}: {selectedMachineKpi.availability_rate ?? tCommon("notAvailable")}</div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : null}
 
           <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("preventiveTasks")}</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {allTaskItems.length === 0 && <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>}
-              {allTaskItems.map((task, index) => {
-                const isHeader = isChecklistHeader(task);
-                const isCustomTask = customTasks.includes(task);
-                return (
-                  <div
-                    key={task}
-                    className={`flex items-start gap-3 rounded-2xl border p-4 text-sm cursor-pointer transition-colors ${
-                      checkedTasks[task]
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
-                    } ${isHeader ? "md:col-span-2 font-semibold" : ""}`}
-                  >
-                    <label className="flex min-w-0 flex-1 items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(checkedTasks[task])}
-                        onChange={() => toggleTask(task)}
-                        data-testid={`preventive-task-checkbox-${index}`}
-                        className="mt-0.5 h-4 w-4"
-                      />
-                      <span className={`leading-5 ${!isHeader ? "pl-1" : ""}`}>{task}</span>
-                    </label>
-                    {isCustomTask ? (
-                      <button
-                        type="button"
-                        onClick={() => removeCustomTask(task)}
-                        data-testid={`preventive-remove-custom-task-${index}`}
-                        className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                      >
-                        {tCommon("delete")}
-                      </button>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-2 mt-3">
-              <select
-                value={selectedTaskGroup}
-                onChange={(event) => setSelectedTaskGroup(event.target.value)}
-                data-testid="preventive-custom-task-group"
-                className="w-48 border rounded-lg px-3 py-2"
-                title={t("preventiveTasks")}
-              >
-                <option value="">{t("maintenanceCode")}</option>
-                {checklistHeaders.map((header) => (
-                  <option key={header} value={header}>
-                    {header}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedTaskToAdd}
-                onChange={(event) => setSelectedTaskToAdd(event.target.value)}
-                data-testid="preventive-custom-task-select"
-                className="flex-1 border rounded-lg px-3 py-2"
-                title={t("preventiveTasks")}
-              >
-                <option value="">{tCommon("actions.search")}</option>
-                {availableTaskOptions.map((task) => (
-                  <option key={task} value={task}>
-                    {task}
-                  </option>
-                ))}
-                <option value={CUSTOM_OPTION}>{t("custom")}</option>
-              </select>
-              {selectedTaskToAdd === CUSTOM_OPTION ? (
-                <input
-                  value={customTaskInput}
-                  onChange={(event) => setCustomTaskInput(event.target.value)}
-                  data-testid="preventive-custom-task-input"
-                  className="flex-1 border rounded-lg px-3 py-2"
-                  placeholder={t("comments")}
-                />
-              ) : null}
-              <button
-                onClick={addTaskFromSelection}
-                data-testid="preventive-add-custom-task"
-                className="px-4 py-2 rounded-lg bg-slate-900 text-white"
-              >
-                {tCommon("add")}
-              </button>
-            </div>
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("machineCondition")}</div>
-            <select
-              value={condition}
-              onChange={(event) => setCondition(event.target.value as MachineCondition)}
-              title={t("machineCondition")}
-              aria-label={t("machineCondition")}
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="good">{t("good")}</option>
-              <option value="followUp">{t("followUp")}</option>
-              <option value="technicianRequired">{t("technicianRequired")}</option>
-              <option value="custom">{t("custom")}</option>
-            </select>
-            {condition === "custom" && (
-              <input
-                value={customCondition}
-                onChange={(event) => setCustomCondition(event.target.value)}
-                className="w-full border rounded-lg px-3 py-2 mt-3"
-                placeholder={t("comments")}
-              />
-            )}
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="stats-grid grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-2">{t("comments")}</label>
-                <input
-                  value={comments}
-                  onChange={(event) => setComments(event.target.value.slice(0, 180))}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder={t("comments")}
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-2">{t("lifecycle.actualExecutionDate")}</label>
-                <div
-                  data-testid="preventive-execution-date-note"
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
-                >
-                  {new Date().toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("photoUpload")}</div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
-              title={t("photoUpload")}
-              aria-label={t("photoUpload")}
-              placeholder={t("photoUpload")}
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("openManual")}</div>
-            <div className="flex flex-wrap gap-3">
-              {manualDocument ? (
-                <button
-                  type="button"
-                  onClick={() => setPreviewDocument(manualDocument)}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white"
-                >
-                  {t("openManual")}
-                </button>
-              ) : (
-                <span className="text-sm text-slate-500">{tCommon("table.noData")}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("kpiTitle")}</div>
-            {selectedMachineKpi ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                <div className="border rounded-lg p-3">{t("mtbf")}: {selectedMachineKpi.mtbf_value ?? tCommon("notAvailable")}</div>
-                <div className="border rounded-lg p-3">{t("mttr")}: {selectedMachineKpi.mttr_value ?? tCommon("notAvailable")}</div>
-                <div className="border rounded-lg p-3">
-                  {t("availability")}: {selectedMachineKpi.availability_rate ?? tCommon("notAvailable")}
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            )}
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("preventiveMaintenance")}</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="block text-sm mb-2">{t("lubricant")}</label>
-                <select
-                  value={selectedLubrifiant}
-                  onChange={(event) => setSelectedLubrifiant(event.target.value)}
-                  title={t("lubricant")}
-                  aria-label={t("lubricant")}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">{tCommon("actions.search")}</option>
-                  {lubrifiants.map((item) => (
-                    <option key={item._id} value={item._id}>
-                      {item.nom} ({item.type})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-2">{t("quantity")}</label>
-                <select
-                  value={selectedLubrificationQtyMode}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setSelectedLubrificationQtyMode(value);
-                    setLubrificationQty(value === CUSTOM_OPTION ? "" : value);
-                  }}
-                  title={t("quantity")}
-                  aria-label={t("quantity")}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">{tCommon("actions.search")}</option>
-                  {LUBRIFICATION_QTY_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_OPTION}>{t("custom")}</option>
-                </select>
-                {selectedLubrificationQtyMode === CUSTOM_OPTION && (
-                  <input
-                    type="number"
-                    min="0"
-                    value={lubrificationQty}
-                    onChange={(event) => setLubrificationQty(event.target.value)}
-                    title={t("quantity")}
-                    aria-label={t("quantity")}
-                    placeholder={t("quantity")}
-                    className="w-full border rounded-lg px-3 py-2 mt-2"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={saveCurrentAsDraft}
-                data-testid="preventive-save-draft"
-                className="w-full md:w-auto px-5 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-              >
-                {tCommon("save")}
-              </button>
-              <button
-                disabled={submitting}
-                onClick={() => void submitPreventiveMaintenance(selectedDraftId || undefined)}
-                data-testid="preventive-submit-button"
-                className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white"
-              >
-                {submitting ? tCommon("saving") : t("generateReport")}
-              </button>
-            </div>
-            {submitValidationReason ? (
-              <div data-testid="preventive-submit-validation" className="text-sm text-red-600 mt-3">
-                {submitValidationMessage}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("report")}</div>
-            {drafts.length === 0 ? (
-              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {drafts.map((draft, index) => (
-                  <button
-                    key={draft.id}
-                    type="button"
-                    data-testid={`preventive-draft-${index}`}
-                    onClick={() => openDraft(draft)}
-                    className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow ${selectedDraftId === draft.id ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white"}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-semibold text-slate-900">{draft.title}</div>
-                      <span className="text-xs text-slate-500">{new Date(draft.updatedAt).toLocaleString()}</span>
-                    </div>
-                    <div className="mt-2 text-xs text-slate-600">{t("machine")}: {draft.selectedMachine || draft.customMachine || tCommon("notAvailable")}</div>
-                    <div className="mt-3 flex justify-end">
-                      <span
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          deleteDraft(draft.id);
-                        }}
-                        className="inline-flex rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                      >
-                        {tCommon("delete")}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="col-span-full panel overflow-x-auto">
             <div className="card-title mb-3">{t("myReports")}</div>
-            {generatedReports.filter((item) => item.type === "preventive").length === 0 ? (
+            {preventiveGeneratedReports.length === 0 ? (
               <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-3">{t("report")}</th>
-                    <th className="text-left py-2 px-3">{t("workOrder")}</th>
-                    <th className="text-left py-2 px-3">{t("machine")}</th>
-                    <th className="text-left py-2 px-3">{t("actionsPerformed")}</th>
-                    <th className="text-left py-2 px-3">{t("validation")}</th>
-                    <th className="text-left py-2 px-3">{tCommon("time.justNow")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {generatedReports
-                    .filter((item) => item.type === "preventive")
-                    .map((item) => (
-                      <tr key={item.id} className="border-b border-slate-100">
-                        <td className="py-2 px-3 font-mono text-xs">{item.reportId}</td>
-                        <td className="py-2 px-3 font-mono text-xs">{item.workOrderId}</td>
-                        <td className="py-2 px-3">{item.machine}</td>
-                        <td className="py-2 px-3 truncate max-w-xs">{item.summary}</td>
-                        <td className="py-2 px-3">{item.status === "waiting_validation" ? t("waitingValidation") : item.status}</td>
-                        <td className="py-2 px-3">{new Date(item.createdAt).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                {preventiveGeneratedReports.map((item, index) => (
+                  <article
+                    key={item.id}
+                    className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-slate-900">{item.machine || tCommon("notAvailable")}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <span>{t("preventive")}</span>
+                          <span aria-hidden="true">|</span>
+                          <span>{formatReportDate(item.createdAt)}</span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusClasses(item.status)}`}>
+                          {formatReportStatus(item.status)}
+                        </span>
+                        <button
+                          type="button"
+                          data-testid={`preventive-report-details-${index}`}
+                          onClick={() => setSelectedGeneratedReport(item)}
+                          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                        >
+                          {t("smartCalendar.maintenanceDetails")}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
             )}
           </div>
         </div>
+
+        <Modal
+          isOpen={Boolean(selectedGeneratedReport)}
+          onClose={() => setSelectedGeneratedReport(null)}
+          title={t("smartCalendar.maintenanceDetails")}
+          size="lg"
+        >
+          {selectedGeneratedReport ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("machine")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {selectedGeneratedReport.machine || tCommon("notAvailable")}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("smartCalendar.maintenanceType")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">{t("preventive")}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("dashboard.submissionDate")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {formatReportDate(selectedGeneratedReport.createdAt)}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("validation")}</div>
+                  <div className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusClasses(selectedGeneratedReport.status)}`}>
+                    {formatReportStatus(selectedGeneratedReport.status)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-700">{t("actionsPerformed")}</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {selectedGeneratedReport.summary || tCommon("notAvailable")}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGeneratedReport(null)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  {tCommon("close")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </Modal>
 
         <Modal
           isOpen={Boolean(previewDocument)}

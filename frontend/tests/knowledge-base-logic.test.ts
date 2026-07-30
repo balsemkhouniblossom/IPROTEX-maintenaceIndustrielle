@@ -202,15 +202,15 @@ test("KnowledgeSuggestions fetches suggestions from the dedicated endpoint and s
   );
 });
 
-test("Corrective (report-problem), preventive, and technician work-order pages surface KnowledgeSuggestions", () => {
-  const reportProblem = readSource("src/app/[locale]/operator/report-problem/page.tsx");
+test("Corrective, preventive, and technician work-order pages surface KnowledgeSuggestions", () => {
+  const corrective = readSource("src/app/[locale]/operator/corrective/page.tsx");
   const preventive = readSource("src/app/[locale]/operator/preventive/page.tsx");
   const technicianDetail = readSource("src/components/technician/TechnicianWorkOrderDetail.tsx");
 
   assert.match(
-    reportProblem,
+    corrective,
     /<KnowledgeSuggestions\s+machineId=\{selectedMachine \|\| undefined\}\s+faultCode=\{selectedFault\?\.code_panne\}\s*\/>/,
-    "the report-problem page must surface suggestions scoped to the selected machine and fault code",
+    "the corrective page must surface suggestions scoped to the selected machine and fault code",
   );
   assert.match(
     preventive,

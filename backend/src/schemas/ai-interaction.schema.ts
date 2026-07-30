@@ -6,6 +6,10 @@ export type AiInteractionDocument = AiInteraction & Document;
 export enum AiInteractionStatus {
   OK = 'ok',
   DISABLED = 'disabled',
+  MISSING_CONFIGURATION = 'missing_configuration',
+  INVALID_CREDENTIALS = 'invalid_credentials',
+  QUOTA_LIMITED = 'quota_limited',
+  TEMPORARY_FAILURE = 'temporary_failure',
   RATE_LIMITED = 'rate_limited',
   TIMEOUT = 'timeout',
   ERROR = 'error',

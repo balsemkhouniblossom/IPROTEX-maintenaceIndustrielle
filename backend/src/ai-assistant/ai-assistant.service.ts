@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -12,7 +12,13 @@ import { AiContextBuilderService } from './ai-context-builder.service';
 import { PromptInjectionGuardService } from './prompt-injection-guard.service';
 import { SensitiveDataFilterService } from './sensitive-data-filter.service';
 import { AiAssistantThrottleService } from './ai-assistant-throttle.service';
-import { AI_PROVIDER, AiAssistantAnswer, AiProvider } from './ai-provider.interface';
+import {
+  AI_PROVIDER,
+  AiAssistantAnswer,
+  AiProvider,
+  AiProviderDiagnostics,
+  AiProviderError,
+} from './ai-provider.interface';
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
@@ -22,6 +28,7 @@ export type AiRecommendationResponse = {
   interactionId: string;
   provider: string;
   retryAfterSeconds?: number;
+  diagnostic?: AiProviderDiagnostics;
   answer?: AiAssistantAnswer;
 };
 
@@ -50,6 +57,8 @@ type RecordParams = {
  */
 @Injectable()
 export class AiAssistantService {
+  private readonly logger = new Logger(AiAssistantService.name);
+
   constructor(
     @InjectModel(AiInteraction.name)
     private readonly interactionModel: Model<AiInteractionDocument>,
@@ -94,6 +103,9 @@ export class AiAssistantService {
     }
 
     if (this.provider.name === 'disabled') {
+      this.logger.warn(
+        `AI assistant request skipped: ${this.getHealth().message}`,
+      );
       return this.record({
         actor,
         dto,
@@ -113,7 +125,7 @@ export class AiAssistantService {
     const timeoutMs = this.getTimeoutMs();
     const controller = new AbortController();
     let timedOut = false;
-    // A well-behaved provider (like `AnthropicAiProvider`, which forwards
+    // A well-behaved provider (like `GeminiAiProvider`, which forwards
     // `signal` into the SDK call) aborts on its own once `controller.abort()`
     // fires. Racing against this second timer is a backstop for any provider
     // that doesn't honor the signal — it guarantees this method always
@@ -152,10 +164,18 @@ export class AiAssistantService {
         injectionFlags: injectionResult.flags,
       });
     } catch (error) {
+      const status = timedOut
+        ? AiInteractionStatus.TIMEOUT
+        : this.statusFromProviderError(error);
+      this.logger.warn(
+        `AI assistant request finished with ${status}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
       return this.record({
         actor,
         dto,
-        status: timedOut ? AiInteractionStatus.TIMEOUT : AiInteractionStatus.ERROR,
+        status,
         provider: this.provider.name,
         latencyMs: Date.now() - startedAt,
         question: redactionResult.redacted,
@@ -166,6 +186,21 @@ export class AiAssistantService {
     } finally {
       clearTimeout(timeoutTimer);
     }
+  }
+
+  getHealth(): AiProviderDiagnostics {
+    return (
+      this.provider.getDiagnostics?.() ?? {
+        enabled: this.provider.name !== 'disabled',
+        configured: this.provider.name !== 'disabled',
+        provider: this.provider.name,
+        status: this.provider.name === 'disabled' ? 'disabled' : 'ready',
+        message:
+          this.provider.name === 'disabled'
+            ? 'AI assistant is intentionally disabled'
+            : 'AI assistant provider is configured',
+      }
+    );
   }
 
   async listOwnHistory(
@@ -209,6 +244,25 @@ export class AiAssistantService {
       : DEFAULT_TIMEOUT_MS;
   }
 
+  private statusFromProviderError(error: unknown): AiInteractionStatus {
+    if (!(error instanceof AiProviderError)) {
+      return AiInteractionStatus.ERROR;
+    }
+
+    switch (error.code) {
+      case 'missing_configuration':
+        return AiInteractionStatus.MISSING_CONFIGURATION;
+      case 'invalid_credentials':
+        return AiInteractionStatus.INVALID_CREDENTIALS;
+      case 'quota_limited':
+        return AiInteractionStatus.QUOTA_LIMITED;
+      case 'temporary_failure':
+        return AiInteractionStatus.TEMPORARY_FAILURE;
+      default:
+        return AiInteractionStatus.ERROR;
+    }
+  }
+
   private async record(params: RecordParams): Promise<AiRecommendationResponse> {
     const doc = await this.interactionModel.create({
       actor_user_id: new Types.ObjectId(params.actor.userId),
@@ -239,7 +293,36 @@ export class AiAssistantService {
       interactionId: (doc._id as Types.ObjectId).toString(),
       provider: params.provider,
       retryAfterSeconds: params.retryAfterSeconds,
+      diagnostic: this.diagnosticForStatus(params.status),
       answer: params.answer,
+    };
+  }
+
+  private diagnosticForStatus(
+    status: AiInteractionStatus,
+  ): AiProviderDiagnostics | undefined {
+    if (status === AiInteractionStatus.OK) {
+      return undefined;
+    }
+
+    const health = this.getHealth();
+    const fallbackMessages: Partial<Record<AiInteractionStatus, string>> = {
+      [AiInteractionStatus.RATE_LIMITED]:
+        'AI assistant rate limit reached for this user',
+      [AiInteractionStatus.TIMEOUT]: 'Gemini did not respond before the timeout',
+      [AiInteractionStatus.INVALID_CREDENTIALS]:
+        'Gemini rejected the configured API key or permissions',
+      [AiInteractionStatus.QUOTA_LIMITED]:
+        'Gemini quota or rate limit was reached',
+      [AiInteractionStatus.TEMPORARY_FAILURE]:
+        'Gemini is temporarily unavailable or returned invalid output',
+      [AiInteractionStatus.ERROR]:
+        'AI assistant failed with an unexpected provider error',
+    };
+
+    return {
+      ...health,
+      message: fallbackMessages[status] ?? health.message,
     };
   }
 }

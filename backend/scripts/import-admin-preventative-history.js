@@ -504,7 +504,7 @@ async function ensureModule(db, categoryName, machineTypeId, machineId, moduleLa
     {
       $set: {
         module_id: moduleCode,
-        machine_id: String(machineId),
+        machine_id: machineId,
         mod_type_id: String(moduleType._id),
         localisation: moduleLabel,
       },
@@ -513,7 +513,7 @@ async function ensureModule(db, categoryName, machineTypeId, machineId, moduleLa
   );
 
   const module = await db.collection('modules').findOne({ module_id: moduleCode }, { projection: { _id: 1 } });
-  return String(module._id);
+  return module._id;
 }
 
 async function main() {

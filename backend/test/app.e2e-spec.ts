@@ -15,6 +15,8 @@ import * as express from 'express';
 import { join } from 'path';
 import { AppModule } from './../src/app.module';
 import { AuthService } from '../src/auth/auth.service';
+import { EmailVerificationTokenService } from '../src/auth/email-verification-token.service';
+import { UsersService } from '../src/users/users.service';
 import { EmailService } from '../src/email/email.service';
 import {
   GoogleLoginExchange,
@@ -518,6 +520,27 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         recurrence_source_occurrence_id: corrective.body._id,
       }),
     ).toBe(0);
+  });
+
+  it('J0b: operator corrective report rejects missing required fields and empty actions', async () => {
+    await request(app.getHttpServer())
+      .post('/operator/report-problem')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .send({
+        machine_id: machineA._id.toString(),
+        code_panne: `COR-E2E-${Date.now()}`,
+        actions: ['   ', ''],
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/operator/report-problem')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .send({
+        machine_id: machineA._id.toString(),
+        actions: ['Solved'],
+      })
+      .expect(400);
   });
 
   it('J1: blocks operators and technicians from generic operational mutations', async () => {
@@ -2879,5 +2902,194 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         role: Role.OPERATOR,
       })
       .expect(429);
+  });
+
+  it('AG: an administrator-approved account stays approved through login, repeated refresh, logout, password reset, an admin profile edit, email re-verification, Google OAuth login, and profile resubmission', async () => {
+    const usersService = app.get(UsersService);
+    const emailVerificationTokenService = app.get(
+      EmailVerificationTokenService,
+    );
+    const { admin: approver, token: approverToken } = await createApprovedAdmin();
+
+    // Seeded exactly like a real approved Google-onboarded technician:
+    // verified, active, profile complete, and with the approval decision
+    // already recorded (approved_by/approved_at + one history entry) via
+    // the real approveUser transition, not by hand — so this test starts
+    // from the same state the approve endpoint actually produces.
+    const target = await createApprovalUser({
+      email: 'lifecycle-approved-e2e@example.test',
+      role: Role.OPERATOR,
+      is_active: false,
+      is_verified: true,
+      profile_completed: true,
+      google_id: 'google-lifecycle-e2e',
+      phone: '+21612340000',
+      department: 'Maintenance',
+      language: 'en',
+      approval_status: ApprovalStatus.PENDING,
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/users/${target._id.toString()}/approve`)
+      .set('Authorization', `Bearer ${approverToken}`)
+      .expect(200);
+
+    const expectStillApproved = async () => {
+      const stored = await users.findById(target._id);
+      expect(stored?.approval_status).toBe(ApprovalStatus.APPROVED);
+      expect(stored?.is_active).toBe(true);
+      expect(stored?.approved_by).toEqual(approver._id);
+      expect(stored?.approved_at).toBeTruthy();
+      expect(stored?.rejected_by).toBeUndefined();
+      expect(stored?.rejected_at).toBeUndefined();
+      // Every prior transition stays on the audit trail — nothing here
+      // ever unsets or rewrites approval_history.
+      expect(stored?.approval_history).toHaveLength(1);
+      expect(stored?.approval_history?.[0]).toEqual(
+        expect.objectContaining({ status: ApprovalStatus.APPROVED }),
+      );
+      return stored!;
+    };
+
+    await expectStillApproved();
+
+    // 1) LOGIN
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: target.email, password: 'P@ssword123!' })
+      .expect(200);
+    expectRefreshCookie(loginResponse);
+    const accessToken = loginResponse.body.access_token as string;
+    await expectStillApproved();
+
+    // 2) REPEATED SESSION RESTORATION (refresh, twice, rotating each time)
+    const firstRefresh = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', getAuthCookieHeader(loginResponse))
+      .set(
+        'X-CSRF-Token',
+        getCookieValueFromSetCookie(loginResponse, 'csrf_token'),
+      )
+      .expect(200);
+    await expectStillApproved();
+
+    const secondRefresh = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .set('Cookie', getAuthCookieHeader(firstRefresh))
+      .set(
+        'X-CSRF-Token',
+        getCookieValueFromSetCookie(firstRefresh, 'csrf_token'),
+      )
+      .expect(200);
+    await expectStillApproved();
+
+    // 3) LOGOUT
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Cookie', getAuthCookieHeader(secondRefresh))
+      .set(
+        'X-CSRF-Token',
+        getCookieValueFromSetCookie(secondRefresh, 'csrf_token'),
+      )
+      .expect(200);
+    await expectStillApproved();
+
+    // 4) PASSWORD RESET (real controller round trip; the plaintext token is
+    // written straight into the DB using the same sha256 hash the service
+    // computes internally, so this doesn't depend on outbound email).
+    const plaintextResetToken = 'lifecycle-e2e-reset-token';
+    await users.findByIdAndUpdate(target._id, {
+      reset_password_token: crypto
+        .createHash('sha256')
+        .update(plaintextResetToken)
+        .digest('hex'),
+      reset_password_expires: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    await request(app.getHttpServer())
+      .post('/auth/reset-password')
+      .send({ token: plaintextResetToken, password: 'NewP@ssword456!' })
+      .expect(201);
+    await expectStillApproved();
+
+    // 5) ADMIN PROFILE UPDATE (generic PATCH /users/:id) — a legitimate
+    // field edit must go through untouched, and the service layer must
+    // strip approval fields defensively even if a caller supplies them
+    // directly (bypassing the HTTP DTO whitelist), rather than letting
+    // them reach the database.
+    await request(app.getHttpServer())
+      .patch(`/users/${target._id.toString()}`)
+      .set('Authorization', `Bearer ${approverToken}`)
+      .send({ phone: '+21699998888' })
+      .expect(200);
+    expect((await expectStillApproved()).phone).toBe('+21699998888');
+
+    await usersService.update(target._id.toString(), {
+      department: 'Updated Department',
+      approval_status: ApprovalStatus.REJECTED,
+      rejected_by: approver._id,
+      rejection_reason: 'smuggled via generic update',
+    } as never);
+    const afterServiceUpdate = await expectStillApproved();
+    expect(afterServiceUpdate.department).toBe('Updated Department');
+
+    // 6) EMAIL VERIFICATION (re-verification is idempotent for an
+    // already-verified user, and must never touch approval fields)
+    const verificationToken = emailVerificationTokenService.issueToken(
+      target._id.toString(),
+    );
+    await request(app.getHttpServer())
+      .get(`/auth/verify-email?token=${verificationToken}`)
+      .expect(200);
+    await expectStillApproved();
+
+    // 7) GOOGLE OAUTH LOGIN — this is exactly the path that used to reset
+    // approval_status back to PENDING and wipe approved_by/approved_at
+    // whenever the Google profile-completeness check ran again.
+    const googleRes = { redirect: jest.fn(), clearCookie: jest.fn() };
+    await authService.googleLogin(
+      {
+        provider: 'google',
+        google_id: 'google-lifecycle-e2e',
+        email: target.email,
+        name: 'Lifecycle E2E',
+        email_verified: true,
+      },
+      googleRes as never,
+      'en',
+      'http://localhost:3000',
+    );
+    expect(googleRes.redirect.mock.calls[0][0]).toMatch(
+      /^http:\/\/localhost:3000\/en\/auth\/google-result\?exchange=/,
+    );
+    await expectStillApproved();
+
+    // 8) PROFILE RESUBMISSION via the real /auth/complete-profile endpoint
+    // — the exact regression this whole test guards against: resubmitting
+    // an already-complete Google profile must report the account as
+    // still-approved (not "pending approval") and must not touch
+    // approval_status/is_active/approved_by/approved_at.
+    const resubmit = await request(app.getHttpServer())
+      .post('/auth/complete-profile')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        phone: '+21699998888',
+        role: Role.OPERATOR,
+        department: 'Updated Department',
+        language: 'en',
+      })
+      .expect(200);
+    expect(resubmit.body.code).toBe('GOOGLE_PROFILE_COMPLETED');
+    expect(resubmit.body.user.approval_status).toBe(ApprovalStatus.APPROVED);
+    expect(resubmit.body.user.is_active).toBe(true);
+
+    // 9) "BACKEND RESTART" proxy: read the row back from MongoDB completely
+    // independently of any in-memory service/request state to prove the
+    // approval is durable, not an artifact of one response object.
+    const finalStored = await usersService.findOne(target._id.toString());
+    expect(finalStored?.approval_status).toBe(ApprovalStatus.APPROVED);
+    expect(finalStored?.is_active).toBe(true);
+    expect(finalStored?.approved_by).toEqual(approver._id);
+    expect(finalStored?.approval_history).toHaveLength(1);
   });
 });

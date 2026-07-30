@@ -8,6 +8,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, FilterQuery, Model, Types } from 'mongoose';
 import {
+  ApprovalHistoryEntry,
   ApprovalStatus,
   GoogleAuthHistoryEntry,
   Role,
@@ -36,6 +37,18 @@ export const USERS_SORT_ALLOWED_FIELDS = [
 ] as const;
 const USERS_DEFAULT_SORT: Record<string, 1 | -1> = { created_at: -1 };
 
+// Fields owned exclusively by the approve/reject transition endpoints.
+// Never allow the generic PATCH /users/:id path to set these directly.
+const APPROVAL_FIELDS_LOCKED_FROM_GENERIC_UPDATE = [
+  'approval_status',
+  'approved_by',
+  'approved_at',
+  'rejected_by',
+  'rejected_at',
+  'rejection_reason',
+  'approval_history',
+] as const;
+
 export type ApprovalActionCode =
   | 'ACCOUNT_APPROVED'
   | 'ACCOUNT_ALREADY_APPROVED'
@@ -60,6 +73,7 @@ export type ApprovalSafeUser = {
   approved_at?: Date;
   rejected_at?: Date;
   rejection_reason?: string;
+  approval_history?: ApprovalHistoryEntry[];
 };
 
 export type ApprovalActionResult = {
@@ -406,6 +420,17 @@ export class UsersService {
   ): Promise<UserDocument | null> {
     const sanitizedUpdate: UpdateUserDto = { ...updateUserDto };
 
+    // Approval decisions must only ever be made through approveUser/
+    // rejectUser (dedicated transition endpoints with authorization,
+    // validation, and audit history). UpdateUserDto never declares these
+    // fields, so NestJS's whitelist ValidationPipe already strips them from
+    // any HTTP request body — this delete is defense in depth for any
+    // internal caller that builds the DTO programmatically and could bypass
+    // that whitelist (e.g. via an `as any` cast).
+    for (const restrictedField of APPROVAL_FIELDS_LOCKED_FROM_GENERIC_UPDATE) {
+      delete (sanitizedUpdate as Record<string, unknown>)[restrictedField];
+    }
+
     if (typeof sanitizedUpdate.password === 'string') {
       if (sanitizedUpdate.password.trim()) {
         sanitizedUpdate.password = await bcrypt.hash(
@@ -641,6 +666,13 @@ export class UsersService {
             rejection_reason: '',
             refresh_token_hash: '',
           },
+          $push: {
+            approval_history: {
+              status: ApprovalStatus.APPROVED,
+              actor_user_id: new Types.ObjectId(administratorId),
+              at: decisionAt,
+            },
+          },
         },
         { new: true, session: session ?? undefined },
       )
@@ -719,6 +751,14 @@ export class UsersService {
             approved_by: '',
             approved_at: '',
             refresh_token_hash: '',
+          },
+          $push: {
+            approval_history: {
+              status: ApprovalStatus.REJECTED,
+              actor_user_id: new Types.ObjectId(administratorId),
+              reason: trimmedReason,
+              at: decisionAt,
+            },
           },
         },
         { new: true, session: session ?? undefined },
@@ -991,6 +1031,7 @@ function sanitizeApprovalUser(user: UserDocument): ApprovalSafeUser {
     ...(user.rejection_reason
       ? { rejection_reason: user.rejection_reason }
       : {}),
+    approval_history: user.approval_history ?? [],
   };
 }
 

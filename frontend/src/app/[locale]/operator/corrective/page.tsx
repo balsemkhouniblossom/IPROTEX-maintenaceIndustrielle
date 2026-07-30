@@ -8,8 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
-import { resolveManagedFileUrl } from "@/services/managedFileUrls";
 import { extractApiErrorMessage } from "@/services/apiErrors";
+import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
+import { CORRECTIVE_REQUIRED_FIELDS, validateCorrectiveWorkflow } from "@/services/correctiveMaintenanceWorkflow";
+import { Modal } from "@/components/Modal";
+import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
+import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
+import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -40,44 +46,50 @@ interface PanneSolution {
   solution_recommandee?: string;
 }
 
-interface DocumentEntity {
-  _id: string;
-  machine_id: EntityRef;
-  file_path: string;
-  file_name?: string;
-  type_document?: string;
-}
-
-interface Catalogue {
-  _id: string;
-  part_id: string;
-  nom_piece: string;
-  ref_constructeur: string;
-}
-
-interface Stock {
-  _id: string;
-  part_id: EntityRef;
-  quantite_en_stock: number;
-}
-
 interface WorkOrder {
   _id: string;
-  ot_id: string;
   type_maintenance?: string;
   status?: string;
-  machine_id?: EntityRef | { _id?: string; machine_id?: string };
+  machine_id?: { _id?: string; id?: string; machine_id?: string } | string;
   date_created?: string;
 }
 
 interface InterventionReport {
   _id: string;
-  report_id: string;
   ot_id: EntityRef;
   description_action?: string;
-  cause_racine?: string;
+  validation_responsable?: string;
   date_debut?: string;
   date_fin?: string;
+}
+
+interface ReportPhotoDocument {
+  _id?: string;
+  id?: string;
+  machine_id?: EntityRef;
+  work_order_id?: EntityRef;
+  intervention_report_id?: EntityRef;
+  type_document?: string;
+  file_path?: string;
+  file_url?: string;
+  preview_path?: string;
+  file_name?: string;
+  mime_type?: string;
+  content_type?: string;
+  date_ajout?: string;
+  createdAt?: string;
+}
+
+interface GeneratedReportRow {
+  id: string;
+  type: "preventive" | "corrective";
+  workOrderId: string;
+  reportId: string;
+  machine: string;
+  summary: string;
+  createdAt: string;
+  status: string;
+  photoDocument?: ReportPhotoDocument;
 }
 
 function refId(value: EntityRef | undefined): string {
@@ -98,8 +110,47 @@ function uniqueId(prefix: string): string {
 }
 
 type CorrectiveResult = "solved" | "notSolved" | "technicianRequired" | "custom";
-const CUSTOM_OPTION = "__custom__";
+const REPORTS_STORAGE_KEY = "operator_generated_reports_history";
 const CORRECTIVE_DRAFTS_STORAGE_PREFIX = "operator_corrective_drafts";
+
+function correctiveReportElementId(reportId: string): string {
+  return `corrective-report-${reportId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
+function normalizeReportPhotoDocument(document: ReportPhotoDocument): ReportPhotoDocument {
+  const inferredMimeType =
+    document.mime_type ||
+    document.content_type ||
+    (document.type_document?.toLowerCase().includes("photo") ? "image/webp" : undefined);
+
+  return {
+    ...document,
+    mime_type: inferredMimeType,
+  };
+}
+
+function reportRowKey(report: GeneratedReportRow): string {
+  return report.reportId || report.workOrderId || report.id;
+}
+
+function reportRowsReferToSameRecord(
+  left: GeneratedReportRow,
+  right: GeneratedReportRow,
+): boolean {
+  return Boolean(
+    (left.reportId && left.reportId === right.reportId) ||
+      (left.workOrderId && left.workOrderId === right.workOrderId) ||
+      left.id === right.id,
+  );
+}
+
+function isPhotoNearReport(document: ReportPhotoDocument, reportDate: string): boolean {
+  if (!reportDate) return false;
+  const documentTime = new Date(document.createdAt || document.date_ajout || "").getTime();
+  const reportTime = new Date(reportDate).getTime();
+  if (!Number.isFinite(documentTime) || !Number.isFinite(reportTime)) return false;
+  return Math.abs(documentTime - reportTime) <= 10 * 60 * 1000;
+}
 
 interface CorrectiveDraft {
   id: string;
@@ -114,7 +165,6 @@ interface CorrectiveDraft {
   result: CorrectiveResult;
   customResult: string;
   comments: string;
-  selectedParts: Record<string, string>;
 }
 
 function OperatorCorrectivePageContent() {
@@ -130,21 +180,18 @@ function OperatorCorrectivePageContent() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [pannes, setPannes] = useState<Panne[]>([]);
   const [panneSolutions, setPanneSolutions] = useState<PanneSolution[]>([]);
-  const [documents, setDocuments] = useState<DocumentEntity[]>([]);
-  const [catalogues, setCatalogues] = useState<Catalogue[]>([]);
-  const [stocks, setStocks] = useState<Stock[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [interventionReports, setInterventionReports] = useState<InterventionReport[]>([]);
+  const [reportPhotoDocuments, setReportPhotoDocuments] = useState<ReportPhotoDocument[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
   const [selectedPanne, setSelectedPanne] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<Record<string, boolean>>({});
+  const [showMoreSymptoms, setShowMoreSymptoms] = useState(false);
   const [faultSearch, setFaultSearch] = useState("");
 
   const [checkedActions, setCheckedActions] = useState<Record<string, boolean>>({});
-  const [selectedActionToAdd, setSelectedActionToAdd] = useState("");
-  const [customActionInput, setCustomActionInput] = useState("");
   const [customActions, setCustomActions] = useState<string[]>([]);
 
   const [result, setResult] = useState<CorrectiveResult>("solved");
@@ -152,10 +199,12 @@ function OperatorCorrectivePageContent() {
   const [comments, setComments] = useState("");
 
   const [photo, setPhoto] = useState<File | null>(null);
-  const [selectedParts, setSelectedParts] = useState<Record<string, string>>({});
   const [submitValidationReason, setSubmitValidationReason] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [faultsLoading, setFaultsLoading] = useState(false);
+  const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
+  const [selectedGeneratedReport, setSelectedGeneratedReport] = useState<GeneratedReportRow | null>(null);
+  const [highlightedReportId, setHighlightedReportId] = useState("");
   const [drafts, setDrafts] = useState<CorrectiveDraft[]>([]);
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const draftStorageKey = useMemo(
@@ -201,30 +250,34 @@ function OperatorCorrectivePageContent() {
     setSelectedPanne("");
     setFaultSearch("");
     setSelectedSymptoms({});
+    setShowMoreSymptoms(false);
     setCheckedActions({});
-    setSelectedActionToAdd("");
-    setCustomActionInput("");
     setCustomActions([]);
     setResult("solved");
     setCustomResult("");
     setComments("");
     setPhoto(null);
-    setSelectedParts({});
     setSubmitValidationReason("");
   }
 
   function resetFaultSpecificState(): void {
     setSelectedSymptoms({});
+    setShowMoreSymptoms(false);
     setCheckedActions({});
-    setSelectedActionToAdd("");
-    setCustomActionInput("");
     setCustomActions([]);
     setResult("solved");
     setCustomResult("");
     setComments("");
     setPhoto(null);
-    setSelectedParts({});
     setSubmitValidationReason("");
+  }
+
+  function addGeneratedReport(report: GeneratedReportRow): void {
+    setGeneratedReports((prev) => {
+      const next = [report, ...prev].slice(0, 30);
+      localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   }
 
   function persistDrafts(nextDrafts: CorrectiveDraft[]): void {
@@ -248,7 +301,6 @@ function OperatorCorrectivePageContent() {
       result,
       customResult,
       comments,
-      selectedParts,
     };
 
     const nextDrafts = selectedDraftId
@@ -271,7 +323,6 @@ function OperatorCorrectivePageContent() {
     setResult(draft.result);
     setCustomResult(draft.customResult);
     setComments(draft.comments);
-    setSelectedParts(draft.selectedParts);
     showNotification("success", t("notifications.draftLoaded"));
   }
 
@@ -288,33 +339,25 @@ function OperatorCorrectivePageContent() {
     async function loadAll() {
       try {
         setLoading(true);
-        const [
-          machineTypeItems,
-          machineItems,
-          documentItems,
-          catalogueItems,
-          stockItems,
-          workOrderItems,
-          reportItems,
-        ] = await Promise.all([
+        const [machineTypeItems, machineItems, workOrderItems, reportItems, documentItems] = await Promise.all([
           fetchAllPaginated<MachineType>((pagination) => apiService.getOperatorMachineTypes(pagination)),
           fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
-          fetchAllPaginated<DocumentEntity>((pagination) => apiService.getOperatorManuals(pagination)),
-          fetchAllPaginated<Catalogue>((pagination) => apiService.getOperatorCatalogues(pagination)),
-          fetchAllPaginated<Stock>((pagination) => apiService.getOperatorStocks(pagination)),
           fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
           fetchAllPaginated<InterventionReport>((pagination) => apiService.getMyInterventionReports(pagination)),
+          fetchAllPaginated<ReportPhotoDocument>((pagination) => apiService.getDocuments(pagination)),
         ]);
 
         setMachineTypes(machineTypeItems);
         setMachines(machineItems);
-        setPannes([]);
-        setPanneSolutions([]);
-        setDocuments(documentItems);
-        setCatalogues(catalogueItems);
-        setStocks(stockItems);
         setWorkOrders(workOrderItems);
         setInterventionReports(reportItems);
+        setReportPhotoDocuments(
+          documentItems.filter((item) =>
+            item.type_document?.toLowerCase().includes("photo"),
+          ).map(normalizeReportPhotoDocument),
+        );
+        setPannes([]);
+        setPanneSolutions([]);
       } catch (error) {
         console.error("Failed to load corrective workflow data", error);
       } finally {
@@ -382,6 +425,19 @@ function OperatorCorrectivePageContent() {
 
   useEffect(() => {
     try {
+      const saved = localStorage.getItem(REPORTS_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as GeneratedReportRow[];
+      if (Array.isArray(parsed)) {
+        setGeneratedReports(parsed);
+      }
+    } catch {
+      setGeneratedReports([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
       const saved = localStorage.getItem(draftStorageKey);
       if (!saved) {
         setDrafts([]);
@@ -403,13 +459,9 @@ function OperatorCorrectivePageContent() {
     [machines, selectedCategory],
   );
 
-  const visibleMachineTypes = useMemo(() => {
-    const usedTypeIds = new Set(
-      machines.map((machine) => refId(machine.type_id)).filter(Boolean),
-    );
-
-    return machineTypes.filter((type) => usedTypeIds.has(type._id));
-  }, [machineTypes, machines]);
+  // machineTypes is already scoped server-side (getOperatorMachineTypes) to the
+  // categories the operator can access, with no client-side re-filtering needed.
+  const visibleMachineTypes = machineTypes;
 
   useEffect(() => {
     if (!machines.length) return;
@@ -440,6 +492,16 @@ function OperatorCorrectivePageContent() {
   const selectedFault = useMemo(
     () => pannes.find((item) => item._id === selectedPanne) ?? null,
     [pannes, selectedPanne],
+  );
+
+  const selectedMachineLabel = useMemo(
+    () => machines.find((item) => item._id === selectedMachine)?.machine_id || tCommon("notAvailable"),
+    [machines, selectedMachine, tCommon],
+  );
+
+  const selectedCategoryLabel = useMemo(
+    () => machineTypes.find((item) => item._id === selectedCategory)?.name || tCommon("notAvailable"),
+    [machineTypes, selectedCategory, tCommon],
   );
 
   const selectedFaultSolutions = useMemo(
@@ -476,12 +538,14 @@ function OperatorCorrectivePageContent() {
     [t],
   );
 
+  const primarySymptomOptions = useMemo(() => symptomOptions.slice(0, 5), [symptomOptions]);
+  const extraSymptomOptions = useMemo(() => symptomOptions.slice(5), [symptomOptions]);
+  const visibleSymptomOptions = showMoreSymptoms ? symptomOptions : primarySymptomOptions;
+
   const correctiveTasks = useMemo(() => {
-    const matching = panneSolutions
-      .filter((solution) => refId(solution.panne_id) === selectedPanne)
-      .flatMap((solution) => tokenize(solution.solution_recommandee));
+    const matching = selectedFaultSolutions.flatMap((solution) => tokenize(solution.solution_recommandee));
     return Array.from(new Set(matching));
-  }, [panneSolutions, selectedPanne]);
+  }, [selectedFaultSolutions]);
 
   const allTasks = useMemo(() => [...correctiveTasks, ...customActions], [correctiveTasks, customActions]);
 
@@ -490,197 +554,267 @@ function OperatorCorrectivePageContent() {
     [allTasks, checkedActions],
   );
 
-  const availableActionOptions = useMemo(
-    () => allTasks.filter((task) => !checkedActions[task]),
-    [allTasks, checkedActions],
+  const selectedSymptomLabels = useMemo(
+    () => symptomOptions.filter((symptom) => selectedSymptoms[symptom]),
+    [selectedSymptoms, symptomOptions],
   );
 
-  const manualDocument = useMemo(
-    () => {
-      const selectedCategoryMachineIds = new Set(
-        machines
-          .filter((machine) => refId(machine.type_id) === selectedCategory)
-          .map((machine) => machine._id),
-      );
-
-      return (
-        documents.find((doc) => {
-          const documentMachineId = refId(doc.machine_id);
-          const type = (doc.type_document ?? "").toLowerCase();
-          const name = (doc.file_name ?? "").toLowerCase();
-          const isManualType =
-            type.includes("manual") ||
-            type.includes("procedure") ||
-            type.includes("pdf") ||
-            type.includes("excel") ||
-            type.includes("xlsx") ||
-            type.includes("xls") ||
-            type.includes("spreadsheet") ||
-            name.endsWith(".xlsx") ||
-            name.endsWith(".xls");
-
-          if (!isManualType) return false;
-          if (selectedMachine) return documentMachineId === selectedMachine;
-          if (selectedCategory) return selectedCategoryMachineIds.has(documentMachineId);
-          return false;
-        }) ?? null
-      );
-    },
-    [documents, machines, selectedCategory, selectedMachine],
+  const resultLabel = result === "custom" ? customResult.trim() : t(result);
+  const correctiveValidation = useMemo(
+    () =>
+      validateCorrectiveWorkflow({
+        machineId: selectedMachine,
+        faultCode: selectedFault?.code_panne,
+        selectedActions: selectedActionLabels,
+        selectedSymptoms: selectedSymptomLabels,
+        comments,
+        resultLabel,
+      }),
+    [comments, resultLabel, selectedActionLabels, selectedFault?.code_panne, selectedMachine, selectedSymptomLabels],
   );
-
-  const stockByCatalogueId = useMemo(() => {
-    const stockMap = new Map<string, number>();
-    stocks.forEach((stock) => {
-      stockMap.set(refId(stock.part_id), stock.quantite_en_stock ?? 0);
-    });
-    return stockMap;
-  }, [stocks]);
-
-  const machineInterventionHistory = useMemo(() => {
-    if (!selectedMachine) return [];
-
+  const reportActionLabels = correctiveValidation.actions;
+  const canSubmitCorrective = correctiveValidation.canSubmit && !submitting;
+  const correctiveProgress = correctiveValidation.progress;
+  const correctiveSubmitHint = correctiveValidation.missingFields
+    .map((field) => {
+      if (field === CORRECTIVE_REQUIRED_FIELDS.machine) return t("machine");
+      if (field === CORRECTIVE_REQUIRED_FIELDS.faultOrSymptoms) return `${t("fault")} / ${t("symptoms.title")}`;
+      return `${t("symptoms.title")} / ${t("comments")} / ${t("actionsPerformed")}`;
+    })
+    .join(", ");
+  const selectedFaultLabel = selectedFault ? `${selectedFault.code_panne} - ${selectedFault.description}` : t("fault");
+  const backendCorrectiveReports = useMemo(() => {
     return interventionReports
       .map((report) => {
         const workOrder = workOrders.find((item) => item._id === refId(report.ot_id));
-        if (!workOrder) return null;
+        if (!workOrder || !isCorrectiveMaintenanceType(workOrder.type_maintenance)) {
+          return null;
+        }
 
-        const machineRef = typeof workOrder.machine_id === "string"
-          ? workOrder.machine_id
-          : refId(workOrder.machine_id as EntityRef);
-
-        if (machineRef !== selectedMachine) return null;
-
-        const date = report.date_fin || report.date_debut || workOrder.date_created || "";
+        const machineId = refId(workOrder.machine_id);
+        const machine =
+          typeof workOrder.machine_id === "string"
+            ? workOrder.machine_id
+            : workOrder.machine_id?.machine_id || tCommon("notAvailable");
+        const createdAt = report.date_fin || report.date_debut || workOrder.date_created || "";
+        const photoDocument = reportPhotoDocuments.find(
+          (document) =>
+            refId(document.intervention_report_id) === report._id ||
+            refId(document.work_order_id) === workOrder._id,
+        ) ?? reportPhotoDocuments.find(
+          (document) =>
+            machineId &&
+            refId(document.machine_id) === machineId &&
+            isPhotoNearReport(document, createdAt),
+        );
 
         return {
-          id: report._id,
-          reportId: report.report_id,
-          workOrderId: workOrder.ot_id,
-          type: workOrder.type_maintenance || "corrective",
-          status: workOrder.status || "waiting_validation",
-          action: report.description_action || tCommon("notAvailable"),
-          rootCause: report.cause_racine || tCommon("notAvailable"),
-          date,
+          id: `backend-${report._id}`,
+          type: "corrective" as const,
+          workOrderId: workOrder._id,
+          reportId: report._id,
+          machine,
+          summary: report.description_action || tCommon("notAvailable"),
+          createdAt,
+          status: workOrder.status || report.validation_responsable || "waiting_validation",
+          photoDocument,
         };
       })
-      .filter(Boolean)
-      .sort((a, b) => new Date(b!.date).getTime() - new Date(a!.date).getTime()) as Array<{
-      id: string;
-      reportId: string;
-      workOrderId: string;
-      type: string;
-      status: string;
-      action: string;
-      rootCause: string;
-      date: string;
-    }>;
-  }, [interventionReports, selectedMachine, tCommon, workOrders]);
+      .filter(Boolean) as GeneratedReportRow[];
+  }, [interventionReports, reportPhotoDocuments, tCommon, workOrders]);
+
+  const correctiveGeneratedReports = useMemo(() => {
+    const localReports = generatedReports.filter((item) => item.type === "corrective");
+    const backendByKey = new Map<string, GeneratedReportRow>();
+    backendCorrectiveReports.forEach((item) => {
+      backendByKey.set(reportRowKey(item), item);
+    });
+    const seen = new Set<string>();
+    return [...localReports, ...backendCorrectiveReports]
+      .map((item) => {
+        const backendMatch =
+          backendByKey.get(reportRowKey(item)) ||
+          backendCorrectiveReports.find((backendItem) =>
+            reportRowsReferToSameRecord(item, backendItem),
+          );
+        return {
+          ...item,
+          photoDocument: item.photoDocument || backendMatch?.photoDocument,
+          status: backendMatch?.status || item.status,
+        };
+      })
+      .filter((item) => {
+        const key = reportRowKey(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [backendCorrectiveReports, generatedReports]);
+
+  useEffect(() => {
+    if (!selectedGeneratedReport) return;
+    const refreshedReport = correctiveGeneratedReports.find((item) =>
+      reportRowsReferToSameRecord(item, selectedGeneratedReport),
+    );
+    if (refreshedReport?.photoDocument && !selectedGeneratedReport.photoDocument) {
+      setSelectedGeneratedReport(refreshedReport);
+    }
+  }, [correctiveGeneratedReports, selectedGeneratedReport]);
+
+  useEffect(() => {
+    if (!highlightedReportId) return;
+
+    const scrollTimeout = setTimeout(() => {
+      document
+        .getElementById(correctiveReportElementId(highlightedReportId))
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    const clearHighlightTimeout = setTimeout(() => {
+      setHighlightedReportId((current) =>
+        current === highlightedReportId ? "" : current,
+      );
+    }, 6000);
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      clearTimeout(clearHighlightTimeout);
+    };
+  }, [correctiveGeneratedReports.length, highlightedReportId]);
+
+  function formatReportDate(value?: string): string {
+    if (!value) return tCommon("notAvailable");
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? tCommon("notAvailable") : parsed.toLocaleString();
+  }
+
+  function formatReportStatus(status: string): string {
+    switch (status) {
+      case "waiting_validation":
+        return t("waitingValidation");
+      case "validated":
+      case "completed":
+        return t("validated");
+      case "returned":
+        return t("returned");
+      case "technician_required":
+        return t("technicianRequired");
+      default:
+        return status || tCommon("notAvailable");
+    }
+  }
+
+  function reportStatusClasses(status: string): string {
+    switch (status) {
+      case "validated":
+      case "completed":
+        return "border-emerald-200 bg-emerald-50 text-emerald-800";
+      case "returned":
+        return "border-amber-200 bg-amber-50 text-amber-800";
+      case "technician_required":
+        return "border-blue-200 bg-blue-50 text-blue-800";
+      case "waiting_validation":
+      default:
+        return "border-slate-200 bg-slate-50 text-slate-700";
+    }
+  }
 
   function toggleTask(task: string): void {
     setCheckedActions((prev) => ({ ...prev, [task]: !prev[task] }));
   }
 
-  function addActionFromSelection(): void {
-    const value = selectedActionToAdd === CUSTOM_OPTION ? customActionInput.trim() : selectedActionToAdd.trim();
-    if (!value) return;
-    if (!customActions.includes(value)) {
-      setCustomActions((prev) => [...prev, value]);
-    }
-    setCheckedActions((prev) => ({ ...prev, [value]: true }));
-    setSelectedActionToAdd("");
-    setCustomActionInput("");
-  }
-
-  function setPartQuantity(catalogueId: string, quantity: string): void {
-    setSelectedParts((prev) => ({ ...prev, [catalogueId]: quantity }));
-  }
-
-  async function uploadPhotoIfPresent(machineId: string): Promise<void> {
-    if (!photo || !user?._id) return;
+  async function uploadPhotoIfPresent(
+    machineId: string,
+    workOrderId: string,
+    reportId?: string,
+  ): Promise<ReportPhotoDocument | undefined> {
+    if (!photo || !user?._id) return undefined;
 
     const formData = new FormData();
     formData.append("file", photo);
     formData.append("document_id", uniqueId("DOC"));
     formData.append("machine_id", machineId);
+    formData.append("work_order_id", workOrderId);
+    if (reportId) {
+      formData.append("intervention_report_id", reportId);
+    }
     formData.append("type_document", "fault_photo");
     formData.append("description", t("photoUpload"));
     formData.append("uploaded_by", user._id);
 
-    await apiService.uploadDocument(formData);
+    const response = await apiService.uploadDocument(formData);
+    return normalizeReportPhotoDocument(response.data as ReportPhotoDocument);
   }
 
   async function submitCorrectiveMaintenance(fromDraftId?: string): Promise<void> {
-    if (!user?._id || !selectedMachine || !selectedFault) {
+    if (!user?._id || !selectedMachine) {
       setSubmitValidationReason("missing-user-machine-or-fault");
       showNotification("error", t("notifications.validationFailed"));
       return;
     }
 
-    if (selectedActionLabels.length === 0) {
+    if (correctiveValidation.missingFields.includes(CORRECTIVE_REQUIRED_FIELDS.faultOrSymptoms)) {
+      setSubmitValidationReason("missing-user-machine-or-fault");
+      showNotification("error", t("notifications.validationFailed"));
+      return;
+    }
+
+    if (reportActionLabels.length === 0) {
       setSubmitValidationReason("no-actions-selected");
       showNotification("error", t("notifications.validationFailed"));
       return;
     }
 
-    const nowIso = new Date().toISOString();
     const resultValue = result === "custom" ? customResult.trim() : result;
-    const selectedSymptomLabels = symptomOptions.filter((symptom) => selectedSymptoms[symptom]);
+    const faultDescription = [
+      selectedFault?.description,
+      selectedSymptomLabels.length > 0 ? `${t("symptoms.title")}: ${selectedSymptomLabels.join(" | ")}` : "",
+      comments.trim(),
+      resultValue ? `${t("actionsPerformed")}: ${resultValue}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ")
+      .slice(0, 2000);
 
     setSubmitValidationReason("");
     setSubmitting(true);
     try {
-      const workOrderPayload = {
-        ot_id: uniqueId("WO-COR"),
+      const reportRes = await apiService.createOperatorCorrectiveReport({
         machine_id: selectedMachine,
-        technician_id: user._id,
-        description: `${selectedFault.code_panne} | ${selectedSymptomLabels.join(" | ")} | ${selectedActionLabels.join(" | ")}`,
-        type_maintenance: "corrective",
-        status: "waiting_validation",
-        priorite: "high",
-        code_panne: selectedFault.code_panne,
-        date_created: nowIso,
-        date_start: nowIso,
-      };
+        code_panne: selectedFault?.code_panne || "OBSERVED_SYMPTOMS",
+        fault_description: faultDescription,
+        actions: reportActionLabels,
+        priority: "high",
+      });
 
-      const workOrderRes = await apiService.createWorkOrder(workOrderPayload);
-      const workOrderId = workOrderRes?.data?._id as string | undefined;
+      const workOrderId = reportRes?.data?.workOrder?._id as string | undefined;
       if (!workOrderId) {
-        throw new Error("Work order creation failed");
+        throw new Error("Corrective report creation failed");
       }
 
-      const reportPayload = {
-        report_id: uniqueId("REP-COR"),
-        ot_id: workOrderId,
-        technician_id: user._id,
-        date_debut: nowIso,
-        date_fin: nowIso,
-        cause_racine: selectedFault.description,
-        description_action: [...selectedSymptomLabels, ...selectedActionLabels].join(" | "),
-        etat_final: resultValue,
-        validation_responsable: "waiting_validation",
-      };
-
-      await apiService.createInterventionReport(reportPayload);
-
-      const requestedParts = Object.entries(selectedParts)
-        .filter(([, quantity]) => Number(quantity) > 0)
-        .map(([partId, quantity]) => ({ partId, quantity: Number(quantity) }));
-
-      // Requesting parts only records a pending request against this work
-      // order — it never reduces Stock directly. Stock is only ever
-      // consumed later by the Technician's own transactional flow once the
-      // part is approved or used.
-      await Promise.all(
-        requestedParts.map((part) =>
-          apiService.requestOperatorParts(workOrderId, {
-            part_id: part.partId,
-            quantity: part.quantity,
-          }),
-        ),
+      const reportId = reportRes?.data?.report?._id as string | undefined;
+      const photoDocument = await uploadPhotoIfPresent(
+        selectedMachine,
+        workOrderId,
+        reportId,
       );
-
-      await uploadPhotoIfPresent(selectedMachine);
+      if (photoDocument) {
+        setReportPhotoDocuments((prev) => [photoDocument, ...prev]);
+      }
+      invalidateList(LIST_EVENTS.workOrders);
+      const newReport: GeneratedReportRow = {
+        id: `${workOrderId}-${reportId || Date.now()}`,
+        type: "corrective",
+        workOrderId,
+        reportId: reportId || "",
+        machine: selectedMachineLabel,
+        summary: faultDescription || reportActionLabels.join(" | "),
+        createdAt: new Date().toISOString(),
+        status: "waiting_validation",
+        photoDocument,
+      };
+      addGeneratedReport(newReport);
+      setHighlightedReportId(newReport.id);
 
       if (fromDraftId) {
         const nextDrafts = drafts.filter((item) => item.id !== fromDraftId);
@@ -689,6 +823,7 @@ function OperatorCorrectivePageContent() {
       }
 
       showNotification("success", t("notifications.submitSuccess"));
+      resetCorrectiveState();
     } catch (error) {
       console.error("Failed to submit corrective maintenance", error);
       setSubmitValidationReason("submit-failed");
@@ -731,7 +866,6 @@ function OperatorCorrectivePageContent() {
           ) : null}
 
           <div className="col-span-full panel">
-            <div className="card-title mb-4">{t("correctiveMaintenance")}</div>
             <div className="mb-6">
               <div className="mb-3 text-sm font-semibold text-slate-700">{t("machineCategory")}</div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -779,31 +913,53 @@ function OperatorCorrectivePageContent() {
               </div>
             </div>
 
-            <div>
-              <div className="mb-3 text-sm font-semibold text-slate-700">{t("fault")}</div>
-              <div className="mt-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">{t("progress")}</div>
+                  <div className="text-xs text-slate-500">
+                    {selectedMachine ? selectedMachineLabel : tCommon("table.noData")}
+                  </div>
+                </div>
+                <div className="text-sm font-semibold text-slate-900">{correctiveProgress}%</div>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-slate-200">
+                <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${correctiveProgress}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {selectedMachine ? (
+            <div className="col-span-full grid gap-4 xl:grid-cols-2">
+              <KnowledgeSuggestions
+                machineId={selectedMachine || undefined}
+                faultCode={selectedFault?.code_panne}
+              />
+              <AiAssistantPanel
+                machineId={selectedMachine || undefined}
+                faultCode={selectedFault?.code_panne}
+              />
+            </div>
+          ) : null}
+
+          {selectedMachine ? (
+            <div className="col-span-full panel">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="card-title">{t("correctiveTasks")}</div>
+                  <div className="mt-1 text-sm text-slate-500">{selectedFaultLabel}</div>
+                </div>
+                {faultsLoading ? <span className="text-sm text-slate-500">{tCommon("loading")}</span> : null}
+              </div>
+
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                 <input
                   value={faultSearch}
                   onChange={(event) => setFaultSearch(event.target.value)}
-                  className="w-full border rounded-xl px-3 py-2"
+                  className="min-w-52 shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   placeholder={tCommon("actions.search")}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {!selectedMachine ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                    {t("selectMachineForHistory")}
-                  </div>
-                ) : faultsLoading ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    {tCommon("loading")}
-                  </div>
-                ) : visiblePannes.length === 0 ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    {tCommon("table.noData")}
-                  </div>
-                ) : visiblePannes.map((panne) => (
+                {visiblePannes.map((panne) => (
                   <button
                     key={panne._id}
                     type="button"
@@ -812,301 +968,288 @@ function OperatorCorrectivePageContent() {
                       resetFaultSpecificState();
                     }}
                     data-testid="corrective-fault-select"
-                    className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
-                      selectedPanne === panne._id ? "border-red-500 bg-red-50 shadow-md" : "border-slate-200 bg-white"
+                    className={`shrink-0 rounded-lg border px-4 py-2 text-left text-sm ${
+                      selectedPanne === panne._id
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-white text-slate-700"
                     }`}
                   >
-                    <div className="text-base font-semibold text-slate-900">{panne.code_panne}</div>
-                    <div className="mt-1 text-sm text-slate-500 line-clamp-2">{panne.description}</div>
-                    {panne.gravite ? (
-                      <div className="mt-3 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                        {panne.gravite}
-                      </div>
-                    ) : null}
+                    <div className="font-semibold">{panne.code_panne}</div>
+                    <div className="max-w-48 truncate text-xs">{panne.description}</div>
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
 
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("solution")}</div>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm font-semibold text-slate-700">{t("fault")}</div>
-                <div className="mt-2 text-lg font-bold text-slate-900">
-                  {selectedFault ? `${selectedFault.code_panne} - ${selectedFault.description}` : tCommon("table.noData")}
-                </div>
-                <div className="mt-3 text-sm text-slate-600">
-                  {selectedFault?.gravite ? `${t("validation")}: ${selectedFault.gravite}` : tCommon("notAvailable")}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                <div className="text-sm font-semibold text-slate-700">{t("solution")}</div>
-                {selectedFaultSolutions.length === 0 ? (
-                  <div className="mt-2 text-sm text-slate-500">{tCommon("table.noData")}</div>
-                ) : (
-                  <div className="mt-3 space-y-3 text-sm text-slate-700">
-                    {selectedFaultSolutions.map((solution) => (
-                      <div key={solution._id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <div><span className="font-semibold">{t("solution")}: </span>{solution.solution_recommandee || tCommon("notAvailable")}</div>
-                        <div className="mt-2"><span className="font-semibold">{t("validationQueue")}: </span>{solution.cause_probable || tCommon("notAvailable")}</div>
-                      </div>
-                    ))}
+              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-lg font-bold text-slate-900">{selectedFault?.code_panne || t("fault")}</div>
+                      <div className="mt-1 text-sm text-slate-500">{selectedFault?.description || t("symptoms.title")}</div>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
+                      {selectedFault?.gravite || t("corrective")}
+                    </span>
                   </div>
-                )}
-              </div>
-            </div>
 
-            <div className="mt-4">
-              <div className="mb-3 text-sm font-semibold text-slate-700">{t("symptoms.title")}</div>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {symptomOptions.map((symptom, index) => (
-                  <label key={symptom} className={`flex items-center gap-3 rounded-2xl border p-3 text-sm transition-colors ${selectedSymptoms[symptom] ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedSymptoms[symptom])}
-                      onChange={() => setSelectedSymptoms((prev) => ({ ...prev, [symptom]: !prev[symptom] }))}
-                      data-testid={`corrective-symptom-checkbox-${index}`}
-                    />
-                    <span>{symptom}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-2">
-              {allTasks.length === 0 && <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>}
-              {allTasks.map((task, index) => (
-                <label key={task} className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(checkedActions[task])}
-                    onChange={() => toggleTask(task)}
-                    data-testid={`corrective-task-checkbox-${index}`}
-                  />
-                  <span>{task}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-3">
-              <select
-                value={selectedActionToAdd}
-                onChange={(event) => setSelectedActionToAdd(event.target.value)}
-                data-testid="corrective-custom-action-select"
-                className="flex-1 border rounded-lg px-3 py-2"
-                title={t("actionsPerformed")}
-              >
-                <option value="">{tCommon("actions.search")}</option>
-                {availableActionOptions.map((action) => (
-                  <option key={action} value={action}>
-                    {action}
-                  </option>
-                ))}
-                <option value={CUSTOM_OPTION}>{t("custom")}</option>
-              </select>
-              {selectedActionToAdd === CUSTOM_OPTION ? (
-                <input
-                  value={customActionInput}
-                  onChange={(event) => setCustomActionInput(event.target.value)}
-                  data-testid="corrective-custom-action-input"
-                  className="flex-1 border rounded-lg px-3 py-2"
-                  placeholder={t("actionsPerformed")}
-                />
-              ) : null}
-              <button
-                onClick={addActionFromSelection}
-                data-testid="corrective-add-custom-action"
-                className="px-4 py-2 rounded-lg bg-slate-900 text-white"
-              >
-                {tCommon("add")}
-              </button>
-            </div>
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("actionsPerformed")}</div>
-            <select
-              value={result}
-              onChange={(event) => setResult(event.target.value as CorrectiveResult)}
-              title={t("actionsPerformed")}
-              aria-label={t("actionsPerformed")}
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="solved">{t("solved")}</option>
-              <option value="notSolved">{t("notSolved")}</option>
-              <option value="technicianRequired">{t("technicianRequired")}</option>
-              <option value="custom">{t("custom")}</option>
-            </select>
-            {result === "custom" && (
-              <input
-                value={customResult}
-                onChange={(event) => setCustomResult(event.target.value)}
-                className="w-full border rounded-lg px-3 py-2 mt-3"
-                placeholder={t("comments")}
-              />
-            )}
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("photoUpload")}</div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
-              title={t("photoUpload")}
-              aria-label={t("photoUpload")}
-              placeholder={t("photoUpload")}
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("openManual")}</div>
-            {manualDocument ? (
-              <a
-                href={resolveManagedFileUrl(manualDocument.file_path)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block px-4 py-2 rounded-lg bg-blue-600 text-white"
-              >
-                {t("openManual")}
-              </a>
-            ) : (
-              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            )}
-          </div>
-
-          <div id="machine-history" className="col-span-full panel">
-            <div className="card-title mb-3">{t("report")} - {t("machine")}: {t("all")}</div>
-            <div className="text-sm text-slate-500 mb-3">
-              {selectedMachine
-                ? t("machineInterventionHistory")
-                : t("selectMachineForHistory")}
-            </div>
-            {!selectedMachine ? null : machineInterventionHistory.length === 0 ? (
-              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            ) : (
-              <div className="space-y-3">
-                {machineInterventionHistory.slice(0, 8).map((item) => (
-                  <div key={item.id} className="border rounded-lg p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-semibold text-sm">{item.reportId} | {item.workOrderId}</div>
-                      <div className="text-xs text-slate-500">
-                        {item.date ? new Date(item.date).toLocaleString() : tCommon("notAvailable")}
-                      </div>
+                  <div className="mt-4 rounded-xl bg-slate-50 p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-slate-700">{t("progress")}</span>
+                      <span className="font-semibold text-slate-900">{correctiveProgress}%</span>
                     </div>
-                    <div className="text-xs text-slate-600 mt-1">
-                      {item.type === "preventive" ? t("preventive") : t("corrective")} | {item.status}
-                    </div>
-                    <div className="text-sm mt-2">
-                      <span className="font-medium">{t("actionsPerformed")}: </span>{item.action}
-                    </div>
-                    <div className="text-sm mt-1">
-                      <span className="font-medium">{t("fault")}: </span>{item.rootCause}
+                    <div className="mt-2 h-2 rounded-full bg-slate-200">
+                      <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${correctiveProgress}%` }} />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("spareParts")}</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {catalogues.map((part) => (
-                <div key={part._id} className="border rounded-lg p-3">
-                  <div className="font-medium">{part.nom_piece}</div>
-                  <div className="text-xs text-slate-500">{part.ref_constructeur}</div>
-                  <div className="text-xs mt-1">
-                    {t("stockQuantity")}: {stockByCatalogueId.get(part._id) ?? 0}
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    value={selectedParts[part._id] ?? ""}
-                    onChange={(event) => setPartQuantity(part._id, event.target.value)}
-                    className="w-full border rounded-lg px-3 py-2 mt-2"
-                    placeholder={t("partRequest")}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="col-span-full panel">
-            <label className="block text-sm mb-2">{t("comments")}</label>
-            <input
-              value={comments}
-              onChange={(event) => setComments(event.target.value.slice(0, 180))}
-              data-testid="corrective-comments-input"
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-              placeholder={t("comments")}
-            />
-
-            {submitValidationReason ? (
-              <div data-testid="corrective-submit-validation" className="text-sm text-red-600 mb-3">
-                {submitValidationMessage}
-              </div>
-            ) : null}
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={saveCurrentAsDraft}
-                data-testid="corrective-save-draft"
-                className="w-full md:w-auto px-5 py-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-              >
-                {tCommon("save")}
-              </button>
-              <button
-                disabled={submitting}
-                onClick={() => void submitCorrectiveMaintenance(selectedDraftId || undefined)}
-                data-testid="corrective-submit-button"
-                className="w-full md:w-auto px-5 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
-              >
-                {submitting ? tCommon("saving") : t("generateReport")}
-              </button>
-            </div>
-          </div>
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("report")}</div>
-            {drafts.length === 0 ? (
-              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {drafts.map((draft, index) => (
-                  <button
-                    key={draft.id}
-                    type="button"
-                    data-testid={`corrective-draft-${index}`}
-                    onClick={() => openDraft(draft)}
-                    className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow ${selectedDraftId === draft.id ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white"}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-semibold text-slate-900">{draft.title}</div>
-                      <span className="text-xs text-slate-500">{new Date(draft.updatedAt).toLocaleString()}</span>
+                  <div className="mt-4">
+                    <div className="mb-3 text-sm font-semibold text-slate-700">{t("symptoms.title")}</div>
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      {visibleSymptomOptions.map((symptom, index) => (
+                        <label
+                          key={symptom}
+                          className={`flex items-center gap-3 rounded-xl border p-3 text-sm transition-colors ${
+                            selectedSymptoms[symptom] ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(selectedSymptoms[symptom])}
+                            onChange={() => setSelectedSymptoms((prev) => ({ ...prev, [symptom]: !prev[symptom] }))}
+                            data-testid={`corrective-symptom-checkbox-${index}`}
+                          />
+                          <span>{symptom}</span>
+                        </label>
+                      ))}
                     </div>
-                    <div className="mt-2 text-xs text-slate-600">{t("fault")}: {draft.selectedPanne || tCommon("notAvailable")}</div>
-                    <div className="mt-3 flex justify-end">
-                      <span
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          deleteDraft(draft.id);
-                        }}
-                        className="inline-flex rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                    {extraSymptomOptions.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowMoreSymptoms((value) => !value)}
+                        className="mt-3 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
                       >
-                        {tCommon("delete")}
-                      </span>
+                    {showMoreSymptoms ? "Less" : "More"}
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {selectedFault && selectedFaultSolutions.length > 0 ? (
+                    <div className="mt-4 rounded-xl bg-emerald-50 p-3">
+                      <div className="text-sm font-semibold text-emerald-900">{t("solution")}</div>
+                      <div className="mt-2 space-y-2 text-sm text-emerald-950">
+                        {selectedFaultSolutions.slice(0, 2).map((solution) => (
+                          <div key={solution._id} className="rounded-lg bg-white p-3">
+                            {solution.cause_probable ? <div className="font-semibold">Cause: {solution.cause_probable}</div> : null}
+                            {solution.solution_recommandee ? <div className="mt-1">{solution.solution_recommandee}</div> : null}
+                          </div>
+                        ))}
+                      </div>
                     </div>
+                  ) : null}
+
+                  {allTasks.length > 0 ? (
+                    <div className="mt-4 max-h-[260px] space-y-2 overflow-y-auto pr-1">
+                      {allTasks.slice(0, 6).map((task, index) => (
+                        <label
+                          key={task}
+                          className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${
+                            checkedActions[task] ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(checkedActions[task])}
+                            onChange={() => toggleTask(task)}
+                            data-testid={`corrective-task-checkbox-${index}`}
+                          />
+                          <span>{task}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("actionsPerformed")}</label>
+                    <select
+                      value={result}
+                      onChange={(event) => setResult(event.target.value as CorrectiveResult)}
+                      title={t("actionsPerformed")}
+                      aria-label={t("actionsPerformed")}
+                      className="mt-2 w-full rounded-lg border px-3 py-2"
+                    >
+                      <option value="solved">{t("solved")}</option>
+                      <option value="notSolved">{t("notSolved")}</option>
+                      <option value="technicianRequired">{t("technicianRequired")}</option>
+                      <option value="custom">{t("custom")}</option>
+                    </select>
+                    {result === "custom" ? (
+                      <input
+                        value={customResult}
+                        onChange={(event) => setCustomResult(event.target.value)}
+                        className="mt-2 w-full rounded-lg border px-3 py-2"
+                        placeholder={t("comments")}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("comments")}</label>
+                    <textarea
+                      value={comments}
+                      onChange={(event) => setComments(event.target.value.slice(0, 500))}
+                      data-testid="corrective-comments-input"
+                      className="mt-2 min-h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm"
+                      placeholder={t("comments")}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700">{t("photoUpload")}</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                      title={t("photoUpload")}
+                      aria-label={t("photoUpload")}
+                      className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <button
+                    disabled={!canSubmitCorrective}
+                    onClick={() => void submitCorrectiveMaintenance()}
+                    data-testid="corrective-submit-button"
+                    className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {submitting ? tCommon("saving") : t("generateReport")}
                   </button>
+                  {!canSubmitCorrective && correctiveSubmitHint ? (
+                    <div className="text-xs text-slate-500">
+                      Required: {correctiveSubmitHint}
+                    </div>
+                  ) : null}
+
+                  {submitValidationReason ? (
+                    <div data-testid="corrective-submit-validation" className="text-sm text-red-600">
+                      {submitValidationMessage}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="col-span-full panel">
+            <div className="card-title mb-3">{t("myReports")}</div>
+            {correctiveGeneratedReports.length === 0 ? (
+              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                {correctiveGeneratedReports.map((item, index) => (
+                  <article
+                    key={item.id}
+                    id={correctiveReportElementId(item.id)}
+                    data-testid={`corrective-report-card-${index}`}
+                    className={`w-full rounded-xl border p-4 shadow-sm transition-all duration-500 ${
+                      highlightedReportId === item.id
+                        ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-slate-900">{item.machine || tCommon("notAvailable")}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <span>{t("corrective")}</span>
+                          <span aria-hidden="true">|</span>
+                          <span>{formatReportDate(item.createdAt)}</span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusClasses(item.status)}`}>
+                          {formatReportStatus(item.status)}
+                        </span>
+                        <button
+                          type="button"
+                          data-testid={`corrective-report-details-${index}`}
+                          onClick={() => setSelectedGeneratedReport(item)}
+                          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                        >
+                          {t("smartCalendar.maintenanceDetails")}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
                 ))}
               </div>
             )}
           </div>
         </div>
+
+        <Modal
+          isOpen={Boolean(selectedGeneratedReport)}
+          onClose={() => setSelectedGeneratedReport(null)}
+          title={t("smartCalendar.maintenanceDetails")}
+          size="lg"
+        >
+          {selectedGeneratedReport ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("machine")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {selectedGeneratedReport.machine || tCommon("notAvailable")}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("smartCalendar.maintenanceType")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">{t("corrective")}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("dashboard.submissionDate")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {formatReportDate(selectedGeneratedReport.createdAt)}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("validation")}</div>
+                  <div className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusClasses(selectedGeneratedReport.status)}`}>
+                    {formatReportStatus(selectedGeneratedReport.status)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-700">{t("actionsPerformed")}</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {selectedGeneratedReport.summary || tCommon("notAvailable")}
+                </div>
+              </div>
+
+              {selectedGeneratedReport.photoDocument ? (
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="mb-3 text-sm font-semibold text-slate-700">{t("photoUpload")}</div>
+                  <DocumentAttachmentViewer
+                    document={selectedGeneratedReport.photoDocument}
+                    title={selectedGeneratedReport.photoDocument.file_name || t("photoUpload")}
+                  />
+                </div>
+              ) : null}
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGeneratedReport(null)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                >
+                  {tCommon("close")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </Modal>
       </DashboardLayout>
     </ProtectedRoute>
   );

@@ -179,7 +179,7 @@ async function ensureModuleType(db, machineTypeId) {
 
 async function ensureChecklistModule(db, machine, moduleTypeId) {
   const byExistingName = await db.collection('modules').findOne({
-    machine_id: String(machine._id),
+    $expr: { $eq: [{ $toString: '$machine_id' }, String(machine._id)] },
     localisation: MODULE_LOCALISATION,
   });
 
@@ -189,6 +189,7 @@ async function ensureChecklistModule(db, machine, moduleTypeId) {
       {
         $set: {
           mod_type_id: String(moduleTypeId),
+          machine_id: machine._id,
           localisation: MODULE_LOCALISATION,
         },
       },
@@ -203,7 +204,7 @@ async function ensureChecklistModule(db, machine, moduleTypeId) {
     {
       $set: {
         module_id,
-        machine_id: String(machine._id),
+        machine_id: machine._id,
         mod_type_id: String(moduleTypeId),
         localisation: MODULE_LOCALISATION,
       },
@@ -245,7 +246,7 @@ async function syncPlansForMachine(db, machine, moduleId, templates) {
       {
         $set: {
           plan_id,
-          module_id: String(moduleId),
+          module_id: moduleId,
           type_maintenance: 'preventive',
           frequence: template.frequence,
           unite_frequence: template.unite_frequence,
