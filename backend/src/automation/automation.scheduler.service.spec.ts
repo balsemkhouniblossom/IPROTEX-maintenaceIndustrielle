@@ -2,7 +2,12 @@ import { Types } from 'mongoose';
 import { AutomationSchedulerService } from './automation.scheduler.service';
 
 function leanExec<T>(value: T) {
-  return { lean: jest.fn().mockReturnThis(), limit: jest.fn().mockReturnThis(), exec: jest.fn().mockResolvedValue(value) };
+  return {
+    lean: jest.fn().mockReturnThis(),
+    sort: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(value),
+  };
 }
 
 describe('AutomationSchedulerService notification persistence', () => {
@@ -12,6 +17,7 @@ describe('AutomationSchedulerService notification persistence', () => {
 
   let workOrderModel: { find: jest.Mock; updateMany: jest.Mock };
   let stockModel: { find: jest.Mock };
+  let automationJobLockModel: { findOneAndUpdate: jest.Mock; deleteOne: jest.Mock };
   let notificationCenterService: { createIfNotExists: jest.Mock };
   let kpiService: { computeStockAlerts: jest.Mock };
   let service: AutomationSchedulerService;
@@ -23,6 +29,10 @@ describe('AutomationSchedulerService notification persistence', () => {
     };
     stockModel = {
       find: jest.fn().mockReturnValue(leanExec([])),
+    };
+    automationJobLockModel = {
+      findOneAndUpdate: jest.fn().mockReturnValue(leanExec({ owner: 'lock-owner' })),
+      deleteOne: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({ deletedCount: 1 }) }),
     };
     notificationCenterService = {
       createIfNotExists: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
@@ -42,9 +52,66 @@ describe('AutomationSchedulerService notification persistence', () => {
       {} as never,
       {} as never,
       {} as never,
+      automationJobLockModel as never,
       notificationCenterService as never,
       kpiService as never,
     );
+  });
+
+  describe('batch registration and locking', () => {
+    it('does not register overdue escalation in the 10-minute batch', async () => {
+      const executeBatch = jest
+        .spyOn(service as unknown as { executeBatch: jest.Mock }, 'executeBatch')
+        .mockResolvedValue(undefined);
+
+      await service.runTenMinuteJobs();
+
+      expect(executeBatch).toHaveBeenCalledWith(
+        '10min',
+        expect.not.arrayContaining([
+          expect.arrayContaining(['job_overdue_escalation']),
+        ]),
+      );
+    });
+
+    it('skips a job when another scheduler instance owns the distributed lock', async () => {
+      automationJobLockModel.findOneAndUpdate.mockReturnValue(
+        leanExec({ owner: 'other-instance' }),
+      );
+      const job = jest.fn().mockResolvedValue({ processed: 1 });
+
+      await (
+        service as unknown as {
+          runJob(name: string, job: () => Promise<{ processed: number }>): Promise<void>;
+        }
+      ).runJob('job_overdue_escalation', job);
+
+      expect(job).not.toHaveBeenCalled();
+      expect(automationJobLockModel.deleteOne).not.toHaveBeenCalled();
+    });
+
+    it('releases a distributed lock only for the owner that acquired it', async () => {
+      let acquiredOwner = '';
+      automationJobLockModel.findOneAndUpdate.mockImplementation(
+        (_filter, update) => {
+          acquiredOwner = update.$set.owner;
+          return leanExec({ owner: acquiredOwner });
+        },
+      );
+      const job = jest.fn().mockResolvedValue({ processed: 1 });
+
+      await (
+        service as unknown as {
+          runJob(name: string, job: () => Promise<{ processed: number }>): Promise<void>;
+        }
+      ).runJob('job_overdue_escalation', job);
+
+      expect(job).toHaveBeenCalledTimes(1);
+      expect(automationJobLockModel.deleteOne).toHaveBeenCalledWith({
+        name: 'job_overdue_escalation',
+        owner: acquiredOwner,
+      });
+    });
   });
 
   describe('jobUpcomingMaintenanceReminders', () => {
@@ -141,6 +208,62 @@ describe('AutomationSchedulerService notification persistence', () => {
         }),
       );
       expect(result.processed).toBe(1);
+    });
+  });
+
+  describe('jobOverdueEscalation', () => {
+    it('queries overdue work orders through non-null due-date windows with a stable batch limit', async () => {
+      const userModel = {
+        find: jest.fn().mockReturnValue(leanExec([])),
+      };
+      service = new AutomationSchedulerService(
+        { triggerScheduler: jest.fn() } as never,
+        workOrderModel as never,
+        {} as never,
+        {} as never,
+        stockModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        userModel as never,
+        automationJobLockModel as never,
+        notificationCenterService as never,
+        kpiService as never,
+      );
+
+      await (
+        service as unknown as {
+          jobOverdueEscalation(): Promise<{ processed: number }>;
+        }
+      ).jobOverdueEscalation();
+
+      expect(workOrderModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'overdue',
+          $or: expect.arrayContaining([
+            { due_date: expect.objectContaining({ $ne: null }) },
+            expect.objectContaining({
+              due_date: null,
+              scheduled_date: expect.objectContaining({ $ne: null }),
+            }),
+            expect.objectContaining({
+              due_date: null,
+              scheduled_date: null,
+              date_start: expect.objectContaining({ $ne: null }),
+            }),
+          ]),
+        }),
+        expect.any(Object),
+      );
+      const query = workOrderModel.find.mock.results[0].value;
+      expect(query.sort).toHaveBeenCalledWith({
+        due_date: 1,
+        scheduled_date: 1,
+        date_start: 1,
+        _id: 1,
+      });
+      expect(query.limit).toHaveBeenCalledWith(1000);
     });
   });
 

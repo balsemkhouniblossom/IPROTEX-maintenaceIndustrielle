@@ -277,11 +277,19 @@ test("frontend auth requests explicitly use cookie credentials and CSRF where re
     join(process.cwd(), "src", "services", "googleAuth.ts"),
     "utf8",
   );
+  const authSessionEventsSource = readFileSync(
+    join(process.cwd(), "src", "services", "authSessionEvents.ts"),
+    "utf8",
+  );
 
   assert.match(apiSource, /axios\.create\(\{[\s\S]*baseURL:\s*API_BASE_URL,[\s\S]*withCredentials:\s*true/);
   assert.equal(apiSource.includes("/\\/auth\\/(refresh|logout)/"), true);
   assert.match(apiSource, /config\.withCredentials\s*=\s*true/);
   assert.match(apiSource, /headers:\s*getCsrfHeaders\(\)/);
+  assert.match(apiSource, /let sessionExpirationRedirectStarted\s*=\s*false/);
+  assert.match(apiSource, /function redirectToLoginOnce\(error:\s*unknown\):\s*void/);
+  assert.match(apiSource, /if\s*\(sessionExpirationRedirectStarted\)\s*return/);
+  assert.match(apiSource, /dispatchSessionExpired\(\)/);
 
   for (const endpoint of [
     "/auth/refresh",
@@ -296,6 +304,10 @@ test("frontend auth requests explicitly use cookie credentials and CSRF where re
   assert.match(authContextSource, /getCsrfHeaders\(\)/g);
   assert.match(googleAuthSource, /\/auth\/google\/exchange/);
   assert.match(googleAuthSource, /withCredentials:\s*true/);
+  assert.match(authContextSource, /SESSION_EXPIRED_EVENT/);
+  assert.match(authContextSource, /setToken\(null\)/);
+  assert.match(authContextSource, /setUser\(null\)/);
+  assert.match(authSessionEventsSource, /app:auth-session-expired/);
 });
 
 test("unknown refresh errors fail closed to expired-session redirect", () => {

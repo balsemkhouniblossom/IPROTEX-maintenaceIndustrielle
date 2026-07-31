@@ -7,6 +7,7 @@ import {
   getStableAuthFailureCode,
   isConfirmedRefreshAuthFailure,
 } from './authErrors';
+import { dispatchSessionExpired } from './authSessionEvents';
 import { parseLocalLoginSession } from './localLogin';
 
 const API_BASE_URL = getApiBaseUrl();
@@ -55,6 +56,7 @@ api.interceptors.request.use(
 
 // Response interceptor for error handling
 let refreshRequest: Promise<string> | null = null;
+let sessionExpirationRedirectStarted = false;
 
 api.interceptors.response.use(
   (response) => response,
@@ -120,24 +122,14 @@ api.interceptors.response.use(
         return api(originalRequest);
       }).catch((refreshError) => {
         if (isConfirmedRefreshAuthFailure(refreshError)) {
-          const code = getStableAuthFailureCode(refreshError);
-          clearAuthSession();
-          if (typeof window !== 'undefined') {
-            const locale = window.location.pathname.split('/')[1] || 'en';
-            window.location.href = getLoginRedirectForAuthFailure(locale, code);
-          }
+          redirectToLoginOnce(refreshError);
         }
         return Promise.reject(refreshError);
       });
     }
 
     if (status === 401 && !isAuthEndpoint) {
-      const code = getStableAuthFailureCode(error);
-      clearAuthSession();
-      if (typeof window !== 'undefined') {
-        const locale = window.location.pathname.split('/')[1] || 'en';
-        window.location.href = getLoginRedirectForAuthFailure(locale, code);
-      }
+      redirectToLoginOnce(error);
     }
     const suppressErrorLog = Boolean(
       (error.config as QuietAxiosConfig | undefined)?.suppressErrorLog,
@@ -151,6 +143,20 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+function redirectToLoginOnce(error: unknown): void {
+  if (sessionExpirationRedirectStarted) return;
+  sessionExpirationRedirectStarted = true;
+
+  const code = getStableAuthFailureCode(error);
+  clearAuthSession();
+  dispatchSessionExpired();
+
+  if (typeof window !== 'undefined') {
+    const locale = window.location.pathname.split('/')[1] || 'en';
+    window.location.href = getLoginRedirectForAuthFailure(locale, code);
+  }
+}
 
 export function getCsrfHeaders(): Record<string, string> {
   const csrfToken = getCookieValue('csrf_token');

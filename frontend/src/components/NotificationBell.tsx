@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NotificationItem {
   _id: string;
@@ -19,6 +20,7 @@ const POLL_INTERVAL_MS = 30000;
 
 export default function NotificationBell() {
   const t = useTranslations("notificationCenter");
+  const { isAuthenticated, isLoading } = useAuth();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -26,15 +28,25 @@ export default function NotificationBell() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const refreshUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+
     try {
       const response = await apiService.getUnreadNotificationCount();
       setUnreadCount((response.data?.count as number) ?? 0);
     } catch (error) {
       console.error("Failed to load unread notification count", error);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const loadNotifications = useCallback(async () => {
+    if (!isAuthenticated) {
+      setItems([]);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await apiService.getNotifications({ page: 1, limit: 10 });
@@ -44,15 +56,20 @@ export default function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+
     void refreshUnreadCount();
     const interval = window.setInterval(() => {
       void refreshUnreadCount();
     }, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [refreshUnreadCount]);
+  }, [isAuthenticated, isLoading, refreshUnreadCount]);
 
   useEffect(() => {
     if (open) {

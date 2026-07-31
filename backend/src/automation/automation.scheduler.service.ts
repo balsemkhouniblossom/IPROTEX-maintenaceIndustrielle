@@ -25,6 +25,10 @@ import { User, UserDocument, Role } from '../schemas/user.schema';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
 import { KpiService } from '../kpi/kpi.service';
+import {
+  AutomationJobLock,
+  AutomationJobLockDocument,
+} from '../schemas/automation-job-lock.schema';
 
 interface JobResult {
   processed: number;
@@ -34,6 +38,9 @@ interface JobResult {
 @Injectable()
 export class AutomationSchedulerService {
   private readonly logger = new Logger(AutomationSchedulerService.name);
+  private readonly schedulerInstanceId = `${process.pid}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
 
   constructor(
     private readonly workOrdersService: WorkOrdersService,
@@ -55,6 +62,8 @@ export class AutomationSchedulerService {
     private readonly moduleModel: Model<ModuleDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(AutomationJobLock.name)
+    private readonly automationJobLockModel: Model<AutomationJobLockDocument>,
     private readonly notificationCenterService: NotificationCenterService,
     private readonly kpiService: KpiService,
   ) {
@@ -105,7 +114,6 @@ export class AutomationSchedulerService {
     await this.executeBatch('10min', [
       ['job_sensor_monitoring', () => this.jobSensorMonitoring()],
       ['job_mark_overdue_maintenance', () => this.jobMarkOverdueMaintenance()],
-      ['job_overdue_escalation', () => this.jobOverdueEscalation()],
     ]);
   }
 
@@ -124,6 +132,12 @@ export class AutomationSchedulerService {
 
   private async runJob(name: string, job: () => Promise<JobResult>) {
     const startedAt = Date.now();
+    const lock = await this.acquireJobLock(name);
+    if (!lock) {
+      this.logger.warn(`[${name}] skipped because another scheduler owns the lock`);
+      return;
+    }
+
     this.logger.log(`[${name}] start`);
 
     try {
@@ -143,7 +157,58 @@ export class AutomationSchedulerService {
       this.logger.error(
         `[${name}] failed duration_ms=${duration} error=${message}`,
       );
+    } finally {
+      await this.releaseJobLock(name, lock.owner);
     }
+  }
+
+  private async acquireJobLock(
+    name: string,
+    leaseMs = 15 * 60 * 1000,
+  ): Promise<{ owner: string } | null> {
+    const now = new Date();
+    const owner = `${this.schedulerInstanceId}-${Date.now()}`;
+    const expiresAt = new Date(now.getTime() + leaseMs);
+
+    try {
+      const lock = await this.automationJobLockModel
+        .findOneAndUpdate(
+          {
+            name,
+            $or: [
+              { expires_at: { $lte: now } },
+              { expires_at: { $exists: false } },
+            ],
+          },
+          {
+            $set: {
+              name,
+              owner,
+              expires_at: expiresAt,
+            },
+          },
+          {
+            new: true,
+            upsert: true,
+            setDefaultsOnInsert: true,
+          },
+        )
+        .lean()
+        .exec();
+
+      return lock?.owner === owner ? { owner } : null;
+    } catch (error: unknown) {
+      if ((error as { code?: number })?.code === 11000) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  private async releaseJobLock(name: string, owner: string): Promise<void> {
+    await this.automationJobLockModel
+      .deleteOne({ name, owner })
+      .exec();
   }
 
   private async jobGeneratePreventiveMaintenance(): Promise<JobResult> {
@@ -310,9 +375,16 @@ export class AutomationSchedulerService {
         {
           status: 'overdue',
           $or: [
-            { due_date: { $lte: threeDaysAgo } },
-            { scheduled_date: { $lte: threeDaysAgo } },
-            { date_start: { $lte: threeDaysAgo } },
+            { due_date: { $lte: threeDaysAgo, $ne: null } },
+            {
+              due_date: null,
+              scheduled_date: { $lte: threeDaysAgo, $ne: null },
+            },
+            {
+              due_date: null,
+              scheduled_date: null,
+              date_start: { $lte: threeDaysAgo, $ne: null },
+            },
           ],
         },
         {
@@ -325,6 +397,7 @@ export class AutomationSchedulerService {
         },
       )
       .lean()
+      .sort({ due_date: 1, scheduled_date: 1, date_start: 1, _id: 1 })
       .limit(1000)
       .exec();
 

@@ -364,23 +364,13 @@ export class AuthController {
 
   private getRefreshCookieOptions(): CookieOptions {
     const secure = process.env.NODE_ENV === 'production';
-    const domain = this.getRefreshCookieDomain();
 
     return {
       secure,
       sameSite: secure ? 'none' : 'lax',
       path: '/',
       maxAge: this.getRefreshCookieMaxAgeMs(),
-      ...(domain ? { domain } : {}),
     };
-  }
-
-  private getRefreshCookieDomain(): string | undefined {
-    const configured =
-      process.env.AUTH_COOKIE_DOMAIN?.trim() ||
-      process.env.REFRESH_COOKIE_DOMAIN?.trim();
-
-    return configured ? configured.replace(/^\./, '') : undefined;
   }
 
   private assertCsrfToken(req: ExpressRequest): void {

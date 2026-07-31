@@ -9,6 +9,7 @@ import {
   saveAuthSession,
 } from '../services/authStorage';
 import { getAuthErrorCode, isConfirmedRefreshAuthFailure } from '../services/authErrors';
+import { SESSION_EXPIRED_EVENT } from '../services/authSessionEvents';
 import { getRegistrationErrorCode } from '../services/publicRegistration';
 import { parseLocalLoginSession } from '../services/localLogin';
 
@@ -113,6 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () =>
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, []);
   const login = async (email: string, password: string, keepLoggedIn = true) => {
     try {

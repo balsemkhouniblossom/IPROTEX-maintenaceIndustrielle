@@ -79,6 +79,16 @@ test("NotificationBell polls the unread count and never derives it from other pa
     /window\.setInterval\(/,
     `${relativePath} must poll for fresh unread counts on an interval for real-time refresh`,
   );
+  assert.match(
+    source,
+    /useAuth\(\)/,
+    `${relativePath} must read auth state before polling`,
+  );
+  assert.match(
+    source,
+    /if\s*\(isLoading\s*\|\|\s*!isAuthenticated\)\s*\{/,
+    `${relativePath} must not start notification polling until session restoration succeeds`,
+  );
 });
 
 test("DashboardLayout renders the shared NotificationBell for every role", () => {

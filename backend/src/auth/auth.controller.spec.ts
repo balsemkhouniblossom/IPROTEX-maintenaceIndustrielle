@@ -6,13 +6,10 @@ describe('AuthController refresh cookie configuration', () => {
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     delete process.env.JWT_REFRESH_COOKIE_MAX_AGE_MS;
-    delete process.env.AUTH_COOKIE_DOMAIN;
-    delete process.env.REFRESH_COOKIE_DOMAIN;
   });
 
   it('sets production refresh cookies for cross-site Vercel-to-Render sessions', async () => {
     process.env.NODE_ENV = 'production';
-    process.env.AUTH_COOKIE_DOMAIN = 'pfe-maintenaceindustrielle.onrender.com';
 
     const authService = {
       login: jest.fn().mockResolvedValue({
@@ -51,7 +48,6 @@ describe('AuthController refresh cookie configuration', () => {
         secure: true,
         sameSite: 'none',
         path: '/',
-        domain: 'pfe-maintenaceindustrielle.onrender.com',
       }),
     );
     expect(res.cookie).toHaveBeenCalledWith(
@@ -62,9 +58,10 @@ describe('AuthController refresh cookie configuration', () => {
         secure: true,
         sameSite: 'none',
         path: '/',
-        domain: 'pfe-maintenaceindustrielle.onrender.com',
       }),
     );
+    expect(res.cookie.mock.calls[0][2]).not.toHaveProperty('domain');
+    expect(res.cookie.mock.calls[1][2]).not.toHaveProperty('domain');
   });
 
   it('rotates refresh and CSRF cookies after a valid cookie refresh', async () => {
@@ -139,6 +136,33 @@ describe('AuthController refresh cookie configuration', () => {
           headers: {
             cookie: 'refresh_token=old-refresh-token; csrf_token=csrf-one',
             'x-csrf-token': 'csrf-two',
+          },
+        } as never,
+        { cookie: jest.fn() } as never,
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'CSRF_TOKEN_INVALID',
+      },
+    });
+    expect(authService.refreshToken).not.toHaveBeenCalled();
+  });
+
+  it('rejects cookie refresh when the CSRF header is missing', async () => {
+    const authService = {
+      refreshToken: jest.fn(),
+    };
+    const controller = new AuthController(
+      authService as never,
+      { consume: jest.fn(), recordSuccess: jest.fn(), recordFailure: jest.fn() } as never,
+    );
+
+    await expect(
+      controller.refresh(
+        {},
+        {
+          headers: {
+            cookie: 'refresh_token=old-refresh-token; csrf_token=csrf-one',
           },
         } as never,
         { cookie: jest.fn() } as never,

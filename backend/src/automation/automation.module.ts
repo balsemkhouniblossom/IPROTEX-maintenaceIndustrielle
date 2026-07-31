@@ -17,6 +17,10 @@ import { Capteur, CapteurSchema } from '../schemas/capteur.schema';
 import { Mesure, MesureSchema } from '../schemas/mesure.schema';
 import { KPI, KPISchema } from '../schemas/kpi.schema';
 import { User, UserSchema } from '../schemas/user.schema';
+import {
+  AutomationJobLock,
+  AutomationJobLockSchema,
+} from '../schemas/automation-job-lock.schema';
 import { AutomationSchedulerService } from './automation.scheduler.service';
 import { NotificationCenterModule } from '../notification-center/notification-center.module';
 import { KpiModule } from '../kpi/kpi.module';
@@ -37,6 +41,7 @@ import { KpiModule } from '../kpi/kpi.module';
       { name: Mesure.name, schema: MesureSchema },
       { name: KPI.name, schema: KPISchema },
       { name: User.name, schema: UserSchema },
+      { name: AutomationJobLock.name, schema: AutomationJobLockSchema },
     ]),
   ],
   providers: [AutomationSchedulerService],

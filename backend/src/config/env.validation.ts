@@ -448,38 +448,6 @@ function validateProductionDeploymentUrls(
   }
 }
 
-function validateAuthCookieDomain(
-  nodeEnv: RuntimeMode,
-  backendUrl?: string,
-): void {
-  const rawDomain =
-    process.env.AUTH_COOKIE_DOMAIN?.trim() ||
-    process.env.REFRESH_COOKIE_DOMAIN?.trim();
-
-  if (!rawDomain) return;
-
-  if (rawDomain.includes('://') || rawDomain.includes('/')) {
-    throw new Error('AUTH_COOKIE_DOMAIN must be a hostname, not a URL');
-  }
-
-  const domain = rawDomain.replace(/^\./, '').toLowerCase();
-  if (isLocalhost(domain)) {
-    throw new Error('AUTH_COOKIE_DOMAIN cannot be localhost');
-  }
-
-  if (nodeEnv !== 'production') return;
-
-  const backendHostname = backendUrl
-    ? new URL(backendUrl).hostname.toLowerCase()
-    : new URL(PRODUCTION_RENDER_API_ORIGIN).hostname;
-
-  if (domain !== backendHostname) {
-    throw new Error(
-      `AUTH_COOKIE_DOMAIN must match the Render backend hostname (${backendHostname}) in production`,
-    );
-  }
-}
-
 export function validateEnvironment(): EnvValidationResult {
   const nodeEnv = parseNodeEnv(process.env.NODE_ENV);
   process.env.NODE_ENV = nodeEnv;
@@ -584,7 +552,6 @@ export function validateEnvironment(): EnvValidationResult {
     ? parseUrl(process.env.BACKEND_URL.trim(), 'BACKEND_URL')
     : undefined;
   validateProductionDeploymentUrls(nodeEnv, frontendBaseUrl, backendUrl);
-  validateAuthCookieDomain(nodeEnv, backendUrl);
 
   const port = parsePort(process.env.PORT);
   const configuredCorsOrigins =

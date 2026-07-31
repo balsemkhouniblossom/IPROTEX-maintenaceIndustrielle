@@ -442,44 +442,6 @@ describe('validateEnvironment', () => {
     );
   });
 
-  it('accepts a production auth cookie domain that matches the Render backend host', () => {
-    process.env.NODE_ENV = 'production';
-    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
-    process.env.JWT_SECRET = 'a'.repeat(32);
-    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
-    process.env.JWT_EXPIRES_IN = '15m';
-    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID =
-      'google-client-id.apps.googleusercontent.com';
-    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
-    process.env.FRONTEND_BASE_URL = 'https://pfe-maintenace-industrielle.vercel.app';
-    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
-    process.env.AUTH_COOKIE_DOMAIN = 'pfe-maintenaceindustrielle.onrender.com';
-
-    expect(() => validateEnvironment()).not.toThrow();
-  });
-
-  it('rejects a production auth cookie domain that points at the Vercel frontend', () => {
-    process.env.NODE_ENV = 'production';
-    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
-    process.env.JWT_SECRET = 'a'.repeat(32);
-    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
-    process.env.JWT_EXPIRES_IN = '15m';
-    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID =
-      'google-client-id.apps.googleusercontent.com';
-    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
-    process.env.FRONTEND_BASE_URL = 'https://pfe-maintenace-industrielle.vercel.app';
-    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
-    process.env.AUTH_COOKIE_DOMAIN = 'pfe-maintenace-industrielle.vercel.app';
-
-    expect(() => validateEnvironment()).toThrow(
-      'AUTH_COOKIE_DOMAIN must match the Render backend hostname',
-    );
-  });
-
   it('does not require strict env variables during tests', () => {
     process.env.NODE_ENV = 'test';
     delete process.env.MONGODB_URI;
