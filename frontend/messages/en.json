@@ -2559,7 +2559,8 @@
     },
     "empty": {
       "search": "No articles match your search.",
-      "default": "No knowledge base articles yet."
+      "default": "No knowledge base articles yet.",
+      "published": "No published knowledge base articles yet. Ask an admin to publish draft articles."
     },
     "notifications": {
       "loadFailed": "Failed to load knowledge base articles.",

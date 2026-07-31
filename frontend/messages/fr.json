@@ -2460,7 +2460,8 @@
     },
     "empty": {
       "search": "Aucun article ne correspond a votre recherche.",
-      "default": "Aucun article dans la base de connaissances."
+      "default": "Aucun article dans la base de connaissances.",
+      "published": "Aucun article de base de connaissances publié pour l'instant. Demandez à un administrateur de publier des articles brouillons."
     },
     "notifications": {
       "loadFailed": "Echec du chargement des articles.",

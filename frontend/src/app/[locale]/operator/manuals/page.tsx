@@ -127,7 +127,7 @@ export default function OperatorManualsPage() {
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("machineManuals")}>
-        <div className="bento-grid">
+        <div className="operator-dashboard-theme bento-grid">
           <section className="col-span-full rounded-4xl border border-slate-200 bg-linear-to-br from-white via-slate-50 to-blue-50 p-6 shadow-sm">
             <div className="card-title mb-2">{t("machineManuals")}</div>
             <p className="text-sm text-slate-600">{t("manualsIntro")}</p>
@@ -218,7 +218,9 @@ export default function OperatorManualsPage() {
           size="xl"
         >
           {previewDocument ? (
-            <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name} />
+            <div className="operator-dashboard-theme">
+              <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name} />
+            </div>
           ) : null}
         </Modal>
       </DashboardLayout>

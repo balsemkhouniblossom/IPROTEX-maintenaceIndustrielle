@@ -48,10 +48,10 @@ test("registration helper stores no token or user session", () => {
   const writes: string[] = [];
   globalThis.localStorage = {
     setItem: (key: string) => writes.push(key),
-  } as Storage;
+  } as unknown as Storage;
   globalThis.sessionStorage = {
     setItem: (key: string) => writes.push(key),
-  } as Storage;
+  } as unknown as Storage;
 
   buildPublicRegistrationPayload({
     nom_complet: "User",

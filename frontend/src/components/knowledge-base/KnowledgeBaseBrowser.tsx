@@ -49,6 +49,7 @@ export default function KnowledgeBaseBrowser({
 
   const [articles, setArticles] = useState<KnowledgeArticleSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticleSummary | null>(null);
@@ -59,6 +60,7 @@ export default function KnowledgeBaseBrowser({
     async function loadArticles() {
       try {
         setLoading(true);
+        setLoadError(false);
         const response = await apiService.getKnowledgeArticles({
           limit: 100,
           machineId: machineId || undefined,
@@ -69,7 +71,10 @@ export default function KnowledgeBaseBrowser({
         setArticles(Array.isArray(response.data?.items) ? response.data.items : []);
       } catch (error) {
         console.error("Failed to load knowledge base articles", error);
-        if (!cancelled) setArticles([]);
+        if (!cancelled) {
+          setArticles([]);
+          setLoadError(true);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -83,9 +88,12 @@ export default function KnowledgeBaseBrowser({
   }, [machineId, selectedCategory, search]);
 
   const visibleArticles = useMemo(() => articles, [articles]);
+  const emptyMessage = search.trim() || selectedCategory
+    ? t("empty.search")
+    : t("empty.published");
 
   return (
-    <div className="bento-grid">
+    <div className="operator-dashboard-theme bento-grid">
       <section className="col-span-full panel">
         <div className="card-title mb-2">{t("title")}</div>
         <p className="text-sm text-slate-600 mb-4">{t("readerIntro")}</p>
@@ -122,8 +130,10 @@ export default function KnowledgeBaseBrowser({
       <section className="col-span-full">
         {loading ? (
           <div className="panel text-sm text-slate-500">{tCommon("loading")}</div>
+        ) : loadError ? (
+          <div className="panel text-center py-8 text-red-700">{t("notifications.loadFailed")}</div>
         ) : visibleArticles.length === 0 ? (
-          <div className="panel text-center py-8 text-gray-500">{t("empty.default")}</div>
+          <div className="panel text-center py-8 text-gray-500">{emptyMessage}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {visibleArticles.map((article) => (
@@ -168,7 +178,7 @@ export default function KnowledgeBaseBrowser({
         size="xl"
       >
         {selectedArticle ? (
-          <div className="space-y-3 text-sm text-slate-700 whitespace-pre-wrap">
+          <div className="operator-dashboard-theme space-y-3 text-sm text-slate-700 whitespace-pre-wrap">
             {selectedArticle.summary ? (
               <p className="font-medium text-slate-800">{selectedArticle.summary}</p>
             ) : null}

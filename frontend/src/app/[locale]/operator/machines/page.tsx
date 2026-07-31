@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -36,6 +36,11 @@ interface MachineType {
     name: string;
 }
 
+const normalizeMachineTypeId = (machine: { type_id?: unknown }) =>
+    typeof machine.type_id === "object" && machine.type_id !== null && "_id" in machine.type_id
+        ? String((machine.type_id as { _id?: unknown })._id ?? "")
+        : String(machine.type_id ?? "");
+
 function OperatorMachinesPageContent() {
     const router = useRouter();
     const params = useParams<{ locale?: string }>();
@@ -50,19 +55,10 @@ function OperatorMachinesPageContent() {
     const [category, setCategory] = useState<MachineType | null>(null);
     const [loading, setLoading] = useState(true);
     const locale = params?.locale ?? "en";
-    const normalizeMachineTypeId = (machine: any) =>
-        typeof machine.type_id === "object"
-            ? machine.type_id?._id
-            : String(machine.type_id);
 
     const typeId = searchParams.get("type");
 
-
-    useEffect(() => {
-        loadData();
-    }, [searchParams.toString()]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
 
@@ -96,12 +92,16 @@ function OperatorMachinesPageContent() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [typeId]);
+
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
 
     if (loading) {
         return (
             <DashboardLayout title={tMachines("pageTitle")}>
-                <div className="flex justify-center items-center h-100">
+                <div className="operator-dashboard-theme flex justify-center items-center h-100">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
                 </div>
             </DashboardLayout>
@@ -113,7 +113,7 @@ function OperatorMachinesPageContent() {
             <DashboardLayout
                 title={category?.name || tMachines("pageTitle")}
             >
-                <div className="bento-grid">
+                <div className="operator-dashboard-theme bento-grid">
 
                     {/* Header */}
                     <div className="col-span-full panel">
@@ -249,7 +249,7 @@ function OperatorMachinesPageContent() {
 
 export default function OperatorMachinesPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-white" />}>
+        <Suspense fallback={<div className="operator-dashboard-theme min-h-screen bg-white" />}>
             <OperatorMachinesPageContent />
         </Suspense>
     );

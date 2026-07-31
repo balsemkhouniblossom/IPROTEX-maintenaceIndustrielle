@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DocumentTextIcon,
   EyeIcon,
@@ -8,7 +8,6 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Modal } from "@/components/Modal";
-import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
 import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
 import { useTranslations } from "next-intl";
@@ -37,59 +36,14 @@ interface InterventionReport {
   date_fin?: string;
 }
 
-interface DraftReport {
-  _id: string;
-  report_id: string;
-  ot_id: string;
-  description_action: string;
-  etat_final: string;
-  validation_responsable: string;
-  date_debut: string;
-  date_fin: string;
-  updatedAt: string;
-}
-
-interface ReportFormData {
-  report_id: string;
-  ot_id: string;
-  description_action: string;
-  etat_final: string;
-  validation_responsable: string;
-  date_debut: string;
-  date_fin: string;
-}
-
 function refId(value: EntityRef | undefined): string {
   if (!value) return "";
   return typeof value === "string" ? value : value._id ?? "";
 }
 
-function uniqueId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-}
-
-function toInputDateTime(value?: string): string {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-  return parsed.toISOString().slice(0, 16);
-}
-
-function fromInputDateTime(value: string): string {
-  if (!value) return new Date().toISOString();
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return new Date().toISOString();
-  }
-  return parsed.toISOString();
-}
-
 export default function OperatorMyReportsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
-  const { user } = useAuth();
 
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "info";
@@ -99,40 +53,17 @@ export default function OperatorMyReportsPage() {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<InterventionReport[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [drafts, setDrafts] = useState<DraftReport[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorMode, setEditorMode] = useState<"report" | "draft" | "create">("create");
   const [selectedReportId, setSelectedReportId] = useState("");
-  const [selectedDraftId, setSelectedDraftId] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [limit] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [formData, setFormData] = useState<ReportFormData>({
-    report_id: "",
-    ot_id: "",
-    description_action: "",
-    etat_final: "",
-    validation_responsable: "waiting_validation",
-    date_debut: "",
-    date_fin: "",
-  });
-
-  const draftStorageKey = useMemo(() => {
-    const suffix = user?._id || "anonymous";
-    return `operator-report-drafts:${suffix}`;
-  }, [user?._id]);
 
   const selectedReport = useMemo(
     () => reports.find((item) => item._id === selectedReportId) || null,
     [reports, selectedReportId],
-  );
-
-  const selectedDraft = useMemo(
-    () => drafts.find((item) => item._id === selectedDraftId) || null,
-    [drafts, selectedDraftId],
   );
 
   function showNotification(type: "success" | "error" | "info", message: string): void {
@@ -140,235 +71,14 @@ export default function OperatorMyReportsPage() {
     window.setTimeout(() => setNotification(null), 4000);
   }
 
-  const loadDraftsFromStorage = useCallback((): void => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(draftStorageKey);
-      if (!raw) {
-        setDrafts([]);
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        setDrafts([]);
-        return;
-      }
-      setDrafts(parsed as DraftReport[]);
-    } catch (error) {
-      console.error("Failed to parse draft reports", error);
-      setDrafts([]);
-    }
-  }, [draftStorageKey]);
-
-  function persistDrafts(nextDrafts: DraftReport[]): void {
-    setDrafts(nextDrafts);
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(draftStorageKey, JSON.stringify(nextDrafts));
-  }
-
   function handleStatusFilterChange(value: string): void {
     setStatusFilter(value);
     showNotification("info", t("notifications.filterUpdated"));
   }
 
-  function resetForm(defaultWorkOrderId = ""): void {
-    const now = toInputDateTime(new Date().toISOString());
-    setFormData({
-      report_id: uniqueId("REP-DR"),
-      ot_id: defaultWorkOrderId,
-      description_action: "",
-      etat_final: "",
-      validation_responsable: "waiting_validation",
-      date_debut: now,
-      date_fin: now,
-    });
-  }
-
-  function mapReportToForm(report: InterventionReport): ReportFormData {
-    return {
-      report_id: report.report_id || "",
-      ot_id: refId(report.ot_id),
-      description_action: report.description_action || "",
-      etat_final: report.etat_final || "",
-      validation_responsable: report.validation_responsable || "waiting_validation",
-      date_debut: toInputDateTime(report.date_debut),
-      date_fin: toInputDateTime(report.date_fin),
-    };
-  }
-
-  function mapDraftToForm(draft: DraftReport): ReportFormData {
-    return {
-      report_id: draft.report_id,
-      ot_id: draft.ot_id,
-      description_action: draft.description_action,
-      etat_final: draft.etat_final,
-      validation_responsable: draft.validation_responsable,
-      date_debut: toInputDateTime(draft.date_debut),
-      date_fin: toInputDateTime(draft.date_fin),
-    };
-  }
-
-  function openCreateDraftEditor(): void {
-    setEditorMode("create");
-    setSelectedReportId("");
-    setSelectedDraftId("");
-    resetForm();
-    setEditorOpen(true);
-  }
-
-  function openReportEditor(report: InterventionReport): void {
-    setEditorMode("report");
+  function openReportDetails(report: InterventionReport): void {
     setSelectedReportId(report._id);
-    setSelectedDraftId("");
-    setFormData(mapReportToForm(report));
     setEditorOpen(true);
-  }
-
-  function openDraftEditor(draft: DraftReport): void {
-    setEditorMode("draft");
-    setSelectedDraftId(draft._id);
-    setSelectedReportId("");
-    setFormData(mapDraftToForm(draft));
-    setEditorOpen(true);
-  }
-
-  async function refreshReports(): Promise<void> {
-    const [reportsRes, workOrderItems] = await Promise.all([
-      apiService.getMyInterventionReports({ page, limit }),
-      fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
-    ]);
-
-    setReports(normalizeApiItems<InterventionReport>(reportsRes.data));
-    setWorkOrders(workOrderItems);
-    const pagination = readPaginationMeta(reportsRes.data);
-    setTotalPages(pagination?.totalPages || 1);
-    setTotalItems(Number((reportsRes.data as { totalItems?: unknown })?.totalItems) || 0);
-  }
-
-  function validateForm(): boolean {
-    if (!formData.report_id.trim()) {
-      showNotification("error", t("report"));
-      return false;
-    }
-    if (!formData.ot_id) {
-      showNotification("error", t("workOrder"));
-      return false;
-    }
-    if (!formData.description_action.trim()) {
-      showNotification("error", t("actionsPerformed"));
-      return false;
-    }
-    return true;
-  }
-
-  async function handleSaveReport(): Promise<void> {
-    if (!selectedReport || !user?._id || !validateForm()) return;
-
-    setSubmitting(true);
-    try {
-      await apiService.updateInterventionReport(selectedReport._id, {
-        report_id: formData.report_id.trim(),
-        ot_id: formData.ot_id,
-        technician_id: user._id,
-        description_action: formData.description_action.trim(),
-        etat_final: formData.etat_final.trim() || undefined,
-        validation_responsable: formData.validation_responsable || "waiting_validation",
-        date_debut: fromInputDateTime(formData.date_debut),
-        date_fin: fromInputDateTime(formData.date_fin),
-      });
-
-      await refreshReports();
-      setEditorOpen(false);
-      showNotification("success", t("notifications.submitSuccess"));
-    } catch (error) {
-      console.error("Failed to update report", error);
-      showNotification("error", t("notifications.loadFailed"));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDeleteReport(reportId: string): Promise<void> {
-    if (!window.confirm(tCommon("confirm"))) {
-      return;
-    }
-
-    try {
-      await apiService.deleteInterventionReport(reportId);
-      await refreshReports();
-      setEditorOpen(false);
-      showNotification("success", tCommon("success"));
-    } catch (error) {
-      console.error("Failed to delete report", error);
-      showNotification("error", t("notifications.loadFailed"));
-    }
-  }
-
-  function handleSaveDraft(): void {
-    if (!validateForm()) return;
-
-    const nowIso = new Date().toISOString();
-
-    const nextDraft: DraftReport = {
-      _id: selectedDraft?._id || uniqueId("DRAFT"),
-      report_id: formData.report_id.trim(),
-      ot_id: formData.ot_id,
-      description_action: formData.description_action.trim(),
-      etat_final: formData.etat_final.trim(),
-      validation_responsable: formData.validation_responsable || "waiting_validation",
-      date_debut: fromInputDateTime(formData.date_debut),
-      date_fin: fromInputDateTime(formData.date_fin),
-      updatedAt: nowIso,
-    };
-
-    const nextDrafts = selectedDraft
-      ? drafts.map((draft) => (draft._id === selectedDraft._id ? nextDraft : draft))
-      : [nextDraft, ...drafts];
-
-    persistDrafts(nextDrafts);
-    setEditorMode("draft");
-    setSelectedDraftId(nextDraft._id);
-    showNotification("success", tCommon("success"));
-  }
-
-  function handleDeleteDraft(draftId: string): void {
-    const nextDrafts = drafts.filter((draft) => draft._id !== draftId);
-    persistDrafts(nextDrafts);
-    if (selectedDraftId === draftId) {
-      setEditorOpen(false);
-    }
-    showNotification("success", tCommon("success"));
-  }
-
-  async function handleSubmitDraft(): Promise<void> {
-    if (!user?._id || !validateForm()) return;
-
-    setSubmitting(true);
-    try {
-      await apiService.createInterventionReport({
-        report_id: formData.report_id.trim(),
-        ot_id: formData.ot_id,
-        technician_id: user._id,
-        description_action: formData.description_action.trim(),
-        etat_final: formData.etat_final.trim() || undefined,
-        validation_responsable: formData.validation_responsable || "waiting_validation",
-        date_debut: fromInputDateTime(formData.date_debut),
-        date_fin: fromInputDateTime(formData.date_fin),
-      });
-
-      if (selectedDraftId) {
-        persistDrafts(drafts.filter((draft) => draft._id !== selectedDraftId));
-      }
-
-      await refreshReports();
-      setEditorOpen(false);
-      showNotification("success", t("notifications.submitSuccess"));
-    } catch (error) {
-      console.error("Failed to submit draft", error);
-      showNotification("error", t("notifications.loadFailed"));
-    } finally {
-      setSubmitting(false);
-    }
   }
 
   useEffect(() => {
@@ -385,7 +95,6 @@ export default function OperatorMyReportsPage() {
         const pagination = readPaginationMeta(reportsRes.data);
         setTotalPages(pagination?.totalPages || 1);
         setTotalItems(Number((reportsRes.data as { totalItems?: unknown })?.totalItems) || 0);
-        loadDraftsFromStorage();
         showNotification("success", t("notifications.dataLoaded"));
       } catch (error) {
         console.error("Failed to load my reports", error);
@@ -396,7 +105,7 @@ export default function OperatorMyReportsPage() {
     }
 
     void loadData();
-  }, [draftStorageKey, limit, loadDraftsFromStorage, page, t]);
+  }, [limit, page, t]);
 
   const myReports = useMemo(() => {
     return reports
@@ -465,21 +174,22 @@ export default function OperatorMyReportsPage() {
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("myReports")}>
-        {notification ? (
-          <div
-            data-testid="my-reports-notification"
-            className={`mb-4 rounded-2xl px-4 py-3 text-sm ${
-              notification.type === "success"
-                ? "bg-green-100 text-green-800 border border-green-200"
-                : notification.type === "error"
-                  ? "bg-red-100 text-red-800 border border-red-200"
-                  : "bg-blue-100 text-blue-800 border border-blue-200"
-            }`}
-          >
-            {notification.message}
-          </div>
-        ) : null}
-        <div className="bento-grid">
+        <div className="operator-dashboard-theme">
+          {notification ? (
+            <div
+              data-testid="my-reports-notification"
+              className={`mb-4 rounded-2xl px-4 py-3 text-sm ${
+                notification.type === "success"
+                  ? "bg-green-100 text-green-800 border border-green-200"
+                  : notification.type === "error"
+                    ? "bg-red-100 text-red-800 border border-red-200"
+                    : "bg-blue-100 text-blue-800 border border-blue-200"
+              }`}
+            >
+              {notification.message}
+            </div>
+          ) : null}
+          <div className="bento-grid">
           <section className="col-span-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="card-title mb-2">{t("myReports")}</div>
             <p className="mb-5 text-sm text-slate-600">{t("machineInterventionHistory")}</p>
@@ -552,7 +262,7 @@ export default function OperatorMyReportsPage() {
                         <button
                           type="button"
                           data-testid={`my-report-card-${index}`}
-                          onClick={() => openReportEditor(report)}
+                          onClick={() => openReportDetails(report)}
                           aria-label={t("smartCalendar.maintenanceDetails")}
                           className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                         >
@@ -591,6 +301,7 @@ export default function OperatorMyReportsPage() {
               </div>
             </div>
           </section>
+          </div>
         </div>
 
         <Modal
@@ -600,7 +311,7 @@ export default function OperatorMyReportsPage() {
           size="lg"
         >
           {selectedReport ? (
-            <div className="space-y-5">
+            <div className="operator-dashboard-theme space-y-5">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs font-semibold uppercase text-slate-500">{t("machine")}</div>

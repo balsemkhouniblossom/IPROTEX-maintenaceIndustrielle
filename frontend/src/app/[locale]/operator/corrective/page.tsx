@@ -731,7 +731,7 @@ function OperatorCorrectivePageContent() {
     return (
       <ProtectedRoute requiredRole="operator">
         <DashboardLayout title={t("correctiveMaintenance")}>
-          <div className="panel">{tCommon("loading")}</div>
+          <div className="operator-dashboard-theme panel">{tCommon("loading")}</div>
         </DashboardLayout>
       </ProtectedRoute>
     );
@@ -740,7 +740,7 @@ function OperatorCorrectivePageContent() {
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("correctiveMaintenance")}>
-        <div className="bento-grid">
+        <div className="operator-dashboard-theme bento-grid">
           {notification ? (
             <div
               className={`col-span-full panel border ${
@@ -1089,7 +1089,7 @@ function OperatorCorrectivePageContent() {
           size="lg"
         >
           {selectedGeneratedReport ? (
-            <div className="space-y-5">
+            <div className="operator-dashboard-theme space-y-5">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs font-semibold uppercase text-slate-500">{t("machine")}</div>
@@ -1151,7 +1151,7 @@ function OperatorCorrectivePageContent() {
 
 export default function OperatorCorrectivePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+    <Suspense fallback={<div className="operator-dashboard-theme min-h-screen bg-white" />}>
       <OperatorCorrectivePageContent />
     </Suspense>
   );

@@ -2545,7 +2545,8 @@
     },
     "empty": {
       "search": "Keine Artikel entsprechen Ihrer Suche.",
-      "default": "Noch keine Wissensdatenbank-Artikel."
+      "default": "Noch keine Wissensdatenbank-Artikel.",
+      "published": "Noch keine veröffentlichten Wissensdatenbank-Artikel. Bitte einen Administrator, Entwurfsartikel zu veröffentlichen."
     },
     "notifications": {
       "loadFailed": "Artikel konnten nicht geladen werden.",

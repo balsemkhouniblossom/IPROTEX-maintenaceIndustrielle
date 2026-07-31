@@ -2289,7 +2289,8 @@
     },
     "empty": {
       "search": "Ningun articulo coincide con su busqueda.",
-      "default": "Aun no hay articulos en la base de conocimiento."
+      "default": "Aun no hay articulos en la base de conocimiento.",
+      "published": "Todavía no hay artículos de base de conocimiento publicados. Pídele a un administrador que publique los borradores de los artículos."
     },
     "notifications": {
       "loadFailed": "Error al cargar los articulos.",

@@ -2271,7 +2271,8 @@
     },
     "empty": {
       "search": "Nessun articolo corrisponde alla tua ricerca.",
-      "default": "Ancora nessun articolo nella base di conoscenza."
+      "default": "Ancora nessun articolo nella base di conoscenza.",
+      "published": "Nessun articolo della base di conoscenza pubblicato. Chiedi a un amministratore di pubblicare gli articoli in bozza."
     },
     "notifications": {
       "loadFailed": "Impossibile caricare gli articoli.",

@@ -202,6 +202,28 @@ test("Smart maintenance calendar page uses only Operator-scoped calendar endpoin
   }
 });
 
+test("Smart maintenance calendar opts into operator dark-mode theme mapping", () => {
+  const relativePath =
+    "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx";
+  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const globalsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/globals.css"),
+    "utf8",
+  );
+
+  assert.match(source, /operator-dashboard-theme bento-grid/);
+  assert.match(source, /operator-dashboard-theme ml-auto/);
+  assert.match(globalsSource, /\.operator-dashboard-theme input\.bg-white/);
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.bg-slate-900\\\/30/,
+  );
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.text-emerald-800/,
+  );
+});
+
 test("Smart maintenance calendar is organized around the operator's next task action", () => {
   const relativePath =
     "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx";
@@ -328,6 +350,101 @@ test("Operator My Reports list hides internal identifiers and long descriptions 
       "operator report scan view must not expose IDs, descriptions, draft controls, or edit/delete actions",
     );
   }
+});
+
+test("Operator My Reports opts into operator dark-mode theme mapping", () => {
+  const relativePath = "src/app/[locale]/operator/my-reports/page.tsx";
+  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const globalsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/globals.css"),
+    "utf8",
+  );
+
+  assert.match(source, /operator-dashboard-theme/);
+  assert.match(source, /operator-dashboard-theme space-y-5/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.bg-green-100/);
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.text-green-800/,
+  );
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.text-amber-800/,
+  );
+});
+
+test("Operator Manuals opts into operator dark-mode theme mapping", () => {
+  const relativePath = "src/app/[locale]/operator/manuals/page.tsx";
+  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const globalsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/globals.css"),
+    "utf8",
+  );
+
+  assert.match(source, /operator-dashboard-theme bento-grid/);
+  assert.match(source, /<div className="operator-dashboard-theme">\s*<DocumentAttachmentViewer/);
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.to-blue-50/,
+  );
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.bg-emerald-50/,
+  );
+});
+
+test("Operator Machines opts into operator dark-mode theme mapping", () => {
+  const relativePath = "src/app/[locale]/operator/machines/page.tsx";
+  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const globalsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/globals.css"),
+    "utf8",
+  );
+
+  assert.match(source, /operator-dashboard-theme bento-grid/);
+  assert.match(source, /operator-dashboard-theme min-h-screen bg-white/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-900/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.border-gray-100/);
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.bg-yellow-100/,
+  );
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.text-yellow-700/,
+  );
+});
+
+test("Operator maintenance forms opt into readable dark-mode text mapping", () => {
+  const correctiveSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+  const preventiveSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/preventive/page.tsx"),
+    "utf8",
+  );
+  const globalsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/globals.css"),
+    "utf8",
+  );
+
+  assert.match(correctiveSource, /operator-dashboard-theme bento-grid/);
+  assert.match(correctiveSource, /operator-dashboard-theme space-y-5/);
+  assert.match(preventiveSource, /operator-dashboard-theme bento-grid/);
+  assert.match(preventiveSource, /operator-dashboard-theme space-y-5/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.text-black/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-900/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-600/);
+  assert.match(globalsSource, /\.operator-dashboard-theme \.bg-gray-100/);
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.text-blue-600/,
+  );
+  assert.match(
+    globalsSource,
+    /\[data-theme='dark'\] \.operator-dashboard-theme \.text-emerald-950/,
+  );
 });
 
 test("Corrective page shows the same clean inline maintenance report history as preventive", () => {

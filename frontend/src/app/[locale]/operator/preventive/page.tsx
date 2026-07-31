@@ -93,26 +93,8 @@ interface GeneratedReportRow {
   status: string;
 }
 
-interface PreventiveDraft {
-  id: string;
-  title: string;
-  updatedAt: string;
-  selectedCategory: string;
-  customCategory: string;
-  selectedMachine: string;
-  customMachine: string;
-  condition: MachineCondition;
-  customCondition: string;
-  comments: string;
-  completionDate: string;
-  selectedLubrifiant: string;
-  selectedLubrificationQtyMode: string;
-  lubrificationQty: string;
-}
-
 type MachineCondition = "good" | "followUp" | "technicianRequired" | "custom";
 const REPORTS_STORAGE_KEY = "operator_generated_reports_history";
-const PREVENTIVE_DRAFTS_STORAGE_PREFIX = "operator_preventive_drafts";
 const CUSTOM_OPTION = "__custom__";
 const LUBRIFICATION_QTY_OPTIONS = ["1", "2", "5", "10", "20", "50", "100"];
 
@@ -196,15 +178,13 @@ export default function OperatorPreventivePage() {
   const [condition, setCondition] = useState<MachineCondition>("good");
   const [customCondition, setCustomCondition] = useState("");
   const [comments, setComments] = useState("");
-  const [completionDate, setCompletionDate] = useState<string>(new Date().toISOString().slice(0, 16));
-
   const [photo, setPhoto] = useState<File | null>(null);
   const [selectedLubrifiant, setSelectedLubrifiant] = useState("");
   const [selectedLubrificationQtyMode, setSelectedLubrificationQtyMode] = useState("");
   const [lubrificationQty, setLubrificationQty] = useState("");
   const [submitValidationReason, setSubmitValidationReason] = useState("");
   const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
-  const [selectedOccurrenceId, setSelectedOccurrenceId] = useState("");
+  const [, setSelectedOccurrenceId] = useState("");
   const [selectedOccurrenceIdsByPlan, setSelectedOccurrenceIdsByPlan] = useState<Record<string, string>>({});
   const [activePlanStepIndex, setActivePlanStepIndex] = useState(0);
   const [taskStarted, setTaskStarted] = useState(false);
@@ -215,13 +195,7 @@ export default function OperatorPreventivePage() {
   const [actionSaving, setActionSaving] = useState(false);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
   const [selectedGeneratedReport, setSelectedGeneratedReport] = useState<GeneratedReportRow | null>(null);
-  const [drafts, setDrafts] = useState<PreventiveDraft[]>([]);
-  const [selectedDraftId, setSelectedDraftId] = useState("");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const draftStorageKey = useMemo(
-    () => `${PREVENTIVE_DRAFTS_STORAGE_PREFIX}:${user?._id || "anonymous"}`,
-    [user?._id],
-  );
 
   const submitValidationMessage = useMemo(() => {
     if (!submitValidationReason) {
@@ -242,7 +216,7 @@ export default function OperatorPreventivePage() {
     }
   }, [submitValidationReason, t, tCommon]);
 
-  function extractApiErrorMessage(error: unknown, fallback: string): string {
+  const extractApiErrorMessage = useCallback((error: unknown, fallback: string): string => {
     const apiError = error as {
       response?: { status?: number; data?: { message?: string | string[] } };
     };
@@ -257,7 +231,7 @@ export default function OperatorPreventivePage() {
       return raw;
     }
     return fallback;
-  }
+  }, [t]);
 
   useEffect(() => {
     if (!notification) return;
@@ -289,7 +263,6 @@ export default function OperatorPreventivePage() {
     setSelectedLubrificationQtyMode("");
     setLubrificationQty("");
     setSubmitValidationReason("");
-    setSelectedDraftId("");
     setSelectedPlanIds([]);
     setSelectedOccurrenceId("");
     setSelectedOccurrenceIdsByPlan({});
@@ -307,7 +280,6 @@ export default function OperatorPreventivePage() {
     setSelectedLubrificationQtyMode("");
     setLubrificationQty("");
     setSubmitValidationReason("");
-    setSelectedDraftId("");
     setSelectedPlanIds([]);
     setSelectedOccurrenceId("");
     setSelectedOccurrenceIdsByPlan({});
@@ -323,65 +295,6 @@ export default function OperatorPreventivePage() {
     });
   }
 
-  function persistDrafts(nextDrafts: PreventiveDraft[]): void {
-    setDrafts(nextDrafts);
-    localStorage.setItem(draftStorageKey, JSON.stringify(nextDrafts));
-  }
-
-  function saveCurrentAsDraft(): void {
-    const machineLabel = machines.find((item) => item._id === selectedMachine)?.machine_id || customMachine || t("machine");
-    const draftId = selectedDraftId || uniqueId("DRAFT-PREV");
-    const nextDraft: PreventiveDraft = {
-      id: draftId,
-      title: machineLabel,
-      updatedAt: new Date().toISOString(),
-      selectedCategory,
-      customCategory,
-      selectedMachine,
-      customMachine,
-      condition,
-      customCondition,
-      comments,
-      completionDate,
-      selectedLubrifiant,
-      selectedLubrificationQtyMode,
-      lubrificationQty,
-    };
-
-    const nextDrafts = selectedDraftId
-      ? drafts.map((item) => (item.id === selectedDraftId ? nextDraft : item))
-      : [nextDraft, ...drafts];
-
-    persistDrafts(nextDrafts);
-    setSelectedDraftId(draftId);
-    showNotification("success", t("notifications.draftSaved"));
-  }
-
-  function openDraft(draft: PreventiveDraft): void {
-    setSelectedDraftId(draft.id);
-    setSelectedCategory(draft.selectedCategory);
-    setCustomCategory(draft.customCategory);
-    setSelectedMachine(draft.selectedMachine);
-    setCustomMachine(draft.customMachine);
-    setCondition(draft.condition);
-    setCustomCondition(draft.customCondition);
-    setComments(draft.comments);
-    setCompletionDate(draft.completionDate);
-    setSelectedLubrifiant(draft.selectedLubrifiant);
-    setSelectedLubrificationQtyMode(draft.selectedLubrificationQtyMode);
-    setLubrificationQty(draft.lubrificationQty);
-    showNotification("success", t("notifications.draftLoaded"));
-  }
-
-  function deleteDraft(draftId: string): void {
-    const nextDrafts = drafts.filter((item) => item.id !== draftId);
-    persistDrafts(nextDrafts);
-    if (selectedDraftId === draftId) {
-      setSelectedDraftId("");
-    }
-    showNotification("success", t("notifications.draftDeleted"));
-  }
-
   useEffect(() => {
     try {
       const saved = localStorage.getItem(REPORTS_STORAGE_KEY);
@@ -394,24 +307,6 @@ export default function OperatorPreventivePage() {
       setGeneratedReports([]);
     }
   }, []);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(draftStorageKey);
-      if (!saved) {
-        setDrafts([]);
-        return;
-      }
-      const parsed = JSON.parse(saved) as PreventiveDraft[];
-      if (Array.isArray(parsed)) {
-        setDrafts(parsed);
-      } else {
-        setDrafts([]);
-      }
-    } catch {
-      setDrafts([]);
-    }
-  }, [draftStorageKey]);
 
   useEffect(() => {
     async function loadAll() {
@@ -502,7 +397,7 @@ export default function OperatorPreventivePage() {
     } finally {
       setChecklistLoading(false);
     }
-  }, [selectedMachine, selectedCategory, tChecklist]);
+  }, [extractApiErrorMessage, selectedMachine, selectedCategory, tChecklist]);
 
   useEffect(() => {
     void loadChecklist();
@@ -811,7 +706,6 @@ export default function OperatorPreventivePage() {
       setSelectedOccurrenceIdsByPlan((current) => ({ ...current, [plan._id]: occurrence._id }));
     }
     setTaskStarted(Boolean(occurrence?._id));
-    setCompletionDate(new Date().toISOString().slice(0, 16));
     showNotification("success", `${plan.maintenance_code || plan.plan_id}: ${t("lifecycle.performToday")}`);
   }
 
@@ -839,7 +733,6 @@ export default function OperatorPreventivePage() {
         setSelectedOccurrenceIdsByPlan((current) => ({ ...current, [selectedPlanState.plan._id]: occurrenceId }));
       }
       setTaskStarted(Boolean(occurrenceId));
-      setCompletionDate(new Date().toISOString().slice(0, 16));
       showNotification("success", `${selectedPlanState.plan.maintenance_code || selectedPlanState.plan.plan_id}: ${t("smartCalendar.start")}`);
     } catch (error) {
       console.error("Failed to start preventive task", error);
@@ -945,7 +838,7 @@ export default function OperatorPreventivePage() {
     await apiService.uploadDocument(formData);
   }
 
-  async function submitPreventiveMaintenance(fromDraftId?: string): Promise<void> {
+  async function submitPreventiveMaintenance(): Promise<void> {
     if (!user?._id || !selectedMachine) {
       setSubmitValidationReason("missing-user-or-machine");
       showNotification("error", t("validation"));
@@ -1039,12 +932,6 @@ export default function OperatorPreventivePage() {
       setActivePlanStepIndex(0);
       setTaskStarted(false);
 
-      if (fromDraftId) {
-        const nextDrafts = drafts.filter((item) => item.id !== fromDraftId);
-        persistDrafts(nextDrafts);
-        setSelectedDraftId("");
-      }
-
       showNotification("success", t("notifications.submitSuccess"));
     } catch (error) {
       console.error("Failed to submit preventive maintenance", error);
@@ -1061,7 +948,7 @@ export default function OperatorPreventivePage() {
     return (
       <ProtectedRoute requiredRole="operator">
         <DashboardLayout title={t("preventiveMaintenance")}>
-          <div className="panel">{tCommon("loading")}</div>
+          <div className="operator-dashboard-theme panel">{tCommon("loading")}</div>
         </DashboardLayout>
       </ProtectedRoute>
     );
@@ -1070,7 +957,7 @@ export default function OperatorPreventivePage() {
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("preventiveMaintenance")}>
-        <div className="bento-grid">
+        <div className="operator-dashboard-theme bento-grid">
           {notification ? (
             <div
               className={`col-span-full panel border ${
@@ -1492,7 +1379,7 @@ export default function OperatorPreventivePage() {
           size="lg"
         >
           {selectedGeneratedReport ? (
-            <div className="space-y-5">
+            <div className="operator-dashboard-theme space-y-5">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="text-xs font-semibold uppercase text-slate-500">{t("machine")}</div>
@@ -1545,7 +1432,9 @@ export default function OperatorPreventivePage() {
           size="xl"
         >
           {previewDocument ? (
-            <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name} />
+            <div className="operator-dashboard-theme">
+              <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name} />
+            </div>
           ) : null}
         </Modal>
 
@@ -1554,7 +1443,7 @@ export default function OperatorPreventivePage() {
           onClose={() => setSchedulePlan(null)}
           title={t("lifecycle.setFirstInterventionDate")}
         >
-          <div className="space-y-4">
+          <div className="operator-dashboard-theme space-y-4">
             <div className="text-sm font-semibold text-slate-800">
               {schedulePlan?.maintenance_code || schedulePlan?.plan_id}
             </div>
@@ -1584,7 +1473,7 @@ export default function OperatorPreventivePage() {
           onClose={() => setRescheduleOccurrence(null)}
           title={t("lifecycle.reschedule")}
         >
-          <div className="space-y-4">
+          <div className="operator-dashboard-theme space-y-4">
             <div className="text-sm text-slate-600">
               {t("lifecycle.originalDueDate")}: {formatDateLabel(rescheduleOccurrence?.original_due_date || rescheduleOccurrence?.due_date || rescheduleOccurrence?.scheduled_date)}
             </div>

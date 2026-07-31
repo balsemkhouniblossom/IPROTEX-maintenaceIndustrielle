@@ -177,6 +177,26 @@ test("KnowledgeBaseBrowser is read-only: it never imports a mutating apiService 
   );
 });
 
+test("KnowledgeBaseBrowser explains when the published reader catalog is empty", () => {
+  const source = readSource(BROWSER);
+
+  assert.match(
+    source,
+    /t\("empty\.published"\)/,
+    "the reader browser should explain that operators and technicians only see published articles",
+  );
+  assert.match(
+    source,
+    /loadError/,
+    "the reader browser should distinguish API failures from an empty published catalog",
+  );
+  assert.match(
+    source,
+    /operator-dashboard-theme bento-grid/,
+    "the reader browser should opt into readable dark-mode text mapping",
+  );
+});
+
 test("Operator and Technician Knowledge Base pages both render the shared read-only browser under their own role guard", () => {
   const operatorPage = readSource("src/app/[locale]/operator/knowledge-base/page.tsx");
   const technicianPage = readSource("src/app/[locale]/technician/knowledge-base/page.tsx");

@@ -11,6 +11,7 @@
     "import:admin-preventative-history": "node scripts/import-admin-preventative-history.js",
     "audit:preventive-scheduling": "node scripts/audit-preventive-scheduling.js",
     "audit:preventive-scheduling:test": "node scripts/audit-preventive-scheduling.js --seed-test",
+    "translate:gemini": "node scripts/gemini-translate-messages.mjs",
     "migrate:user-approval": "ts-node scripts/migrate-user-approval-status.ts",
     "seed:lighthouse-users": "ts-node scripts/seed-lighthouse-users.ts",
     "import:braiding-maintenance": "node scripts/import-braiding-maintenance-plan.js",

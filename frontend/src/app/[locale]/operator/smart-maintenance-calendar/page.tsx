@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   CalendarDaysIcon,
@@ -288,7 +288,7 @@ export default function SmartMaintenanceCalendarPage() {
     return () => clearTimeout(timeout);
   }, [notification]);
 
-  async function refreshEvents(): Promise<void> {
+  const refreshEvents = useCallback(async (): Promise<void> => {
     const paramsToSend: Record<string, string> = { view, date };
     (Object.keys(filters) as Array<keyof FilterState>).forEach((key) => {
       if (filters[key]) paramsToSend[key] = filters[key];
@@ -296,7 +296,7 @@ export default function SmartMaintenanceCalendarPage() {
 
     const response = await apiService.getMyCalendarEvents(paramsToSend);
     setEvents((response.data?.items || []) as CalendarEvent[]);
-  }
+  }, [date, filters, view]);
 
   useEffect(() => {
     async function loadCalendar() {
@@ -313,7 +313,7 @@ export default function SmartMaintenanceCalendarPage() {
     }
 
     void loadCalendar();
-  }, [date, filters, view]);
+  }, [refreshEvents, tCommon]);
 
   useEffect(() => {
     async function loadEventDetails() {
@@ -336,7 +336,7 @@ export default function SmartMaintenanceCalendarPage() {
     }
 
     void loadEventDetails();
-  }, [selectedEventId]);
+  }, [selectedEventId, tCommon]);
 
   async function runEventAction(action: "start" | "complete") {
     if (!selectedEventDetails?.id) return;
@@ -454,39 +454,36 @@ export default function SmartMaintenanceCalendarPage() {
     void quickStartEvent(event);
   }
 
-  const actionSections = useMemo(
-    () => [
-      {
-        key: "due-today",
-        title: tCalendar("dueTodaySection"),
-        events: sortActionEvents(events.filter((event) => isEventOverdue(event) || isEventDueToday(event))),
-      },
-      {
-        key: "upcoming",
-        title: tCalendar("upcomingSection"),
-        events: sortActionEvents(
-          events.filter(
-            (event) =>
-              !isEventOverdue(event) &&
-              !isEventDueToday(event) &&
-              !isEventWaitingValidation(event) &&
-              !isEventCompleted(event),
-          ),
+  const actionSections = [
+    {
+      key: "due-today",
+      title: tCalendar("dueTodaySection"),
+      events: sortActionEvents(events.filter((event) => isEventOverdue(event) || isEventDueToday(event))),
+    },
+    {
+      key: "upcoming",
+      title: tCalendar("upcomingSection"),
+      events: sortActionEvents(
+        events.filter(
+          (event) =>
+            !isEventOverdue(event) &&
+            !isEventDueToday(event) &&
+            !isEventWaitingValidation(event) &&
+            !isEventCompleted(event),
         ),
-      },
-      {
-        key: "waiting-validation",
-        title: tCalendar("waitingValidation"),
-        events: sortActionEvents(events.filter(isEventWaitingValidation)),
-      },
-    ],
-    [events, tCalendar],
-  );
+      ),
+    },
+    {
+      key: "waiting-validation",
+      title: tCalendar("waitingValidation"),
+      events: sortActionEvents(events.filter(isEventWaitingValidation)),
+    },
+  ];
 
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={tCalendar("title")}>
-        <div className="bento-grid">
+        <div className="operator-dashboard-theme bento-grid">
           {notification ? (
             <div
               className={`col-span-full panel border ${
@@ -704,12 +701,12 @@ export default function SmartMaintenanceCalendarPage() {
           </div>
 
           {selectedEventId ? (
-            <div className="fixed inset-0 z-50 bg-slate-900/30" role="presentation">
+            <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm" role="presentation">
               <aside
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="smart-calendar-details-title"
-                className="ml-auto flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white p-5 shadow-2xl"
+                className="operator-dashboard-theme ml-auto flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white p-5 shadow-2xl"
               >
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div id="smart-calendar-details-title" className="card-title">{tCalendar("maintenanceDetails")}</div>
