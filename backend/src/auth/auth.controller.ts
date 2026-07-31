@@ -29,7 +29,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { CompleteGoogleProfileDto } from './dto/complete-google-profile.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { GoogleAuthGuard } from './google-auth.guard';
-import type { Request as ExpressRequest, Response } from 'express';
+import type { CookieOptions, Request as ExpressRequest, Response } from 'express';
 import * as crypto from 'crypto';
 import type { UserDocument } from '../schemas/user.schema';
 import type { GoogleUserProfile } from './auth.service';
@@ -333,22 +333,15 @@ export class AuthController {
     },
   ) {
     const csrfToken = cryptoRandomToken();
-    const secure = process.env.NODE_ENV === 'production';
-    const sameSite = secure ? 'none' : 'lax';
+    const cookieOptions = this.getRefreshCookieOptions();
 
     res.cookie(REFRESH_COOKIE_NAME, result.refresh_token, {
+      ...cookieOptions,
       httpOnly: true,
-      secure,
-      sameSite,
-      path: '/',
-      maxAge: this.getRefreshCookieMaxAgeMs(),
     });
     res.cookie(CSRF_COOKIE_NAME, csrfToken, {
+      ...cookieOptions,
       httpOnly: false,
-      secure,
-      sameSite,
-      path: '/',
-      maxAge: this.getRefreshCookieMaxAgeMs(),
     });
 
     const { refresh_token: _refreshToken, ...publicResult } = result;
@@ -356,19 +349,38 @@ export class AuthController {
   }
 
   private clearRefreshCookies(res: Response): void {
-    const secure = process.env.NODE_ENV === 'production';
-    const sameSite = secure ? 'none' : 'lax';
-    const options = { secure, sameSite, path: '/' } as const;
+    const { maxAge: _maxAge, ...cookieOptions } =
+      this.getRefreshCookieOptions();
 
     res.clearCookie(REFRESH_COOKIE_NAME, {
-      ...options,
+      ...cookieOptions,
       httpOnly: true,
     });
     res.clearCookie(CSRF_COOKIE_NAME, {
-      secure,
-      sameSite,
-      path: '/',
+      ...cookieOptions,
+      httpOnly: false,
     });
+  }
+
+  private getRefreshCookieOptions(): CookieOptions {
+    const secure = process.env.NODE_ENV === 'production';
+    const domain = this.getRefreshCookieDomain();
+
+    return {
+      secure,
+      sameSite: secure ? 'none' : 'lax',
+      path: '/',
+      maxAge: this.getRefreshCookieMaxAgeMs(),
+      ...(domain ? { domain } : {}),
+    };
+  }
+
+  private getRefreshCookieDomain(): string | undefined {
+    const configured =
+      process.env.AUTH_COOKIE_DOMAIN?.trim() ||
+      process.env.REFRESH_COOKIE_DOMAIN?.trim();
+
+    return configured ? configured.replace(/^\./, '') : undefined;
   }
 
   private assertCsrfToken(req: ExpressRequest): void {

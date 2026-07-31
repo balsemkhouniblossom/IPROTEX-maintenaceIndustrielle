@@ -137,6 +137,8 @@ export default function CompleteProfilePage() {
         role,
         department,
         language,
+      }, {
+        withCredentials: true,
       });
 
       // profile_completed is now true and approval_status remains pending:

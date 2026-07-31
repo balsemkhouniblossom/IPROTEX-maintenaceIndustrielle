@@ -233,14 +233,23 @@ test("production API base URL must be the HTTPS Render backend URL", () => {
   const mutableEnv = process.env as Record<string, string | undefined>;
 
   mutableEnv.NODE_ENV = "production";
-  process.env.NEXT_PUBLIC_API_BASE_URL = "https://gmao-api.onrender.com/";
-  assert.equal(getApiBaseUrl(), "https://gmao-api.onrender.com");
+  process.env.NEXT_PUBLIC_API_BASE_URL = "https://pfe-maintenaceindustrielle.onrender.com/";
+  assert.equal(getApiBaseUrl(), "https://pfe-maintenaceindustrielle.onrender.com");
 
-  process.env.NEXT_PUBLIC_API_BASE_URL = "http://gmao-api.onrender.com";
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://pfe-maintenaceindustrielle.onrender.com";
   assert.throws(() => getApiBaseUrl(), /HTTPS Render API URL/);
 
   process.env.NEXT_PUBLIC_API_BASE_URL = "https://api.example.com";
   assert.throws(() => getApiBaseUrl(), /Render backend/);
+
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:10000";
+  assert.throws(() => getApiBaseUrl(), /HTTPS Render API URL/);
+
+  process.env.NEXT_PUBLIC_API_BASE_URL = "https://other-service.onrender.com";
+  assert.throws(
+    () => getApiBaseUrl(),
+    /pfe-maintenaceindustrielle\.onrender\.com/,
+  );
 
   if (originalNodeEnv === undefined) {
     delete mutableEnv.NODE_ENV;
@@ -253,6 +262,40 @@ test("production API base URL must be the HTTPS Render backend URL", () => {
   } else {
     process.env.NEXT_PUBLIC_API_BASE_URL = originalApiBaseUrl;
   }
+});
+
+test("frontend auth requests explicitly use cookie credentials and CSRF where required", () => {
+  const apiSource = readFileSync(
+    join(process.cwd(), "src", "services", "api.ts"),
+    "utf8",
+  );
+  const authContextSource = readFileSync(
+    join(process.cwd(), "src", "contexts", "AuthContext.tsx"),
+    "utf8",
+  );
+  const googleAuthSource = readFileSync(
+    join(process.cwd(), "src", "services", "googleAuth.ts"),
+    "utf8",
+  );
+
+  assert.match(apiSource, /axios\.create\(\{[\s\S]*baseURL:\s*API_BASE_URL,[\s\S]*withCredentials:\s*true/);
+  assert.equal(apiSource.includes("/\\/auth\\/(refresh|logout)/"), true);
+  assert.match(apiSource, /config\.withCredentials\s*=\s*true/);
+  assert.match(apiSource, /headers:\s*getCsrfHeaders\(\)/);
+
+  for (const endpoint of [
+    "/auth/refresh",
+    "/auth/login",
+    "/auth/register",
+    "/auth/logout",
+  ]) {
+    assert.match(authContextSource, new RegExp(endpoint.replace(/\//g, "\\/")));
+  }
+
+  assert.match(authContextSource, /withCredentials:\s*true/g);
+  assert.match(authContextSource, /getCsrfHeaders\(\)/g);
+  assert.match(googleAuthSource, /\/auth\/google\/exchange/);
+  assert.match(googleAuthSource, /withCredentials:\s*true/);
 });
 
 test("unknown refresh errors fail closed to expired-session redirect", () => {

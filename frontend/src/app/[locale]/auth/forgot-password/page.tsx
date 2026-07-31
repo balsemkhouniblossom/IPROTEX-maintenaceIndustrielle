@@ -28,6 +28,8 @@ export default function ForgotPasswordPage() {
         email,
         locale,
         frontendOrigin: window.location.origin,
+      }, {
+        withCredentials: true,
       });
       setMessage(response.data.message || 'If the email exists, reset instructions were sent.');
     } catch {

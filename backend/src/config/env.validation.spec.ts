@@ -20,7 +20,7 @@ describe('validateEnvironment', () => {
   it('accepts valid production configuration', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '3001';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
@@ -32,9 +32,9 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY =
       'google-login-exchange-encryption-key';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.API_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.API_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.SMTP_HOST = 'smtp.example.com';
     process.env.SMTP_USER = 'smtp-user';
     process.env.SMTP_PASS = 'smtp-pass';
@@ -47,7 +47,7 @@ describe('validateEnvironment', () => {
 
     expect(env.nodeEnv).toBe('production');
     expect(env.port).toBe(3001);
-    expect(env.corsOrigins).toEqual(['https://app.example.com']);
+    expect(env.corsOrigins).toEqual(['https://pfe-maintenace-industrielle.vercel.app']);
     expect(env.enableLegacyEmailTokens).toBe(false);
     expect(env.enableLegacyResetTokens).toBe(false);
     expect(env.enableEventBasedEmails).toBe(false);
@@ -57,7 +57,7 @@ describe('validateEnvironment', () => {
   it('defaults legacy authentication compatibility flags to disabled', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '3001';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
@@ -67,8 +67,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.ENABLE_LEGACY_EMAIL_TOKENS;
     delete process.env.ENABLE_LEGACY_RESET_TOKENS;
     delete process.env.LEGACY_AUTH_MIGRATION_DEADLINE;
@@ -82,7 +82,7 @@ describe('validateEnvironment', () => {
   it('allows temporary legacy authentication migration mode with a future production deadline', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '3001';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
@@ -92,8 +92,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.ENABLE_LEGACY_EMAIL_TOKENS = 'true';
     process.env.ENABLE_LEGACY_RESET_TOKENS = 'true';
     process.env.LEGACY_AUTH_MIGRATION_DEADLINE = '2099-01-01T00:00:00.000Z';
@@ -107,7 +107,7 @@ describe('validateEnvironment', () => {
   it('rejects production legacy authentication migration mode without a deadline', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '3001';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
@@ -117,8 +117,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.ENABLE_LEGACY_RESET_TOKENS = 'true';
     delete process.env.LEGACY_AUTH_MIGRATION_DEADLINE;
 
@@ -130,7 +130,7 @@ describe('validateEnvironment', () => {
   it('rejects production legacy authentication migration mode with an expired deadline', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '3001';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
@@ -140,8 +140,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.ENABLE_LEGACY_EMAIL_TOKENS = 'true';
     process.env.LEGACY_AUTH_MIGRATION_DEADLINE = '2020-01-01T00:00:00.000Z';
 
@@ -169,9 +169,9 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.SUPABASE_SECRET_KEY;
 
     expect(() => validateEnvironment()).toThrow(
@@ -189,9 +189,9 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY;
 
     expect(() => validateEnvironment()).toThrow(
@@ -214,9 +214,9 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.FILE_STORAGE_DRIVER = 'local';
 
     expect(() => validateEnvironment()).toThrow(
@@ -234,8 +234,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.CORS_ORIGINS = '*';
 
     expect(() => validateEnvironment()).toThrow(
@@ -253,8 +253,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.CORS_ORIGINS;
     delete process.env.ALLOWED_ORIGINS;
 
@@ -273,8 +273,8 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
 
     process.env.CORS_ORIGINS = 'http://localhost:3000';
     expect(() => validateEnvironment()).toThrow(
@@ -297,10 +297,10 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.CORS_ORIGINS =
-      'https://app.example.com,https://preview.example.com';
+      'https://pfe-maintenace-industrielle.vercel.app,https://preview.example.com';
 
     expect(() => validateEnvironment()).toThrow(
       'CORS_ORIGINS must contain exactly one Vercel production frontend origin in production',
@@ -331,7 +331,7 @@ describe('validateEnvironment', () => {
     const env = validateEnvironment();
     expect(env.corsOrigins).toHaveLength(1);
     expect(env.corsOrigins[0]).toBeInstanceOf(RegExp);
-    expect((env.corsOrigins[0] as RegExp).test('https://app.example.com')).toBe(
+    expect((env.corsOrigins[0] as RegExp).test('https://pfe-maintenace-industrielle.vercel.app')).toBe(
       true,
     );
   });
@@ -370,15 +370,15 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.FRONTEND_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.FRONTEND_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.FRONTEND_BASE_URL;
     delete process.env.APP_URL;
 
     const env = validateEnvironment();
 
-    expect(env.frontendBaseUrl).toBe('https://app.example.com');
+    expect(env.frontendBaseUrl).toBe('https://pfe-maintenace-industrielle.vercel.app');
   });
 
   it('accepts CORS origins from ALLOWED_ORIGINS alias', () => {
@@ -391,14 +391,14 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.ALLOWED_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.ALLOWED_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.CORS_ORIGINS;
 
     const env = validateEnvironment();
 
-    expect(env.corsOrigins).toEqual(['https://app.example.com']);
+    expect(env.corsOrigins).toEqual(['https://pfe-maintenace-industrielle.vercel.app']);
   });
 
   it('allows production when EMAIL_VERIFICATION_SECRET is missing but JWT_SECRET exists', () => {
@@ -411,9 +411,9 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.FRONTEND_BASE_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.FRONTEND_BASE_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.EMAIL_VERIFICATION_SECRET;
 
     const env = validateEnvironment();
@@ -421,7 +421,7 @@ describe('validateEnvironment', () => {
     expect(env.emailVerificationSecret).toBe(process.env.JWT_SECRET);
   });
 
-  it('allows production when frontend URL comes from RENDER_EXTERNAL_URL', () => {
+  it('rejects using Render external URL as the production frontend origin', () => {
     process.env.NODE_ENV = 'production';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
@@ -431,15 +431,53 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
     process.env.RENDER_EXTERNAL_URL = 'https://gmao-api.onrender.com';
     process.env.CORS_ORIGINS = 'https://gmao-api.onrender.com';
     delete process.env.FRONTEND_BASE_URL;
     delete process.env.APP_URL;
 
-    const env = validateEnvironment();
+    expect(() => validateEnvironment()).toThrow(
+      'FRONTEND_BASE_URL must be https://pfe-maintenace-industrielle.vercel.app in production',
+    );
+  });
 
-    expect(env.frontendBaseUrl).toBe('https://gmao-api.onrender.com');
+  it('accepts a production auth cookie domain that matches the Render backend host', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.FRONTEND_BASE_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.AUTH_COOKIE_DOMAIN = 'pfe-maintenaceindustrielle.onrender.com';
+
+    expect(() => validateEnvironment()).not.toThrow();
+  });
+
+  it('rejects a production auth cookie domain that points at the Vercel frontend', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.FRONTEND_BASE_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.AUTH_COOKIE_DOMAIN = 'pfe-maintenace-industrielle.vercel.app';
+
+    expect(() => validateEnvironment()).toThrow(
+      'AUTH_COOKIE_DOMAIN must match the Render backend hostname',
+    );
   });
 
   it('does not require strict env variables during tests', () => {
@@ -508,9 +546,9 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.AI_ASSISTANT_ENABLED = 'true';
     process.env.AI_ASSISTANT_PROVIDER = 'gemini';
     process.env.GEMINI_MODEL = 'gemini-2.5-flash';
@@ -530,9 +568,9 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.AI_ASSISTANT_ENABLED = 'true';
     process.env.AI_ASSISTANT_PROVIDER = 'gemini';
     process.env.GEMINI_API_KEY = 'gemini-test-key';
@@ -552,9 +590,9 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://api.example.com';
-    process.env.APP_URL = 'https://app.example.com';
-    process.env.CORS_ORIGINS = 'https://app.example.com';
+    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     process.env.AI_ASSISTANT_ENABLED = 'true';
     process.env.AI_ASSISTANT_PROVIDER = 'gemini';
     process.env.GEMINI_API_KEY = 'gemini-test-key';
@@ -684,3 +722,4 @@ describe('validateEnvironment', () => {
     expect(() => validateEnvironment()).not.toThrow();
   });
 });
+

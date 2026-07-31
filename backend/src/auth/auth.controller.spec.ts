@@ -6,10 +6,13 @@ describe('AuthController refresh cookie configuration', () => {
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     delete process.env.JWT_REFRESH_COOKIE_MAX_AGE_MS;
+    delete process.env.AUTH_COOKIE_DOMAIN;
+    delete process.env.REFRESH_COOKIE_DOMAIN;
   });
 
   it('sets production refresh cookies for cross-site Vercel-to-Render sessions', async () => {
     process.env.NODE_ENV = 'production';
+    process.env.AUTH_COOKIE_DOMAIN = 'pfe-maintenaceindustrielle.onrender.com';
 
     const authService = {
       login: jest.fn().mockResolvedValue({
@@ -48,6 +51,7 @@ describe('AuthController refresh cookie configuration', () => {
         secure: true,
         sameSite: 'none',
         path: '/',
+        domain: 'pfe-maintenaceindustrielle.onrender.com',
       }),
     );
     expect(res.cookie).toHaveBeenCalledWith(
@@ -58,7 +62,92 @@ describe('AuthController refresh cookie configuration', () => {
         secure: true,
         sameSite: 'none',
         path: '/',
+        domain: 'pfe-maintenaceindustrielle.onrender.com',
       }),
     );
+  });
+
+  it('rotates refresh and CSRF cookies after a valid cookie refresh', async () => {
+    process.env.NODE_ENV = 'production';
+
+    const authService = {
+      refreshToken: jest.fn().mockResolvedValue({
+        access_token: 'new-access-token',
+        token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        user: { _id: 'user-id' },
+      }),
+    };
+    const controller = new AuthController(
+      authService as never,
+      { consume: jest.fn(), recordSuccess: jest.fn(), recordFailure: jest.fn() } as never,
+    );
+    const res = { cookie: jest.fn() };
+
+    const result = await controller.refresh(
+      {},
+      {
+        headers: {
+          cookie: 'refresh_token=old-refresh-token; csrf_token=csrf-one',
+          'x-csrf-token': 'csrf-one',
+        },
+      } as never,
+      res as never,
+    );
+
+    expect(authService.refreshToken).toHaveBeenCalledWith('old-refresh-token');
+    expect(result).toEqual({
+      access_token: 'new-access-token',
+      token: 'new-access-token',
+      user: { _id: 'user-id' },
+    });
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refresh_token',
+      'new-refresh-token',
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      }),
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.not.stringMatching(/^csrf-one$/),
+      expect.objectContaining({
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      }),
+    );
+  });
+
+  it('rejects cookie refresh when the CSRF header does not match the CSRF cookie', async () => {
+    const authService = {
+      refreshToken: jest.fn(),
+    };
+    const controller = new AuthController(
+      authService as never,
+      { consume: jest.fn(), recordSuccess: jest.fn(), recordFailure: jest.fn() } as never,
+    );
+
+    await expect(
+      controller.refresh(
+        {},
+        {
+          headers: {
+            cookie: 'refresh_token=old-refresh-token; csrf_token=csrf-one',
+            'x-csrf-token': 'csrf-two',
+          },
+        } as never,
+        { cookie: jest.fn() } as never,
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'CSRF_TOKEN_INVALID',
+      },
+    });
+    expect(authService.refreshToken).not.toHaveBeenCalled();
   });
 });

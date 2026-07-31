@@ -51,6 +51,8 @@ function ResetPasswordPageContent() {
       const response = await api.post('/auth/reset-password', {
         token,
         password,
+      }, {
+        withCredentials: true,
       });
       setMessage(response.data.message || 'Password reset successfully.');
       setTimeout(() => {

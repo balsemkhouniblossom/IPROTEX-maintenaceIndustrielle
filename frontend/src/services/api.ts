@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { normalizeApiItems, readPaginationMeta } from './pagination';
 import { clearAuthSession, getAuthItem, updateStoredTokens, updateStoredUser } from './authStorage';
@@ -35,6 +35,17 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const requestUrl = String(config.url || '');
+    if (/\/auth\/(refresh|logout)/.test(requestUrl)) {
+      const headers = AxiosHeaders.from(config.headers);
+      for (const [key, value] of Object.entries(getCsrfHeaders())) {
+        headers.set(key, value);
+      }
+      config.headers = headers;
+      config.withCredentials = true;
+    }
+
     return config;
   },
   (error) => {

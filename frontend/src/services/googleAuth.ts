@@ -14,7 +14,11 @@ export async function exchangeGoogleLoginCode(
 ): Promise<LoginSession> {
   try {
     const { default: api } = await import('./api.ts');
-    const response = await api.post('/auth/google/exchange', { code });
+    const response = await api.post(
+      '/auth/google/exchange',
+      { code },
+      { withCredentials: true },
+    );
     return parseLocalLoginSession(response.data);
   } catch (error) {
     const codeValue = getAuthErrorCode(error);

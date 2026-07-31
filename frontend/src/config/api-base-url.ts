@@ -1,3 +1,6 @@
+const PRODUCTION_RENDER_API_URL =
+  'https://pfe-maintenaceindustrielle.onrender.com';
+
 export function getApiBaseUrl(): string {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
   if (configuredBaseUrl) {
@@ -31,5 +34,11 @@ function assertProductionApiBaseUrl(value: string): void {
 
   if (!parsed.hostname.endsWith('.onrender.com')) {
     throw new Error('NEXT_PUBLIC_API_BASE_URL must point to the Render backend in production');
+  }
+
+  if (parsed.origin !== PRODUCTION_RENDER_API_URL) {
+    throw new Error(
+      `NEXT_PUBLIC_API_BASE_URL must be ${PRODUCTION_RENDER_API_URL} in production`,
+    );
   }
 }

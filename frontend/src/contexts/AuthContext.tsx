@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await api.post(
           '/auth/refresh',
           {},
-          { headers: getCsrfHeaders() },
+          { withCredentials: true, headers: getCsrfHeaders() },
         );
         const session = parseLocalLoginSession(response.data);
 
@@ -116,7 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const login = async (email: string, password: string, keepLoggedIn = true) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post(
+        '/auth/login',
+        { email, password },
+        { withCredentials: true },
+      );
       const session = parseLocalLoginSession(response.data);
 
       return establishSession(
@@ -153,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       await api.post('/auth/register', userData, {
+        withCredentials: true,
         headers: options?.locale
           ? { 'X-App-Locale': options.locale }
           : undefined,
@@ -184,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     void api
-      .post('/auth/logout', {}, { headers: getCsrfHeaders() })
+      .post('/auth/logout', {}, { withCredentials: true, headers: getCsrfHeaders() })
       .catch(() => undefined);
     clearSession();
     // Redirect with locale-based routing (Next-intl expects /{locale}/...)

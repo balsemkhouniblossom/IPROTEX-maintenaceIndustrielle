@@ -2,6 +2,11 @@ type RuntimeMode = 'development' | 'test' | 'production';
 type CorsOrigin = string | RegExp;
 export type TrustProxySetting = boolean | number | string;
 
+const PRODUCTION_FRONTEND_ORIGIN =
+  'https://pfe-maintenace-industrielle.vercel.app';
+const PRODUCTION_RENDER_API_ORIGIN =
+  'https://pfe-maintenaceindustrielle.onrender.com';
+
 type EnvValidationResult = {
   nodeEnv: RuntimeMode;
   port: number;
@@ -408,9 +413,71 @@ function parseCorsOrigins(
         'CORS_ORIGINS must exactly match FRONTEND_BASE_URL in production',
       );
     }
+
+    if (uniqueOrigins[0] !== PRODUCTION_FRONTEND_ORIGIN) {
+      throw new Error(
+        `CORS_ORIGINS must exactly match ${PRODUCTION_FRONTEND_ORIGIN} in production`,
+      );
+    }
   }
 
   return uniqueOrigins;
+}
+
+function validateProductionDeploymentUrls(
+  nodeEnv: RuntimeMode,
+  frontendBaseUrl: string,
+  backendUrl?: string,
+): void {
+  if (nodeEnv !== 'production') return;
+
+  if (new URL(frontendBaseUrl).origin !== PRODUCTION_FRONTEND_ORIGIN) {
+    throw new Error(
+      `FRONTEND_BASE_URL must be ${PRODUCTION_FRONTEND_ORIGIN} in production`,
+    );
+  }
+
+  if (!backendUrl) {
+    throw new Error('BACKEND_URL is required in production');
+  }
+
+  if (new URL(backendUrl).origin !== PRODUCTION_RENDER_API_ORIGIN) {
+    throw new Error(
+      `BACKEND_URL must be ${PRODUCTION_RENDER_API_ORIGIN} in production`,
+    );
+  }
+}
+
+function validateAuthCookieDomain(
+  nodeEnv: RuntimeMode,
+  backendUrl?: string,
+): void {
+  const rawDomain =
+    process.env.AUTH_COOKIE_DOMAIN?.trim() ||
+    process.env.REFRESH_COOKIE_DOMAIN?.trim();
+
+  if (!rawDomain) return;
+
+  if (rawDomain.includes('://') || rawDomain.includes('/')) {
+    throw new Error('AUTH_COOKIE_DOMAIN must be a hostname, not a URL');
+  }
+
+  const domain = rawDomain.replace(/^\./, '').toLowerCase();
+  if (isLocalhost(domain)) {
+    throw new Error('AUTH_COOKIE_DOMAIN cannot be localhost');
+  }
+
+  if (nodeEnv !== 'production') return;
+
+  const backendHostname = backendUrl
+    ? new URL(backendUrl).hostname.toLowerCase()
+    : new URL(PRODUCTION_RENDER_API_ORIGIN).hostname;
+
+  if (domain !== backendHostname) {
+    throw new Error(
+      `AUTH_COOKIE_DOMAIN must match the Render backend hostname (${backendHostname}) in production`,
+    );
+  }
 }
 
 export function validateEnvironment(): EnvValidationResult {
@@ -516,6 +583,8 @@ export function validateEnvironment(): EnvValidationResult {
   const backendUrl = process.env.BACKEND_URL?.trim()
     ? parseUrl(process.env.BACKEND_URL.trim(), 'BACKEND_URL')
     : undefined;
+  validateProductionDeploymentUrls(nodeEnv, frontendBaseUrl, backendUrl);
+  validateAuthCookieDomain(nodeEnv, backendUrl);
 
   const port = parsePort(process.env.PORT);
   const configuredCorsOrigins =
