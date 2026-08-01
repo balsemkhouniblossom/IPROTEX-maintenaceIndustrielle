@@ -62,6 +62,7 @@ export function useLiveMonitoring() {
 
     void refresh();
     const interval = window.setInterval(() => void refresh(), POLL_INTERVAL_MS);
+    const currentSubscriptions = subscribedMachineIds.current;
 
     const token = getAuthItem("token");
     let socket: Socket | null = null;
@@ -135,7 +136,7 @@ export function useLiveMonitoring() {
       window.clearInterval(interval);
       socket?.disconnect();
       socketRef.current = null;
-      subscribedMachineIds.current.clear();
+      currentSubscriptions.clear();
     };
   }, [user, refresh]);
 

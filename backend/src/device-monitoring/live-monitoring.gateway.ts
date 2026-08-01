@@ -57,8 +57,13 @@ function machineRoom(machineId: string): string {
  * its very first tick (before any `await`), and every handler awaits that
  * same promise rather than reading a plain value.
  */
-@WebSocketGateway({ namespace: '/live', cors: { origin: true, credentials: true } })
-export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisconnect {
+@WebSocketGateway({
+  namespace: '/live',
+  cors: { origin: true, credentials: true },
+})
+export class LiveMonitoringGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server!: Server;
 
@@ -92,7 +97,10 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
     const auth = (client.handshake.auth ?? {}) as Record<string, unknown>;
 
     try {
-      if (typeof auth.deviceId === 'string' && typeof auth.deviceKey === 'string') {
+      if (
+        typeof auth.deviceId === 'string' &&
+        typeof auth.deviceKey === 'string'
+      ) {
         const device = await this.deviceAuthService.verifyCredentials(
           auth.deviceId,
           auth.deviceKey,
@@ -108,10 +116,17 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
 
       if (typeof auth.token === 'string') {
         const secret = resolveJwtSecret(this.configService);
-        const payload = this.jwtService.verify<{ sub: string; role: string }>(auth.token, {
-          secret,
-        });
-        const data: UserSocketData = { kind: 'user', userId: payload.sub, role: payload.role };
+        const payload = this.jwtService.verify<{ sub: string; role: string }>(
+          auth.token,
+          {
+            secret,
+          },
+        );
+        const data: UserSocketData = {
+          kind: 'user',
+          userId: payload.sub,
+          role: payload.role,
+        };
         return data;
       }
 
@@ -166,8 +181,11 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
     if (!device) return { ok: false };
 
     try {
-      const record = await this.deviceAuthService.getDeviceOrThrow(device.deviceMongoId);
-      const { cameOnline } = await this.telemetryIngestionService.recordHeartbeat(record);
+      const record = await this.deviceAuthService.getDeviceOrThrow(
+        device.deviceMongoId,
+      );
+      const { cameOnline } =
+        await this.telemetryIngestionService.recordHeartbeat(record);
       if (cameOnline) {
         this.emitStatusChange(device.machineId, {
           deviceId: device.deviceId,
@@ -190,11 +208,15 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
     if (!device) return { ok: false, error: 'forbidden' };
 
     try {
-      const record = await this.deviceAuthService.getDeviceOrThrow(device.deviceMongoId);
+      const record = await this.deviceAuthService.getDeviceOrThrow(
+        device.deviceMongoId,
+      );
       const { record: telemetry, cameOnline } =
         await this.telemetryIngestionService.recordTelemetry(record, {
           metrics: payload?.metrics ?? {},
-          recordedAt: payload?.recorded_at ? new Date(payload.recorded_at) : undefined,
+          recordedAt: payload?.recorded_at
+            ? new Date(payload.recorded_at)
+            : undefined,
         });
 
       this.emitTelemetry(device.machineId, {
@@ -211,7 +233,10 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
       }
       return { ok: true };
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : 'ingestion failed' };
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'ingestion failed',
+      };
     }
   }
 
@@ -229,13 +254,17 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
     if (!device) return { ok: false, error: 'forbidden' };
 
     try {
-      const record = await this.deviceAuthService.getDeviceOrThrow(device.deviceMongoId);
+      const record = await this.deviceAuthService.getDeviceOrThrow(
+        device.deviceMongoId,
+      );
       const { record: faultEvent, cameOnline } =
         await this.telemetryIngestionService.recordFault(record, {
           codePanne: payload?.code_panne ?? '',
           severity: payload?.severity,
           message: payload?.message,
-          raisedAt: payload?.raised_at ? new Date(payload.raised_at) : undefined,
+          raisedAt: payload?.raised_at
+            ? new Date(payload.raised_at)
+            : undefined,
         });
 
       this.emitFault(device.machineId, {
@@ -255,7 +284,10 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
       }
       return { ok: true };
     } catch (error) {
-      return { ok: false, error: error instanceof Error ? error.message : 'ingestion failed' };
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : 'ingestion failed',
+      };
     }
   }
 
@@ -264,15 +296,21 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
   // machines' rooms at once, and without `machineId` in the payload it
   // would have no way to tell which machine a given event belongs to.
   emitTelemetry(machineId: string, payload: Record<string, unknown>): void {
-    this.server?.to(machineRoom(machineId)).emit('telemetry', { machineId, ...payload });
+    this.server
+      ?.to(machineRoom(machineId))
+      .emit('telemetry', { machineId, ...payload });
   }
 
   emitFault(machineId: string, payload: Record<string, unknown>): void {
-    this.server?.to(machineRoom(machineId)).emit('fault', { machineId, ...payload });
+    this.server
+      ?.to(machineRoom(machineId))
+      .emit('fault', { machineId, ...payload });
   }
 
   emitStatusChange(machineId: string, payload: Record<string, unknown>): void {
-    this.server?.to(machineRoom(machineId)).emit('status', { machineId, ...payload });
+    this.server
+      ?.to(machineRoom(machineId))
+      .emit('status', { machineId, ...payload });
   }
 
   private async resolveSocketData(client: Socket): Promise<SocketData | null> {
@@ -281,7 +319,9 @@ export class LiveMonitoringGateway implements OnGatewayConnection, OnGatewayDisc
     return state.ready.catch(() => null);
   }
 
-  private async requireDeviceSocket(client: Socket): Promise<DeviceSocketData | null> {
+  private async requireDeviceSocket(
+    client: Socket,
+  ): Promise<DeviceSocketData | null> {
     const data = await this.resolveSocketData(client);
     return data?.kind === 'device' ? data : null;
   }

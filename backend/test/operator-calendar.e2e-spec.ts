@@ -226,9 +226,9 @@ describe('Operator calendar (e2e)', () => {
       const otherWorkOrderIds = otherWidgetResponse.body.today.map(
         (row: { workOrderId: string }) => row.workOrderId,
       );
-      expect(ownWorkOrderIds.some((id: string) => otherWorkOrderIds.includes(id))).toBe(
-        false,
-      );
+      expect(
+        ownWorkOrderIds.some((id: string) => otherWorkOrderIds.includes(id)),
+      ).toBe(false);
     });
 
     it('returns notification cards without error for the authenticated Operator', async () => {
@@ -405,7 +405,9 @@ describe('Operator calendar (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .patch(`/operator/calendar/events/${workOrder._id.toString()}/reschedule`)
+        .patch(
+          `/operator/calendar/events/${workOrder._id.toString()}/reschedule`,
+        )
         .set('Authorization', `Bearer ${operatorToken}`)
         .send({
           new_due_date: '2026-09-01T08:00:00.000Z',
@@ -421,7 +423,9 @@ describe('Operator calendar (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .patch(`/operator/calendar/events/${workOrder._id.toString()}/reschedule`)
+        .patch(
+          `/operator/calendar/events/${workOrder._id.toString()}/reschedule`,
+        )
         .set('Authorization', `Bearer ${operatorToken}`)
         .send({
           new_due_date: '2026-09-01T08:00:00.000Z',
@@ -442,7 +446,9 @@ describe('Operator calendar (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .patch(`/operator/calendar/events/${workOrder._id.toString()}/reschedule`)
+        .patch(
+          `/operator/calendar/events/${workOrder._id.toString()}/reschedule`,
+        )
         .set('Authorization', `Bearer ${operatorToken}`)
         .send({
           new_due_date: '2026-09-01T08:00:00.000Z',
@@ -459,7 +465,9 @@ describe('Operator calendar (e2e)', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .patch(`/operator/calendar/events/${workOrder._id.toString()}/reschedule`)
+        .patch(
+          `/operator/calendar/events/${workOrder._id.toString()}/reschedule`,
+        )
         .set('Authorization', `Bearer ${operatorToken}`)
         .send({
           new_due_date: '2026-09-01T08:00:00.000Z',

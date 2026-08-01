@@ -2,15 +2,28 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ModuleType, ModuleTypeDocument } from '../schemas/module-type.schema';
+import {
+  Module as ModuleEntity,
+  ModuleDocument,
+} from '../schemas/module.schema';
+import {
+  ModulePieces,
+  ModulePiecesDocument,
+} from '../schemas/module-pieces.schema';
 import { CreateModuleTypeDto } from './dto/create-module-type.dto';
 import { UpdateModuleTypeDto } from './dto/update-module-type.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { assertNoDependencies } from '../common/dependency-protection';
 
 @Injectable()
 export class ModuleTypesService {
   constructor(
     @InjectModel(ModuleType.name)
     private moduleTypeModel: Model<ModuleTypeDocument>,
+    @InjectModel(ModuleEntity.name)
+    private moduleModel: Model<ModuleDocument>,
+    @InjectModel(ModulePieces.name)
+    private modulePiecesModel: Model<ModulePiecesDocument>,
   ) {}
 
   async create(createModuleTypeDto: CreateModuleTypeDto): Promise<ModuleType> {
@@ -45,6 +58,18 @@ export class ModuleTypesService {
   }
 
   async remove(id: string): Promise<any> {
+    await assertNoDependencies('Module type', [
+      {
+        label: 'modules',
+        model: this.moduleModel,
+        filter: { mod_type_id: id },
+      },
+      {
+        label: 'module part standards',
+        model: this.modulePiecesModel,
+        filter: { mod_type_id: id },
+      },
+    ]);
     return this.moduleTypeModel.findByIdAndDelete(id).exec();
   }
 }

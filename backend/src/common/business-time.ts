@@ -87,12 +87,40 @@ export function startOfBusinessDay(
   return zonedWallTimeToUtc(year, month, day, 0, 0, 0, timeZone);
 }
 
+export function parseBusinessDateInput(
+  value: Date | string,
+  timeZone: string = getBusinessTimezone(),
+): Date {
+  if (value instanceof Date) {
+    return new Date(value);
+  }
+
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnly) {
+    return zonedWallTimeToUtc(
+      Number(dateOnly[1]),
+      Number(dateOnly[2]),
+      Number(dateOnly[3]),
+      0,
+      0,
+      0,
+      timeZone,
+    );
+  }
+
+  return new Date(value);
+}
+
 export function endOfBusinessDay(
   value: Date,
   timeZone: string = getBusinessTimezone(),
 ): Date {
   return new Date(
-    addBusinessDays(startOfBusinessDay(value, timeZone), 1, timeZone).getTime() - 1,
+    addBusinessDays(
+      startOfBusinessDay(value, timeZone),
+      1,
+      timeZone,
+    ).getTime() - 1,
   );
 }
 
@@ -107,7 +135,15 @@ export function addBusinessDays(
   // calendar-day shift stays correct across month/year boundaries.
   const shifted = new Date(Date.UTC(year, month - 1, day + days, 12));
   const parts = zonedParts(shifted, timeZone);
-  return zonedWallTimeToUtc(parts.year, parts.month, parts.day, 0, 0, 0, timeZone);
+  return zonedWallTimeToUtc(
+    parts.year,
+    parts.month,
+    parts.day,
+    0,
+    0,
+    0,
+    timeZone,
+  );
 }
 
 export function addBusinessMonths(
@@ -115,11 +151,16 @@ export function addBusinessMonths(
   months: number,
   timeZone: string = getBusinessTimezone(),
 ): Date {
-  const { year, month, day, hour, minute, second } = zonedParts(value, timeZone);
+  const { year, month, day, hour, minute, second } = zonedParts(
+    value,
+    timeZone,
+  );
   const totalMonths = month - 1 + months;
   const targetYear = year + Math.floor(totalMonths / 12);
   const targetMonth = ((totalMonths % 12) + 12) % 12;
-  const daysInTargetMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const daysInTargetMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0),
+  ).getUTCDate();
   const clampedDay = Math.min(day, daysInTargetMonth);
   return zonedWallTimeToUtc(
     targetYear,
@@ -130,6 +171,14 @@ export function addBusinessMonths(
     second,
     timeZone,
   );
+}
+
+export function addBusinessYears(
+  value: Date,
+  years: number,
+  timeZone: string = getBusinessTimezone(),
+): Date {
+  return addBusinessMonths(value, years * 12, timeZone);
 }
 
 export function startOfBusinessWeek(

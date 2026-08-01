@@ -27,19 +27,27 @@ describe('AppThrottlerGuard', () => {
   });
 
   it('keeps only the default tier after onModuleInit, filtering out device', () => {
-    const throttlers = (guard as unknown as { throttlers: Array<{ name: string }> }).throttlers;
+    const throttlers = (
+      guard as unknown as { throttlers: Array<{ name: string }> }
+    ).throttlers;
     expect(throttlers.map((t) => t.name)).toEqual(['default']);
   });
 
   describe('getTracker', () => {
     const getTracker = (req: Record<string, unknown>) =>
-      (guard as unknown as { getTracker: (req: Record<string, unknown>) => Promise<string> }).getTracker(
-        req,
-      );
+      (
+        guard as unknown as {
+          getTracker: (req: Record<string, unknown>) => Promise<string>;
+        }
+      ).getTracker(req);
 
     it('keys authenticated requests by user id', async () => {
       await expect(
-        getTracker({ user: { userId: 'user-123' }, headers: {}, ip: '10.0.0.1' }),
+        getTracker({
+          user: { userId: 'user-123' },
+          headers: {},
+          ip: '10.0.0.1',
+        }),
       ).resolves.toBe('user:user-123');
     });
 
@@ -53,28 +61,38 @@ describe('AppThrottlerGuard', () => {
     });
 
     it('falls back to req.ip when no x-forwarded-for header is present', async () => {
-      await expect(getTracker({ headers: {}, ip: '10.0.0.1' })).resolves.toBe('ip:10.0.0.1');
+      await expect(getTracker({ headers: {}, ip: '10.0.0.1' })).resolves.toBe(
+        'ip:10.0.0.1',
+      );
     });
 
     it('falls back to the socket remote address when req.ip is unavailable', async () => {
       await expect(
-        getTracker({ headers: {}, ip: undefined, socket: { remoteAddress: '10.0.0.2' } }),
+        getTracker({
+          headers: {},
+          ip: undefined,
+          socket: { remoteAddress: '10.0.0.2' },
+        }),
       ).resolves.toBe('ip:10.0.0.2');
     });
 
     it('falls back to "unknown" when no address information is available at all', async () => {
-      await expect(getTracker({ headers: {}, ip: undefined, socket: {} })).resolves.toBe(
-        'ip:unknown',
-      );
+      await expect(
+        getTracker({ headers: {}, ip: undefined, socket: {} }),
+      ).resolves.toBe('ip:unknown');
     });
   });
 
   describe('throwThrottlingException', () => {
     it('throws a 429 HttpException with the RATE_LIMIT_EXCEEDED code', async () => {
       await expect(
-        (guard as unknown as { throwThrottlingException: (context: ExecutionContext) => Promise<void> }).throwThrottlingException(
-          contextFor(),
-        ),
+        (
+          guard as unknown as {
+            throwThrottlingException: (
+              context: ExecutionContext,
+            ) => Promise<void>;
+          }
+        ).throwThrottlingException(contextFor()),
       ).rejects.toMatchObject({
         status: 429,
         response: expect.objectContaining({ code: 'RATE_LIMIT_EXCEEDED' }),

@@ -75,7 +75,10 @@ function buildTree(
 
 function pathLength(node: TreeNode, features: number[], depth: number): number {
   if (node.leaf) return depth + averagePathLengthFactor(node.size);
-  const branch = (features[node.featureIndex] ?? 0) < node.splitValue ? node.left : node.right;
+  const branch =
+    (features[node.featureIndex] ?? 0) < node.splitValue
+      ? node.left
+      : node.right;
   return pathLength(branch, features, depth + 1);
 }
 
@@ -94,11 +97,17 @@ export class IsolationForestModel implements PredictionModel {
   readonly type = PredictionModelType.ISOLATION_FOREST;
   readonly displayName = 'Isolation Forest';
 
-  train(samples: TrainingSample[], randomSeed: number): IsolationForestArtifact {
+  train(
+    samples: TrainingSample[],
+    randomSeed: number,
+  ): IsolationForestArtifact {
     const rng = createSeededRandom(randomSeed);
     const featureCount = FEATURE_NAMES.length;
     const allData = samples.map((s) => s.features);
-    const subsampleSize = Math.min(MAX_SUBSAMPLE_SIZE, Math.max(allData.length, 1));
+    const subsampleSize = Math.min(
+      MAX_SUBSAMPLE_SIZE,
+      Math.max(allData.length, 1),
+    );
     const maxDepth = Math.ceil(Math.log2(Math.max(subsampleSize, 2)));
 
     const trees: TreeNode[] = [];
@@ -127,13 +136,17 @@ export class IsolationForestModel implements PredictionModel {
   score(features: number[], artifact: ModelArtifact): ModelInferenceResult {
     const { trees, subsampleSize } = artifact as IsolationForestArtifact;
     const pathLengths = trees.map((tree) => pathLength(tree, features, 0));
-    const avgPathLength = pathLengths.reduce((sum, h) => sum + h, 0) / Math.max(pathLengths.length, 1);
+    const avgPathLength =
+      pathLengths.reduce((sum, h) => sum + h, 0) /
+      Math.max(pathLengths.length, 1);
     const normalizer = averagePathLengthFactor(subsampleSize) || 1;
     const anomalyScore = clamp01(2 ** (-avgPathLength / normalizer));
 
     return {
       anomalyScore,
-      confidence: clamp01(artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES),
+      confidence: clamp01(
+        artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES,
+      ),
       modelNotes: [
         `Average isolation path length: ${avgPathLength.toFixed(2)} splits across ${trees.length} trees (shorter paths mean easier to isolate, i.e. more anomalous).`,
         anomalyScore > 0.6

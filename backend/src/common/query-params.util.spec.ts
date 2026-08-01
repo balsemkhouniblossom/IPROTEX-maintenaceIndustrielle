@@ -35,7 +35,9 @@ describe('parseSortParam', () => {
   });
 
   it('parses a descending field prefixed with -', () => {
-    expect(parseSortParam('-status', allowed, fallback)).toEqual({ status: -1 });
+    expect(parseSortParam('-status', allowed, fallback)).toEqual({
+      status: -1,
+    });
   });
 
   it('falls back for a field not on the allow-list', () => {

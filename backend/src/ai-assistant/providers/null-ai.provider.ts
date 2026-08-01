@@ -1,6 +1,5 @@
 import {
   AiProviderDiagnostics,
-  AiAssistantRequest,
   AiProvider,
   AiProviderResult,
 } from '../ai-provider.interface';
@@ -26,7 +25,7 @@ export class NullAiProvider implements AiProvider {
     };
   }
 
-  async generate(): Promise<AiProviderResult> {
-    throw new Error('AI assistant provider is disabled');
+  generate(): Promise<AiProviderResult> {
+    return Promise.reject(new Error('AI assistant provider is disabled'));
   }
 }

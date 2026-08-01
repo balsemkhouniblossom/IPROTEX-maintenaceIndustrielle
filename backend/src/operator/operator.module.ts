@@ -10,7 +10,10 @@ import {
 } from '../schemas/intervention-report.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { MachineType, MachineTypeSchema } from '../schemas/machine-type.schema';
-import { Module as MachineModule, ModuleSchema } from '../schemas/module.schema';
+import {
+  Module as MachineModule,
+  ModuleSchema,
+} from '../schemas/module.schema';
 import {
   MaintenancePlan,
   MaintenancePlanSchema,

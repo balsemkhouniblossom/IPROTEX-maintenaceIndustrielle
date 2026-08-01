@@ -98,9 +98,14 @@ function parseUrl(value: string, key: string): string {
 }
 
 function validateFileStorage(nodeEnv: RuntimeMode): 'local' | 'supabase' {
-  const configuredDriver = process.env.FILE_STORAGE_DRIVER?.trim().toLowerCase();
+  const configuredDriver =
+    process.env.FILE_STORAGE_DRIVER?.trim().toLowerCase();
 
-  if (configuredDriver && configuredDriver !== 'local' && configuredDriver !== 'supabase') {
+  if (
+    configuredDriver &&
+    configuredDriver !== 'local' &&
+    configuredDriver !== 'supabase'
+  ) {
     throw new Error('FILE_STORAGE_DRIVER must be either local or supabase');
   }
 
@@ -157,7 +162,9 @@ function validateMqttBrokerUrl(value: string | undefined): string | undefined {
   try {
     return new URL(trimmed).toString().replace(/\/$/, '');
   } catch {
-    throw new Error('MQTT_BROKER_URL must be a valid URL (e.g. mqtt://host:1883)');
+    throw new Error(
+      'MQTT_BROKER_URL must be a valid URL (e.g. mqtt://host:1883)',
+    );
   }
 }
 
@@ -180,16 +187,26 @@ function validateAiAssistant(nodeEnv: RuntimeMode): boolean {
     process.env.AI_ASSISTANT_PROVIDER?.trim().toLowerCase() || 'gemini';
 
   if (enabled && provider !== 'gemini') {
-    throw new Error('AI_ASSISTANT_PROVIDER must be "gemini" when AI_ASSISTANT_ENABLED=true');
+    throw new Error(
+      'AI_ASSISTANT_PROVIDER must be "gemini" when AI_ASSISTANT_ENABLED=true',
+    );
   }
 
-  if (enabled && nodeEnv === 'production' && !process.env.GEMINI_API_KEY?.trim()) {
+  if (
+    enabled &&
+    nodeEnv === 'production' &&
+    !process.env.GEMINI_API_KEY?.trim()
+  ) {
     throw new Error(
       'GEMINI_API_KEY is required when AI_ASSISTANT_ENABLED=true and AI_ASSISTANT_PROVIDER=gemini in production',
     );
   }
 
-  if (enabled && nodeEnv === 'production' && !process.env.GEMINI_MODEL?.trim()) {
+  if (
+    enabled &&
+    nodeEnv === 'production' &&
+    !process.env.GEMINI_MODEL?.trim()
+  ) {
     throw new Error(
       'GEMINI_MODEL is required when AI_ASSISTANT_ENABLED=true and AI_ASSISTANT_PROVIDER=gemini in production',
     );
@@ -209,7 +226,9 @@ function validateAiAssistant(nodeEnv: RuntimeMode): boolean {
   if (rateLimit?.trim()) {
     const parsed = Number(rateLimit);
     if (!Number.isInteger(parsed) || parsed <= 0) {
-      throw new Error('AI_ASSISTANT_RATE_LIMIT_PER_HOUR must be a positive integer');
+      throw new Error(
+        'AI_ASSISTANT_RATE_LIMIT_PER_HOUR must be a positive integer',
+      );
     }
   }
 
@@ -233,7 +252,11 @@ function validateTrustProxy(value: string | undefined): TrustProxySetting {
   if (!trimmed) return false;
 
   const asBoolean = parseBoolean(trimmed, false);
-  if (['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'].includes(trimmed.toLowerCase())) {
+  if (
+    ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'].includes(
+      trimmed.toLowerCase(),
+    )
+  ) {
     return asBoolean;
   }
 
@@ -592,7 +615,9 @@ export function validateEnvironment(): EnvValidationResult {
     false,
   );
   const fileStorageDriver = validateFileStorage(nodeEnv);
-  const businessTimezone = validateBusinessTimezone(process.env.BUSINESS_TIMEZONE);
+  const businessTimezone = validateBusinessTimezone(
+    process.env.BUSINESS_TIMEZONE,
+  );
   const mqttBrokerUrl = validateMqttBrokerUrl(process.env.MQTT_BROKER_URL);
   const telemetryRetentionSeconds = validateRetentionSeconds(
     process.env.TELEMETRY_RETENTION_SECONDS,

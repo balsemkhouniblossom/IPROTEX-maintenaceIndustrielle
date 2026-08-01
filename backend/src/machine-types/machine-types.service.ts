@@ -5,29 +5,37 @@ import {
   MachineType,
   MachineTypeDocument,
 } from '../schemas/machine-type.schema';
+import { Machine, MachineDocument } from '../schemas/machine.schema';
+import { ModuleType, ModuleTypeDocument } from '../schemas/module-type.schema';
+import {
+  KnowledgeArticle,
+  KnowledgeArticleDocument,
+} from '../schemas/knowledge-article.schema';
 import { CreateMachineTypeDto } from './dto/create-machine-type.dto';
 import { UpdateMachineTypeDto } from './dto/update-machine-type.dto';
 import { CounterService } from '../counters/counter.service';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { assertNoDependencies } from '../common/dependency-protection';
+
 @Injectable()
 export class MachineTypesService {
   constructor(
     @InjectModel(MachineType.name)
     private machineTypeModel: Model<MachineTypeDocument>,
-    private counterService: CounterService, // 👈 ADD
+    @InjectModel(Machine.name) private machineModel: Model<MachineDocument>,
+    @InjectModel(ModuleType.name)
+    private moduleTypeModel: Model<ModuleTypeDocument>,
+    @InjectModel(KnowledgeArticle.name)
+    private knowledgeArticleModel: Model<KnowledgeArticleDocument>,
+    private counterService: CounterService,
   ) {}
+
   async create(dto: CreateMachineTypeDto): Promise<MachineType> {
     const nextId = await this.counterService.getNextSequence('machine_type');
-
-    console.log('NEXT ID =', nextId);
-
     const created = new this.machineTypeModel({
       ...dto,
       type_id: nextId,
     });
-
-    console.log('DATA TO SAVE =', created);
-
     return created.save();
   }
 
@@ -63,6 +71,19 @@ export class MachineTypesService {
   }
 
   async remove(id: string): Promise<any> {
+    await assertNoDependencies('Machine type', [
+      { label: 'machines', model: this.machineModel, filter: { type_id: id } },
+      {
+        label: 'module types',
+        model: this.moduleTypeModel,
+        filter: { type_id: id },
+      },
+      {
+        label: 'knowledge articles',
+        model: this.knowledgeArticleModel,
+        filter: { machine_type_id: id },
+      },
+    ]);
     return this.machineTypeModel.findByIdAndDelete(id).exec();
   }
 }

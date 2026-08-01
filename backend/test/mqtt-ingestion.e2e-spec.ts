@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
@@ -10,14 +9,28 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import Aedes from 'aedes';
 import * as mqtt from 'mqtt';
 import { AppModule } from './../src/app.module';
-import { MachineType, MachineTypeDocument } from '../src/schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
-import { Device, DeviceDocument, DeviceType, DeviceConnectionStatus } from '../src/schemas/device.schema';
+import {
+  Device,
+  DeviceDocument,
+  DeviceType,
+  DeviceConnectionStatus,
+} from '../src/schemas/device.schema';
 import { Telemetry, TelemetryDocument } from '../src/schemas/telemetry.schema';
-import { FaultEvent, FaultEventDocument } from '../src/schemas/fault-event.schema';
+import {
+  FaultEvent,
+  FaultEventDocument,
+} from '../src/schemas/fault-event.schema';
 import { DeviceAuthService } from '../src/device-monitoring/device-auth.service';
 
-async function waitUntil(check: () => Promise<boolean>, timeoutMs = 5000): Promise<void> {
+async function waitUntil(
+  check: () => Promise<boolean>,
+  timeoutMs = 5000,
+): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await check()) return;
@@ -56,7 +69,9 @@ describe('MQTT device ingestion (integration)', () => {
     // at module-init time.
     broker = new Aedes();
     brokerNetServer = createServer(broker.handle);
-    await new Promise<void>((resolve) => brokerNetServer.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) =>
+      brokerNetServer.listen(0, '127.0.0.1', resolve),
+    );
     brokerPort = (brokerNetServer.address() as AddressInfo).port;
 
     process.env.NODE_ENV = 'test';
@@ -85,7 +100,10 @@ describe('MQTT device ingestion (integration)', () => {
 
     await connection.dropDatabase();
 
-    const machineType = await machineTypes.create({ type_id: 1, name: 'MQTT E2E machine type' });
+    const machineType = await machineTypes.create({
+      type_id: 1,
+      name: 'MQTT E2E machine type',
+    });
     const machine = await machines.create({
       machine_id: 'MACHINE-MQTT',
       type_id: machineType._id,
@@ -122,11 +140,15 @@ describe('MQTT device ingestion (integration)', () => {
 
   afterAll(async () => {
     if (simulatorClient) {
-      await new Promise<void>((resolve) => simulatorClient.end(true, {}, () => resolve()));
+      await new Promise<void>((resolve) =>
+        simulatorClient.end(true, {}, () => resolve()),
+      );
     }
     await connection?.dropDatabase();
     await app?.close();
-    await new Promise<void>((resolve) => brokerNetServer.close(() => resolve()));
+    await new Promise<void>((resolve) =>
+      brokerNetServer.close(() => resolve()),
+    );
     // Closing the net.Server alone leaves aedes's own internal timers/state
     // alive (that's what made the very first version of this suite hang at
     // process exit) — the broker instance itself must be closed too.
@@ -134,12 +156,20 @@ describe('MQTT device ingestion (integration)', () => {
     await mongo?.stop();
   }, 30_000);
 
-  function publish(topic: string, body: Record<string, unknown>): Promise<void> {
+  function publish(
+    topic: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      simulatorClient.publish(topic, JSON.stringify(body), { qos: 1 }, (error) => {
-        if (error) reject(error);
-        else resolve();
-      });
+      simulatorClient.publish(
+        topic,
+        JSON.stringify(body),
+        { qos: 1 },
+        (error) => {
+          if (error) reject(error);
+          else resolve();
+        },
+      );
     });
   }
 
@@ -152,7 +182,9 @@ describe('MQTT device ingestion (integration)', () => {
   });
 
   it('rejects a heartbeat published with the wrong api_key', async () => {
-    await publish(`devices/${device.device_id}/heartbeat`, { api_key: 'wrong.key' });
+    await publish(`devices/${device.device_id}/heartbeat`, {
+      api_key: 'wrong.key',
+    });
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     const fresh = await devices.findById(device._id).exec();
@@ -160,7 +192,9 @@ describe('MQTT device ingestion (integration)', () => {
   });
 
   it('marks the device online after a correctly authenticated heartbeat over MQTT', async () => {
-    await publish(`devices/${device.device_id}/heartbeat`, { api_key: rawApiKey });
+    await publish(`devices/${device.device_id}/heartbeat`, {
+      api_key: rawApiKey,
+    });
 
     await waitUntil(async () => {
       const fresh = await devices.findById(device._id).exec();
@@ -178,11 +212,15 @@ describe('MQTT device ingestion (integration)', () => {
     });
 
     await waitUntil(async () => {
-      const count = await telemetryModel.countDocuments({ device_id: device._id }).exec();
+      const count = await telemetryModel
+        .countDocuments({ device_id: device._id })
+        .exec();
       return count > 0;
     });
 
-    const stored = await telemetryModel.findOne({ device_id: device._id }).exec();
+    const stored = await telemetryModel
+      .findOne({ device_id: device._id })
+      .exec();
     expect(stored?.machine_id.toString()).toBe(machineId);
     expect(stored?.metrics).toEqual({ temperature: 78.5, rpm: 1500 });
   });
@@ -196,18 +234,24 @@ describe('MQTT device ingestion (integration)', () => {
     });
 
     await waitUntil(async () => {
-      const count = await faultEventModel.countDocuments({ code_panne: 'E-MQTT-1' }).exec();
+      const count = await faultEventModel
+        .countDocuments({ code_panne: 'E-MQTT-1' })
+        .exec();
       return count > 0;
     });
 
-    const stored = await faultEventModel.findOne({ code_panne: 'E-MQTT-1' }).exec();
+    const stored = await faultEventModel
+      .findOne({ code_panne: 'E-MQTT-1' })
+      .exec();
     expect(stored?.resolved_at).toBeUndefined();
     expect(stored?.severity).toBe('critical');
     expect(stored?.machine_id.toString()).toBe(machineId);
   });
 
   it('drops a message on a topic for a device that does not exist, without throwing', async () => {
-    await publish('devices/NONEXISTENT-DEVICE/heartbeat', { api_key: rawApiKey });
+    await publish('devices/NONEXISTENT-DEVICE/heartbeat', {
+      api_key: rawApiKey,
+    });
     await new Promise((resolve) => setTimeout(resolve, 300));
     // No assertion needed beyond "the app is still responsive" — proven by
     // the next test still being able to talk to it.

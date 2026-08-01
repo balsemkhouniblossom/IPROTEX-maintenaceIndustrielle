@@ -5,7 +5,11 @@ import { WorkOrder, WorkOrderDocument } from '../../schemas/work-order.schema';
 import { COMPLETED_WORK_ORDER_STATUSES } from '../../common/work-order-status';
 import { KpiService } from '../../kpi/kpi.service';
 import { buildDateRangeFilter } from '../report-date-filter.util';
-import { ReportDataProvider, ReportDataset, ReportParams } from '../report.interfaces';
+import {
+  ReportDataProvider,
+  ReportDataset,
+  ReportParams,
+} from '../report.interfaces';
 import { ReportType } from '../../schemas/generated-report.schema';
 
 /** One row per technician: current open-order load (`KpiService.computeWorkload()`, the exact figure the Admin dashboard's workload chart already shows) alongside how many work orders they closed within the requested date range — a snapshot and a historical count side by side, since no existing method covers date-ranged workload. */
@@ -14,7 +18,8 @@ export class TechnicianWorkloadReportProvider implements ReportDataProvider {
   readonly type = ReportType.TECHNICIAN_WORKLOAD;
 
   constructor(
-    @InjectModel(WorkOrder.name) private readonly workOrderModel: Model<WorkOrderDocument>,
+    @InjectModel(WorkOrder.name)
+    private readonly workOrderModel: Model<WorkOrderDocument>,
     private readonly kpiService: KpiService,
   ) {}
 
@@ -44,14 +49,16 @@ export class TechnicianWorkloadReportProvider implements ReportDataProvider {
     ]);
 
     const rows = [...technicianIds].map((technicianId) => {
-      const current = currentWorkload.find((w) => w.technicianId === technicianId);
+      const current = currentWorkload.find(
+        (w) => w.technicianId === technicianId,
+      );
       return {
         technician: current?.name ?? technicianId,
         open_work_orders: current?.openCount ?? 0,
         closed_in_period: closedCountByTechnicianId.get(technicianId) ?? 0,
       };
     });
-    rows.sort((a, b) => (b.open_work_orders as number) - (a.open_work_orders as number));
+    rows.sort((a, b) => b.open_work_orders - a.open_work_orders);
 
     return {
       title: 'Technician Workload Report',

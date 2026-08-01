@@ -33,7 +33,9 @@ describe('AiAssistantThrottleService', () => {
   });
 
   it('falls back to the default limit when unconfigured', () => {
-    const service = new AiAssistantThrottleService(configServiceStub(undefined));
+    const service = new AiAssistantThrottleService(
+      configServiceStub(undefined),
+    );
 
     for (let i = 0; i < 20; i += 1) {
       expect(service.consume('user-1').allowed).toBe(true);

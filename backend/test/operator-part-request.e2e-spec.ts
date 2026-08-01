@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -178,7 +178,9 @@ describe('Operator parts request (e2e)', () => {
     technicianToken = tokenFor(technician);
   }
 
-  async function createCorrectiveWorkOrder(overrides: Record<string, unknown> = {}) {
+  async function createCorrectiveWorkOrder(
+    overrides: Record<string, unknown> = {},
+  ) {
     return workOrders.create({
       ot_id: `WO-COR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       machine_id: machine._id,
@@ -231,9 +233,7 @@ describe('Operator parts request (e2e)', () => {
       })
       .expect(400);
 
-    expect(
-      await partRequests.countDocuments({ ot_id: workOrder._id }),
-    ).toBe(0);
+    expect(await partRequests.countDocuments({ ot_id: workOrder._id })).toBe(0);
   });
 
   it('rejects a machine not assigned to the Operator', async () => {
@@ -344,7 +344,9 @@ describe('Operator parts request (e2e)', () => {
 
     const storedRequest = await partRequests.findById(response.body._id);
     expect(storedRequest?.status).toBe('pending');
-    expect(storedRequest?.requested_by.toString()).toBe(operator._id.toString());
+    expect(storedRequest?.requested_by.toString()).toBe(
+      operator._id.toString(),
+    );
 
     // Direct proof of "without directly reducing stock": the previously
     // seeded stock quantity is completely untouched by this call.
@@ -395,8 +397,6 @@ describe('Operator parts request (e2e)', () => {
       .send({ part_id: otherPart._id.toString(), quantity: 1 })
       .expect(201);
 
-    expect(
-      await partRequests.countDocuments({ ot_id: workOrder._id }),
-    ).toBe(2);
+    expect(await partRequests.countDocuments({ ot_id: workOrder._id })).toBe(2);
   });
 });

@@ -48,7 +48,7 @@ existing business functionality, routes, and database entities.
 
 - ❌ No unit/integration/e2e tests
 - ❌ No error boundary or global error handling
-- ❌ No performance monitoring (Sentry, web vitals)
+- ❌ No production error/performance monitoring
 - ❌ ESLint config uses deprecated ESLint 8 format
 - ❌ No environment variable validation at startup
 
@@ -117,12 +117,11 @@ existing business functionality, routes, and database entities.
 ### Monitoring & Observability
 
 - **Logging**: ❌ Only console.log scattered
-- **Error Tracking**: ❌ No Sentry integration
+- **Error Tracking**: ❌ No production error-tracking integration
 - **Health Checks**: ❌ Missing endpoints
 - **Metrics**: ❌ No Prometheus/Grafana
 
-**Status**: ✅ Partially Fixed (Health module + logging middleware added,
-Sentry scaffolding)
+**Status**: ✅ Partially Fixed (Health module + logging middleware added)
 
 ---
 
@@ -178,7 +177,7 @@ Sentry scaffolding)
 ### Environment Files
 
 - ✅ `.env.example` (dev template)
-- ✅ `.env.production` (production template with Sentry, SMTP, S3 stubs)
+- ✅ `.env.production` (production template with SMTP and S3 stubs)
 - ✅ Backend startup logs current mode, port, validation results
 
 ### Frontend Environment
@@ -297,12 +296,12 @@ modules:
 - ✅ `GET /health/db` - Database connectivity + response time
 - Used by Docker Compose healthchecks and Nginx
 
-### Error Tracking (Sentry)
+### Error Tracking
 
-- ✅ Dependencies installed (`@sentry/node`, `@sentry/nextjs`)
-- 🔄 Backend: Initialize in main.ts with error handler
-- 🔄 Frontend: Initialize in layout.tsx with error logging
-- 🔄 Environment variable: `SENTRY_DSN` + `SENTRY_ENVIRONMENT`
+- ❌ No production error-tracking integration is currently installed
+- 🔄 Backend: choose and initialize one provider in `main.ts` with an exception filter
+- 🔄 Frontend: choose and initialize one provider with client/server capture
+- 🔄 Environment variables: define only after a provider is selected
 
 ### Metrics
 
@@ -450,11 +449,9 @@ modules:
 - helmet, hpp, compression (security)
 - @nestjs/throttler (rate limiting - optional)
 - @nestjs/swagger (API docs - optional)
-- @sentry/node (monitoring)
 
 **Frontend**:
 
-- @sentry/nextjs (monitoring)
 - @testing-library/react, @testing-library/jest-dom (component tests)
 - jest, jest-environment-jsdom, ts-jest (test runner)
 - @playwright/test (e2e testing)
@@ -473,7 +470,6 @@ JWT_REFRESH_EXPIRES_IN=7d
 CORS_ORIGINS=https://yourdomain.com
 
 # Recommended
-SENTRY_DSN=https://...@sentry.io/project
 SMTP_HOST=smtp.sendgrid.net
 SMTP_USER=apikey
 SMTP_PASS=<sendgrid_api_key>
@@ -595,7 +591,7 @@ npm run test:e2e
 - [x] Error logging
 - [x] Health endpoints
 - [x] Graceful shutdown
-- [ ] Sentry integration (scaffolded)
+- [ ] Production error-tracking integration
 - [ ] Structured JSON logs (TODO)
 - [ ] Performance metrics (TODO)
 
@@ -647,7 +643,7 @@ npm run test:e2e
 
 ### Short-term (Phase 10-12)
 
-1. Integrate Sentry error tracking (frontend + backend)
+1. Integrate production error tracking (frontend + backend)
 2. Set up Swagger API documentation
 3. Performance optimization (Lighthouse 90+)
 4. Accessibility audit (WCAG 2.1)

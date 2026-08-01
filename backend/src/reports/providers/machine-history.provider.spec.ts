@@ -19,8 +19,12 @@ describe('MachineHistoryReportProvider', () => {
         exec: jest.fn().mockResolvedValue(workOrders),
       }),
     };
-    const interventionReportModel = { find: jest.fn().mockReturnValue(execResolves(reports)) };
-    const documentAccessService = { assertCanAccessMachine: jest.fn().mockResolvedValue(undefined) };
+    const interventionReportModel = {
+      find: jest.fn().mockReturnValue(execResolves(reports)),
+    };
+    const documentAccessService = {
+      assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
+    };
 
     const provider = new MachineHistoryReportProvider(
       workOrderModel as never,
@@ -32,7 +36,9 @@ describe('MachineHistoryReportProvider', () => {
 
   it('requires a machineId', async () => {
     const { provider } = buildProvider([]);
-    await expect(provider.buildDataset({}, actor)).rejects.toThrow(BadRequestException);
+    await expect(provider.buildDataset({}, actor)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('joins work orders with their intervention report by ot_id', async () => {
@@ -50,7 +56,13 @@ describe('MachineHistoryReportProvider', () => {
           technician_id: { nom_complet: 'Jane Tech' },
         },
       ],
-      [{ ot_id: workOrderId, cause_racine: 'worn part', description_action: 'replaced part' }],
+      [
+        {
+          ot_id: workOrderId,
+          cause_racine: 'worn part',
+          description_action: 'replaced part',
+        },
+      ],
     );
 
     const dataset = await provider.buildDataset({ machineId }, actor);

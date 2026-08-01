@@ -73,7 +73,6 @@ async function bootstrap() {
     express.static(join(process.cwd(), 'uploads', 'avatars')),
   );
 
-
   app.enableShutdownHooks();
   app.useWebSocketAdapter(new IoAdapter(app));
 

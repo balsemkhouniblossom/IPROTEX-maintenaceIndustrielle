@@ -102,6 +102,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     process.env.JWT_SECRET = 'e2e-test-jwt-secret';
     process.env.JWT_REFRESH_SECRET = 'e2e-test-refresh-secret';
     process.env.EMAIL_VERIFICATION_SECRET = 'e2e-test-email-secret';
+    process.env.FILE_STORAGE_DRIVER = 'local';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -550,7 +551,8 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     }> = [
       {
         token: operatorToken,
-        request: () => request(app.getHttpServer()).post('/work-orders').send({}),
+        request: () =>
+          request(app.getHttpServer()).post('/work-orders').send({}),
       },
       {
         token: operatorToken,
@@ -558,24 +560,32 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       },
       {
         token: technicianToken,
-        request: () => request(app.getHttpServer()).get('/work-orders/statistics'),
+        request: () =>
+          request(app.getHttpServer()).get('/work-orders/statistics'),
       },
       {
         token: operatorToken,
-        request: () => request(app.getHttpServer()).get('/work-orders/calendar/events'),
-      },
-      {
-        token: technicianToken,
-        request: () => request(app.getHttpServer()).get(`/work-orders/${new Types.ObjectId()}`),
-      },
-      {
-        token: operatorToken,
-        request: () => request(app.getHttpServer()).get('/intervention-reports'),
+        request: () =>
+          request(app.getHttpServer()).get('/work-orders/calendar/events'),
       },
       {
         token: technicianToken,
         request: () =>
-          request(app.getHttpServer()).get(`/intervention-reports/${new Types.ObjectId()}`),
+          request(app.getHttpServer()).get(
+            `/work-orders/${new Types.ObjectId()}`,
+          ),
+      },
+      {
+        token: operatorToken,
+        request: () =>
+          request(app.getHttpServer()).get('/intervention-reports'),
+      },
+      {
+        token: technicianToken,
+        request: () =>
+          request(app.getHttpServer()).get(
+            `/intervention-reports/${new Types.ObjectId()}`,
+          ),
       },
       {
         token: operatorToken,
@@ -583,7 +593,10 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       },
       {
         token: technicianToken,
-        request: () => request(app.getHttpServer()).get(`/machines/${machineA._id.toString()}`),
+        request: () =>
+          request(app.getHttpServer()).get(
+            `/machines/${machineA._id.toString()}`,
+          ),
       },
       {
         token: operatorToken,
@@ -611,39 +624,51 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       },
       {
         token: technicianToken,
-        request: () => request(app.getHttpServer()).post('/work-orders').send({}),
+        request: () =>
+          request(app.getHttpServer()).post('/work-orders').send({}),
       },
       {
         token: operatorToken,
         request: () =>
-          request(app.getHttpServer()).patch(`/work-orders/${new Types.ObjectId()}`).send({
-            technician_id: technician._id.toString(),
-            status: 'completed',
-          }),
+          request(app.getHttpServer())
+            .patch(`/work-orders/${new Types.ObjectId()}`)
+            .send({
+              technician_id: technician._id.toString(),
+              status: 'completed',
+            }),
       },
       {
         token: technicianToken,
         request: () =>
-          request(app.getHttpServer()).delete(`/work-orders/${new Types.ObjectId()}`),
+          request(app.getHttpServer()).delete(
+            `/work-orders/${new Types.ObjectId()}`,
+          ),
       },
       {
         token: operatorToken,
         request: () =>
-          request(app.getHttpServer()).post(`/work-orders/${new Types.ObjectId()}/complete`),
+          request(app.getHttpServer()).post(
+            `/work-orders/${new Types.ObjectId()}/complete`,
+          ),
       },
       {
         token: technicianToken,
         request: () =>
-          request(app.getHttpServer()).post(`/work-orders/${new Types.ObjectId()}/validation`),
+          request(app.getHttpServer()).post(
+            `/work-orders/${new Types.ObjectId()}/validation`,
+          ),
       },
       {
         token: operatorToken,
-        request: () => request(app.getHttpServer()).post('/intervention-reports').send({}),
+        request: () =>
+          request(app.getHttpServer()).post('/intervention-reports').send({}),
       },
       {
         token: technicianToken,
         request: () =>
-          request(app.getHttpServer()).patch(`/intervention-reports/${new Types.ObjectId()}`).send({}),
+          request(app.getHttpServer())
+            .patch(`/intervention-reports/${new Types.ObjectId()}`)
+            .send({}),
       },
       {
         token: operatorToken,
@@ -651,15 +676,18 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       },
       {
         token: technicianToken,
-        request: () => request(app.getHttpServer()).post('/lubrification-logs').send({}),
+        request: () =>
+          request(app.getHttpServer()).post('/lubrification-logs').send({}),
       },
       {
         token: operatorToken,
-        request: () => request(app.getHttpServer()).post('/maintenance-plans').send({}),
+        request: () =>
+          request(app.getHttpServer()).post('/maintenance-plans').send({}),
       },
       {
         token: technicianToken,
-        request: () => request(app.getHttpServer()).post('/preventive-tasks/sync-plans'),
+        request: () =>
+          request(app.getHttpServer()).post('/preventive-tasks/sync-plans'),
       },
     ];
 
@@ -713,7 +741,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     expect(storedReport?.validated_by?.toString()).not.toBe(
       technician._id.toString(),
     );
-    expect(storedReport?.technician_id?.toString()).toBe(operator._id.toString());
+    expect(storedReport?.technician_id?.toString()).toBe(
+      operator._id.toString(),
+    );
   });
 
   it('J3: preserves valid scoped operator and technician workflows', async () => {
@@ -905,7 +935,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .expect(200);
 
     await request(app.getHttpServer())
-      .get(`/operator/preventive/states?machineId=${unassignedMachine._id.toString()}`)
+      .get(
+        `/operator/preventive/states?machineId=${unassignedMachine._id.toString()}`,
+      )
       .set('Authorization', `Bearer ${operatorToken}`)
       .expect(403);
     await request(app.getHttpServer())
@@ -933,7 +965,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .expect(200);
     const manualMachineIds = manualsResponse.body.items.map(
       (doc: { machine_id: { _id?: string } | string }) =>
-        typeof doc.machine_id === 'string' ? doc.machine_id : doc.machine_id._id,
+        typeof doc.machine_id === 'string'
+          ? doc.machine_id
+          : doc.machine_id._id,
     );
     expect(manualMachineIds).toContain(machineA._id.toString());
     expect(manualMachineIds).not.toContain(unassignedMachine._id.toString());
@@ -962,7 +996,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     expect(solutionPanneIds).not.toContain(unassignedFault._id.toString());
 
     await request(app.getHttpServer())
-      .get(`/operator/calendar/my?machineId=${unassignedMachine._id.toString()}&date=2026-09-01`)
+      .get(
+        `/operator/calendar/my?machineId=${unassignedMachine._id.toString()}&date=2026-09-01`,
+      )
       .set('Authorization', `Bearer ${operatorToken}`)
       .expect(403);
   });
@@ -1009,7 +1045,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     ).toBe(false);
 
     await request(app.getHttpServer())
-      .get(`/operator/preventive/states?machineId=${reassignedMachine._id.toString()}`)
+      .get(
+        `/operator/preventive/states?machineId=${reassignedMachine._id.toString()}`,
+      )
       .set('Authorization', `Bearer ${operatorToken}`)
       .expect(403);
 
@@ -1018,7 +1056,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     });
 
     await request(app.getHttpServer())
-      .get(`/operator/preventive/states?machineId=${reassignedMachine._id.toString()}`)
+      .get(
+        `/operator/preventive/states?machineId=${reassignedMachine._id.toString()}`,
+      )
       .set('Authorization', `Bearer ${operatorToken}`)
       .expect(200);
 
@@ -1148,7 +1188,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .set('Authorization', `Bearer ${technicianToken}`)
       .expect(404);
     await request(app.getHttpServer())
-      .patch(`/technician/work-orders/${unrelatedUnassigned._id.toString()}/claim`)
+      .patch(
+        `/technician/work-orders/${unrelatedUnassigned._id.toString()}/claim`,
+      )
       .set('Authorization', `Bearer ${technicianToken}`)
       .expect(409);
 
@@ -1163,7 +1205,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     expect(detailManualIds).not.toContain(unrelatedManual._id.toString());
 
     await request(app.getHttpServer())
-      .get(`/technician/manuals?machineId=${unrelatedTechMachine._id.toString()}`)
+      .get(
+        `/technician/manuals?machineId=${unrelatedTechMachine._id.toString()}`,
+      )
       .set('Authorization', `Bearer ${technicianToken}`)
       .expect(403);
     const manualsResponse = await request(app.getHttpServer())
@@ -1197,7 +1241,22 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
   });
 
   it('K0: rejects anonymous requests across operational APIs while health and public auth stay open', async () => {
-    await request(app.getHttpServer()).get('/health').expect(200);
+    const healthResponse = await request(app.getHttpServer())
+      .get('/health')
+      .expect(200);
+    expect(JSON.stringify(healthResponse.body)).not.toContain('smtp');
+    expect(JSON.stringify(healthResponse.body)).not.toContain('brevoApi');
+    expect(JSON.stringify(healthResponse.body)).not.toContain('errorCode');
+    await request(app.getHttpServer()).get('/health/db').expect(401);
+    await request(app.getHttpServer()).get('/health/email').expect(401);
+    await request(app.getHttpServer())
+      .get('/health/db')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get('/health/db')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
 
     await request(app.getHttpServer())
       .post('/auth/forgot-password')
@@ -1214,7 +1273,8 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       () => request(app.getHttpServer()).get('/work-orders/statistics'),
       () => request(app.getHttpServer()).post('/work-orders').send({}),
       () => request(app.getHttpServer()).post('/work-orders/invalid/complete'),
-      () => request(app.getHttpServer()).post('/work-orders/invalid/validation'),
+      () =>
+        request(app.getHttpServer()).post('/work-orders/invalid/validation'),
       () => request(app.getHttpServer()).get('/intervention-reports'),
       () => request(app.getHttpServer()).post('/intervention-reports').send({}),
       () => request(app.getHttpServer()).get('/catalogues'),
@@ -1595,7 +1655,11 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       entry.startsWith(`${name}=`),
     );
     expect(cookie).toBeTruthy();
-    return decodeURIComponent(String(cookie).split(';')[0].slice(name.length + 1));
+    return decodeURIComponent(
+      String(cookie)
+        .split(';')[0]
+        .slice(name.length + 1),
+    );
   }
 
   function getAuthCookieHeader(response: request.Response): string {
@@ -2067,9 +2131,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       'http://localhost:3000',
     );
 
-    expect(await users.countDocuments({ email: 'new.google.e2e@example.test' })).toBe(
-      1,
-    );
+    expect(
+      await users.countDocuments({ email: 'new.google.e2e@example.test' }),
+    ).toBe(1);
     const secondExchangeCode = new URL(
       String(secondRes.redirect.mock.calls[0][0]),
     ).searchParams.get('exchange');
@@ -2097,9 +2161,8 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     });
 
     const loginResult = await authService.login(incompleteGoogleUser);
-    const exchangeCode = await googleLoginExchangeService.createExchange(
-      loginResult,
-    );
+    const exchangeCode =
+      await googleLoginExchangeService.createExchange(loginResult);
 
     const exchange = await request(app.getHttpServer())
       .post('/auth/google/exchange')
@@ -2150,7 +2213,10 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     // Established behavior preserved: once the profile is complete, the
     // account is a normal "pending admin approval" account, and refresh is
     // blocked exactly like it always was for pending accounts.
-    const refreshedCsrfToken = getCookieValueFromSetCookie(refreshed, 'csrf_token');
+    const refreshedCsrfToken = getCookieValueFromSetCookie(
+      refreshed,
+      'csrf_token',
+    );
     const pendingRefresh = await request(app.getHttpServer())
       .post('/auth/refresh')
       .set('Cookie', getAuthCookieHeader(refreshed))
@@ -2545,7 +2611,10 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       loginResponse,
       'refresh_token',
     );
-    const oldCsrfToken = getCookieValueFromSetCookie(loginResponse, 'csrf_token');
+    const oldCsrfToken = getCookieValueFromSetCookie(
+      loginResponse,
+      'csrf_token',
+    );
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
@@ -2565,7 +2634,10 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       firstRefresh,
       'refresh_token',
     );
-    const rotatedCsrfToken = getCookieValueFromSetCookie(firstRefresh, 'csrf_token');
+    const rotatedCsrfToken = getCookieValueFromSetCookie(
+      firstRefresh,
+      'csrf_token',
+    );
     expect(rotatedRefreshToken).not.toBe(oldRefreshToken);
     expect(firstRefresh.body.user).toEqual(
       expect.objectContaining({
@@ -2601,9 +2673,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .set('Cookie', getAuthCookieHeader(firstRefresh))
       .set('X-CSRF-Token', rotatedCsrfToken)
       .expect(200);
-    expect(getSetCookies(logout).some((cookie) => /^refresh_token=;/.test(cookie))).toBe(
-      true,
-    );
+    expect(
+      getSetCookies(logout).some((cookie) => /^refresh_token=;/.test(cookie)),
+    ).toBe(true);
   });
 
   it('AA: refresh rejects invalid tokens, access tokens, pending, rejected, inactive, and deleted users', async () => {
@@ -2914,7 +2986,8 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     const emailVerificationTokenService = app.get(
       EmailVerificationTokenService,
     );
-    const { admin: approver, token: approverToken } = await createApprovedAdmin();
+    const { admin: approver, token: approverToken } =
+      await createApprovedAdmin();
 
     // Seeded exactly like a real approved Google-onboarded technician:
     // verified, active, profile complete, and with the approval decision

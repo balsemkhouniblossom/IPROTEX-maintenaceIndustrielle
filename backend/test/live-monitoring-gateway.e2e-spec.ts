@@ -11,14 +11,28 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';
-import { MachineType, MachineTypeDocument } from '../src/schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
-import { Device, DeviceDocument, DeviceType } from '../src/schemas/device.schema';
+import {
+  Device,
+  DeviceDocument,
+  DeviceType,
+} from '../src/schemas/device.schema';
 import { DeviceAuthService } from '../src/device-monitoring/device-auth.service';
 
-function waitForEvent<T = unknown>(socket: Socket, event: string, timeoutMs = 5000): Promise<T> {
+function waitForEvent<T = unknown>(
+  socket: Socket,
+  event: string,
+  timeoutMs = 5000,
+): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Timed out waiting for "${event}"`)), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error(`Timed out waiting for "${event}"`)),
+      timeoutMs,
+    );
     socket.once(event, (payload: T) => {
       clearTimeout(timer);
       resolve(payload);
@@ -117,7 +131,10 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
 
     await connection.dropDatabase();
 
-    const machineType = await machineTypes.create({ type_id: 1, name: 'WS E2E machine type' });
+    const machineType = await machineTypes.create({
+      type_id: 1,
+      name: 'WS E2E machine type',
+    });
     const machineA = await machines.create({
       machine_id: 'MACHINE-WS-A',
       type_id: machineType._id,
@@ -197,7 +214,10 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
   });
 
   it('rejects a connection with invalid device credentials', async () => {
-    const socket = connectClient({ deviceId: device.device_id, deviceKey: 'wrong.key' });
+    const socket = connectClient({
+      deviceId: device.device_id,
+      deviceKey: 'wrong.key',
+    });
     await waitForEvent(socket, 'disconnect');
   });
 
@@ -208,7 +228,10 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
   });
 
   it('accepts a connection with valid device credentials', async () => {
-    const socket = connectClient({ deviceId: device.device_id, deviceKey: rawApiKey });
+    const socket = connectClient({
+      deviceId: device.device_id,
+      deviceKey: rawApiKey,
+    });
     await waitForEvent(socket, 'connect');
     socket.disconnect();
   });
@@ -217,7 +240,9 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     const socket = connectClient({ token: adminToken });
     await waitForEvent(socket, 'connect');
 
-    const response = await emitWithAck(socket, 'subscribe:machine', { machineId: machineBId });
+    const response = await emitWithAck(socket, 'subscribe:machine', {
+      machineId: machineBId,
+    });
     expect(response).toEqual({ ok: true });
     socket.disconnect();
   });
@@ -226,20 +251,29 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     const socket = connectClient({ token: operatorToken });
     await waitForEvent(socket, 'connect');
 
-    const allowed = await emitWithAck(socket, 'subscribe:machine', { machineId: machineAId });
+    const allowed = await emitWithAck(socket, 'subscribe:machine', {
+      machineId: machineAId,
+    });
     expect(allowed).toEqual({ ok: true });
 
-    const denied = await emitWithAck(socket, 'subscribe:machine', { machineId: machineBId });
+    const denied = await emitWithAck(socket, 'subscribe:machine', {
+      machineId: machineBId,
+    });
     expect(denied).toEqual({ ok: false, error: 'forbidden' });
 
     socket.disconnect();
   });
 
   it('a device socket can never subscribe to a machine room', async () => {
-    const socket = connectClient({ deviceId: device.device_id, deviceKey: rawApiKey });
+    const socket = connectClient({
+      deviceId: device.device_id,
+      deviceKey: rawApiKey,
+    });
     await waitForEvent(socket, 'connect');
 
-    const response = await emitWithAck(socket, 'subscribe:machine', { machineId: machineAId });
+    const response = await emitWithAck(socket, 'subscribe:machine', {
+      machineId: machineAId,
+    });
     expect(response).toEqual({ ok: false, error: 'forbidden' });
 
     socket.disconnect();
@@ -249,7 +283,9 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     const socket = connectClient({ token: adminToken });
     await waitForEvent(socket, 'connect');
 
-    const response = await emitWithAck(socket, 'device:telemetry', { metrics: { x: 1 } });
+    const response = await emitWithAck(socket, 'device:telemetry', {
+      metrics: { x: 1 },
+    });
     expect(response).toEqual({ ok: false, error: 'forbidden' });
 
     socket.disconnect();
@@ -263,10 +299,16 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     });
     expect(subscribeResult).toEqual({ ok: true });
 
-    const deviceSocket = connectClient({ deviceId: device.device_id, deviceKey: rawApiKey });
+    const deviceSocket = connectClient({
+      deviceId: device.device_id,
+      deviceKey: rawApiKey,
+    });
     await waitForEvent(deviceSocket, 'connect');
 
-    const telemetryEventPromise = waitForEvent<Record<string, unknown>>(userSocket, 'telemetry');
+    const telemetryEventPromise = waitForEvent<Record<string, unknown>>(
+      userSocket,
+      'telemetry',
+    );
     const ack = await emitWithAck(deviceSocket, 'device:telemetry', {
       metrics: { temperature: 81.2 },
     });
@@ -292,7 +334,9 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     // regardless of what the server broadcasts.
     const socket = connectClient({ token: operatorToken });
     await waitForEvent(socket, 'connect');
-    const denied = await emitWithAck(socket, 'subscribe:machine', { machineId: machineBId });
+    const denied = await emitWithAck(socket, 'subscribe:machine', {
+      machineId: machineBId,
+    });
     expect(denied).toEqual({ ok: false, error: 'forbidden' });
     socket.disconnect();
   });
@@ -300,12 +344,20 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
   it('pushes a fault event only to clients subscribed to that machine’s room', async () => {
     const adminSocket = connectClient({ token: adminToken });
     await waitForEvent(adminSocket, 'connect');
-    await emitWithAck(adminSocket, 'subscribe:machine', { machineId: machineAId });
+    await emitWithAck(adminSocket, 'subscribe:machine', {
+      machineId: machineAId,
+    });
 
-    const deviceSocket = connectClient({ deviceId: device.device_id, deviceKey: rawApiKey });
+    const deviceSocket = connectClient({
+      deviceId: device.device_id,
+      deviceKey: rawApiKey,
+    });
     await waitForEvent(deviceSocket, 'connect');
 
-    const faultEventPromise = waitForEvent<Record<string, unknown>>(adminSocket, 'fault');
+    const faultEventPromise = waitForEvent<Record<string, unknown>>(
+      adminSocket,
+      'fault',
+    );
     await emitWithAck(deviceSocket, 'device:fault', {
       code_panne: 'E-WS-1',
       severity: 'critical',
@@ -313,22 +365,32 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     });
 
     const faultEvent = await faultEventPromise;
-    expect(faultEvent).toMatchObject({ codePanne: 'E-WS-1', severity: 'critical' });
+    expect(faultEvent).toMatchObject({
+      codePanne: 'E-WS-1',
+      severity: 'critical',
+    });
 
     adminSocket.disconnect();
     deviceSocket.disconnect();
   });
 
   it('deactivating a device rejects its already-open socket on the next message', async () => {
-    const deviceSocket = connectClient({ deviceId: device.device_id, deviceKey: rawApiKey });
+    const deviceSocket = connectClient({
+      deviceId: device.device_id,
+      deviceKey: rawApiKey,
+    });
     await waitForEvent(deviceSocket, 'connect');
 
-    await devices.updateOne({ _id: device._id }, { $set: { is_active: false } }).exec();
+    await devices
+      .updateOne({ _id: device._id }, { $set: { is_active: false } })
+      .exec();
 
     const response = await emitWithAck(deviceSocket, 'device:heartbeat', {});
     expect(response).toEqual({ ok: false });
 
-    await devices.updateOne({ _id: device._id }, { $set: { is_active: true } }).exec();
+    await devices
+      .updateOne({ _id: device._id }, { $set: { is_active: true } })
+      .exec();
     deviceSocket.disconnect();
   });
 });

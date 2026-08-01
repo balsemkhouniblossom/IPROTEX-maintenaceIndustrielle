@@ -82,6 +82,7 @@ export default function DocumentAttachmentViewer({ document, title }: Props) {
           </div>
         ) : null}
         {displayUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- blob/object URLs and protected file URLs are not compatible with next/image optimization.
           <img
             src={displayUrl}
             alt={label}

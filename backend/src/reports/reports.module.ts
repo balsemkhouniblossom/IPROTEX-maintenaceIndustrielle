@@ -1,18 +1,30 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { GeneratedReport, GeneratedReportSchema } from '../schemas/generated-report.schema';
-import { ScheduledReport, ScheduledReportSchema } from '../schemas/scheduled-report.schema';
+import {
+  GeneratedReport,
+  GeneratedReportSchema,
+} from '../schemas/generated-report.schema';
+import {
+  ScheduledReport,
+  ScheduledReportSchema,
+} from '../schemas/scheduled-report.schema';
 import { WorkOrder, WorkOrderSchema } from '../schemas/work-order.schema';
 import {
   InterventionReport,
   InterventionReportSchema,
 } from '../schemas/intervention-report.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
-import { StockMovement, StockMovementSchema } from '../schemas/stock-movement.schema';
+import {
+  StockMovement,
+  StockMovementSchema,
+} from '../schemas/stock-movement.schema';
 import { Catalogue, CatalogueSchema } from '../schemas/catalogue.schema';
 import { FaultEvent, FaultEventSchema } from '../schemas/fault-event.schema';
 import { DocumentEntity, DocumentSchema } from '../schemas/document.schema';
-import { MaintenancePlan, MaintenancePlanSchema } from '../schemas/maintenance-plan.schema';
+import {
+  MaintenancePlan,
+  MaintenancePlanSchema,
+} from '../schemas/maintenance-plan.schema';
 import { User, UserSchema } from '../schemas/user.schema';
 import { DocumentsModule } from '../documents/documents.module';
 import { KpiModule } from '../kpi/kpi.module';

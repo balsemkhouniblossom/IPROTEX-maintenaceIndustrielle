@@ -6,6 +6,7 @@ import {
   Body,
   Query,
   Get,
+  Param,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -29,7 +30,13 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { CompleteGoogleProfileDto } from './dto/complete-google-profile.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { GoogleAuthGuard } from './google-auth.guard';
-import type { CookieOptions, Request as ExpressRequest, Response } from 'express';
+import { AdminAccountGuard } from './guards/admin-account.guard';
+import { AdminOnly } from './decorators/roles.decorator';
+import type {
+  CookieOptions,
+  Request as ExpressRequest,
+  Response,
+} from 'express';
 import * as crypto from 'crypto';
 import type { UserDocument } from '../schemas/user.schema';
 import type { GoogleUserProfile } from './auth.service';
@@ -104,7 +111,10 @@ export class AuthController {
       throw new UnauthorizedException('Authentication failed');
     }
 
-    return this.attachRefreshCookie(res, await this.authService.login(req.user));
+    return this.attachRefreshCookie(
+      res,
+      await this.authService.login(req.user),
+    );
   }
   @Get('google')
   @UseGuards(GoogleAuthGuard)
@@ -259,6 +269,17 @@ export class AuthController {
     );
   }
 
+  @Post('force-password-reset/:userId')
+  @UseGuards(JwtAuthGuard, AdminAccountGuard)
+  @AdminOnly()
+  async forcePasswordReset(
+    @Param('userId') userId: string,
+    @Request() req: ExpressRequest,
+  ) {
+    const requestOrigin = req.headers.origin ?? req.headers.referer;
+    return this.authService.forcePasswordReset(userId, requestOrigin);
+  }
+
   @Get('verify-reset-token')
   @Public()
   async verifyResetToken(
@@ -269,11 +290,8 @@ export class AuthController {
       throw new BadRequestException('Reset token is required');
     }
 
-    return this.withAuthThrottle(
-      'verify-reset-token',
-      req,
-      { token },
-      () => this.authService.verifyResetToken(token),
+    return this.withAuthThrottle('verify-reset-token', req, { token }, () =>
+      this.authService.verifyResetToken(token),
     );
   }
 
@@ -376,7 +394,9 @@ export class AuthController {
   private assertCsrfToken(req: ExpressRequest): void {
     const cookieToken = getCookieValue(req.headers.cookie, CSRF_COOKIE_NAME);
     const headerToken = req.headers[CSRF_HEADER_NAME];
-    const submittedToken = Array.isArray(headerToken) ? headerToken[0] : headerToken;
+    const submittedToken = Array.isArray(headerToken)
+      ? headerToken[0]
+      : headerToken;
 
     if (
       !cookieToken ||
@@ -393,7 +413,9 @@ export class AuthController {
   private getRefreshCookieMaxAgeMs(): number {
     const configured = process.env.JWT_REFRESH_COOKIE_MAX_AGE_MS;
     const parsed = Number(configured);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : 7 * 24 * 60 * 60 * 1000;
+    return Number.isInteger(parsed) && parsed > 0
+      ? parsed
+      : 7 * 24 * 60 * 60 * 1000;
   }
 }
 

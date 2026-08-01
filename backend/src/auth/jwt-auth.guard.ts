@@ -48,6 +48,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       is_active: user?.is_active,
       is_verified: user?.is_verified,
       role: user?.role,
+      must_reset_password: user?.must_reset_password,
     });
 
     return true;

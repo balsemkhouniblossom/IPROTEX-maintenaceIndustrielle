@@ -13,10 +13,13 @@ describe('ZScoreModel', () => {
   });
 
   it('trains a mean/std artifact matching the feature vector length', () => {
-    const artifact = model.train([
-      sample('m1', new Array(FEATURE_NAMES.length).fill(1)),
-      sample('m1', new Array(FEATURE_NAMES.length).fill(3)),
-    ], 1);
+    const artifact = model.train(
+      [
+        sample('m1', new Array(FEATURE_NAMES.length).fill(1)),
+        sample('m1', new Array(FEATURE_NAMES.length).fill(3)),
+      ],
+      1,
+    );
 
     expect(artifact.mean).toHaveLength(FEATURE_NAMES.length);
     expect(artifact.std).toHaveLength(FEATURE_NAMES.length);
@@ -38,7 +41,12 @@ describe('ZScoreModel', () => {
   it('scores a point far from the trained baseline as high anomaly', () => {
     const samples: TrainingSample[] = [];
     for (let i = 0; i < 30; i += 1) {
-      samples.push(sample('m1', new Array(FEATURE_NAMES.length).fill(5 + (i % 2 === 0 ? 0.1 : -0.1))));
+      samples.push(
+        sample(
+          'm1',
+          new Array(FEATURE_NAMES.length).fill(5 + (i % 2 === 0 ? 0.1 : -0.1)),
+        ),
+      );
     }
     const artifact = model.train(samples, 1);
 
@@ -62,7 +70,9 @@ describe('ZScoreModel', () => {
   });
 
   it('is deterministic given the same samples', () => {
-    const samples = Array.from({ length: 10 }, (_, i) => sample('m1', [i, i * 2]));
+    const samples = Array.from({ length: 10 }, (_, i) =>
+      sample('m1', [i, i * 2]),
+    );
     const a = model.train(samples, 1);
     const b = model.train(samples, 1);
     expect(a.mean).toEqual(b.mean);

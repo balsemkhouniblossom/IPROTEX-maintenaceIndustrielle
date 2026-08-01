@@ -10,10 +10,17 @@ describe('PredictiveRiskReportProvider', () => {
 
   function buildProvider(summaries: unknown[], machines: unknown[]) {
     const machineModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves(machines)) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves(machines)),
+      }),
     };
-    const predictiveMaintenanceService = { getFleetSummary: jest.fn().mockResolvedValue(summaries) };
-    const provider = new PredictiveRiskReportProvider(machineModel as never, predictiveMaintenanceService as never);
+    const predictiveMaintenanceService = {
+      getFleetSummary: jest.fn().mockResolvedValue(summaries),
+    };
+    const provider = new PredictiveRiskReportProvider(
+      machineModel as never,
+      predictiveMaintenanceService as never,
+    );
     return { provider, predictiveMaintenanceService };
   }
 
@@ -35,7 +42,9 @@ describe('PredictiveRiskReportProvider', () => {
 
     const dataset = await provider.buildDataset({}, actor);
 
-    expect(predictiveMaintenanceService.getFleetSummary).toHaveBeenCalledWith(actor);
+    expect(predictiveMaintenanceService.getFleetSummary).toHaveBeenCalledWith(
+      actor,
+    );
     expect(dataset.rows).toEqual([
       expect.objectContaining({
         machine: 'M-1 (Press)',
@@ -52,8 +61,22 @@ describe('PredictiveRiskReportProvider', () => {
     const dropId = new Types.ObjectId().toString();
     const { provider } = buildProvider(
       [
-        { machineId: keepId, healthScore: 90, riskLevel: 'low', confidence: 1, modelCount: 1, generatedAt: null },
-        { machineId: dropId, healthScore: 10, riskLevel: 'critical', confidence: 1, modelCount: 1, generatedAt: null },
+        {
+          machineId: keepId,
+          healthScore: 90,
+          riskLevel: 'low',
+          confidence: 1,
+          modelCount: 1,
+          generatedAt: null,
+        },
+        {
+          machineId: dropId,
+          healthScore: 10,
+          riskLevel: 'critical',
+          confidence: 1,
+          modelCount: 1,
+          generatedAt: null,
+        },
       ],
       [{ _id: keepId, machine_id: 'M-1' }],
     );
@@ -69,8 +92,22 @@ describe('PredictiveRiskReportProvider', () => {
     const id2 = new Types.ObjectId().toString();
     const { provider } = buildProvider(
       [
-        { machineId: id1, healthScore: 95, riskLevel: 'low', confidence: 1, modelCount: 1, generatedAt: null },
-        { machineId: id2, healthScore: 15, riskLevel: 'critical', confidence: 1, modelCount: 1, generatedAt: null },
+        {
+          machineId: id1,
+          healthScore: 95,
+          riskLevel: 'low',
+          confidence: 1,
+          modelCount: 1,
+          generatedAt: null,
+        },
+        {
+          machineId: id2,
+          healthScore: 15,
+          riskLevel: 'critical',
+          confidence: 1,
+          modelCount: 1,
+          generatedAt: null,
+        },
       ],
       [
         { _id: id1, machine_id: 'M-1' },

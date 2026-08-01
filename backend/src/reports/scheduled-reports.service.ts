@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as crypto from 'crypto';
@@ -35,9 +39,14 @@ export class ScheduledReportsService {
     private readonly scheduledReportModel: Model<ScheduledReportDocument>,
   ) {}
 
-  async create(dto: CreateScheduledReportDto, actor: ReportActor): Promise<ScheduledReportDocument> {
+  async create(
+    dto: CreateScheduledReportDto,
+    actor: ReportActor,
+  ): Promise<ScheduledReportDocument> {
     if (!canRequestReportType(actor.role, dto.type)) {
-      throw new ForbiddenException(`Your role may not schedule a ${dto.type} report`);
+      throw new ForbiddenException(
+        `Your role may not schedule a ${dto.type} report`,
+      );
     }
 
     const now = new Date();
@@ -54,8 +63,14 @@ export class ScheduledReportsService {
   }
 
   async listForActor(actor: ReportActor): Promise<ScheduledReportDocument[]> {
-    const filter = actor.role === Role.ADMIN ? {} : { created_by: new Types.ObjectId(actor.userId) };
-    return this.scheduledReportModel.find(filter).sort({ createdAt: -1 }).exec();
+    const filter =
+      actor.role === Role.ADMIN
+        ? {}
+        : { created_by: new Types.ObjectId(actor.userId) };
+    return this.scheduledReportModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .exec();
   }
 
   async update(
@@ -81,11 +96,19 @@ export class ScheduledReportsService {
     await this.scheduledReportModel.findByIdAndDelete(schedule._id).exec();
   }
 
-  private async getOwned(id: string, actor: ReportActor): Promise<ScheduledReportDocument> {
+  private async getOwned(
+    id: string,
+    actor: ReportActor,
+  ): Promise<ScheduledReportDocument> {
     const schedule = await this.scheduledReportModel.findById(id).exec();
     if (!schedule) throw new NotFoundException('Scheduled report not found');
-    if (actor.role !== Role.ADMIN && schedule.created_by.toString() !== actor.userId) {
-      throw new ForbiddenException('You may only manage your own scheduled reports');
+    if (
+      actor.role !== Role.ADMIN &&
+      schedule.created_by.toString() !== actor.userId
+    ) {
+      throw new ForbiddenException(
+        'You may only manage your own scheduled reports',
+      );
     }
     return schedule;
   }

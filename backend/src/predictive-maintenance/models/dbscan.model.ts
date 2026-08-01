@@ -7,7 +7,13 @@ import {
   PredictionModelType,
   TrainingSample,
 } from '../prediction-model.interface';
-import { clamp01, computeFeatureStats, euclideanDistance, squash, standardize } from './math.util';
+import {
+  clamp01,
+  computeFeatureStats,
+  euclideanDistance,
+  squash,
+  standardize,
+} from './math.util';
 
 export type DbscanArtifact = ModelArtifact & {
   mean: number[];
@@ -50,15 +56,19 @@ export class DbscanModel implements PredictionModel {
       let neighborCount = 0;
       for (let j = 0; j < n; j += 1) {
         if (i === j) continue;
-        if (euclideanDistance(standardized[i], standardized[j]) <= DEFAULT_EPSILON) neighborCount += 1;
+        if (
+          euclideanDistance(standardized[i], standardized[j]) <= DEFAULT_EPSILON
+        )
+          neighborCount += 1;
       }
       if (neighborCount + 1 >= DEFAULT_MIN_PTS) isCore[i] = true;
     }
 
     const corePoints = standardized.filter((_, i) => isCore[i]);
-    const stride = corePoints.length > MAX_STORED_CORE_POINTS
-      ? Math.ceil(corePoints.length / MAX_STORED_CORE_POINTS)
-      : 1;
+    const stride =
+      corePoints.length > MAX_STORED_CORE_POINTS
+        ? Math.ceil(corePoints.length / MAX_STORED_CORE_POINTS)
+        : 1;
     const cappedCorePoints = corePoints.filter((_, i) => i % stride === 0);
 
     return {
@@ -81,17 +91,23 @@ export class DbscanModel implements PredictionModel {
       return {
         anomalyScore: 0.5,
         confidence: 0,
-        modelNotes: ['No dense region could be established from the training data — DBSCAN has no baseline to compare against.'],
+        modelNotes: [
+          'No dense region could be established from the training data — DBSCAN has no baseline to compare against.',
+        ],
       };
     }
 
     const standardized = standardize(features, { mean, std });
-    const minDistance = Math.min(...corePoints.map((core) => euclideanDistance(standardized, core)));
+    const minDistance = Math.min(
+      ...corePoints.map((core) => euclideanDistance(standardized, core)),
+    );
     const excess = Math.max(0, minDistance - epsilon);
 
     return {
       anomalyScore: squash(excess, Math.max(epsilon, 0.5)),
-      confidence: clamp01(artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES),
+      confidence: clamp01(
+        artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES,
+      ),
       modelNotes: [
         `Distance to the nearest dense operating region: ${minDistance.toFixed(2)} (density threshold epsilon=${epsilon.toFixed(2)}).`,
         minDistance <= epsilon

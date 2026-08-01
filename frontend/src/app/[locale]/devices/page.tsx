@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowPathIcon,
   CheckCircleIcon,
   CpuChipIcon,
   ExclamationTriangleIcon,
@@ -68,7 +67,7 @@ export default function DevicesPage() {
     setTimeout(() => setNotification(null), 5000);
   }
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [devicesRes, machinesRes] = await Promise.all([
@@ -85,11 +84,11 @@ export default function DevicesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [loadData]);
 
   const machineLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -195,7 +194,12 @@ export default function DevicesPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)} className="ml-2 text-gray-500 hover:text-gray-700" title={tCommon("close")}>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 text-gray-500 hover:text-gray-700"
+            title={tCommon("close")}
+            aria-label={tCommon("close")}
+          >
             x
           </button>
         </div>
@@ -260,6 +264,7 @@ export default function DevicesPage() {
                   onClick={() => handleToggleActive(device)}
                   className={device.is_active ? "text-gray-600" : "text-green-600"}
                   title={device.is_active ? t("actions.deactivate") : t("actions.activate")}
+                  aria-label={device.is_active ? t("actions.deactivate") : t("actions.activate")}
                 >
                   {device.is_active ? <ExclamationTriangleIcon className="w-5 h-5" /> : <CheckCircleIcon className="w-5 h-5" />}
                 </button>
@@ -267,6 +272,7 @@ export default function DevicesPage() {
                   onClick={() => handleRotateKey(device)}
                   className="text-indigo-600"
                   title={t("actions.rotateKey")}
+                  aria-label={t("actions.rotateKey")}
                 >
                   <KeyIcon className="w-5 h-5" />
                 </button>
@@ -274,6 +280,7 @@ export default function DevicesPage() {
                   onClick={() => handleDelete(device)}
                   className="text-red-600"
                   title={t("actions.delete")}
+                  aria-label={t("actions.delete")}
                 >
                   <TrashIcon className="w-5 h-5" />
                 </button>

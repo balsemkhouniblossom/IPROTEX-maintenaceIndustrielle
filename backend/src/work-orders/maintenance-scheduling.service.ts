@@ -104,7 +104,11 @@ export class MaintenanceSchedulingService {
   }
 
   calculateNextDueDate(input: NextDueInput): Date {
-    const base = new Date(input.performedAt);
+    const timeZone = input.timezone || this.getBusinessTimezone();
+    const base = businessTime.parseBusinessDateInput(
+      input.performedAt,
+      timeZone,
+    );
     if (Number.isNaN(base.getTime())) {
       throw new Error('Invalid performedAt date');
     }
@@ -118,14 +122,22 @@ export class MaintenanceSchedulingService {
 
     const frequency = this.normalizeFrequency(input.intervalUnit);
 
-    if (frequency === 'DAILY') return this.addDays(base, value);
-    if (frequency === 'WEEKLY') return this.addDays(base, value * 7);
-    if (frequency === 'MONTHLY') return this.addMonths(base, value);
-    if (frequency === 'QUARTERLY') return this.addMonths(base, value * 3);
-    if (frequency === 'SEMIANNUAL') return this.addMonths(base, value * 6);
-    if (frequency === 'YEARLY') return this.addYears(base, value);
+    if (frequency === 'DAILY')
+      return this.addBusinessDays(base, value, timeZone);
+    if (frequency === 'WEEKLY')
+      return this.addBusinessDays(base, value * 7, timeZone);
+    if (frequency === 'MONTHLY')
+      return this.addBusinessMonths(base, value, timeZone);
+    if (frequency === 'QUARTERLY') {
+      return this.addBusinessMonths(base, value * 3, timeZone);
+    }
+    if (frequency === 'SEMIANNUAL') {
+      return this.addBusinessMonths(base, value * 6, timeZone);
+    }
+    if (frequency === 'YEARLY')
+      return this.addBusinessYears(base, value, timeZone);
 
-    return this.addMonths(base, value);
+    return this.addBusinessMonths(base, value, timeZone);
   }
 
   calculateOperationalStatus(input: StatusInput): OperationalStatus {
@@ -172,12 +184,25 @@ export class MaintenanceSchedulingService {
     return businessTime.getBusinessTimezone();
   }
 
-  startOfBusinessDay(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
+  startOfBusinessDay(
+    value: Date,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
     return businessTime.startOfBusinessDay(value, timeZone);
   }
 
-  endOfBusinessDay(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
+  endOfBusinessDay(
+    value: Date,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
     return businessTime.endOfBusinessDay(value, timeZone);
+  }
+
+  parseBusinessDateInput(
+    value: Date | string,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
+    return businessTime.parseBusinessDateInput(value, timeZone);
   }
 
   addBusinessDays(
@@ -196,15 +221,32 @@ export class MaintenanceSchedulingService {
     return businessTime.addBusinessMonths(value, months, timeZone);
   }
 
-  startOfBusinessWeek(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
+  addBusinessYears(
+    value: Date,
+    years: number,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
+    return businessTime.addBusinessYears(value, years, timeZone);
+  }
+
+  startOfBusinessWeek(
+    value: Date,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
     return businessTime.startOfBusinessWeek(value, timeZone);
   }
 
-  startOfBusinessMonth(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
+  startOfBusinessMonth(
+    value: Date,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
     return businessTime.startOfBusinessMonth(value, timeZone);
   }
 
-  startOfBusinessYear(value: Date, timeZone: string = this.getBusinessTimezone()): Date {
+  startOfBusinessYear(
+    value: Date,
+    timeZone: string = this.getBusinessTimezone(),
+  ): Date {
     return businessTime.startOfBusinessYear(value, timeZone);
   }
 
@@ -215,39 +257,5 @@ export class MaintenanceSchedulingService {
     if (frequency === 'YEARLY') return 30;
     if (frequency === 'QUARTERLY' || frequency === 'SEMIANNUAL') return 14;
     return 7;
-  }
-
-  private addDays(value: Date, days: number): Date {
-    const result = new Date(value);
-    result.setDate(result.getDate() + days);
-    return result;
-  }
-
-  private addMonths(value: Date, months: number): Date {
-    const result = new Date(value);
-    const originalDay = result.getDate();
-    result.setDate(1);
-    result.setMonth(result.getMonth() + months);
-    const lastDay = new Date(
-      result.getFullYear(),
-      result.getMonth() + 1,
-      0,
-    ).getDate();
-    result.setDate(Math.min(originalDay, lastDay));
-    return result;
-  }
-
-  private addYears(value: Date, years: number): Date {
-    const result = new Date(value);
-    const originalMonth = result.getMonth();
-    const originalDay = result.getDate();
-    result.setFullYear(result.getFullYear() + years, originalMonth, 1);
-    const lastDay = new Date(
-      result.getFullYear(),
-      originalMonth + 1,
-      0,
-    ).getDate();
-    result.setDate(Math.min(originalDay, lastDay));
-    return result;
   }
 }

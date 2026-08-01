@@ -122,6 +122,7 @@ export function VirtualizedDataTable<T>({
     return () => observer.disconnect();
   }, []);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual owns its internal function identities.
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,

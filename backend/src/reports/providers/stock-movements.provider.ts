@@ -6,8 +6,8 @@ import {
   StockMovementDocument,
 } from '../../schemas/stock-movement.schema';
 import { buildDateRangeFilter } from '../report-date-filter.util';
+import { SAFE_USER_PROJECTION } from '../../users/safe-user-projection';
 import {
-  ReportActor,
   ReportDataProvider,
   ReportDataset,
   ReportParams,
@@ -28,13 +28,15 @@ export class StockMovementsReportProvider implements ReportDataProvider {
 
   async buildDataset(params: ReportParams): Promise<ReportDataset> {
     const dateFilter = buildDateRangeFilter(params.dateFrom, params.dateTo);
-    const filter: FilterQuery<StockMovementDocument> = dateFilter ? { createdAt: dateFilter } : {};
+    const filter: FilterQuery<StockMovementDocument> = dateFilter
+      ? { createdAt: dateFilter }
+      : {};
 
     const movements = await this.stockMovementModel
       .find(filter)
       .populate('stock_id', 'stock_id')
       .populate('part_id', 'nom_piece ref_constructeur')
-      .populate('actor_user_id', 'nom_complet')
+      .populate('actor_user_id', SAFE_USER_PROJECTION)
       .populate('work_order_id', 'ot_id')
       .sort({ createdAt: -1 })
       .limit(params.limit ?? DEFAULT_LIMIT)
@@ -42,9 +44,16 @@ export class StockMovementsReportProvider implements ReportDataProvider {
 
     const rows = movements.map((movement) => {
       const stock = movement.stock_id as unknown as { stock_id?: string };
-      const part = movement.part_id as unknown as { nom_piece?: string; ref_constructeur?: string };
-      const actor = movement.actor_user_id as unknown as { nom_complet?: string } | undefined;
-      const workOrder = movement.work_order_id as unknown as { ot_id?: string } | undefined;
+      const part = movement.part_id as unknown as {
+        nom_piece?: string;
+        ref_constructeur?: string;
+      };
+      const actor = movement.actor_user_id as unknown as
+        | { nom_complet?: string }
+        | undefined;
+      const workOrder = movement.work_order_id as unknown as
+        | { ot_id?: string }
+        | undefined;
       const doc = movement as unknown as { createdAt?: Date };
 
       return {

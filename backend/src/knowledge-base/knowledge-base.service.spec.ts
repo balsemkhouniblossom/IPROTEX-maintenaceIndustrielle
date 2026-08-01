@@ -1,7 +1,14 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { KnowledgeBaseService } from './knowledge-base.service';
-import { KnowledgeArticleCategory, KnowledgeArticleStatus } from '../schemas/knowledge-article.schema';
+import {
+  KnowledgeArticleCategory,
+  KnowledgeArticleStatus,
+} from '../schemas/knowledge-article.schema';
 
 type ArticleModelMock = jest.Mock & {
   findById?: jest.Mock;
@@ -15,18 +22,26 @@ type ArticleModelMock = jest.Mock & {
 function article(plain: Record<string, unknown>) {
   return {
     ...plain,
-    save: jest.fn().mockImplementation(function (this: Record<string, unknown>) {
+    save: jest.fn().mockImplementation(function (
+      this: Record<string, unknown>,
+    ) {
       return Promise.resolve({ ...this });
     }),
   };
 }
 
 function existsStub(result = true) {
-  return { exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(result) }) };
+  return {
+    exists: jest
+      .fn()
+      .mockReturnValue({ exec: jest.fn().mockResolvedValue(result) }),
+  };
 }
 
 function findByIdStub(result: unknown) {
-  return jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(result) });
+  return jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(result) });
 }
 
 function oid(): string {
@@ -45,7 +60,9 @@ describe('KnowledgeBaseService', () => {
     articleModel = jest.fn() as ArticleModelMock;
     machineModel = existsStub();
     machineModel.findById = jest.fn().mockReturnValue({
-      select: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+      select: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
     });
     machineTypeModel = existsStub();
     maintenancePlanModel = existsStub();
@@ -62,7 +79,9 @@ describe('KnowledgeBaseService', () => {
 
   describe('create', () => {
     it('creates a Draft, version 1, revision 1 article with a created lifecycle entry', async () => {
-      articleModel.mockImplementation((input: Record<string, unknown>) => article(input));
+      articleModel.mockImplementation((input: Record<string, unknown>) =>
+        article(input),
+      );
 
       const result = await service.create(
         {
@@ -78,11 +97,15 @@ describe('KnowledgeBaseService', () => {
       expect(result.version).toBe(1);
       expect(result.revision).toBe(1);
       expect((result.lifecycle_history as unknown[]).length).toBe(1);
-      expect((result.lifecycle_history as { action: string }[])[0].action).toBe('created');
+      expect((result.lifecycle_history as { action: string }[])[0].action).toBe(
+        'created',
+      );
     });
 
     it('rejects a create when the referenced machine does not exist', async () => {
-      machineModel.exists = jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(false) });
+      machineModel.exists = jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(false) });
 
       await expect(
         service.create({
@@ -98,14 +121,16 @@ describe('KnowledgeBaseService', () => {
 
   describe('findOne', () => {
     it('throws BadRequestException for an invalid id', async () => {
-      await expect(service.findOne('not-an-id', false)).rejects.toThrow(BadRequestException);
+      await expect(service.findOne('not-an-id', false)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws NotFoundException when the article does not exist', async () => {
       articleModel.findById = findByIdStub(null);
-      await expect(service.findOne(new Types.ObjectId().toString(), false)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findOne(new Types.ObjectId().toString(), false),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('hides a non-Published article from a reader that requires Published', async () => {
@@ -113,7 +138,9 @@ describe('KnowledgeBaseService', () => {
       articleModel.findById = findByIdStub(
         article({ _id: id, status: KnowledgeArticleStatus.DRAFT }),
       );
-      await expect(service.findOne(id, true)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(id, true)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns a Published article to a reader that requires Published', async () => {
@@ -131,9 +158,15 @@ describe('KnowledgeBaseService', () => {
       const id = oid();
       const rootId = new Types.ObjectId();
       articleModel.findById = findByIdStub(
-        article({ _id: id, root_article_id: rootId, status: KnowledgeArticleStatus.PUBLISHED }),
+        article({
+          _id: id,
+          root_article_id: rootId,
+          status: KnowledgeArticleStatus.PUBLISHED,
+        }),
       );
-      const sortMock = jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(['v1', 'v2']) });
+      const sortMock = jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(['v1', 'v2']) });
       articleModel.find = jest.fn().mockReturnValue({ sort: sortMock });
 
       const result = await service.listVersionHistory(id, false);
@@ -150,9 +183,15 @@ describe('KnowledgeBaseService', () => {
     it('rejects editing a Published article directly', async () => {
       const id = oid();
       articleModel.findById = findByIdStub(
-        article({ _id: id, status: KnowledgeArticleStatus.PUBLISHED, version: 1 }),
+        article({
+          _id: id,
+          status: KnowledgeArticleStatus.PUBLISHED,
+          version: 1,
+        }),
       );
-      await expect(service.update(id, { title: 'New title' })).rejects.toThrow(ConflictException);
+      await expect(service.update(id, { title: 'New title' })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('requires expected_version once the article has a version', async () => {
@@ -160,7 +199,9 @@ describe('KnowledgeBaseService', () => {
       articleModel.findById = findByIdStub(
         article({ _id: id, status: KnowledgeArticleStatus.DRAFT, version: 3 }),
       );
-      await expect(service.update(id, { title: 'New title' })).rejects.toThrow(ConflictException);
+      await expect(service.update(id, { title: 'New title' })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('increments version and applies the update when expected_version matches', async () => {
@@ -169,10 +210,17 @@ describe('KnowledgeBaseService', () => {
         article({ _id: id, status: KnowledgeArticleStatus.DRAFT, version: 1 }),
       );
       articleModel.findOneAndUpdate = jest.fn().mockReturnValue({
-        exec: jest.fn().mockResolvedValue(article({ _id: id, title: 'New title', version: 2 })),
+        exec: jest
+          .fn()
+          .mockResolvedValue(
+            article({ _id: id, title: 'New title', version: 2 }),
+          ),
       });
 
-      const result = await service.update(id, { title: 'New title', expected_version: 1 });
+      const result = await service.update(id, {
+        title: 'New title',
+        expected_version: 1,
+      });
 
       expect(articleModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: id, version: 1 },
@@ -187,7 +235,9 @@ describe('KnowledgeBaseService', () => {
       articleModel.findById = findByIdStub(
         article({ _id: id, status: KnowledgeArticleStatus.DRAFT, version: 1 }),
       );
-      articleModel.findOneAndUpdate = jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      articleModel.findOneAndUpdate = jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
 
       await expect(
         service.update(id, { title: 'New title', expected_version: 1 }),
@@ -203,18 +253,30 @@ describe('KnowledgeBaseService', () => {
       );
       articleModel.findOneAndUpdate = jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue(
-          article({ _id: id, status: KnowledgeArticleStatus.PUBLISHED, version: 2 }),
+          article({
+            _id: id,
+            status: KnowledgeArticleStatus.PUBLISHED,
+            version: 2,
+          }),
         ),
       });
 
-      const result = await service.publish(id, { expected_version: 1 }, 'user-1');
+      const result = await service.publish(
+        id,
+        { expected_version: 1 },
+        'user-1',
+      );
       expect(result.status).toBe(KnowledgeArticleStatus.PUBLISHED);
     });
 
     it('rejects publishing an already-Published article', async () => {
       const id = oid();
       articleModel.findById = findByIdStub(
-        article({ _id: id, status: KnowledgeArticleStatus.PUBLISHED, version: 1 }),
+        article({
+          _id: id,
+          status: KnowledgeArticleStatus.PUBLISHED,
+          version: 1,
+        }),
       );
       await expect(service.publish(id, {})).rejects.toThrow(ConflictException);
     });
@@ -233,7 +295,11 @@ describe('KnowledgeBaseService', () => {
 
       const publishedUpdate = jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue(
-          article({ _id: id, status: KnowledgeArticleStatus.PUBLISHED, version: 2 }),
+          article({
+            _id: id,
+            status: KnowledgeArticleStatus.PUBLISHED,
+            version: 2,
+          }),
         ),
       });
       const predecessorUpdate = jest.fn().mockReturnValue({
@@ -254,9 +320,15 @@ describe('KnowledgeBaseService', () => {
         withTransaction: jest.fn(async (fn: () => Promise<unknown>) => fn()),
         endSession: jest.fn().mockResolvedValue(undefined),
       };
-      articleModel.db = { startSession: jest.fn().mockResolvedValue(sessionMock) };
+      articleModel.db = {
+        startSession: jest.fn().mockResolvedValue(sessionMock),
+      };
 
-      const result = await service.publish(id, { expected_version: 1 }, 'user-1');
+      const result = await service.publish(
+        id,
+        { expected_version: 1 },
+        'user-1',
+      );
 
       expect(result.status).toBe(KnowledgeArticleStatus.PUBLISHED);
       expect(articleModel.findOneAndUpdate).toHaveBeenCalledTimes(2);
@@ -268,22 +340,38 @@ describe('KnowledgeBaseService', () => {
     it('archives a Draft or Published article', async () => {
       const id = oid();
       articleModel.findById = findByIdStub(
-        article({ _id: id, status: KnowledgeArticleStatus.PUBLISHED, version: 1 }),
+        article({
+          _id: id,
+          status: KnowledgeArticleStatus.PUBLISHED,
+          version: 1,
+        }),
       );
       articleModel.findOneAndUpdate = jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue(
-          article({ _id: id, status: KnowledgeArticleStatus.ARCHIVED, version: 2 }),
+          article({
+            _id: id,
+            status: KnowledgeArticleStatus.ARCHIVED,
+            version: 2,
+          }),
         ),
       });
 
-      const result = await service.archive(id, { expected_version: 1 }, 'user-1');
+      const result = await service.archive(
+        id,
+        { expected_version: 1 },
+        'user-1',
+      );
       expect(result.status).toBe(KnowledgeArticleStatus.ARCHIVED);
     });
 
     it('rejects archiving an already-Archived article', async () => {
       const id = oid();
       articleModel.findById = findByIdStub(
-        article({ _id: id, status: KnowledgeArticleStatus.ARCHIVED, version: 1 }),
+        article({
+          _id: id,
+          status: KnowledgeArticleStatus.ARCHIVED,
+          version: 1,
+        }),
       );
       await expect(service.archive(id, {})).rejects.toThrow(ConflictException);
     });
@@ -295,7 +383,9 @@ describe('KnowledgeBaseService', () => {
       articleModel.findById = findByIdStub(
         article({ _id: id, status: KnowledgeArticleStatus.DRAFT, version: 1 }),
       );
-      await expect(service.reviseArticle(id, {})).rejects.toThrow(ConflictException);
+      await expect(service.reviseArticle(id, {})).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('creates a new Draft revision linked back to a Published article', async () => {
@@ -313,7 +403,9 @@ describe('KnowledgeBaseService', () => {
           content: 'Old content',
         }),
       );
-      articleModel.mockImplementation((input: Record<string, unknown>) => article(input));
+      articleModel.mockImplementation((input: Record<string, unknown>) =>
+        article(input),
+      );
 
       const result = await service.reviseArticle(
         id,
@@ -340,9 +432,9 @@ describe('KnowledgeBaseService', () => {
           lifecycle_history: [{ action: 'created' }],
         }),
       );
-      articleModel.findByIdAndDelete = jest
-        .fn()
-        .mockReturnValue({ exec: jest.fn().mockResolvedValue(article({ _id: id })) });
+      articleModel.findByIdAndDelete = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(article({ _id: id })),
+      });
 
       const result = await service.remove(id);
       expect(result._id).toBe(id);
@@ -376,7 +468,9 @@ describe('KnowledgeBaseService', () => {
         }),
       });
       articleModel.find = jest.fn().mockReturnValue({
-        limit: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue([]) }),
+        limit: jest
+          .fn()
+          .mockReturnValue({ exec: jest.fn().mockResolvedValue([]) }),
       });
 
       await service.computeSuggestions({ machineId });
@@ -409,16 +503,25 @@ describe('KnowledgeBaseService', () => {
 
       const result = await service.computeSuggestions({ machineId, faultCode });
 
-      expect(result.map((entry) => (entry as { _id: string })._id)).toEqual(['strong', 'weak']);
+      expect(result.map((entry) => (entry as { _id: string })._id)).toEqual([
+        'strong',
+        'weak',
+      ]);
     });
 
     it('caps results at the requested limit', async () => {
       const machineId = new Types.ObjectId().toString();
       const candidates = Array.from({ length: 8 }, (_, index) =>
-        article({ _id: `m${index}`, status: KnowledgeArticleStatus.PUBLISHED, machine_id: machineId }),
+        article({
+          _id: `m${index}`,
+          status: KnowledgeArticleStatus.PUBLISHED,
+          machine_id: machineId,
+        }),
       );
       articleModel.find = jest.fn().mockReturnValue({
-        limit: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(candidates) }),
+        limit: jest
+          .fn()
+          .mockReturnValue({ exec: jest.fn().mockResolvedValue(candidates) }),
       });
 
       const result = await service.computeSuggestions({ machineId, limit: 3 });

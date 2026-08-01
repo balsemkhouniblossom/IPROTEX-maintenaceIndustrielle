@@ -47,7 +47,11 @@ import { LiveMonitoringController } from './live-monitoring.controller';
     DocumentsModule,
     NotificationCenterModule,
   ],
-  controllers: [DevicesController, DeviceGatewayController, LiveMonitoringController],
+  controllers: [
+    DevicesController,
+    DeviceGatewayController,
+    LiveMonitoringController,
+  ],
   providers: [
     DeviceAuthService,
     DeviceAuthGuard,

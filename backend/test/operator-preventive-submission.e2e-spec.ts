@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -33,7 +33,10 @@ import {
   InterventionReport,
   InterventionReportDocument,
 } from '../src/schemas/intervention-report.schema';
-import { Lubrifiant, LubrifiantDocument } from '../src/schemas/lubrifiant.schema';
+import {
+  Lubrifiant,
+  LubrifiantDocument,
+} from '../src/schemas/lubrifiant.schema';
 import {
   LubrificationLog,
   LubrificationLogDocument,
@@ -206,7 +209,9 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
     adminToken = tokenFor(admin);
   }
 
-  async function createScheduledOccurrence(overrides: Record<string, unknown> = {}) {
+  async function createScheduledOccurrence(
+    overrides: Record<string, unknown> = {},
+  ) {
     return workOrders.create({
       ot_id: `WO-PREV-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       machine_id: machine._id,
@@ -369,18 +374,26 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
 
     const storedOrder = await workOrders.findById(occurrence._id);
     expect(storedOrder?.status).toBe('waiting_validation');
-    expect(storedOrder?.description).toBe('Check belt tension | Inspect wiring');
+    expect(storedOrder?.description).toBe(
+      'Check belt tension | Inspect wiring',
+    );
     // execution_date is derived from the server clock at request time, never
     // from any client-supplied value.
     const executionDate = storedOrder?.execution_date as Date;
-    expect(executionDate.getTime()).toBeGreaterThanOrEqual(before.getTime() - 1000);
+    expect(executionDate.getTime()).toBeGreaterThanOrEqual(
+      before.getTime() - 1000,
+    );
     expect(executionDate.getTime()).toBeLessThanOrEqual(after.getTime() + 1000);
 
     const storedReport = await reports.findById(response.body.report._id);
     expect(storedReport?.ot_id.toString()).toBe(occurrence._id.toString());
-    expect(storedReport?.technician_id?.toString()).toBe(operator._id.toString());
+    expect(storedReport?.technician_id?.toString()).toBe(
+      operator._id.toString(),
+    );
     expect(storedReport?.cause_racine).toBe('All nominal');
-    expect(storedReport?.description_action).toBe('Check belt tension | Inspect wiring');
+    expect(storedReport?.description_action).toBe(
+      'Check belt tension | Inspect wiring',
+    );
     expect(storedReport?.etat_final).toBe('good');
     expect(storedReport?.validation_responsable).toBe('waiting_validation');
 
@@ -501,7 +514,9 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
       })
       .expect(201);
 
-    const executionDate = new Date(submitResponse.body.workOrder.execution_date);
+    const executionDate = new Date(
+      submitResponse.body.workOrder.execution_date,
+    );
 
     expect(
       await workOrders.countDocuments({

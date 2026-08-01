@@ -81,13 +81,19 @@ describe('TechnicianService authorization policy', () => {
       }
     ).visibleScope(technicianId);
 
-    expect(documentAccessService.listAccessibleMachineIds).toHaveBeenCalledWith({
-      userId: technicianId,
-      role: Role.TECHNICIAN,
-    });
+    expect(documentAccessService.listAccessibleMachineIds).toHaveBeenCalledWith(
+      {
+        userId: technicianId,
+        role: Role.TECHNICIAN,
+      },
+    );
     expect(scope).toEqual({
       $or: [
-        { technician_id: { $in: [new Types.ObjectId(technicianId), technicianId] } },
+        {
+          technician_id: {
+            $in: [new Types.ObjectId(technicianId), technicianId],
+          },
+        },
         {
           machine_id: { $in: [machineId] },
           status: {
@@ -109,8 +115,9 @@ describe('TechnicianService authorization policy', () => {
   it('blocks unassigned claims when no assigned-machine claimable scope exists', async () => {
     documentAccessService.listAccessibleMachineIds.mockResolvedValue([]);
 
-    await expect(service.claim(technicianId, new Types.ObjectId().toHexString()))
-      .rejects.toThrow('Work order is closed or already assigned');
+    await expect(
+      service.claim(technicianId, new Types.ObjectId().toHexString()),
+    ).rejects.toThrow('Work order is closed or already assigned');
 
     expect(workOrdersModel.findOneAndUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -123,11 +130,17 @@ describe('TechnicianService authorization policy', () => {
   });
 
   it('requires document machine authorization before returning technician manuals for a requested machine', async () => {
-    const forbidden = new ForbiddenException('Technician is not authorized for this machine');
+    const forbidden = new ForbiddenException(
+      'Technician is not authorized for this machine',
+    );
     documentAccessService.assertCanAccessMachine.mockRejectedValue(forbidden);
 
     await expect(
-      service.manuals(technicianId, { page: 1, limit: 20, skip: 0 }, machineId.toHexString()),
+      service.manuals(
+        technicianId,
+        { page: 1, limit: 20, skip: 0 },
+        machineId.toHexString(),
+      ),
     ).rejects.toThrow(ForbiddenException);
 
     expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
@@ -219,7 +232,10 @@ describe('TechnicianService.details', () => {
       }),
     );
 
-    const result = await service.details(technicianId, workOrderId.toHexString());
+    const result = await service.details(
+      technicianId,
+      workOrderId.toHexString(),
+    );
 
     expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
       { userId: technicianId, role: Role.TECHNICIAN },
@@ -259,6 +275,87 @@ describe('TechnicianService.details', () => {
     await service.details(technicianId, workOrderId.toHexString());
 
     expect(documentAccessService.assertCanAccessMachine).not.toHaveBeenCalled();
+  });
+
+  it('never fetches the full technician User document — populate is restricted to a safe projection', async () => {
+    const workOrderChain = populateChain({
+      _id: workOrderId,
+      machine_id: null,
+      technician_id: technicianId,
+    });
+    workOrdersModel.findOne.mockReturnValue(workOrderChain);
+
+    await service.details(technicianId, workOrderId.toHexString());
+
+    expect(workOrderChain.populate).toHaveBeenCalledWith(
+      'technician_id',
+      'nom_complet user_id role',
+    );
+    expect(workOrderChain.populate).not.toHaveBeenCalledWith('technician_id');
+  });
+});
+
+describe('TechnicianService.workOrders — technician projection', () => {
+  const technicianId = new Types.ObjectId().toHexString();
+
+  function populateChain(value: unknown) {
+    const chain: { populate: jest.Mock; exec: jest.Mock } = {
+      populate: jest.fn(),
+      exec: jest.fn().mockResolvedValue(value),
+    };
+    chain.populate.mockReturnValue(chain);
+    return chain;
+  }
+
+  let workOrdersModel: {
+    aggregate: jest.Mock;
+    countDocuments: jest.Mock;
+    find: jest.Mock;
+  };
+  let reportsModel: { find: jest.Mock };
+  let documentAccessService: { listAccessibleMachineIds: jest.Mock };
+  let findChain: { populate: jest.Mock; exec: jest.Mock };
+  let service: TechnicianService;
+
+  beforeEach(() => {
+    findChain = populateChain([]);
+    workOrdersModel = {
+      aggregate: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue([]) }),
+      countDocuments: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+      find: jest.fn().mockReturnValue(findChain),
+    };
+    reportsModel = { find: jest.fn().mockReturnValue(populateChain([])) };
+    documentAccessService = {
+      listAccessibleMachineIds: jest.fn().mockResolvedValue([]),
+    };
+    service = new TechnicianService(
+      workOrdersModel as never,
+      reportsModel as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      documentAccessService as never,
+      { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
+      {} as never,
+      {} as never,
+    );
+  });
+
+  it('never fetches the full technician User document on the list endpoint either', async () => {
+    await service.workOrders(technicianId, { page: 1, limit: 10, skip: 0 }, {});
+
+    expect(findChain.populate).toHaveBeenCalledWith(
+      'technician_id',
+      'nom_complet user_id role',
+    );
+    expect(findChain.populate).not.toHaveBeenCalledWith('technician_id');
   });
 });
 
@@ -343,7 +440,11 @@ describe('TechnicianService.close notifications', () => {
     );
     expect(reportsModel.updateOne).toHaveBeenCalledWith(
       { _id: reportId },
-      { $set: expect.objectContaining({ validation_responsable: 'waiting_validation' }) },
+      {
+        $set: expect.objectContaining({
+          validation_responsable: 'waiting_validation',
+        }),
+      },
     );
   });
 
@@ -369,9 +470,11 @@ describe('TechnicianService.review', () => {
 
   beforeEach(() => {
     workOrdersModel = {
-      findOne: jest.fn().mockReturnValue(
-        execResult({ _id: workOrderId, status: 'waiting_validation' }),
-      ),
+      findOne: jest
+        .fn()
+        .mockReturnValue(
+          execResult({ _id: workOrderId, status: 'waiting_validation' }),
+        ),
       findOneAndUpdate: jest.fn().mockReturnValue(execResult(null)),
     };
     reportsModel = {
@@ -381,7 +484,9 @@ describe('TechnicianService.review', () => {
       listAccessibleMachineIds: jest.fn().mockResolvedValue([]),
     };
     workOrdersService = {
-      applyValidationAction: jest.fn().mockResolvedValue({ status: 'returned' }),
+      applyValidationAction: jest
+        .fn()
+        .mockResolvedValue({ status: 'returned' }),
     };
     service = new TechnicianService(
       workOrdersModel as never,
@@ -454,7 +559,9 @@ describe('TechnicianService.setPartQuantity', () => {
     workOrdersModel = {
       findOne: jest
         .fn()
-        .mockReturnValue(sessionChain({ _id: workOrderId, status: 'in_progress' })),
+        .mockReturnValue(
+          sessionChain({ _id: workOrderId, status: 'in_progress' }),
+        ),
       db: { startSession: jest.fn().mockResolvedValue(session) },
     };
     catalogueModel = {
@@ -464,7 +571,9 @@ describe('TechnicianService.setPartQuantity', () => {
       findOne: jest.fn().mockReturnValue(sessionChain(null)),
       create: jest
         .fn()
-        .mockResolvedValue([{ ot_id: workOrderId, part_id: partId, quantite: 4 }]),
+        .mockResolvedValue([
+          { ot_id: workOrderId, part_id: partId, quantite: 4 },
+        ]),
     };
     stockModel = {
       findOne: jest.fn().mockReturnValue(sessionChain({ _id: stockId })),
@@ -491,7 +600,12 @@ describe('TechnicianService.setPartQuantity', () => {
 
   it('rejects a missing part id', async () => {
     await expect(
-      service.setPartQuantity(technicianId, workOrderId.toHexString(), undefined, 4),
+      service.setPartQuantity(
+        technicianId,
+        workOrderId.toHexString(),
+        undefined,
+        4,
+      ),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -550,19 +664,26 @@ describe('TechnicianService.setPartQuantity', () => {
     );
 
     expect(stockModel.findOne).toHaveBeenCalledWith({ part_id: partId });
-    expect(stockMovementsService.recordUsageChange).toHaveBeenCalledWith(session, {
-      stockId: stockId.toString(),
-      partId: partId.toString(),
-      delta: 4,
-      workOrderId: workOrderId.toString(),
-      actorId: technicianId,
-    });
+    expect(stockMovementsService.recordUsageChange).toHaveBeenCalledWith(
+      session,
+      {
+        stockId: stockId.toString(),
+        partId: partId.toString(),
+        delta: 4,
+        workOrderId: workOrderId.toString(),
+        actorId: technicianId,
+      },
+    );
     expect(partsModel.create).toHaveBeenCalledWith(
       [{ ot_id: workOrderId, part_id: partId, quantite: 4 }],
       { session },
     );
     expect(session.endSession).toHaveBeenCalled();
-    expect(result).toEqual({ ot_id: workOrderId, part_id: partId, quantite: 4 });
+    expect(result).toEqual({
+      ot_id: workOrderId,
+      part_id: partId,
+      quantite: 4,
+    });
   });
 
   it('records only the incremental delta as Consumption when quantity increases on an existing row', async () => {
@@ -579,13 +700,16 @@ describe('TechnicianService.setPartQuantity', () => {
       7,
     );
 
-    expect(stockMovementsService.recordUsageChange).toHaveBeenCalledWith(session, {
-      stockId: stockId.toString(),
-      partId: partId.toString(),
-      delta: 4,
-      workOrderId: workOrderId.toString(),
-      actorId: technicianId,
-    });
+    expect(stockMovementsService.recordUsageChange).toHaveBeenCalledWith(
+      session,
+      {
+        stockId: stockId.toString(),
+        partId: partId.toString(),
+        delta: 4,
+        workOrderId: workOrderId.toString(),
+        actorId: technicianId,
+      },
+    );
     expect(existing.quantite).toBe(7);
     expect(existing.save).toHaveBeenCalledWith({ session });
   });
@@ -604,13 +728,16 @@ describe('TechnicianService.setPartQuantity', () => {
       6,
     );
 
-    expect(stockMovementsService.recordUsageChange).toHaveBeenCalledWith(session, {
-      stockId: stockId.toString(),
-      partId: partId.toString(),
-      delta: -4,
-      workOrderId: workOrderId.toString(),
-      actorId: technicianId,
-    });
+    expect(stockMovementsService.recordUsageChange).toHaveBeenCalledWith(
+      session,
+      {
+        stockId: stockId.toString(),
+        partId: partId.toString(),
+        delta: -4,
+        workOrderId: workOrderId.toString(),
+        actorId: technicianId,
+      },
+    );
   });
 
   it('skips Stock entirely when the corrected quantity matches what was already recorded', async () => {

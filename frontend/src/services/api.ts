@@ -14,10 +14,10 @@ const API_BASE_URL = getApiBaseUrl();
 
 if (typeof window === 'undefined') {
   // Server-side startup log (visible in Vercel Function logs)
-  console.log(`[API] Base URL resolved to: ${API_BASE_URL}`);
+  void API_BASE_URL;
 } else if (process.env.NODE_ENV !== 'production') {
   // Client-side dev log only — avoids leaking config in production browser console
-  console.log(`[API] Base URL resolved to: ${API_BASE_URL}`);
+  void API_BASE_URL;
 }
 
 const api = axios.create({

@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Device, DeviceConnectionStatus, DeviceDocument } from '../schemas/device.schema';
+import {
+  Device,
+  DeviceConnectionStatus,
+  DeviceDocument,
+} from '../schemas/device.schema';
 import { Telemetry, TelemetryDocument } from '../schemas/telemetry.schema';
 import {
   FaultEvent,
@@ -56,14 +60,20 @@ export class TelemetryIngestionService {
   private readonly logger = new Logger(TelemetryIngestionService.name);
 
   constructor(
-    @InjectModel(Device.name) private readonly deviceModel: Model<DeviceDocument>,
-    @InjectModel(Telemetry.name) private readonly telemetryModel: Model<TelemetryDocument>,
-    @InjectModel(FaultEvent.name) private readonly faultEventModel: Model<FaultEventDocument>,
+    @InjectModel(Device.name)
+    private readonly deviceModel: Model<DeviceDocument>,
+    @InjectModel(Telemetry.name)
+    private readonly telemetryModel: Model<TelemetryDocument>,
+    @InjectModel(FaultEvent.name)
+    private readonly faultEventModel: Model<FaultEventDocument>,
     private readonly notificationCenterService: NotificationCenterService,
   ) {}
 
-  async recordHeartbeat(device: DeviceDocument): Promise<{ cameOnline: boolean }> {
-    const cameOnline = device.last_known_status !== DeviceConnectionStatus.ONLINE;
+  async recordHeartbeat(
+    device: DeviceDocument,
+  ): Promise<{ cameOnline: boolean }> {
+    const cameOnline =
+      device.last_known_status !== DeviceConnectionStatus.ONLINE;
     await this.markSeenAndOnline(device);
     return { cameOnline };
   }
@@ -76,7 +86,8 @@ export class TelemetryIngestionService {
       throw new BadRequestException('metrics is required');
     }
 
-    const cameOnline = device.last_known_status !== DeviceConnectionStatus.ONLINE;
+    const cameOnline =
+      device.last_known_status !== DeviceConnectionStatus.ONLINE;
     const recordedAt = payload.recordedAt ?? new Date();
 
     const [record] = await Promise.all([
@@ -100,7 +111,8 @@ export class TelemetryIngestionService {
       throw new BadRequestException('code_panne is required');
     }
 
-    const cameOnline = device.last_known_status !== DeviceConnectionStatus.ONLINE;
+    const cameOnline =
+      device.last_known_status !== DeviceConnectionStatus.ONLINE;
     const raisedAt = payload.raisedAt ?? new Date();
     const severity = payload.severity ?? FaultEventSeverity.WARNING;
 
@@ -128,14 +140,19 @@ export class TelemetryIngestionService {
           recipientRole: Role.ADMIN,
         })
         .catch((error) => {
-          this.logger.warn(`Failed to create device-fault notification: ${String(error)}`);
+          this.logger.warn(
+            `Failed to create device-fault notification: ${String(error)}`,
+          );
         });
     }
 
     return { record, cameOnline };
   }
 
-  async resolveFault(faultId: string, resolvedByUserId: string): Promise<FaultEventDocument> {
+  async resolveFault(
+    faultId: string,
+    resolvedByUserId: string,
+  ): Promise<FaultEventDocument> {
     const existing = await this.faultEventModel.findById(faultId).exec();
     if (!existing) {
       throw new NotFoundException('Fault event not found');
@@ -162,7 +179,12 @@ export class TelemetryIngestionService {
     await this.deviceModel
       .updateOne(
         { _id: device._id },
-        { $set: { last_seen_at: now, last_known_status: DeviceConnectionStatus.ONLINE } },
+        {
+          $set: {
+            last_seen_at: now,
+            last_known_status: DeviceConnectionStatus.ONLINE,
+          },
+        },
       )
       .exec();
   }

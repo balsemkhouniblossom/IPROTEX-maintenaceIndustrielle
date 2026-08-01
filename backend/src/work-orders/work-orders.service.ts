@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
 import { FilterQuery, Model, Types } from 'mongoose';
 import {
   WorkOrder,
@@ -366,7 +367,7 @@ export class WorkOrdersService {
           .limit(limit)
           .populate('machine_id')
           .populate('module_id')
-          .populate('technician_id')
+          .populate('technician_id', SAFE_USER_PROJECTION)
           .exec(),
         this.workOrderModel.countDocuments(filter).exec(),
       ]);
@@ -376,7 +377,12 @@ export class WorkOrdersService {
       // If populate fails, return work orders without population
       console.warn('Failed to populate work order references:', error);
       const [items, totalItems] = await Promise.all([
-        this.workOrderModel.find(filter).sort(sort).skip(skip).limit(limit).exec(),
+        this.workOrderModel
+          .find(filter)
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .exec(),
         this.workOrderModel.countDocuments(filter).exec(),
       ]);
 
@@ -390,7 +396,7 @@ export class WorkOrdersService {
         .findById(id)
         .populate('machine_id')
         .populate('module_id')
-        .populate('technician_id')
+        .populate('technician_id', SAFE_USER_PROJECTION)
         .exec();
     } catch (error) {
       // If populate fails, return work order without population
@@ -628,7 +634,7 @@ export class WorkOrdersService {
         execution_date: 1,
         date_start: 1,
       })
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .exec();
 
     const ordersByPlan = new Map<string, WorkOrderDocument[]>();
@@ -731,7 +737,9 @@ export class WorkOrdersService {
         `This maintenance plan is "${plan.status}" and cannot be scheduled`,
       );
     }
-    const scheduledDate = new Date(input.scheduledDate);
+    const scheduledDate = this.schedulingService.parseBusinessDateInput(
+      input.scheduledDate,
+    );
     if (Number.isNaN(scheduledDate.getTime())) {
       throw new BadRequestException('Invalid scheduled_date');
     }
@@ -853,7 +861,9 @@ export class WorkOrdersService {
       throw new ConflictException('Completed occurrence cannot be rescheduled');
     }
 
-    const nextDue = new Date(input.newDueDate);
+    const nextDue = this.schedulingService.parseBusinessDateInput(
+      input.newDueDate,
+    );
     if (Number.isNaN(nextDue.getTime())) {
       throw new BadRequestException('Invalid new_due_date');
     }
@@ -1104,9 +1114,7 @@ export class WorkOrdersService {
       .map((task) => task.trim())
       .filter(Boolean);
     if (!tasksCompleted.length) {
-      throw new BadRequestException(
-        'At least one completed task is required',
-      );
+      throw new BadRequestException('At least one completed task is required');
     }
 
     const condition = input.condition?.trim();
@@ -1119,7 +1127,10 @@ export class WorkOrdersService {
       if (!Types.ObjectId.isValid(input.lubrication.lubrifiantId)) {
         throw new BadRequestException('Invalid lubrication.lubrifiant_id');
       }
-      if (!Number.isFinite(input.lubrication.quantity) || input.lubrication.quantity <= 0) {
+      if (
+        !Number.isFinite(input.lubrication.quantity) ||
+        input.lubrication.quantity <= 0
+      ) {
         throw new BadRequestException(
           'lubrication.quantity must be a positive number',
         );
@@ -1269,7 +1280,9 @@ export class WorkOrdersService {
       .findOne({
         ot_id: workOrder._id,
         part_id: part._id,
-        status: { $in: [PartRequestStatus.PENDING, PartRequestStatus.RESERVED] },
+        status: {
+          $in: [PartRequestStatus.PENDING, PartRequestStatus.RESERVED],
+        },
       })
       .exec();
     if (existingActive) {
@@ -1403,7 +1416,7 @@ export class WorkOrdersService {
       await session.endSession();
     }
 
-    const finalRequest = updated as PartRequestDocument;
+    const finalRequest = updated;
 
     await this.notificationCenterService.createIfNotExists({
       dedupeKey: `part_request_decision:${finalRequest._id.toString()}:${input.decision}`,
@@ -1468,7 +1481,7 @@ export class WorkOrdersService {
       .find(query)
       .populate('machine_id')
       .populate('module_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .populate('plan_id')
       .exec();
 
@@ -1695,7 +1708,7 @@ export class WorkOrdersService {
       .find(query)
       .populate('machine_id')
       .populate('module_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .populate('plan_id')
       .exec();
 
@@ -1719,7 +1732,7 @@ export class WorkOrdersService {
       .findById(workOrderId)
       .populate('machine_id')
       .populate('module_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .populate('plan_id')
       .exec();
 
@@ -1972,29 +1985,23 @@ export class WorkOrdersService {
     const nextMonthEnd = addMonths(todayStart, 1);
 
     const baseQuery: Record<string, unknown> = {
-      $or: [
-        { due_date: { $exists: true } },
-        { date_start: { $exists: true } },
-      ],
+      $or: [{ due_date: { $exists: true } }, { date_start: { $exists: true } }],
     };
     if (scope?.technicianId) {
       baseQuery.technician_id = new Types.ObjectId(scope.technicianId);
     }
 
     const baseOrders = await this.workOrderModel
-      .find(
-        baseQuery,
-        {
-          _id: 1,
-          ot_id: 1,
-          status: 1,
-          due_date: 1,
-          scheduled_date: 1,
-          execution_date: 1,
-          date_start: 1,
-          date_created: 1,
-        },
-      )
+      .find(baseQuery, {
+        _id: 1,
+        ot_id: 1,
+        status: 1,
+        due_date: 1,
+        scheduled_date: 1,
+        execution_date: 1,
+        date_start: 1,
+        date_created: 1,
+      })
       .sort({ date_start: 1 })
       .lean()
       .exec();
@@ -2076,14 +2083,19 @@ export class WorkOrdersService {
     const timeZone = this.schedulingService.getBusinessTimezone();
     const now = new Date();
     const dayStart = this.schedulingService.startOfBusinessDay(now, timeZone);
-    const dayEnd = this.schedulingService.addBusinessDays(dayStart, 1, timeZone);
-    const upcomingLimit = this.schedulingService.addBusinessDays(now, 7, timeZone);
+    const dayEnd = this.schedulingService.addBusinessDays(
+      dayStart,
+      1,
+      timeZone,
+    );
+    const upcomingLimit = this.schedulingService.addBusinessDays(
+      now,
+      7,
+      timeZone,
+    );
 
     const ordersQuery: Record<string, unknown> = {
-      $or: [
-        { due_date: { $exists: true } },
-        { date_start: { $exists: true } },
-      ],
+      $or: [{ due_date: { $exists: true } }, { date_start: { $exists: true } }],
     };
     if (scope?.technicianId) {
       ordersQuery.technician_id = new Types.ObjectId(scope.technicianId);
@@ -2145,13 +2157,10 @@ export class WorkOrdersService {
       date_fin: { $gte: dayStart, $lt: dayEnd },
     };
     if (scope?.technicianId) {
-      approvedTodayQuery.technician_id = new Types.ObjectId(
-        scope.technicianId,
-      );
+      approvedTodayQuery.technician_id = new Types.ObjectId(scope.technicianId);
     }
-    const approvedToday = await this.interventionReportModel.countDocuments(
-      approvedTodayQuery,
-    );
+    const approvedToday =
+      await this.interventionReportModel.countDocuments(approvedTodayQuery);
 
     return [
       {
@@ -2687,6 +2696,7 @@ export class WorkOrdersService {
         } else if (!userCache.has(technicianId)) {
           const fetchedUser = await this.userModel
             .findById(technicianId)
+            .select(SAFE_USER_PROJECTION)
             .exec();
           userCache.set(technicianId, fetchedUser);
         }
@@ -2833,8 +2843,9 @@ export class WorkOrdersService {
         timeZone,
       );
       const rangeEnd = new Date(
-        this.schedulingService.addBusinessDays(rangeStart, 7, timeZone).getTime() -
-          1,
+        this.schedulingService
+          .addBusinessDays(rangeStart, 7, timeZone)
+          .getTime() - 1,
       );
       return { rangeStart, rangeEnd };
     }
@@ -2857,8 +2868,9 @@ export class WorkOrdersService {
       timeZone,
     );
     const rangeEnd = new Date(
-      this.schedulingService.addBusinessMonths(rangeStart, 12, timeZone).getTime() -
-        1,
+      this.schedulingService
+        .addBusinessMonths(rangeStart, 12, timeZone)
+        .getTime() - 1,
     );
     return { rangeStart, rangeEnd };
   }
@@ -3242,16 +3254,13 @@ export class WorkOrdersService {
   }
 
   private async generateLubrificationLogCode() {
-    const sequence = await this.counterService.getNextSequence(
-      'lubrification_log',
-    );
+    const sequence =
+      await this.counterService.getNextSequence('lubrification_log');
     return `LUB-${sequence.toString().padStart(6, '0')}`;
   }
 
   private async generatePartRequestCode() {
-    const sequence = await this.counterService.getNextSequence(
-      'part_request',
-    );
+    const sequence = await this.counterService.getNextSequence('part_request');
     return `PR-${sequence.toString().padStart(6, '0')}`;
   }
 

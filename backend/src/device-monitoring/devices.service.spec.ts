@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { DevicesService } from './devices.service';
 import { DeviceType } from '../schemas/device.schema';
@@ -15,8 +19,17 @@ describe('DevicesService', () => {
   let service: DevicesService;
 
   beforeEach(() => {
-    deviceModel = { create: jest.fn(), find: jest.fn(), findById: jest.fn(), findByIdAndDelete: jest.fn() };
-    machineModel = { exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }) };
+    deviceModel = {
+      create: jest.fn(),
+      find: jest.fn(),
+      findById: jest.fn(),
+      findByIdAndDelete: jest.fn(),
+    };
+    machineModel = {
+      exists: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }),
+    };
     deviceAuthService = {
       generateApiKey: jest.fn().mockResolvedValue({
         rawKey: 'prefix.secret',
@@ -24,12 +37,18 @@ describe('DevicesService', () => {
         keyHash: 'hashed',
       }),
     };
-    service = new DevicesService(deviceModel as never, machineModel as never, deviceAuthService as never);
+    service = new DevicesService(
+      deviceModel as never,
+      machineModel as never,
+      deviceAuthService as never,
+    );
   });
 
   describe('register', () => {
     it('rejects registering a device against a nonexistent machine', async () => {
-      machineModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue(false) });
+      machineModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(false),
+      });
       await expect(
         service.register({
           device_id: 'DEV-1',
@@ -44,19 +63,29 @@ describe('DevicesService', () => {
       deviceModel.create.mockResolvedValue(created);
 
       const result = await service.register(
-        { device_id: 'DEV-1', machine_id: new Types.ObjectId().toString(), device_type: DeviceType.OPENPLC },
+        {
+          device_id: 'DEV-1',
+          machine_id: new Types.ObjectId().toString(),
+          device_type: DeviceType.OPENPLC,
+        },
         'admin-1',
       );
 
       expect(result.device).toBe(created);
       expect(result.apiKey).toBe('prefix.secret');
       expect(deviceModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({ api_key_hash: 'hashed', key_prefix: 'prefix', created_by: 'admin-1' }),
+        expect.objectContaining({
+          api_key_hash: 'hashed',
+          key_prefix: 'prefix',
+          created_by: 'admin-1',
+        }),
       );
     });
 
     it('raises a friendly conflict when device_id is already taken', async () => {
-      deviceModel.create.mockRejectedValue(Object.assign(new Error('dup'), { code: 11000 }));
+      deviceModel.create.mockRejectedValue(
+        Object.assign(new Error('dup'), { code: 11000 }),
+      );
       await expect(
         service.register({
           device_id: 'DEV-1',
@@ -69,24 +98,37 @@ describe('DevicesService', () => {
 
   describe('findOne', () => {
     it('rejects an invalid id', async () => {
-      await expect(service.findOne('not-an-id')).rejects.toThrow(BadRequestException);
+      await expect(service.findOne('not-an-id')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('throws NotFoundException for a missing device', async () => {
-      deviceModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
-      await expect(service.findOne(new Types.ObjectId().toString())).rejects.toThrow(
-        NotFoundException,
-      );
+      deviceModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+      await expect(
+        service.findOne(new Types.ObjectId().toString()),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('applies only the provided fields and saves', async () => {
       const save = jest.fn().mockResolvedValue(undefined);
-      const existing = { label: 'old', is_active: true, heartbeat_interval_seconds: 30, save };
-      deviceModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      const existing = {
+        label: 'old',
+        is_active: true,
+        heartbeat_interval_seconds: 30,
+        save,
+      };
+      deviceModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
 
-      const result = await service.update(new Types.ObjectId().toString(), { is_active: false });
+      const result = await service.update(new Types.ObjectId().toString(), {
+        is_active: false,
+      });
 
       expect(result.is_active).toBe(false);
       expect(result.label).toBe('old');
@@ -97,8 +139,14 @@ describe('DevicesService', () => {
   describe('rotateKey', () => {
     it('replaces the stored hash/prefix and returns a new raw key', async () => {
       const save = jest.fn().mockResolvedValue(undefined);
-      const existing = { api_key_hash: 'old-hash', key_prefix: 'old-prefix', save };
-      deviceModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      const existing = {
+        api_key_hash: 'old-hash',
+        key_prefix: 'old-prefix',
+        save,
+      };
+      deviceModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
       deviceAuthService.generateApiKey.mockResolvedValue({
         rawKey: 'new-prefix.new-secret',
         keyPrefix: 'new-prefix',
@@ -115,17 +163,21 @@ describe('DevicesService', () => {
 
   describe('remove', () => {
     it('throws NotFoundException when nothing was deleted', async () => {
-      deviceModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
-      await expect(service.remove(new Types.ObjectId().toString())).rejects.toThrow(
-        NotFoundException,
-      );
+      deviceModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+      await expect(
+        service.remove(new Types.ObjectId().toString()),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('resolves silently when the device was deleted', async () => {
       deviceModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue({ _id: 'x' }),
       });
-      await expect(service.remove(new Types.ObjectId().toString())).resolves.toBeUndefined();
+      await expect(
+        service.remove(new Types.ObjectId().toString()),
+      ).resolves.toBeUndefined();
     });
   });
 });

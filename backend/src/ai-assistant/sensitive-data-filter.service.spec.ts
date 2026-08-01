@@ -15,7 +15,9 @@ describe('SensitiveDataFilterService', () => {
   });
 
   it('redacts an email address', () => {
-    const result = service.redact('Contact operator.bob@example.com for details.');
+    const result = service.redact(
+      'Contact operator.bob@example.com for details.',
+    );
 
     expect(result.redacted).not.toContain('operator.bob@example.com');
     expect(result.redacted).toContain('[REDACTED_EMAIL]');
@@ -23,7 +25,9 @@ describe('SensitiveDataFilterService', () => {
   });
 
   it('redacts an api_key/secret/password key-value pair', () => {
-    const result = service.redact('Use api_key: sk-live-abc123def456 to authenticate.');
+    const result = service.redact(
+      'Use api_key: sk-live-abc123def456 to authenticate.',
+    );
 
     expect(result.redacted).not.toContain('sk-live-abc123def456');
     expect(result.redacted).toContain('[REDACTED_CREDENTIAL]');
@@ -40,7 +44,9 @@ describe('SensitiveDataFilterService', () => {
   });
 
   it('redacts a phone number', () => {
-    const result = service.redact('Call the technician at +216 20 123 456 if urgent.');
+    const result = service.redact(
+      'Call the technician at +216 20 123 456 if urgent.',
+    );
 
     expect(result.redacted).toContain('[REDACTED_PHONE]');
   });

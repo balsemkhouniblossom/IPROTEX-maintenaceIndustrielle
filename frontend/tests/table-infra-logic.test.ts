@@ -16,9 +16,10 @@ const USE_ONLINE_STATUS = "src/hooks/useOnlineStatus.ts";
 const OFFLINE_BANNER = "src/components/OfflineBanner.tsx";
 const DASHBOARD_LAYOUT = "src/components/DashboardLayout.tsx";
 const STATUS_BADGE = "src/components/StatusBadge.tsx";
-const SAVED_VIEWS_BAR = "src/components/SavedViewsBar.tsx";
-const BULK_TOOLBAR = "src/components/BulkActionToolbar.tsx";
 const USERS_PAGE = "src/app/[locale]/users/page.tsx";
+const RESOURCE_CRUD_PAGE = "src/components/ResourceCrudPage.tsx";
+const MACHINE_TYPES_PAGE = "src/app/[locale]/machine-types/page.tsx";
+const MODULE_TYPES_PAGE = "src/app/[locale]/module-types/page.tsx";
 const PACKAGE_JSON = "package.json";
 
 test("dead unused components were removed, not just left unreferenced", () => {
@@ -132,6 +133,23 @@ test("StatusBadge is the single shared badge shell (no page redeclares the wrapp
     const pageSource = readSource(page);
     assert.match(pageSource, /import \{ StatusBadge \} from ['"]@\/components\/StatusBadge['"];/, `${page} must use the shared StatusBadge`);
     assert.match(pageSource, /<StatusBadge/, `${page} must render <StatusBadge>`);
+  }
+});
+
+test("simple admin CRUD pages are configuration-only wrappers around ResourceCrudPage", () => {
+  const resourceSource = readSource(RESOURCE_CRUD_PAGE);
+  assert.match(resourceSource, /DynamicSearchControls/, "ResourceCrudPage must own the repeated dynamic-search controls");
+  assert.match(resourceSource, /matchesDynamicSearch/, "ResourceCrudPage must own client-side filtering for simple CRUD pages");
+  assert.match(resourceSource, /<Pagination/, "ResourceCrudPage must own shared pagination rendering");
+  assert.match(resourceSource, /<Modal/, "ResourceCrudPage must own shared create/edit dialog rendering");
+  assert.match(resourceSource, /ProtectedRoute allowedRoles=\{\['admin'\]\}/, "ResourceCrudPage must keep admin permissions centralized");
+
+  for (const page of [MACHINE_TYPES_PAGE, MODULE_TYPES_PAGE]) {
+    const source = readSource(page);
+    assert.match(source, /import ResourceCrudPage, \{ CrudField \} from '@\/components\/ResourceCrudPage';/);
+    assert.match(source, /<ResourceCrudPage/);
+    assert.doesNotMatch(source, /useState|useEffect|useMemo/, `${page} must not duplicate CRUD state hooks`);
+    assert.doesNotMatch(source, /<table|<Modal|<Pagination|DynamicSearchControls/, `${page} must not duplicate table/dialog/search/pagination UI`);
   }
 });
 

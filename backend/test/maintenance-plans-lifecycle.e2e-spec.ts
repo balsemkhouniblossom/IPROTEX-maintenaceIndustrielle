@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -251,7 +251,9 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       expect(response.body.createdOccurrence).toBeTruthy();
       firstOccurrenceId = response.body.createdOccurrence._id;
 
-      const occurrenceCount = await workOrders.countDocuments({ plan_id: new Types.ObjectId(planId) });
+      const occurrenceCount = await workOrders.countDocuments({
+        plan_id: new Types.ObjectId(planId),
+      });
       expect(occurrenceCount).toBe(1);
     });
 
@@ -265,7 +267,9 @@ describe('Maintenance plan lifecycle (e2e)', () => {
         .send({ action: 'activate' })
         .expect(409);
 
-      const occurrenceCount = await workOrders.countDocuments({ plan_id: new Types.ObjectId(planId) });
+      const occurrenceCount = await workOrders.countDocuments({
+        plan_id: new Types.ObjectId(planId),
+      });
       expect(occurrenceCount).toBe(1);
     });
 
@@ -293,7 +297,9 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       const validated = await workOrders.findById(firstOccurrenceId);
       expect(validated?.status).toBe('validated');
 
-      const occurrenceCount = await workOrders.countDocuments({ plan_id: new Types.ObjectId(planId) });
+      const occurrenceCount = await workOrders.countDocuments({
+        plan_id: new Types.ObjectId(planId),
+      });
       expect(occurrenceCount).toBe(1); // still just the one — Paused blocked the recurrence
     });
 
@@ -316,7 +322,10 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       const response = await request(app.getHttpServer())
         .patch(`/maintenance-plans/${planId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ instruction: 'Updated steps', expected_version: current?.version })
+        .send({
+          instruction: 'Updated steps',
+          expected_version: current?.version,
+        })
         .expect(200);
 
       expect(response.body.instruction).toBe('Updated steps');
@@ -349,7 +358,9 @@ describe('Maintenance plan lifecycle (e2e)', () => {
         .send({ action: 'approve' })
         .expect(201);
 
-      const occurrences = await workOrders.find({ plan_id: new Types.ObjectId(planId) }).sort({ due_date: 1 });
+      const occurrences = await workOrders
+        .find({ plan_id: new Types.ObjectId(planId) })
+        .sort({ due_date: 1 });
       expect(occurrences).toHaveLength(2);
       expect(occurrences[1].recurrence_source_occurrence_id?.toString()).toBe(
         firstOccurrenceId,
@@ -375,7 +386,10 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       await request(app.getHttpServer())
         .patch(`/maintenance-plans/${planId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ instruction: 'Should not apply', expected_version: archived?.version })
+        .send({
+          instruction: 'Should not apply',
+          expected_version: archived?.version,
+        })
         .expect(409);
 
       await request(app.getHttpServer())
@@ -392,10 +406,14 @@ describe('Maintenance plan lifecycle (e2e)', () => {
 
       // Traceability preserved: the occurrences and lifecycle history are
       // still intact and readable after archiving.
-      const occurrenceCount = await workOrders.countDocuments({ plan_id: new Types.ObjectId(planId) });
+      const occurrenceCount = await workOrders.countDocuments({
+        plan_id: new Types.ObjectId(planId),
+      });
       expect(occurrenceCount).toBe(2);
-      expect((archived?.lifecycle_history?.length || 0)).toBeGreaterThan(
-        beforeArchive?.lifecycle_history?.length ? beforeArchive.lifecycle_history.length - 1 : 0,
+      expect(archived?.lifecycle_history?.length || 0).toBeGreaterThan(
+        beforeArchive?.lifecycle_history?.length
+          ? beforeArchive.lifecycle_history.length - 1
+          : 0,
       );
     });
   });
@@ -408,13 +426,15 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       // apply to them. `connection.collection(...)` reproduces that exact
       // bypass; using `maintenancePlans.create(...)` here would go through
       // Mongoose and incorrectly default `status` to 'draft'.
-      const insertResult = await connection.collection('maintenanceplans').insertOne({
-        plan_id: 'MP-IMPORTED-1',
-        module_id: moduleEntity._id,
-        type_maintenance: 'preventive',
-        frequence: 3,
-        unite_frequence: 'month',
-      });
+      const insertResult = await connection
+        .collection('maintenanceplans')
+        .insertOne({
+          plan_id: 'MP-IMPORTED-1',
+          module_id: moduleEntity._id,
+          type_maintenance: 'preventive',
+          frequence: 3,
+          unite_frequence: 'month',
+        });
       const importedId = insertResult.insertedId.toString();
 
       const fetched = await request(app.getHttpServer())
@@ -427,7 +447,9 @@ describe('Maintenance plan lifecycle (e2e)', () => {
       expect(fetched.body.status).toBeUndefined();
 
       expect(
-        await workOrders.countDocuments({ plan_id: new Types.ObjectId(importedId) }),
+        await workOrders.countDocuments({
+          plan_id: new Types.ObjectId(importedId),
+        }),
       ).toBe(0);
 
       // Legacy/imported plans must remain fully schedulable exactly as

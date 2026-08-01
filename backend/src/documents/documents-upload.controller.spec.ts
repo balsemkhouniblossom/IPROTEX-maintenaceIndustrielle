@@ -307,7 +307,9 @@ describe('DocumentsUploadController', () => {
   });
 
   it('rolls back Supabase documents by stored storage path', async () => {
-    documentsService.create.mockRejectedValue(new Error('database unavailable'));
+    documentsService.create.mockRejectedValue(
+      new Error('database unavailable'),
+    );
     fileStorageService.save.mockResolvedValue({
       fileName: 'photo.webp',
       storageKey: 'uploads/photo.webp',
@@ -329,7 +331,9 @@ describe('DocumentsUploadController', () => {
       ),
     ).rejects.toThrow('database unavailable');
 
-    expect(fileStorageService.delete).toHaveBeenCalledWith('uploads/photo.webp');
+    expect(fileStorageService.delete).toHaveBeenCalledWith(
+      'uploads/photo.webp',
+    );
   });
 
   it('keeps non-photo document uploads unchanged', async () => {
@@ -373,7 +377,9 @@ describe('DocumentsUploadController', () => {
 
   describe('rejected non-photo uploads', () => {
     it('quarantines an executable renamed as a PDF, records the rejection, and never creates a document', async () => {
-      const exeBuffer = Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
+      const exeBuffer = Buffer.from([
+        0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00,
+      ]);
 
       await expect(
         controller.uploadFile(
@@ -453,8 +459,12 @@ describe('DocumentsUploadController', () => {
     });
 
     it('still throws the rejection exception even when quarantining the file itself fails', async () => {
-      fileStorageService.save.mockRejectedValueOnce(new Error('quarantine storage unavailable'));
-      const exeBuffer = Buffer.from([0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00]);
+      fileStorageService.save.mockRejectedValueOnce(
+        new Error('quarantine storage unavailable'),
+      );
+      const exeBuffer = Buffer.from([
+        0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00,
+      ]);
 
       await expect(
         controller.uploadFile(

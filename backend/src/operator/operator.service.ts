@@ -13,7 +13,10 @@ import {
   InterventionReportDocument,
 } from '../schemas/intervention-report.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
-import { MachineType, MachineTypeDocument } from '../schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../schemas/machine-type.schema';
 import { Module, ModuleDocument } from '../schemas/module.schema';
 import {
   MaintenancePlan,
@@ -37,6 +40,7 @@ import {
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { KpiService } from '../kpi/kpi.service';
 import { PreventiveTasksService } from '../preventive-tasks/preventive-tasks.service';
+import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -157,7 +161,9 @@ export class OperatorService {
     if (!allowedIds.length) {
       if (filters.machineId) {
         this.assertValidObjectId(filters.machineId, 'machine_id');
-        throw new ForbiddenException('Operator is not assigned to this machine');
+        throw new ForbiddenException(
+          'Operator is not assigned to this machine',
+        );
       }
       return [];
     }
@@ -178,7 +184,9 @@ export class OperatorService {
     if (filters.machineId) {
       this.assertValidObjectId(filters.machineId, 'machine_id');
       if (!allowedIds.includes(filters.machineId)) {
-        throw new ForbiddenException('Operator is not assigned to this machine');
+        throw new ForbiddenException(
+          'Operator is not assigned to this machine',
+        );
       }
       query._id = this.toObjectId(filters.machineId);
     }
@@ -227,10 +235,19 @@ export class OperatorService {
     const typeIds = await this.machineModel
       .distinct('type_id', { _id: { $in: this.toObjectIdList(machineIds) } })
       .exec();
-    const query = { _id: { $in: this.toObjectIdList(typeIds.map((id) => this.toIdString(id))) } };
+    const query = {
+      _id: {
+        $in: this.toObjectIdList(typeIds.map((id) => this.toIdString(id))),
+      },
+    };
 
     const [items, totalItems] = await Promise.all([
-      this.machineTypeModel.find(query).sort({ name: 1 }).skip(skip).limit(limit).exec(),
+      this.machineTypeModel
+        .find(query)
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.machineTypeModel.countDocuments(query).exec(),
     ]);
 
@@ -361,11 +378,16 @@ export class OperatorService {
     }
 
     const taskModule = task.module_id
-      ? await this.moduleModel.findById(task.module_id).select({ machine_id: 1 }).exec()
+      ? await this.moduleModel
+          .findById(task.module_id)
+          .select({ machine_id: 1 })
+          .exec()
       : null;
     const machineId = taskModule ? this.toIdString(taskModule.machine_id) : '';
     if (!machineId) {
-      throw new ForbiddenException('This checklist item has no associated machine');
+      throw new ForbiddenException(
+        'This checklist item has no associated machine',
+      );
     }
     await this.assertCanAccessMachine(userId, machineId);
 
@@ -397,7 +419,12 @@ export class OperatorService {
   ): Promise<PaginatedResponse<Lubrifiant>> {
     await this.assertHasOperatorScope(userId);
     const [items, totalItems] = await Promise.all([
-      this.lubrifiantModel.find().sort({ nom: 1 }).skip(skip).limit(limit).exec(),
+      this.lubrifiantModel
+        .find()
+        .sort({ nom: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.lubrifiantModel.countDocuments().exec(),
     ]);
 
@@ -415,7 +442,12 @@ export class OperatorService {
     const query = { machine_id: { $in: this.toObjectIdList(machineIds) } };
 
     const [items, totalItems] = await Promise.all([
-      this.kpiModel.find(query).sort({ date_calcul: -1 }).skip(skip).limit(limit).exec(),
+      this.kpiModel
+        .find(query)
+        .sort({ date_calcul: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.kpiModel.countDocuments(query).exec(),
     ]);
 
@@ -430,7 +462,12 @@ export class OperatorService {
   ): Promise<PaginatedResponse<Catalogue>> {
     await this.assertHasOperatorScope(userId);
     const [items, totalItems] = await Promise.all([
-      this.catalogueModel.find().sort({ nom_piece: 1 }).skip(skip).limit(limit).exec(),
+      this.catalogueModel
+        .find()
+        .sort({ nom_piece: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.catalogueModel.countDocuments().exec(),
     ]);
 
@@ -473,7 +510,7 @@ export class OperatorService {
         .skip(skip)
         .limit(limit)
         .populate('ot_id')
-        .populate('technician_id')
+        .populate('technician_id', SAFE_USER_PROJECTION)
         .exec(),
       this.reportModel.countDocuments(query).exec(),
     ]);
@@ -488,7 +525,10 @@ export class OperatorService {
     skip: number,
     machineTypeId?: string,
   ): Promise<PaginatedResponse<Machine>> {
-    const machineIds = await this.getVisibleMachineIds({ userId, machineTypeId });
+    const machineIds = await this.getVisibleMachineIds({
+      userId,
+      machineTypeId,
+    });
     if (!machineIds.length) {
       return toPaginatedResponse([], 0, page, limit);
     }
@@ -608,7 +648,10 @@ export class OperatorService {
       throw new NotFoundException('Work order not found');
     }
 
-    await this.assertCanAccessMachine(userId, this.toIdString(target.machine_id));
+    await this.assertCanAccessMachine(
+      userId,
+      this.toIdString(target.machine_id),
+    );
 
     return this.workOrdersService.submitPreventiveMaintenanceForOperator({
       workOrderId: input.workOrderId,
@@ -633,7 +676,10 @@ export class OperatorService {
       throw new NotFoundException('Work order not found');
     }
 
-    await this.assertCanAccessMachine(userId, this.toIdString(target.machine_id));
+    await this.assertCanAccessMachine(
+      userId,
+      this.toIdString(target.machine_id),
+    );
 
     return this.workOrdersService.requestPartsForOperator({
       workOrderId: input.workOrderId,
@@ -655,7 +701,10 @@ export class OperatorService {
     if (!target) {
       throw new NotFoundException('Work order not found');
     }
-    await this.assertCanAccessMachine(userId, this.toIdString(target.machine_id));
+    await this.assertCanAccessMachine(
+      userId,
+      this.toIdString(target.machine_id),
+    );
   }
 
   /**
@@ -941,7 +990,9 @@ export class OperatorService {
   private async assertHasOperatorScope(userId: string): Promise<void> {
     const allowedMachineIds = await this.getAllowedMachineIds(userId);
     if (!allowedMachineIds.length) {
-      throw new ForbiddenException('Operator has no assigned operational scope');
+      throw new ForbiddenException(
+        'Operator has no assigned operational scope',
+      );
     }
   }
 
@@ -975,8 +1026,10 @@ export class OperatorService {
 
     return Array.from(
       new Set(
-        [...explicitIds, ...workOrderMachineIds.map((id) => this.toIdString(id))]
-          .filter((id) => Types.ObjectId.isValid(id)),
+        [
+          ...explicitIds,
+          ...workOrderMachineIds.map((id) => this.toIdString(id)),
+        ].filter((id) => Types.ObjectId.isValid(id)),
       ),
     );
   }

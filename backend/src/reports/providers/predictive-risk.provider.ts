@@ -17,12 +17,17 @@ export class PredictiveRiskReportProvider implements ReportDataProvider {
   readonly type = ReportType.PREDICTIVE_RISK;
 
   constructor(
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     private readonly predictiveMaintenanceService: PredictiveMaintenanceService,
   ) {}
 
-  async buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset> {
-    const summaries = await this.predictiveMaintenanceService.getFleetSummary(actor);
+  async buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset> {
+    const summaries =
+      await this.predictiveMaintenanceService.getFleetSummary(actor);
     const scoped = params.machineId
       ? summaries.filter((s) => s.machineId === params.machineId)
       : summaries;
@@ -45,9 +50,11 @@ export class PredictiveRiskReportProvider implements ReportDataProvider {
         risk_level: summary.riskLevel,
         confidence_percent: Math.round(summary.confidence * 100),
         model_count: summary.modelCount,
-        generated_at: summary.generatedAt ? new Date(summary.generatedAt).toISOString() : '',
+        generated_at: summary.generatedAt
+          ? new Date(summary.generatedAt).toISOString()
+          : '',
       }))
-      .sort((a, b) => (a.health_score as number) - (b.health_score as number));
+      .sort((a, b) => a.health_score - b.health_score);
 
     return {
       title: 'Predictive Maintenance Risk Report',
@@ -66,7 +73,9 @@ export class PredictiveRiskReportProvider implements ReportDataProvider {
         { label: 'Machines covered', value: rows.length },
         {
           label: 'Critical/High risk machines',
-          value: rows.filter((r) => r.risk_level === 'critical' || r.risk_level === 'high').length,
+          value: rows.filter(
+            (r) => r.risk_level === 'critical' || r.risk_level === 'high',
+          ).length,
         },
       ],
     };

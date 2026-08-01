@@ -43,7 +43,10 @@ export type ReportDataset = {
  */
 export interface ReportDataProvider {
   readonly type: ReportType;
-  buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset>;
+  buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset>;
 }
 
 export const REPORT_DATA_PROVIDERS = Symbol('REPORT_DATA_PROVIDERS');

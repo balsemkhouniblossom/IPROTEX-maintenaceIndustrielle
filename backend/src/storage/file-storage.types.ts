@@ -30,8 +30,14 @@ export interface FileStorageProvider {
   save(input: StoreFileInput): Promise<StoredFile>;
   delete(relativePath: string): Promise<void>;
   readProtectedFile?(reference: string): Promise<ProtectedStoredFile>;
-  createSignedReadUrl?(reference: string, expiresInSeconds?: number): Promise<string>;
-  resolveUrl?(stablePath?: string | null, storedUrl?: string | null): Promise<string>;
+  createSignedReadUrl?(
+    reference: string,
+    expiresInSeconds?: number,
+  ): Promise<string>;
+  resolveUrl?(
+    stablePath?: string | null,
+    storedUrl?: string | null,
+  ): Promise<string>;
   ownsFile?(reference: string): boolean;
   ownsAvatar?(reference: string): boolean;
 }

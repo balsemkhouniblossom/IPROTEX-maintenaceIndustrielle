@@ -43,10 +43,7 @@ export class ModulePiecesController {
   }
   @Patch(':id')
   @AdminOnly()
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateModulePieceDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateModulePieceDto) {
     return this.service.update(id, dto);
   }
   @Delete(':id')

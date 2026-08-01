@@ -24,7 +24,11 @@ export class StockMovement {
   @Prop({ required: true, unique: true })
   movement_id: string;
 
-  @Prop({ type: String, enum: Object.values(StockMovementType), required: true })
+  @Prop({
+    type: String,
+    enum: Object.values(StockMovementType),
+    required: true,
+  })
   type: StockMovementType;
 
   @Prop({ type: Types.ObjectId, ref: 'Stock', required: true })

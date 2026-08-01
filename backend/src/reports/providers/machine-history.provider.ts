@@ -7,6 +7,7 @@ import {
   InterventionReportDocument,
 } from '../../schemas/intervention-report.schema';
 import { DocumentAccessService } from '../../documents/document-access.service';
+import { SAFE_USER_PROJECTION } from '../../users/safe-user-projection';
 import { buildDateRangeFilter } from '../report-date-filter.util';
 import {
   ReportActor,
@@ -24,15 +25,21 @@ export class MachineHistoryReportProvider implements ReportDataProvider {
   readonly type = ReportType.MACHINE_HISTORY;
 
   constructor(
-    @InjectModel(WorkOrder.name) private readonly workOrderModel: Model<WorkOrderDocument>,
+    @InjectModel(WorkOrder.name)
+    private readonly workOrderModel: Model<WorkOrderDocument>,
     @InjectModel(InterventionReport.name)
     private readonly interventionReportModel: Model<InterventionReportDocument>,
     private readonly documentAccessService: DocumentAccessService,
   ) {}
 
-  async buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset> {
+  async buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset> {
     if (!params.machineId) {
-      throw new BadRequestException('machineId is required for the machine history report');
+      throw new BadRequestException(
+        'machineId is required for the machine history report',
+      );
     }
     await this.documentAccessService.assertCanAccessMachine(
       { userId: actor.userId, role: actor.role },
@@ -45,7 +52,7 @@ export class MachineHistoryReportProvider implements ReportDataProvider {
         machine_id: new Types.ObjectId(params.machineId),
         ...(dateFilter ? { date_created: dateFilter } : {}),
       })
-      .populate('technician_id', 'nom_complet')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .sort({ date_created: -1 })
       .limit(params.limit ?? DEFAULT_LIMIT)
       .exec();
@@ -53,11 +60,15 @@ export class MachineHistoryReportProvider implements ReportDataProvider {
     const reports = await this.interventionReportModel
       .find({ ot_id: { $in: workOrders.map((wo) => wo._id) } })
       .exec();
-    const reportByWorkOrderId = new Map(reports.map((r) => [r.ot_id.toString(), r]));
+    const reportByWorkOrderId = new Map(
+      reports.map((r) => [r.ot_id.toString(), r]),
+    );
 
     const rows = workOrders.map((wo) => {
-      const report = reportByWorkOrderId.get((wo._id as Types.ObjectId).toString());
-      const technician = wo.technician_id as unknown as { nom_complet?: string } | undefined;
+      const report = reportByWorkOrderId.get(wo._id.toString());
+      const technician = wo.technician_id as unknown as
+        | { nom_complet?: string }
+        | undefined;
       return {
         date: wo.date_created ? wo.date_created.toISOString() : '',
         work_order: wo.ot_id,

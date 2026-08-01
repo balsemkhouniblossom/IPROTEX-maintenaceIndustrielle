@@ -58,4 +58,26 @@ export class HealthService {
       },
     };
   }
+
+  async getPublicHealth() {
+    const [api, database] = await Promise.all([
+      Promise.resolve(this.getApiHealth()),
+      this.getDatabaseHealth(),
+    ]);
+
+    return {
+      status: database.status === 'ok' ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      checks: {
+        api: {
+          status: api.status,
+          service: api.service,
+        },
+        database: {
+          status: database.status,
+          service: database.service,
+        },
+      },
+    };
+  }
 }

@@ -1,4 +1,9 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsMongoId } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsMongoId,
+} from 'class-validator';
 
 const MAX_BULK_SIZE = 200;
 

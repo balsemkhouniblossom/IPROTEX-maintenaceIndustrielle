@@ -79,7 +79,9 @@ const DOCUMENT_EXTENSION_RULES: Record<string, DocumentKindRule> = {
   },
 };
 
-export const ALLOWED_DOCUMENT_EXTENSIONS = Object.keys(DOCUMENT_EXTENSION_RULES);
+export const ALLOWED_DOCUMENT_EXTENSIONS = Object.keys(
+  DOCUMENT_EXTENSION_RULES,
+);
 
 // Some browsers/clients send a generic fallback content type instead of the
 // precise one for the file — that's accepted as long as the extension and

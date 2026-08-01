@@ -41,12 +41,12 @@ describe('GoogleLoginExchangeService', () => {
 
   beforeEach(async () => {
     exchangeModel = {
-      create: jest.fn<Promise<unknown>, [CreatedExchange]>().mockImplementation(
-        (document) => {
+      create: jest
+        .fn<Promise<unknown>, [CreatedExchange]>()
+        .mockImplementation((document) => {
           createdExchange = document;
           return Promise.resolve(document);
-        },
-      ),
+        }),
       findOneAndDelete: jest.fn<QueryLike<unknown>, [ConsumeExchangeQuery]>(),
     };
 
@@ -118,7 +118,7 @@ describe('GoogleLoginExchangeService', () => {
         role: Role.OPERATOR,
         is_active: true,
         created_at: new Date('2026-01-01T00:00:00.000Z'),
-        ...( {
+        ...({
           password: 'hidden',
           google_id: 'google-123',
           refresh_token_hash: 'hidden',

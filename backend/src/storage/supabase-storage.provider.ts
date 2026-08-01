@@ -11,8 +11,6 @@ import {
   MANAGED_AVATAR_DIRECTORY,
   MANAGED_AVATAR_FILE_PREFIX,
   MANAGED_QUARANTINE_DIRECTORY,
-  toManagedAvatarPath,
-  toManagedUploadPath,
 } from '../common/managed-file-url';
 import { resolveFileStorageConfig } from './file-storage.config';
 import {
@@ -138,7 +136,7 @@ export class SupabaseStorageProvider implements FileStorageProvider {
     const storageKey = this.toStorageKey(reference);
     return Boolean(
       storageKey?.startsWith(`uploads/${MANAGED_AVATAR_DIRECTORY}/`) &&
-        storageKey.split('/').pop()?.startsWith(MANAGED_AVATAR_FILE_PREFIX),
+      storageKey.split('/').pop()?.startsWith(MANAGED_AVATAR_FILE_PREFIX),
     );
   }
 
@@ -196,7 +194,8 @@ export class SupabaseStorageProvider implements FileStorageProvider {
   private toDocumentStorageKey(reference: string): string | null {
     const storageKey = this.toStorageKey(reference);
     if (!storageKey?.startsWith('uploads/')) return null;
-    if (storageKey.startsWith(`uploads/${MANAGED_AVATAR_DIRECTORY}/`)) return null;
+    if (storageKey.startsWith(`uploads/${MANAGED_AVATAR_DIRECTORY}/`))
+      return null;
 
     const fileName = storageKey.slice('uploads/'.length);
     if (!/^[A-Za-z0-9._-]+\.[A-Za-z0-9]+$/.test(fileName)) return null;

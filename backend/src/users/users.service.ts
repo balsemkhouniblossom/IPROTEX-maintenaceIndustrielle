@@ -112,14 +112,20 @@ function annotateBulkFailure(error: unknown, targetId: string): never {
         ? (response as Record<string, unknown>)
         : { message: response };
     const originalMessage =
-      typeof original.message === 'string' ? original.message : String(original.message ?? '');
+      typeof original.message === 'string'
+        ? original.message
+        : String(original.message ?? '');
     // Re-thrown as the plain base class (not `new error.constructor(...)`)
     // because subclasses like ConflictException fix their own status code
     // and interpret a second constructor argument as a description, not a
     // raw status override — HttpException itself is the only signature
     // that reliably accepts `(body, status)` for an arbitrary status.
     throw new HttpException(
-      { ...original, message: `${originalMessage} (user ${targetId})`, targetId },
+      {
+        ...original,
+        message: `${originalMessage} (user ${targetId})`,
+        targetId,
+      },
       error.getStatus(),
     );
   }
@@ -179,7 +185,9 @@ export class UsersService {
       profile_completed: createUserDto.profile_completed ?? true,
       phone: createUserDto.phone,
       photo: createUserDto.photo,
-      assigned_machine_ids: this.toObjectIds(createUserDto.assigned_machine_ids),
+      assigned_machine_ids: this.toObjectIds(
+        createUserDto.assigned_machine_ids,
+      ),
 
       // ✅ FIX HERE
       password: hashedPassword,
@@ -606,7 +614,10 @@ export class UsersService {
     this.validateObjectId(targetId);
     this.validateObjectId(administratorId);
 
-    const target = await this.userModel.findById(targetId).session(session ?? null).exec();
+    const target = await this.userModel
+      .findById(targetId)
+      .session(session ?? null)
+      .exec();
     if (!target) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
@@ -716,7 +727,10 @@ export class UsersService {
       });
     }
 
-    const target = await this.userModel.findById(targetId).session(session ?? null).exec();
+    const target = await this.userModel
+      .findById(targetId)
+      .session(session ?? null)
+      .exec();
     if (!target) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
@@ -807,8 +821,12 @@ export class UsersService {
       await session.withTransaction(async () => {
         for (const targetId of uniqueIds) {
           try {
-            // eslint-disable-next-line no-await-in-loop
-            await this.approveUser(targetId, administratorId, decisionAt, session);
+            await this.approveUser(
+              targetId,
+              administratorId,
+              decisionAt,
+              session,
+            );
           } catch (error) {
             annotateBulkFailure(error, targetId);
           }
@@ -841,8 +859,13 @@ export class UsersService {
       await session.withTransaction(async () => {
         for (const targetId of uniqueIds) {
           try {
-            // eslint-disable-next-line no-await-in-loop
-            await this.rejectUser(targetId, administratorId, reason, decisionAt, session);
+            await this.rejectUser(
+              targetId,
+              administratorId,
+              reason,
+              decisionAt,
+              session,
+            );
           } catch (error) {
             annotateBulkFailure(error, targetId);
           }

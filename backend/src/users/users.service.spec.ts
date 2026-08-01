@@ -416,7 +416,7 @@ describe('UsersService', () => {
     userModel.find.mockReturnValue(chain);
     userModel.countDocuments.mockReturnValue(createQuery(1));
 
-    await service.findAll(1, 10, 0, { sort: 'password' as never });
+    await service.findAll(1, 10, 0, { sort: 'password' });
 
     expect(chain.sort).toHaveBeenCalledWith({ created_at: -1 });
   });
@@ -617,7 +617,10 @@ describe('UsersService', () => {
 
     it('applies a legitimate field edit untouched', async () => {
       const targetId = new Types.ObjectId();
-      const updated = createUserDocument({ _id: targetId, phone: '+21611111111' });
+      const updated = createUserDocument({
+        _id: targetId,
+        phone: '+21611111111',
+      });
       userModel.findByIdAndUpdate.mockReturnValue(createUpdateQuery(updated));
 
       const result = await service.update(targetId.toString(), {
@@ -685,19 +688,26 @@ describe('UsersService', () => {
     const adminId = new Types.ObjectId().toString();
 
     it('rejects an empty selection without opening a transaction', async () => {
-      await expect(service.bulkApproveUsers([], adminId)).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.bulkApproveUsers([], adminId),
+      ).rejects.toBeInstanceOf(BadRequestException);
       expect(userModel.db.startSession).not.toHaveBeenCalled();
     });
 
     it('approves every id inside one transaction and reports them all as succeeded', async () => {
-      const ids = [new Types.ObjectId().toString(), new Types.ObjectId().toString()];
+      const ids = [
+        new Types.ObjectId().toString(),
+        new Types.ObjectId().toString(),
+      ];
       userModel.findById.mockReturnValue(
-        createQuery(createUserDocument({ is_verified: true, profile_completed: true })),
+        createQuery(
+          createUserDocument({ is_verified: true, profile_completed: true }),
+        ),
       );
       userModel.findOneAndUpdate.mockReturnValue(
-        createQuery(createUserDocument({ approval_status: ApprovalStatus.APPROVED })),
+        createQuery(
+          createUserDocument({ approval_status: ApprovalStatus.APPROVED }),
+        ),
       );
 
       const result = await service.bulkApproveUsers(ids, adminId);
@@ -706,16 +716,23 @@ describe('UsersService', () => {
       expect(session.withTransaction).toHaveBeenCalled();
       expect(session.endSession).toHaveBeenCalled();
       expect(userModel.findOneAndUpdate).toHaveBeenCalledTimes(2);
-      expect(result).toEqual({ code: 'BULK_APPROVAL_COMPLETE', succeeded: ids });
+      expect(result).toEqual({
+        code: 'BULK_APPROVAL_COMPLETE',
+        succeeded: ids,
+      });
     });
 
     it('deduplicates repeated ids in the same request', async () => {
       const id = new Types.ObjectId().toString();
       userModel.findById.mockReturnValue(
-        createQuery(createUserDocument({ is_verified: true, profile_completed: true })),
+        createQuery(
+          createUserDocument({ is_verified: true, profile_completed: true }),
+        ),
       );
       userModel.findOneAndUpdate.mockReturnValue(
-        createQuery(createUserDocument({ approval_status: ApprovalStatus.APPROVED })),
+        createQuery(
+          createUserDocument({ approval_status: ApprovalStatus.APPROVED }),
+        ),
       );
 
       await service.bulkApproveUsers([id, id], adminId);
@@ -728,48 +745,73 @@ describe('UsersService', () => {
       const badId = new Types.ObjectId().toString();
       userModel.findById
         .mockReturnValueOnce(
-          createQuery(createUserDocument({ is_verified: true, profile_completed: true })),
+          createQuery(
+            createUserDocument({ is_verified: true, profile_completed: true }),
+          ),
         )
         .mockReturnValueOnce(
-          createQuery(createUserDocument({ is_verified: false, profile_completed: true })),
+          createQuery(
+            createUserDocument({ is_verified: false, profile_completed: true }),
+          ),
         );
       userModel.findOneAndUpdate.mockReturnValue(
-        createQuery(createUserDocument({ approval_status: ApprovalStatus.APPROVED })),
+        createQuery(
+          createUserDocument({ approval_status: ApprovalStatus.APPROVED }),
+        ),
       );
-      session.withTransaction.mockImplementation(async (fn: () => Promise<unknown>) => {
-        try {
-          return await fn();
-        } finally {
-          // A real Mongo transaction aborts and rolls back every write on
-          // failure — this test only asserts the error propagates with
-          // enough context to identify the offending row.
-        }
-      });
+      session.withTransaction.mockImplementation(
+        async (fn: () => Promise<unknown>) => {
+          try {
+            return await fn();
+          } finally {
+            // A real Mongo transaction aborts and rolls back every write on
+            // failure — this test only asserts the error propagates with
+            // enough context to identify the offending row.
+          }
+        },
+      );
 
-      await expect(service.bulkApproveUsers([okId, badId], adminId)).rejects.toMatchObject({
-        response: expect.objectContaining({ targetId: badId, code: 'EMAIL_VERIFICATION_REQUIRED_BEFORE_APPROVAL' }),
+      await expect(
+        service.bulkApproveUsers([okId, badId], adminId),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          targetId: badId,
+          code: 'EMAIL_VERIFICATION_REQUIRED_BEFORE_APPROVAL',
+        }),
       });
       expect(session.endSession).toHaveBeenCalled();
     });
 
     it('bulkRejectUsers reuses rejectUser validation per row inside one transaction', async () => {
-      const ids = [new Types.ObjectId().toString(), new Types.ObjectId().toString()];
+      const ids = [
+        new Types.ObjectId().toString(),
+        new Types.ObjectId().toString(),
+      ];
       userModel.findById.mockReturnValue(createQuery(createUserDocument()));
       userModel.findOneAndUpdate.mockReturnValue(
-        createQuery(createUserDocument({ approval_status: ApprovalStatus.REJECTED })),
+        createQuery(
+          createUserDocument({ approval_status: ApprovalStatus.REJECTED }),
+        ),
       );
 
-      const result = await service.bulkRejectUsers(ids, adminId, 'Duplicate accounts');
+      const result = await service.bulkRejectUsers(
+        ids,
+        adminId,
+        'Duplicate accounts',
+      );
 
       expect(userModel.db.startSession).toHaveBeenCalled();
       expect(userModel.findOneAndUpdate).toHaveBeenCalledTimes(2);
-      expect(result).toEqual({ code: 'BULK_REJECTION_COMPLETE', succeeded: ids });
+      expect(result).toEqual({
+        code: 'BULK_REJECTION_COMPLETE',
+        succeeded: ids,
+      });
     });
 
     it('bulkRejectUsers rejects an empty selection without opening a transaction', async () => {
-      await expect(service.bulkRejectUsers([], adminId, 'reason')).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.bulkRejectUsers([], adminId, 'reason'),
+      ).rejects.toBeInstanceOf(BadRequestException);
       expect(userModel.db.startSession).not.toHaveBeenCalled();
     });
   });

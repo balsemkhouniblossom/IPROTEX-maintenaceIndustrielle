@@ -15,6 +15,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { normalizePagination } from '../common/pagination';
 import { TechnicianService } from './technician.service';
 import { TechnicianOnly } from '../auth/decorators/roles.decorator';
+import { ReviewWorkOrderDto } from './dto/review-work-order.dto';
+import { UpdateTechnicianReportDto } from './dto/update-technician-report.dto';
+import { SetPartQuantityDto } from './dto/set-part-quantity.dto';
 
 interface TechnicianRequest extends Request {
   user?: { userId?: string; role?: string };
@@ -109,7 +112,7 @@ export class TechnicianController {
   review(
     @Req() req: TechnicianRequest,
     @Param('id') id: string,
-    @Body() body: { action?: 'return' | 'intervene' },
+    @Body() body: ReviewWorkOrderDto,
   ) {
     return this.technicianService.review(
       this.technicianId(req),
@@ -138,11 +141,7 @@ export class TechnicianController {
     @Req() req: TechnicianRequest,
     @Param('id') id: string,
     @Body()
-    body: {
-      cause_racine?: string;
-      description_action?: string;
-      etat_final?: string;
-    },
+    body: UpdateTechnicianReportDto,
   ) {
     return this.technicianService.updateReport(
       this.technicianId(req),
@@ -155,7 +154,7 @@ export class TechnicianController {
   setPartQuantity(
     @Req() req: TechnicianRequest,
     @Param('id') id: string,
-    @Body() body: { partId?: string; quantity?: number },
+    @Body() body: SetPartQuantityDto,
   ) {
     return this.technicianService.setPartQuantity(
       this.technicianId(req),

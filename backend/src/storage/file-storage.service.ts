@@ -53,6 +53,9 @@ export class FileStorageService {
     stablePath?: string | null,
     storedUrl?: string | null,
   ): Promise<string> {
-    return this.provider.resolveUrl?.(stablePath, storedUrl) ?? (storedUrl || stablePath || '');
+    return (
+      this.provider.resolveUrl?.(stablePath, storedUrl) ??
+      (storedUrl || stablePath || '')
+    );
   }
 }

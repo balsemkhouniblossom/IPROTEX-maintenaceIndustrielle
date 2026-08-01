@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -12,9 +12,15 @@ import * as bcrypt from 'bcrypt';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';
-import { MachineType, MachineTypeDocument } from '../src/schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
-import { AI_PROVIDER, AiProvider } from '../src/ai-assistant/ai-provider.interface';
+import {
+  AI_PROVIDER,
+  AiProvider,
+} from '../src/ai-assistant/ai-provider.interface';
 
 /**
  * Deterministic stand-in for the real Gemini provider, matching the
@@ -166,9 +172,9 @@ describe('Global throttling (e2e)', () => {
     adminToken = await createAdmin('ADMIN-THROTTLE-BASE');
   }
 
-  it('never throttles /health, even far beyond the global default limit', async () => {
+  it('never throttles /health/api, even far beyond the global default limit', async () => {
     for (let i = 0; i < 20; i += 1) {
-      await request(app.getHttpServer()).get('/health').expect(200);
+      await request(app.getHttpServer()).get('/health/api').expect(200);
     }
   }, 30_000);
 
@@ -259,7 +265,11 @@ describe('Global throttling (e2e)', () => {
     const registerResponse = await request(app.getHttpServer())
       .post('/devices')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ device_id: 'THROTTLE-DEVICE-1', machine_id: machineAId, device_type: 'simulator' })
+      .send({
+        device_id: 'THROTTLE-DEVICE-1',
+        machine_id: machineAId,
+        device_type: 'simulator',
+      })
       .expect(201);
     const apiKey = registerResponse.body.apiKey as string;
 

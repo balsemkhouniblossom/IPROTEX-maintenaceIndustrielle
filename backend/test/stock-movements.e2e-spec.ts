@@ -181,7 +181,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
     technicianToken = tokenFor(technician);
   }
 
-  async function createCorrectiveWorkOrder(overrides: Record<string, unknown> = {}) {
+  async function createCorrectiveWorkOrder(
+    overrides: Record<string, unknown> = {},
+  ) {
     return workOrders.create({
       ot_id: `WO-STOCK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       machine_id: machine._id,
@@ -291,12 +293,16 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const storedRequest = await partRequests.findById(partRequestId);
       expect(storedRequest?.status).toBe('reserved');
 
-      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
+      const movements = await stockMovements
+        .find({ stock_id: new Types.ObjectId(stock._id) })
+        .sort({ createdAt: 1 });
       expect(movements).toHaveLength(2);
       const reservation = movements[1];
       expect(reservation.type).toBe('reservation');
       expect(reservation.reserved_delta).toBe(4);
-      expect(reservation.work_order_id?.toString()).toBe(workOrder._id.toString());
+      expect(reservation.work_order_id?.toString()).toBe(
+        workOrder._id.toString(),
+      );
       expect(reservation.part_request_id?.toString()).toBe(partRequestId);
     });
 
@@ -328,7 +334,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       expect(stockAfter?.quantite_reservee).toBe(0);
       expect(stockAfter?.version).toBe(1);
 
-      const movementCount = await stockMovements.countDocuments({ stock_id: new Types.ObjectId(stock._id) });
+      const movementCount = await stockMovements.countDocuments({
+        stock_id: new Types.ObjectId(stock._id),
+      });
       expect(movementCount).toBe(1); // only the initial-creation movement
     });
 
@@ -362,7 +370,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const storedRequest = await partRequests.findById(partRequestId);
       expect(storedRequest?.status).toBe('cancelled');
 
-      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
+      const movements = await stockMovements
+        .find({ stock_id: new Types.ObjectId(stock._id) })
+        .sort({ createdAt: 1 });
       const cancellation = movements[movements.length - 1];
       expect(cancellation.type).toBe('cancellation');
       expect(cancellation.reserved_delta).toBe(-5);
@@ -389,7 +399,10 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
   });
 
   describe('consumption and return, via the Technician parts endpoint', () => {
-    async function reserveForTechnicianConsumption(stockQuantity: number, reserveQuantity: number) {
+    async function reserveForTechnicianConsumption(
+      stockQuantity: number,
+      reserveQuantity: number,
+    ) {
       const { stock, part } = await createStockViaApi(stockQuantity);
       const workOrder = await createCorrectiveWorkOrder();
 
@@ -400,7 +413,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
         .expect(201);
 
       await request(app.getHttpServer())
-        .patch(`/work-orders/part-requests/${partRequestResponse.body._id}/decision`)
+        .patch(
+          `/work-orders/part-requests/${partRequestResponse.body._id}/decision`,
+        )
         .set('Authorization', `Bearer ${technicianToken}`)
         .send({ action: 'approve' })
         .expect(200);
@@ -414,11 +429,17 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
         $set: { technician_id: technician._id, status: 'in_progress' },
       });
 
-      return { stock, part, workOrder, partRequestId: partRequestResponse.body._id };
+      return {
+        stock,
+        part,
+        workOrder,
+        partRequestId: partRequestResponse.body._id,
+      };
     }
 
     it('drains the reservation and stock together, and marks the request Fulfilled, when consumption matches the reserved amount exactly', async () => {
-      const { stock, part, workOrder, partRequestId } = await reserveForTechnicianConsumption(10, 4);
+      const { stock, part, workOrder, partRequestId } =
+        await reserveForTechnicianConsumption(10, 4);
 
       await request(app.getHttpServer())
         .post(`/technician/work-orders/${workOrder._id.toString()}/parts`)
@@ -433,17 +454,22 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const storedRequest = await partRequests.findById(partRequestId);
       expect(storedRequest?.status).toBe('fulfilled');
 
-      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
+      const movements = await stockMovements
+        .find({ stock_id: new Types.ObjectId(stock._id) })
+        .sort({ createdAt: 1 });
       const consumption = movements[movements.length - 1];
       expect(consumption.type).toBe('consumption');
       expect(consumption.quantity_delta).toBe(-4);
       expect(consumption.reserved_delta).toBe(-4);
-      expect(consumption.work_order_id?.toString()).toBe(workOrder._id.toString());
+      expect(consumption.work_order_id?.toString()).toBe(
+        workOrder._id.toString(),
+      );
       expect(consumption.part_request_id?.toString()).toBe(partRequestId);
     });
 
     it('draws down the reservation first and only pulls the overflow from the general pool, leaving the request Fulfilled', async () => {
-      const { stock, part, workOrder, partRequestId } = await reserveForTechnicianConsumption(10, 3);
+      const { stock, part, workOrder, partRequestId } =
+        await reserveForTechnicianConsumption(10, 3);
 
       // Consume 5: reservation only covers 3, so 2 must come from the
       // general (unreserved) pool — proving the guard math and the
@@ -463,7 +489,10 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
     });
 
     it('records a Return and increases stock when the corrected quantity is lower than before, without ever going negative', async () => {
-      const { stock, part, workOrder } = await reserveForTechnicianConsumption(10, 6);
+      const { stock, part, workOrder } = await reserveForTechnicianConsumption(
+        10,
+        6,
+      );
 
       await request(app.getHttpServer())
         .post(`/technician/work-orders/${workOrder._id.toString()}/parts`)
@@ -484,7 +513,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       stockAfter = await stocks.findById(stock._id);
       expect(stockAfter?.quantite_en_stock).toBe(8);
 
-      const movements = await stockMovements.find({ stock_id: new Types.ObjectId(stock._id) }).sort({ createdAt: 1 });
+      const movements = await stockMovements
+        .find({ stock_id: new Types.ObjectId(stock._id) })
+        .sort({ createdAt: 1 });
       const returnMovement = movements[movements.length - 1];
       expect(returnMovement.type).toBe('return');
       expect(returnMovement.quantity_delta).toBe(4);
@@ -492,7 +523,10 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
     });
 
     it('rejects consumption that would exceed what is actually available, leaving Stock unchanged', async () => {
-      const { stock, part, workOrder } = await reserveForTechnicianConsumption(5, 2);
+      const { stock, part, workOrder } = await reserveForTechnicianConsumption(
+        5,
+        2,
+      );
 
       await request(app.getHttpServer())
         .post(`/technician/work-orders/${workOrder._id.toString()}/parts`)
@@ -504,7 +538,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       expect(stockAfter?.quantite_en_stock).toBe(5);
       expect(stockAfter?.quantite_reservee).toBe(2);
 
-      const otPieceCount = await otPieces.countDocuments({ ot_id: workOrder._id });
+      const otPieceCount = await otPieces.countDocuments({
+        ot_id: workOrder._id,
+      });
       expect(otPieceCount).toBe(0); // the OTPieces usage row was never created either — full rollback
     });
   });
@@ -516,7 +552,11 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post(`/stocks/${stock._id}/adjustment`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ delta: 15, reason: 'Found extra stock during audit', expected_version: 1 })
+        .send({
+          delta: 15,
+          reason: 'Found extra stock during audit',
+          expected_version: 1,
+        })
         .expect(201);
       expect(response.body.quantite_en_stock_after).toBe(25);
 
@@ -566,11 +606,19 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
         request(app.getHttpServer())
           .post(`/stocks/${stock._id}/adjustment`)
           .set('Authorization', `Bearer ${adminToken}`)
-          .send({ delta: 10, reason: 'Concurrent adjustment A', expected_version: 1 }),
+          .send({
+            delta: 10,
+            reason: 'Concurrent adjustment A',
+            expected_version: 1,
+          }),
         request(app.getHttpServer())
           .post(`/stocks/${stock._id}/adjustment`)
           .set('Authorization', `Bearer ${adminToken}`)
-          .send({ delta: 20, reason: 'Concurrent adjustment B', expected_version: 1 }),
+          .send({
+            delta: 20,
+            reason: 'Concurrent adjustment B',
+            expected_version: 1,
+          }),
       ]);
 
       const statuses = [first, second].map((result) =>
@@ -584,7 +632,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       expect([60, 70]).toContain(stockAfter?.quantite_en_stock);
       expect(stockAfter?.version).toBe(2);
 
-      const movementCount = await stockMovements.countDocuments({ stock_id: new Types.ObjectId(stock._id) });
+      const movementCount = await stockMovements.countDocuments({
+        stock_id: new Types.ObjectId(stock._id),
+      });
       expect(movementCount).toBe(2); // initial-creation + exactly one successful adjustment
     });
   });
@@ -597,11 +647,15 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
 
       const [requestAResponse, requestBResponse] = await Promise.all([
         request(app.getHttpServer())
-          .post(`/operator/work-orders/${workOrderA._id.toString()}/parts-request`)
+          .post(
+            `/operator/work-orders/${workOrderA._id.toString()}/parts-request`,
+          )
           .set('Authorization', `Bearer ${operatorToken}`)
           .send({ part_id: part._id.toString(), quantity: 4 }),
         request(app.getHttpServer())
-          .post(`/operator/work-orders/${workOrderB._id.toString()}/parts-request`)
+          .post(
+            `/operator/work-orders/${workOrderB._id.toString()}/parts-request`,
+          )
           .set('Authorization', `Bearer ${operatorToken}`)
           .send({ part_id: part._id.toString(), quantity: 4 }),
       ]);
@@ -610,11 +664,15 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
 
       const [approveA, approveB] = await Promise.allSettled([
         request(app.getHttpServer())
-          .patch(`/work-orders/part-requests/${requestAResponse.body._id}/decision`)
+          .patch(
+            `/work-orders/part-requests/${requestAResponse.body._id}/decision`,
+          )
           .set('Authorization', `Bearer ${technicianToken}`)
           .send({ action: 'approve' }),
         request(app.getHttpServer())
-          .patch(`/work-orders/part-requests/${requestBResponse.body._id}/decision`)
+          .patch(
+            `/work-orders/part-requests/${requestBResponse.body._id}/decision`,
+          )
           .set('Authorization', `Bearer ${technicianToken}`)
           .send({ action: 'approve' }),
       ]);
@@ -632,8 +690,12 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       expect(stockAfter?.quantite_en_stock).toBe(5);
 
       const requestStatuses = await Promise.all([
-        partRequests.findById(requestAResponse.body._id).then((doc) => doc?.status),
-        partRequests.findById(requestBResponse.body._id).then((doc) => doc?.status),
+        partRequests
+          .findById(requestAResponse.body._id)
+          .then((doc) => doc?.status),
+        partRequests
+          .findById(requestBResponse.body._id)
+          .then((doc) => doc?.status),
       ]);
       expect(requestStatuses.sort()).toEqual(['pending', 'reserved']);
     });
@@ -649,7 +711,9 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
         .send({ part_id: part._id.toString(), quantity: 5 })
         .expect(201);
       await request(app.getHttpServer())
-        .patch(`/work-orders/part-requests/${partRequestResponse.body._id}/decision`)
+        .patch(
+          `/work-orders/part-requests/${partRequestResponse.body._id}/decision`,
+        )
         .set('Authorization', `Bearer ${technicianToken}`)
         .send({ action: 'approve' })
         .expect(200);
@@ -674,9 +738,16 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      const types = movementsResponse.body.items.map((item: { type: string }) => item.type);
+      const types = movementsResponse.body.items.map(
+        (item: { type: string }) => item.type,
+      );
       // Newest first: adjustment, consumption, reservation, initial creation.
-      expect(types).toEqual(['adjustment', 'consumption', 'reservation', 'adjustment']);
+      expect(types).toEqual([
+        'adjustment',
+        'consumption',
+        'reservation',
+        'adjustment',
+      ]);
 
       const stockAfter = await stocks.findById(stock._id);
       // 20 (initial) - 5 (consumption) - 3 (adjustment) = 12; the
@@ -692,7 +763,11 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/stocks/${stock._id}/adjustment`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ delta: -4, reason: 'Fully consumed for test', expected_version: 1 })
+        .send({
+          delta: -4,
+          reason: 'Fully consumed for test',
+          expected_version: 1,
+        })
         .expect(201);
 
       const stockAfter = await stocks.findById(stock._id);

@@ -1,7 +1,9 @@
-name: CI - Pull Request
+name: CI
 
 on:
   pull_request:
+    branches: [main, develop]
+  push:
     branches: [main, develop]
 
 concurrency:
@@ -9,7 +11,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  frontend:
+    name: Frontend Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://pfe-maintenaceindustrielle.onrender.com
+
   backend:
+    name: Backend Quality
     runs-on: ubuntu-latest
     services:
       mongo:
@@ -21,61 +56,73 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: "backend/package-lock.json"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install backend dependencies
-        run: cd backend && npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Lint backend
-        run: cd backend && npm run lint -- --max-warnings 0
+      - name: Lint
+        run: npm run lint
 
-      - name: Build backend
-        run: cd backend && npm run build
-
-      - name: Run backend unit tests
-        run: cd backend && npm run test -- --runInBand --coverage
+      - name: Test
+        run: npm run test -- --runInBand
         env:
           NODE_ENV: test
           MONGODB_URI: mongodb://127.0.0.1:27017/GMAO_IPROTEX_TEST
 
-      - name: Upload backend coverage
-        uses: codecov/codecov-action@v3
-        if: always()
-        with:
-          flags: backend
-          directory: backend/coverage
+      - name: Build
+        run: npm run build
 
-  frontend:
+  backend-e2e:
+    name: Backend E2E
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
-          cache-dependency-path: "frontend/package-lock.json"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install frontend dependencies
-        run: cd frontend && npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Lint frontend
-        run: cd frontend && npm run lint || true
-
-      - name: Build frontend
-        run: cd frontend && npm run build
+      - name: E2E tests
+        run: npm run test:e2e -- --runInBand
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://pfe-maintenaceindustrielle.onrender.com
+          NODE_ENV: test
+          MONGODB_URI: mongodb://127.0.0.1:27017/GMAO_IPROTEX_E2E
 
   security:
+    name: Security Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Run Trivy security scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -85,7 +132,7 @@ jobs:
           output: trivy-results.sarif
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-results.sarif

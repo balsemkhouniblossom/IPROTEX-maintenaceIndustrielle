@@ -1,4 +1,10 @@
-import { IsArray, IsEnum, IsMongoId, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsMongoId,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { KnowledgeArticleCategory } from '../../schemas/knowledge-article.schema';
 
 export class CreateKnowledgeArticleDto {

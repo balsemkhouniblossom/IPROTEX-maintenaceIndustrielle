@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -10,7 +10,12 @@ import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
-import { ApprovalStatus, Role, User, UserDocument } from '../src/schemas/user.schema';
+import {
+  ApprovalStatus,
+  Role,
+  User,
+  UserDocument,
+} from '../src/schemas/user.schema';
 
 describe('User bulk approve/reject — transactional (e2e)', () => {
   // A replica set is required: bulkApproveUsers/bulkRejectUsers each open
@@ -145,7 +150,10 @@ describe('User bulk approve/reject — transactional (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/users/bulk-reject')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ userIds: [a._id.toString(), b._id.toString()], reason: 'Duplicate accounts' })
+      .send({
+        userIds: [a._id.toString(), b._id.toString()],
+        reason: 'Duplicate accounts',
+      })
       .expect(201);
 
     expect(response.body.code).toBe('BULK_REJECTION_COMPLETE');

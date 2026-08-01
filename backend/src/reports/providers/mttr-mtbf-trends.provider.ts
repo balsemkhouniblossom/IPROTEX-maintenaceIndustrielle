@@ -24,7 +24,10 @@ export class MttrMtbfTrendsReportProvider implements ReportDataProvider {
     private readonly documentAccessService: DocumentAccessService,
   ) {}
 
-  async buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset> {
+  async buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset> {
     const machineIds = await resolveReportMachineScope(
       this.documentAccessService,
       actor,
@@ -32,9 +35,15 @@ export class MttrMtbfTrendsReportProvider implements ReportDataProvider {
     );
 
     const now = new Date();
-    const rangeEnd = params.dateTo ?? businessTime.addBusinessDays(businessTime.startOfBusinessDay(now), 1);
+    const rangeEnd =
+      params.dateTo ??
+      businessTime.addBusinessDays(businessTime.startOfBusinessDay(now), 1);
     const rangeStart =
-      params.dateFrom ?? businessTime.addBusinessMonths(businessTime.startOfBusinessMonth(rangeEnd), -DEFAULT_MONTHS_BACK);
+      params.dateFrom ??
+      businessTime.addBusinessMonths(
+        businessTime.startOfBusinessMonth(rangeEnd),
+        -DEFAULT_MONTHS_BACK,
+      );
 
     const buckets: Array<{ start: Date; end: Date }> = [];
     let cursor = businessTime.startOfBusinessMonth(rangeStart);
@@ -46,7 +55,6 @@ export class MttrMtbfTrendsReportProvider implements ReportDataProvider {
 
     const rows: Array<Record<string, string | number>> = [];
     for (const bucket of buckets) {
-      // eslint-disable-next-line no-await-in-loop
       const result = await this.kpiService.computeMttrMtbf({
         machineIds: machineIds?.map((id) => id.toString()),
         dateFrom: bucket.start,

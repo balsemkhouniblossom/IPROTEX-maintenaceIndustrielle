@@ -29,7 +29,11 @@ describe('DocumentsService storage URL resolution', () => {
   }
 
   function existingModelStub() {
-    return { exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }) };
+    return {
+      exists: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }),
+    };
   }
 
   beforeEach(() => {
@@ -151,7 +155,9 @@ describe('DocumentsService storage URL resolution', () => {
     const result = await service.readProtectedFile('doc-read');
 
     expect(result.buffer).toEqual(Buffer.from('file'));
-    expect(storage.readProtectedFile).toHaveBeenCalledWith('/uploads/manual.pdf');
+    expect(storage.readProtectedFile).toHaveBeenCalledWith(
+      '/uploads/manual.pdf',
+    );
   });
 
   it('rejects protected file reads for external document URLs', async () => {
@@ -183,7 +189,9 @@ describe('DocumentsService storage URL resolution', () => {
   it('deletes Supabase managed files by stored storage path after record deletion', async () => {
     storage.ownsFile.mockReturnValue(true);
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(freshDraft({ document_id: 'DOC-DELETE' })),
+      exec: jest
+        .fn()
+        .mockResolvedValue(freshDraft({ document_id: 'DOC-DELETE' })),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -203,7 +211,9 @@ describe('DocumentsService storage URL resolution', () => {
   it('deletes local managed files by existing stable path after record deletion', async () => {
     storage.ownsFile.mockReturnValue(true);
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(freshDraft({ document_id: 'DOC-LOCAL-DELETE' })),
+      exec: jest
+        .fn()
+        .mockResolvedValue(freshDraft({ document_id: 'DOC-LOCAL-DELETE' })),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -222,7 +232,9 @@ describe('DocumentsService storage URL resolution', () => {
   it('preserves unknown external URLs during deletion', async () => {
     storage.ownsFile.mockReturnValue(false);
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(freshDraft({ document_id: 'DOC-EXTERNAL' })),
+      exec: jest
+        .fn()
+        .mockResolvedValue(freshDraft({ document_id: 'DOC-EXTERNAL' })),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -261,7 +273,9 @@ describe('DocumentsService storage URL resolution', () => {
     storage.ownsFile.mockReturnValue(true);
     storage.delete.mockRejectedValue(new Error('storage unavailable'));
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest.fn().mockResolvedValue(freshDraft({ document_id: 'DOC-MISSING' })),
+      exec: jest
+        .fn()
+        .mockResolvedValue(freshDraft({ document_id: 'DOC-MISSING' })),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -289,7 +303,11 @@ function createSessionMock() {
 }
 
 function existsMock(result: boolean) {
-  return { exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(result) }) };
+  return {
+    exists: jest
+      .fn()
+      .mockReturnValue({ exec: jest.fn().mockResolvedValue(result) }),
+  };
 }
 
 describe('DocumentsService lifecycle transitions', () => {
@@ -311,7 +329,11 @@ describe('DocumentsService lifecycle transitions', () => {
   let maintenancePlanModel: { exists: jest.Mock };
   let workOrderModel: { exists: jest.Mock };
   let interventionReportModel: { exists: jest.Mock };
-  let storage: { ownsFile: jest.Mock; resolveUrl: jest.Mock; delete: jest.Mock };
+  let storage: {
+    ownsFile: jest.Mock;
+    resolveUrl: jest.Mock;
+    delete: jest.Mock;
+  };
   let session: ReturnType<typeof createSessionMock>;
   let service: DocumentsService;
 
@@ -321,7 +343,9 @@ describe('DocumentsService lifecycle transitions', () => {
     documentModel.mockImplementation((data: Record<string, unknown>) => ({
       ...data,
       toObject: () => ({ ...data }),
-      save: jest.fn().mockResolvedValue({ ...data, toObject: () => ({ ...data }) }),
+      save: jest
+        .fn()
+        .mockResolvedValue({ ...data, toObject: () => ({ ...data }) }),
     }));
     documentModel.findById = jest.fn();
     documentModel.findOneAndUpdate = jest.fn();
@@ -349,7 +373,9 @@ describe('DocumentsService lifecycle transitions', () => {
 
   describe('create', () => {
     it('rejects when the referenced machine does not exist', async () => {
-      machineModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue(false) });
+      machineModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(false),
+      });
 
       await expect(
         service.create({
@@ -363,7 +389,9 @@ describe('DocumentsService lifecycle transitions', () => {
     });
 
     it('rejects when the referenced maintenance plan does not exist', async () => {
-      maintenancePlanModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue(false) });
+      maintenancePlanModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(false),
+      });
 
       await expect(
         service.create({
@@ -378,7 +406,9 @@ describe('DocumentsService lifecycle transitions', () => {
     });
 
     it('rejects when the referenced work order does not exist', async () => {
-      workOrderModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue(false) });
+      workOrderModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(false),
+      });
 
       await expect(
         service.create({
@@ -431,13 +461,19 @@ describe('DocumentsService lifecycle transitions', () => {
   describe('publish', () => {
     it('moves a Draft to Published, incrementing version and appending lifecycle history', async () => {
       const existing = makeDoc({ status: 'draft', version: 3 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
       const updated = makeDoc({ status: 'published', version: 4 });
       documentModel.findOneAndUpdate!.mockReturnValue({
         exec: jest.fn().mockResolvedValue(updated),
       });
 
-      const result = await service.publish(docId.toHexString(), { expected_version: 3 }, 'actor-1');
+      const result = await service.publish(
+        docId.toHexString(),
+        { expected_version: 3 },
+        'actor-1',
+      );
 
       expect(documentModel.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ _id: docId.toHexString(), version: 3 }),
@@ -459,7 +495,9 @@ describe('DocumentsService lifecycle transitions', () => {
 
     it('rejects publishing a document that is not currently a Draft', async () => {
       const existing = makeDoc({ status: 'published', version: 2 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
 
       await expect(
         service.publish(docId.toHexString(), { expected_version: 2 }),
@@ -469,16 +507,24 @@ describe('DocumentsService lifecycle transitions', () => {
 
     it('requires expected_version once the document has a version, rejecting when omitted', async () => {
       const existing = makeDoc({ status: 'draft', version: 3 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
 
-      await expect(service.publish(docId.toHexString(), {})).rejects.toThrow(ConflictException);
+      await expect(service.publish(docId.toHexString(), {})).rejects.toThrow(
+        ConflictException,
+      );
       expect(documentModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
     it('fails safe (conflict) when a concurrent transition wins the atomic status-guarded update race', async () => {
       const existing = makeDoc({ status: 'draft', version: 3 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
-      documentModel.findOneAndUpdate!.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
+      documentModel.findOneAndUpdate!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(
         service.publish(docId.toHexString(), { expected_version: 3 }),
@@ -489,19 +535,25 @@ describe('DocumentsService lifecycle transitions', () => {
   describe('archive', () => {
     it('archives a Published document', async () => {
       const existing = makeDoc({ status: 'published', version: 5 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
       const updated = makeDoc({ status: 'archived', version: 6 });
       documentModel.findOneAndUpdate!.mockReturnValue({
         exec: jest.fn().mockResolvedValue(updated),
       });
 
-      const result = await service.archive(docId.toHexString(), { expected_version: 5 });
+      const result = await service.archive(docId.toHexString(), {
+        expected_version: 5,
+      });
       expect(result.status).toBe('archived');
     });
 
     it('rejects archiving a Superseded document', async () => {
       const existing = makeDoc({ status: 'superseded', version: 5 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
 
       await expect(
         service.archive(docId.toHexString(), { expected_version: 5 }),
@@ -518,7 +570,9 @@ describe('DocumentsService lifecycle transitions', () => {
         revision: 1,
         machine_id: new Types.ObjectId(),
       });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
 
       const newDocId = new Types.ObjectId();
       const newDoc = makeDoc({
@@ -567,7 +621,9 @@ describe('DocumentsService lifecycle transitions', () => {
 
     it('rejects replacing a document that is already Superseded', async () => {
       const existing = makeDoc({ status: 'superseded', version: 2 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
 
       await expect(
         service.replace(docId.toHexString(), {
@@ -580,9 +636,15 @@ describe('DocumentsService lifecycle transitions', () => {
 
     it('rolls back (rejects) when the old document loses the guarded-update race', async () => {
       const existing = makeDoc({ status: 'published', version: 2 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(existing) });
-      documentModel.create!.mockResolvedValue([makeDoc({ status: 'draft', version: 1 })]);
-      documentModel.findOneAndUpdate!.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(existing),
+      });
+      documentModel.create!.mockResolvedValue([
+        makeDoc({ status: 'draft', version: 1 }),
+      ]);
+      documentModel.findOneAndUpdate!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(
         service.replace(docId.toHexString(), {
@@ -596,14 +658,22 @@ describe('DocumentsService lifecycle transitions', () => {
   describe('listVersionHistory', () => {
     it('resolves the root of the chain and returns every revision in order', async () => {
       const rootId = new Types.ObjectId();
-      const current = makeDoc({ _id: docId, root_document_id: rootId, revision: 2 });
-      documentModel.findById!.mockReturnValue({ exec: jest.fn().mockResolvedValue(current) });
+      const current = makeDoc({
+        _id: docId,
+        root_document_id: rootId,
+        revision: 2,
+      });
+      documentModel.findById!.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(current),
+      });
 
       const chain = [
         makeDoc({ _id: rootId, revision: 1 }),
         makeDoc({ _id: docId, root_document_id: rootId, revision: 2 }),
       ];
-      const sortMock = jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(chain) });
+      const sortMock = jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(chain) });
       documentModel.find = jest.fn().mockReturnValue({ sort: sortMock });
 
       const result = await service.listVersionHistory(docId.toHexString());

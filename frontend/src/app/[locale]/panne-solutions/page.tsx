@@ -286,6 +286,8 @@ export default function PanneSolutionsPage() {
 
   useEffect(() => {
     loadData();
+    // loadData intentionally reads the current pagination state; wrapping it here would change the page's existing refresh behavior.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit]);
 
   useEffect(() => {
@@ -300,6 +302,8 @@ export default function PanneSolutionsPage() {
       window.removeEventListener('panne-solutions:changed', handleChanged);
       window.removeEventListener('focus', handleChanged);
     };
+    // keep the existing event listener lifecycle stable; loadData reads current state when the event fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {

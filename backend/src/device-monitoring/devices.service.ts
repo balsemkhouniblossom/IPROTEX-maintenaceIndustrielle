@@ -21,18 +21,26 @@ export interface RegisteredDevice {
 @Injectable()
 export class DevicesService {
   constructor(
-    @InjectModel(Device.name) private readonly deviceModel: Model<DeviceDocument>,
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Device.name)
+    private readonly deviceModel: Model<DeviceDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     private readonly deviceAuthService: DeviceAuthService,
   ) {}
 
-  async register(dto: RegisterDeviceDto, actorId?: string): Promise<RegisteredDevice> {
-    const machineExists = await this.machineModel.exists({ _id: dto.machine_id }).exec();
+  async register(
+    dto: RegisterDeviceDto,
+    actorId?: string,
+  ): Promise<RegisteredDevice> {
+    const machineExists = await this.machineModel
+      .exists({ _id: dto.machine_id })
+      .exec();
     if (!machineExists) {
       throw new BadRequestException('Referenced machine does not exist');
     }
 
-    const generated: GeneratedDeviceKey = await this.deviceAuthService.generateApiKey();
+    const generated: GeneratedDeviceKey =
+      await this.deviceAuthService.generateApiKey();
 
     try {
       const device = await this.deviceModel.create({
@@ -49,7 +57,9 @@ export class DevicesService {
       return { device, apiKey: generated.rawKey };
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
-        throw new ConflictException(`A device with device_id "${dto.device_id}" already exists`);
+        throw new ConflictException(
+          `A device with device_id "${dto.device_id}" already exists`,
+        );
       }
       throw error;
     }
@@ -60,7 +70,8 @@ export class DevicesService {
   }
 
   async findOne(id: string): Promise<DeviceDocument> {
-    if (!Types.ObjectId.isValid(id)) throw new BadRequestException('Invalid device id');
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException('Invalid device id');
     const device = await this.deviceModel.findById(id).exec();
     if (!device) throw new NotFoundException('Device not found');
     return device;
@@ -93,6 +104,10 @@ export class DevicesService {
   }
 
   private isDuplicateKeyError(error: unknown): boolean {
-    return Boolean(error && typeof error === 'object' && (error as { code?: number }).code === 11000);
+    return Boolean(
+      error &&
+      typeof error === 'object' &&
+      (error as { code?: number }).code === 11000,
+    );
   }
 }

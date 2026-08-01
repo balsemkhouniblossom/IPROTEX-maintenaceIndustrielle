@@ -19,6 +19,7 @@ import { CreateCorrectiveReportDto } from './dto/create-corrective-report.dto';
 import { SubmitPreventiveMaintenanceDto } from './dto/submit-preventive-maintenance.dto';
 import { CreatePartRequestDto } from './dto/create-part-request.dto';
 import { RescheduleCalendarEventDto } from './dto/reschedule-calendar-event.dto';
+import { SchedulePreventiveDto } from './dto/schedule-preventive.dto';
 import { UpdatePreventiveTaskChecklistDto } from './dto/update-preventive-task-checklist.dto';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
@@ -178,7 +179,11 @@ export class OperatorController {
     @Body() dto: UpdatePreventiveTaskChecklistDto,
   ) {
     const userId = this.ensureOperator(req);
-    return this.operatorService.updatePreventiveTaskChecklist(userId, taskId, dto);
+    return this.operatorService.updatePreventiveTaskChecklist(
+      userId,
+      taskId,
+      dto,
+    );
   }
 
   @Get('lubrifiants')
@@ -361,18 +366,9 @@ export class OperatorController {
   schedulePreventive(
     @Req() req: AuthenticatedRequest,
     @Body()
-    payload: {
-      machine_id?: string;
-      plan_id?: string;
-      scheduled_date?: string;
-    },
+    payload: SchedulePreventiveDto,
   ) {
     const userId = this.ensureOperator(req);
-    if (!payload.machine_id || !payload.plan_id || !payload.scheduled_date) {
-      throw new ForbiddenException(
-        'machine_id, plan_id, and scheduled_date are required',
-      );
-    }
     return this.operatorService.schedulePreventive(userId, {
       machineId: payload.machine_id,
       planId: payload.plan_id,

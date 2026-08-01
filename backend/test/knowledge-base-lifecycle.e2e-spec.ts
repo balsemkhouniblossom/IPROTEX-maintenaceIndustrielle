@@ -21,6 +21,10 @@ import {
   MaintenancePlan,
   MaintenancePlanDocument,
 } from '../src/schemas/maintenance-plan.schema';
+import {
+  KnowledgeArticle,
+  KnowledgeArticleDocument,
+} from '../src/schemas/knowledge-article.schema';
 
 describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e2e)', () => {
   let mongo: MongoMemoryReplSet;
@@ -32,6 +36,7 @@ describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e
   let machines: Model<MachineDocument>;
   let modules: Model<ModuleDocument>;
   let maintenancePlans: Model<MaintenancePlanDocument>;
+  let knowledgeArticles: Model<KnowledgeArticleDocument>;
 
   let adminToken: string;
   let technicianToken: string;
@@ -71,6 +76,7 @@ describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e
     machines = app.get(getModelToken(Machine.name));
     modules = app.get(getModelToken(Module.name));
     maintenancePlans = app.get(getModelToken(MaintenancePlan.name));
+    knowledgeArticles = app.get(getModelToken(KnowledgeArticle.name));
 
     await seedBaseData();
   }, 120_000);
@@ -92,6 +98,7 @@ describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e
 
   async function seedBaseData() {
     await connection.dropDatabase();
+    await knowledgeArticles.syncIndexes();
 
     const machineType = await machineTypes.create({
       type_id: 1,
@@ -287,7 +294,10 @@ describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e
       await request(app.getHttpServer())
         .put(`/knowledge-base/articles/${articleId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ title: 'Direct edit attempt', expected_version: articleVersion })
+        .send({
+          title: 'Direct edit attempt',
+          expected_version: articleVersion,
+        })
         .expect(409);
     });
 
@@ -299,7 +309,8 @@ describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e
         .post(`/knowledge-base/articles/${articleId}/revise`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          content: 'Updated: check lubrication, alignment, and vibration sensor.',
+          content:
+            'Updated: check lubrication, alignment, and vibration sensor.',
           expected_version: articleVersion,
           reason: 'Added vibration sensor step',
         })

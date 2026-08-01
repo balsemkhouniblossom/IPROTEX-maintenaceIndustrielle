@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminOnly, AuthenticatedRoles } from '../auth/decorators/roles.decorator';
+import {
+  AdminOnly,
+  AuthenticatedRoles,
+} from '../auth/decorators/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { AiAssistantService } from './ai-assistant.service';
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
@@ -26,7 +29,9 @@ export class AiAssistantController {
   @Get('history')
   @AuthenticatedRoles()
   getOwnHistory(@Req() req: AuthenticatedRequest) {
-    return this.aiAssistantService.listOwnHistory({ userId: req.user!.userId! });
+    return this.aiAssistantService.listOwnHistory({
+      userId: req.user!.userId!,
+    });
   }
 
   /** Full interaction history across all users — Admin audit view. */

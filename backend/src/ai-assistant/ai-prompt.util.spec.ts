@@ -1,4 +1,8 @@
-import { buildSystemPrompt, buildUserPrompt, normalizeAnswer } from './ai-prompt.util';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  normalizeAnswer,
+} from './ai-prompt.util';
 import { AiAssistantRequest } from './ai-provider.interface';
 
 describe('normalizeAnswer', () => {
@@ -79,7 +83,9 @@ describe('buildSystemPrompt', () => {
 });
 
 describe('buildUserPrompt', () => {
-  function request(overrides: Partial<AiAssistantRequest> = {}): AiAssistantRequest {
+  function request(
+    overrides: Partial<AiAssistantRequest> = {},
+  ): AiAssistantRequest {
     return {
       question: 'Why does the motor trip?',
       locale: 'en',
@@ -110,10 +116,18 @@ describe('buildUserPrompt', () => {
         context: {
           faultCode: 'E-42',
           activeAlarms: [
-            { codePanne: 'E-42', severity: 'critical', raisedAt: '2026-07-01T10:00:00.000Z' },
+            {
+              codePanne: 'E-42',
+              severity: 'critical',
+              raisedAt: '2026-07-01T10:00:00.000Z',
+            },
           ],
           maintenanceHistory: [
-            { date: '2026-06-01T00:00:00.000Z', status: 'closed', description: 'Bearing replaced' },
+            {
+              date: '2026-06-01T00:00:00.000Z',
+              status: 'closed',
+              description: 'Bearing replaced',
+            },
           ],
           knowledgeArticles: [],
         },

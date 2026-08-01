@@ -12,7 +12,10 @@ import {
   PredictionModelVersionStatus,
 } from '../schemas/prediction-model-version.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
-import { Module as ModuleEntity, ModuleDocument } from '../schemas/module.schema';
+import {
+  Module as ModuleEntity,
+  ModuleDocument,
+} from '../schemas/module.schema';
 import {
   MaintenancePlan,
   MaintenancePlanDocument,
@@ -56,7 +59,8 @@ function clampHealthScore(value: number): number {
 
 function worstRisk(levels: PredictionRiskLevel[]): PredictionRiskLevel {
   return levels.reduce(
-    (worst, level) => (RISK_ORDER.indexOf(level) > RISK_ORDER.indexOf(worst) ? level : worst),
+    (worst, level) =>
+      RISK_ORDER.indexOf(level) > RISK_ORDER.indexOf(worst) ? level : worst,
     PredictionRiskLevel.LOW,
   );
 }
@@ -78,8 +82,10 @@ export class PredictiveMaintenanceService {
     private readonly predictionModel: Model<MachineHealthPredictionDocument>,
     @InjectModel(PredictionModelVersion.name)
     private readonly modelVersionModel: Model<PredictionModelVersionDocument>,
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
-    @InjectModel(ModuleEntity.name) private readonly moduleModel: Model<ModuleDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(ModuleEntity.name)
+    private readonly moduleModel: Model<ModuleDocument>,
     @InjectModel(MaintenancePlan.name)
     private readonly maintenancePlanModel: Model<MaintenancePlanDocument>,
     @Inject(PREDICTION_MODELS) private readonly models: PredictionModel[],
@@ -106,13 +112,15 @@ export class PredictiveMaintenanceService {
       const model = this.models.find((m) => m.type === version.model_type);
       if (!model) continue;
 
-      const inference = model.score(features, version.artifact as ModelArtifact);
+      const inference = model.score(
+        features,
+        version.artifact as ModelArtifact,
+      );
       const healthScore = clampHealthScore(100 * (1 - inference.anomalyScore));
       const riskLevel = isEmpty
         ? PredictionRiskLevel.INSUFFICIENT_DATA
         : this.deriveRiskLevel(inference.anomalyScore, features);
 
-      // eslint-disable-next-line no-await-in-loop
       const created = await this.predictionModel.create({
         machine_id: new Types.ObjectId(machineId),
         model_version_id: version._id,
@@ -181,10 +189,11 @@ export class PredictiveMaintenanceService {
   }
 
   async getFleetSummary(actor: PredictiveActor): Promise<FleetHealthSummary[]> {
-    const accessibleIds = await this.documentAccessService.listAccessibleMachineIds({
-      userId: actor.userId,
-      role: actor.role,
-    });
+    const accessibleIds =
+      await this.documentAccessService.listAccessibleMachineIds({
+        userId: actor.userId,
+        role: actor.role,
+      });
 
     const machines = await this.machineModel
       .find(accessibleIds ? { _id: { $in: accessibleIds } } : {})
@@ -193,7 +202,6 @@ export class PredictiveMaintenanceService {
 
     const summaries: FleetHealthSummary[] = [];
     for (const machine of machines) {
-      // eslint-disable-next-line no-await-in-loop
       const summary = await this.summarizeMachine(machine._id.toString());
       if (summary) summaries.push(summary);
     }
@@ -204,16 +212,19 @@ export class PredictiveMaintenanceService {
   async getPlanHealthSummaries(
     actor: PredictiveActor,
   ): Promise<Record<string, FleetHealthSummary & { machineId: string }>> {
-    const accessibleIds = await this.documentAccessService.listAccessibleMachineIds({
-      userId: actor.userId,
-      role: actor.role,
-    });
+    const accessibleIds =
+      await this.documentAccessService.listAccessibleMachineIds({
+        userId: actor.userId,
+        role: actor.role,
+      });
 
     const modules = await this.moduleModel
       .find(accessibleIds ? { machine_id: { $in: accessibleIds } } : {})
       .select({ _id: 1, machine_id: 1 })
       .exec();
-    const machineIdByModuleId = new Map(modules.map((m) => [m._id.toString(), m.machine_id.toString()]));
+    const machineIdByModuleId = new Map(
+      modules.map((m) => [m._id.toString(), m.machine_id.toString()]),
+    );
     if (machineIdByModuleId.size === 0) return {};
 
     const plans = await this.maintenancePlanModel
@@ -221,22 +232,29 @@ export class PredictiveMaintenanceService {
         // Explicit ObjectId cast rather than trusting Mongoose to cast the
         // strings inside `$in` automatically — see the identical fix in
         // AiAssistantService.listOwnHistory for why that trust doesn't hold.
-        module_id: { $in: [...machineIdByModuleId.keys()].map((id) => new Types.ObjectId(id)) },
+        module_id: {
+          $in: [...machineIdByModuleId.keys()].map(
+            (id) => new Types.ObjectId(id),
+          ),
+        },
         status: { $ne: MaintenancePlanStatus.ARCHIVED },
       })
       .select({ _id: 1, module_id: 1 })
       .exec();
 
     const summaryByMachineId = new Map<string, FleetHealthSummary | null>();
-    const result: Record<string, FleetHealthSummary & { machineId: string }> = {};
+    const result: Record<string, FleetHealthSummary & { machineId: string }> =
+      {};
 
     for (const plan of plans) {
       const machineId = machineIdByModuleId.get(plan.module_id.toString());
       if (!machineId) continue;
 
       if (!summaryByMachineId.has(machineId)) {
-        // eslint-disable-next-line no-await-in-loop
-        summaryByMachineId.set(machineId, await this.summarizeMachine(machineId));
+        summaryByMachineId.set(
+          machineId,
+          await this.summarizeMachine(machineId),
+        );
       }
       const summary = summaryByMachineId.get(machineId);
       if (summary) result[plan._id.toString()] = { ...summary, machineId };
@@ -245,12 +263,16 @@ export class PredictiveMaintenanceService {
     return result;
   }
 
-  private async summarizeMachine(machineId: string): Promise<FleetHealthSummary | null> {
+  private async summarizeMachine(
+    machineId: string,
+  ): Promise<FleetHealthSummary | null> {
     const latest = await this.fetchLatestPerModelType(machineId);
     if (latest.length === 0) return null;
 
-    const healthScore = latest.reduce((sum, p) => sum + p.health_score, 0) / latest.length;
-    const confidence = latest.reduce((sum, p) => sum + p.confidence, 0) / latest.length;
+    const healthScore =
+      latest.reduce((sum, p) => sum + p.health_score, 0) / latest.length;
+    const confidence =
+      latest.reduce((sum, p) => sum + p.confidence, 0) / latest.length;
 
     return {
       machineId,
@@ -265,12 +287,13 @@ export class PredictiveMaintenanceService {
     };
   }
 
-  private async fetchLatestPerModelType(machineId: string): Promise<MachineHealthPredictionDocument[]> {
+  private async fetchLatestPerModelType(
+    machineId: string,
+  ): Promise<MachineHealthPredictionDocument[]> {
     const machineObjectId = new Types.ObjectId(machineId);
     const results: MachineHealthPredictionDocument[] = [];
 
     for (const modelType of new Set(this.models.map((m) => m.type))) {
-      // eslint-disable-next-line no-await-in-loop
       const latest = await this.predictionModel
         .findOne({ machine_id: machineObjectId, model_type: modelType })
         .sort({ generated_at: -1 })
@@ -281,14 +304,23 @@ export class PredictiveMaintenanceService {
     return results;
   }
 
-  private deriveRiskLevel(anomalyScore: number, features: number[]): PredictionRiskLevel {
-    const activeAlarmCount = features[FEATURE_NAMES.indexOf('active_alarm_count')] ?? 0;
-    const criticalAlarmCount = features[FEATURE_NAMES.indexOf('critical_alarm_count')] ?? 0;
-    const overdueCount = features[FEATURE_NAMES.indexOf('overdue_work_order_count')] ?? 0;
+  private deriveRiskLevel(
+    anomalyScore: number,
+    features: number[],
+  ): PredictionRiskLevel {
+    const activeAlarmCount =
+      features[FEATURE_NAMES.indexOf('active_alarm_count')] ?? 0;
+    const criticalAlarmCount =
+      features[FEATURE_NAMES.indexOf('critical_alarm_count')] ?? 0;
+    const overdueCount =
+      features[FEATURE_NAMES.indexOf('overdue_work_order_count')] ?? 0;
 
-    if (anomalyScore >= 0.75 || criticalAlarmCount > 0) return PredictionRiskLevel.CRITICAL;
-    if (anomalyScore >= 0.5 || overdueCount >= 2 || activeAlarmCount >= 2) return PredictionRiskLevel.HIGH;
-    if (anomalyScore >= 0.25 || overdueCount >= 1 || activeAlarmCount >= 1) return PredictionRiskLevel.MEDIUM;
+    if (anomalyScore >= 0.75 || criticalAlarmCount > 0)
+      return PredictionRiskLevel.CRITICAL;
+    if (anomalyScore >= 0.5 || overdueCount >= 2 || activeAlarmCount >= 2)
+      return PredictionRiskLevel.HIGH;
+    if (anomalyScore >= 0.25 || overdueCount >= 1 || activeAlarmCount >= 1)
+      return PredictionRiskLevel.MEDIUM;
     return PredictionRiskLevel.LOW;
   }
 

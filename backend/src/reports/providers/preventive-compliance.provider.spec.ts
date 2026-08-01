@@ -8,14 +8,21 @@ function execResolves(result: unknown) {
 describe('PreventiveComplianceReportProvider', () => {
   const actor = { userId: new Types.ObjectId().toString(), role: 'admin' };
 
-  function buildProvider(machines: unknown[], complianceByMachineId: Record<string, unknown>) {
+  function buildProvider(
+    machines: unknown[],
+    complianceByMachineId: Record<string, unknown>,
+  ) {
     const machineModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves(machines)) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves(machines)),
+      }),
     };
     const kpiService = {
-      computePreventiveCompliance: jest.fn().mockImplementation(({ machineIds }) =>
-        Promise.resolve(complianceByMachineId[machineIds[0]]),
-      ),
+      computePreventiveCompliance: jest
+        .fn()
+        .mockImplementation(({ machineIds }) =>
+          Promise.resolve(complianceByMachineId[machineIds[0]]),
+        ),
     };
     const documentAccessService = {
       listAccessibleMachineIds: jest.fn().mockResolvedValue(null),
@@ -34,10 +41,19 @@ describe('PreventiveComplianceReportProvider', () => {
     const machineId = new Types.ObjectId();
     const { provider, kpiService } = buildProvider(
       [{ _id: machineId, machine_id: 'M-1', reference: 'Press' }],
-      { [machineId.toString()]: { ratePercent: 80, onTimeCount: 4, evaluableCount: 5 } },
+      {
+        [machineId.toString()]: {
+          ratePercent: 80,
+          onTimeCount: 4,
+          evaluableCount: 5,
+        },
+      },
     );
 
-    const dataset = await provider.buildDataset({ dateFrom: new Date('2026-01-01') }, actor);
+    const dataset = await provider.buildDataset(
+      { dateFrom: new Date('2026-01-01') },
+      actor,
+    );
 
     expect(kpiService.computePreventiveCompliance).toHaveBeenCalledWith(
       expect.objectContaining({ machineIds: [machineId.toString()] }),
@@ -61,7 +77,11 @@ describe('PreventiveComplianceReportProvider', () => {
         { _id: m2, machine_id: 'M-2' },
       ],
       {
-        [m1.toString()]: { ratePercent: 100, onTimeCount: 2, evaluableCount: 2 },
+        [m1.toString()]: {
+          ratePercent: 100,
+          onTimeCount: 2,
+          evaluableCount: 2,
+        },
         [m2.toString()]: { ratePercent: 0, onTimeCount: 0, evaluableCount: 2 },
       },
     );
@@ -78,13 +98,22 @@ describe('PreventiveComplianceReportProvider', () => {
     const machineId = new Types.ObjectId();
     const { provider, machineModel } = buildProvider(
       [{ _id: machineId, machine_id: 'M-1' }],
-      { [machineId.toString()]: { ratePercent: 100, onTimeCount: 1, evaluableCount: 1 } },
+      {
+        [machineId.toString()]: {
+          ratePercent: 100,
+          onTimeCount: 1,
+          evaluableCount: 1,
+        },
+      },
     );
 
-    await provider.buildDataset({ machineId: machineId.toString() }, {
-      userId: actor.userId,
-      role: 'admin',
-    });
+    await provider.buildDataset(
+      { machineId: machineId.toString() },
+      {
+        userId: actor.userId,
+        role: 'admin',
+      },
+    );
 
     expect(machineModel.find).toHaveBeenCalled();
   });

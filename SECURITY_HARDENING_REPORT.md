@@ -279,7 +279,7 @@ npm update --save # after vetting
 - ✅ Health endpoints for monitoring
 - ✅ Graceful shutdown logs
 - ✅ Docker container logs (JSON driver, max-size limits)
-- 🔄 TODO: Sentry integration for error tracking
+- 🔄 TODO: production error-tracking integration
 - 🔄 TODO: ELK/CloudLogging for centralized logs
 - 🔄 TODO: Prometheus metrics
 
@@ -361,7 +361,7 @@ npm update --save # after vetting
 - [ ] Configure environment variables (.env.production)
 - [ ] SSL certificates ready (Let's Encrypt)
 - [ ] Database backups configured
-- [ ] Monitoring/Sentry project created
+- [ ] Monitoring/error-tracking project created
 - [ ] SMTP credentials ready
 
 ### Deployment
@@ -414,7 +414,7 @@ curl -k https://yourdomain.com/health/api
 
 ### Monthly
 
-- Review security logs in Sentry
+- Review security logs in the configured monitoring system
 - Update dependencies (`npm update`)
 - Run `npm audit` and fix issues
 

@@ -131,11 +131,16 @@ function classifyGeminiError(error: unknown): Error {
   }
 
   if (isAbortError(error)) {
-    return error instanceof Error ? error : new Error('AI provider request timed out');
+    return error instanceof Error
+      ? error
+      : new Error('AI provider request timed out');
   }
 
   if (error instanceof ApiError) {
-    if (error.status === 404 && /model|not found|not available/i.test(error.message)) {
+    if (
+      error.status === 404 &&
+      /model|not found|not available/i.test(error.message)
+    ) {
       return new AiProviderError(
         'missing_configuration',
         'Gemini model is unavailable for the configured API key',
@@ -145,7 +150,8 @@ function classifyGeminiError(error: unknown): Error {
     if (
       error.status === 401 ||
       error.status === 403 ||
-      (error.status === 400 && /api key|credential|permission/i.test(error.message))
+      (error.status === 400 &&
+        /api key|credential|permission/i.test(error.message))
     ) {
       return new AiProviderError(
         'invalid_credentials',

@@ -83,7 +83,10 @@ export class MaintenancePlansController {
 
   @Delete(':id')
   @AdminOnly()
-  remove(@Param('id') id: string, @Query('expected_version') expectedVersion?: string) {
+  remove(
+    @Param('id') id: string,
+    @Query('expected_version') expectedVersion?: string,
+  ) {
     const parsedVersion =
       expectedVersion !== undefined ? Number(expectedVersion) : undefined;
     return this.maintenancePlansService.remove(id, parsedVersion);

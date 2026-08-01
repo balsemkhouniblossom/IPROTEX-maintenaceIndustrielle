@@ -36,7 +36,10 @@ export class NotificationCenterController {
     private readonly notificationCenterService: NotificationCenterService,
   ) {}
 
-  private identity(req: AuthenticatedRequest): { userId: string; role: string } {
+  private identity(req: AuthenticatedRequest): {
+    userId: string;
+    role: string;
+  } {
     const userId = req.user?.userId;
     const role = req.user?.role;
     if (!userId || !role) {

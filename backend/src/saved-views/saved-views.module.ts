@@ -5,7 +5,11 @@ import { SavedViewsService } from './saved-views.service';
 import { SavedViewsController } from './saved-views.controller';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: SavedView.name, schema: SavedViewSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: SavedView.name, schema: SavedViewSchema },
+    ]),
+  ],
   controllers: [SavedViewsController],
   providers: [SavedViewsService],
   exports: [SavedViewsService],

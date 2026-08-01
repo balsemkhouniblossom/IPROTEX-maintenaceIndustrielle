@@ -26,7 +26,8 @@ const REDACTION_RULES: RedactionRule[] = [
   },
   {
     // JWT-shaped strings (header.payload.signature, base64url segments).
-    pattern: /\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b/,
+    pattern:
+      /\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b/,
     replacement: '[REDACTED_TOKEN]',
   },
   {

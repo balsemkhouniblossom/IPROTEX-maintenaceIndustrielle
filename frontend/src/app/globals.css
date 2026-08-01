@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /* Local Frutiger Font Setup */
 @font-face {
   font-family: 'Frutiger LT';

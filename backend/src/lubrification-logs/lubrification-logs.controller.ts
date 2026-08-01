@@ -14,6 +14,8 @@ import {
   AdminOnly,
   AuthenticatedRoles,
 } from '../auth/decorators/roles.decorator';
+import { CreateLubrificationLogDto } from './dto/create-lubrification-log.dto';
+import { UpdateLubrificationLogDto } from './dto/update-lubrification-log.dto';
 
 @Controller('lubrification-logs')
 @AuthenticatedRoles()
@@ -24,7 +26,7 @@ export class LubrificationLogsController {
 
   @Post()
   @AdminOnly()
-  create(@Body() payload: Record<string, unknown>) {
+  create(@Body() payload: CreateLubrificationLogDto) {
     return this.lubrificationLogsService.create(payload);
   }
 
@@ -47,7 +49,7 @@ export class LubrificationLogsController {
 
   @Patch(':id')
   @AdminOnly()
-  update(@Param('id') id: string, @Body() payload: Record<string, unknown>) {
+  update(@Param('id') id: string, @Body() payload: UpdateLubrificationLogDto) {
     return this.lubrificationLogsService.update(id, payload);
   }
 

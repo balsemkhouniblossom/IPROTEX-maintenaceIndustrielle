@@ -21,7 +21,11 @@ describe('LiveStatusService', () => {
   describe('isOnline', () => {
     it('is offline when the device was never seen', () => {
       expect(
-        service.isOnline({ is_active: true, last_seen_at: undefined, heartbeat_interval_seconds: 30 }),
+        service.isOnline({
+          is_active: true,
+          last_seen_at: undefined,
+          heartbeat_interval_seconds: 30,
+        }),
       ).toBe(false);
     });
 
@@ -38,21 +42,31 @@ describe('LiveStatusService', () => {
     it('is online within 3x the heartbeat interval', () => {
       const lastSeenAt = new Date(Date.now() - 60_000); // 60s ago
       expect(
-        service.isOnline({ is_active: true, last_seen_at: lastSeenAt, heartbeat_interval_seconds: 30 }),
+        service.isOnline({
+          is_active: true,
+          last_seen_at: lastSeenAt,
+          heartbeat_interval_seconds: 30,
+        }),
       ).toBe(true); // threshold is 90s
     });
 
     it('is offline beyond 3x the heartbeat interval', () => {
       const lastSeenAt = new Date(Date.now() - 100_000); // 100s ago
       expect(
-        service.isOnline({ is_active: true, last_seen_at: lastSeenAt, heartbeat_interval_seconds: 30 }),
+        service.isOnline({
+          is_active: true,
+          last_seen_at: lastSeenAt,
+          heartbeat_interval_seconds: 30,
+        }),
       ).toBe(false); // threshold is 90s
     });
   });
 
   describe('getMachineLiveStatus', () => {
     it('reports hasDevice=false for a machine with no registered device', async () => {
-      deviceModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      deviceModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
       const result = await service.getMachineLiveStatus('machine-1');
       expect(result).toEqual({
         machineId: 'machine-1',
@@ -77,7 +91,9 @@ describe('LiveStatusService', () => {
           label: 'Line 1 PLC',
         }),
       });
-      faultEventModel.countDocuments.mockReturnValue({ exec: jest.fn().mockResolvedValue(2) });
+      faultEventModel.countDocuments.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(2),
+      });
       telemetryModel.findOne.mockReturnValue({
         sort: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({
@@ -92,7 +108,10 @@ describe('LiveStatusService', () => {
       expect(result.hasDevice).toBe(true);
       expect(result.online).toBe(true);
       expect(result.activeAlarmCount).toBe(2);
-      expect(result.latestTelemetry).toEqual({ metrics: { temperature: 55 }, recordedAt: lastSeenAt });
+      expect(result.latestTelemetry).toEqual({
+        metrics: { temperature: 55 },
+        recordedAt: lastSeenAt,
+      });
       expect(faultEventModel.countDocuments).toHaveBeenCalledWith({
         machine_id: 'machine-1',
         resolved_at: { $exists: false },
@@ -102,20 +121,28 @@ describe('LiveStatusService', () => {
 
   describe('getMachinesLiveSummary', () => {
     it('returns an empty array when there are no devices in scope', async () => {
-      deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([]) });
+      deviceModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      });
       const result = await service.getMachinesLiveSummary(null);
       expect(result).toEqual([]);
     });
 
     it('scopes the device query to the given machine ids when not admin (non-null)', async () => {
       const machineIds = [new Types.ObjectId()];
-      deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([]) });
+      deviceModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      });
       await service.getMachinesLiveSummary(machineIds);
-      expect(deviceModel.find).toHaveBeenCalledWith({ machine_id: { $in: machineIds } });
+      expect(deviceModel.find).toHaveBeenCalledWith({
+        machine_id: { $in: machineIds },
+      });
     });
 
     it('does not scope the device query when machineIds is null (admin/unrestricted)', async () => {
-      deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([]) });
+      deviceModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      });
       await service.getMachinesLiveSummary(null);
       expect(deviceModel.find).toHaveBeenCalledWith({});
     });
@@ -134,7 +161,9 @@ describe('LiveStatusService', () => {
           },
         ]),
       });
-      faultEventModel.aggregate.mockResolvedValue([{ _id: machineId, count: 3 }]);
+      faultEventModel.aggregate.mockResolvedValue([
+        { _id: machineId, count: 3 },
+      ]);
 
       const result = await service.getMachinesLiveSummary(null);
 

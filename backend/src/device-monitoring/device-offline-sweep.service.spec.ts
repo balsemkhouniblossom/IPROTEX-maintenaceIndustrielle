@@ -13,7 +13,9 @@ describe('DeviceOfflineSweepService', () => {
     deviceModel = { find: jest.fn(), findOneAndUpdate: jest.fn() };
     liveStatusService = { isOnline: jest.fn() };
     liveMonitoringGateway = { emitStatusChange: jest.fn() };
-    notificationCenterService = { createIfNotExists: jest.fn().mockResolvedValue(null) };
+    notificationCenterService = {
+      createIfNotExists: jest.fn().mockResolvedValue(null),
+    };
 
     service = new DeviceOfflineSweepService(
       deviceModel as never,
@@ -33,8 +35,14 @@ describe('DeviceOfflineSweepService', () => {
   });
 
   it('leaves a device untouched when it is still computed as online', async () => {
-    const dev = { _id: new Types.ObjectId(), device_id: 'DEV-1', last_known_status: 'online' };
-    deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([dev]) });
+    const dev = {
+      _id: new Types.ObjectId(),
+      device_id: 'DEV-1',
+      last_known_status: 'online',
+    };
+    deviceModel.find.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([dev]),
+    });
     liveStatusService.isOnline.mockReturnValue(true);
 
     const result = await service.runSweep();
@@ -53,10 +61,15 @@ describe('DeviceOfflineSweepService', () => {
       last_seen_at: new Date(),
       last_known_status: 'online',
     };
-    deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([dev]) });
+    deviceModel.find.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([dev]),
+    });
     liveStatusService.isOnline.mockReturnValue(false);
     deviceModel.findOneAndUpdate.mockReturnValue({
-      exec: jest.fn().mockResolvedValue({ ...dev, last_known_status: DeviceConnectionStatus.OFFLINE }),
+      exec: jest.fn().mockResolvedValue({
+        ...dev,
+        last_known_status: DeviceConnectionStatus.OFFLINE,
+      }),
     });
 
     const result = await service.runSweep();
@@ -64,7 +77,10 @@ describe('DeviceOfflineSweepService', () => {
     expect(result.processed).toBe(1);
     expect(liveMonitoringGateway.emitStatusChange).toHaveBeenCalledWith(
       machineId.toString(),
-      expect.objectContaining({ deviceId: 'DEV-1', status: DeviceConnectionStatus.OFFLINE }),
+      expect.objectContaining({
+        deviceId: 'DEV-1',
+        status: DeviceConnectionStatus.OFFLINE,
+      }),
     );
     expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({ recipientRole: 'admin' }),
@@ -78,10 +94,14 @@ describe('DeviceOfflineSweepService', () => {
       machine_id: new Types.ObjectId(),
       last_known_status: 'online',
     };
-    deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([dev]) });
+    deviceModel.find.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([dev]),
+    });
     liveStatusService.isOnline.mockReturnValue(false);
     // Another concurrent sweep already flipped it — the guarded update matches nothing.
-    deviceModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+    deviceModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
 
     const result = await service.runSweep();
 

@@ -114,13 +114,18 @@ describe('KpiService', () => {
     });
 
     it('scopes the aggregation to a set of machines when requested', async () => {
-      const machineIds = [new Types.ObjectId().toHexString(), new Types.ObjectId().toHexString()];
+      const machineIds = [
+        new Types.ObjectId().toHexString(),
+        new Types.ObjectId().toHexString(),
+      ];
 
       await service.computeWorkOrderStatusCounts({ machineIds });
 
       const pipeline = workOrderModel.aggregate.mock.calls[0][0];
       expect(pipeline[0]).toEqual({
-        $match: { machine_id: { $in: machineIds.map((id) => new Types.ObjectId(id)) } },
+        $match: {
+          machine_id: { $in: machineIds.map((id) => new Types.ObjectId(id)) },
+        },
       });
     });
   });
@@ -228,7 +233,11 @@ describe('KpiService', () => {
 
       const result = await service.computePreventiveCompliance();
 
-      expect(result).toEqual({ ratePercent: 50, onTimeCount: 1, evaluableCount: 2 });
+      expect(result).toEqual({
+        ratePercent: 50,
+        onTimeCount: 1,
+        evaluableCount: 2,
+      });
     });
 
     it('excludes orders with no resolvable due date or completion timestamp from both counts', async () => {
@@ -241,7 +250,11 @@ describe('KpiService', () => {
 
       const result = await service.computePreventiveCompliance();
 
-      expect(result).toEqual({ ratePercent: 0, onTimeCount: 0, evaluableCount: 0 });
+      expect(result).toEqual({
+        ratePercent: 0,
+        onTimeCount: 0,
+        evaluableCount: 0,
+      });
     });
 
     it('returns a 0% rate (not NaN) when there is nothing to evaluate', async () => {
@@ -411,7 +424,9 @@ describe('KpiService', () => {
       await service.computeMttrMtbf({ machineIds: [machineId], dateFrom });
 
       const [filter] = workOrderModel.find.mock.calls[0];
-      expect(filter.machine_id).toEqual({ $in: [new Types.ObjectId(machineId)] });
+      expect(filter.machine_id).toEqual({
+        $in: [new Types.ObjectId(machineId)],
+      });
       expect(filter.date_created).toEqual({ $gte: dateFrom });
     });
   });
@@ -431,7 +446,11 @@ describe('KpiService', () => {
       const result = await service.computeWorkload();
 
       expect(result).toEqual([
-        { technicianId: technicianId.toString(), name: 'Jane Technician', openCount: 4 },
+        {
+          technicianId: technicianId.toString(),
+          name: 'Jane Technician',
+          openCount: 4,
+        },
       ]);
     });
 
@@ -447,7 +466,9 @@ describe('KpiService', () => {
 
   describe('getAdminDashboard', () => {
     it('assembles every fleet-wide metric and computes month-over-month percentage change', async () => {
-      workOrderModel.aggregate.mockReturnValue(execResult(facetResult({ total: 10 })));
+      workOrderModel.aggregate.mockReturnValue(
+        execResult(facetResult({ total: 10 })),
+      );
       workOrderModel.countDocuments
         .mockReturnValueOnce(execResult(20)) // current month
         .mockReturnValueOnce(execResult(10)); // last month
@@ -479,7 +500,14 @@ describe('KpiService', () => {
     it('scopes the shared status-count computation to the given technician', async () => {
       const technicianId = new Types.ObjectId().toHexString();
       workOrderModel.aggregate.mockReturnValue(
-        execResult(facetResult({ overdue: 1, dueToday: 2, waitingValidation: 0, completedToday: 3 })),
+        execResult(
+          facetResult({
+            overdue: 1,
+            dueToday: 2,
+            waitingValidation: 0,
+            completedToday: 3,
+          }),
+        ),
       );
 
       const result = await service.getTechnicianDashboardCounts(technicianId);

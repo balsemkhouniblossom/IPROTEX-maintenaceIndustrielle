@@ -1,11 +1,1 @@
-{
-  "dependencies": {
-    "@nestjs/swagger": "^11.4.4",
-    "@nestjs/throttler": "^6.5.0",
-    "@sentry/node": "^10.59.0",
-    "compression": "^1.8.1",
-    "helmet": "^8.2.0",
-    "hpp": "^0.2.3",
-    "swagger-ui-express": "^5.0.1"
-  }
-}
+{}

@@ -21,19 +21,30 @@ export interface MachineLiveStatus {
 @Injectable()
 export class LiveStatusService {
   constructor(
-    @InjectModel(Device.name) private readonly deviceModel: Model<DeviceDocument>,
-    @InjectModel(Telemetry.name) private readonly telemetryModel: Model<TelemetryDocument>,
-    @InjectModel(FaultEvent.name) private readonly faultEventModel: Model<FaultEventDocument>,
+    @InjectModel(Device.name)
+    private readonly deviceModel: Model<DeviceDocument>,
+    @InjectModel(Telemetry.name)
+    private readonly telemetryModel: Model<TelemetryDocument>,
+    @InjectModel(FaultEvent.name)
+    private readonly faultEventModel: Model<FaultEventDocument>,
   ) {}
 
-  isOnline(device: Pick<Device, 'is_active' | 'last_seen_at' | 'heartbeat_interval_seconds'>): boolean {
+  isOnline(
+    device: Pick<
+      Device,
+      'is_active' | 'last_seen_at' | 'heartbeat_interval_seconds'
+    >,
+  ): boolean {
     if (!device.is_active || !device.last_seen_at) return false;
-    const thresholdMs = device.heartbeat_interval_seconds * OFFLINE_MULTIPLIER * 1000;
+    const thresholdMs =
+      device.heartbeat_interval_seconds * OFFLINE_MULTIPLIER * 1000;
     return Date.now() - device.last_seen_at.getTime() < thresholdMs;
   }
 
   async getMachineLiveStatus(machineId: string): Promise<MachineLiveStatus> {
-    const device = await this.deviceModel.findOne({ machine_id: machineId }).exec();
+    const device = await this.deviceModel
+      .findOne({ machine_id: machineId })
+      .exec();
 
     if (!device) {
       return {
@@ -49,7 +60,10 @@ export class LiveStatusService {
 
     const [activeAlarmCount, latestTelemetry] = await Promise.all([
       this.faultEventModel
-        .countDocuments({ machine_id: machineId, resolved_at: { $exists: false } })
+        .countDocuments({
+          machine_id: machineId,
+          resolved_at: { $exists: false },
+        })
         .exec(),
       this.telemetryModel
         .findOne({ machine_id: machineId })
@@ -69,7 +83,10 @@ export class LiveStatusService {
       },
       activeAlarmCount,
       latestTelemetry: latestTelemetry
-        ? { metrics: latestTelemetry.metrics, recordedAt: latestTelemetry.recorded_at }
+        ? {
+            metrics: latestTelemetry.metrics,
+            recordedAt: latestTelemetry.recorded_at,
+          }
         : null,
     };
   }
@@ -94,7 +111,12 @@ export class LiveStatusService {
       _id: Types.ObjectId;
       count: number;
     }>([
-      { $match: { machine_id: { $in: deviceMachineIds }, resolved_at: { $exists: false } } },
+      {
+        $match: {
+          machine_id: { $in: deviceMachineIds },
+          resolved_at: { $exists: false },
+        },
+      },
       { $group: { _id: '$machine_id', count: { $sum: 1 } } },
     ]);
     const alarmCountByMachine = new Map(
@@ -111,7 +133,8 @@ export class LiveStatusService {
         deviceType: device.device_type,
         label: device.label,
       },
-      activeAlarmCount: alarmCountByMachine.get(device.machine_id.toString()) ?? 0,
+      activeAlarmCount:
+        alarmCountByMachine.get(device.machine_id.toString()) ?? 0,
     }));
   }
 }

@@ -11,7 +11,10 @@ import {
 } from '../schemas/prediction-model-version.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { Module as ModuleEntity, ModuleSchema } from '../schemas/module.schema';
-import { MaintenancePlan, MaintenancePlanSchema } from '../schemas/maintenance-plan.schema';
+import {
+  MaintenancePlan,
+  MaintenancePlanSchema,
+} from '../schemas/maintenance-plan.schema';
 import { Telemetry, TelemetrySchema } from '../schemas/telemetry.schema';
 import { FaultEvent, FaultEventSchema } from '../schemas/fault-event.schema';
 import { WorkOrder, WorkOrderSchema } from '../schemas/work-order.schema';
@@ -20,7 +23,10 @@ import {
   InterventionReportSchema,
 } from '../schemas/intervention-report.schema';
 import { DocumentsModule } from '../documents/documents.module';
-import { PREDICTION_MODELS, PredictionModel } from './prediction-model.interface';
+import {
+  PREDICTION_MODELS,
+  PredictionModel,
+} from './prediction-model.interface';
 import { ZScoreModel } from './models/zscore.model';
 import { IsolationForestModel } from './models/isolation-forest.model';
 import { DbscanModel } from './models/dbscan.model';
@@ -36,8 +42,14 @@ import { PredictiveMaintenanceController } from './predictive-maintenance.contro
   imports: [
     ConfigModule,
     MongooseModule.forFeature([
-      { name: MachineHealthPrediction.name, schema: MachineHealthPredictionSchema },
-      { name: PredictionModelVersion.name, schema: PredictionModelVersionSchema },
+      {
+        name: MachineHealthPrediction.name,
+        schema: MachineHealthPredictionSchema,
+      },
+      {
+        name: PredictionModelVersion.name,
+        schema: PredictionModelVersionSchema,
+      },
       { name: Machine.name, schema: MachineSchema },
       { name: ModuleEntity.name, schema: ModuleSchema },
       { name: MaintenancePlan.name, schema: MaintenancePlanSchema },
@@ -62,7 +74,12 @@ import { PredictiveMaintenanceController } from './predictive-maintenance.contro
         dbscan: DbscanModel,
         autoencoder: AutoencoderModel,
       ): PredictionModel[] => [zScore, isolationForest, dbscan, autoencoder],
-      inject: [ZScoreModel, IsolationForestModel, DbscanModel, AutoencoderModel],
+      inject: [
+        ZScoreModel,
+        IsolationForestModel,
+        DbscanModel,
+        AutoencoderModel,
+      ],
     },
     FeatureExtractionService,
     TrainingSampleService,

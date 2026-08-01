@@ -2,13 +2,18 @@ import { Types } from 'mongoose';
 import { PredictiveMaintenanceService } from './predictive-maintenance.service';
 import { PredictionRiskLevel } from '../schemas/machine-health-prediction.schema';
 import { PredictionModelVersionStatus } from '../schemas/prediction-model-version.schema';
-import { FEATURE_NAMES, PredictionModelType } from './prediction-model.interface';
+import {
+  FEATURE_NAMES,
+  PredictionModelType,
+} from './prediction-model.interface';
 
 function execResolves(result: unknown) {
   return { exec: jest.fn().mockResolvedValue(result) };
 }
 
-function zeroFeatures(overrides: Partial<Record<(typeof FEATURE_NAMES)[number], number>> = {}) {
+function zeroFeatures(
+  overrides: Partial<Record<(typeof FEATURE_NAMES)[number], number>> = {},
+) {
   return FEATURE_NAMES.map((name) => overrides[name] ?? 0);
 }
 
@@ -26,9 +31,18 @@ describe('PredictiveMaintenanceService', () => {
   let moduleModel: { find: jest.Mock };
   let maintenancePlanModel: { find: jest.Mock };
   let featureExtractionService: { buildFeatureVector: jest.Mock };
-  let documentAccessService: { assertCanAccessMachine: jest.Mock; listAccessibleMachineIds: jest.Mock };
+  let documentAccessService: {
+    assertCanAccessMachine: jest.Mock;
+    listAccessibleMachineIds: jest.Mock;
+  };
 
-  function buildService(models: Array<{ type: PredictionModelType; displayName: string; score: jest.Mock }>) {
+  function buildService(
+    models: Array<{
+      type: PredictionModelType;
+      displayName: string;
+      score: jest.Mock;
+    }>,
+  ) {
     return new PredictiveMaintenanceService(
       predictionModel as never,
       modelVersionModel as never,
@@ -43,28 +57,42 @@ describe('PredictiveMaintenanceService', () => {
 
   beforeEach(() => {
     predictionModel = {
-      create: jest.fn().mockImplementation((doc) => Promise.resolve({ ...doc, _id: new Types.ObjectId() })),
+      create: jest
+        .fn()
+        .mockImplementation((doc) =>
+          Promise.resolve({ ...doc, _id: new Types.ObjectId() }),
+        ),
       find: jest.fn().mockReturnValue({
         sort: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue([]),
       }),
-      findOne: jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves(null)) }),
+      findOne: jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue(execResolves(null)),
+      }),
     };
     modelVersionModel = { find: jest.fn().mockReturnValue(execResolves([])) };
     machineModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([])) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves([])),
+      }),
     };
     moduleModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([])) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves([])),
+      }),
     };
     maintenancePlanModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([])) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves([])),
+      }),
     };
     featureExtractionService = {
-      buildFeatureVector: jest
-        .fn()
-        .mockResolvedValue({ features: zeroFeatures(), measuredFacts: ['fact one'], isEmpty: false }),
+      buildFeatureVector: jest.fn().mockResolvedValue({
+        features: zeroFeatures(),
+        measuredFacts: ['fact one'],
+        isEmpty: false,
+      }),
     };
     documentAccessService = {
       assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
@@ -77,16 +105,30 @@ describe('PredictiveMaintenanceService', () => {
       const zScore = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.1, confidence: 0.9, modelNotes: ['note'] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.1,
+          confidence: 0.9,
+          modelNotes: ['note'],
+        }),
       };
       const isoForest = {
         type: PredictionModelType.ISOLATION_FOREST,
         displayName: 'Isolation Forest',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.2, confidence: 0.8, modelNotes: ['note2'] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.2,
+          confidence: 0.8,
+          modelNotes: ['note2'],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
         execResolves([
-          { _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 10, artifact: {} },
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 10,
+            artifact: {},
+          },
           {
             _id: 'v2',
             model_type: PredictionModelType.ISOLATION_FOREST,
@@ -98,7 +140,10 @@ describe('PredictiveMaintenanceService', () => {
       );
       const service = buildService([zScore, isoForest]);
 
-      const results = await service.runPredictionForMachine(machineId, new Date('2026-07-01'));
+      const results = await service.runPredictionForMachine(
+        machineId,
+        new Date('2026-07-01'),
+      );
 
       expect(results).toHaveLength(2);
       expect(predictionModel.create).toHaveBeenCalledTimes(2);
@@ -110,10 +155,22 @@ describe('PredictiveMaintenanceService', () => {
       const model = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.3, confidence: 1, modelNotes: [] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.3,
+          confidence: 1,
+          modelNotes: [],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
-        execResolves([{ _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 10, artifact: {} }]),
+        execResolves([
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 10,
+            artifact: {},
+          },
+        ]),
       );
       const service = buildService([model]);
 
@@ -128,10 +185,22 @@ describe('PredictiveMaintenanceService', () => {
       const model = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.1, confidence: 0.2, modelNotes: ['model said X'] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.1,
+          confidence: 0.2,
+          modelNotes: ['model said X'],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
-        execResolves([{ _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 3, artifact: {} }]),
+        execResolves([
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 3,
+            artifact: {},
+          },
+        ]),
       );
       const service = buildService([model]);
 
@@ -139,12 +208,22 @@ describe('PredictiveMaintenanceService', () => {
 
       const [created] = predictionModel.create.mock.calls[0];
       expect(created.explanation.measuredFacts).toEqual(['fact one']);
-      expect(created.explanation.modelOutputNotes.some((n: string) => n.includes('model said X'))).toBe(true);
       expect(
-        created.explanation.uncertaintyNotes.some((n: string) => n.toLowerCase().includes('advisory')),
+        created.explanation.modelOutputNotes.some((n: string) =>
+          n.includes('model said X'),
+        ),
+      ).toBe(true);
+      expect(
+        created.explanation.uncertaintyNotes.some((n: string) =>
+          n.toLowerCase().includes('advisory'),
+        ),
       ).toBe(true);
       // Low confidence (0.2) with few training samples (3) must be called out explicitly.
-      expect(created.explanation.uncertaintyNotes.some((n: string) => n.includes('low'))).toBe(true);
+      expect(
+        created.explanation.uncertaintyNotes.some((n: string) =>
+          n.includes('low'),
+        ),
+      ).toBe(true);
     });
 
     it('marks risk CRITICAL whenever a critical alarm is active, regardless of anomaly score', async () => {
@@ -155,10 +234,22 @@ describe('PredictiveMaintenanceService', () => {
       const model = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.01, confidence: 1, modelNotes: [] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.01,
+          confidence: 1,
+          modelNotes: [],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
-        execResolves([{ _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 10, artifact: {} }]),
+        execResolves([
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 10,
+            artifact: {},
+          },
+        ]),
       );
       const service = buildService([model]);
 
@@ -172,10 +263,22 @@ describe('PredictiveMaintenanceService', () => {
       const model = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.05, confidence: 1, modelNotes: [] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.05,
+          confidence: 1,
+          modelNotes: [],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
-        execResolves([{ _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 10, artifact: {} }]),
+        execResolves([
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 10,
+            artifact: {},
+          },
+        ]),
       );
       const service = buildService([model]);
 
@@ -194,10 +297,22 @@ describe('PredictiveMaintenanceService', () => {
       const model = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.05, confidence: 0.9, modelNotes: [] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.05,
+          confidence: 0.9,
+          modelNotes: [],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
-        execResolves([{ _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 10, artifact: {} }]),
+        execResolves([
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 10,
+            artifact: {},
+          },
+        ]),
       );
       const service = buildService([model]);
 
@@ -209,7 +324,9 @@ describe('PredictiveMaintenanceService', () => {
       expect(created.anomaly_score).toBe(0.05);
       expect(created.confidence).toBe(0.9);
       expect(
-        created.explanation.uncertaintyNotes.some((n: string) => n.toLowerCase().includes('no telemetry')),
+        created.explanation.uncertaintyNotes.some((n: string) =>
+          n.toLowerCase().includes('no telemetry'),
+        ),
       ).toBe(true);
     });
 
@@ -222,10 +339,22 @@ describe('PredictiveMaintenanceService', () => {
       const model = {
         type: PredictionModelType.ZSCORE,
         displayName: 'Z-Score',
-        score: jest.fn().mockReturnValue({ anomalyScore: 0.05, confidence: 0.9, modelNotes: [] }),
+        score: jest.fn().mockReturnValue({
+          anomalyScore: 0.05,
+          confidence: 0.9,
+          modelNotes: [],
+        }),
       };
       modelVersionModel.find = jest.fn().mockReturnValue(
-        execResolves([{ _id: 'v1', model_type: PredictionModelType.ZSCORE, version: 1, training_sample_count: 10, artifact: {} }]),
+        execResolves([
+          {
+            _id: 'v1',
+            model_type: PredictionModelType.ZSCORE,
+            version: 1,
+            training_sample_count: 10,
+            artifact: {},
+          },
+        ]),
       );
       const service = buildService([model]);
 
@@ -252,17 +381,23 @@ describe('PredictiveMaintenanceService', () => {
       await service.getLatestPredictions(machineId, actor);
       await service.getHistory(machineId, actor);
 
-      expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledTimes(2);
+      expect(
+        documentAccessService.assertCanAccessMachine,
+      ).toHaveBeenCalledTimes(2);
     });
 
     it('getFleetSummary scopes to the caller accessible machine ids (non-Admin)', async () => {
       const accessibleId = new Types.ObjectId();
-      documentAccessService.listAccessibleMachineIds.mockResolvedValue([accessibleId]);
+      documentAccessService.listAccessibleMachineIds.mockResolvedValue([
+        accessibleId,
+      ]);
       const service = buildService([]);
 
       await service.getFleetSummary(actor);
 
-      expect(machineModel.find).toHaveBeenCalledWith({ _id: { $in: [accessibleId] } });
+      expect(machineModel.find).toHaveBeenCalledWith({
+        _id: { $in: [accessibleId] },
+      });
     });
 
     it('getFleetSummary is unrestricted for Admin (listAccessibleMachineIds returns null)', async () => {
@@ -277,20 +412,36 @@ describe('PredictiveMaintenanceService', () => {
 
   describe('getFleetSummary aggregation', () => {
     it('returns nothing for a machine with no stored predictions yet', async () => {
-      machineModel.find = jest
-        .fn()
-        .mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([{ _id: new Types.ObjectId(machineId) }])) });
-      predictionModel.findOne = jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves(null)) });
-      const service = buildService([{ type: PredictionModelType.ZSCORE, displayName: 'Z', score: jest.fn() }]);
+      machineModel.find = jest.fn().mockReturnValue({
+        select: jest
+          .fn()
+          .mockReturnValue(
+            execResolves([{ _id: new Types.ObjectId(machineId) }]),
+          ),
+      });
+      predictionModel.findOne = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue(execResolves(null)),
+      });
+      const service = buildService([
+        {
+          type: PredictionModelType.ZSCORE,
+          displayName: 'Z',
+          score: jest.fn(),
+        },
+      ]);
 
       const summaries = await service.getFleetSummary(actor);
       expect(summaries).toEqual([]);
     });
 
     it('averages health/confidence and takes the worst risk level across model types for one machine', async () => {
-      machineModel.find = jest
-        .fn()
-        .mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([{ _id: new Types.ObjectId(machineId) }])) });
+      machineModel.find = jest.fn().mockReturnValue({
+        select: jest
+          .fn()
+          .mockReturnValue(
+            execResolves([{ _id: new Types.ObjectId(machineId) }]),
+          ),
+      });
 
       const latestByType: Record<string, unknown> = {
         [PredictionModelType.ZSCORE]: {
@@ -306,13 +457,25 @@ describe('PredictiveMaintenanceService', () => {
           generated_at: new Date('2026-07-02'),
         },
       };
-      predictionModel.findOne = jest.fn().mockImplementation(({ model_type }) => ({
-        sort: jest.fn().mockReturnValue(execResolves(latestByType[model_type] ?? null)),
-      }));
+      predictionModel.findOne = jest
+        .fn()
+        .mockImplementation(({ model_type }) => ({
+          sort: jest
+            .fn()
+            .mockReturnValue(execResolves(latestByType[model_type] ?? null)),
+        }));
 
       const service = buildService([
-        { type: PredictionModelType.ZSCORE, displayName: 'Z', score: jest.fn() },
-        { type: PredictionModelType.ISOLATION_FOREST, displayName: 'IF', score: jest.fn() },
+        {
+          type: PredictionModelType.ZSCORE,
+          displayName: 'Z',
+          score: jest.fn(),
+        },
+        {
+          type: PredictionModelType.ISOLATION_FOREST,
+          displayName: 'IF',
+          score: jest.fn(),
+        },
       ]);
 
       const [summary] = await service.getFleetSummary(actor);
@@ -324,9 +487,13 @@ describe('PredictiveMaintenanceService', () => {
     });
 
     it('treats INSUFFICIENT_DATA as the dominant risk level across model types, even over CRITICAL', async () => {
-      machineModel.find = jest
-        .fn()
-        .mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([{ _id: new Types.ObjectId(machineId) }])) });
+      machineModel.find = jest.fn().mockReturnValue({
+        select: jest
+          .fn()
+          .mockReturnValue(
+            execResolves([{ _id: new Types.ObjectId(machineId) }]),
+          ),
+      });
 
       const latestByType: Record<string, unknown> = {
         [PredictionModelType.ZSCORE]: {
@@ -342,13 +509,25 @@ describe('PredictiveMaintenanceService', () => {
           generated_at: new Date('2026-07-02'),
         },
       };
-      predictionModel.findOne = jest.fn().mockImplementation(({ model_type }) => ({
-        sort: jest.fn().mockReturnValue(execResolves(latestByType[model_type] ?? null)),
-      }));
+      predictionModel.findOne = jest
+        .fn()
+        .mockImplementation(({ model_type }) => ({
+          sort: jest
+            .fn()
+            .mockReturnValue(execResolves(latestByType[model_type] ?? null)),
+        }));
 
       const service = buildService([
-        { type: PredictionModelType.ZSCORE, displayName: 'Z', score: jest.fn() },
-        { type: PredictionModelType.ISOLATION_FOREST, displayName: 'IF', score: jest.fn() },
+        {
+          type: PredictionModelType.ZSCORE,
+          displayName: 'Z',
+          score: jest.fn(),
+        },
+        {
+          type: PredictionModelType.ISOLATION_FOREST,
+          displayName: 'IF',
+          score: jest.fn(),
+        },
       ]);
 
       const [summary] = await service.getFleetSummary(actor);
@@ -364,14 +543,24 @@ describe('PredictiveMaintenanceService', () => {
       const planId = new Types.ObjectId();
 
       moduleModel.find = jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue(execResolves([{ _id: moduleId, machine_id: resolvedMachineId }])),
+        select: jest
+          .fn()
+          .mockReturnValue(
+            execResolves([{ _id: moduleId, machine_id: resolvedMachineId }]),
+          ),
       });
       maintenancePlanModel.find = jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue(execResolves([{ _id: planId, module_id: moduleId }])),
+        select: jest
+          .fn()
+          .mockReturnValue(
+            execResolves([{ _id: planId, module_id: moduleId }]),
+          ),
       });
-      machineModel.find = jest
-        .fn()
-        .mockReturnValue({ select: jest.fn().mockReturnValue(execResolves([{ _id: resolvedMachineId }])) });
+      machineModel.find = jest.fn().mockReturnValue({
+        select: jest
+          .fn()
+          .mockReturnValue(execResolves([{ _id: resolvedMachineId }])),
+      });
       predictionModel.findOne = jest.fn().mockReturnValue({
         sort: jest.fn().mockReturnValue(
           execResolves({
@@ -383,11 +572,19 @@ describe('PredictiveMaintenanceService', () => {
         ),
       });
 
-      const service = buildService([{ type: PredictionModelType.ZSCORE, displayName: 'Z', score: jest.fn() }]);
+      const service = buildService([
+        {
+          type: PredictionModelType.ZSCORE,
+          displayName: 'Z',
+          score: jest.fn(),
+        },
+      ]);
       const summaries = await service.getPlanHealthSummaries(actor);
 
       expect(summaries[planId.toString()]).toBeDefined();
-      expect(summaries[planId.toString()].machineId).toBe(resolvedMachineId.toString());
+      expect(summaries[planId.toString()].machineId).toBe(
+        resolvedMachineId.toString(),
+      );
       expect(summaries[planId.toString()].healthScore).toBe(90);
     });
 

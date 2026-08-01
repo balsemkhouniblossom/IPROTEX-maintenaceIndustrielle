@@ -23,8 +23,14 @@ describe('SavedViewsService', () => {
 
   beforeEach(() => {
     savedViewModel = {
-      create: jest.fn().mockImplementation((doc) => Promise.resolve({ ...doc, _id: new Types.ObjectId() })),
-      find: jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves([])) }),
+      create: jest
+        .fn()
+        .mockImplementation((doc) =>
+          Promise.resolve({ ...doc, _id: new Types.ObjectId() }),
+        ),
+      find: jest
+        .fn()
+        .mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves([])) }),
       findById: jest.fn().mockReturnValue(execResolves(null)),
       findByIdAndDelete: jest.fn().mockReturnValue(execResolves(undefined)),
     };
@@ -35,7 +41,11 @@ describe('SavedViewsService', () => {
       const service = buildService();
 
       const view = await service.create(
-        { pageKey: 'work-orders', name: 'My open orders', query: { status: 'open' } },
+        {
+          pageKey: 'work-orders',
+          name: 'My open orders',
+          query: { status: 'open' },
+        },
         actor,
       );
 
@@ -83,13 +93,17 @@ describe('SavedViewsService', () => {
     it('throws NotFoundException for a missing view', async () => {
       savedViewModel.findById.mockReturnValue(execResolves(null));
       const service = buildService();
-      await expect(service.update('missing', {}, actor)).rejects.toThrow(NotFoundException);
+      await expect(service.update('missing', {}, actor)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ForbiddenException when a different user tries to update it', async () => {
       savedViewModel.findById.mockReturnValue(execResolves(viewDoc()));
       const service = buildService();
-      await expect(service.update('v1', { name: 'x' }, otherActor)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.update('v1', { name: 'x' }, otherActor),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('updates name/query/isDefault and persists via save()', async () => {
@@ -118,10 +132,12 @@ describe('SavedViewsService', () => {
       expect(savedViewModel.findByIdAndDelete).toHaveBeenCalledWith('v1');
     });
 
-    it('a different user cannot delete someone else\'s saved view', async () => {
+    it("a different user cannot delete someone else's saved view", async () => {
       savedViewModel.findById.mockReturnValue(execResolves(viewDoc()));
       const service = buildService();
-      await expect(service.remove('v1', otherActor)).rejects.toThrow(ForbiddenException);
+      await expect(service.remove('v1', otherActor)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(savedViewModel.findByIdAndDelete).not.toHaveBeenCalled();
     });
   });

@@ -37,7 +37,9 @@ describe('LocalFileStorageProvider', () => {
       expect.stringContaining('avatar-1.webp'),
       Buffer.from('avatar'),
     );
-    expect(mockedFs.access).toHaveBeenCalledWith(mockedFs.writeFile.mock.calls[0][0]);
+    expect(mockedFs.access).toHaveBeenCalledWith(
+      mockedFs.writeFile.mock.calls[0][0],
+    );
   });
 
   it('stores document files in the managed upload directory', async () => {
@@ -87,7 +89,9 @@ describe('LocalFileStorageProvider', () => {
       Object.assign(new Error('missing'), { code: 'ENOENT' }),
     );
 
-    await expect(provider.delete('/uploads/missing.webp')).resolves.toBeUndefined();
+    await expect(
+      provider.delete('/uploads/missing.webp'),
+    ).resolves.toBeUndefined();
   });
 
   it('owns only safe managed document file paths', () => {
@@ -95,7 +99,9 @@ describe('LocalFileStorageProvider', () => {
     expect(provider.ownsFile('uploads/document.webp')).toBe(true);
     expect(provider.ownsFile('/uploads/nested/document.webp')).toBe(false);
     expect(provider.ownsFile('/uploads/../secret.txt')).toBe(false);
-    expect(provider.ownsFile('/files/uploads/avatars/avatar-1.webp')).toBe(false);
+    expect(provider.ownsFile('/files/uploads/avatars/avatar-1.webp')).toBe(
+      false,
+    );
     expect(provider.ownsFile('https://example.com/document.webp')).toBe(false);
   });
 
@@ -123,15 +129,21 @@ describe('LocalFileStorageProvider', () => {
   });
 
   it('rejects path traversal before reading local protected files', async () => {
-    await expect(provider.readProtectedFile('/uploads/../secret.txt')).rejects.toThrow(
-      'Invalid managed file reference',
-    );
+    await expect(
+      provider.readProtectedFile('/uploads/../secret.txt'),
+    ).rejects.toThrow('Invalid managed file reference');
     expect(mockedFs.readFile).not.toHaveBeenCalled();
   });
 
   it('owns only managed avatar references', () => {
-    expect(provider.ownsAvatar('/files/uploads/avatars/avatar-1.webp')).toBe(true);
-    expect(provider.ownsAvatar('/files/uploads/avatars/default-avatar.webp')).toBe(false);
-    expect(provider.ownsAvatar('https://example.com/avatar-1.webp')).toBe(false);
+    expect(provider.ownsAvatar('/files/uploads/avatars/avatar-1.webp')).toBe(
+      true,
+    );
+    expect(
+      provider.ownsAvatar('/files/uploads/avatars/default-avatar.webp'),
+    ).toBe(false);
+    expect(provider.ownsAvatar('https://example.com/avatar-1.webp')).toBe(
+      false,
+    );
   });
 });

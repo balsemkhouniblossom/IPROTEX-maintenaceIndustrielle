@@ -17,7 +17,9 @@ describe('AutoencoderModel', () => {
   });
 
   it('trains a network sized off the feature vector length', () => {
-    const samples = Array.from({ length: 40 }, (_, i) => sample(normalVector(i)));
+    const samples = Array.from({ length: 40 }, (_, i) =>
+      sample(normalVector(i)),
+    );
     const artifact = model.train(samples, 1);
 
     expect(artifact.inputSize).toBe(FEATURE_NAMES.length);
@@ -30,7 +32,9 @@ describe('AutoencoderModel', () => {
   }, 20000);
 
   it('reduces reconstruction loss over training relative to an untrained network', () => {
-    const samples = Array.from({ length: 40 }, (_, i) => sample(normalVector(i)));
+    const samples = Array.from({ length: 40 }, (_, i) =>
+      sample(normalVector(i)),
+    );
     const trained = model.train(samples, 1);
 
     // An essentially-untrained network (seed only, would need epochs=0) isn't
@@ -40,17 +44,26 @@ describe('AutoencoderModel', () => {
   }, 20000);
 
   it('reconstructs a point resembling the training population better than a wild outlier', () => {
-    const samples = Array.from({ length: 50 }, (_, i) => sample(normalVector(i)));
+    const samples = Array.from({ length: 50 }, (_, i) =>
+      sample(normalVector(i)),
+    );
     const artifact = model.train(samples, 2);
 
     const normalResult = model.score(normalVector(1), artifact);
-    const outlierResult = model.score(FEATURE_NAMES.map(() => 100000), artifact);
+    const outlierResult = model.score(
+      FEATURE_NAMES.map(() => 100000),
+      artifact,
+    );
 
-    expect(outlierResult.anomalyScore).toBeGreaterThan(normalResult.anomalyScore);
+    expect(outlierResult.anomalyScore).toBeGreaterThan(
+      normalResult.anomalyScore,
+    );
   }, 20000);
 
   it('is fully reproducible given the same samples and seed', () => {
-    const samples = Array.from({ length: 20 }, (_, i) => sample(normalVector(i)));
+    const samples = Array.from({ length: 20 }, (_, i) =>
+      sample(normalVector(i)),
+    );
     const a = model.train(samples, 9);
     const b = model.train(samples, 9);
 

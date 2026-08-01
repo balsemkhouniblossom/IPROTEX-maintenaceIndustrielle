@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedRoles } from '../auth/decorators/roles.decorator';
@@ -28,9 +36,8 @@ export class LiveMonitoringController {
   @Get('machines')
   @Throttle({ default: { limit: 300, ttl: 60000 } })
   async listMachinesLiveStatus(@Req() req: AuthenticatedRequest) {
-    const machineIds = await this.documentAccessService.listAccessibleMachineIds(
-      req.user ?? {},
-    );
+    const machineIds =
+      await this.documentAccessService.listAccessibleMachineIds(req.user ?? {});
     return this.liveStatusService.getMachinesLiveSummary(machineIds);
   }
 
@@ -40,12 +47,21 @@ export class LiveMonitoringController {
     @Param('machineId') machineId: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    await this.documentAccessService.assertCanAccessMachine(req.user ?? {}, machineId);
+    await this.documentAccessService.assertCanAccessMachine(
+      req.user ?? {},
+      machineId,
+    );
     return this.liveStatusService.getMachineLiveStatus(machineId);
   }
 
   @Patch('faults/:id/resolve')
-  async resolveFault(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    return this.telemetryIngestionService.resolveFault(id, req.user?.userId ?? '');
+  async resolveFault(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.telemetryIngestionService.resolveFault(
+      id,
+      req.user?.userId ?? '',
+    );
   }
 }

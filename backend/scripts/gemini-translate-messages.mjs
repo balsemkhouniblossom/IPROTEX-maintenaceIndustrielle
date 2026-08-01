@@ -47,7 +47,7 @@ if (sourceEntries.length === 0) {
 }
 
 const apiKey = process.env.GEMINI_API_KEY?.trim();
-const model = process.env.GEMINI_MODEL?.trim() || 'gemini-flash-lite-latest';
+const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite';
 if (!dryRun && !apiKey) {
   throw new Error('GEMINI_API_KEY is required. Put it in backend/.env or the shell environment.');
 }

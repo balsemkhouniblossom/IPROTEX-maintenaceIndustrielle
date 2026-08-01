@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsDateString, IsInt, IsMongoId, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsMongoId,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class WorkOrdersQueryDto {
   @IsOptional()

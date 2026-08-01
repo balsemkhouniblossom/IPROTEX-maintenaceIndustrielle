@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Lubrifiant, LubrifiantDocument } from '../schemas/lubrifiant.schema';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { CreateLubrifiantDto } from './dto/create-lubrifiant.dto';
+import { UpdateLubrifiantDto } from './dto/update-lubrifiant.dto';
 
 @Injectable()
 export class LubrifiantsService {
@@ -11,7 +13,7 @@ export class LubrifiantsService {
     private readonly lubrifiantModel: Model<LubrifiantDocument>,
   ) {}
 
-  create(payload: Record<string, unknown>) {
+  create(payload: CreateLubrifiantDto) {
     return new this.lubrifiantModel(payload).save();
   }
 
@@ -32,7 +34,7 @@ export class LubrifiantsService {
     return this.lubrifiantModel.findById(id).exec();
   }
 
-  update(id: string, payload: Record<string, unknown>) {
+  update(id: string, payload: UpdateLubrifiantDto) {
     return this.lubrifiantModel
       .findByIdAndUpdate(id, payload, { new: true })
       .exec();

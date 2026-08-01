@@ -86,11 +86,9 @@ export class CreateWorkOrderDto {
   @IsOptional()
   reschedule_reason?: string;
 
-  @IsString()
-  @IsOptional()
-  rescheduled_by?: string;
-
-  @IsDateString()
-  @IsOptional()
-  rescheduled_at?: string;
+  // rescheduled_by / rescheduled_at are deliberately excluded — they are
+  // audit fields, always derived server-side from the authenticated
+  // request inside `reschedulePreventiveOccurrence` (see
+  // WorkOrdersController.reschedule), never client-settable. Exposing them
+  // here would let an Admin forge who rescheduled a work order and when.
 }

@@ -52,4 +52,50 @@ describe('HealthService', () => {
     expect(ping).toHaveBeenCalledTimes(1);
     expect(getDiagnostics).toHaveBeenCalledTimes(1);
   });
+
+  it('sanitizes public health output so dependency diagnostics are not exposed anonymously', async () => {
+    const ping = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const getDiagnostics = jest.fn<() => Promise<any>>().mockResolvedValue({
+      status: 'degraded',
+      service: 'email',
+      mode: 'brevo-api',
+      smtp: {
+        configured: true,
+        reachable: false,
+        errorCode: 'SMTP_AUTH_FAILED',
+      },
+      brevoApi: {
+        configured: true,
+      },
+      timestamp: new Date().toISOString(),
+    });
+    const mockConnection = {
+      db: {
+        admin: () => ({ ping }),
+      },
+    } as unknown as Connection;
+    const mockEmailService = {
+      getDiagnostics,
+    } as unknown as EmailService;
+    const service = new HealthService(mockConnection, mockEmailService);
+
+    const result = await service.getPublicHealth();
+    const serialized = JSON.stringify(result);
+
+    expect(result.status).toBe('ok');
+    expect(result.checks).toEqual({
+      api: {
+        status: 'ok',
+        service: 'api',
+      },
+      database: {
+        status: 'ok',
+        service: 'database',
+      },
+    });
+    expect(getDiagnostics).not.toHaveBeenCalled();
+    expect(serialized).not.toContain('SMTP_AUTH_FAILED');
+    expect(serialized).not.toContain('brevo-api');
+    expect(serialized).not.toContain('configured');
+  });
 });

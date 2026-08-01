@@ -25,7 +25,9 @@ export class DeviceAuthGuard implements CanActivate {
   constructor(private readonly deviceAuthService: DeviceAuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<DeviceAuthenticatedRequest>();
+    const request = context
+      .switchToHttp()
+      .getRequest<DeviceAuthenticatedRequest>();
     const deviceId = request.headers['x-device-id'];
     const deviceKey = request.headers['x-device-key'];
 
@@ -33,7 +35,10 @@ export class DeviceAuthGuard implements CanActivate {
       throw new UnauthorizedException('Missing device credentials');
     }
 
-    request.device = await this.deviceAuthService.verifyCredentials(deviceId, deviceKey);
+    request.device = await this.deviceAuthService.verifyCredentials(
+      deviceId,
+      deviceKey,
+    );
     return true;
   }
 }

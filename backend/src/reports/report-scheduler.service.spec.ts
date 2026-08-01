@@ -1,6 +1,10 @@
 import { Types } from 'mongoose';
 import { ReportSchedulerService } from './report-scheduler.service';
-import { ReportStatus, ReportFormat, ReportType } from '../schemas/generated-report.schema';
+import {
+  ReportStatus,
+  ReportFormat,
+  ReportType,
+} from '../schemas/generated-report.schema';
 import { ScheduleFrequency } from '../schemas/scheduled-report.schema';
 
 function execResolves(result: unknown) {
@@ -48,10 +52,18 @@ describe('ReportSchedulerService', () => {
     };
     reportsService = {
       requestReport: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
-      generateReport: jest.fn().mockResolvedValue({ _id: new Types.ObjectId(), status: ReportStatus.COMPLETED }),
+      generateReport: jest.fn().mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: ReportStatus.COMPLETED,
+      }),
     };
-    notificationCenterService = { createIfNotExists: jest.fn().mockResolvedValue(null) };
-    fileStorageService = { ownsFile: jest.fn().mockReturnValue(true), delete: jest.fn().mockResolvedValue(undefined) };
+    notificationCenterService = {
+      createIfNotExists: jest.fn().mockResolvedValue(null),
+    };
+    fileStorageService = {
+      ownsFile: jest.fn().mockReturnValue(true),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
   });
 
   describe('runSweep — firing due schedules', () => {
@@ -62,7 +74,10 @@ describe('ReportSchedulerService', () => {
       const result = await service.runSweep();
 
       expect(reportsService.requestReport).toHaveBeenCalledWith(
-        expect.objectContaining({ type: ReportType.MACHINE_HISTORY, format: ReportFormat.CSV }),
+        expect.objectContaining({
+          type: ReportType.MACHINE_HISTORY,
+          format: ReportFormat.CSV,
+        }),
         expect.objectContaining({ role: 'admin' }),
       );
       expect(reportsService.generateReport).toHaveBeenCalled();
@@ -97,13 +112,18 @@ describe('ReportSchedulerService', () => {
     });
 
     it('does not notify when generation ends in a failed report', async () => {
-      reportsService.generateReport.mockResolvedValue({ _id: new Types.ObjectId(), status: ReportStatus.FAILED });
+      reportsService.generateReport.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: ReportStatus.FAILED,
+      });
       scheduledReportModel.find.mockReturnValue(execResolves([schedule()]));
       const service = buildService();
 
       await service.runSweep();
 
-      expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
+      expect(
+        notificationCenterService.createIfNotExists,
+      ).not.toHaveBeenCalled();
     });
 
     it('recomputes relativeRangeDays into concrete dateFrom/dateTo for this firing', async () => {
@@ -123,7 +143,9 @@ describe('ReportSchedulerService', () => {
       reportsService.requestReport
         .mockRejectedValueOnce(new Error('boom'))
         .mockResolvedValueOnce({ _id: new Types.ObjectId() });
-      scheduledReportModel.find.mockReturnValue(execResolves([schedule(), schedule({ schedule_id: 'SCH-2' })]));
+      scheduledReportModel.find.mockReturnValue(
+        execResolves([schedule(), schedule({ schedule_id: 'SCH-2' })]),
+      );
       const service = buildService();
 
       const result = await service.runSweep();
@@ -137,23 +159,34 @@ describe('ReportSchedulerService', () => {
     it('deletes the stored file for an expired report and unsets file_path', async () => {
       const expiredId = new Types.ObjectId();
       generatedReportModel.find.mockReturnValue(
-        execResolves([{ _id: expiredId, report_id: 'RPT-1', file_path: '/uploads/a.csv' }]),
+        execResolves([
+          { _id: expiredId, report_id: 'RPT-1', file_path: '/uploads/a.csv' },
+        ]),
       );
       const service = buildService();
 
       const result = await service.runSweep();
 
       expect(fileStorageService.delete).toHaveBeenCalledWith('/uploads/a.csv');
-      expect(generatedReportModel.findByIdAndUpdate).toHaveBeenCalledWith(expiredId, {
-        $unset: { file_path: 1 },
-      });
+      expect(generatedReportModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        expiredId,
+        {
+          $unset: { file_path: 1 },
+        },
+      );
       expect(result.expiredCleaned).toBe(1);
     });
 
     it('skips the delete call when the storage provider does not own the reference, but still unsets it', async () => {
       fileStorageService.ownsFile.mockReturnValue(false);
       generatedReportModel.find.mockReturnValue(
-        execResolves([{ _id: new Types.ObjectId(), report_id: 'RPT-1', file_path: '/uploads/a.csv' }]),
+        execResolves([
+          {
+            _id: new Types.ObjectId(),
+            report_id: 'RPT-1',
+            file_path: '/uploads/a.csv',
+          },
+        ]),
       );
       const service = buildService();
 

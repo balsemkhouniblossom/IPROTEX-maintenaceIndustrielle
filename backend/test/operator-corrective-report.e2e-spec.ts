@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -131,8 +131,12 @@ describe('Operator corrective report workflow (e2e)', () => {
         validation_responsable: 'waiting_validation',
       }),
     );
-    await expect(workOrders.countDocuments({ code_panne: codePanne })).resolves.toBe(1);
-    await expect(reports.countDocuments({ description_action: 'Solved' })).resolves.toBe(1);
+    await expect(
+      workOrders.countDocuments({ code_panne: codePanne }),
+    ).resolves.toBe(1);
+    await expect(
+      reports.countDocuments({ description_action: 'Solved' }),
+    ).resolves.toBe(1);
   });
 
   it('rejects empty actions and missing fault code with the same required-field contract as the frontend', async () => {

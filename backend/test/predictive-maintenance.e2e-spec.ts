@@ -11,11 +11,24 @@ import { JwtService } from '@nestjs/jwt';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';
-import { MachineType, MachineTypeDocument } from '../src/schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
-import { Module as ModuleEntity, ModuleDocument } from '../src/schemas/module.schema';
-import { MaintenancePlan, MaintenancePlanDocument } from '../src/schemas/maintenance-plan.schema';
-import { FaultEvent, FaultEventDocument, FaultEventSeverity } from '../src/schemas/fault-event.schema';
+import {
+  Module as ModuleEntity,
+  ModuleDocument,
+} from '../src/schemas/module.schema';
+import {
+  MaintenancePlan,
+  MaintenancePlanDocument,
+} from '../src/schemas/maintenance-plan.schema';
+import {
+  FaultEvent,
+  FaultEventDocument,
+  FaultEventSeverity,
+} from '../src/schemas/fault-event.schema';
 import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
 import {
   PREDICTION_MODELS,
@@ -246,7 +259,9 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
   }
 
   it('rejects an unauthenticated request', async () => {
-    await request(app.getHttpServer()).get('/predictive-maintenance/fleet-summary').expect(401);
+    await request(app.getHttpServer())
+      .get('/predictive-maintenance/fleet-summary')
+      .expect(401);
   });
 
   it('rejects non-Admin roles from training a model', async () => {
@@ -306,11 +321,19 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
 
     expect(response.body).toHaveLength(1);
     const explanation = response.body[0].explanation;
-    expect(explanation.measuredFacts.some((f: string) => f.includes('alarm'))).toBe(true);
-    expect(explanation.modelOutputNotes.some((n: string) => n.includes('Fake model deterministic note'))).toBe(
-      true,
-    );
-    expect(explanation.uncertaintyNotes.some((n: string) => n.toLowerCase().includes('advisory'))).toBe(true);
+    expect(
+      explanation.measuredFacts.some((f: string) => f.includes('alarm')),
+    ).toBe(true);
+    expect(
+      explanation.modelOutputNotes.some((n: string) =>
+        n.includes('Fake model deterministic note'),
+      ),
+    ).toBe(true);
+    expect(
+      explanation.uncertaintyNotes.some((n: string) =>
+        n.toLowerCase().includes('advisory'),
+      ),
+    ).toBe(true);
   });
 
   it('records prediction history for the machine', async () => {
@@ -328,14 +351,18 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
       .set('Authorization', `Bearer ${operatorToken}`)
       .expect(200);
 
-    expect(operatorSummary.body.map((s: { machineId: string }) => s.machineId)).toEqual([assignedMachineId]);
+    expect(
+      operatorSummary.body.map((s: { machineId: string }) => s.machineId),
+    ).toEqual([assignedMachineId]);
 
     const adminSummary = await request(app.getHttpServer())
       .get('/predictive-maintenance/fleet-summary')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    const adminMachineIds = adminSummary.body.map((s: { machineId: string }) => s.machineId);
+    const adminMachineIds = adminSummary.body.map(
+      (s: { machineId: string }) => s.machineId,
+    );
     expect(adminMachineIds).toContain(assignedMachineId);
   });
 
@@ -386,7 +413,9 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
     expect(prediction.anomaly_score).toBeCloseTo(0.1, 5);
     expect(prediction.confidence).toBeCloseTo(0.75, 5);
     expect(
-      prediction.explanation.uncertaintyNotes.some((n: string) => n.toLowerCase().includes('no telemetry')),
+      prediction.explanation.uncertaintyNotes.some((n: string) =>
+        n.toLowerCase().includes('no telemetry'),
+      ),
     ).toBe(true);
   });
 
@@ -396,7 +425,9 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    const entry = response.body.find((s: { machineId: string }) => s.machineId === unassignedMachineId);
+    const entry = response.body.find(
+      (s: { machineId: string }) => s.machineId === unassignedMachineId,
+    );
     expect(entry).toBeDefined();
     expect(entry.riskLevel).toBe('insufficient_data');
   });
@@ -417,9 +448,13 @@ describe('Predictive Maintenance — mocked model (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    const versions = response.body.filter((v: { model_type: string }) => v.model_type === 'zscore');
+    const versions = response.body.filter(
+      (v: { model_type: string }) => v.model_type === 'zscore',
+    );
     expect(versions).toHaveLength(2);
-    const active = versions.filter((v: { status: string }) => v.status === 'active');
+    const active = versions.filter(
+      (v: { status: string }) => v.status === 'active',
+    );
     expect(active).toHaveLength(1);
     expect(active[0].version).toBe(2);
   });

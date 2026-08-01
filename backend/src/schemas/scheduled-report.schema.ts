@@ -40,7 +40,11 @@ export class ScheduledReport {
   @Prop({ type: Object, required: true })
   parameters!: Record<string, unknown>;
 
-  @Prop({ type: String, enum: Object.values(ScheduleFrequency), required: true })
+  @Prop({
+    type: String,
+    enum: Object.values(ScheduleFrequency),
+    required: true,
+  })
   frequency!: ScheduleFrequency;
 
   @Prop({ required: true, default: true })
@@ -56,6 +60,7 @@ export class ScheduledReport {
   next_run_at!: Date;
 }
 
-export const ScheduledReportSchema = SchemaFactory.createForClass(ScheduledReport);
+export const ScheduledReportSchema =
+  SchemaFactory.createForClass(ScheduledReport);
 ScheduledReportSchema.index({ active: 1, next_run_at: 1 });
 ScheduledReportSchema.index({ created_by: 1 });

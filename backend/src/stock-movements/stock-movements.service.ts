@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model, Types } from 'mongoose';
 import { Stock, StockDocument } from '../schemas/stock.schema';
@@ -176,7 +180,9 @@ export class StockMovementsService {
       .session(session)
       .exec();
 
-    const covered = reservation ? Math.min(reservation.quantity, input.delta) : 0;
+    const covered = reservation
+      ? Math.min(reservation.quantity, input.delta)
+      : 0;
     const extra = input.delta - covered;
 
     let stock: StockDocument | null = null;
@@ -308,11 +314,19 @@ export class StockMovementsService {
       partId: input.partId,
       quantityDelta: input.stock.quantite_en_stock,
       reservedDelta: 0,
-      context: { actorId: input.actorId, reason: 'Initial stock on record creation' },
+      context: {
+        actorId: input.actorId,
+        reason: 'Initial stock on record creation',
+      },
     });
   }
 
-  async listForStock(stockId: string, page: number, limit: number, skip: number) {
+  async listForStock(
+    stockId: string,
+    page: number,
+    limit: number,
+    skip: number,
+  ) {
     const query = { stock_id: new Types.ObjectId(stockId) };
     const [items, totalItems] = await Promise.all([
       this.stockMovementModel
@@ -331,7 +345,8 @@ export class StockMovementsService {
   ): Promise<StockDocument> {
     const incUpdate: Record<string, number> = { version: 1 };
     if (input.stockDelta !== 0) incUpdate.quantite_en_stock = input.stockDelta;
-    if (input.reservedDelta !== 0) incUpdate.quantite_reservee = input.reservedDelta;
+    if (input.reservedDelta !== 0)
+      incUpdate.quantite_reservee = input.reservedDelta;
 
     const filter: Record<string, unknown> = { _id: input.stockId };
     if (input.requireStock !== undefined) {
@@ -350,7 +365,11 @@ export class StockMovementsService {
     }
 
     const updated = await this.stockModel
-      .findOneAndUpdate(filter, { $inc: incUpdate }, { new: true, session: input.session })
+      .findOneAndUpdate(
+        filter,
+        { $inc: incUpdate },
+        { new: true, session: input.session },
+      )
       .exec();
     if (!updated) {
       throw new ConflictException(
@@ -390,7 +409,8 @@ export class StockMovementsService {
             ? new Types.ObjectId(input.context.partRequestId)
             : undefined,
           actor_user_id:
-            input.context.actorId && Types.ObjectId.isValid(input.context.actorId)
+            input.context.actorId &&
+            Types.ObjectId.isValid(input.context.actorId)
               ? new Types.ObjectId(input.context.actorId)
               : undefined,
           reason: input.context.reason,
@@ -402,7 +422,8 @@ export class StockMovementsService {
   }
 
   private async generateMovementCode(): Promise<string> {
-    const sequence = await this.counterService.getNextSequence('stock_movement');
+    const sequence =
+      await this.counterService.getNextSequence('stock_movement');
     return `MOV-${sequence.toString().padStart(6, '0')}`;
   }
 }

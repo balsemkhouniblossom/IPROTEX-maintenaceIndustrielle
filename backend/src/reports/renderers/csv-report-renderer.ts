@@ -41,6 +41,9 @@ export class CsvReportRenderer implements ReportRenderer {
 
     // UTF-8 BOM so Excel (which CSV exports are very often opened in)
     // correctly detects encoding instead of mangling non-ASCII text.
-    return Buffer.concat([Buffer.from('﻿', 'utf8'), Buffer.from(lines.join('\r\n'), 'utf8')]);
+    return Buffer.concat([
+      Buffer.from('﻿', 'utf8'),
+      Buffer.from(lines.join('\r\n'), 'utf8'),
+    ]);
   }
 }

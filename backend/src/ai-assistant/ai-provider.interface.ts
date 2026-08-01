@@ -78,11 +78,7 @@ export interface AiProviderDiagnostics {
   configured: boolean;
   provider: string;
   model?: string;
-  status:
-    | 'disabled'
-    | 'ready'
-    | 'missing_configuration'
-    | 'invalid_provider';
+  status: 'disabled' | 'ready' | 'missing_configuration' | 'invalid_provider';
   message: string;
 }
 

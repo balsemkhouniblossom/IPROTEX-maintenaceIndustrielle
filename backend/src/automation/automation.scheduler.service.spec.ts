@@ -17,7 +17,10 @@ describe('AutomationSchedulerService notification persistence', () => {
 
   let workOrderModel: { find: jest.Mock; updateMany: jest.Mock };
   let stockModel: { find: jest.Mock };
-  let automationJobLockModel: { findOneAndUpdate: jest.Mock; deleteOne: jest.Mock };
+  let automationJobLockModel: {
+    findOneAndUpdate: jest.Mock;
+    deleteOne: jest.Mock;
+  };
   let notificationCenterService: { createIfNotExists: jest.Mock };
   let kpiService: { computeStockAlerts: jest.Mock };
   let service: AutomationSchedulerService;
@@ -25,17 +28,25 @@ describe('AutomationSchedulerService notification persistence', () => {
   beforeEach(() => {
     workOrderModel = {
       find: jest.fn().mockReturnValue(leanExec([])),
-      updateMany: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({ modifiedCount: 0 }) }),
+      updateMany: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+      }),
     };
     stockModel = {
       find: jest.fn().mockReturnValue(leanExec([])),
     };
     automationJobLockModel = {
-      findOneAndUpdate: jest.fn().mockReturnValue(leanExec({ owner: 'lock-owner' })),
-      deleteOne: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue({ deletedCount: 1 }) }),
+      findOneAndUpdate: jest
+        .fn()
+        .mockReturnValue(leanExec({ owner: 'lock-owner' })),
+      deleteOne: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ deletedCount: 1 }),
+      }),
     };
     notificationCenterService = {
-      createIfNotExists: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      createIfNotExists: jest
+        .fn()
+        .mockResolvedValue({ _id: new Types.ObjectId() }),
     };
     kpiService = {
       computeStockAlerts: jest.fn().mockResolvedValue({ count: 0, items: [] }),
@@ -61,7 +72,10 @@ describe('AutomationSchedulerService notification persistence', () => {
   describe('batch registration and locking', () => {
     it('does not register overdue escalation in the 10-minute batch', async () => {
       const executeBatch = jest
-        .spyOn(service as unknown as { executeBatch: jest.Mock }, 'executeBatch')
+        .spyOn(
+          service as unknown as { executeBatch: jest.Mock },
+          'executeBatch',
+        )
         .mockResolvedValue(undefined);
 
       await service.runTenMinuteJobs();
@@ -82,7 +96,10 @@ describe('AutomationSchedulerService notification persistence', () => {
 
       await (
         service as unknown as {
-          runJob(name: string, job: () => Promise<{ processed: number }>): Promise<void>;
+          runJob(
+            name: string,
+            job: () => Promise<{ processed: number }>,
+          ): Promise<void>;
         }
       ).runJob('job_overdue_escalation', job);
 
@@ -102,7 +119,10 @@ describe('AutomationSchedulerService notification persistence', () => {
 
       await (
         service as unknown as {
-          runJob(name: string, job: () => Promise<{ processed: number }>): Promise<void>;
+          runJob(
+            name: string,
+            job: () => Promise<{ processed: number }>,
+          ): Promise<void>;
         }
       ).runJob('job_overdue_escalation', job);
 
@@ -171,7 +191,10 @@ describe('AutomationSchedulerService notification persistence', () => {
       ).jobUpcomingMaintenanceReminders();
 
       expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'preventive_due', recipientRole: 'admin' }),
+        expect.objectContaining({
+          type: 'preventive_due',
+          recipientRole: 'admin',
+        }),
       );
     });
   });
@@ -288,7 +311,9 @@ describe('AutomationSchedulerService notification persistence', () => {
       });
 
       const result = await (
-        service as unknown as { jobStockMonitoring(): Promise<{ processed: number }> }
+        service as unknown as {
+          jobStockMonitoring(): Promise<{ processed: number }>;
+        }
       ).jobStockMonitoring();
 
       expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
@@ -306,10 +331,14 @@ describe('AutomationSchedulerService notification persistence', () => {
       kpiService.computeStockAlerts.mockResolvedValue({ count: 0, items: [] });
 
       const result = await (
-        service as unknown as { jobStockMonitoring(): Promise<{ processed: number }> }
+        service as unknown as {
+          jobStockMonitoring(): Promise<{ processed: number }>;
+        }
       ).jobStockMonitoring();
 
-      expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
+      expect(
+        notificationCenterService.createIfNotExists,
+      ).not.toHaveBeenCalled();
       expect(result.processed).toBe(0);
     });
   });

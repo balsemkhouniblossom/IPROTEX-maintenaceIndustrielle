@@ -73,18 +73,22 @@ describe('FileUploadService avatar validation', () => {
     [
       'WebP',
       Buffer.from([
-        0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42,
-        0x50,
+        0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
       ]),
       '.webp',
     ],
-  ])('accepts valid %s content by byte signature', async (_, buffer, extension) => {
-    const result = await validateAndNormalizeAvatar(fileWithBuffer(buffer));
+  ])(
+    'accepts valid %s content by byte signature',
+    async (_, buffer, extension) => {
+      const result = await validateAndNormalizeAvatar(fileWithBuffer(buffer));
 
-    expect(result.buffer).toEqual(Buffer.from('processed-webp'));
-    expect(result.fileName).toEqual(expect.stringMatching(/^avatar-.+\.webp$/));
-    expect(extension).toBeTruthy();
-  });
+      expect(result.buffer).toEqual(Buffer.from('processed-webp'));
+      expect(result.fileName).toEqual(
+        expect.stringMatching(/^avatar-.+\.webp$/),
+      );
+      expect(extension).toBeTruthy();
+    },
+  );
 
   it('accepts valid image bytes even when the client MIME type is fake', async () => {
     const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0x00]);
@@ -142,7 +146,9 @@ describe('FileUploadService avatar validation', () => {
     toBufferMock.mockRejectedValue(new Error('decode failed'));
 
     await expect(
-      validateAndNormalizeAvatar(fileWithBuffer(Buffer.from([0xff, 0xd8, 0xff, 0x00]))),
+      validateAndNormalizeAvatar(
+        fileWithBuffer(Buffer.from([0xff, 0xd8, 0xff, 0x00])),
+      ),
     ).rejects.toThrow('Avatar image could not be processed');
 
     expect(storageService.save).not.toHaveBeenCalled();

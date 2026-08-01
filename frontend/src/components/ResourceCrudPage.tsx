@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import DashboardLayout from '@/components/DashboardLayout';
+import DynamicSearchControls from '@/components/DynamicSearchControls';
 import { Modal } from '@/components/Modal';
 import Pagination from '@/components/Pagination';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import { displayText } from '@/services/displayValues';
 import { normalizeApiItems, readPaginationMeta } from '@/services/pagination';
 
@@ -17,18 +19,44 @@ export interface CrudField {
   required?: boolean;
   options?: SelectOption[];
   render?: (value: unknown, item: Record<string, unknown>) => string;
+  toFormValue?: (value: unknown, item: Record<string, unknown>) => unknown;
 }
 
 interface Props {
   title: string;
+  heading?: string;
+  description?: string;
+  tableTitle?: string;
+  totalLabel?: string;
   fields: CrudField[];
   emptyForm: Record<string, unknown>;
   load: (page: number, limit: number) => Promise<{ data: unknown }>;
   createItem: (data: Record<string, unknown>) => Promise<unknown>;
   updateItem: (id: string, data: Record<string, unknown>) => Promise<unknown>;
   deleteItem: (id: string) => Promise<unknown>;
-  labels: { add: string; edit: string; delete: string; actions: string; cancel: string; save: string; loading: string; empty: string; confirmDelete: string; loadFailed: string; saveFailed: string; deleteFailed: string };
+  labels: {
+    add: string;
+    edit: string;
+    delete: string;
+    actions: string;
+    cancel: string;
+    save: string;
+    loading: string;
+    empty: string;
+    filteredEmpty?: string;
+    confirmDelete: string;
+    loadFailed: string;
+    saveFailed: string;
+    deleteFailed: string;
+    createSuccess?: string;
+    updateSuccess?: string;
+    deleteSuccess?: string;
+    allFields?: string;
+    searchPlaceholder?: string;
+  };
   normalize?: (form: Record<string, unknown>) => Record<string, unknown>;
+  searchable?: boolean;
+  getItemId?: (item: Record<string, unknown>) => string;
 }
 
 function referenceLabel(value: unknown): string {
@@ -39,7 +67,23 @@ function referenceLabel(value: unknown): string {
   return displayText(value);
 }
 
-export default function ResourceCrudPage({ title, fields, emptyForm, load, createItem, updateItem, deleteItem, labels, normalize }: Props) {
+export default function ResourceCrudPage({
+  title,
+  heading,
+  description,
+  tableTitle,
+  totalLabel,
+  fields,
+  emptyForm,
+  load,
+  createItem,
+  updateItem,
+  deleteItem,
+  labels,
+  normalize,
+  searchable = false,
+  getItemId = (item) => String(item._id),
+}: Props) {
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -50,7 +94,16 @@ export default function ResourceCrudPage({ title, fields, emptyForm, load, creat
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const limit = 10;
+
+  const notify = (type: 'success' | 'error', message?: string) => {
+    if (!message) return;
+    setNotification({ type, message });
+    window.setTimeout(() => setNotification(null), 5000);
+  };
 
   const loadItems = async () => {
     try {
@@ -70,13 +123,19 @@ export default function ResourceCrudPage({ title, fields, emptyForm, load, creat
   };
 
   useEffect(() => { void loadItems(); }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [searchTerm, selectedSearchField]);
 
   const visibleFields = useMemo(() => fields, [fields]);
+  const searchableFields = useMemo(() => getSearchableFields(items), [items]);
+  const visibleItems = useMemo(
+    () => searchable ? items.filter((item) => matchesDynamicSearch(item, searchTerm, selectedSearchField)) : items,
+    [items, searchTerm, searchable, selectedSearchField],
+  );
   const startCreate = () => { setEditing(null); setForm({ ...emptyForm }); setOpen(true); };
   const startEdit = (item: Record<string, unknown>) => {
     const values = { ...emptyForm };
     fields.forEach((field) => {
-      let value = item[field.key];
+      let value = field.toFormValue ? field.toFormValue(item[field.key], item) : item[field.key];
       if (value && typeof value === 'object') value = (value as Record<string, unknown>)._id;
       if (field.type === 'datetime-local' && value) value = new Date(String(value)).toISOString().slice(0, 16);
       values[field.key] = value ?? '';
@@ -91,8 +150,13 @@ export default function ResourceCrudPage({ title, fields, emptyForm, load, creat
     setError('');
     try {
       const payload = normalize ? normalize(form) : form;
-      if (editing) await updateItem(String(editing._id), payload);
-      else await createItem(payload);
+      if (editing) {
+        await updateItem(getItemId(editing), payload);
+        notify('success', labels.updateSuccess);
+      } else {
+        await createItem(payload);
+        notify('success', labels.createSuccess);
+      }
       setOpen(false);
       await loadItems();
     } catch {
@@ -105,9 +169,11 @@ export default function ResourceCrudPage({ title, fields, emptyForm, load, creat
     if (!window.confirm(labels.confirmDelete)) return;
     try {
       await deleteItem(id);
+      notify('success', labels.deleteSuccess);
       await loadItems();
     } catch {
       setError(labels.deleteFailed);
+      notify('error', labels.deleteFailed);
     }
   };
   const renderCellValue = (field: CrudField, item: Record<string, unknown>) => {
@@ -116,13 +182,57 @@ export default function ResourceCrudPage({ title, fields, emptyForm, load, creat
   };
 
   return <ProtectedRoute allowedRoles={['admin']}><DashboardLayout title={title}>
+    {notification && (
+      <div className={`fixed right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-lg border p-4 shadow-lg ${notification.type === 'success' ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-800'}`}>
+        {notification.type === 'success' ? <CheckCircleIcon className="h-5 w-5 shrink-0" /> : <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />}
+        <span className="min-w-0">{notification.message}</span>
+        <button type="button" onClick={() => setNotification(null)} className="ms-2 text-gray-500 hover:text-gray-700" aria-label={labels.cancel}>x</button>
+      </div>
+    )}
     {error && <div className="notification error mb-4">{error}</div>}
+    {(heading || description || totalLabel) && (
+      <div className="bento-grid mb-6">
+        <div className="panel col-span-full bento-item">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0">
+              {heading && <h1 className="truncate text-2xl font-bold text-slate-800" title={heading}>{heading}</h1>}
+              {description && <p className="mt-1 text-slate-600">{description}</p>}
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-4">
+              {totalLabel && (
+                <div className="text-end">
+                  <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
+                  <div className="text-sm text-slate-500">{totalLabel}</div>
+                </div>
+              )}
+              <button className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
+                <PlusIcon className="h-5 w-5 shrink-0" />
+                <span className="truncate" title={labels.add}>{labels.add}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="panel min-w-0 p-4 md:p-6">
-      <div className="mb-4 flex min-w-0 flex-wrap justify-end gap-3">
-        <button className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
+      <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3">
+        {tableTitle ? <div className="card-title mb-0">{tableTitle}</div> : <div />}
+        {searchable && (
+          <DynamicSearchControls
+            className=""
+            selectedField={selectedSearchField}
+            onSelectedFieldChange={setSelectedSearchField}
+            searchableFields={searchableFields}
+            allFieldsLabel={labels.allFields ?? 'All fields'}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            searchPlaceholder={labels.searchPlaceholder ?? labels.empty}
+          />
+        )}
+        {!heading && !description && !totalLabel && <button className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
           <PlusIcon className="h-5 w-5 shrink-0" />
           <span className="truncate" title={labels.add}>{labels.add}</span>
-        </button>
+        </button>}
       </div>
       <div className="min-w-0 overflow-x-auto">
         <table className="data-table responsive-table">
@@ -141,17 +251,17 @@ export default function ResourceCrudPage({ title, fields, emptyForm, load, creat
           <tbody>
             {loading ? (
               <tr><td colSpan={fields.length + 1}>{labels.loading}</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={fields.length + 1}>{labels.empty}</td></tr>
-            ) : items.map((item) => (
-              <tr key={String(item._id)}>
+            ) : visibleItems.length === 0 ? (
+              <tr><td colSpan={fields.length + 1}>{searchTerm ? (labels.filteredEmpty ?? labels.empty) : labels.empty}</td></tr>
+            ) : visibleItems.map((item) => (
+              <tr key={getItemId(item)}>
                 {visibleFields.map((field) => <td key={field.key}>{renderCellValue(field, item)}</td>)}
                 <td className="whitespace-nowrap">
                   <div className="flex gap-2">
                     <button className="btn-secondary p-2" onClick={() => startEdit(item)} title={labels.edit} aria-label={labels.edit}>
                       <PencilIcon className="h-4 w-4 shrink-0" />
                     </button>
-                    <button className="btn-danger p-2" onClick={() => void remove(String(item._id))} title={labels.delete} aria-label={labels.delete}>
+                    <button className="btn-danger p-2" onClick={() => void remove(getItemId(item))} title={labels.delete} aria-label={labels.delete}>
                       <TrashIcon className="h-4 w-4 shrink-0" />
                     </button>
                   </div>

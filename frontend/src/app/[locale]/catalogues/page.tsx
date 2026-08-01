@@ -61,8 +61,6 @@ export default function CataloguesPage() {
         limit,
       });
 
-      console.log("Catalogues response:", response.data);
-
       setCatalogues(response.data.items ?? []);
 
       // ✅ ADD THESE TWO LINES (IMPORTANT)
@@ -201,6 +199,8 @@ export default function CataloguesPage() {
 
   useEffect(() => {
     loadCatalogues();
+    // loadCatalogues intentionally reads the current page; wrapping it would change the existing request lifecycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
 
@@ -218,6 +218,8 @@ export default function CataloguesPage() {
       window.removeEventListener('catalogues:changed', handleCataloguesChanged);
       window.removeEventListener('focus', handleCataloguesChanged);
     };
+    // keep the existing event listener lifecycle stable; loadCatalogues reads current state when the event fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {

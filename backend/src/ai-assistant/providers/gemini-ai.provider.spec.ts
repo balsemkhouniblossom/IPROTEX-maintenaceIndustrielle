@@ -34,7 +34,11 @@ function request(): AiAssistantRequest {
   return {
     question: 'Why does the motor trip?',
     locale: 'en',
-    context: { activeAlarms: [], maintenanceHistory: [], knowledgeArticles: [] },
+    context: {
+      activeAlarms: [],
+      maintenanceHistory: [],
+      knowledgeArticles: [],
+    },
   };
 }
 
@@ -76,11 +80,16 @@ describe('GeminiAiProvider', () => {
       }),
     });
 
-    const result = await provider.generate(request(), new AbortController().signal);
+    const result = await provider.generate(
+      request(),
+      new AbortController().signal,
+    );
 
     expect(result.model).toBe('gemini-2.5-flash');
     expect(result.answer.knownFacts).toEqual(['Motor tripped twice today']);
-    expect(result.answer.safetyWarnings).toEqual(['Lock out before inspection']);
+    expect(result.answer.safetyWarnings).toEqual([
+      'Lock out before inspection',
+    ]);
   });
 
   it('requests Gemini JSON mode with the shared response schema and abort signal', async () => {
@@ -183,7 +192,10 @@ describe('GeminiAiProvider', () => {
       ].join('\n'),
     });
 
-    const result = await provider.generate(request(), new AbortController().signal);
+    const result = await provider.generate(
+      request(),
+      new AbortController().signal,
+    );
 
     expect(result.answer.knownFacts).toEqual(['Machine stopped']);
     expect(result.answer.recommendedChecks).toEqual(['Check emergency stop']);
@@ -192,7 +204,10 @@ describe('GeminiAiProvider', () => {
 
 describe('MisconfiguredAiProvider', () => {
   it('reports missing Gemini configuration and rejects with that code', async () => {
-    const provider = new MisconfiguredAiProvider('gemini', 'missing Gemini config');
+    const provider = new MisconfiguredAiProvider(
+      'gemini',
+      'missing Gemini config',
+    );
 
     expect(provider.getDiagnostics()).toEqual({
       enabled: true,
@@ -201,7 +216,9 @@ describe('MisconfiguredAiProvider', () => {
       status: 'missing_configuration',
       message: 'missing Gemini config',
     });
-    await expect(provider.generate()).rejects.toMatchObject<Partial<AiProviderError>>({
+    await expect(provider.generate()).rejects.toMatchObject<
+      Partial<AiProviderError>
+    >({
       code: 'missing_configuration',
     });
   });

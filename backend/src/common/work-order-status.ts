@@ -15,6 +15,10 @@ export const CLOSED_WORK_ORDER_STATUSES = [
   'ANNULE',
 ];
 
-export const COMPLETED_WORK_ORDER_STATUSES = ['completed', 'validated', 'CLOTURE'];
+export const COMPLETED_WORK_ORDER_STATUSES = [
+  'completed',
+  'validated',
+  'CLOTURE',
+];
 
 export const WAITING_VALIDATION_STATUS = 'waiting_validation';

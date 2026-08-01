@@ -9,9 +9,9 @@ function config(values: Record<string, string | undefined>): ConfigService {
 
 describe('resolveFileStorageConfig', () => {
   it('defaults to local storage outside production', () => {
-    expect(resolveFileStorageConfig(config({ NODE_ENV: 'development' })).driver).toBe(
-      'local',
-    );
+    expect(
+      resolveFileStorageConfig(config({ NODE_ENV: 'development' })).driver,
+    ).toBe('local');
   });
 
   it('requires supabase storage in production', () => {

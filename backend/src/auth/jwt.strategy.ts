@@ -11,6 +11,7 @@ interface JwtPayload {
   email: string;
   role: string;
   user_id: string;
+  iat?: number;
 }
 
 export function resolveJwtSecret(configService: ConfigService): string {
@@ -47,7 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.userModel
       .findById(payload.sub)
       .select(
-        'email role user_id is_active is_verified approval_status profile_completed',
+        'email role user_id is_active is_verified approval_status profile_completed must_reset_password credentials_invalidated_at',
       )
       .exec();
 
@@ -55,6 +56,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException({
         code: 'AUTHENTICATED_USER_NOT_FOUND',
         message: 'Authenticated user was not found.',
+      });
+    }
+
+    if (
+      user.credentials_invalidated_at &&
+      typeof payload.iat === 'number' &&
+      payload.iat * 1000 < user.credentials_invalidated_at.getTime()
+    ) {
+      throw new UnauthorizedException({
+        code: 'SESSION_REVOKED',
+        message: 'Your session was revoked. Please log in again.',
       });
     }
 
@@ -67,6 +79,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       is_verified: user.is_verified,
       approval_status: user.approval_status,
       profile_completed: user.profile_completed ?? true,
+      must_reset_password: user.must_reset_password ?? false,
     };
   }
 }

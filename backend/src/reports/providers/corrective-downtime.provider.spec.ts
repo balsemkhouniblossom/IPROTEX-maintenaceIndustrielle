@@ -18,7 +18,9 @@ describe('CorrectiveDowntimeReportProvider', () => {
       }),
     };
     const machineModel = { find: jest.fn() };
-    const documentAccessService = { listAccessibleMachineIds: jest.fn().mockResolvedValue(null) };
+    const documentAccessService = {
+      listAccessibleMachineIds: jest.fn().mockResolvedValue(null),
+    };
 
     const provider = new CorrectiveDowntimeReportProvider(
       workOrderModel as never,
@@ -44,7 +46,11 @@ describe('CorrectiveDowntimeReportProvider', () => {
     const dataset = await provider.buildDataset({}, actor);
 
     expect(dataset.rows).toEqual([
-      expect.objectContaining({ work_order: 'OT-1', machine: 'M-1 (Press)', downtime_hours: 5 }),
+      expect.objectContaining({
+        work_order: 'OT-1',
+        machine: 'M-1 (Press)',
+        downtime_hours: 5,
+      }),
     ]);
     expect(dataset.summary).toEqual([
       { label: 'Corrective events', value: 1 },
@@ -71,7 +77,14 @@ describe('CorrectiveDowntimeReportProvider', () => {
 
   it('skips work orders missing both start and end dates', async () => {
     const { provider } = buildProvider([
-      { ot_id: 'OT-3', date_created: null, date_start: null, date_end: null, date_closed: null, machine_id: {} },
+      {
+        ot_id: 'OT-3',
+        date_created: null,
+        date_start: null,
+        date_end: null,
+        date_closed: null,
+        machine_id: {},
+      },
     ]);
     const dataset = await provider.buildDataset({}, actor);
     expect(dataset.rows).toEqual([]);

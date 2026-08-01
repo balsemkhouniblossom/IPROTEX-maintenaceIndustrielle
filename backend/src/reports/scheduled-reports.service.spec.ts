@@ -10,8 +10,14 @@ function execResolves(result: unknown) {
 }
 
 describe('ScheduledReportsService', () => {
-  const adminActor = { userId: new Types.ObjectId().toString(), role: Role.ADMIN };
-  const otherActor = { userId: new Types.ObjectId().toString(), role: Role.TECHNICIAN };
+  const adminActor = {
+    userId: new Types.ObjectId().toString(),
+    role: Role.ADMIN,
+  };
+  const otherActor = {
+    userId: new Types.ObjectId().toString(),
+    role: Role.TECHNICIAN,
+  };
 
   let scheduledReportModel: {
     create: jest.Mock;
@@ -26,8 +32,14 @@ describe('ScheduledReportsService', () => {
 
   beforeEach(() => {
     scheduledReportModel = {
-      create: jest.fn().mockImplementation((doc) => Promise.resolve({ ...doc, _id: new Types.ObjectId() })),
-      find: jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves([])) }),
+      create: jest
+        .fn()
+        .mockImplementation((doc) =>
+          Promise.resolve({ ...doc, _id: new Types.ObjectId() }),
+        ),
+      find: jest
+        .fn()
+        .mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves([])) }),
       findById: jest.fn().mockReturnValue(execResolves(null)),
       findByIdAndDelete: jest.fn().mockReturnValue(execResolves(undefined)),
     };
@@ -38,7 +50,11 @@ describe('ScheduledReportsService', () => {
       const service = buildService();
       await expect(
         service.create(
-          { type: ReportType.AUDIT_HISTORY, format: ReportFormat.CSV, frequency: ScheduleFrequency.DAILY },
+          {
+            type: ReportType.AUDIT_HISTORY,
+            format: ReportFormat.CSV,
+            frequency: ScheduleFrequency.DAILY,
+          },
           otherActor,
         ),
       ).rejects.toThrow(ForbiddenException);
@@ -47,7 +63,11 @@ describe('ScheduledReportsService', () => {
     it('creates an active schedule with a computed next_run_at in the future', async () => {
       const service = buildService();
       const schedule = await service.create(
-        { type: ReportType.MACHINE_HISTORY, format: ReportFormat.PDF, frequency: ScheduleFrequency.WEEKLY },
+        {
+          type: ReportType.MACHINE_HISTORY,
+          format: ReportFormat.PDF,
+          frequency: ScheduleFrequency.WEEKLY,
+        },
         adminActor,
       );
 
@@ -89,13 +109,19 @@ describe('ScheduledReportsService', () => {
     it('throws NotFoundException for a missing schedule', async () => {
       scheduledReportModel.findById.mockReturnValue(execResolves(null));
       const service = buildService();
-      await expect(service.update('missing', {}, adminActor)).rejects.toThrow(NotFoundException);
+      await expect(service.update('missing', {}, adminActor)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ForbiddenException when a non-owner, non-admin tries to update', async () => {
-      scheduledReportModel.findById.mockReturnValue(execResolves(scheduleDoc()));
+      scheduledReportModel.findById.mockReturnValue(
+        execResolves(scheduleDoc()),
+      );
       const service = buildService();
-      await expect(service.update('s1', { active: false }, otherActor)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.update('s1', { active: false }, otherActor),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('toggles active and persists via save()', async () => {
@@ -114,7 +140,11 @@ describe('ScheduledReportsService', () => {
       scheduledReportModel.findById.mockReturnValue(execResolves(doc));
       const service = buildService();
 
-      const updated = await service.update('s1', { frequency: ScheduleFrequency.MONTHLY }, adminActor);
+      const updated = await service.update(
+        's1',
+        { frequency: ScheduleFrequency.MONTHLY },
+        adminActor,
+      );
 
       expect(updated.frequency).toBe(ScheduleFrequency.MONTHLY);
       expect(updated.next_run_at).toBeInstanceOf(Date);
@@ -129,10 +159,14 @@ describe('ScheduledReportsService', () => {
       expect(scheduledReportModel.findByIdAndDelete).toHaveBeenCalledWith('s1');
     });
 
-    it('a non-owner technician cannot remove someone else\'s schedule', async () => {
-      scheduledReportModel.findById.mockReturnValue(execResolves(scheduleDoc()));
+    it("a non-owner technician cannot remove someone else's schedule", async () => {
+      scheduledReportModel.findById.mockReturnValue(
+        execResolves(scheduleDoc()),
+      );
       const service = buildService();
-      await expect(service.remove('s1', otherActor)).rejects.toThrow(ForbiddenException);
+      await expect(service.remove('s1', otherActor)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

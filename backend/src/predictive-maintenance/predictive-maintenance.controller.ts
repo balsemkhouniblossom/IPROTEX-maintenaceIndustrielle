@@ -10,7 +10,10 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminOnly, AuthenticatedRoles } from '../auth/decorators/roles.decorator';
+import {
+  AdminOnly,
+  AuthenticatedRoles,
+} from '../auth/decorators/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { PredictiveMaintenanceService } from './predictive-maintenance.service';
 import { PredictiveMaintenanceTrainingService } from './predictive-maintenance-training.service';
@@ -21,7 +24,9 @@ function actorFrom(req: AuthenticatedRequest) {
 }
 
 function assertValidModelType(type: string): PredictionModelType {
-  if (!Object.values(PredictionModelType).includes(type as PredictionModelType)) {
+  if (
+    !Object.values(PredictionModelType).includes(type as PredictionModelType)
+  ) {
     throw new BadRequestException(`Unknown prediction model type: ${type}`);
   }
   return type as PredictionModelType;
@@ -55,13 +60,21 @@ export class PredictiveMaintenanceController {
   @AuthenticatedRoles()
   @Throttle({ default: { limit: 300, ttl: 60000 } })
   getPlansSummary(@Req() req: AuthenticatedRequest) {
-    return this.predictiveMaintenanceService.getPlanHealthSummaries(actorFrom(req));
+    return this.predictiveMaintenanceService.getPlanHealthSummaries(
+      actorFrom(req),
+    );
   }
 
   @Get('machines/:machineId')
   @AuthenticatedRoles()
-  getLatestForMachine(@Param('machineId') machineId: string, @Req() req: AuthenticatedRequest) {
-    return this.predictiveMaintenanceService.getLatestPredictions(machineId, actorFrom(req));
+  getLatestForMachine(
+    @Param('machineId') machineId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.predictiveMaintenanceService.getLatestPredictions(
+      machineId,
+      actorFrom(req),
+    );
   }
 
   @Get('machines/:machineId/history')
@@ -81,8 +94,14 @@ export class PredictiveMaintenanceController {
 
   @Post('machines/:machineId/refresh')
   @AuthenticatedRoles()
-  refreshMachine(@Param('machineId') machineId: string, @Req() req: AuthenticatedRequest) {
-    return this.predictiveMaintenanceService.predictForMachine(machineId, actorFrom(req));
+  refreshMachine(
+    @Param('machineId') machineId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.predictiveMaintenanceService.predictForMachine(
+      machineId,
+      actorFrom(req),
+    );
   }
 
   @Get('models')

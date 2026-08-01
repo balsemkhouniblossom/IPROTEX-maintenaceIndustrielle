@@ -31,6 +31,16 @@ coverage
 !.env.example
 .env.example
 backend/.env.example
+
+# =====================
+# LOCAL BACKUPS (VERY IMPORTANT)
+# Manual code/filesystem/MongoDB backup archives — these can contain raw
+# database dumps (including the users collection: bcrypt password hashes,
+# refresh token hashes) and must never be committed. Untracked on
+# 2026-08-01 after backups/mongodb/*/GMAO_IPROTEX/users.bson was found
+# checked in; kept on local disk, only removed from Git tracking.
+# =====================
+/backups
 # =====================
 # LOGS
 # =====================

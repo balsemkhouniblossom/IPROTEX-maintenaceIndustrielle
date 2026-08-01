@@ -19,12 +19,16 @@ export class PreventiveComplianceReportProvider implements ReportDataProvider {
   readonly type = ReportType.PREVENTIVE_COMPLIANCE;
 
   constructor(
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     private readonly kpiService: KpiService,
     private readonly documentAccessService: DocumentAccessService,
   ) {}
 
-  async buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset> {
+  async buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset> {
     const machineIds = await resolveReportMachineScope(
       this.documentAccessService,
       actor,
@@ -39,7 +43,6 @@ export class PreventiveComplianceReportProvider implements ReportDataProvider {
     let totalOnTime = 0;
     let totalEvaluable = 0;
     for (const machine of machines) {
-      // eslint-disable-next-line no-await-in-loop
       const result = await this.kpiService.computePreventiveCompliance({
         machineIds: [machine._id.toString()],
         dateFrom: params.dateFrom,
@@ -48,14 +51,19 @@ export class PreventiveComplianceReportProvider implements ReportDataProvider {
       totalOnTime += result.onTimeCount;
       totalEvaluable += result.evaluableCount;
       rows.push({
-        machine: machine.reference ? `${machine.machine_id} (${machine.reference})` : machine.machine_id,
+        machine: machine.reference
+          ? `${machine.machine_id} (${machine.reference})`
+          : machine.machine_id,
         compliance_rate_percent: result.ratePercent,
         on_time_count: result.onTimeCount,
         evaluable_count: result.evaluableCount,
       });
     }
 
-    const overallRate = totalEvaluable > 0 ? Math.round((totalOnTime / totalEvaluable) * 10000) / 100 : 0;
+    const overallRate =
+      totalEvaluable > 0
+        ? Math.round((totalOnTime / totalEvaluable) * 10000) / 100
+        : 0;
 
     return {
       title: 'Preventive Maintenance Compliance Report',

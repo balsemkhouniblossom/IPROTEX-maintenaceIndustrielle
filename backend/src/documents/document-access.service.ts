@@ -72,7 +72,9 @@ export class DocumentAccessService {
 
     if (role === Role.TECHNICIAN) {
       if (await this.technicianCanAccessMachine(userId, machineId)) return;
-      throw new ForbiddenException('Technician is not authorized for this machine');
+      throw new ForbiddenException(
+        'Technician is not authorized for this machine',
+      );
     }
 
     throw new ForbiddenException('Document access denied');
@@ -108,7 +110,9 @@ export class DocumentAccessService {
     return machineIds.some((id) => id.equals(machineId));
   }
 
-  private async getOperatorMachineIds(userId: string): Promise<Types.ObjectId[]> {
+  private async getOperatorMachineIds(
+    userId: string,
+  ): Promise<Types.ObjectId[]> {
     const operator = await this.userModel
       .findById(userId)
       .select({ assigned_machine_ids: 1 })
@@ -157,7 +161,9 @@ export class DocumentAccessService {
     return Boolean(match);
   }
 
-  private async getTechnicianMachineIds(userId: string): Promise<Types.ObjectId[]> {
+  private async getTechnicianMachineIds(
+    userId: string,
+  ): Promise<Types.ObjectId[]> {
     const assignedMachineIds = await this.getAssignedMachineIds(userId);
     const ownMachineIds = await this.workOrderModel
       .distinct('machine_id', {
@@ -180,7 +186,9 @@ export class DocumentAccessService {
     return this.uniqueObjectIds([...ownMachineIds, ...claimableMachineIds]);
   }
 
-  private async getAssignedMachineIds(userId: string): Promise<Types.ObjectId[]> {
+  private async getAssignedMachineIds(
+    userId: string,
+  ): Promise<Types.ObjectId[]> {
     const technician = await this.userModel
       .findById(userId)
       .select({ assigned_machine_ids: 1 })
@@ -191,9 +199,9 @@ export class DocumentAccessService {
       .filter((id): id is Types.ObjectId => Boolean(id));
   }
 
-  private userReferenceFilter(
-    userId: string,
-  ): { $in: Array<string | Types.ObjectId> } {
+  private userReferenceFilter(userId: string): {
+    $in: Array<string | Types.ObjectId>;
+  } {
     return { $in: [userId, new Types.ObjectId(userId)] };
   }
 

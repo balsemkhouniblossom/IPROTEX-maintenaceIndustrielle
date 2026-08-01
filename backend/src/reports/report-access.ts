@@ -26,7 +26,10 @@ export const REPORT_TYPE_ROLES: Record<ReportType, Role[]> = {
   [ReportType.PREDICTIVE_RISK]: [Role.ADMIN, Role.TECHNICIAN],
 };
 
-export function canRequestReportType(role: string | undefined, type: ReportType): boolean {
+export function canRequestReportType(
+  role: string | undefined,
+  type: ReportType,
+): boolean {
   const allowed = REPORT_TYPE_ROLES[type];
   return Boolean(allowed && role && allowed.includes(role as Role));
 }

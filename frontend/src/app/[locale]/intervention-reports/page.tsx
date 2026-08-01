@@ -297,6 +297,8 @@ export default function InterventionReportsPage() {
       window.removeEventListener('intervention-reports:changed', handleChanged);
       window.removeEventListener('focus', handleChanged);
     };
+    // keep the existing event listener lifecycle stable; loadData reads current state when the event fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {

@@ -42,10 +42,6 @@ export default function LubrificationLogsPage() {
       try {
         const res = await apiService.getLubrificationLogs();
 
-        console.log("API Response:", res);
-        console.log("API Response data:", res.data);
-        console.log("Is res.data array?", Array.isArray(res.data));
-
         setItems(Array.isArray(res.data) ? res.data : []);
       } finally {
         setLoading(false);

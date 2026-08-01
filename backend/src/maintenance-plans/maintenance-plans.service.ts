@@ -32,7 +32,9 @@ export const MAINTENANCE_PLANS_SORT_ALLOWED_FIELDS = [
   'status',
   'maintenance_code',
 ] as const;
-const MAINTENANCE_PLANS_DEFAULT_SORT: Record<string, 1 | -1> = { createdAt: -1 };
+const MAINTENANCE_PLANS_DEFAULT_SORT: Record<string, 1 | -1> = {
+  createdAt: -1,
+};
 
 function buildMaintenancePlansFilter(
   query: MaintenancePlansQueryDto = {},
@@ -84,11 +86,26 @@ interface TransitionRule {
   to: MaintenancePlanStatus;
 }
 
-const TRANSITION_RULES: Record<MaintenancePlanTransitionAction, TransitionRule> = {
-  activate: { from: [MaintenancePlanStatus.DRAFT], to: MaintenancePlanStatus.ACTIVE },
-  resume: { from: [MaintenancePlanStatus.PAUSED], to: MaintenancePlanStatus.ACTIVE },
-  pause: { from: [MaintenancePlanStatus.ACTIVE], to: MaintenancePlanStatus.PAUSED },
-  complete: { from: [MaintenancePlanStatus.ACTIVE], to: MaintenancePlanStatus.COMPLETED },
+const TRANSITION_RULES: Record<
+  MaintenancePlanTransitionAction,
+  TransitionRule
+> = {
+  activate: {
+    from: [MaintenancePlanStatus.DRAFT],
+    to: MaintenancePlanStatus.ACTIVE,
+  },
+  resume: {
+    from: [MaintenancePlanStatus.PAUSED],
+    to: MaintenancePlanStatus.ACTIVE,
+  },
+  pause: {
+    from: [MaintenancePlanStatus.ACTIVE],
+    to: MaintenancePlanStatus.PAUSED,
+  },
+  complete: {
+    from: [MaintenancePlanStatus.ACTIVE],
+    to: MaintenancePlanStatus.COMPLETED,
+  },
   archive: {
     from: [
       MaintenancePlanStatus.DRAFT,
@@ -100,7 +117,10 @@ const TRANSITION_RULES: Record<MaintenancePlanTransitionAction, TransitionRule> 
   },
 };
 
-const ACTION_TO_HISTORY_ACTION: Record<MaintenancePlanTransitionAction, string> = {
+const ACTION_TO_HISTORY_ACTION: Record<
+  MaintenancePlanTransitionAction,
+  string
+> = {
   activate: 'activated',
   resume: 'resumed',
   pause: 'paused',
@@ -238,12 +258,16 @@ export class MaintenancePlansService {
       throw new ConflictException('Archived maintenance plans are read-only');
     }
 
-    if (await this.hasValidatedOccurrence(id)) {
-      if (expectedVersion === undefined || expectedVersion !== plan.version) {
-        throw new ConflictException(
-          'This plan has validated occurrences and can only be deleted with a matching expected_version',
-        );
-      }
+    if (await this.hasAnyOccurrence(id)) {
+      throw new ConflictException(
+        'This plan has work order occurrences and cannot be deleted; archive it instead to preserve historical references',
+      );
+    }
+
+    if (expectedVersion !== undefined && expectedVersion !== plan.version) {
+      throw new ConflictException(
+        'This plan has changed since you last loaded it; reload and retry',
+      );
     }
 
     const deleted = await this.maintenancePlanModel
@@ -297,7 +321,9 @@ export class MaintenancePlansService {
     }
 
     const statusFilter = rule.from.includes(MaintenancePlanStatus.ACTIVE)
-      ? { $or: [{ status: { $in: rule.from } }, { status: { $exists: false } }] }
+      ? {
+          $or: [{ status: { $in: rule.from } }, { status: { $exists: false } }],
+        }
       : { status: { $in: rule.from } };
 
     const now = new Date();
@@ -352,6 +378,13 @@ export class MaintenancePlansService {
   private async hasValidatedOccurrence(planId: string): Promise<boolean> {
     const exists = await this.workOrderModel
       .exists({ plan_id: new Types.ObjectId(planId), status: 'validated' })
+      .exec();
+    return Boolean(exists);
+  }
+
+  private async hasAnyOccurrence(planId: string): Promise<boolean> {
+    const exists = await this.workOrderModel
+      .exists({ plan_id: new Types.ObjectId(planId) })
       .exec();
     return Boolean(exists);
   }

@@ -135,6 +135,8 @@ export default function MachinesPage() {
       window.removeEventListener('machines:changed', handleMachinesChanged);
       window.removeEventListener('focus', handleMachinesChanged);
     };
+    // keep the existing event listener lifecycle stable; loadMachines reads current state when the event fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 

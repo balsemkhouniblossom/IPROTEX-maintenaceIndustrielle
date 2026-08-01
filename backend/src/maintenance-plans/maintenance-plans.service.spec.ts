@@ -40,13 +40,15 @@ describe('MaintenancePlansService', () => {
     maintenancePlanModel = {
       create: jest.fn().mockResolvedValue(planDoc()),
       findById: jest.fn().mockReturnValue(execResult(planDoc())),
-      findOneAndUpdate: jest.fn().mockReturnValue(
-        execResult(planDoc({ version: 2 })),
-      ),
+      findOneAndUpdate: jest
+        .fn()
+        .mockReturnValue(execResult(planDoc({ version: 2 }))),
       findOneAndDelete: jest.fn().mockReturnValue(execResult(planDoc())),
     };
     workOrderModel = {
-      exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+      exists: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
     };
     workOrdersService = {
       createInitialOccurrenceForPlan: jest.fn().mockResolvedValue(null),
@@ -68,7 +70,7 @@ describe('MaintenancePlansService', () => {
           type_maintenance: 'preventive',
           frequence: 1,
           unite_frequence: 'month',
-        } as never,
+        },
         actorId,
       );
 
@@ -95,27 +97,31 @@ describe('MaintenancePlansService', () => {
       );
 
       await expect(
-        service.update(planId, { instruction: 'New steps' } as never, actorId),
+        service.update(planId, { instruction: 'New steps' }, actorId),
       ).rejects.toThrow(ConflictException);
       expect(maintenancePlanModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
     it('rejects an edit with no expected_version once the plan has a validated occurrence', async () => {
-      workOrderModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'x' }) });
+      workOrderModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: 'x' }),
+      });
 
       await expect(
-        service.update(planId, { instruction: 'New steps' } as never, actorId),
+        service.update(planId, { instruction: 'New steps' }, actorId),
       ).rejects.toThrow(ConflictException);
       expect(maintenancePlanModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
     it('rejects an edit whose expected_version does not match once the plan has a validated occurrence', async () => {
-      workOrderModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'x' }) });
+      workOrderModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: 'x' }),
+      });
 
       await expect(
         service.update(
           planId,
-          { instruction: 'New steps', expected_version: 99 } as never,
+          { instruction: 'New steps', expected_version: 99 },
           actorId,
         ),
       ).rejects.toThrow(ConflictException);
@@ -123,11 +129,13 @@ describe('MaintenancePlansService', () => {
     });
 
     it('applies a version-safe edit once the plan has a validated occurrence and expected_version matches', async () => {
-      workOrderModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'x' }) });
+      workOrderModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: 'x' }),
+      });
 
       const result = await service.update(
         planId,
-        { instruction: 'New steps', expected_version: 1 } as never,
+        { instruction: 'New steps', expected_version: 1 },
         actorId,
       );
 
@@ -143,7 +151,7 @@ describe('MaintenancePlansService', () => {
     });
 
     it('allows an edit without expected_version when there is no validated occurrence yet', async () => {
-      await service.update(planId, { instruction: 'New steps' } as never, actorId);
+      await service.update(planId, { instruction: 'New steps' }, actorId);
 
       expect(maintenancePlanModel.findOneAndUpdate).toHaveBeenCalled();
     });
@@ -152,7 +160,7 @@ describe('MaintenancePlansService', () => {
       maintenancePlanModel.findOneAndUpdate.mockReturnValue(execResult(null));
 
       await expect(
-        service.update(planId, { instruction: 'New steps' } as never, actorId),
+        service.update(planId, { instruction: 'New steps' }, actorId),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -160,7 +168,7 @@ describe('MaintenancePlansService', () => {
       maintenancePlanModel.findById.mockReturnValue(execResult(null));
 
       await expect(
-        service.update(planId, { instruction: 'x' } as never, actorId),
+        service.update(planId, { instruction: 'x' }, actorId),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -175,29 +183,29 @@ describe('MaintenancePlansService', () => {
       expect(maintenancePlanModel.findOneAndDelete).not.toHaveBeenCalled();
     });
 
-    it('rejects deleting a plan with a validated occurrence unless expected_version matches', async () => {
-      workOrderModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'x' }) });
+    it('rejects deleting a plan with any occurrence so work orders never lose their plan reference', async () => {
+      workOrderModel.exists.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: 'x' }),
+      });
 
       await expect(service.remove(planId)).rejects.toThrow(ConflictException);
-      await expect(service.remove(planId, 99)).rejects.toThrow(ConflictException);
+      await expect(service.remove(planId, 1)).rejects.toThrow(
+        ConflictException,
+      );
       expect(maintenancePlanModel.findOneAndDelete).not.toHaveBeenCalled();
     });
 
-    it('deletes a plan with a validated occurrence when expected_version matches', async () => {
-      workOrderModel.exists.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: 'x' }) });
-
-      await service.remove(planId, 1);
-
-      expect(maintenancePlanModel.findOneAndDelete).toHaveBeenCalledWith({
-        _id: planId,
-        version: 1,
-      });
-    });
-
-    it('deletes a plan with no validated occurrence without requiring expected_version', async () => {
+    it('deletes a plan with no occurrence without requiring expected_version', async () => {
       await service.remove(planId);
 
       expect(maintenancePlanModel.findOneAndDelete).toHaveBeenCalled();
+    });
+
+    it('rejects stale expected_version even when the plan has no occurrence', async () => {
+      await expect(service.remove(planId, 99)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(maintenancePlanModel.findOneAndDelete).not.toHaveBeenCalled();
     });
   });
 
@@ -221,7 +229,9 @@ describe('MaintenancePlansService', () => {
 
     it('activates a Draft plan, records history, and creates the first occurrence', async () => {
       maintenancePlanModel.findOneAndUpdate.mockReturnValue(
-        execResult(planDoc({ status: MaintenancePlanStatus.ACTIVE, version: 2 })),
+        execResult(
+          planDoc({ status: MaintenancePlanStatus.ACTIVE, version: 2 }),
+        ),
       );
       const createdOccurrence = { _id: new Types.ObjectId() };
       workOrdersService.createInitialOccurrenceForPlan.mockResolvedValue(
@@ -249,9 +259,9 @@ describe('MaintenancePlansService', () => {
         }),
         { new: true },
       );
-      expect(workOrdersService.createInitialOccurrenceForPlan).toHaveBeenCalledWith(
-        planId,
-      );
+      expect(
+        workOrdersService.createInitialOccurrenceForPlan,
+      ).toHaveBeenCalledWith(planId);
       expect(result.createdOccurrence).toBe(createdOccurrence);
     });
 
@@ -260,7 +270,9 @@ describe('MaintenancePlansService', () => {
         execResult(planDoc({ status: MaintenancePlanStatus.ACTIVE })),
       );
       maintenancePlanModel.findOneAndUpdate.mockReturnValue(
-        execResult(planDoc({ status: MaintenancePlanStatus.PAUSED, version: 2 })),
+        execResult(
+          planDoc({ status: MaintenancePlanStatus.PAUSED, version: 2 }),
+        ),
       );
 
       const result = await service.transition(
@@ -269,7 +281,9 @@ describe('MaintenancePlansService', () => {
         actorId,
       );
 
-      expect(workOrdersService.createInitialOccurrenceForPlan).not.toHaveBeenCalled();
+      expect(
+        workOrdersService.createInitialOccurrenceForPlan,
+      ).not.toHaveBeenCalled();
       expect(result.createdOccurrence).toBeNull();
     });
 
@@ -279,7 +293,9 @@ describe('MaintenancePlansService', () => {
       await expect(
         service.transition(planId, { action: 'activate' } as never, actorId),
       ).rejects.toThrow(ConflictException);
-      expect(workOrdersService.createInitialOccurrenceForPlan).not.toHaveBeenCalled();
+      expect(
+        workOrdersService.createInitialOccurrenceForPlan,
+      ).not.toHaveBeenCalled();
     });
 
     it('allows resuming a Paused plan back to Active', async () => {
@@ -287,7 +303,9 @@ describe('MaintenancePlansService', () => {
         execResult(planDoc({ status: MaintenancePlanStatus.PAUSED })),
       );
       maintenancePlanModel.findOneAndUpdate.mockReturnValue(
-        execResult(planDoc({ status: MaintenancePlanStatus.ACTIVE, version: 2 })),
+        execResult(
+          planDoc({ status: MaintenancePlanStatus.ACTIVE, version: 2 }),
+        ),
       );
 
       await service.transition(planId, { action: 'resume' } as never, actorId);
@@ -298,7 +316,9 @@ describe('MaintenancePlansService', () => {
         { new: true },
       );
       // resume never re-creates the first occurrence — that only happens on activate
-      expect(workOrdersService.createInitialOccurrenceForPlan).not.toHaveBeenCalled();
+      expect(
+        workOrdersService.createInitialOccurrenceForPlan,
+      ).not.toHaveBeenCalled();
     });
 
     it('rejects archiving something already Archived', async () => {
@@ -341,7 +361,9 @@ describe('MaintenancePlansService.findAll — server-side filtering, search, and
   beforeEach(() => {
     maintenancePlanModel = {
       find: jest.fn().mockReturnValue(findAllChain([])),
-      countDocuments: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+      countDocuments: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
     };
 
     service = new MaintenancePlansService(
@@ -352,7 +374,10 @@ describe('MaintenancePlansService.findAll — server-side filtering, search, and
   });
 
   it('applies status and type_maintenance as $in filters from comma-separated query params', async () => {
-    await service.findAll(1, 10, 0, { status: 'active,paused', typeMaintenance: 'preventive' });
+    await service.findAll(1, 10, 0, {
+      status: 'active,paused',
+      typeMaintenance: 'preventive',
+    });
 
     expect(maintenancePlanModel.find).toHaveBeenCalledWith(
       expect.objectContaining({

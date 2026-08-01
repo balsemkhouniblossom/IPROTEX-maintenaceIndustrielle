@@ -79,7 +79,9 @@ export class AiAssistantService {
     // interaction (including a rate-limited or disabled one) records the
     // same non-empty, already-safe question rather than a placeholder.
     const injectionResult = this.injectionGuard.scan(dto.question);
-    const redactionResult = this.sensitiveDataFilter.redact(injectionResult.sanitized);
+    const redactionResult = this.sensitiveDataFilter.redact(
+      injectionResult.sanitized,
+    );
 
     const throttle = this.throttleService.consume(actor.userId);
     if (!throttle.allowed) {
@@ -263,7 +265,9 @@ export class AiAssistantService {
     }
   }
 
-  private async record(params: RecordParams): Promise<AiRecommendationResponse> {
+  private async record(
+    params: RecordParams,
+  ): Promise<AiRecommendationResponse> {
     const doc = await this.interactionModel.create({
       actor_user_id: new Types.ObjectId(params.actor.userId),
       actor_role: params.actor.role,
@@ -290,7 +294,7 @@ export class AiAssistantService {
 
     return {
       status: params.status,
-      interactionId: (doc._id as Types.ObjectId).toString(),
+      interactionId: doc._id.toString(),
       provider: params.provider,
       retryAfterSeconds: params.retryAfterSeconds,
       diagnostic: this.diagnosticForStatus(params.status),
@@ -309,7 +313,8 @@ export class AiAssistantService {
     const fallbackMessages: Partial<Record<AiInteractionStatus, string>> = {
       [AiInteractionStatus.RATE_LIMITED]:
         'AI assistant rate limit reached for this user',
-      [AiInteractionStatus.TIMEOUT]: 'Gemini did not respond before the timeout',
+      [AiInteractionStatus.TIMEOUT]:
+        'Gemini did not respond before the timeout',
       [AiInteractionStatus.INVALID_CREDENTIALS]:
         'Gemini rejected the configured API key or permissions',
       [AiInteractionStatus.QUOTA_LIMITED]:

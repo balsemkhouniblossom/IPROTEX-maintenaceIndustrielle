@@ -12,13 +12,24 @@ import * as crypto from 'crypto';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';
-import { MachineType, MachineTypeDocument } from '../src/schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
 import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
 import { Catalogue, CatalogueDocument } from '../src/schemas/catalogue.schema';
 import { Stock, StockDocument } from '../src/schemas/stock.schema';
-import { StockMovement, StockMovementDocument, StockMovementType } from '../src/schemas/stock-movement.schema';
-import { Notification, NotificationDocument, NotificationType } from '../src/schemas/notification.schema';
+import {
+  StockMovement,
+  StockMovementDocument,
+  StockMovementType,
+} from '../src/schemas/stock-movement.schema';
+import {
+  Notification,
+  NotificationDocument,
+  NotificationType,
+} from '../src/schemas/notification.schema';
 import {
   GeneratedReport,
   GeneratedReportDocument,
@@ -26,7 +37,11 @@ import {
   ReportStatus,
   ReportType,
 } from '../src/schemas/generated-report.schema';
-import { ScheduledReport, ScheduledReportDocument, ScheduleFrequency } from '../src/schemas/scheduled-report.schema';
+import {
+  ScheduledReport,
+  ScheduledReportDocument,
+  ScheduleFrequency,
+} from '../src/schemas/scheduled-report.schema';
 import { ReportSchedulerService } from '../src/reports/report-scheduler.service';
 
 /**
@@ -40,8 +55,11 @@ import { ReportSchedulerService } from '../src/reports/report-scheduler.service'
  * exact bytes back regardless of the download's declared content type, so
  * the checksum comparison below is comparing the real wire bytes.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function bufferParser(res: any, callback: (err: Error | null, body: Buffer) => void): void {
+
+function bufferParser(
+  res: any,
+  callback: (err: Error | null, body: Buffer) => void,
+): void {
   const chunks: Buffer[] = [];
   res.on('data', (chunk: Buffer) => chunks.push(chunk));
   res.on('end', () => callback(null, Buffer.concat(chunks)));
@@ -59,13 +77,18 @@ async function waitForTerminalStatus(
       .get(`/reports/${reportId}`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
-    if (response.body.status === 'completed' || response.body.status === 'failed') {
+    if (
+      response.body.status === 'completed' ||
+      response.body.status === 'failed'
+    ) {
       return { status: response.body.status, body: response.body };
     }
     if (Date.now() > deadline) {
-      throw new Error(`Report ${reportId} did not reach a terminal status within ${timeoutMs}ms`);
+      throw new Error(
+        `Report ${reportId} did not reach a terminal status within ${timeoutMs}ms`,
+      );
     }
-    // eslint-disable-next-line no-await-in-loop
+
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 }
@@ -268,7 +291,7 @@ describe('Reports module — export generation (e2e)', () => {
       await request(app.getHttpServer()).get('/reports').expect(401);
     });
 
-    it('rejects requesting a report type the caller\'s role is not permitted to request', async () => {
+    it("rejects requesting a report type the caller's role is not permitted to request", async () => {
       const response = await request(app.getHttpServer())
         .post('/reports')
         .set('Authorization', `Bearer ${otherOperatorToken}`)
@@ -278,7 +301,7 @@ describe('Reports module — export generation (e2e)', () => {
       expect(response.body.message).toMatch(/may not request/);
     });
 
-    it('scopes the available report types to the caller\'s role', async () => {
+    it("scopes the available report types to the caller's role", async () => {
       const operatorTypes = await request(app.getHttpServer())
         .get('/reports/types')
         .set('Authorization', `Bearer ${otherOperatorToken}`)
@@ -320,13 +343,19 @@ describe('Reports module — export generation (e2e)', () => {
         })
         .expect(201);
 
-      expect(['pending', 'processing', 'completed']).toContain(response.body.status);
+      expect(['pending', 'processing', 'completed']).toContain(
+        response.body.status,
+      );
       expect(response.body.requester_role).toBe('admin');
       reportId = response.body._id;
     });
 
     it('reaches completed status with checksum, row_count, and file_size_bytes populated', async () => {
-      const { status, body } = await waitForTerminalStatus(app, adminToken, reportId);
+      const { status, body } = await waitForTerminalStatus(
+        app,
+        adminToken,
+        reportId,
+      );
       expect(status).toBe('completed');
       expect(body.checksum).toEqual(expect.any(String));
       expect(body.row_count).toBe(1);
@@ -375,7 +404,11 @@ describe('Reports module — export generation (e2e)', () => {
         })
         .expect(201);
 
-      const { status, body } = await waitForTerminalStatus(app, otherOperatorToken, response.body._id);
+      const { status, body } = await waitForTerminalStatus(
+        app,
+        otherOperatorToken,
+        response.body._id,
+      );
       expect(status).toBe('failed');
       expect(body.error_message).toMatch(/not (assigned|authorized)/i);
     });
@@ -389,7 +422,11 @@ describe('Reports module — export generation (e2e)', () => {
         .send({ type: ReportType.STOCK_MOVEMENTS, format: ReportFormat.EXCEL })
         .expect(201);
 
-      const { status, body } = await waitForTerminalStatus(app, adminToken, requestResponse.body._id);
+      const { status, body } = await waitForTerminalStatus(
+        app,
+        adminToken,
+        requestResponse.body._id,
+      );
       expect(status).toBe('completed');
       expect(body.row_count).toBe(1);
 
@@ -453,10 +490,18 @@ describe('Reports module — export generation (e2e)', () => {
       // Reuse the real, already-generated machine-history report file so the
       // storage layer actually has bytes to read back, then corrupt only the
       // checksum recorded on the row.
-      const completedReport = await generatedReports.findOne({ report_id: { $ne: null }, status: ReportStatus.COMPLETED, file_path: { $exists: true } }).exec();
+      const completedReport = await generatedReports
+        .findOne({
+          report_id: { $ne: null },
+          status: ReportStatus.COMPLETED,
+          file_path: { $exists: true },
+        })
+        .exec();
       expect(completedReport).toBeDefined();
 
-      await generatedReports.findByIdAndUpdate(completedReport!._id, { checksum: '0'.repeat(64) }).exec();
+      await generatedReports
+        .findByIdAndUpdate(completedReport!._id, { checksum: '0'.repeat(64) })
+        .exec();
 
       // The integrity-failure message itself is intentionally not leaked to
       // the client (AllExceptionsFilter redacts every non-HttpException
@@ -477,7 +522,11 @@ describe('Reports module — export generation (e2e)', () => {
       await request(app.getHttpServer())
         .post('/reports/schedules')
         .set('Authorization', `Bearer ${technicianToken}`)
-        .send({ type: ReportType.AUDIT_HISTORY, format: ReportFormat.CSV, frequency: ScheduleFrequency.DAILY })
+        .send({
+          type: ReportType.AUDIT_HISTORY,
+          format: ReportFormat.CSV,
+          frequency: ScheduleFrequency.DAILY,
+        })
         .expect(403);
     });
 
@@ -494,7 +543,9 @@ describe('Reports module — export generation (e2e)', () => {
         .expect(201);
 
       expect(response.body.active).toBe(true);
-      expect(new Date(response.body.next_run_at).getTime()).toBeGreaterThan(Date.now());
+      expect(new Date(response.body.next_run_at).getTime()).toBeGreaterThan(
+        Date.now(),
+      );
       scheduleId = response.body._id;
     });
 
@@ -503,13 +554,17 @@ describe('Reports module — export generation (e2e)', () => {
         .get('/reports/schedules')
         .set('Authorization', `Bearer ${technicianToken}`)
         .expect(200);
-      expect(technicianList.body.map((s: { _id: string }) => s._id)).toContain(scheduleId);
+      expect(technicianList.body.map((s: { _id: string }) => s._id)).toContain(
+        scheduleId,
+      );
 
       const otherOperatorList = await request(app.getHttpServer())
         .get('/reports/schedules')
         .set('Authorization', `Bearer ${otherOperatorToken}`)
         .expect(200);
-      expect(otherOperatorList.body.map((s: { _id: string }) => s._id)).not.toContain(scheduleId);
+      expect(
+        otherOperatorList.body.map((s: { _id: string }) => s._id),
+      ).not.toContain(scheduleId);
     });
 
     it('lets the owner deactivate their schedule via PATCH', async () => {
@@ -521,7 +576,7 @@ describe('Reports module — export generation (e2e)', () => {
       expect(response.body.active).toBe(false);
     });
 
-    it('forbids a non-owner, non-admin from deleting someone else\'s schedule', async () => {
+    it("forbids a non-owner, non-admin from deleting someone else's schedule", async () => {
       await request(app.getHttpServer())
         .delete(`/reports/schedules/${scheduleId}`)
         .set('Authorization', `Bearer ${otherOperatorToken}`)
@@ -531,7 +586,10 @@ describe('Reports module — export generation (e2e)', () => {
     it('firing a due schedule (via the scheduler sweep) creates a linked GeneratedReport and a report_ready notification', async () => {
       // Force the schedule due "now" and re-activate it (the previous test deactivated it).
       await scheduledReports
-        .findByIdAndUpdate(scheduleId, { active: true, next_run_at: new Date(Date.now() - 1000) })
+        .findByIdAndUpdate(scheduleId, {
+          active: true,
+          next_run_at: new Date(Date.now() - 1000),
+        })
         .exec();
 
       const result = await reportSchedulerService.runSweep();
@@ -545,7 +603,10 @@ describe('Reports module — export generation (e2e)', () => {
       expect(linkedReport?.status).toBe(ReportStatus.COMPLETED);
 
       const notification = await notifications
-        .findOne({ type: NotificationType.REPORT_READY, recipient_user_id: technician._id })
+        .findOne({
+          type: NotificationType.REPORT_READY,
+          recipient_user_id: technician._id,
+        })
         .exec();
       expect(notification).toBeDefined();
     });
@@ -560,7 +621,9 @@ describe('Reports module — export generation (e2e)', () => {
         .get('/reports/schedules')
         .set('Authorization', `Bearer ${technicianToken}`)
         .expect(200);
-      expect(list.body.map((s: { _id: string }) => s._id)).not.toContain(scheduleId);
+      expect(list.body.map((s: { _id: string }) => s._id)).not.toContain(
+        scheduleId,
+      );
     });
   });
 
@@ -579,7 +642,11 @@ describe('Reports module — export generation (e2e)', () => {
         })
         .expect(201);
 
-      const { status, body } = await waitForTerminalStatus(app, adminToken, requestResponse.body._id);
+      const { status, body } = await waitForTerminalStatus(
+        app,
+        adminToken,
+        requestResponse.body._id,
+      );
       expect(status).toBe('completed');
 
       const download = await request(app.getHttpServer())
@@ -589,7 +656,10 @@ describe('Reports module — export generation (e2e)', () => {
         .parse(bufferParser)
         .expect(200);
 
-      const actualChecksum = crypto.createHash('sha256').update(download.body as Buffer).digest('hex');
+      const actualChecksum = crypto
+        .createHash('sha256')
+        .update(download.body as Buffer)
+        .digest('hex');
       expect(actualChecksum).toBe(body.checksum);
     });
   });

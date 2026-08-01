@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OTPieces, OTPiecesDocument } from '../schemas/ot-pieces.schema';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { CreateOtPieceDto } from './dto/create-ot-piece.dto';
+import { UpdateOtPieceDto } from './dto/update-ot-piece.dto';
 
 @Injectable()
 export class OtPiecesService {
@@ -11,7 +13,7 @@ export class OtPiecesService {
     private readonly otPiecesModel: Model<OTPiecesDocument>,
   ) {}
 
-  create(payload: Record<string, unknown>) {
+  create(payload: CreateOtPieceDto) {
     return new this.otPiecesModel(payload).save();
   }
 
@@ -42,7 +44,7 @@ export class OtPiecesService {
       .exec();
   }
 
-  update(id: string, payload: Record<string, unknown>) {
+  update(id: string, payload: UpdateOtPieceDto) {
     return this.otPiecesModel
       .findByIdAndUpdate(id, payload, { new: true })
       .exec();

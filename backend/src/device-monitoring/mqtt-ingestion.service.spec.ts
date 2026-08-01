@@ -29,7 +29,9 @@ describe('MqttIngestionService.handleMessage', () => {
 
   beforeEach(() => {
     configService = { get: jest.fn().mockReturnValue(undefined) };
-    deviceAuthService = { verifyCredentials: jest.fn().mockResolvedValue(device) };
+    deviceAuthService = {
+      verifyCredentials: jest.fn().mockResolvedValue(device),
+    };
     telemetryIngestionService = {
       recordHeartbeat: jest.fn().mockResolvedValue({ cameOnline: false }),
       recordTelemetry: jest.fn().mockResolvedValue({
@@ -66,7 +68,10 @@ describe('MqttIngestionService.handleMessage', () => {
   });
 
   it('ignores a message with malformed JSON', async () => {
-    await service.handleMessage('devices/DEV-1/heartbeat', Buffer.from('not json'));
+    await service.handleMessage(
+      'devices/DEV-1/heartbeat',
+      Buffer.from('not json'),
+    );
     expect(deviceAuthService.verifyCredentials).not.toHaveBeenCalled();
   });
 
@@ -76,15 +81,28 @@ describe('MqttIngestionService.handleMessage', () => {
   });
 
   it('drops a message when device credential verification fails', async () => {
-    deviceAuthService.verifyCredentials.mockRejectedValue(new Error('bad creds'));
-    await service.handleMessage('devices/DEV-1/heartbeat', payload({ api_key: 'wrong' }));
+    deviceAuthService.verifyCredentials.mockRejectedValue(
+      new Error('bad creds'),
+    );
+    await service.handleMessage(
+      'devices/DEV-1/heartbeat',
+      payload({ api_key: 'wrong' }),
+    );
     expect(telemetryIngestionService.recordHeartbeat).not.toHaveBeenCalled();
   });
 
   it('routes a verified heartbeat message to recordHeartbeat', async () => {
-    await service.handleMessage('devices/DEV-1/heartbeat', payload({ api_key: 'prefix.secret' }));
-    expect(deviceAuthService.verifyCredentials).toHaveBeenCalledWith('DEV-1', 'prefix.secret');
-    expect(telemetryIngestionService.recordHeartbeat).toHaveBeenCalledWith(device);
+    await service.handleMessage(
+      'devices/DEV-1/heartbeat',
+      payload({ api_key: 'prefix.secret' }),
+    );
+    expect(deviceAuthService.verifyCredentials).toHaveBeenCalledWith(
+      'DEV-1',
+      'prefix.secret',
+    );
+    expect(telemetryIngestionService.recordHeartbeat).toHaveBeenCalledWith(
+      device,
+    );
   });
 
   it('routes a verified telemetry message to recordTelemetry and pushes a live update', async () => {
@@ -118,8 +136,13 @@ describe('MqttIngestionService.handleMessage', () => {
   });
 
   it('emits a status-change event when a message brings a device back online', async () => {
-    telemetryIngestionService.recordHeartbeat.mockResolvedValue({ cameOnline: true });
-    await service.handleMessage('devices/DEV-1/heartbeat', payload({ api_key: 'prefix.secret' }));
+    telemetryIngestionService.recordHeartbeat.mockResolvedValue({
+      cameOnline: true,
+    });
+    await service.handleMessage(
+      'devices/DEV-1/heartbeat',
+      payload({ api_key: 'prefix.secret' }),
+    );
     expect(liveMonitoringGateway.emitStatusChange).toHaveBeenCalledWith(
       device.machine_id.toString(),
       expect.objectContaining({ status: DeviceConnectionStatus.ONLINE }),
@@ -127,7 +150,10 @@ describe('MqttIngestionService.handleMessage', () => {
   });
 
   it('ignores an unrecognized topic kind', async () => {
-    await service.handleMessage('devices/DEV-1/unknown', payload({ api_key: 'prefix.secret' }));
+    await service.handleMessage(
+      'devices/DEV-1/unknown',
+      payload({ api_key: 'prefix.secret' }),
+    );
     expect(telemetryIngestionService.recordHeartbeat).not.toHaveBeenCalled();
     expect(telemetryIngestionService.recordTelemetry).not.toHaveBeenCalled();
     expect(telemetryIngestionService.recordFault).not.toHaveBeenCalled();

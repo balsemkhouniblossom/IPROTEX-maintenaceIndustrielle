@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
@@ -166,7 +170,10 @@ export class NotificationCenterService {
     }
   }
 
-  async clearAll(userId: string, role: string): Promise<{ deletedCount: number }> {
+  async clearAll(
+    userId: string,
+    role: string,
+  ): Promise<{ deletedCount: number }> {
     const result = await this.notificationModel
       .deleteMany(this.visibilityScope(userId, role))
       .exec();

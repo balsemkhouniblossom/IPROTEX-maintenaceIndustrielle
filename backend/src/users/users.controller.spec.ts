@@ -80,9 +80,7 @@ describe('UsersController photo handling', () => {
   it('stores and returns the upload photoPath as a relative managed path', async () => {
     const nextPhoto = toManagedUserPhotoPath('avatar-1.webp');
     usersService.findOne.mockResolvedValue(userDocument(''));
-    usersService.update.mockResolvedValue(
-      userDocument(nextPhoto),
-    );
+    usersService.update.mockResolvedValue(userDocument(nextPhoto));
 
     const result = await controller.uploadPhoto(
       {} as Express.Multer.File,
@@ -102,12 +100,8 @@ describe('UsersController photo handling', () => {
   it('deletes the previous managed avatar after the new avatar update succeeds', async () => {
     const previousPhoto = toManagedUserPhotoPath('avatar-old.webp');
     const nextPhoto = toManagedUserPhotoPath('avatar-new.webp');
-    usersService.findOne.mockResolvedValue(
-      userDocument(previousPhoto),
-    );
-    usersService.update.mockResolvedValue(
-      userDocument(nextPhoto),
-    );
+    usersService.findOne.mockResolvedValue(userDocument(previousPhoto));
+    usersService.update.mockResolvedValue(userDocument(nextPhoto));
 
     await controller.uploadPhoto(
       {} as Express.Multer.File,
@@ -154,7 +148,9 @@ describe('UsersController photo handling', () => {
       'https://project.supabase.co/storage/v1/object/public/bucket/uploads/avatars/avatar-old.webp';
     usersService.findOne.mockResolvedValue(userDocument(previousPhoto));
     usersService.update.mockResolvedValue(
-      userDocument('https://project.supabase.co/storage/v1/object/public/bucket/uploads/avatars/avatar-new.webp'),
+      userDocument(
+        'https://project.supabase.co/storage/v1/object/public/bucket/uploads/avatars/avatar-new.webp',
+      ),
     );
     fileUploadService.storeAvatar.mockResolvedValue({
       fileName: 'avatar-new.webp',
@@ -228,11 +224,7 @@ describe('UsersController photo handling', () => {
     usersService.update.mockRejectedValue(updateError);
 
     await expect(
-      controller.uploadPhoto(
-        {} as Express.Multer.File,
-        'user-1',
-        req as never,
-      ),
+      controller.uploadPhoto({} as Express.Multer.File, 'user-1', req as never),
     ).rejects.toBe(updateError);
 
     expect(fileUploadService.deleteAvatar).toHaveBeenCalledWith(
@@ -265,11 +257,7 @@ describe('UsersController photo handling', () => {
     usersService.update.mockRejectedValue(updateError);
 
     await expect(
-      controller.uploadPhoto(
-        {} as Express.Multer.File,
-        'user-1',
-        req as never,
-      ),
+      controller.uploadPhoto({} as Express.Multer.File, 'user-1', req as never),
     ).rejects.toBe(updateError);
 
     expect(fileUploadService.deleteAvatar).toHaveBeenCalledTimes(1);
@@ -300,7 +288,9 @@ describe('UsersController photo handling', () => {
     usersService.findAll.mockResolvedValue({
       items: [
         userDocument(photo, undefined, { is_active: false }),
-        userDocument(photo, undefined, { approval_status: ApprovalStatus.REJECTED }),
+        userDocument(photo, undefined, {
+          approval_status: ApprovalStatus.REJECTED,
+        }),
       ],
       totalItems: 2,
       page: 1,
@@ -315,5 +305,56 @@ describe('UsersController photo handling', () => {
     expect(result.items[1]).not.toHaveProperty('photo');
     expect(result.items[1]).not.toHaveProperty('photo_url');
     expect(fileUploadService.resolveAvatarUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('UsersController.remove', () => {
+  let usersService: { remove: jest.Mock };
+  let fileUploadService: { resolveAvatarUrl: jest.Mock };
+  let controller: UsersController;
+
+  beforeEach(() => {
+    usersService = { remove: jest.fn() };
+    fileUploadService = {
+      resolveAvatarUrl: jest.fn((path?: string | null, url?: string | null) =>
+        Promise.resolve(url || path || ''),
+      ),
+    };
+    controller = new UsersController(
+      usersService as unknown as UsersService,
+      fileUploadService as unknown as FileUploadService,
+    );
+  });
+
+  it('never returns the deleted user password or refresh token hash', async () => {
+    usersService.remove.mockResolvedValue({
+      toObject: () => ({
+        _id: 'user-1',
+        nom_complet: 'Deleted User',
+        email: 'deleted@example.test',
+        role: 'operator',
+        password: 'bcrypt-hash-should-not-leak',
+        refresh_token_hash: 'refresh-hash-should-not-leak',
+      }),
+    });
+
+    const result = await controller.remove('user-1');
+
+    expect(usersService.remove).toHaveBeenCalledWith('user-1');
+    expect(result).not.toHaveProperty('password');
+    expect(result).not.toHaveProperty('refresh_token_hash');
+    expect(result).toMatchObject({
+      _id: 'user-1',
+      nom_complet: 'Deleted User',
+      email: 'deleted@example.test',
+    });
+  });
+
+  it('returns null without throwing when the user was already gone', async () => {
+    usersService.remove.mockResolvedValue(null);
+
+    const result = await controller.remove('missing-user');
+
+    expect(result).toBeNull();
   });
 });

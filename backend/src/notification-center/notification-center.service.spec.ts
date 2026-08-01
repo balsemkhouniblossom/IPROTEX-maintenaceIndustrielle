@@ -30,11 +30,17 @@ describe('NotificationCenterService', () => {
 
   beforeEach(() => {
     notificationModel = {
-      exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+      exists: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
       create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
       find: jest.fn().mockReturnValue(queryResult([])),
-      countDocuments: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
-      findOneAndUpdate: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+      countDocuments: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(0) }),
+      findOneAndUpdate: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
       updateMany: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
       }),
@@ -92,9 +98,12 @@ describe('NotificationCenterService', () => {
     });
 
     it('returns null instead of throwing when a race loses to the unique dedupe_key index', async () => {
-      const duplicateKeyError = Object.assign(new Error('E11000 duplicate key'), {
-        code: 11000,
-      });
+      const duplicateKeyError = Object.assign(
+        new Error('E11000 duplicate key'),
+        {
+          code: 11000,
+        },
+      );
       notificationModel.create.mockRejectedValue(duplicateKeyError);
 
       const result = await service.createIfNotExists({
@@ -151,17 +160,27 @@ describe('NotificationCenterService', () => {
   describe('markAsRead / markAllAsRead', () => {
     it('throws NotFoundException when the notification is not visible to this user', async () => {
       await expect(
-        service.markAsRead(userId, Role.OPERATOR, new Types.ObjectId().toHexString()),
+        service.markAsRead(
+          userId,
+          Role.OPERATOR,
+          new Types.ObjectId().toHexString(),
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('marks a visible notification as read', async () => {
       const notificationId = new Types.ObjectId().toHexString();
       notificationModel.findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ _id: notificationId, is_read: true }),
+        exec: jest
+          .fn()
+          .mockResolvedValue({ _id: notificationId, is_read: true }),
       });
 
-      const result = await service.markAsRead(userId, Role.OPERATOR, notificationId);
+      const result = await service.markAsRead(
+        userId,
+        Role.OPERATOR,
+        notificationId,
+      );
 
       expect(notificationModel.findOneAndUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ _id: notificationId }),
@@ -187,7 +206,11 @@ describe('NotificationCenterService', () => {
   describe('clearOne / clearAll', () => {
     it('throws NotFoundException when clearing a notification not visible to this user', async () => {
       await expect(
-        service.clearOne(userId, Role.OPERATOR, new Types.ObjectId().toHexString()),
+        service.clearOne(
+          userId,
+          Role.OPERATOR,
+          new Types.ObjectId().toHexString(),
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -197,7 +220,11 @@ describe('NotificationCenterService', () => {
       });
 
       await expect(
-        service.clearOne(userId, Role.OPERATOR, new Types.ObjectId().toHexString()),
+        service.clearOne(
+          userId,
+          Role.OPERATOR,
+          new Types.ObjectId().toHexString(),
+        ),
       ).resolves.toBeUndefined();
     });
 

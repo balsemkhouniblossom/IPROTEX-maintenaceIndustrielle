@@ -21,11 +21,14 @@ type JobResult = { processed: number; details?: Record<string, unknown> };
  */
 @Injectable()
 export class PredictiveMaintenanceSchedulerService {
-  private readonly logger = new Logger(PredictiveMaintenanceSchedulerService.name);
+  private readonly logger = new Logger(
+    PredictiveMaintenanceSchedulerService.name,
+  );
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     private readonly trainingService: PredictiveMaintenanceTrainingService,
     private readonly predictiveMaintenanceService: PredictiveMaintenanceService,
   ) {}
@@ -37,13 +40,17 @@ export class PredictiveMaintenanceSchedulerService {
 
   async runSweep(): Promise<JobResult> {
     if (!this.isEnabled()) {
-      this.logger.log('Predictive maintenance sweep skipped (PREDICTIVE_MAINTENANCE_ENABLED=false).');
+      this.logger.log(
+        'Predictive maintenance sweep skipped (PREDICTIVE_MAINTENANCE_ENABLED=false).',
+      );
       return { processed: 0 };
     }
 
     const bootstrapped = await this.trainingService.trainAllMissing();
     if (bootstrapped.length > 0) {
-      this.logger.log(`Bootstrapped model version(s) for: ${bootstrapped.join(', ')}`);
+      this.logger.log(
+        `Bootstrapped model version(s) for: ${bootstrapped.join(', ')}`,
+      );
     }
 
     const machines = await this.machineModel.find({}).select({ _id: 1 }).exec();
@@ -51,8 +58,9 @@ export class PredictiveMaintenanceSchedulerService {
 
     for (const machine of machines) {
       try {
-        // eslint-disable-next-line no-await-in-loop
-        await this.predictiveMaintenanceService.runPredictionForMachine(machine._id.toString());
+        await this.predictiveMaintenanceService.runPredictionForMachine(
+          machine._id.toString(),
+        );
         processed += 1;
       } catch (error) {
         this.logger.warn(
@@ -65,7 +73,9 @@ export class PredictiveMaintenanceSchedulerService {
   }
 
   private isEnabled(): boolean {
-    const value = this.configService.get<string>('PREDICTIVE_MAINTENANCE_ENABLED');
+    const value = this.configService.get<string>(
+      'PREDICTIVE_MAINTENANCE_ENABLED',
+    );
     if (value === undefined) return true;
     return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
   }

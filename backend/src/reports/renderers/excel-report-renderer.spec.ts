@@ -65,7 +65,9 @@ describe('ExcelReportRenderer', () => {
   });
 
   it('appends a summary section beneath the data rows', async () => {
-    const buffer = await renderer.render(dataset({ summary: [{ label: 'Total rows', value: 2 }] }));
+    const buffer = await renderer.render(
+      dataset({ summary: [{ label: 'Total rows', value: 2 }] }),
+    );
 
     const workbook = await loadWorkbook(buffer);
     const sheet = workbook.worksheets[0];

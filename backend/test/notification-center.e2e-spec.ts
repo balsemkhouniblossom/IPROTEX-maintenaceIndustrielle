@@ -240,7 +240,8 @@ describe('Notification center (e2e)', () => {
         .expect(200);
       expect(
         operatorList.body.items.some(
-          (item: { type: string }) => item.type === 'corrective_awaiting_validation',
+          (item: { type: string }) =>
+            item.type === 'corrective_awaiting_validation',
         ),
       ).toBe(false);
 
@@ -250,7 +251,8 @@ describe('Notification center (e2e)', () => {
         .expect(200);
       expect(
         technicianList.body.items.some(
-          (item: { type: string }) => item.type === 'corrective_awaiting_validation',
+          (item: { type: string }) =>
+            item.type === 'corrective_awaiting_validation',
         ),
       ).toBe(false);
     });
@@ -315,8 +317,9 @@ describe('Notification center (e2e)', () => {
         .set('Authorization', `Bearer ${operatorToken}`)
         .expect(200);
       expect(
-        afterRead.body.items.find((item: { _id: string }) => item._id === approval._id)
-          .is_read,
+        afterRead.body.items.find(
+          (item: { _id: string }) => item._id === approval._id,
+        ).is_read,
       ).toBe(true);
 
       await request(app.getHttpServer())
@@ -459,7 +462,9 @@ describe('Notification center (e2e)', () => {
         .get('/notifications/unread-count')
         .set('Authorization', `Bearer ${technicianToken}`)
         .expect(200);
-      expect(technicianUnreadAfter.body.count).toBe(technicianUnreadBefore.body.count);
+      expect(technicianUnreadAfter.body.count).toBe(
+        technicianUnreadBefore.body.count,
+      );
     });
   });
 });

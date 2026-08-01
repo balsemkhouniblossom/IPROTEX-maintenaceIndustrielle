@@ -77,7 +77,11 @@ describe('AuthController refresh cookie configuration', () => {
     };
     const controller = new AuthController(
       authService as never,
-      { consume: jest.fn(), recordSuccess: jest.fn(), recordFailure: jest.fn() } as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
     );
     const res = { cookie: jest.fn() };
 
@@ -126,7 +130,11 @@ describe('AuthController refresh cookie configuration', () => {
     };
     const controller = new AuthController(
       authService as never,
-      { consume: jest.fn(), recordSuccess: jest.fn(), recordFailure: jest.fn() } as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
     );
 
     await expect(
@@ -154,7 +162,11 @@ describe('AuthController refresh cookie configuration', () => {
     };
     const controller = new AuthController(
       authService as never,
-      { consume: jest.fn(), recordSuccess: jest.fn(), recordFailure: jest.fn() } as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
     );
 
     await expect(
@@ -173,5 +185,33 @@ describe('AuthController refresh cookie configuration', () => {
       },
     });
     expect(authService.refreshToken).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthController.forcePasswordReset', () => {
+  it('delegates to AuthService with the target user id and request origin', async () => {
+    const authService = {
+      forcePasswordReset: jest
+        .fn()
+        .mockResolvedValue({ code: 'PASSWORD_RESET_FORCED', message: 'ok' }),
+    };
+    const controller = new AuthController(
+      authService as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
+    );
+
+    const result = await controller.forcePasswordReset('user-1', {
+      headers: { origin: 'https://app.example.com' },
+    } as never);
+
+    expect(authService.forcePasswordReset).toHaveBeenCalledWith(
+      'user-1',
+      'https://app.example.com',
+    );
+    expect(result).toEqual({ code: 'PASSWORD_RESET_FORCED', message: 'ok' });
   });
 });

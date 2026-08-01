@@ -237,6 +237,8 @@ export default function PannesPage() {
 
   useEffect(() => {
     loadData(1);
+    // Initial load only; loadData is reused by pagination and refresh handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -251,6 +253,8 @@ export default function PannesPage() {
       window.removeEventListener('pannes:changed', handleChanged);
       window.removeEventListener('focus', handleChanged);
     };
+    // keep the existing event listener lifecycle stable; loadData reads current state when the event fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {

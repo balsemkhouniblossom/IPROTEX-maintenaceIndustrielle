@@ -169,10 +169,7 @@ export class DocumentsService {
   async findOne(id: string, resolvedDoc?: DocumentDocument) {
     const doc = resolvedDoc
       ? await resolvedDoc.populate('machine_id')
-      : await this.documentModel
-          .findById(id)
-          .populate('machine_id')
-          .exec();
+      : await this.documentModel.findById(id).populate('machine_id').exec();
     if (!doc) throw new NotFoundException('Document not found');
     return this.resolveDocumentFileUrl(doc);
   }
@@ -198,7 +195,9 @@ export class DocumentsService {
       .sort({ revision: 1 })
       .exec();
 
-    return Promise.all(chain.map((entry) => this.resolveDocumentFileUrl(entry)));
+    return Promise.all(
+      chain.map((entry) => this.resolveDocumentFileUrl(entry)),
+    );
   }
 
   async update(id: string, dto: UpdateDocumentDto) {
@@ -334,7 +333,11 @@ export class DocumentsService {
         };
         const supersededDoc = await this.documentModel
           .findOneAndUpdate(
-            { _id: existing._id, ...statusFilter, ...this.versionFilter(existing.version) },
+            {
+              _id: existing._id,
+              ...statusFilter,
+              ...this.versionFilter(existing.version),
+            },
             {
               $set: {
                 status: DocumentStatus.SUPERSEDED,
@@ -412,7 +415,10 @@ export class DocumentsService {
     if (!doc) throw new NotFoundException('Document not found');
 
     const storageReference = this.getManagedDocumentReference(doc);
-    if (!storageReference || !this.fileStorageService.ownsFile(storageReference)) {
+    if (
+      !storageReference ||
+      !this.fileStorageService.ownsFile(storageReference)
+    ) {
       throw new NotFoundException('Managed document file not found');
     }
 
@@ -503,53 +509,74 @@ export class DocumentsService {
    * missing path still correctly initializes it to 1.
    */
   private versionFilter(version?: number): Record<string, unknown> {
-    return version === undefined ? { version: { $exists: false } } : { version };
+    return version === undefined
+      ? { version: { $exists: false } }
+      : { version };
   }
 
-  private async assertLinkedRecordsExist(links: LinkedRecordIds): Promise<void> {
+  private async assertLinkedRecordsExist(
+    links: LinkedRecordIds,
+  ): Promise<void> {
     if (links.machine_id !== undefined) {
-      const exists = await this.machineModel.exists({ _id: links.machine_id }).exec();
-      if (!exists) throw new BadRequestException('Referenced machine does not exist');
+      const exists = await this.machineModel
+        .exists({ _id: links.machine_id })
+        .exec();
+      if (!exists)
+        throw new BadRequestException('Referenced machine does not exist');
     }
     if (links.maintenance_plan_id !== undefined) {
       const exists = await this.maintenancePlanModel
         .exists({ _id: links.maintenance_plan_id })
         .exec();
       if (!exists) {
-        throw new BadRequestException('Referenced maintenance plan does not exist');
+        throw new BadRequestException(
+          'Referenced maintenance plan does not exist',
+        );
       }
     }
     if (links.work_order_id !== undefined) {
       const exists = await this.workOrderModel
         .exists({ _id: links.work_order_id })
         .exec();
-      if (!exists) throw new BadRequestException('Referenced work order does not exist');
+      if (!exists)
+        throw new BadRequestException('Referenced work order does not exist');
     }
     if (links.intervention_report_id !== undefined) {
       const exists = await this.interventionReportModel
         .exists({ _id: links.intervention_report_id })
         .exec();
       if (!exists) {
-        throw new BadRequestException('Referenced intervention report does not exist');
+        throw new BadRequestException(
+          'Referenced intervention report does not exist',
+        );
       }
     }
   }
 
   private toObjectIdOrUndefined(id?: string): Types.ObjectId | undefined {
-    return id && Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : undefined;
+    return id && Types.ObjectId.isValid(id)
+      ? new Types.ObjectId(id)
+      : undefined;
   }
 
-  private async deleteManagedDocumentFile(doc: DocumentDocument): Promise<void> {
+  private async deleteManagedDocumentFile(
+    doc: DocumentDocument,
+  ): Promise<void> {
     const storageReference = this.getManagedDocumentReference(doc);
 
-    if (!storageReference || !this.fileStorageService.ownsFile(storageReference)) {
+    if (
+      !storageReference ||
+      !this.fileStorageService.ownsFile(storageReference)
+    ) {
       return;
     }
 
     try {
       await this.fileStorageService.delete(storageReference);
     } catch {
-      this.logger.warn('Failed to delete managed document file after record removal');
+      this.logger.warn(
+        'Failed to delete managed document file after record removal',
+      );
     }
   }
 

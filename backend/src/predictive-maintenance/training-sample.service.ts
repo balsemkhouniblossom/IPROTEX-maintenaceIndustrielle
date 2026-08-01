@@ -28,23 +28,29 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 @Injectable()
 export class TrainingSampleService {
   constructor(
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     private readonly featureExtractionService: FeatureExtractionService,
   ) {}
 
-  async buildTrainingSamples(now: Date = new Date()): Promise<TrainingSample[]> {
+  async buildTrainingSamples(
+    now: Date = new Date(),
+  ): Promise<TrainingSample[]> {
     const machines = await this.machineModel.find({}).select({ _id: 1 }).exec();
     const samples: TrainingSample[] = [];
 
     for (const machine of machines) {
       const machineId = machine._id.toString();
       for (let i = 0; i < CHECKPOINT_COUNT; i += 1) {
-        const asOfDate = new Date(now.getTime() - i * CHECKPOINT_INTERVAL_DAYS * DAY_MS);
-        // eslint-disable-next-line no-await-in-loop
-        const { features, isEmpty } = await this.featureExtractionService.buildFeatureVector(
-          machineId,
-          asOfDate,
+        const asOfDate = new Date(
+          now.getTime() - i * CHECKPOINT_INTERVAL_DAYS * DAY_MS,
         );
+
+        const { features, isEmpty } =
+          await this.featureExtractionService.buildFeatureVector(
+            machineId,
+            asOfDate,
+          );
         if (isEmpty) continue;
         samples.push({ machineId, asOfDate, features });
       }

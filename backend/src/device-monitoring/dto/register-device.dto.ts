@@ -1,4 +1,11 @@
-import { IsEnum, IsInt, IsMongoId, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsMongoId,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { DeviceType } from '../../schemas/device.schema';
 
 export class RegisterDeviceDto {

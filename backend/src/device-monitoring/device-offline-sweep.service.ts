@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Device, DeviceConnectionStatus, DeviceDocument } from '../schemas/device.schema';
+import {
+  Device,
+  DeviceConnectionStatus,
+  DeviceDocument,
+} from '../schemas/device.schema';
 import { LiveStatusService } from './live-status.service';
 import { LiveMonitoringGateway } from './live-monitoring.gateway';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
@@ -34,7 +38,8 @@ export class DeviceOfflineSweepService {
   private readonly logger = new Logger(DeviceOfflineSweepService.name);
 
   constructor(
-    @InjectModel(Device.name) private readonly deviceModel: Model<DeviceDocument>,
+    @InjectModel(Device.name)
+    private readonly deviceModel: Model<DeviceDocument>,
     private readonly liveStatusService: LiveStatusService,
     private readonly liveMonitoringGateway: LiveMonitoringGateway,
     private readonly notificationCenterService: NotificationCenterService,
@@ -47,7 +52,10 @@ export class DeviceOfflineSweepService {
 
   async runSweep(): Promise<JobResult> {
     const candidates = await this.deviceModel
-      .find({ is_active: true, last_known_status: { $ne: DeviceConnectionStatus.OFFLINE } })
+      .find({
+        is_active: true,
+        last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
+      })
       .exec();
 
     let transitioned = 0;
@@ -56,7 +64,10 @@ export class DeviceOfflineSweepService {
 
       const flipped = await this.deviceModel
         .findOneAndUpdate(
-          { _id: device._id, last_known_status: { $ne: DeviceConnectionStatus.OFFLINE } },
+          {
+            _id: device._id,
+            last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
+          },
           { $set: { last_known_status: DeviceConnectionStatus.OFFLINE } },
           { new: true },
         )
@@ -82,7 +93,9 @@ export class DeviceOfflineSweepService {
           recipientRole: Role.ADMIN,
         })
         .catch((error) => {
-          this.logger.warn(`Failed to create device-offline notification: ${String(error)}`);
+          this.logger.warn(
+            `Failed to create device-offline notification: ${String(error)}`,
+          );
         });
     }
 

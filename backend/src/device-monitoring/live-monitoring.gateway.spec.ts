@@ -25,7 +25,10 @@ describe('LiveMonitoringGateway', () => {
   let jwtService: { verify: jest.Mock };
   let configService: { get: jest.Mock };
   let documentAccessService: { assertCanAccessMachine: jest.Mock };
-  let deviceAuthService: { verifyCredentials: jest.Mock; getDeviceOrThrow: jest.Mock };
+  let deviceAuthService: {
+    verifyCredentials: jest.Mock;
+    getDeviceOrThrow: jest.Mock;
+  };
   let telemetryIngestionService: {
     recordHeartbeat: jest.Mock;
     recordTelemetry: jest.Mock;
@@ -36,8 +39,13 @@ describe('LiveMonitoringGateway', () => {
   beforeEach(() => {
     jwtService = { verify: jest.fn() };
     configService = { get: jest.fn().mockReturnValue(undefined) };
-    documentAccessService = { assertCanAccessMachine: jest.fn().mockResolvedValue(undefined) };
-    deviceAuthService = { verifyCredentials: jest.fn(), getDeviceOrThrow: jest.fn() };
+    documentAccessService = {
+      assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
+    };
+    deviceAuthService = {
+      verifyCredentials: jest.fn(),
+      getDeviceOrThrow: jest.fn(),
+    };
     telemetryIngestionService = {
       recordHeartbeat: jest.fn(),
       recordTelemetry: jest.fn(),
@@ -60,7 +68,9 @@ describe('LiveMonitoringGateway', () => {
 
       gateway.handleConnection(socket as never);
 
-      expect(socket.data).toEqual(expect.objectContaining({ ready: expect.any(Promise) }));
+      expect(socket.data).toEqual(
+        expect.objectContaining({ ready: expect.any(Promise) }),
+      );
     });
 
     it('disconnects a client presenting neither a token nor device credentials', async () => {
@@ -71,9 +81,16 @@ describe('LiveMonitoringGateway', () => {
     });
 
     it('authenticates a device socket via DeviceAuthService, never touching JwtService', async () => {
-      const device = { _id: 'mongo-id', device_id: 'DEV-1', machine_id: 'machine-1' };
+      const device = {
+        _id: 'mongo-id',
+        device_id: 'DEV-1',
+        machine_id: 'machine-1',
+      };
       deviceAuthService.verifyCredentials.mockResolvedValue(device);
-      const socket = fakeSocket({ deviceId: 'DEV-1', deviceKey: 'prefix.secret' });
+      const socket = fakeSocket({
+        deviceId: 'DEV-1',
+        deviceKey: 'prefix.secret',
+      });
 
       gateway.handleConnection(socket as never);
       await settleAuth(socket);
@@ -85,7 +102,9 @@ describe('LiveMonitoringGateway', () => {
     });
 
     it('disconnects a device socket presenting invalid credentials', async () => {
-      deviceAuthService.verifyCredentials.mockRejectedValue(new Error('invalid'));
+      deviceAuthService.verifyCredentials.mockRejectedValue(
+        new Error('invalid'),
+      );
       const socket = fakeSocket({ deviceId: 'DEV-1', deviceKey: 'wrong' });
       gateway.handleConnection(socket as never);
       await settleAuth(socket);
@@ -102,7 +121,11 @@ describe('LiveMonitoringGateway', () => {
       expect(socket.disconnect).not.toHaveBeenCalled();
       expect(deviceAuthService.verifyCredentials).not.toHaveBeenCalled();
       const resolved = await (socket.data as { ready: Promise<unknown> }).ready;
-      expect(resolved).toEqual({ kind: 'user', userId: 'user-1', role: 'technician' });
+      expect(resolved).toEqual({
+        kind: 'user',
+        userId: 'user-1',
+        role: 'technician',
+      });
     });
 
     it('disconnects a user socket presenting an invalid/expired JWT', async () => {
@@ -122,20 +145,29 @@ describe('LiveMonitoringGateway', () => {
           resolveVerify = resolve;
         }),
       );
-      const socket = fakeSocket({ deviceId: 'DEV-1', deviceKey: 'prefix.secret' });
+      const socket = fakeSocket({
+        deviceId: 'DEV-1',
+        deviceKey: 'prefix.secret',
+      });
 
       gateway.handleConnection(socket as never);
       // Simulate a message arriving on the very next tick, before the DB/bcrypt
       // lookup above resolves — this is exactly the race the ready-promise
       // design exists to close.
       const pendingHandler = gateway.handleDeviceHeartbeat(socket as never);
-      resolveVerify({ _id: 'mongo-id', device_id: 'DEV-1', machine_id: 'machine-1' });
+      resolveVerify({
+        _id: 'mongo-id',
+        device_id: 'DEV-1',
+        machine_id: 'machine-1',
+      });
       deviceAuthService.getDeviceOrThrow.mockResolvedValue({
         _id: 'mongo-id',
         device_id: 'DEV-1',
         machine_id: 'machine-1',
       });
-      telemetryIngestionService.recordHeartbeat.mockResolvedValue({ cameOnline: false });
+      telemetryIngestionService.recordHeartbeat.mockResolvedValue({
+        cameOnline: false,
+      });
 
       const result = await pendingHandler;
       expect(result).toEqual({ ok: true });
@@ -145,20 +177,35 @@ describe('LiveMonitoringGateway', () => {
   describe('subscribe:machine', () => {
     it('rejects a device socket attempting to subscribe to a machine room', async () => {
       const socket = fakeSocket({});
-      socket.data = withReadyData({ kind: 'device', deviceMongoId: 'x', deviceId: 'DEV-1', machineId: 'm1' });
+      socket.data = withReadyData({
+        kind: 'device',
+        deviceMongoId: 'x',
+        deviceId: 'DEV-1',
+        machineId: 'm1',
+      });
 
-      const result = await gateway.handleSubscribeMachine(socket as never, { machineId: 'm1' });
+      const result = await gateway.handleSubscribeMachine(socket as never, {
+        machineId: 'm1',
+      });
 
       expect(result).toEqual({ ok: false, error: 'forbidden' });
       expect(socket.join).not.toHaveBeenCalled();
     });
 
     it('rejects a user socket subscribing to a machine it cannot access', async () => {
-      documentAccessService.assertCanAccessMachine.mockRejectedValue(new Error('forbidden'));
+      documentAccessService.assertCanAccessMachine.mockRejectedValue(
+        new Error('forbidden'),
+      );
       const socket = fakeSocket({});
-      socket.data = withReadyData({ kind: 'user', userId: 'user-1', role: 'operator' });
+      socket.data = withReadyData({
+        kind: 'user',
+        userId: 'user-1',
+        role: 'operator',
+      });
 
-      const result = await gateway.handleSubscribeMachine(socket as never, { machineId: 'm1' });
+      const result = await gateway.handleSubscribeMachine(socket as never, {
+        machineId: 'm1',
+      });
 
       expect(result).toEqual({ ok: false, error: 'forbidden' });
       expect(socket.join).not.toHaveBeenCalled();
@@ -166,9 +213,15 @@ describe('LiveMonitoringGateway', () => {
 
     it('joins the machine room for a user socket that is allowed to access it', async () => {
       const socket = fakeSocket({});
-      socket.data = withReadyData({ kind: 'user', userId: 'user-1', role: 'admin' });
+      socket.data = withReadyData({
+        kind: 'user',
+        userId: 'user-1',
+        role: 'admin',
+      });
 
-      const result = await gateway.handleSubscribeMachine(socket as never, { machineId: 'm1' });
+      const result = await gateway.handleSubscribeMachine(socket as never, {
+        machineId: 'm1',
+      });
 
       expect(result).toEqual({ ok: true });
       expect(socket.join).toHaveBeenCalledWith('machine:m1');
@@ -178,7 +231,11 @@ describe('LiveMonitoringGateway', () => {
   describe('device:* message handlers reject non-device sockets', () => {
     it('device:heartbeat is a no-op for a user socket', async () => {
       const socket = fakeSocket({});
-      socket.data = withReadyData({ kind: 'user', userId: 'user-1', role: 'admin' });
+      socket.data = withReadyData({
+        kind: 'user',
+        userId: 'user-1',
+        role: 'admin',
+      });
 
       const result = await gateway.handleDeviceHeartbeat(socket as never);
 
@@ -188,9 +245,15 @@ describe('LiveMonitoringGateway', () => {
 
     it('device:telemetry is rejected for a user socket', async () => {
       const socket = fakeSocket({});
-      socket.data = withReadyData({ kind: 'user', userId: 'user-1', role: 'admin' });
+      socket.data = withReadyData({
+        kind: 'user',
+        userId: 'user-1',
+        role: 'admin',
+      });
 
-      const result = await gateway.handleDeviceTelemetry(socket as never, { metrics: { x: 1 } });
+      const result = await gateway.handleDeviceTelemetry(socket as never, {
+        metrics: { x: 1 },
+      });
 
       expect(result).toEqual({ ok: false, error: 'forbidden' });
       expect(telemetryIngestionService.recordTelemetry).not.toHaveBeenCalled();
@@ -198,9 +261,15 @@ describe('LiveMonitoringGateway', () => {
 
     it('device:fault is rejected for a user socket', async () => {
       const socket = fakeSocket({});
-      socket.data = withReadyData({ kind: 'user', userId: 'user-1', role: 'admin' });
+      socket.data = withReadyData({
+        kind: 'user',
+        userId: 'user-1',
+        role: 'admin',
+      });
 
-      const result = await gateway.handleDeviceFault(socket as never, { code_panne: 'E-1' });
+      const result = await gateway.handleDeviceFault(socket as never, {
+        code_panne: 'E-1',
+      });
 
       expect(result).toEqual({ ok: false, error: 'forbidden' });
       expect(telemetryIngestionService.recordFault).not.toHaveBeenCalled();
@@ -223,10 +292,14 @@ describe('LiveMonitoringGateway', () => {
         machineId: 'm1',
       });
 
-      const result = await gateway.handleDeviceTelemetry(socket as never, { metrics: { x: 1 } });
+      const result = await gateway.handleDeviceTelemetry(socket as never, {
+        metrics: { x: 1 },
+      });
 
       expect(result).toEqual({ ok: true });
-      expect(deviceAuthService.getDeviceOrThrow).toHaveBeenCalledWith('mongo-1');
+      expect(deviceAuthService.getDeviceOrThrow).toHaveBeenCalledWith(
+        'mongo-1',
+      );
       expect(telemetryIngestionService.recordTelemetry).toHaveBeenCalledWith(
         record,
         expect.objectContaining({ metrics: { x: 1 } }),
@@ -234,7 +307,9 @@ describe('LiveMonitoringGateway', () => {
     });
 
     it('a deactivated device is rejected mid-session even with a still-open socket', async () => {
-      deviceAuthService.getDeviceOrThrow.mockRejectedValue(new Error('Invalid device credentials'));
+      deviceAuthService.getDeviceOrThrow.mockRejectedValue(
+        new Error('Invalid device credentials'),
+      );
       const socket = fakeSocket({});
       socket.data = withReadyData({
         kind: 'device',
@@ -243,7 +318,9 @@ describe('LiveMonitoringGateway', () => {
         machineId: 'm1',
       });
 
-      const result = await gateway.handleDeviceTelemetry(socket as never, { metrics: { x: 1 } });
+      const result = await gateway.handleDeviceTelemetry(socket as never, {
+        metrics: { x: 1 },
+      });
 
       expect(result.ok).toBe(false);
       expect(telemetryIngestionService.recordTelemetry).not.toHaveBeenCalled();
@@ -255,7 +332,9 @@ describe('LiveMonitoringGateway', () => {
       expect(() => gateway.emitTelemetry('m1', {})).not.toThrow();
       expect(() => gateway.emitFault('m1', {})).not.toThrow();
       expect(() =>
-        gateway.emitStatusChange('m1', { status: DeviceConnectionStatus.ONLINE }),
+        gateway.emitStatusChange('m1', {
+          status: DeviceConnectionStatus.ONLINE,
+        }),
       ).not.toThrow();
     });
 

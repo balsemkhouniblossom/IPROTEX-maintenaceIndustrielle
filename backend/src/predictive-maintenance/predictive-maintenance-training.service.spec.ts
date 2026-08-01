@@ -7,7 +7,10 @@ function execResolves(result: unknown) {
   return { exec: jest.fn().mockResolvedValue(result) };
 }
 
-function fakeModel(type: PredictionModelType, artifactOverrides: Record<string, unknown> = {}) {
+function fakeModel(
+  type: PredictionModelType,
+  artifactOverrides: Record<string, unknown> = {},
+) {
   return {
     type,
     displayName: type,
@@ -34,13 +37,21 @@ describe('PredictiveMaintenanceTrainingService', () => {
 
   beforeEach(() => {
     modelVersionModel = {
-      findOne: jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves(null)) }),
+      findOne: jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue(execResolves(null)),
+      }),
       updateMany: jest.fn().mockReturnValue(execResolves(undefined)),
-      create: jest.fn().mockImplementation((doc) => Promise.resolve({ ...doc, _id: 'v1' })),
+      create: jest
+        .fn()
+        .mockImplementation((doc) => Promise.resolve({ ...doc, _id: 'v1' })),
       exists: jest.fn().mockReturnValue(execResolves(false)),
-      find: jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves([])) }),
+      find: jest
+        .fn()
+        .mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves([])) }),
     };
-    trainingSampleService = { buildTrainingSamples: jest.fn().mockResolvedValue([]) };
+    trainingSampleService = {
+      buildTrainingSamples: jest.fn().mockResolvedValue([]),
+    };
   });
 
   it('trains version 1 when no prior version exists for that model type', async () => {
@@ -51,21 +62,26 @@ describe('PredictiveMaintenanceTrainingService', () => {
       trainingSampleService as never,
     );
 
-    const result = await service.trainModel(PredictionModelType.ZSCORE, { randomSeed: 42 });
+    const result = await service.trainModel(PredictionModelType.ZSCORE, {
+      randomSeed: 42,
+    });
 
     expect(zScore.train).toHaveBeenCalledWith([], 42);
     expect(result.version).toBe(1);
     expect(result.status).toBe(PredictionModelVersionStatus.ACTIVE);
     expect(modelVersionModel.updateMany).toHaveBeenCalledWith(
-      { model_type: PredictionModelType.ZSCORE, status: PredictionModelVersionStatus.ACTIVE },
+      {
+        model_type: PredictionModelType.ZSCORE,
+        status: PredictionModelVersionStatus.ACTIVE,
+      },
       { $set: { status: PredictionModelVersionStatus.ARCHIVED } },
     );
   });
 
   it('increments the version number and archives the previous active version', async () => {
-    modelVersionModel.findOne = jest
-      .fn()
-      .mockReturnValue({ sort: jest.fn().mockReturnValue(execResolves({ version: 3 })) });
+    modelVersionModel.findOne = jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnValue(execResolves({ version: 3 })),
+    });
     const zScore = fakeModel(PredictionModelType.ZSCORE);
     const service = new PredictiveMaintenanceTrainingService(
       modelVersionModel as never,
@@ -84,15 +100,19 @@ describe('PredictiveMaintenanceTrainingService', () => {
       trainingSampleService as never,
     );
 
-    await expect(service.trainModel(PredictionModelType.DBSCAN)).rejects.toThrow(NotFoundException);
+    await expect(
+      service.trainModel(PredictionModelType.DBSCAN),
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('trainAllMissing only trains model types without an active version', async () => {
     const zScore = fakeModel(PredictionModelType.ZSCORE);
     const dbscan = fakeModel(PredictionModelType.DBSCAN);
-    modelVersionModel.exists = jest.fn().mockImplementation(({ model_type }) =>
-      execResolves(model_type === PredictionModelType.ZSCORE),
-    );
+    modelVersionModel.exists = jest
+      .fn()
+      .mockImplementation(({ model_type }) =>
+        execResolves(model_type === PredictionModelType.ZSCORE),
+      );
 
     const service = new PredictiveMaintenanceTrainingService(
       modelVersionModel as never,
@@ -115,7 +135,9 @@ describe('PredictiveMaintenanceTrainingService', () => {
     );
 
     await service.listVersions(PredictionModelType.AUTOENCODER);
-    expect(modelVersionModel.find).toHaveBeenCalledWith({ model_type: PredictionModelType.AUTOENCODER });
+    expect(modelVersionModel.find).toHaveBeenCalledWith({
+      model_type: PredictionModelType.AUTOENCODER,
+    });
 
     await service.listVersions();
     expect(modelVersionModel.find).toHaveBeenCalledWith({});

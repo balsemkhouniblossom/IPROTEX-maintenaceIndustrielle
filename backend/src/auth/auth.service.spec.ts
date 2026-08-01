@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -807,6 +808,15 @@ describe('AuthService', () => {
         }),
         'ACCOUNT_PENDING_APPROVAL',
       ],
+      [
+        createUserDocument({
+          approval_status: ApprovalStatus.APPROVED,
+          is_active: true,
+          is_verified: true,
+          must_reset_password: true,
+        }),
+        'PASSWORD_RESET_REQUIRED',
+      ],
     ] as const;
 
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -854,6 +864,26 @@ describe('AuthService', () => {
     expect(result).not.toHaveProperty('password');
     expect(result).not.toHaveProperty('refresh_token_hash');
     expect(result).not.toHaveProperty('approved_by');
+  });
+
+  it('allows normal login again once must_reset_password has been cleared (post-reset)', async () => {
+    const formerlyFlaggedUser = createUserDocument({
+      approval_status: ApprovalStatus.APPROVED,
+      is_active: true,
+      is_verified: true,
+      must_reset_password: false,
+    });
+
+    usersService.findByEmail.mockResolvedValueOnce(formerlyFlaggedUser);
+    usersService.recordSuccessfulLogin.mockResolvedValueOnce(
+      formerlyFlaggedUser,
+    );
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+    await expect(
+      service.validateUser('user@example.com', 'NewP@ssword123!'),
+    ).resolves.toMatchObject({ email: formerlyFlaggedUser.email });
+    expect(usersService.recordSuccessfulLogin).toHaveBeenCalled();
   });
 
   it('creates a new Google user as verified inactive incomplete pending and redirects with an exchange code', async () => {
@@ -1570,7 +1600,9 @@ describe('AuthService', () => {
       .mockReturnValueOnce('new-access-token')
       .mockReturnValueOnce('new-refresh-token');
     userModel.findById.mockReturnValue(createQuery(incompleteGoogleUser));
-    userModel.findOneAndUpdate.mockReturnValue(createQuery(incompleteGoogleUser));
+    userModel.findOneAndUpdate.mockReturnValue(
+      createQuery(incompleteGoogleUser),
+    );
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
     (bcrypt.hash as jest.Mock).mockResolvedValue('new-refresh-hash');
 
@@ -1640,6 +1672,63 @@ describe('AuthService', () => {
     );
 
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a refresh token issued before credentials_invalidated_at, even with a matching stored hash', async () => {
+    jest.clearAllMocks();
+    const invalidatedAt = new Date('2026-01-01T00:00:00.000Z');
+    const user = createUserDocument({
+      approval_status: ApprovalStatus.APPROVED,
+      is_active: true,
+      is_verified: true,
+      refresh_token_hash: 'stored-refresh-hash',
+      credentials_invalidated_at: invalidatedAt,
+    });
+    jwtService.verify.mockReturnValue({
+      sub: user._id.toString(),
+      type: 'refresh',
+      iat: Math.floor(invalidatedAt.getTime() / 1000) - 10,
+    });
+    userModel.findById.mockReturnValueOnce(createQuery(user));
+
+    await expectRejectsWithCode(
+      service.refreshToken('refresh-token'),
+      UnauthorizedException,
+      'REFRESH_TOKEN_REVOKED',
+    );
+
+    // Rejected purely on the iat/credentials_invalidated_at check — never
+    // even reached the hash comparison or issued new tokens.
+    expect(bcrypt.compare).not.toHaveBeenCalled();
+    expect(jwtService.sign).not.toHaveBeenCalled();
+  });
+
+  it('accepts a refresh token issued after credentials_invalidated_at', async () => {
+    const invalidatedAt = new Date('2026-01-01T00:00:00.000Z');
+    const user = createUserDocument({
+      approval_status: ApprovalStatus.APPROVED,
+      is_active: true,
+      is_verified: true,
+      refresh_token_hash: 'stored-refresh-hash',
+      credentials_invalidated_at: invalidatedAt,
+    });
+    jwtService.verify.mockReturnValue({
+      sub: user._id.toString(),
+      type: 'refresh',
+      iat: Math.floor(invalidatedAt.getTime() / 1000) + 10,
+    });
+    jwtService.sign
+      .mockReturnValueOnce('new-access-token')
+      .mockReturnValueOnce('new-refresh-token');
+    userModel.findById.mockReturnValueOnce(createQuery(user));
+    userModel.findOneAndUpdate.mockReturnValueOnce(createQuery(user));
+    (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+    (bcrypt.hash as jest.Mock).mockResolvedValueOnce('new-refresh-hash');
+
+    const result = await service.refreshToken('old-refresh-token');
+
+    expect(result.access_token).toBe('new-access-token');
+    expect(result.refresh_token).toBe('new-refresh-token');
   });
 
   it('rotates refresh tokens atomically and uses the current database role', async () => {
@@ -1909,6 +1998,7 @@ describe('AuthService', () => {
         reset_password_token: null,
         reset_password_expires: null,
         refresh_token_hash: null,
+        must_reset_password: false,
       },
       { new: true },
     );
@@ -1925,5 +2015,124 @@ describe('AuthService', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(userModel.findOne).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AuthService.forcePasswordReset', () => {
+  let service: AuthService;
+  let userModel: {
+    findById: jest.Mock;
+    findByIdAndUpdate: jest.Mock;
+  };
+  let notificationsFacade: { sendResetPasswordEmail: jest.Mock };
+  let usersService: { findByEmail: jest.Mock };
+
+  beforeEach(async () => {
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.DEFAULT_LOCALE = 'en';
+
+    userModel = {
+      findById: jest.fn(),
+      findByIdAndUpdate: jest.fn(),
+    };
+    notificationsFacade = {
+      sendResetPasswordEmail: jest.fn().mockResolvedValue('preview-url'),
+    };
+    usersService = { findByEmail: jest.fn().mockResolvedValue(null) };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: UsersService, useValue: usersService },
+        {
+          provide: JwtService,
+          useValue: { sign: jest.fn(), verify: jest.fn() },
+        },
+        { provide: NotificationsFacade, useValue: notificationsFacade },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('en') },
+        },
+        {
+          provide: AppConfigService,
+          useValue: {
+            resolveFrontendBaseUrl: jest
+              .fn()
+              .mockReturnValue('https://app.example.com'),
+          },
+        },
+        {
+          provide: EmailVerificationTokenService,
+          useValue: { issueToken: jest.fn(), verifyToken: jest.fn() },
+        },
+        {
+          provide: GoogleLoginExchangeService,
+          useValue: { createExchange: jest.fn(), consumeExchange: jest.fn() },
+        },
+        { provide: FileStorageService, useValue: { resolveUrl: jest.fn() } },
+        {
+          provide: FeatureFlagsConfigService,
+          useValue: {
+            isLegacyResetTokensEnabled: jest.fn().mockReturnValue(false),
+          },
+        },
+        { provide: getModelToken(User.name), useValue: userModel },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('rejects an invalid user id without touching the database', async () => {
+    await expect(
+      service.forcePasswordReset('not-an-object-id'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(userModel.findById).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the target user does not exist', async () => {
+    const id = new Types.ObjectId().toHexString();
+    userModel.findById.mockReturnValue(createQuery(null));
+
+    try {
+      await service.forcePasswordReset(id);
+      throw new Error('Expected forcePasswordReset to reject');
+    } catch (error) {
+      expect(error).toBeInstanceOf(NotFoundException);
+      expect((error as NotFoundException).getResponse()).toEqual(
+        expect.objectContaining({ code: 'USER_NOT_FOUND' }),
+      );
+    }
+    expect(userModel.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('flags the account, revokes its refresh token, and sends a reset email — all in one call', async () => {
+    const user = createUserDocument({ email: 'affected@example.com' });
+    userModel.findById.mockReturnValue(createQuery(user));
+    userModel.findByIdAndUpdate.mockReturnValue(createQuery(user));
+    usersService.findByEmail.mockResolvedValueOnce(user);
+
+    const result = await service.forcePasswordReset(
+      user._id.toString(),
+      'https://app.example.com',
+    );
+
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      user._id.toString(),
+      expect.objectContaining({
+        must_reset_password: true,
+        refresh_token_hash: null,
+        credentials_invalidated_at: expect.any(Date),
+      }),
+    );
+    expect(notificationsFacade.sendResetPasswordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'affected@example.com' }),
+    );
+    expect(result).toMatchObject({ code: 'PASSWORD_RESET_FORCED' });
   });
 });

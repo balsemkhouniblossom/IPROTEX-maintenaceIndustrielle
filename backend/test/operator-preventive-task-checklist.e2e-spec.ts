@@ -357,7 +357,9 @@ describe('Operator preventive task checklist (e2e)', () => {
       .get('/operator/preventive-tasks')
       .set('Authorization', `Bearer ${otherOperatorToken}`)
       .expect(200);
-    const ids = listResponse.body.items.map((item: { _id: string }) => item._id);
+    const ids = listResponse.body.items.map(
+      (item: { _id: string }) => item._id,
+    );
     expect(ids).not.toContain(ownTask._id.toString());
 
     await request(app.getHttpServer())

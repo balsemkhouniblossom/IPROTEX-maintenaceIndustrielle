@@ -9,6 +9,7 @@ export type AccountAccessUser = {
   is_verified?: boolean;
   role?: string;
   profile_completed?: boolean;
+  must_reset_password?: boolean;
 };
 
 export function throwInvalidCredentials(): never {
@@ -60,6 +61,13 @@ export function validateAccountAccess(user: AccountAccessUser): void {
     throwAccountAccessDenied(
       AccountAccessErrorCode.ACCOUNT_ROLE_NOT_ALLOWED,
       'Your account role is not allowed.',
+    );
+  }
+
+  if (user.must_reset_password) {
+    throwAccountAccessDenied(
+      AccountAccessErrorCode.PASSWORD_RESET_REQUIRED,
+      'Your password must be reset before you can continue. Use "Forgot password" to set a new one.',
     );
   }
 }

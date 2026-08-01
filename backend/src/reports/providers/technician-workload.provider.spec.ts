@@ -4,10 +4,17 @@ import { TechnicianWorkloadReportProvider } from './technician-workload.provider
 describe('TechnicianWorkloadReportProvider', () => {
   function buildProvider(currentWorkload: unknown[], closedRows: unknown[]) {
     const workOrderModel = {
-      aggregate: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(closedRows) }),
+      aggregate: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(closedRows) }),
     };
-    const kpiService = { computeWorkload: jest.fn().mockResolvedValue(currentWorkload) };
-    const provider = new TechnicianWorkloadReportProvider(workOrderModel as never, kpiService as never);
+    const kpiService = {
+      computeWorkload: jest.fn().mockResolvedValue(currentWorkload),
+    };
+    const provider = new TechnicianWorkloadReportProvider(
+      workOrderModel as never,
+      kpiService as never,
+    );
     return { provider, kpiService, workOrderModel };
   }
 
@@ -22,7 +29,11 @@ describe('TechnicianWorkloadReportProvider', () => {
 
     expect(kpiService.computeWorkload).toHaveBeenCalled();
     expect(dataset.rows).toEqual([
-      expect.objectContaining({ technician: 'Jane Tech', open_work_orders: 4, closed_in_period: 7 }),
+      expect.objectContaining({
+        technician: 'Jane Tech',
+        open_work_orders: 4,
+        closed_in_period: 7,
+      }),
     ]);
   });
 
@@ -33,7 +44,11 @@ describe('TechnicianWorkloadReportProvider', () => {
     const dataset = await provider.buildDataset({});
 
     expect(dataset.rows).toEqual([
-      expect.objectContaining({ technician: techId.toString(), open_work_orders: 0, closed_in_period: 3 }),
+      expect.objectContaining({
+        technician: techId.toString(),
+        open_work_orders: 0,
+        closed_in_period: 3,
+      }),
     ]);
   });
 
@@ -60,6 +75,9 @@ describe('TechnicianWorkloadReportProvider', () => {
     await provider.buildDataset({ dateFrom, dateTo });
 
     const [pipeline] = workOrderModel.aggregate.mock.calls[0];
-    expect(pipeline[0].$match.date_created).toEqual({ $gte: dateFrom, $lt: dateTo });
+    expect(pipeline[0].$match.date_created).toEqual({
+      $gte: dateFrom,
+      $lt: dateTo,
+    });
   });
 });

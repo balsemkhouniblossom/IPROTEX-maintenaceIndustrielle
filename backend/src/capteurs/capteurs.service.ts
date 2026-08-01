@@ -2,14 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Capteur, CapteurDocument } from '../schemas/capteur.schema';
+import { Mesure, MesureDocument } from '../schemas/mesure.schema';
 import { CreateCapteurDto } from './dto/create-capteur.dto';
 import { UpdateCapteurDto } from './dto/update-capteur.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { assertNoDependencies } from '../common/dependency-protection';
 
 @Injectable()
 export class CapteursService {
   constructor(
     @InjectModel(Capteur.name) private capteurModel: Model<CapteurDocument>,
+    @InjectModel(Mesure.name) private mesureModel: Model<MesureDocument>,
   ) {}
 
   async findAll(
@@ -44,6 +47,13 @@ export class CapteursService {
   }
 
   async delete(id: string): Promise<Capteur | null> {
+    await assertNoDependencies('Sensor', [
+      {
+        label: 'measurements',
+        model: this.mesureModel,
+        filter: { capteur_id: id },
+      },
+    ]);
     return this.capteurModel.findByIdAndDelete(id).exec();
   }
 }

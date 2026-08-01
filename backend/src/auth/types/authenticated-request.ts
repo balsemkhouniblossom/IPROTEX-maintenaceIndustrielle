@@ -10,6 +10,7 @@ export type JwtRequestUser = {
   is_verified?: boolean;
   approval_status?: string;
   profile_completed?: boolean;
+  must_reset_password?: boolean;
 };
 
 export type AuthenticatedRequest = Request & {

@@ -6,6 +6,9 @@ import {
   LubrificationLogDocument,
 } from '../schemas/lubrification-log.schema';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
+import { CreateLubrificationLogDto } from './dto/create-lubrification-log.dto';
+import { UpdateLubrificationLogDto } from './dto/update-lubrification-log.dto';
 
 @Injectable()
 export class LubrificationLogsService {
@@ -14,7 +17,7 @@ export class LubrificationLogsService {
     private readonly lubrificationLogModel: Model<LubrificationLogDocument>,
   ) {}
 
-  create(payload: Record<string, unknown>) {
+  create(payload: CreateLubrificationLogDto) {
     return new this.lubrificationLogModel(payload).save();
   }
 
@@ -30,7 +33,7 @@ export class LubrificationLogsService {
         .limit(limit)
         .populate('module_id')
         .populate('lubrifiant_id')
-        .populate('technician_id')
+        .populate('technician_id', SAFE_USER_PROJECTION)
         .exec(),
       this.lubrificationLogModel.countDocuments().exec(),
     ]);
@@ -43,11 +46,11 @@ export class LubrificationLogsService {
       .findById(id)
       .populate('module_id')
       .populate('lubrifiant_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .exec();
   }
 
-  update(id: string, payload: Record<string, unknown>) {
+  update(id: string, payload: UpdateLubrificationLogDto) {
     return this.lubrificationLogModel
       .findByIdAndUpdate(id, payload, { new: true })
       .exec();

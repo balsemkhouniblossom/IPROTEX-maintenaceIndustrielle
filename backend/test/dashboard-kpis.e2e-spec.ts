@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -160,7 +160,9 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
     technicianToken = tokenFor(technician);
     operatorToken = tokenFor(operator);
 
-    todayStart.setTime(businessTime.startOfBusinessDay(new Date(), 'UTC').getTime());
+    todayStart.setTime(
+      businessTime.startOfBusinessDay(new Date(), 'UTC').getTime(),
+    );
 
     // A: overdue, assigned to the Technician.
     await workOrders.create({
@@ -409,8 +411,14 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
 
       // Workload: Technician has 3 open orders (A, B, H); Operator has 2 (C, I).
       expect(body.workload).toEqual([
-        expect.objectContaining({ technicianId: technician._id.toString(), openCount: 3 }),
-        expect.objectContaining({ technicianId: operator._id.toString(), openCount: 2 }),
+        expect.objectContaining({
+          technicianId: technician._id.toString(),
+          openCount: 3,
+        }),
+        expect.objectContaining({
+          technicianId: operator._id.toString(),
+          openCount: 2,
+        }),
       ]);
 
       expect(body.totals).toEqual({ machines: 1, users: 3 });

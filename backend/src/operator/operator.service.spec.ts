@@ -63,7 +63,10 @@ describe('OperatorService machine scoping', () => {
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
       distinct: jest.fn().mockReturnValue(queryResult([])),
       findById: jest.fn().mockReturnValue(
-        queryResult({ _id: assignedWorkOrderId, machine_id: assignedMachineId }),
+        queryResult({
+          _id: assignedWorkOrderId,
+          machine_id: assignedMachineId,
+        }),
       ),
     };
     reportModel = {
@@ -71,7 +74,9 @@ describe('OperatorService machine scoping', () => {
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
     };
     machineModel = {
-      find: jest.fn().mockReturnValue(queryResult([{ _id: assignedMachineId }])),
+      find: jest
+        .fn()
+        .mockReturnValue(queryResult([{ _id: assignedMachineId }])),
       countDocuments: jest.fn().mockReturnValue(queryResult(1)),
       distinct: jest.fn().mockReturnValue(queryResult([])),
     } as never;
@@ -109,7 +114,9 @@ describe('OperatorService machine scoping', () => {
       findOneAndUpdate: jest.fn().mockReturnValue(queryResult(null)),
     };
     preventiveTasksService = {
-      syncPlansForModuleIds: jest.fn().mockResolvedValue({ plans: 0, created: 0 }),
+      syncPlansForModuleIds: jest
+        .fn()
+        .mockResolvedValue({ plans: 0, created: 0 }),
     };
     workOrdersService = {
       getMachinePreventiveStates: jest.fn().mockResolvedValue({ sections: {} }),
@@ -138,9 +145,10 @@ describe('OperatorService machine scoping', () => {
       startWorkOrderForOperator: jest
         .fn()
         .mockResolvedValue({ _id: assignedWorkOrderId, status: 'in_progress' }),
-      completeWorkOrderForOperator: jest
-        .fn()
-        .mockResolvedValue({ _id: assignedWorkOrderId, status: 'waiting_validation' }),
+      completeWorkOrderForOperator: jest.fn().mockResolvedValue({
+        _id: assignedWorkOrderId,
+        status: 'waiting_validation',
+      }),
       rescheduleWorkOrderForOperator: jest
         .fn()
         .mockResolvedValue({ occurrence: { _id: assignedWorkOrderId } }),
@@ -177,6 +185,18 @@ describe('OperatorService machine scoping', () => {
     });
   });
 
+  it('never fetches the full technician User document when listing the operator own reports', async () => {
+    await service.getMyReports(operatorId.toString(), 1, 10, 0);
+
+    expect(reportModel.find().populate).toHaveBeenCalledWith(
+      'technician_id',
+      'nom_complet user_id role',
+    );
+    expect(reportModel.find().populate).not.toHaveBeenCalledWith(
+      'technician_id',
+    );
+  });
+
   it('denies preventive state access for unassigned machines before workflow service calls', async () => {
     await expect(
       service.getPreventiveStates(
@@ -194,7 +214,9 @@ describe('OperatorService machine scoping', () => {
       scheduledDate: '2026-10-10T08:00:00.000Z',
     });
 
-    expect(workOrdersService.scheduleFirstPreventiveOccurrence).toHaveBeenCalledWith(
+    expect(
+      workOrdersService.scheduleFirstPreventiveOccurrence,
+    ).toHaveBeenCalledWith(
       expect.objectContaining({
         machineId: assignedMachineId.toString(),
         operatorId: operatorId.toString(),
@@ -264,7 +286,10 @@ describe('OperatorService machine scoping', () => {
 
   it('denies preventive-maintenance submission when the work order belongs to a machine not assigned to the Operator', async () => {
     workOrderModel.findById.mockReturnValue(
-      queryResult({ _id: assignedWorkOrderId, machine_id: unassignedMachineId }),
+      queryResult({
+        _id: assignedWorkOrderId,
+        machine_id: unassignedMachineId,
+      }),
     );
 
     await expect(
@@ -285,7 +310,10 @@ describe('OperatorService machine scoping', () => {
       tasksCompleted: ['Check belt tension', 'Grease bearings'],
       condition: 'good',
       comments: 'All nominal',
-      lubrication: { lubrifiantId: new Types.ObjectId().toString(), quantity: 2 },
+      lubrication: {
+        lubrifiantId: new Types.ObjectId().toString(),
+        quantity: 2,
+      },
     });
 
     expect(workOrderModel.findById).toHaveBeenCalledWith(
@@ -319,7 +347,10 @@ describe('OperatorService machine scoping', () => {
 
   it('denies a parts request when the work order belongs to a machine not assigned to the Operator', async () => {
     workOrderModel.findById.mockReturnValue(
-      queryResult({ _id: assignedWorkOrderId, machine_id: unassignedMachineId }),
+      queryResult({
+        _id: assignedWorkOrderId,
+        machine_id: unassignedMachineId,
+      }),
     );
 
     await expect(
@@ -410,7 +441,10 @@ describe('OperatorService machine scoping', () => {
 
   it('denies calendar event details for a machine not assigned to the Operator', async () => {
     workOrderModel.findById.mockReturnValue(
-      queryResult({ _id: assignedWorkOrderId, machine_id: unassignedMachineId }),
+      queryResult({
+        _id: assignedWorkOrderId,
+        machine_id: unassignedMachineId,
+      }),
     );
 
     await expect(
@@ -432,22 +466,34 @@ describe('OperatorService machine scoping', () => {
 
     expect(
       workOrdersService.getCalendarEventDetailsForOperator,
-    ).toHaveBeenCalledWith(assignedWorkOrderId.toString(), operatorId.toString());
+    ).toHaveBeenCalledWith(
+      assignedWorkOrderId.toString(),
+      operatorId.toString(),
+    );
   });
 
   it('denies starting a calendar event for a machine not assigned to the Operator', async () => {
     workOrderModel.findById.mockReturnValue(
-      queryResult({ _id: assignedWorkOrderId, machine_id: unassignedMachineId }),
+      queryResult({
+        _id: assignedWorkOrderId,
+        machine_id: unassignedMachineId,
+      }),
     );
 
     await expect(
-      service.startCalendarEvent(operatorId.toString(), assignedWorkOrderId.toString()),
+      service.startCalendarEvent(
+        operatorId.toString(),
+        assignedWorkOrderId.toString(),
+      ),
     ).rejects.toThrow(ForbiddenException);
     expect(workOrdersService.startWorkOrderForOperator).not.toHaveBeenCalled();
   });
 
   it('delegates starting a calendar event once machine assignment is verified', async () => {
-    await service.startCalendarEvent(operatorId.toString(), assignedWorkOrderId.toString());
+    await service.startCalendarEvent(
+      operatorId.toString(),
+      assignedWorkOrderId.toString(),
+    );
 
     expect(workOrdersService.startWorkOrderForOperator).toHaveBeenCalledWith({
       operatorId: operatorId.toString(),
@@ -457,36 +503,58 @@ describe('OperatorService machine scoping', () => {
 
   it('denies completing a calendar event for a machine not assigned to the Operator', async () => {
     workOrderModel.findById.mockReturnValue(
-      queryResult({ _id: assignedWorkOrderId, machine_id: unassignedMachineId }),
+      queryResult({
+        _id: assignedWorkOrderId,
+        machine_id: unassignedMachineId,
+      }),
     );
 
     await expect(
-      service.completeCalendarEvent(operatorId.toString(), assignedWorkOrderId.toString()),
+      service.completeCalendarEvent(
+        operatorId.toString(),
+        assignedWorkOrderId.toString(),
+      ),
     ).rejects.toThrow(ForbiddenException);
-    expect(workOrdersService.completeWorkOrderForOperator).not.toHaveBeenCalled();
+    expect(
+      workOrdersService.completeWorkOrderForOperator,
+    ).not.toHaveBeenCalled();
   });
 
   it('delegates completing a calendar event once machine assignment is verified', async () => {
-    await service.completeCalendarEvent(operatorId.toString(), assignedWorkOrderId.toString());
+    await service.completeCalendarEvent(
+      operatorId.toString(),
+      assignedWorkOrderId.toString(),
+    );
 
-    expect(workOrdersService.completeWorkOrderForOperator).toHaveBeenCalledWith({
-      operatorId: operatorId.toString(),
-      workOrderId: assignedWorkOrderId.toString(),
-    });
+    expect(workOrdersService.completeWorkOrderForOperator).toHaveBeenCalledWith(
+      {
+        operatorId: operatorId.toString(),
+        workOrderId: assignedWorkOrderId.toString(),
+      },
+    );
   });
 
   it('denies rescheduling a calendar event for a machine not assigned to the Operator', async () => {
     workOrderModel.findById.mockReturnValue(
-      queryResult({ _id: assignedWorkOrderId, machine_id: unassignedMachineId }),
+      queryResult({
+        _id: assignedWorkOrderId,
+        machine_id: unassignedMachineId,
+      }),
     );
 
     await expect(
-      service.rescheduleCalendarEvent(operatorId.toString(), assignedWorkOrderId.toString(), {
-        newDueDate: '2026-08-01T08:00:00.000Z',
-        reason: 'Machine unavailable',
-      }),
+      service.rescheduleCalendarEvent(
+        operatorId.toString(),
+        assignedWorkOrderId.toString(),
+        {
+          newDueDate: '2026-08-01T08:00:00.000Z',
+          reason: 'Machine unavailable',
+        },
+      ),
     ).rejects.toThrow(ForbiddenException);
-    expect(workOrdersService.rescheduleWorkOrderForOperator).not.toHaveBeenCalled();
+    expect(
+      workOrdersService.rescheduleWorkOrderForOperator,
+    ).not.toHaveBeenCalled();
   });
 
   it('delegates rescheduling a calendar event once machine assignment is verified', async () => {
@@ -496,7 +564,9 @@ describe('OperatorService machine scoping', () => {
       { newDueDate: '2026-08-01T08:00:00.000Z', reason: 'Machine unavailable' },
     );
 
-    expect(workOrdersService.rescheduleWorkOrderForOperator).toHaveBeenCalledWith({
+    expect(
+      workOrdersService.rescheduleWorkOrderForOperator,
+    ).toHaveBeenCalledWith({
       operatorId: operatorId.toString(),
       workOrderId: assignedWorkOrderId.toString(),
       newDueDate: '2026-08-01T08:00:00.000Z',

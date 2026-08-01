@@ -14,6 +14,8 @@ import {
   AdminOnly,
   AuthenticatedRoles,
 } from '../auth/decorators/roles.decorator';
+import { CreateModuleDto } from './dto/create-module.dto';
+import { UpdateModuleDto } from './dto/update-module.dto';
 
 @Controller('modules')
 @AuthenticatedRoles()
@@ -22,7 +24,7 @@ export class ModulesController {
 
   @Post()
   @AdminOnly()
-  create(@Body() payload: Record<string, unknown>) {
+  create(@Body() payload: CreateModuleDto) {
     return this.modulesService.create(payload);
   }
 
@@ -45,7 +47,7 @@ export class ModulesController {
 
   @Patch(':id')
   @AdminOnly()
-  update(@Param('id') id: string, @Body() payload: Record<string, unknown>) {
+  update(@Param('id') id: string, @Body() payload: UpdateModuleDto) {
     return this.modulesService.update(id, payload);
   }
 

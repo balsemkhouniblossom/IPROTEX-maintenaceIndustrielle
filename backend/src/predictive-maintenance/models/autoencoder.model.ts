@@ -50,7 +50,9 @@ function forward(
     const z = weights.reduce((sum, w, d) => sum + w * (x[d] ?? 0), b1[h]);
     return tanh(z);
   });
-  const output = w2.map((weights, d) => weights.reduce((sum, w, h) => sum + w * hidden[h], b2[d]));
+  const output = w2.map((weights, d) =>
+    weights.reduce((sum, w, h) => sum + w * hidden[h], b2[d]),
+  );
   return { hidden, output };
 }
 
@@ -80,7 +82,9 @@ export class AutoencoderModel implements PredictionModel {
       samples.map((s) => s.features),
       inputSize,
     );
-    const standardizedSamples = samples.map((s) => standardize(s.features, stats));
+    const standardizedSamples = samples.map((s) =>
+      standardize(s.features, stats),
+    );
 
     let w1 = initMatrix(hiddenSize, inputSize, rng);
     let b1 = new Array(hiddenSize).fill(0);
@@ -97,22 +101,30 @@ export class AutoencoderModel implements PredictionModel {
           const { hidden, output } = forward(x, w1, b1, w2, b2);
 
           const outputError = output.map((o, d) => o - (x[d] ?? 0));
-          epochLoss += outputError.reduce((sum, e) => sum + e * e, 0) / inputSize;
+          epochLoss +=
+            outputError.reduce((sum, e) => sum + e * e, 0) / inputSize;
 
           // Output layer is linear: dL/dz2 == outputError (scaled by 2/inputSize, folded into the learning rate).
           const dOutput = outputError.map((e) => (2 * e) / inputSize);
 
           const dHidden = hidden.map((h, hIdx) => {
-            const upstream = dOutput.reduce((sum, dOut, d) => sum + dOut * w2[d][hIdx], 0);
+            const upstream = dOutput.reduce(
+              (sum, dOut, d) => sum + dOut * w2[d][hIdx],
+              0,
+            );
             return upstream * (1 - h * h); // tanh derivative
           });
 
           // Update output weights before they're used to compute dHidden would be wrong order —
           // dHidden above already used the pre-update w2, so it's safe to update w2 now.
-          w2 = w2.map((weights, d) => weights.map((w, h) => w - LEARNING_RATE * dOutput[d] * hidden[h]));
+          w2 = w2.map((weights, d) =>
+            weights.map((w, h) => w - LEARNING_RATE * dOutput[d] * hidden[h]),
+          );
           b2 = b2.map((b, d) => b - LEARNING_RATE * dOutput[d]);
 
-          w1 = w1.map((weights, h) => weights.map((w, d) => w - LEARNING_RATE * dHidden[h] * x[d]));
+          w1 = w1.map((weights, h) =>
+            weights.map((w, d) => w - LEARNING_RATE * dHidden[h] * x[d]),
+          );
           b1 = b1.map((b, h) => b - LEARNING_RATE * dHidden[h]);
         }
 
@@ -142,11 +154,14 @@ export class AutoencoderModel implements PredictionModel {
     const standardized = standardize(features, { mean, std });
     const { output } = forward(standardized, w1, b1, w2, b2);
     const mse =
-      output.reduce((sum, o, d) => sum + (o - standardized[d]) ** 2, 0) / Math.max(output.length, 1);
+      output.reduce((sum, o, d) => sum + (o - standardized[d]) ** 2, 0) /
+      Math.max(output.length, 1);
 
     return {
       anomalyScore: squash(mse, RECONSTRUCTION_SQUASH_SCALE),
-      confidence: clamp01(artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES),
+      confidence: clamp01(
+        artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES,
+      ),
       modelNotes: [
         `Reconstruction error: ${mse.toFixed(3)} (standardized mean-squared error).`,
         mse > 1

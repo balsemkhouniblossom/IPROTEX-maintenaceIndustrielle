@@ -14,6 +14,8 @@ import {
   AdminOnly,
   AuthenticatedRoles,
 } from '../auth/decorators/roles.decorator';
+import { CreateKpiDto } from './dto/create-kpi.dto';
+import { UpdateKpiDto } from './dto/update-kpi.dto';
 
 @Controller('kpis')
 @AuthenticatedRoles()
@@ -22,7 +24,7 @@ export class KpisController {
 
   @Post()
   @AdminOnly()
-  create(@Body() payload: Record<string, unknown>) {
+  create(@Body() payload: CreateKpiDto) {
     return this.kpisService.create(payload);
   }
 
@@ -45,7 +47,7 @@ export class KpisController {
 
   @Patch(':id')
   @AdminOnly()
-  update(@Param('id') id: string, @Body() payload: Record<string, unknown>) {
+  update(@Param('id') id: string, @Body() payload: UpdateKpiDto) {
     return this.kpisService.update(id, payload);
   }
 

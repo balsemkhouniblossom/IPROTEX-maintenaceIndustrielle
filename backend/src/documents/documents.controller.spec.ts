@@ -59,15 +59,20 @@ describe('DocumentsController authorization', () => {
 
     await controller.viewFile('doc-id', req, res as never);
 
-    expect(documentAccessService.resolveAccessibleDocument).toHaveBeenCalledWith(
-      req.user,
-      'doc-id',
-    );
+    expect(
+      documentAccessService.resolveAccessibleDocument,
+    ).toHaveBeenCalledWith(req.user, 'doc-id');
     expect(documentsService.readProtectedFile).toHaveBeenCalledWith('doc-id', {
       _id: 'doc-id',
     });
-    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
-    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Content-Type',
+      'application/pdf',
+    );
+    expect(res.setHeader).toHaveBeenCalledWith(
+      'Cache-Control',
+      'private, no-store',
+    );
     expect(res.send).toHaveBeenCalledWith(Buffer.from('file'));
   });
 
@@ -80,7 +85,10 @@ describe('DocumentsController authorization', () => {
     } as unknown as AuthenticatedRequest;
 
     await expect(
-      controller.viewFile('doc-id', req, { setHeader: jest.fn(), send: jest.fn() } as never),
+      controller.viewFile('doc-id', req, {
+        setHeader: jest.fn(),
+        send: jest.fn(),
+      } as never),
     ).rejects.toThrow(ForbiddenException);
     expect(documentsService.readProtectedFile).not.toHaveBeenCalled();
   });

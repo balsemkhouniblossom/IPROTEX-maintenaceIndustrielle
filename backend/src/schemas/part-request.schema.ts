@@ -51,19 +51,16 @@ export class PartRequest {
 }
 
 export const PartRequestSchema = SchemaFactory.createForClass(PartRequest);
-PartRequestSchema.index({ ot_id: 1, part_id: 1, status: 1 });
-// DB-level race guard: at most one *pending* (and, separately, at most one
-// *reserved*) request per (work order, part) pair — MongoDB's
-// partialFilterExpression only supports single-value equality, not `$in`,
-// so this needs two indexes rather than one covering both statuses. The
-// application-level pre-check in WorkOrdersService treats Pending and
-// Reserved as equally "already active" when deciding whether a new request
-// may be created.
+// DB-level race guard: at most one request per (work order, part, active
+// status). Keeping `status` in the key preserves the pending/reserved
+// constraints without defining two indexes that share the same key pattern,
+// which makes Mongoose emit a duplicate-index warning at startup/test time.
 PartRequestSchema.index(
-  { ot_id: 1, part_id: 1 },
-  { unique: true, partialFilterExpression: { status: PartRequestStatus.PENDING } },
-);
-PartRequestSchema.index(
-  { ot_id: 1, part_id: 1 },
-  { unique: true, partialFilterExpression: { status: PartRequestStatus.RESERVED } },
+  { ot_id: 1, part_id: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: [PartRequestStatus.PENDING, PartRequestStatus.RESERVED] },
+    },
+  },
 );

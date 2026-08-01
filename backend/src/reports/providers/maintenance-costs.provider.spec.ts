@@ -13,13 +13,21 @@ describe('MaintenanceCostsReportProvider', () => {
     workOrders?: unknown[];
     machines?: unknown[];
   }) {
-    const stockMovementModel = { find: jest.fn().mockReturnValue(execResolves(opts.movements ?? [])) };
-    const catalogueModel = { find: jest.fn().mockReturnValue(execResolves(opts.parts ?? [])) };
+    const stockMovementModel = {
+      find: jest.fn().mockReturnValue(execResolves(opts.movements ?? [])),
+    };
+    const catalogueModel = {
+      find: jest.fn().mockReturnValue(execResolves(opts.parts ?? [])),
+    };
     const workOrderModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves(opts.workOrders ?? [])) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves(opts.workOrders ?? [])),
+      }),
     };
     const machineModel = {
-      find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(execResolves(opts.machines ?? [])) }),
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(execResolves(opts.machines ?? [])),
+      }),
     };
 
     const provider = new MaintenanceCostsReportProvider(
@@ -60,7 +68,11 @@ describe('MaintenanceCostsReportProvider', () => {
     const dataset = await provider.buildDataset({});
 
     expect(dataset.rows).toEqual([
-      expect.objectContaining({ machine: 'M-1 (Press)', parts_consumed: 3, total_cost: 30 }),
+      expect.objectContaining({
+        machine: 'M-1 (Press)',
+        parts_consumed: 3,
+        total_cost: 30,
+      }),
     ]);
     expect(dataset.summary?.[0]).toEqual({ label: 'Total cost', value: 30 });
   });
@@ -72,7 +84,12 @@ describe('MaintenanceCostsReportProvider', () => {
 
     const { provider } = buildProvider({
       movements: [
-        { type: StockMovementType.CONSUMPTION, part_id: partId, work_order_id: workOrderId, quantity_delta: -2 },
+        {
+          type: StockMovementType.CONSUMPTION,
+          part_id: partId,
+          work_order_id: workOrderId,
+          quantity_delta: -2,
+        },
       ],
       parts: [{ _id: partId }], // no unit_cost
       workOrders: [{ _id: workOrderId, machine_id: machineId }],
@@ -83,7 +100,9 @@ describe('MaintenanceCostsReportProvider', () => {
 
     expect(dataset.rows[0].total_cost).toBe(0);
     expect(dataset.summary).toEqual(
-      expect.arrayContaining([{ label: 'Parts consumed with no unit_cost set', value: 1 }]),
+      expect.arrayContaining([
+        { label: 'Parts consumed with no unit_cost set', value: 1 },
+      ]),
     );
   });
 
@@ -102,7 +121,12 @@ describe('MaintenanceCostsReportProvider', () => {
 
     const { provider, workOrderModel } = buildProvider({
       movements: [
-        { type: StockMovementType.CONSUMPTION, part_id: partId, work_order_id: workOrderId, quantity_delta: -1 },
+        {
+          type: StockMovementType.CONSUMPTION,
+          part_id: partId,
+          work_order_id: workOrderId,
+          quantity_delta: -1,
+        },
       ],
       parts: [{ _id: partId, unit_cost: 5 }],
       workOrders: [],

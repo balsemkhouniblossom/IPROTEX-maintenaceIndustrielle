@@ -12,7 +12,8 @@ function sheetName(title: string): string {
 export class ExcelReportRenderer implements ReportRenderer {
   readonly format = ReportFormat.EXCEL;
   readonly fileExtension = 'xlsx';
-  readonly contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  readonly contentType =
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
   async render(dataset: ReportDataset): Promise<Buffer> {
     const workbook = new Workbook();
@@ -28,7 +29,11 @@ export class ExcelReportRenderer implements ReportRenderer {
     const headerRow = sheet.addRow(dataset.columns.map((c) => c.label));
     headerRow.font = { bold: true };
     headerRow.eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE5E7EB' },
+      };
     });
 
     for (const row of dataset.rows) {

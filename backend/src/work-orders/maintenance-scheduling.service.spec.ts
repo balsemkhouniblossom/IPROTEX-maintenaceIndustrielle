@@ -28,6 +28,32 @@ describe('MaintenanceSchedulingService', () => {
     ).toBe('2026-08-14T08:00:00.000Z');
   });
 
+  it('calculates daily recurrence across business midnight instead of server-local midnight', () => {
+    expect(
+      service
+        .calculateNextDueDate({
+          performedAt: '2026-07-14T23:30:00.000Z',
+          frequency: 1,
+          intervalUnit: 'daily',
+          timezone: 'Africa/Tunis',
+        })
+        .toISOString(),
+    ).toBe('2026-07-15T23:00:00.000Z');
+  });
+
+  it('treats date-only preventive due dates as business-timezone dates', () => {
+    expect(
+      service
+        .calculateNextDueDate({
+          performedAt: '2026-03-08',
+          frequency: 1,
+          intervalUnit: 'daily',
+          timezone: 'America/New_York',
+        })
+        .toISOString(),
+    ).toBe('2026-03-09T04:00:00.000Z');
+  });
+
   it('calculates yearly recurrence from the actual performed date', () => {
     expect(
       service
@@ -68,6 +94,30 @@ describe('MaintenanceSchedulingService', () => {
         })
         .toISOString(),
     ).toBe('2026-02-28T08:00:00.000Z');
+  });
+
+  it('keeps monthly recurrence stable across a DST boundary', () => {
+    const result = service.calculateNextDueDate({
+      performedAt: '2026-03-08T05:00:00.000Z',
+      frequency: 1,
+      intervalUnit: 'monthly',
+      timezone: 'America/New_York',
+    });
+    const localParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(result);
+    const map = Object.fromEntries(
+      localParts.map((part) => [part.type, part.value]),
+    );
+    expect(
+      `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}`,
+    ).toBe('2026-04-08 00:00');
   });
 
   it('uses February 28 for non-leap annual recurrence from February 29', () => {

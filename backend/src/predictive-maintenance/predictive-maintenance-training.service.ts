@@ -6,7 +6,11 @@ import {
   PredictionModelVersionDocument,
   PredictionModelVersionStatus,
 } from '../schemas/prediction-model-version.schema';
-import { PREDICTION_MODELS, PredictionModel, PredictionModelType } from './prediction-model.interface';
+import {
+  PREDICTION_MODELS,
+  PredictionModel,
+  PredictionModelType,
+} from './prediction-model.interface';
 import { TrainingSampleService } from './training-sample.service';
 
 /**
@@ -21,7 +25,9 @@ import { TrainingSampleService } from './training-sample.service';
  */
 @Injectable()
 export class PredictiveMaintenanceTrainingService {
-  private readonly logger = new Logger(PredictiveMaintenanceTrainingService.name);
+  private readonly logger = new Logger(
+    PredictiveMaintenanceTrainingService.name,
+  );
 
   constructor(
     @InjectModel(PredictionModelVersion.name)
@@ -36,7 +42,9 @@ export class PredictiveMaintenanceTrainingService {
   ): Promise<PredictionModelVersionDocument> {
     const model = this.models.find((m) => m.type === modelType);
     if (!model) {
-      throw new NotFoundException(`Unknown prediction model type: ${modelType}`);
+      throw new NotFoundException(
+        `Unknown prediction model type: ${modelType}`,
+      );
     }
 
     const samples = await this.trainingSampleService.buildTrainingSamples();
@@ -83,13 +91,14 @@ export class PredictiveMaintenanceTrainingService {
     const trained: PredictionModelType[] = [];
 
     for (const model of this.models) {
-      // eslint-disable-next-line no-await-in-loop
       const hasActive = await this.modelVersionModel
-        .exists({ model_type: model.type, status: PredictionModelVersionStatus.ACTIVE })
+        .exists({
+          model_type: model.type,
+          status: PredictionModelVersionStatus.ACTIVE,
+        })
         .exec();
       if (hasActive) continue;
 
-      // eslint-disable-next-line no-await-in-loop
       await this.trainModel(model.type);
       trained.push(model.type);
     }
@@ -97,8 +106,13 @@ export class PredictiveMaintenanceTrainingService {
     return trained;
   }
 
-  async listVersions(modelType?: PredictionModelType): Promise<PredictionModelVersionDocument[]> {
+  async listVersions(
+    modelType?: PredictionModelType,
+  ): Promise<PredictionModelVersionDocument[]> {
     const filter = modelType ? { model_type: modelType } : {};
-    return this.modelVersionModel.find(filter).sort({ model_type: 1, version: -1 }).exec();
+    return this.modelVersionModel
+      .find(filter)
+      .sort({ model_type: 1, version: -1 })
+      .exec();
   }
 }

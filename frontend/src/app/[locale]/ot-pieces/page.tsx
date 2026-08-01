@@ -31,9 +31,6 @@ export default function OtPiecesPage() {
   const tCommon = useTranslations("common");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<OtPiece[]>([]);
-  useEffect(() => {
-    console.log("Items state updated:", items);
-  }, [items]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
 
@@ -42,12 +39,7 @@ export default function OtPiecesPage() {
       try {
         const res = await apiService.getOtPieces();
 
-        console.log("Response:", res);
-        console.log("Items:", res.data.items);
-        console.log("Is array:", Array.isArray(res.data.items));
-
         setItems(res.data.items);
-        console.log("Length from API:", res.data.items.length);
       } finally {
         setLoading(false);
       }

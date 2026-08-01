@@ -12,7 +12,10 @@ export function clamp01(value: number): number {
 export type FeatureStats = { mean: number[]; std: number[] };
 
 /** Population mean/std per feature index, with a floor on std to keep division-by-zero from ever producing NaN/Infinity downstream. */
-export function computeFeatureStats(samples: number[][], featureCount: number): FeatureStats {
+export function computeFeatureStats(
+  samples: number[][],
+  featureCount: number,
+): FeatureStats {
   const mean = new Array(featureCount).fill(0);
   const std = new Array(featureCount).fill(0);
   const n = samples.length;
@@ -38,7 +41,9 @@ export function computeFeatureStats(samples: number[][], featureCount: number): 
 }
 
 export function standardize(features: number[], stats: FeatureStats): number[] {
-  return features.map((value, i) => ((value ?? 0) - stats.mean[i]) / stats.std[i]);
+  return features.map(
+    (value, i) => ((value ?? 0) - stats.mean[i]) / stats.std[i],
+  );
 }
 
 export function euclideanDistance(a: number[], b: number[]): number {

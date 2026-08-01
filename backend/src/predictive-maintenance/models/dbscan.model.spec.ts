@@ -17,7 +17,9 @@ describe('DbscanModel', () => {
   });
 
   it('identifies at least one dense core region from a tight cluster of samples', () => {
-    const samples: TrainingSample[] = Array.from({ length: 30 }, (_, i) => sample(clusterVector(i)));
+    const samples: TrainingSample[] = Array.from({ length: 30 }, (_, i) =>
+      sample(clusterVector(i)),
+    );
     const artifact = model.train(samples, 1);
 
     expect(artifact.corePoints.length).toBeGreaterThan(0);
@@ -25,7 +27,9 @@ describe('DbscanModel', () => {
   });
 
   it('scores a point inside the trained cluster as low anomaly', () => {
-    const samples: TrainingSample[] = Array.from({ length: 30 }, (_, i) => sample(clusterVector(i)));
+    const samples: TrainingSample[] = Array.from({ length: 30 }, (_, i) =>
+      sample(clusterVector(i)),
+    );
     const artifact = model.train(samples, 1);
 
     const result = model.score(clusterVector(1), artifact);
@@ -33,7 +37,9 @@ describe('DbscanModel', () => {
   });
 
   it('scores a point far from every dense region as high anomaly', () => {
-    const samples: TrainingSample[] = Array.from({ length: 30 }, (_, i) => sample(clusterVector(i)));
+    const samples: TrainingSample[] = Array.from({ length: 30 }, (_, i) =>
+      sample(clusterVector(i)),
+    );
     const artifact = model.train(samples, 1);
 
     const outlier = FEATURE_NAMES.map(() => 5000);
@@ -43,7 +49,10 @@ describe('DbscanModel', () => {
 
   it('reports zero confidence and a neutral score when no core points could be established', () => {
     const artifact = model.train([sample(FEATURE_NAMES.map(() => 1))], 1);
-    const result = model.score(FEATURE_NAMES.map(() => 1), artifact);
+    const result = model.score(
+      FEATURE_NAMES.map(() => 1),
+      artifact,
+    );
 
     expect(artifact.corePoints).toHaveLength(0);
     expect(result.confidence).toBe(0);
@@ -51,7 +60,9 @@ describe('DbscanModel', () => {
   });
 
   it('is deterministic given the same samples', () => {
-    const samples: TrainingSample[] = Array.from({ length: 25 }, (_, i) => sample(clusterVector(i)));
+    const samples: TrainingSample[] = Array.from({ length: 25 }, (_, i) =>
+      sample(clusterVector(i)),
+    );
     const a = model.train(samples, 1);
     const b = model.train(samples, 1);
     expect(a.corePoints).toEqual(b.corePoints);

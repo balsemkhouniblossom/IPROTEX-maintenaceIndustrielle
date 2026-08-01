@@ -1,5 +1,8 @@
 import { IsEnum, IsObject, IsOptional } from 'class-validator';
-import { ReportFormat, ReportType } from '../../schemas/generated-report.schema';
+import {
+  ReportFormat,
+  ReportType,
+} from '../../schemas/generated-report.schema';
 
 export class RequestReportDto {
   @IsEnum(ReportType)

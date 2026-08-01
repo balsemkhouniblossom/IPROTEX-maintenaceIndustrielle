@@ -8,6 +8,7 @@ import {
 import { CreateInterventionReportDto } from './dto/create-intervention-report.dto';
 import { UpdateInterventionReportDto } from './dto/update-intervention-report.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
+import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
 
 @Injectable()
 export class InterventionReportsService {
@@ -36,7 +37,7 @@ export class InterventionReportsService {
         .skip(skip)
         .limit(limit)
         .populate('ot_id')
-        .populate('technician_id')
+        .populate('technician_id', SAFE_USER_PROJECTION)
         .exec(),
       this.interventionReportModel.countDocuments().exec(),
     ]);
@@ -48,7 +49,7 @@ export class InterventionReportsService {
     return this.interventionReportModel
       .findById(id)
       .populate('ot_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .exec();
   }
 
@@ -59,7 +60,7 @@ export class InterventionReportsService {
     return this.interventionReportModel
       .findByIdAndUpdate(id, updateInterventionReportDto, { new: true })
       .populate('ot_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .exec();
   }
 

@@ -34,7 +34,11 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { parseSortParam } from '../common/query-params.util';
 
 const DEFAULT_HISTORY_LIMIT = 20;
-export const REPORTS_SORT_ALLOWED_FIELDS = ['createdAt', 'type', 'status'] as const;
+export const REPORTS_SORT_ALLOWED_FIELDS = [
+  'createdAt',
+  'type',
+  'status',
+] as const;
 const REPORTS_DEFAULT_SORT: Record<string, 1 | -1> = { createdAt: -1 };
 
 function buildReportsFilter(
@@ -54,7 +58,8 @@ export class ReportsService {
   constructor(
     @InjectModel(GeneratedReport.name)
     private readonly generatedReportModel: Model<GeneratedReportDocument>,
-    @Inject(REPORT_DATA_PROVIDERS) private readonly providers: ReportDataProvider[],
+    @Inject(REPORT_DATA_PROVIDERS)
+    private readonly providers: ReportDataProvider[],
     @Inject(REPORT_RENDERERS) private readonly renderers: ReportRenderer[],
     private readonly fileStorageService: FileStorageService,
   ) {}
@@ -71,7 +76,9 @@ export class ReportsService {
     actor: ReportActor,
   ): Promise<GeneratedReportDocument> {
     if (!canRequestReportType(actor.role, dto.type)) {
-      throw new ForbiddenException(`Your role may not request a ${dto.type} report`);
+      throw new ForbiddenException(
+        `Your role may not request a ${dto.type} report`,
+      );
     }
 
     const report = await this.generatedReportModel.create({
@@ -84,9 +91,13 @@ export class ReportsService {
       requester_role: actor.role,
     });
 
-    void this.generateReport(report._id.toString(), dto, actor).catch((error) => {
-      this.logger.error(`Unhandled error generating report ${report.report_id}: ${String(error)}`);
-    });
+    void this.generateReport(report._id.toString(), dto, actor).catch(
+      (error) => {
+        this.logger.error(
+          `Unhandled error generating report ${report.report_id}: ${String(error)}`,
+        );
+      },
+    );
 
     return report;
   }
@@ -112,9 +123,15 @@ export class ReportsService {
 
     try {
       const provider = this.providers.find((p) => p.type === dto.type);
-      if (!provider) throw new Error(`No data provider registered for report type ${dto.type}`);
+      if (!provider)
+        throw new Error(
+          `No data provider registered for report type ${dto.type}`,
+        );
       const renderer = this.renderers.find((r) => r.format === dto.format);
-      if (!renderer) throw new Error(`No renderer registered for report format ${dto.format}`);
+      if (!renderer)
+        throw new Error(
+          `No renderer registered for report format ${dto.format}`,
+        );
 
       const params = this.normalizeParams(dto.parameters ?? {});
       const dataset = await provider.buildDataset(params, actor);
@@ -154,12 +171,16 @@ export class ReportsService {
           { new: true },
         )
         .exec();
-      if (!failed) throw new Error('Report row disappeared during failure handling');
+      if (!failed)
+        throw new Error('Report row disappeared during failure handling');
       return failed;
     }
   }
 
-  async getReport(id: string, actor: ReportActor): Promise<GeneratedReportDocument> {
+  async getReport(
+    id: string,
+    actor: ReportActor,
+  ): Promise<GeneratedReportDocument> {
     const report = await this.generatedReportModel.findById(id).exec();
     if (!report) throw new NotFoundException('Report not found');
     this.assertCanView(report, actor);
@@ -189,8 +210,14 @@ export class ReportsService {
   ): Promise<PaginatedResponse<GeneratedReportDocument>> {
     const page = query.page && query.page > 0 ? Math.floor(query.page) : 1;
     const limit =
-      query.limit && query.limit > 0 ? Math.min(Math.floor(query.limit), 100) : DEFAULT_HISTORY_LIMIT;
-    const sort = parseSortParam(query.sort, REPORTS_SORT_ALLOWED_FIELDS, REPORTS_DEFAULT_SORT);
+      query.limit && query.limit > 0
+        ? Math.min(Math.floor(query.limit), 100)
+        : DEFAULT_HISTORY_LIMIT;
+    const sort = parseSortParam(
+      query.sort,
+      REPORTS_SORT_ALLOWED_FIELDS,
+      REPORTS_DEFAULT_SORT,
+    );
 
     const [items, totalItems] = await Promise.all([
       this.generatedReportModel
@@ -210,9 +237,14 @@ export class ReportsService {
     if (!report) throw new NotFoundException('Report not found');
     this.assertCanView(report, actor);
 
-    if (report.file_path && this.fileStorageService.ownsFile(report.file_path)) {
+    if (
+      report.file_path &&
+      this.fileStorageService.ownsFile(report.file_path)
+    ) {
       await this.fileStorageService.delete(report.file_path).catch((error) => {
-        this.logger.warn(`Failed to delete stored file for report ${report.report_id}: ${String(error)}`);
+        this.logger.warn(
+          `Failed to delete stored file for report ${report.report_id}: ${String(error)}`,
+        );
       });
     }
     await this.generatedReportModel.findByIdAndDelete(id).exec();
@@ -232,19 +264,28 @@ export class ReportsService {
     this.assertCanView(report, actor);
 
     if (report.status !== ReportStatus.COMPLETED || !report.file_path) {
-      throw new BadRequestException(`Report is not ready for download (status: ${report.status})`);
+      throw new BadRequestException(
+        `Report is not ready for download (status: ${report.status})`,
+      );
     }
     if (report.expires_at && report.expires_at.getTime() <= Date.now()) {
-      throw new GoneException('This report has expired and is no longer available for download');
+      throw new GoneException(
+        'This report has expired and is no longer available for download',
+      );
     }
     if (!this.fileStorageService.ownsFile(report.file_path)) {
       throw new NotFoundException('Report file not found');
     }
 
-    const file = await this.fileStorageService.readProtectedFile(report.file_path);
+    const file = await this.fileStorageService.readProtectedFile(
+      report.file_path,
+    );
 
     if (report.checksum) {
-      const actualChecksum = crypto.createHash('sha256').update(file.buffer).digest('hex');
+      const actualChecksum = crypto
+        .createHash('sha256')
+        .update(file.buffer)
+        .digest('hex');
       if (actualChecksum !== report.checksum) {
         this.logger.error(`Checksum mismatch for report ${report.report_id}`);
         throw new Error('Report file failed integrity verification');
@@ -256,17 +297,24 @@ export class ReportsService {
 
   normalizeParams(raw: Record<string, unknown>): ReportParams {
     return {
-      dateFrom: typeof raw.dateFrom === 'string' ? new Date(raw.dateFrom) : undefined,
+      dateFrom:
+        typeof raw.dateFrom === 'string' ? new Date(raw.dateFrom) : undefined,
       dateTo: typeof raw.dateTo === 'string' ? new Date(raw.dateTo) : undefined,
       machineId: typeof raw.machineId === 'string' ? raw.machineId : undefined,
-      technicianId: typeof raw.technicianId === 'string' ? raw.technicianId : undefined,
+      technicianId:
+        typeof raw.technicianId === 'string' ? raw.technicianId : undefined,
       limit: typeof raw.limit === 'number' ? raw.limit : undefined,
     };
   }
 
-  private assertCanView(report: GeneratedReportDocument, actor: ReportActor): void {
+  private assertCanView(
+    report: GeneratedReportDocument,
+    actor: ReportActor,
+  ): void {
     if (actor.role === Role.ADMIN) return;
     if (report.requested_by.toString() === actor.userId) return;
-    throw new ForbiddenException('You may only view or download your own reports');
+    throw new ForbiddenException(
+      'You may only view or download your own reports',
+    );
   }
 }

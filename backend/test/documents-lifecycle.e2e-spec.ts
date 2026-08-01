@@ -235,7 +235,11 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
     return request(app.getHttpServer())
       .post('/documents/upload')
       .set('Authorization', `Bearer ${adminToken}`)
-      .field('document_id', overrides.document_id ?? `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+      .field(
+        'document_id',
+        overrides.document_id ??
+          `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      )
       .field('machine_id', overrides.machine_id ?? machine._id.toString())
       .field('type_document', overrides.type_document ?? 'manual')
       .attach('file', PDF_BYTES, 'manual.pdf');
@@ -254,7 +258,9 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
         .attach('file', EXE_BYTES, 'renamed.pdf')
         .expect(415);
 
-      const storedDocument = await documents.findOne({ document_id: 'DOC-MALICIOUS' });
+      const storedDocument = await documents.findOne({
+        document_id: 'DOC-MALICIOUS',
+      });
       expect(storedDocument).toBeNull();
 
       const rejections = await documentRejections
@@ -271,7 +277,9 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
       // never inside the servable "uploads" tree.
       const quarantinedFiles = await fs.readdir(quarantineDir).catch(() => []);
       expect(quarantinedFiles.length).toBeGreaterThan(0);
-      const quarantinedContent = await fs.readFile(join(quarantineDir, quarantinedFiles[0]));
+      const quarantinedContent = await fs.readFile(
+        join(quarantineDir, quarantinedFiles[0]),
+      );
       expect(quarantinedContent).toEqual(EXE_BYTES);
     });
 
@@ -336,9 +344,13 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
       expect(response.body.status).toBe('draft');
       expect(response.body.version).toBe(1);
       expect(response.body.revision).toBe(1);
-      expect(response.body.maintenance_plan_id).toBe(maintenancePlan._id.toString());
+      expect(response.body.maintenance_plan_id).toBe(
+        maintenancePlan._id.toString(),
+      );
       expect(response.body.work_order_id).toBe(workOrder._id.toString());
-      expect(response.body.intervention_report_id).toBe(interventionReport._id.toString());
+      expect(response.body.intervention_report_id).toBe(
+        interventionReport._id.toString(),
+      );
 
       const uploadedFiles = await fs.readdir(uploadsDir).catch(() => []);
       expect(uploadedFiles.length).toBeGreaterThan(0);
@@ -359,7 +371,9 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
       const created = await uploadPdf({ document_id: 'DOC-STATIC-CHECK' });
       const fileName = (created.body.file_path as string).split('/').pop();
 
-      await request(app.getHttpServer()).get(`/uploads/${fileName}`).expect(404);
+      await request(app.getHttpServer())
+        .get(`/uploads/${fileName}`)
+        .expect(404);
     });
 
     it('serves the file only through the authenticated, machine-scoped protected proxy', async () => {
@@ -428,13 +442,18 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
       const archived = await request(app.getHttpServer())
         .patch(`/documents/${id}/archive`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ expected_version: 2, reason: 'Superseded by new safety standard' })
+        .send({
+          expected_version: 2,
+          reason: 'Superseded by new safety standard',
+        })
         .expect(200);
       expect(archived.body.status).toBe('archived');
     });
 
     it('lets exactly one of two concurrent publish attempts win, the other failing with a conflict', async () => {
-      const created = await uploadPdf({ document_id: 'DOC-CONCURRENT-PUBLISH' });
+      const created = await uploadPdf({
+        document_id: 'DOC-CONCURRENT-PUBLISH',
+      });
       const id = created.body._id;
 
       const [first, second] = await Promise.allSettled([
@@ -495,7 +514,11 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
       expect(historyResponse.body).toHaveLength(2);
-      expect(historyResponse.body.map((entry: { revision: number }) => entry.revision)).toEqual([1, 2]);
+      expect(
+        historyResponse.body.map(
+          (entry: { revision: number }) => entry.revision,
+        ),
+      ).toEqual([1, 2]);
     });
 
     it('rejects replacing a document that is already Superseded', async () => {

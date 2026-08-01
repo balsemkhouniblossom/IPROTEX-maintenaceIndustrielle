@@ -23,12 +23,17 @@ export class CorrectiveDowntimeReportProvider implements ReportDataProvider {
   readonly type = ReportType.CORRECTIVE_DOWNTIME;
 
   constructor(
-    @InjectModel(WorkOrder.name) private readonly workOrderModel: Model<WorkOrderDocument>,
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(WorkOrder.name)
+    private readonly workOrderModel: Model<WorkOrderDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     private readonly documentAccessService: DocumentAccessService,
   ) {}
 
-  async buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset> {
+  async buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset> {
     const machineIds = await resolveReportMachineScope(
       this.documentAccessService,
       actor,
@@ -56,14 +61,20 @@ export class CorrectiveDowntimeReportProvider implements ReportDataProvider {
       const start = wo.date_start || wo.date_created;
       const end = wo.date_end || wo.date_closed;
       if (!start || !end) continue;
-      const hours = Math.round(((end.getTime() - start.getTime()) / 3_600_000) * 100) / 100;
+      const hours =
+        Math.round(((end.getTime() - start.getTime()) / 3_600_000) * 100) / 100;
       if (hours < 0) continue;
       totalHours += hours;
 
-      const machine = wo.machine_id as unknown as { machine_id?: string; reference?: string };
+      const machine = wo.machine_id as unknown as {
+        machine_id?: string;
+        reference?: string;
+      };
       rows.push({
         work_order: wo.ot_id,
-        machine: machine?.reference ? `${machine.machine_id} (${machine.reference})` : (machine?.machine_id ?? ''),
+        machine: machine?.reference
+          ? `${machine.machine_id} (${machine.reference})`
+          : (machine?.machine_id ?? ''),
         fault_code: wo.code_panne ?? '',
         started: start.toISOString(),
         closed: end.toISOString(),
@@ -86,10 +97,16 @@ export class CorrectiveDowntimeReportProvider implements ReportDataProvider {
       rows,
       summary: [
         { label: 'Corrective events', value: rows.length },
-        { label: 'Total downtime (hours)', value: Math.round(totalHours * 100) / 100 },
+        {
+          label: 'Total downtime (hours)',
+          value: Math.round(totalHours * 100) / 100,
+        },
         {
           label: 'Average downtime (hours)',
-          value: rows.length > 0 ? Math.round((totalHours / rows.length) * 100) / 100 : 0,
+          value:
+            rows.length > 0
+              ? Math.round((totalHours / rows.length) * 100) / 100
+              : 0,
         },
       ],
     };

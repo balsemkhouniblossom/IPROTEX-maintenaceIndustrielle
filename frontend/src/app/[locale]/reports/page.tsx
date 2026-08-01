@@ -210,13 +210,8 @@ function ReportsPageContent() {
       const response = await apiService.getReportTypes();
       const types = Array.isArray(response.data) ? (response.data as ReportType[]) : ALL_REPORT_TYPES;
       setAvailableTypes(types);
-      if (types.length > 0 && !types.includes(builderType)) {
-        setBuilderType(types[0]);
-      }
-      if (types.length > 0 && !types.includes(scheduleType)) {
-        setScheduleType(types[0]);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      setBuilderType((current) => (types.length > 0 && !types.includes(current) ? types[0] : current));
+      setScheduleType((current) => (types.length > 0 && !types.includes(current) ? types[0] : current));
     } catch {
       setAvailableTypes(ALL_REPORT_TYPES);
     }
@@ -261,7 +256,6 @@ function ReportsPageContent() {
     } finally {
       setSchedulesLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
   const loadSavedViews = useCallback(async () => {
@@ -292,6 +286,8 @@ function ReportsPageContent() {
       void reportsTable.reload();
     }, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
+    // reportsTable is intentionally decomposed here so polling follows the current page rows and stable reload callback only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportsTable.items, reportsTable.reload]);
 
   const showMachineField = MACHINE_SCOPED_TYPES.has(builderType);

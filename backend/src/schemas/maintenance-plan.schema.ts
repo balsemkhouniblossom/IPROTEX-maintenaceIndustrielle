@@ -28,7 +28,11 @@ export class MaintenancePlanLifecycleEntry {
   @Prop({ type: String, enum: Object.values(MaintenancePlanStatus) })
   from_status?: MaintenancePlanStatus;
 
-  @Prop({ type: String, enum: Object.values(MaintenancePlanStatus), required: true })
+  @Prop({
+    type: String,
+    enum: Object.values(MaintenancePlanStatus),
+    required: true,
+  })
   to_status: MaintenancePlanStatus;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })

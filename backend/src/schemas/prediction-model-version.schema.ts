@@ -22,7 +22,11 @@ export enum PredictionModelVersionStatus {
  */
 @Schema({ timestamps: true })
 export class PredictionModelVersion {
-  @Prop({ type: String, enum: Object.values(PredictionModelType), required: true })
+  @Prop({
+    type: String,
+    enum: Object.values(PredictionModelType),
+    required: true,
+  })
   model_type!: PredictionModelType;
 
   @Prop({ required: true })
@@ -55,6 +59,8 @@ export class PredictionModelVersion {
   trained_by?: Types.ObjectId;
 }
 
-export const PredictionModelVersionSchema = SchemaFactory.createForClass(PredictionModelVersion);
+export const PredictionModelVersionSchema = SchemaFactory.createForClass(
+  PredictionModelVersion,
+);
 PredictionModelVersionSchema.index({ model_type: 1, version: -1 });
 PredictionModelVersionSchema.index({ model_type: 1, status: 1 });

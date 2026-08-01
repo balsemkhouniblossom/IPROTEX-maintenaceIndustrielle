@@ -2,7 +2,8 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { PredictionModelType } from '../predictive-maintenance/prediction-model.interface';
 
-export type MachineHealthPredictionDocument = MachineHealthPrediction & Document;
+export type MachineHealthPredictionDocument = MachineHealthPrediction &
+  Document;
 
 export enum PredictionRiskLevel {
   LOW = 'low',
@@ -45,7 +46,9 @@ export class PredictionExplanation {
   uncertaintyNotes!: string[];
 }
 
-export const PredictionExplanationSchema = SchemaFactory.createForClass(PredictionExplanation);
+export const PredictionExplanationSchema = SchemaFactory.createForClass(
+  PredictionExplanation,
+);
 
 const DEFAULT_PREDICTION_HISTORY_RETENTION_SECONDS = 180 * 24 * 60 * 60; // 180 days
 
@@ -64,7 +67,11 @@ export class MachineHealthPrediction {
   @Prop({ type: Types.ObjectId, ref: 'PredictionModelVersion', required: true })
   model_version_id!: Types.ObjectId;
 
-  @Prop({ type: String, enum: Object.values(PredictionModelType), required: true })
+  @Prop({
+    type: String,
+    enum: Object.values(PredictionModelType),
+    required: true,
+  })
   model_type!: PredictionModelType;
 
   /** 0 (failing) - 100 (healthy); derived from `anomaly_score` as `100 * (1 - anomaly_score)`. */
@@ -75,7 +82,11 @@ export class MachineHealthPrediction {
   @Prop({ required: true })
   anomaly_score!: number;
 
-  @Prop({ type: String, enum: Object.values(PredictionRiskLevel), required: true })
+  @Prop({
+    type: String,
+    enum: Object.values(PredictionRiskLevel),
+    required: true,
+  })
   risk_level!: PredictionRiskLevel;
 
   /** 0 - 1; how much weight this specific score deserves (data sufficiency x model maturity). */
@@ -93,8 +104,14 @@ export class MachineHealthPrediction {
   generated_at!: Date;
 }
 
-export const MachineHealthPredictionSchema = SchemaFactory.createForClass(MachineHealthPrediction);
-MachineHealthPredictionSchema.index({ machine_id: 1, model_type: 1, generated_at: -1 });
+export const MachineHealthPredictionSchema = SchemaFactory.createForClass(
+  MachineHealthPrediction,
+);
+MachineHealthPredictionSchema.index({
+  machine_id: 1,
+  model_type: 1,
+  generated_at: -1,
+});
 
 /**
  * Bounded retention, same pattern as FaultEvent/Telemetry — prediction

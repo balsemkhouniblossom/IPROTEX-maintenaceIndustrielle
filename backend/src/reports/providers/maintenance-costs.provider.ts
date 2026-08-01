@@ -11,7 +11,6 @@ import { WorkOrder, WorkOrderDocument } from '../../schemas/work-order.schema';
 import { Machine, MachineDocument } from '../../schemas/machine.schema';
 import { buildDateRangeFilter } from '../report-date-filter.util';
 import {
-  ReportActor,
   ReportDataProvider,
   ReportDataset,
   ReportParams,
@@ -36,9 +35,12 @@ export class MaintenanceCostsReportProvider implements ReportDataProvider {
   constructor(
     @InjectModel(StockMovement.name)
     private readonly stockMovementModel: Model<StockMovementDocument>,
-    @InjectModel(Catalogue.name) private readonly catalogueModel: Model<CatalogueDocument>,
-    @InjectModel(WorkOrder.name) private readonly workOrderModel: Model<WorkOrderDocument>,
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Catalogue.name)
+    private readonly catalogueModel: Model<CatalogueDocument>,
+    @InjectModel(WorkOrder.name)
+    private readonly workOrderModel: Model<WorkOrderDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
   ) {}
 
   async buildDataset(params: ReportParams): Promise<ReportDataset> {
@@ -68,42 +70,64 @@ export class MaintenanceCostsReportProvider implements ReportDataProvider {
     }
 
     const partIds = [...new Set(movements.map((m) => m.part_id.toString()))];
-    const parts = await this.catalogueModel.find({ _id: { $in: partIds } }).exec();
-    const costByPartId = new Map(parts.map((p) => [p._id.toString(), p.unit_cost ?? 0]));
-    const partsWithNoCost = parts.filter((p) => typeof p.unit_cost !== 'number').length;
+    const parts = await this.catalogueModel
+      .find({ _id: { $in: partIds } })
+      .exec();
+    const costByPartId = new Map(
+      parts.map((p) => [p._id.toString(), p.unit_cost ?? 0]),
+    );
+    const partsWithNoCost = parts.filter(
+      (p) => typeof p.unit_cost !== 'number',
+    ).length;
 
-    const workOrderIds = [...new Set(movements.map((m) => m.work_order_id!.toString()))];
+    const workOrderIds = [
+      ...new Set(movements.map((m) => m.work_order_id!.toString())),
+    ];
     const workOrders = await this.workOrderModel
       .find({
         _id: { $in: workOrderIds },
-        ...(params.machineId ? { machine_id: new Types.ObjectId(params.machineId) } : {}),
+        ...(params.machineId
+          ? { machine_id: new Types.ObjectId(params.machineId) }
+          : {}),
       })
       .select({ machine_id: 1 })
       .exec();
     const machineIdByWorkOrderId = new Map(
-      workOrders.map((wo) => [(wo._id as Types.ObjectId).toString(), wo.machine_id.toString()]),
+      workOrders.map((wo) => [wo._id.toString(), wo.machine_id.toString()]),
     );
 
-    const costByMachineId = new Map<string, { cost: number; partsConsumed: number }>();
+    const costByMachineId = new Map<
+      string,
+      { cost: number; partsConsumed: number }
+    >();
     for (const movement of movements) {
-      const machineId = machineIdByWorkOrderId.get(movement.work_order_id!.toString());
+      const machineId = machineIdByWorkOrderId.get(
+        movement.work_order_id!.toString(),
+      );
       if (!machineId) continue; // filtered out by machineId scope, or work order not found
 
       const unitCost = costByPartId.get(movement.part_id.toString()) ?? 0;
       const quantity = Math.abs(movement.quantity_delta);
-      const entry = costByMachineId.get(machineId) ?? { cost: 0, partsConsumed: 0 };
+      const entry = costByMachineId.get(machineId) ?? {
+        cost: 0,
+        partsConsumed: 0,
+      };
       entry.cost += unitCost * quantity;
       entry.partsConsumed += quantity;
       costByMachineId.set(machineId, entry);
     }
 
     const machines = await this.machineModel
-      .find({ _id: { $in: [...costByMachineId.keys()].map((id) => new Types.ObjectId(id)) } })
+      .find({
+        _id: {
+          $in: [...costByMachineId.keys()].map((id) => new Types.ObjectId(id)),
+        },
+      })
       .select({ machine_id: 1, reference: 1 })
       .exec();
     const machineLabelById = new Map(
       machines.map((m) => [
-        (m._id as Types.ObjectId).toString(),
+        m._id.toString(),
         m.reference ? `${m.machine_id} (${m.reference})` : m.machine_id,
       ]),
     );
@@ -131,7 +155,10 @@ export class MaintenanceCostsReportProvider implements ReportDataProvider {
       summary: [
         { label: 'Total cost', value: Math.round(totalCost * 100) / 100 },
         { label: 'Machines with consumption', value: rows.length },
-        { label: 'Parts consumed with no unit_cost set', value: partsWithNoCost },
+        {
+          label: 'Parts consumed with no unit_cost set',
+          value: partsWithNoCost,
+        },
       ],
     };
   }

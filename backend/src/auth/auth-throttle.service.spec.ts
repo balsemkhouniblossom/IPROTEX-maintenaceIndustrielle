@@ -73,8 +73,12 @@ describe('AuthThrottleService', () => {
     const request = createRequest('203.0.113.30');
 
     for (let i = 0; i < 5; i += 1) {
-      await service.consume('google-exchange', request, { code: 'secret-code' });
-      service.recordFailure('google-exchange', request, { code: 'secret-code' });
+      await service.consume('google-exchange', request, {
+        code: 'secret-code',
+      });
+      service.recordFailure('google-exchange', request, {
+        code: 'secret-code',
+      });
     }
 
     await expect(

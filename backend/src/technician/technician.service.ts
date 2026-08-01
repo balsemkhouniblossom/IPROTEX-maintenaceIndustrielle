@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
+import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
 import {
   PaginatedResponse,
   PaginationParams,
@@ -121,9 +122,11 @@ export class TechnicianService {
   private async getAccessibleMachineIds(
     technicianId: string,
   ): Promise<Types.ObjectId[]> {
-    const machineIds = await this.documentAccessService.listAccessibleMachineIds(
-      { userId: technicianId, role: Role.TECHNICIAN },
-    );
+    const machineIds =
+      await this.documentAccessService.listAccessibleMachineIds({
+        userId: technicianId,
+        role: Role.TECHNICIAN,
+      });
     return machineIds ?? [];
   }
 
@@ -355,7 +358,7 @@ export class TechnicianService {
     const items = await this.workOrdersModel
       .find({ _id: { $in: ids.map((item) => item._id) } })
       .populate({ path: 'machine_id', populate: { path: 'type_id' } })
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .exec();
     items.sort(
       (a, b) =>
@@ -381,7 +384,7 @@ export class TechnicianService {
       .populate({
         path: 'technician_id',
         match: { role: 'operator' },
-        select: 'nom_complet user_id role',
+        select: SAFE_USER_PROJECTION,
       })
       .exec();
 
@@ -460,7 +463,7 @@ export class TechnicianService {
       })
       .populate({ path: 'machine_id', populate: { path: 'type_id' } })
       .populate('module_id')
-      .populate('technician_id')
+      .populate('technician_id', SAFE_USER_PROJECTION)
       .populate('plan_id')
       .exec();
     if (!workOrder) throw new NotFoundException('Work order not found');
@@ -474,7 +477,7 @@ export class TechnicianService {
     const [report, parts, manuals] = await Promise.all([
       this.reportsModel
         .findOne({ ot_id: workOrder._id })
-        .populate('technician_id', 'nom_complet user_id role')
+        .populate('technician_id', SAFE_USER_PROJECTION)
         .exec(),
       this.partsModel.find({ ot_id: workOrder._id }).populate('part_id').exec(),
       machineId

@@ -14,6 +14,8 @@ import {
   AdminOnly,
   AuthenticatedRoles,
 } from '../auth/decorators/roles.decorator';
+import { CreateOtPieceDto } from './dto/create-ot-piece.dto';
+import { UpdateOtPieceDto } from './dto/update-ot-piece.dto';
 
 @Controller('ot-pieces')
 @AuthenticatedRoles()
@@ -22,7 +24,7 @@ export class OtPiecesController {
 
   @Post()
   @AdminOnly()
-  create(@Body() payload: Record<string, unknown>) {
+  create(@Body() payload: CreateOtPieceDto) {
     return this.otPiecesService.create(payload);
   }
 
@@ -45,7 +47,7 @@ export class OtPiecesController {
 
   @Patch(':id')
   @AdminOnly()
-  update(@Param('id') id: string, @Body() payload: Record<string, unknown>) {
+  update(@Param('id') id: string, @Body() payload: UpdateOtPieceDto) {
     return this.otPiecesService.update(id, payload);
   }
 

@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as mqtt from 'mqtt';
 import { DeviceAuthService } from './device-auth.service';
@@ -40,7 +45,9 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
   onModuleInit(): void {
     const brokerUrl = this.configService.get<string>('MQTT_BROKER_URL')?.trim();
     if (!brokerUrl) {
-      this.logger.log('MQTT ingestion disabled (no MQTT_BROKER_URL configured)');
+      this.logger.log(
+        'MQTT ingestion disabled (no MQTT_BROKER_URL configured)',
+      );
       return;
     }
     this.connect(brokerUrl);
@@ -58,9 +65,15 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
 
     this.client.on('connect', () => {
       this.logger.log(`Connected to MQTT broker at ${brokerUrl}`);
-      this.client?.subscribe([TELEMETRY_TOPIC, HEARTBEAT_TOPIC, FAULT_TOPIC], (err) => {
-        if (err) this.logger.error(`Failed to subscribe to device topics: ${err.message}`);
-      });
+      this.client?.subscribe(
+        [TELEMETRY_TOPIC, HEARTBEAT_TOPIC, FAULT_TOPIC],
+        (err) => {
+          if (err)
+            this.logger.error(
+              `Failed to subscribe to device topics: ${err.message}`,
+            );
+        },
+      );
     });
 
     this.client.on('message', (topic, payload) => {
@@ -89,7 +102,10 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
 
     let body: Record<string, unknown>;
     try {
-      body = JSON.parse(payloadBuffer.toString('utf8')) as Record<string, unknown>;
+      body = JSON.parse(payloadBuffer.toString('utf8')) as Record<
+        string,
+        unknown
+      >;
     } catch {
       this.logger.warn(`Malformed JSON payload on topic ${topic}`);
       return;
@@ -105,14 +121,17 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
       .verifyCredentials(deviceId, apiKey)
       .catch(() => null);
     if (!device) {
-      this.logger.warn(`Rejected MQTT message from unauthenticated device "${deviceId}"`);
+      this.logger.warn(
+        `Rejected MQTT message from unauthenticated device "${deviceId}"`,
+      );
       return;
     }
 
     const machineId = String(device.machine_id);
 
     if (kind === 'heartbeat') {
-      const { cameOnline } = await this.telemetryIngestionService.recordHeartbeat(device);
+      const { cameOnline } =
+        await this.telemetryIngestionService.recordHeartbeat(device);
       if (cameOnline) {
         this.liveMonitoringGateway.emitStatusChange(machineId, {
           deviceId: device.device_id,
@@ -125,13 +144,14 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
 
     if (kind === 'telemetry') {
       const metrics = (body.metrics ?? {}) as Record<string, number>;
-      const { record, cameOnline } = await this.telemetryIngestionService.recordTelemetry(
-        device,
-        {
+      const { record, cameOnline } =
+        await this.telemetryIngestionService.recordTelemetry(device, {
           metrics,
-          recordedAt: typeof body.recorded_at === 'string' ? new Date(body.recorded_at) : undefined,
-        },
-      );
+          recordedAt:
+            typeof body.recorded_at === 'string'
+              ? new Date(body.recorded_at)
+              : undefined,
+        });
       this.liveMonitoringGateway.emitTelemetry(machineId, {
         deviceId: device.device_id,
         metrics: record.metrics,
@@ -148,12 +168,16 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (kind === 'fault') {
-      const { record, cameOnline } = await this.telemetryIngestionService.recordFault(device, {
-        codePanne: typeof body.code_panne === 'string' ? body.code_panne : '',
-        severity: body.severity as never,
-        message: typeof body.message === 'string' ? body.message : undefined,
-        raisedAt: typeof body.raised_at === 'string' ? new Date(body.raised_at) : undefined,
-      });
+      const { record, cameOnline } =
+        await this.telemetryIngestionService.recordFault(device, {
+          codePanne: typeof body.code_panne === 'string' ? body.code_panne : '',
+          severity: body.severity as never,
+          message: typeof body.message === 'string' ? body.message : undefined,
+          raisedAt:
+            typeof body.raised_at === 'string'
+              ? new Date(body.raised_at)
+              : undefined,
+        });
       this.liveMonitoringGateway.emitFault(machineId, {
         id: String(record._id),
         deviceId: device.device_id,

@@ -1,8 +1,17 @@
-import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  GoneException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import * as crypto from 'crypto';
 import { ReportsService } from './reports.service';
-import { ReportStatus, ReportFormat, ReportType } from '../schemas/generated-report.schema';
+import {
+  ReportStatus,
+  ReportFormat,
+  ReportType,
+} from '../schemas/generated-report.schema';
 import { Role } from '../schemas/user.schema';
 
 function execResolves(result: unknown) {
@@ -46,9 +55,15 @@ describe('ReportsService', () => {
   beforeEach(() => {
     generatedReportModel = {
       create: jest.fn().mockImplementation((doc) =>
-        Promise.resolve({ ...doc, _id: new Types.ObjectId(), report_id: doc.report_id }),
+        Promise.resolve({
+          ...doc,
+          _id: new Types.ObjectId(),
+          report_id: doc.report_id,
+        }),
       ),
-      findByIdAndUpdate: jest.fn().mockReturnValue(execResolves({ _id: new Types.ObjectId() })),
+      findByIdAndUpdate: jest
+        .fn()
+        .mockReturnValue(execResolves({ _id: new Types.ObjectId() })),
       findById: jest.fn().mockReturnValue(execResolves(null)),
       findByIdAndDelete: jest.fn().mockReturnValue(execResolves(undefined)),
       find: jest.fn().mockReturnValue({
@@ -60,7 +75,11 @@ describe('ReportsService', () => {
       countDocuments: jest.fn().mockReturnValue(execResolves(0)),
     };
     fileStorageService = {
-      save: jest.fn().mockResolvedValue({ relativePath: '/uploads/x.csv', storageKey: undefined, size: 10 }),
+      save: jest.fn().mockResolvedValue({
+        relativePath: '/uploads/x.csv',
+        storageKey: undefined,
+        size: 10,
+      }),
       delete: jest.fn().mockResolvedValue(undefined),
       ownsFile: jest.fn().mockReturnValue(true),
       readProtectedFile: jest.fn().mockResolvedValue({
@@ -102,10 +121,16 @@ describe('ReportsService', () => {
 
     it('creates a pending row immediately and kicks off generation in the background', async () => {
       const service = buildService();
-      const generateSpy = jest.spyOn(service, 'generateReport').mockResolvedValue({} as never);
+      const generateSpy = jest
+        .spyOn(service, 'generateReport')
+        .mockResolvedValue({} as never);
 
       const report = await service.requestReport(
-        { type: ReportType.MACHINE_HISTORY, format: ReportFormat.CSV, parameters: { machineId: 'm1' } },
+        {
+          type: ReportType.MACHINE_HISTORY,
+          format: ReportFormat.CSV,
+          parameters: { machineId: 'm1' },
+        },
         actor,
       );
 
@@ -130,20 +155,31 @@ describe('ReportsService', () => {
 
       await service.generateReport(
         'report-id',
-        { type: ReportType.MACHINE_HISTORY, format: ReportFormat.CSV, parameters: {} },
+        {
+          type: ReportType.MACHINE_HISTORY,
+          format: ReportFormat.CSV,
+          parameters: {},
+        },
         actor,
       );
 
       expect(fakeProvider.buildDataset).toHaveBeenCalled();
       expect(fakeRenderer.render).toHaveBeenCalled();
       expect(fileStorageService.save).toHaveBeenCalledWith(
-        expect.objectContaining({ buffer: Buffer.from('csv-bytes'), folder: 'uploads' }),
+        expect.objectContaining({
+          buffer: Buffer.from('csv-bytes'),
+          folder: 'uploads',
+        }),
       );
 
-      const expectedChecksum = crypto.createHash('sha256').update(Buffer.from('csv-bytes')).digest('hex');
-      const completedCall = generatedReportModel.findByIdAndUpdate.mock.calls.find(
-        ([, update]) => update.status === ReportStatus.COMPLETED,
-      );
+      const expectedChecksum = crypto
+        .createHash('sha256')
+        .update(Buffer.from('csv-bytes'))
+        .digest('hex');
+      const completedCall =
+        generatedReportModel.findByIdAndUpdate.mock.calls.find(
+          ([, update]) => update.status === ReportStatus.COMPLETED,
+        );
       expect(completedCall).toBeDefined();
       expect(completedCall![1]).toEqual(
         expect.objectContaining({
@@ -168,7 +204,9 @@ describe('ReportsService', () => {
         ([, update]) => update.status === ReportStatus.FAILED,
       );
       expect(failedCall).toBeDefined();
-      expect(failedCall![1].error_message).toMatch(/No data provider registered/);
+      expect(failedCall![1].error_message).toMatch(
+        /No data provider registered/,
+      );
     });
 
     it('marks the report failed when the data provider throws', async () => {
@@ -195,7 +233,10 @@ describe('ReportsService', () => {
         requested_by: { toString: () => actor.userId },
         status: ReportStatus.COMPLETED,
         file_path: '/uploads/x.csv',
-        checksum: crypto.createHash('sha256').update(Buffer.from('data')).digest('hex'),
+        checksum: crypto
+          .createHash('sha256')
+          .update(Buffer.from('data'))
+          .digest('hex'),
         expires_at: new Date(Date.now() + 100000),
         report_id: 'RPT-1',
         ...overrides,
@@ -205,14 +246,19 @@ describe('ReportsService', () => {
     it('getReport throws NotFoundException for a missing report', async () => {
       generatedReportModel.findById.mockReturnValue(execResolves(null));
       const service = buildService();
-      await expect(service.getReport('missing', actor)).rejects.toThrow(NotFoundException);
+      await expect(service.getReport('missing', actor)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('getReport throws ForbiddenException for a non-owner, non-admin caller', async () => {
       generatedReportModel.findById.mockReturnValue(execResolves(reportDoc()));
       const service = buildService();
       await expect(
-        service.getReport('r1', { userId: new Types.ObjectId().toString(), role: Role.TECHNICIAN }),
+        service.getReport('r1', {
+          userId: new Types.ObjectId().toString(),
+          role: Role.TECHNICIAN,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -228,9 +274,13 @@ describe('ReportsService', () => {
     });
 
     it('downloadReport rejects a report that is not yet completed', async () => {
-      generatedReportModel.findById.mockReturnValue(execResolves(reportDoc({ status: ReportStatus.PROCESSING })));
+      generatedReportModel.findById.mockReturnValue(
+        execResolves(reportDoc({ status: ReportStatus.PROCESSING })),
+      );
       const service = buildService();
-      await expect(service.downloadReport('r1', actor)).rejects.toThrow(BadRequestException);
+      await expect(service.downloadReport('r1', actor)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('downloadReport rejects an expired report', async () => {
@@ -238,13 +288,19 @@ describe('ReportsService', () => {
         execResolves(reportDoc({ expires_at: new Date(Date.now() - 1000) })),
       );
       const service = buildService();
-      await expect(service.downloadReport('r1', actor)).rejects.toThrow(GoneException);
+      await expect(service.downloadReport('r1', actor)).rejects.toThrow(
+        GoneException,
+      );
     });
 
     it('downloadReport verifies the checksum and rejects a corrupted file', async () => {
-      generatedReportModel.findById.mockReturnValue(execResolves(reportDoc({ checksum: 'wrong-checksum' })));
+      generatedReportModel.findById.mockReturnValue(
+        execResolves(reportDoc({ checksum: 'wrong-checksum' })),
+      );
       const service = buildService();
-      await expect(service.downloadReport('r1', actor)).rejects.toThrow(/integrity/);
+      await expect(service.downloadReport('r1', actor)).rejects.toThrow(
+        /integrity/,
+      );
     });
 
     it('downloadReport succeeds and returns the file for a valid, owned, completed report', async () => {
@@ -357,7 +413,7 @@ describe('ReportsService', () => {
       };
       generatedReportModel.find.mockReturnValue(chain);
 
-      await service.listAllReports({ sort: 'checksum' as never });
+      await service.listAllReports({ sort: 'checksum' });
 
       expect(chain.sort).toHaveBeenCalledWith({ createdAt: -1 });
     });

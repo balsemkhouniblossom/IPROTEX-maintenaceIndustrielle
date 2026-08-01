@@ -134,7 +134,9 @@ export class AutomationSchedulerService {
     const startedAt = Date.now();
     const lock = await this.acquireJobLock(name);
     if (!lock) {
-      this.logger.warn(`[${name}] skipped because another scheduler owns the lock`);
+      this.logger.warn(
+        `[${name}] skipped because another scheduler owns the lock`,
+      );
       return;
     }
 
@@ -206,9 +208,7 @@ export class AutomationSchedulerService {
   }
 
   private async releaseJobLock(name: string, owner: string): Promise<void> {
-    await this.automationJobLockModel
-      .deleteOne({ name, owner })
-      .exec();
+    await this.automationJobLockModel.deleteOne({ name, owner }).exec();
   }
 
   private async jobGeneratePreventiveMaintenance(): Promise<JobResult> {
@@ -440,13 +440,14 @@ export class AutomationSchedulerService {
           const dedupeKey = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
             overdueDays / 7,
           )}`;
-          const created = await this.notificationCenterService.createIfNotExists({
-            dedupeKey,
-            type: NotificationType.OVERDUE_ESCALATION,
-            title: `Escalation 7+ days overdue for ${row.ot_id || workOrderId}`,
-            workOrderId,
-            recipientUserId: supervisorId,
-          });
+          const created =
+            await this.notificationCenterService.createIfNotExists({
+              dedupeKey,
+              type: NotificationType.OVERDUE_ESCALATION,
+              title: `Escalation 7+ days overdue for ${row.ot_id || workOrderId}`,
+              workOrderId,
+              recipientUserId: supervisorId,
+            });
           if (created) {
             notifications += 1;
           }
@@ -786,9 +787,10 @@ export class AutomationSchedulerService {
    * falling back to a broadcast to every Admin when no specific individual
    * is resolvable (e.g. stock/sensor alerts with no assignee).
    */
-  private resolveRecipient(
-    candidateUserId: string,
-  ): { recipientUserId?: string; recipientRole?: Role } {
+  private resolveRecipient(candidateUserId: string): {
+    recipientUserId?: string;
+    recipientRole?: Role;
+  } {
     if (candidateUserId && Types.ObjectId.isValid(candidateUserId)) {
       return { recipientUserId: candidateUserId };
     }

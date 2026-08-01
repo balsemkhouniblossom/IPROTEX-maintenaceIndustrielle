@@ -87,7 +87,9 @@ export class DocumentsUploadController {
 
     if (
       !userId ||
-      (role !== Role.ADMIN && role !== Role.TECHNICIAN && role !== Role.OPERATOR)
+      (role !== Role.ADMIN &&
+        role !== Role.TECHNICIAN &&
+        role !== Role.OPERATOR)
     ) {
       throw new ForbiddenException('Document upload access required');
     }
@@ -281,6 +283,16 @@ export class DocumentsUploadController {
       throw new BadRequestException('Invalid machine_id');
     }
 
+    for (const [field, value] of [
+      ['maintenance_plan_id', body.maintenance_plan_id],
+      ['work_order_id', body.work_order_id],
+      ['intervention_report_id', body.intervention_report_id],
+    ] as const) {
+      if (value !== undefined && !Types.ObjectId.isValid(value)) {
+        throw new BadRequestException(`Invalid ${field}`);
+      }
+    }
+
     await this.documentAccessService.assertCanAccessMachine(
       req.user ?? {},
       body.machine_id,
@@ -295,7 +307,9 @@ export class DocumentsUploadController {
     }
 
     const isPhoto = this.isOperatorPhotoType(body.type_document);
-    const detectedPhotoType = isPhoto ? this.detectSupportedPhotoType(file.buffer) : null;
+    const detectedPhotoType = isPhoto
+      ? this.detectSupportedPhotoType(file.buffer)
+      : null;
 
     if (isPhoto && !detectedPhotoType) {
       throw new UnsupportedMediaTypeException(
@@ -309,7 +323,8 @@ export class DocumentsUploadController {
 
     let storedBuffer = file.buffer;
     let fileExtension =
-      detectedPhotoType?.extension || extname(file.originalname || '').toLowerCase();
+      detectedPhotoType?.extension ||
+      extname(file.originalname || '').toLowerCase();
 
     if (detectedPhotoType) {
       try {
@@ -398,12 +413,24 @@ export class DocumentsUploadController {
       throw new PayloadTooLargeException('Uploaded file exceeds 10 MB');
     }
 
+    let expectedVersion: number | undefined;
+    if (body.expected_version !== undefined) {
+      expectedVersion = Number(body.expected_version);
+      if (!Number.isFinite(expectedVersion)) {
+        throw new BadRequestException('Invalid expected_version');
+      }
+    }
+
     const existing = await this.documentAccessService.resolveAccessibleDocument(
       req.user ?? {},
       id,
     );
 
-    await this.validateOrQuarantine(file, existing.machine_id?.toString(), actorId);
+    await this.validateOrQuarantine(
+      file,
+      existing.machine_id?.toString(),
+      actorId,
+    );
 
     const fileExtension = extname(file.originalname || '').toLowerCase();
     const storedFileName = `${Date.now()}-${randomUUID()}${fileExtension}`;
@@ -435,8 +462,7 @@ export class DocumentsUploadController {
           file_name: file.originalname,
         },
         reason: body.reason,
-        expectedVersion:
-          body.expected_version !== undefined ? Number(body.expected_version) : undefined,
+        expectedVersion,
         actorId,
       });
     } catch (error) {

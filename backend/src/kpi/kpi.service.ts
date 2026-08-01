@@ -118,7 +118,9 @@ export class KpiService {
     private readonly userModel: Model<UserDocument>,
   ) {}
 
-  private toMongoFilter(scope: WorkOrderScopeFilter = {}): FilterQuery<WorkOrderDocument> {
+  private toMongoFilter(
+    scope: WorkOrderScopeFilter = {},
+  ): FilterQuery<WorkOrderDocument> {
     const filter: FilterQuery<WorkOrderDocument> = {};
     if (scope.technicianId) {
       filter.technician_id = toObjectId(scope.technicianId);
@@ -152,7 +154,12 @@ export class KpiService {
     const dueDateExpr = {
       $ifNull: [
         '$due_date',
-        { $ifNull: ['$scheduled_date', { $ifNull: ['$execution_date', '$date_start'] }] },
+        {
+          $ifNull: [
+            '$scheduled_date',
+            { $ifNull: ['$execution_date', '$date_start'] },
+          ],
+        },
       ],
     };
     const closedAtExpr = { $ifNull: ['$date_closed', '$date_end'] };
@@ -177,7 +184,9 @@ export class KpiService {
                     $and: [
                       { $ne: [dueDateExpr, null] },
                       { $lt: [dueDateExpr, todayStart] },
-                      { $not: { $in: ['$status', CLOSED_WORK_ORDER_STATUSES] } },
+                      {
+                        $not: { $in: ['$status', CLOSED_WORK_ORDER_STATUSES] },
+                      },
                       { $ne: ['$status', WAITING_VALIDATION_STATUS] },
                     ],
                   },
@@ -193,7 +202,9 @@ export class KpiService {
                       { $ne: [dueDateExpr, null] },
                       { $gte: [dueDateExpr, todayStart] },
                       { $lt: [dueDateExpr, todayEnd] },
-                      { $not: { $in: ['$status', CLOSED_WORK_ORDER_STATUSES] } },
+                      {
+                        $not: { $in: ['$status', CLOSED_WORK_ORDER_STATUSES] },
+                      },
                       { $ne: ['$status', WAITING_VALIDATION_STATUS] },
                     ],
                   },
@@ -245,7 +256,11 @@ export class KpiService {
    * on-hand quantity.
    */
   async computeStockAlerts(): Promise<StockAlertsResult> {
-    const stocks = await this.stockModel.find().populate('part_id').lean().exec();
+    const stocks = await this.stockModel
+      .find()
+      .populate('part_id')
+      .lean()
+      .exec();
 
     const items: StockAlertItem[] = [];
     for (const stock of stocks) {
@@ -263,7 +278,9 @@ export class KpiService {
         | { _id?: Types.ObjectId; nom_piece?: string; part_id?: string }
         | Types.ObjectId
         | undefined;
-      const partIsPopulated = Boolean(part && typeof part === 'object' && 'nom_piece' in part);
+      const partIsPopulated = Boolean(
+        part && typeof part === 'object' && 'nom_piece' in part,
+      );
 
       items.push({
         stockId: String(stock._id),
@@ -274,8 +291,8 @@ export class KpiService {
             ? String(part)
             : undefined,
         partLabel: partIsPopulated
-          ? (part as { nom_piece?: string; part_id?: string }).nom_piece ??
-            (part as { nom_piece?: string; part_id?: string }).part_id
+          ? ((part as { nom_piece?: string; part_id?: string }).nom_piece ??
+            (part as { nom_piece?: string; part_id?: string }).part_id)
           : undefined,
         quantiteEnStock: stock.quantite_en_stock ?? 0,
         quantiteReservee,
@@ -320,7 +337,11 @@ export class KpiService {
     let onTimeCount = 0;
     let evaluableCount = 0;
     for (const order of orders) {
-      const due = order.due_date || order.scheduled_date || order.execution_date || order.date_start;
+      const due =
+        order.due_date ||
+        order.scheduled_date ||
+        order.execution_date ||
+        order.date_start;
       const closed = order.date_closed || order.date_end;
       if (!due || !closed) continue;
       evaluableCount += 1;
@@ -329,7 +350,8 @@ export class KpiService {
       }
     }
 
-    const ratePercent = evaluableCount > 0 ? round2((onTimeCount / evaluableCount) * 100) : 0;
+    const ratePercent =
+      evaluableCount > 0 ? round2((onTimeCount / evaluableCount) * 100) : 0;
     return { ratePercent, onTimeCount, evaluableCount };
   }
 
@@ -357,13 +379,16 @@ export class KpiService {
       .map((order) => {
         if (!order.date_start || !order.date_created) return null;
         const diff =
-          new Date(order.date_start).getTime() - new Date(order.date_created).getTime();
+          new Date(order.date_start).getTime() -
+          new Date(order.date_created).getTime();
         return diff / 3_600_000;
       })
       .filter((value): value is number => value !== null && value >= 0);
 
     const averageResponseHours =
-      hours.length > 0 ? round2(hours.reduce((sum, value) => sum + value, 0) / hours.length) : 0;
+      hours.length > 0
+        ? round2(hours.reduce((sum, value) => sum + value, 0) / hours.length)
+        : 0;
 
     return { averageResponseHours, sampleSize: hours.length };
   }
@@ -381,7 +406,9 @@ export class KpiService {
    * fresh from the current WorkOrder collection at request time instead of
    * from a stale, write-triggered snapshot.
    */
-  async computeMttrMtbf(scope: WorkOrderScopeFilter = {}): Promise<MttrMtbfResult> {
+  async computeMttrMtbf(
+    scope: WorkOrderScopeFilter = {},
+  ): Promise<MttrMtbfResult> {
     const match: FilterQuery<WorkOrderDocument> = {
       ...this.toMongoFilter(scope),
       status: { $in: COMPLETED_WORK_ORDER_STATUSES },
@@ -410,7 +437,8 @@ export class KpiService {
       .filter((value): value is number => value !== null && value >= 0);
     const mttrHours =
       repairDurations.length > 0
-        ? repairDurations.reduce((sum, value) => sum + value, 0) / repairDurations.length
+        ? repairDurations.reduce((sum, value) => sum + value, 0) /
+          repairDurations.length
         : 0;
 
     const correctiveClosures = orders
@@ -426,7 +454,9 @@ export class KpiService {
     if (correctiveClosures.length >= 2) {
       const gaps: number[] = [];
       for (let i = 1; i < correctiveClosures.length; i += 1) {
-        gaps.push((correctiveClosures[i] - correctiveClosures[i - 1]) / 3_600_000);
+        gaps.push(
+          (correctiveClosures[i] - correctiveClosures[i - 1]) / 3_600_000,
+        );
       }
       mtbfHours = gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
     }
@@ -468,7 +498,12 @@ export class KpiService {
         // normalizes both representations onto the same group key so the
         // dashboard never renders two rows (and two React keys) for the
         // same technician.
-        { $group: { _id: { $toString: '$technician_id' }, openCount: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { $toString: '$technician_id' },
+            openCount: { $sum: 1 },
+          },
+        },
         { $sort: { openCount: -1 } },
       ])
       .exec();
@@ -520,8 +555,16 @@ export class KpiService {
       totalUsers,
     ] = await Promise.all([
       this.computeWorkOrderStatusCounts(),
-      this.workOrderModel.countDocuments({ date_created: { $gte: monthStart, $lt: nextMonthStart } }).exec(),
-      this.workOrderModel.countDocuments({ date_created: { $gte: lastMonthStart, $lt: monthStart } }).exec(),
+      this.workOrderModel
+        .countDocuments({
+          date_created: { $gte: monthStart, $lt: nextMonthStart },
+        })
+        .exec(),
+      this.workOrderModel
+        .countDocuments({
+          date_created: { $gte: lastMonthStart, $lt: monthStart },
+        })
+        .exec(),
       this.computeStockAlerts(),
       this.computePreventiveCompliance(),
       this.computeCorrectiveResponseTime(),
@@ -532,7 +575,9 @@ export class KpiService {
     ]);
 
     const percentageChange =
-      lastMonthCount > 0 ? round2(((currentMonthCount - lastMonthCount) / lastMonthCount) * 100) : 0;
+      lastMonthCount > 0
+        ? round2(((currentMonthCount - lastMonthCount) / lastMonthCount) * 100)
+        : 0;
 
     return {
       workOrders: {
@@ -558,7 +603,9 @@ export class KpiService {
    * merges this into its richer response (which also includes task lists
    * and manuals, outside this service's concern).
    */
-  async getTechnicianDashboardCounts(technicianId: string): Promise<WorkOrderStatusCounts> {
+  async getTechnicianDashboardCounts(
+    technicianId: string,
+  ): Promise<WorkOrderStatusCounts> {
     return this.computeWorkOrderStatusCounts({ technicianId });
   }
 
@@ -574,16 +621,25 @@ export class KpiService {
     const scope = { technicianId: operatorId };
     const filter = this.toMongoFilter(scope);
 
-    const [statusCounts, assignedCount, inProgressCount, completedCount] = await Promise.all([
-      this.computeWorkOrderStatusCounts(scope),
-      this.workOrderModel
-        .countDocuments({ ...filter, status: { $nin: CLOSED_WORK_ORDER_STATUSES } })
-        .exec(),
-      this.workOrderModel.countDocuments({ ...filter, status: 'in_progress' }).exec(),
-      this.workOrderModel
-        .countDocuments({ ...filter, status: { $in: COMPLETED_WORK_ORDER_STATUSES } })
-        .exec(),
-    ]);
+    const [statusCounts, assignedCount, inProgressCount, completedCount] =
+      await Promise.all([
+        this.computeWorkOrderStatusCounts(scope),
+        this.workOrderModel
+          .countDocuments({
+            ...filter,
+            status: { $nin: CLOSED_WORK_ORDER_STATUSES },
+          })
+          .exec(),
+        this.workOrderModel
+          .countDocuments({ ...filter, status: 'in_progress' })
+          .exec(),
+        this.workOrderModel
+          .countDocuments({
+            ...filter,
+            status: { $in: COMPLETED_WORK_ORDER_STATUSES },
+          })
+          .exec(),
+      ]);
 
     return {
       ...statusCounts,

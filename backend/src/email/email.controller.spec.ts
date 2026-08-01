@@ -1,7 +1,4 @@
-import {
-  BadGatewayException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadGatewayException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthThrottleService } from '../auth/auth-throttle.service';
 import { Role } from '../schemas/user.schema';

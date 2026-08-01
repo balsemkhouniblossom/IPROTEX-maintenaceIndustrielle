@@ -2,9 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
-import { MachineType, MachineTypeDocument } from '../schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../schemas/machine-type.schema';
 import { Panne, PanneDocument } from '../schemas/panne.schema';
-import { PanneSolution, PanneSolutionDocument } from '../schemas/panne-solution.schema';
+import {
+  PanneSolution,
+  PanneSolutionDocument,
+} from '../schemas/panne-solution.schema';
 import { FaultEvent, FaultEventDocument } from '../schemas/fault-event.schema';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
 import {
@@ -33,7 +39,8 @@ export type AiContextInput = {
 @Injectable()
 export class AiContextBuilderService {
   constructor(
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     @InjectModel(MachineType.name)
     private readonly machineTypeModel: Model<MachineTypeDocument>,
     @InjectModel(Panne.name) private readonly panneModel: Model<PanneDocument>,
@@ -54,18 +61,25 @@ export class AiContextBuilderService {
         ? input.machineId
         : undefined;
 
-    const [machine, corrective, activeAlarms, maintenanceHistory, knowledgeArticles] =
-      await Promise.all([
-        machineId ? this.loadMachine(machineId) : Promise.resolve(null),
-        input.faultCode ? this.loadCorrectiveData(input.faultCode) : Promise.resolve(null),
-        machineId ? this.loadActiveAlarms(machineId) : Promise.resolve([]),
-        machineId ? this.loadMaintenanceHistory(machineId) : Promise.resolve([]),
-        this.knowledgeBaseService.computeSuggestions({
-          machineId,
-          faultCode: input.faultCode,
-          limit: KNOWLEDGE_ARTICLES_LIMIT,
-        }),
-      ]);
+    const [
+      machine,
+      corrective,
+      activeAlarms,
+      maintenanceHistory,
+      knowledgeArticles,
+    ] = await Promise.all([
+      machineId ? this.loadMachine(machineId) : Promise.resolve(null),
+      input.faultCode
+        ? this.loadCorrectiveData(input.faultCode)
+        : Promise.resolve(null),
+      machineId ? this.loadActiveAlarms(machineId) : Promise.resolve([]),
+      machineId ? this.loadMaintenanceHistory(machineId) : Promise.resolve([]),
+      this.knowledgeBaseService.computeSuggestions({
+        machineId,
+        faultCode: input.faultCode,
+        limit: KNOWLEDGE_ARTICLES_LIMIT,
+      }),
+    ]);
 
     return {
       machineName: machine?.machineName,
@@ -107,7 +121,9 @@ export class AiContextBuilderService {
     probableCause?: string;
     approvedSolution?: string;
   } | null> {
-    const panne = await this.panneModel.findOne({ code_panne: codePanne }).exec();
+    const panne = await this.panneModel
+      .findOne({ code_panne: codePanne })
+      .exec();
     if (!panne) return null;
 
     const solution = await this.panneSolutionModel
@@ -161,7 +177,7 @@ export class AiContextBuilderService {
     }
 
     return workOrders.map((wo) => {
-      const report = reportByWorkOrderId.get((wo._id as Types.ObjectId).toString());
+      const report = reportByWorkOrderId.get(wo._id.toString());
       return {
         date: wo.date_created.toISOString(),
         type: wo.type_maintenance,

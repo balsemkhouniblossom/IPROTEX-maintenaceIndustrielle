@@ -1,11 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { DocumentEntity, DocumentDocument } from '../../schemas/document.schema';
-import { MaintenancePlan, MaintenancePlanDocument } from '../../schemas/maintenance-plan.schema';
+import {
+  DocumentEntity,
+  DocumentDocument,
+} from '../../schemas/document.schema';
+import {
+  MaintenancePlan,
+  MaintenancePlanDocument,
+} from '../../schemas/maintenance-plan.schema';
 import { WorkOrder, WorkOrderDocument } from '../../schemas/work-order.schema';
 import { User, UserDocument } from '../../schemas/user.schema';
-import { ReportDataProvider, ReportDataset, ReportParams } from '../report.interfaces';
+import {
+  ReportDataProvider,
+  ReportDataset,
+  ReportParams,
+} from '../report.interfaces';
 import { ReportType } from '../../schemas/generated-report.schema';
 
 type FlatAuditEntry = {
@@ -36,7 +46,8 @@ export class AuditHistoryReportProvider implements ReportDataProvider {
   readonly type = ReportType.AUDIT_HISTORY;
 
   constructor(
-    @InjectModel(DocumentEntity.name) private readonly documentModel: Model<DocumentDocument>,
+    @InjectModel(DocumentEntity.name)
+    private readonly documentModel: Model<DocumentDocument>,
     @InjectModel(MaintenancePlan.name)
     private readonly maintenancePlanModel: Model<MaintenancePlanDocument>,
     @InjectModel(WorkOrder.name)
@@ -46,9 +57,18 @@ export class AuditHistoryReportProvider implements ReportDataProvider {
 
   async buildDataset(params: ReportParams): Promise<ReportDataset> {
     const [documents, plans, workOrders] = await Promise.all([
-      this.documentModel.find({}).select({ document_id: 1, lifecycle_history: 1 }).exec(),
-      this.maintenancePlanModel.find({}).select({ plan_id: 1, lifecycle_history: 1 }).exec(),
-      this.workOrderModel.find({}).select({ ot_id: 1, lifecycle_history: 1 }).exec(),
+      this.documentModel
+        .find({})
+        .select({ document_id: 1, lifecycle_history: 1 })
+        .exec(),
+      this.maintenancePlanModel
+        .find({})
+        .select({ plan_id: 1, lifecycle_history: 1 })
+        .exec(),
+      this.workOrderModel
+        .find({})
+        .select({ ot_id: 1, lifecycle_history: 1 })
+        .exec(),
     ]);
 
     const entries: FlatAuditEntry[] = [];
@@ -103,14 +123,18 @@ export class AuditHistoryReportProvider implements ReportDataProvider {
     filtered.sort((a, b) => b.at.getTime() - a.at.getTime());
     const limited = filtered.slice(0, params.limit ?? DEFAULT_LIMIT);
 
-    const actorIds = [...new Set(limited.map((e) => e.actorUserId).filter(Boolean))] as string[];
+    const actorIds = [
+      ...new Set(limited.map((e) => e.actorUserId).filter(Boolean)),
+    ] as string[];
     const actors = actorIds.length
       ? await this.userModel
           .find({ _id: { $in: actorIds.map((id) => new Types.ObjectId(id)) } })
           .select({ nom_complet: 1 })
           .exec()
       : [];
-    const actorNameById = new Map(actors.map((a) => [(a._id as Types.ObjectId).toString(), a.nom_complet]));
+    const actorNameById = new Map(
+      actors.map((a) => [a._id.toString(), a.nom_complet]),
+    );
 
     const rows = limited.map((entry) => ({
       date: entry.at.toISOString(),
@@ -119,7 +143,9 @@ export class AuditHistoryReportProvider implements ReportDataProvider {
       action: entry.action,
       from_status: entry.fromStatus ?? '',
       to_status: entry.toStatus,
-      actor: entry.actorUserId ? (actorNameById.get(entry.actorUserId) ?? entry.actorUserId) : '',
+      actor: entry.actorUserId
+        ? (actorNameById.get(entry.actorUserId) ?? entry.actorUserId)
+        : '',
       reason: entry.reason ?? '',
     }));
 

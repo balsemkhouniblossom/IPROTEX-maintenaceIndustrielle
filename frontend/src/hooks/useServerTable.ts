@@ -91,7 +91,6 @@ export function useServerTable<T, F extends Record<string, unknown>>({
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, debouncedSearch, sort, filters, fetcher]);
 
   useEffect(() => {

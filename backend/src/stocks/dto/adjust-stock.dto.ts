@@ -1,4 +1,10 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, NotEquals } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  NotEquals,
+} from 'class-validator';
 
 /**
  * The only field that can ever move `quantite_en_stock` outside of an

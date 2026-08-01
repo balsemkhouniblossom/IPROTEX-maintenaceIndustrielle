@@ -27,27 +27,37 @@ describe('AiContextBuilderService', () => {
   const machineId = new Types.ObjectId().toString();
   const machineTypeId = new Types.ObjectId();
 
-  function buildService(overrides: {
-    machine?: unknown;
-    machineType?: unknown;
-    panne?: unknown;
-    panneSolution?: unknown;
-    faultEvents?: unknown[];
-    workOrders?: unknown[];
-    interventionReports?: unknown[];
-    knowledgeArticles?: unknown[];
-  } = {}) {
+  function buildService(
+    overrides: {
+      machine?: unknown;
+      machineType?: unknown;
+      panne?: unknown;
+      panneSolution?: unknown;
+      faultEvents?: unknown[];
+      workOrders?: unknown[];
+      interventionReports?: unknown[];
+      knowledgeArticles?: unknown[];
+    } = {},
+  ) {
     const machineModel = { findById: findByIdStub(overrides.machine ?? null) };
-    const machineTypeModel = { findById: findByIdStub(overrides.machineType ?? null) };
+    const machineTypeModel = {
+      findById: findByIdStub(overrides.machineType ?? null),
+    };
     const panneModel = { findOne: findOneStub(overrides.panne ?? null) };
-    const panneSolutionModel = { findOne: findOneStub(overrides.panneSolution ?? null) };
-    const faultEventModel = { find: findChainStub(overrides.faultEvents ?? []) };
+    const panneSolutionModel = {
+      findOne: findOneStub(overrides.panneSolution ?? null),
+    };
+    const faultEventModel = {
+      find: findChainStub(overrides.faultEvents ?? []),
+    };
     const workOrderModel = { find: findChainStub(overrides.workOrders ?? []) };
     const interventionReportModel = {
       find: findChainStub(overrides.interventionReports ?? []),
     };
     const knowledgeBaseService = {
-      computeSuggestions: jest.fn().mockResolvedValue(overrides.knowledgeArticles ?? []),
+      computeSuggestions: jest
+        .fn()
+        .mockResolvedValue(overrides.knowledgeArticles ?? []),
     };
 
     const service = new AiContextBuilderService(
@@ -95,7 +105,9 @@ describe('AiContextBuilderService', () => {
   it('ignores an invalid (non-ObjectId) machineId rather than querying with it', async () => {
     const { service } = buildService();
 
-    const context = await service.buildContext({ machineId: 'not-an-object-id' });
+    const context = await service.buildContext({
+      machineId: 'not-an-object-id',
+    });
 
     expect(context.machineName).toBeUndefined();
     expect(context.activeAlarms).toEqual([]);
@@ -104,7 +116,11 @@ describe('AiContextBuilderService', () => {
   it('resolves catalog probable cause and approved solution from a faultCode', async () => {
     const panneId = new Types.ObjectId();
     const { service } = buildService({
-      panne: { _id: panneId, code_panne: 'E-42', description: 'Motor overcurrent' },
+      panne: {
+        _id: panneId,
+        code_panne: 'E-42',
+        description: 'Motor overcurrent',
+      },
       panneSolution: {
         panne_id: panneId,
         cause_probable: 'Worn bearing',
@@ -187,17 +203,28 @@ describe('AiContextBuilderService', () => {
     const { service, knowledgeBaseService } = buildService({
       machine: { _id: machineId, machine_id: 'M-001', type_id: machineTypeId },
       knowledgeArticles: [
-        { title: 'Overcurrent troubleshooting', summary: 'Check bearings first', category: 'troubleshooting' },
+        {
+          title: 'Overcurrent troubleshooting',
+          summary: 'Check bearings first',
+          category: 'troubleshooting',
+        },
       ],
     });
 
-    const context = await service.buildContext({ machineId, faultCode: 'E-42' });
+    const context = await service.buildContext({
+      machineId,
+      faultCode: 'E-42',
+    });
 
     expect(knowledgeBaseService.computeSuggestions).toHaveBeenCalledWith(
       expect.objectContaining({ machineId, faultCode: 'E-42', limit: 5 }),
     );
     expect(context.knowledgeArticles).toEqual([
-      { title: 'Overcurrent troubleshooting', summary: 'Check bearings first', category: 'troubleshooting' },
+      {
+        title: 'Overcurrent troubleshooting',
+        summary: 'Check bearings first',
+        category: 'troubleshooting',
+      },
     ]);
   });
 });

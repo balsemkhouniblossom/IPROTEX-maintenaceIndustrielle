@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as crypto from 'crypto';
@@ -21,7 +25,10 @@ export class SavedViewsService {
     private readonly savedViewModel: Model<SavedViewDocument>,
   ) {}
 
-  async create(dto: CreateSavedViewDto, actor: SavedViewActor): Promise<SavedViewDocument> {
+  async create(
+    dto: CreateSavedViewDto,
+    actor: SavedViewActor,
+  ): Promise<SavedViewDocument> {
     return this.savedViewModel.create({
       view_id: `VIEW-${crypto.randomUUID()}`,
       user_id: new Types.ObjectId(actor.userId),
@@ -32,7 +39,10 @@ export class SavedViewsService {
     });
   }
 
-  async listForPage(pageKey: string, actor: SavedViewActor): Promise<SavedViewDocument[]> {
+  async listForPage(
+    pageKey: string,
+    actor: SavedViewActor,
+  ): Promise<SavedViewDocument[]> {
     return this.savedViewModel
       .find({ user_id: new Types.ObjectId(actor.userId), page_key: pageKey })
       .sort({ createdAt: -1 })
@@ -57,7 +67,10 @@ export class SavedViewsService {
     await this.savedViewModel.findByIdAndDelete(view._id).exec();
   }
 
-  private async getOwned(id: string, actor: SavedViewActor): Promise<SavedViewDocument> {
+  private async getOwned(
+    id: string,
+    actor: SavedViewActor,
+  ): Promise<SavedViewDocument> {
     const view = await this.savedViewModel.findById(id).exec();
     if (!view) throw new NotFoundException('Saved view not found');
     if (view.user_id.toString() !== actor.userId) {

@@ -32,7 +32,11 @@ export class KnowledgeBaseController {
 
   private ensureReader(req: AuthenticatedRequest): void {
     const role = req.user?.role;
-    if (role !== Role.ADMIN && role !== Role.TECHNICIAN && role !== Role.OPERATOR) {
+    if (
+      role !== Role.ADMIN &&
+      role !== Role.TECHNICIAN &&
+      role !== Role.OPERATOR
+    ) {
       throw new ForbiddenException('Knowledge base access required');
     }
   }
@@ -50,7 +54,10 @@ export class KnowledgeBaseController {
   }
 
   @Post()
-  create(@Body() dto: CreateKnowledgeArticleDto, @Req() req: AuthenticatedRequest) {
+  create(
+    @Body() dto: CreateKnowledgeArticleDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     const actorId = this.ensureManager(req);
     return this.knowledgeBaseService.create(dto, actorId);
   }
@@ -110,7 +117,10 @@ export class KnowledgeBaseController {
       machineTypeId,
       faultCode,
       maintenancePlanId,
-      limit: Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined,
+      limit:
+        Number.isFinite(parsedLimit) && parsedLimit > 0
+          ? parsedLimit
+          : undefined,
     });
   }
 

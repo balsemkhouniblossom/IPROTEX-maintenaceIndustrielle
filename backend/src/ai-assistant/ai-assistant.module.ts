@@ -1,11 +1,17 @@
 import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AiInteraction, AiInteractionSchema } from '../schemas/ai-interaction.schema';
+import {
+  AiInteraction,
+  AiInteractionSchema,
+} from '../schemas/ai-interaction.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { MachineType, MachineTypeSchema } from '../schemas/machine-type.schema';
 import { Panne, PanneSchema } from '../schemas/panne.schema';
-import { PanneSolution, PanneSolutionSchema } from '../schemas/panne-solution.schema';
+import {
+  PanneSolution,
+  PanneSolutionSchema,
+} from '../schemas/panne-solution.schema';
 import { FaultEvent, FaultEventSchema } from '../schemas/fault-event.schema';
 import { WorkOrder, WorkOrderSchema } from '../schemas/work-order.schema';
 import {
@@ -28,7 +34,9 @@ import {
 } from './providers/gemini-ai.provider';
 
 function parseBoolean(value: string | undefined): boolean {
-  return ['1', 'true', 'yes', 'on'].includes((value ?? '').trim().toLowerCase());
+  return ['1', 'true', 'yes', 'on'].includes(
+    (value ?? '').trim().toLowerCase(),
+  );
 }
 
 const aiProviderLogger = new Logger('AiAssistantProvider');
@@ -71,8 +79,10 @@ const aiProviderLogger = new Logger('AiAssistantProvider');
         }
 
         const provider =
-          configService.get<string>('AI_ASSISTANT_PROVIDER')?.trim().toLowerCase() ||
-          'gemini';
+          configService
+            .get<string>('AI_ASSISTANT_PROVIDER')
+            ?.trim()
+            .toLowerCase() || 'gemini';
         if (provider !== 'gemini') {
           aiProviderLogger.error(
             `AI assistant misconfigured: unsupported provider "${provider}"`,
@@ -96,7 +106,9 @@ const aiProviderLogger = new Logger('AiAssistantProvider');
           );
         }
 
-        aiProviderLogger.log(`AI assistant enabled with provider gemini and model ${model}`);
+        aiProviderLogger.log(
+          `AI assistant enabled with provider gemini and model ${model}`,
+        );
         return new GeminiAiProvider({ apiKey, model });
       },
       inject: [ConfigService],

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -60,7 +60,9 @@ describe('Saved views (e2e)', () => {
     // builds indexes asynchronously in the background by default, and
     // `seedBaseData`'s `dropDatabase()` would wipe out an index built
     // beforehand, so this wait must come after seeding, not before it.
-    const savedViews: Model<SavedViewDocument> = app.get(getModelToken(SavedView.name));
+    const savedViews: Model<SavedViewDocument> = app.get(
+      getModelToken(SavedView.name),
+    );
     await savedViews.init();
   }, 120_000);
 
@@ -106,7 +108,9 @@ describe('Saved views (e2e)', () => {
   }
 
   it('rejects an unauthenticated request', async () => {
-    await request(app.getHttpServer()).get('/saved-views?pageKey=work-orders').expect(401);
+    await request(app.getHttpServer())
+      .get('/saved-views?pageKey=work-orders')
+      .expect(401);
   });
 
   let viewId: string;
@@ -131,15 +135,23 @@ describe('Saved views (e2e)', () => {
     await request(app.getHttpServer())
       .post('/saved-views')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ pageKey: 'work-orders', name: 'My open, high priority', query: {} })
+      .send({
+        pageKey: 'work-orders',
+        name: 'My open, high priority',
+        query: {},
+      })
       .expect(500); // Mongo unique-index violation surfaces as a 500 under this app's generic error handling
   });
 
-  it('lists only the calling user\'s views for the requested page', async () => {
+  it("lists only the calling user's views for the requested page", async () => {
     await request(app.getHttpServer())
       .post('/saved-views')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ pageKey: 'users', name: 'Pending approvals', query: { approvalStatus: 'pending' } })
+      .send({
+        pageKey: 'users',
+        name: 'Pending approvals',
+        query: { approvalStatus: 'pending' },
+      })
       .expect(201);
 
     const workOrdersViews = await request(app.getHttpServer())
@@ -156,7 +168,7 @@ describe('Saved views (e2e)', () => {
     expect(otherAdminViews.body).toEqual([]);
   });
 
-  it('forbids a different user from updating or deleting someone else\'s saved view', async () => {
+  it("forbids a different user from updating or deleting someone else's saved view", async () => {
     await request(app.getHttpServer())
       .patch(`/saved-views/${viewId}`)
       .set('Authorization', `Bearer ${otherAdminToken}`)
@@ -169,7 +181,7 @@ describe('Saved views (e2e)', () => {
       .expect(403);
   });
 
-  it('lets the owner update their saved view\'s query and default flag', async () => {
+  it("lets the owner update their saved view's query and default flag", async () => {
     const response = await request(app.getHttpServer())
       .patch(`/saved-views/${viewId}`)
       .set('Authorization', `Bearer ${adminToken}`)

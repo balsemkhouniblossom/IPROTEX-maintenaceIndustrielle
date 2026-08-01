@@ -1,6 +1,9 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { DeviceAuthGuard, DeviceAuthenticatedRequest } from './device-auth.guard';
+import {
+  DeviceAuthGuard,
+  DeviceAuthenticatedRequest,
+} from './device-auth.guard';
 import { DeviceThrottlerGuard } from '../common/throttler/device-throttler.guard';
 import { TelemetryIngestionService } from './telemetry-ingestion.service';
 import { LiveMonitoringGateway } from './live-monitoring.gateway';
@@ -44,7 +47,8 @@ export class DeviceGatewayController {
   @Post('heartbeat')
   async heartbeat(@Req() req: DeviceAuthenticatedRequest) {
     const device = req.device!;
-    const { cameOnline } = await this.telemetryIngestionService.recordHeartbeat(device);
+    const { cameOnline } =
+      await this.telemetryIngestionService.recordHeartbeat(device);
     if (cameOnline) {
       this.liveMonitoringGateway.emitStatusChange(String(device.machine_id), {
         deviceId: device.device_id,
@@ -56,12 +60,16 @@ export class DeviceGatewayController {
   }
 
   @Post('telemetry')
-  async telemetry(@Body() dto: TelemetryIngestDto, @Req() req: DeviceAuthenticatedRequest) {
+  async telemetry(
+    @Body() dto: TelemetryIngestDto,
+    @Req() req: DeviceAuthenticatedRequest,
+  ) {
     const device = req.device!;
-    const { record, cameOnline } = await this.telemetryIngestionService.recordTelemetry(device, {
-      metrics: dto.metrics,
-      recordedAt: dto.recorded_at ? new Date(dto.recorded_at) : undefined,
-    });
+    const { record, cameOnline } =
+      await this.telemetryIngestionService.recordTelemetry(device, {
+        metrics: dto.metrics,
+        recordedAt: dto.recorded_at ? new Date(dto.recorded_at) : undefined,
+      });
 
     this.liveMonitoringGateway.emitTelemetry(String(device.machine_id), {
       deviceId: device.device_id,
@@ -80,14 +88,18 @@ export class DeviceGatewayController {
   }
 
   @Post('fault')
-  async fault(@Body() dto: FaultIngestDto, @Req() req: DeviceAuthenticatedRequest) {
+  async fault(
+    @Body() dto: FaultIngestDto,
+    @Req() req: DeviceAuthenticatedRequest,
+  ) {
     const device = req.device!;
-    const { record, cameOnline } = await this.telemetryIngestionService.recordFault(device, {
-      codePanne: dto.code_panne,
-      severity: dto.severity,
-      message: dto.message,
-      raisedAt: dto.raised_at ? new Date(dto.raised_at) : undefined,
-    });
+    const { record, cameOnline } =
+      await this.telemetryIngestionService.recordFault(device, {
+        codePanne: dto.code_panne,
+        severity: dto.severity,
+        message: dto.message,
+        raisedAt: dto.raised_at ? new Date(dto.raised_at) : undefined,
+      });
 
     this.liveMonitoringGateway.emitFault(String(device.machine_id), {
       id: String(record._id),

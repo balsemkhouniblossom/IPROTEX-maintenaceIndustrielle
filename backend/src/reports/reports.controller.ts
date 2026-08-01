@@ -14,7 +14,10 @@ import {
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AdminOnly, AuthenticatedRoles } from '../auth/decorators/roles.decorator';
+import {
+  AdminOnly,
+  AuthenticatedRoles,
+} from '../auth/decorators/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { ReportsService } from './reports.service';
 import { ScheduledReportsService } from './scheduled-reports.service';
@@ -70,7 +73,10 @@ export class ReportsController {
 
   @Post('schedules')
   @AuthenticatedRoles()
-  createSchedule(@Body() dto: CreateScheduledReportDto, @Req() req: AuthenticatedRequest) {
+  createSchedule(
+    @Body() dto: CreateScheduledReportDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.scheduledReportsService.create(dto, actorFrom(req));
   }
 
@@ -92,13 +98,19 @@ export class ReportsController {
 
   @Post()
   @AuthenticatedRoles()
-  requestReport(@Body() dto: RequestReportDto, @Req() req: AuthenticatedRequest) {
+  requestReport(
+    @Body() dto: RequestReportDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.reportsService.requestReport(dto, actorFrom(req));
   }
 
   @Get()
   @AuthenticatedRoles()
-  listOwnReports(@Req() req: AuthenticatedRequest, @Query() query: ReportsQueryDto) {
+  listOwnReports(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: ReportsQueryDto,
+  ) {
     return this.reportsService.listOwnReports(actorFrom(req), query);
   }
 
@@ -110,7 +122,10 @@ export class ReportsController {
 
   @Delete(':id')
   @AuthenticatedRoles()
-  async deleteReport(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+  async deleteReport(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
     await this.reportsService.deleteReport(id, actorFrom(req));
     return { deleted: true };
   }
@@ -123,7 +138,10 @@ export class ReportsController {
     @Req() req: AuthenticatedRequest,
     @Res() res: Response,
   ) {
-    const { file, report } = await this.reportsService.downloadReport(id, actorFrom(req));
+    const { file, report } = await this.reportsService.downloadReport(
+      id,
+      actorFrom(req),
+    );
 
     res.setHeader('Content-Type', file.contentType);
     res.setHeader('Content-Length', String(file.size));

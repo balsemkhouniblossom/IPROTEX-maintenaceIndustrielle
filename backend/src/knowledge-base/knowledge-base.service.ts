@@ -13,7 +13,10 @@ import {
   KnowledgeArticleStatus,
 } from '../schemas/knowledge-article.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
-import { MachineType, MachineTypeDocument } from '../schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../schemas/machine-type.schema';
 import {
   MaintenancePlan,
   MaintenancePlanDocument,
@@ -132,7 +135,10 @@ export class KnowledgeBaseService {
     const article = await this.articleModel.findById(id).exec();
     if (!article) throw new NotFoundException('Knowledge article not found');
 
-    if (requirePublished && article.status !== KnowledgeArticleStatus.PUBLISHED) {
+    if (
+      requirePublished &&
+      article.status !== KnowledgeArticleStatus.PUBLISHED
+    ) {
       throw new NotFoundException('Knowledge article not found');
     }
     return article;
@@ -177,7 +183,9 @@ export class KnowledgeBaseService {
       clauses.push({ machine_type_id: new Types.ObjectId(machineTypeId) });
     }
     if (maintenancePlanId && Types.ObjectId.isValid(maintenancePlanId)) {
-      clauses.push({ maintenance_plan_id: new Types.ObjectId(maintenancePlanId) });
+      clauses.push({
+        maintenance_plan_id: new Types.ObjectId(maintenancePlanId),
+      });
     }
     if (faultCode) {
       clauses.push({ fault_codes: faultCode });
@@ -192,7 +200,8 @@ export class KnowledgeBaseService {
 
     const scored = candidates.map((article) => {
       let score = 0;
-      if (machineId && String(article.machine_id ?? '') === machineId) score += 1;
+      if (machineId && String(article.machine_id ?? '') === machineId)
+        score += 1;
       if (
         machineTypeId &&
         String(article.machine_type_id ?? '') === machineTypeId
@@ -247,7 +256,11 @@ export class KnowledgeBaseService {
     return updated;
   }
 
-  async publish(id: string, dto: KnowledgeArticleTransitionDto, actorId?: string) {
+  async publish(
+    id: string,
+    dto: KnowledgeArticleTransitionDto,
+    actorId?: string,
+  ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid knowledge article id');
     }
@@ -350,7 +363,11 @@ export class KnowledgeBaseService {
     }
   }
 
-  async archive(id: string, dto: KnowledgeArticleTransitionDto, actorId?: string) {
+  async archive(
+    id: string,
+    dto: KnowledgeArticleTransitionDto,
+    actorId?: string,
+  ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid knowledge article id');
     }
@@ -360,7 +377,10 @@ export class KnowledgeBaseService {
     return this.applyTransition(
       existing,
       {
-        allowedFrom: [KnowledgeArticleStatus.DRAFT, KnowledgeArticleStatus.PUBLISHED],
+        allowedFrom: [
+          KnowledgeArticleStatus.DRAFT,
+          KnowledgeArticleStatus.PUBLISHED,
+        ],
         to: KnowledgeArticleStatus.ARCHIVED,
         action: 'archived',
         verb: 'archive',
@@ -410,7 +430,8 @@ export class KnowledgeBaseService {
       tags: dto.tags ?? existing.tags,
       machine_type_id: dto.machine_type_id ?? existing.machine_type_id,
       machine_id: dto.machine_id ?? existing.machine_id,
-      maintenance_plan_id: dto.maintenance_plan_id ?? existing.maintenance_plan_id,
+      maintenance_plan_id:
+        dto.maintenance_plan_id ?? existing.maintenance_plan_id,
       preventive_task_id: dto.preventive_task_id ?? existing.preventive_task_id,
       fault_codes: dto.fault_codes ?? existing.fault_codes,
       error_codes: dto.error_codes ?? existing.error_codes,
@@ -492,7 +513,11 @@ export class KnowledgeBaseService {
     const now = new Date();
     const updated = await this.articleModel
       .findOneAndUpdate(
-        { _id: existing._id, ...statusFilter, ...this.versionFilter(existing.version) },
+        {
+          _id: existing._id,
+          ...statusFilter,
+          ...this.versionFilter(existing.version),
+        },
         {
           $set: { status: rule.to },
           $inc: { version: 1 },
@@ -537,17 +562,24 @@ export class KnowledgeBaseService {
   }
 
   private versionFilter(version?: number): Record<string, unknown> {
-    return version === undefined ? { version: { $exists: false } } : { version };
+    return version === undefined
+      ? { version: { $exists: false } }
+      : { version };
   }
 
-  private buildFilterQuery(filters: KnowledgeArticleFilters): Record<string, unknown> {
+  private buildFilterQuery(
+    filters: KnowledgeArticleFilters,
+  ): Record<string, unknown> {
     const query: Record<string, unknown> = {};
     if (filters.status) query.status = filters.status;
     if (filters.category) query.category = filters.category;
     if (filters.machineId && Types.ObjectId.isValid(filters.machineId)) {
       query.machine_id = new Types.ObjectId(filters.machineId);
     }
-    if (filters.machineTypeId && Types.ObjectId.isValid(filters.machineTypeId)) {
+    if (
+      filters.machineTypeId &&
+      Types.ObjectId.isValid(filters.machineTypeId)
+    ) {
       query.machine_type_id = new Types.ObjectId(filters.machineTypeId);
     }
     if (
@@ -564,23 +596,31 @@ export class KnowledgeBaseService {
     return query;
   }
 
-  private async assertLinkedRecordsExist(links: LinkedRecordIds): Promise<void> {
+  private async assertLinkedRecordsExist(
+    links: LinkedRecordIds,
+  ): Promise<void> {
     if (links.machine_type_id !== undefined) {
       const exists = await this.machineTypeModel
         .exists({ _id: links.machine_type_id })
         .exec();
-      if (!exists) throw new BadRequestException('Referenced machine type does not exist');
+      if (!exists)
+        throw new BadRequestException('Referenced machine type does not exist');
     }
     if (links.machine_id !== undefined) {
-      const exists = await this.machineModel.exists({ _id: links.machine_id }).exec();
-      if (!exists) throw new BadRequestException('Referenced machine does not exist');
+      const exists = await this.machineModel
+        .exists({ _id: links.machine_id })
+        .exec();
+      if (!exists)
+        throw new BadRequestException('Referenced machine does not exist');
     }
     if (links.maintenance_plan_id !== undefined) {
       const exists = await this.maintenancePlanModel
         .exists({ _id: links.maintenance_plan_id })
         .exec();
       if (!exists) {
-        throw new BadRequestException('Referenced maintenance plan does not exist');
+        throw new BadRequestException(
+          'Referenced maintenance plan does not exist',
+        );
       }
     }
     if (links.preventive_task_id !== undefined) {
@@ -588,12 +628,16 @@ export class KnowledgeBaseService {
         .exists({ _id: links.preventive_task_id })
         .exec();
       if (!exists) {
-        throw new BadRequestException('Referenced preventive task does not exist');
+        throw new BadRequestException(
+          'Referenced preventive task does not exist',
+        );
       }
     }
   }
 
   private toObjectIdOrUndefined(id?: string): Types.ObjectId | undefined {
-    return id && Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : undefined;
+    return id && Types.ObjectId.isValid(id)
+      ? new Types.ObjectId(id)
+      : undefined;
   }
 }

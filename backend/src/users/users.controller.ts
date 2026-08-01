@@ -80,7 +80,9 @@ export class UsersController {
     }
   }
 
-  private async deleteManagedAvatarIfPresent(photo?: string | null): Promise<void> {
+  private async deleteManagedAvatarIfPresent(
+    photo?: string | null,
+  ): Promise<void> {
     const fileName = getManagedAvatarFileName(photo);
     if (fileName) {
       await this.deleteAvatarFile(toManagedUserPhotoPath(fileName));
@@ -115,8 +117,11 @@ export class UsersController {
 
     const storedAvatar = await this.fileUploadService.storeAvatar(file);
     const photoPath = storedAvatar.relativePath;
-    const photoUrl = storedAvatar.shouldPersistUrl ? storedAvatar.url : undefined;
-    const rollbackPhotoRef = storedAvatar.storageKey ?? storedAvatar.relativePath;
+    const photoUrl = storedAvatar.shouldPersistUrl
+      ? storedAvatar.url
+      : undefined;
+    const rollbackPhotoRef =
+      storedAvatar.storageKey ?? storedAvatar.relativePath;
 
     let updatedUser: UserDocument | null = null;
     let previousPhoto: string | null | undefined;
@@ -284,7 +289,8 @@ export class UsersController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, AdminAccountGuard)
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  async remove(@Param('id') id: string) {
+    const removed = await this.usersService.remove(id);
+    return this.sanitizeUser(removed);
   }
 }

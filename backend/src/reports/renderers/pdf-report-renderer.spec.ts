@@ -41,21 +41,31 @@ describe('PdfReportRenderer', () => {
   });
 
   it('handles a wide dataset (many columns) without throwing', async () => {
-    const columns = Array.from({ length: 10 }, (_, i) => ({ key: `c${i}`, label: `Column ${i}` }));
+    const columns = Array.from({ length: 10 }, (_, i) => ({
+      key: `c${i}`,
+      label: `Column ${i}`,
+    }));
     const row = Object.fromEntries(columns.map((c) => [c.key, 'value']));
     const buffer = await renderer.render(dataset({ columns, rows: [row] }));
     expect(buffer.subarray(0, 5).toString('ascii')).toBe('%PDF-');
   });
 
   it('produces a larger document for many rows than for one row (pagination path exercised)', async () => {
-    const manyRows = Array.from({ length: 200 }, (_, i) => ({ a: String(i), b: String(i * 2) }));
-    const small = await renderer.render(dataset({ rows: [{ a: '1', b: '2' }] }));
+    const manyRows = Array.from({ length: 200 }, (_, i) => ({
+      a: String(i),
+      b: String(i * 2),
+    }));
+    const small = await renderer.render(
+      dataset({ rows: [{ a: '1', b: '2' }] }),
+    );
     const large = await renderer.render(dataset({ rows: manyRows }));
     expect(large.length).toBeGreaterThan(small.length);
   });
 
   it('renders a summary section without throwing', async () => {
-    const buffer = await renderer.render(dataset({ summary: [{ label: 'Total', value: 42 }] }));
+    const buffer = await renderer.render(
+      dataset({ summary: [{ label: 'Total', value: 42 }] }),
+    );
     expect(buffer.subarray(0, 5).toString('ascii')).toBe('%PDF-');
   });
 });

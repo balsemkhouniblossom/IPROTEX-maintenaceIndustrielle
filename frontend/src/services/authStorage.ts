@@ -39,6 +39,7 @@ export function saveAuthSession(
   user: unknown,
   persistent: boolean,
 ) {
+  void _refreshToken;
   const target = persistent ? localStorage : sessionStorage;
   const other = persistent ? sessionStorage : localStorage;
 
@@ -50,6 +51,7 @@ export function saveAuthSession(
 }
 
 export function updateStoredTokens(token: string, _refreshToken?: string) {
+  void _refreshToken;
   const target = localStorage.getItem('user') ? localStorage : sessionStorage;
   target.setItem('token', token);
   localStorage.removeItem('refresh_token');

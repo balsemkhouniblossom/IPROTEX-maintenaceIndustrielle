@@ -36,8 +36,6 @@ export default function LubrifiantsPage() {
           limit,
         });
 
-        console.log("LUBRIFIANTS RESPONSE:", res.data);
-
         const data = res.data;
 
         setItems(data.items ?? []);

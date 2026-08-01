@@ -80,7 +80,9 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     }
 
     try {
-      const buffer = await fs.readFile(join(process.cwd(), 'uploads', fileName));
+      const buffer = await fs.readFile(
+        join(process.cwd(), 'uploads', fileName),
+      );
       return {
         buffer,
         contentType: getContentType(fileName),
@@ -107,7 +109,10 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     return fileName.startsWith(MANAGED_AVATAR_FILE_PREFIX);
   }
 
-  async resolveUrl(stablePath?: string | null, storedUrl?: string | null): Promise<string> {
+  async resolveUrl(
+    stablePath?: string | null,
+    storedUrl?: string | null,
+  ): Promise<string> {
     return storedUrl || stablePath || '';
   }
 

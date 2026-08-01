@@ -43,9 +43,13 @@ export class EmailController {
         text: 'This is a restricted Iprotex email delivery diagnostic.',
         html: '<p>This is a restricted Iprotex email delivery diagnostic.</p>',
       });
-      this.authThrottleService.recordSuccess('email-diagnostic', req as Request, {
-        email: req.user?.email,
-      });
+      this.authThrottleService.recordSuccess(
+        'email-diagnostic',
+        req as Request,
+        {
+          email: req.user?.email,
+        },
+      );
       this.recordAuditEvent(req, 'sent');
 
       return {
@@ -55,9 +59,13 @@ export class EmailController {
         timestamp: new Date().toISOString(),
       };
     } catch {
-      this.authThrottleService.recordFailure('email-diagnostic', req as Request, {
-        email: req.user?.email,
-      });
+      this.authThrottleService.recordFailure(
+        'email-diagnostic',
+        req as Request,
+        {
+          email: req.user?.email,
+        },
+      );
       this.recordAuditEvent(req, 'failed');
       throw new BadGatewayException({
         code: 'EMAIL_DIAGNOSTIC_FAILED',

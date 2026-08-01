@@ -50,14 +50,19 @@ export class ZScoreModel implements PredictionModel {
 
   score(features: number[], artifact: ModelArtifact): ModelInferenceResult {
     const { mean, std } = artifact as ZScoreArtifact;
-    const zScores = features.map((value, i) => Math.abs((value - mean[i]) / std[i]));
-    const avgAbsZ = zScores.reduce((sum, z) => sum + z, 0) / Math.max(zScores.length, 1);
+    const zScores = features.map((value, i) =>
+      Math.abs((value - mean[i]) / std[i]),
+    );
+    const avgAbsZ =
+      zScores.reduce((sum, z) => sum + z, 0) / Math.max(zScores.length, 1);
     const maxZ = Math.max(0, ...zScores);
     const maxZIndex = zScores.indexOf(maxZ);
 
     return {
       anomalyScore: squash(avgAbsZ, SQUASH_SCALE),
-      confidence: clamp01(artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES),
+      confidence: clamp01(
+        artifact.trainingSampleCount / CONFIDENCE_FULL_AT_SAMPLES,
+      ),
       modelNotes: [
         `Average deviation from baseline: ${avgAbsZ.toFixed(2)} standard deviations.`,
         maxZ > 2

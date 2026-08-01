@@ -5,6 +5,7 @@ import {
   HttpException,
   Injectable,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -55,6 +56,7 @@ interface JwtPayload {
   user_id?: string;
   type?: 'access' | 'refresh';
   jti?: string;
+  iat?: number;
 }
 
 export interface LoginResult {
@@ -293,6 +295,17 @@ export class AuthService {
     }
 
     validateSessionRestoreAccess(user);
+
+    if (
+      user.credentials_invalidated_at &&
+      typeof payload.iat === 'number' &&
+      payload.iat * 1000 < user.credentials_invalidated_at.getTime()
+    ) {
+      throwRefreshTokenError(
+        RefreshTokenErrorCode.REFRESH_TOKEN_REVOKED,
+        'The refresh token is no longer valid.',
+      );
+    }
 
     const storedRefreshHash = user.refresh_token_hash;
     if (!storedRefreshHash) {
@@ -578,7 +591,10 @@ export class AuthService {
         );
       }
 
-      if (approvalStatus === ApprovalStatus.APPROVED && !resolved.user.is_active) {
+      if (
+        approvalStatus === ApprovalStatus.APPROVED &&
+        !resolved.user.is_active
+      ) {
         return this.redirectGoogleResult(
           res,
           frontendOrigin,
@@ -766,7 +782,9 @@ export class AuthService {
     userId: string,
     dto: CompleteGoogleProfileDto,
   ): Promise<{
-    code: 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL' | 'GOOGLE_PROFILE_COMPLETED';
+    code:
+      | 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL'
+      | 'GOOGLE_PROFILE_COMPLETED';
     mandatoryFields: string[];
     user: UserWithoutSensitiveData;
   }> {
@@ -857,14 +875,7 @@ export class AuthService {
   }
 
   getMandatoryGoogleProfileFields(): string[] {
-    return [
-      'nom_complet',
-      'email',
-      'phone',
-      'role',
-      'department',
-      'language',
-    ];
+    return ['nom_complet', 'email', 'phone', 'role', 'department', 'language'];
   }
 
   private isGoogleProfileComplete(user: UserDocument): boolean {
@@ -872,14 +883,14 @@ export class AuthService {
 
     return Boolean(
       user.nom_complet?.trim() &&
-        user.email?.trim() &&
-        user.phone?.trim() &&
-        (user.role === Role.OPERATOR || user.role === Role.TECHNICIAN) &&
-        user.department?.trim() &&
-        user.language?.trim() &&
-        SUPPORTED_PROFILE_LANGUAGES.includes(
-          user.language as (typeof SUPPORTED_PROFILE_LANGUAGES)[number],
-        ),
+      user.email?.trim() &&
+      user.phone?.trim() &&
+      (user.role === Role.OPERATOR || user.role === Role.TECHNICIAN) &&
+      user.department?.trim() &&
+      user.language?.trim() &&
+      SUPPORTED_PROFILE_LANGUAGES.includes(
+        user.language as (typeof SUPPORTED_PROFILE_LANGUAGES)[number],
+      ),
     );
   }
 
@@ -1064,7 +1075,9 @@ export class AuthService {
     return frontendBaseUrl;
   }
 
-  private async sanitizeUser(user: SanitizableUser): Promise<UserWithoutSensitiveData> {
+  private async sanitizeUser(
+    user: SanitizableUser,
+  ): Promise<UserWithoutSensitiveData> {
     const userObj =
       typeof (user as UserDocument).toObject === 'function'
         ? ((user as UserDocument).toObject() as Record<string, unknown>)
@@ -1204,10 +1217,57 @@ export class AuthService {
           reset_password_token: null,
           reset_password_expires: null,
           refresh_token_hash: null,
+          must_reset_password: false,
         },
         { new: true },
       )
       .exec();
+  }
+
+  /**
+   * Admin-triggered equivalent of the self-service forgot-password flow,
+   * for an account whose credentials must be treated as compromised (e.g.
+   * it appeared in an exposed backup). Flags the account so
+   * `validateAccountAccess` rejects it everywhere (login and every
+   * subsequent authenticated request) until a new password is set, revokes
+   * its stored refresh-token hash, and stamps `credentials_invalidated_at`
+   * so any access/refresh token already issued to it — even one still
+   * inside its normal expiry window — stops working on its very next use.
+   * Then reuses `forgotPassword`'s own token generation + email delivery so
+   * the account gets the exact same reset link a self-service request
+   * would produce.
+   */
+  async forcePasswordReset(userId: string, frontendOrigin?: string) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException({
+        code: 'INVALID_USER_ID',
+        message: 'Invalid user id.',
+      });
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found.',
+      });
+    }
+
+    await this.userModel
+      .findByIdAndUpdate(userId, {
+        must_reset_password: true,
+        credentials_invalidated_at: new Date(),
+        refresh_token_hash: null,
+      })
+      .exec();
+
+    await this.forgotPassword(user.email, user.language, frontendOrigin);
+
+    return {
+      code: 'PASSWORD_RESET_FORCED',
+      message:
+        'The account now requires a password reset; all of its active sessions were revoked.',
+    };
   }
 
   private hashResetToken(token: string): string {

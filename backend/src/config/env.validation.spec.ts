@@ -47,7 +47,9 @@ describe('validateEnvironment', () => {
 
     expect(env.nodeEnv).toBe('production');
     expect(env.port).toBe(3001);
-    expect(env.corsOrigins).toEqual(['https://pfe-maintenace-industrielle.vercel.app']);
+    expect(env.corsOrigins).toEqual([
+      'https://pfe-maintenace-industrielle.vercel.app',
+    ]);
     expect(env.enableLegacyEmailTokens).toBe(false);
     expect(env.enableLegacyResetTokens).toBe(false);
     expect(env.enableEventBasedEmails).toBe(false);
@@ -331,9 +333,11 @@ describe('validateEnvironment', () => {
     const env = validateEnvironment();
     expect(env.corsOrigins).toHaveLength(1);
     expect(env.corsOrigins[0]).toBeInstanceOf(RegExp);
-    expect((env.corsOrigins[0] as RegExp).test('https://pfe-maintenace-industrielle.vercel.app')).toBe(
-      true,
-    );
+    expect(
+      (env.corsOrigins[0] as RegExp).test(
+        'https://pfe-maintenace-industrielle.vercel.app',
+      ),
+    ).toBe(true);
   });
 
   it('keeps localhost fallback CORS support in development', () => {
@@ -378,7 +382,9 @@ describe('validateEnvironment', () => {
 
     const env = validateEnvironment();
 
-    expect(env.frontendBaseUrl).toBe('https://pfe-maintenace-industrielle.vercel.app');
+    expect(env.frontendBaseUrl).toBe(
+      'https://pfe-maintenace-industrielle.vercel.app',
+    );
   });
 
   it('accepts CORS origins from ALLOWED_ORIGINS alias', () => {
@@ -393,12 +399,15 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
     process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
-    process.env.ALLOWED_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.ALLOWED_ORIGINS =
+      'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.CORS_ORIGINS;
 
     const env = validateEnvironment();
 
-    expect(env.corsOrigins).toEqual(['https://pfe-maintenace-industrielle.vercel.app']);
+    expect(env.corsOrigins).toEqual([
+      'https://pfe-maintenace-industrielle.vercel.app',
+    ]);
   });
 
   it('allows production when EMAIL_VERIFICATION_SECRET is missing but JWT_SECRET exists', () => {
@@ -412,7 +421,8 @@ describe('validateEnvironment', () => {
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
-    process.env.FRONTEND_BASE_URL = 'https://pfe-maintenace-industrielle.vercel.app';
+    process.env.FRONTEND_BASE_URL =
+      'https://pfe-maintenace-industrielle.vercel.app';
     process.env.CORS_ORIGINS = 'https://pfe-maintenace-industrielle.vercel.app';
     delete process.env.EMAIL_VERIFICATION_SECRET;
 
@@ -506,7 +516,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
     process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
@@ -528,7 +539,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
     process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
@@ -550,7 +562,8 @@ describe('validateEnvironment', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
-    process.env.GOOGLE_CLIENT_ID = 'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
     process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
     process.env.APP_URL = 'https://pfe-maintenace-industrielle.vercel.app';
@@ -671,7 +684,9 @@ describe('validateEnvironment', () => {
     process.env.NODE_ENV = 'test';
     process.env[key] = '0';
 
-    expect(() => validateEnvironment()).toThrow(`${key} must be a positive integer`);
+    expect(() => validateEnvironment()).toThrow(
+      `${key} must be a positive integer`,
+    );
   });
 
   it('allows throttle env vars to be unset, relying on defaults applied at point of use', () => {
@@ -684,4 +699,3 @@ describe('validateEnvironment', () => {
     expect(() => validateEnvironment()).not.toThrow();
   });
 });
-

@@ -41,12 +41,20 @@ describe('canRequestReportType', () => {
   });
 
   it('restricts Operator to machine history only', () => {
-    expect(canRequestReportType(Role.OPERATOR, ReportType.MACHINE_HISTORY)).toBe(true);
-    expect(canRequestReportType(Role.OPERATOR, ReportType.PREVENTIVE_COMPLIANCE)).toBe(false);
+    expect(
+      canRequestReportType(Role.OPERATOR, ReportType.MACHINE_HISTORY),
+    ).toBe(true);
+    expect(
+      canRequestReportType(Role.OPERATOR, ReportType.PREVENTIVE_COMPLIANCE),
+    ).toBe(false);
   });
 
   it('returns false for an undefined or unknown role', () => {
-    expect(canRequestReportType(undefined, ReportType.MACHINE_HISTORY)).toBe(false);
-    expect(canRequestReportType('not-a-role', ReportType.MACHINE_HISTORY)).toBe(false);
+    expect(canRequestReportType(undefined, ReportType.MACHINE_HISTORY)).toBe(
+      false,
+    );
+    expect(canRequestReportType('not-a-role', ReportType.MACHINE_HISTORY)).toBe(
+      false,
+    );
   });
 });

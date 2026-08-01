@@ -15,7 +15,11 @@ function idString(value: unknown): string {
 }
 
 function matchesCondition(value: unknown, condition: unknown): boolean {
-  if (condition && typeof condition === 'object' && !(condition instanceof Types.ObjectId)) {
+  if (
+    condition &&
+    typeof condition === 'object' &&
+    !(condition instanceof Types.ObjectId)
+  ) {
     const cond = condition as Record<string, unknown>;
     if ('$in' in cond) {
       const arr = cond['$in'] as unknown[];
@@ -57,15 +61,19 @@ function matchesFilter(
 function createWorkOrderModel(docs: WorkOrderRecord[]) {
   return {
     distinct: jest.fn((field: string, filter: Record<string, unknown>) => ({
-      exec: jest.fn().mockResolvedValue(
-        [
-          ...new Set(
-            docs
-              .filter((doc) => matchesFilter(doc, filter))
-              .map((doc) => idString((doc as Record<string, unknown>)[field])),
-          ),
-        ].map((hex) => new Types.ObjectId(hex)),
-      ),
+      exec: jest
+        .fn()
+        .mockResolvedValue(
+          [
+            ...new Set(
+              docs
+                .filter((doc) => matchesFilter(doc, filter))
+                .map((doc) =>
+                  idString((doc as Record<string, unknown>)[field]),
+                ),
+            ),
+          ].map((hex) => new Types.ObjectId(hex)),
+        ),
     })),
     exists: jest.fn((filter: Record<string, unknown>) => ({
       exec: jest
@@ -83,14 +91,18 @@ function createUserModel(assignedMachineIds: Types.ObjectId[]) {
   return {
     findById: jest.fn().mockReturnValue({
       select: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue({ assigned_machine_ids: assignedMachineIds }),
+      exec: jest
+        .fn()
+        .mockResolvedValue({ assigned_machine_ids: assignedMachineIds }),
     }),
   };
 }
 
 function createMachineModel() {
   return {
-    exists: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }),
+    exists: jest
+      .fn()
+      .mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }),
   };
 }
 
@@ -113,7 +125,12 @@ describe('DocumentAccessService technician authorization consistency', () => {
   it('grants access to a machine reachable only through an explicitly assigned, currently claimable work order', async () => {
     const machineId = new Types.ObjectId();
     const workOrders: WorkOrderRecord[] = [
-      { _id: new Types.ObjectId(), machine_id: machineId, technician_id: null, status: 'ouvert' },
+      {
+        _id: new Types.ObjectId(),
+        machine_id: machineId,
+        technician_id: null,
+        status: 'ouvert',
+      },
     ];
     const service = buildService(workOrders, [machineId]);
 
@@ -121,7 +138,9 @@ describe('DocumentAccessService technician authorization consistency', () => {
       userId: technicianId,
       role: Role.TECHNICIAN,
     });
-    expect(accessible?.map((id) => id.toHexString())).toContain(machineId.toHexString());
+    expect(accessible?.map((id) => id.toHexString())).toContain(
+      machineId.toHexString(),
+    );
 
     await expect(
       service.assertCanAccessMachine(
@@ -152,7 +171,9 @@ describe('DocumentAccessService technician authorization consistency', () => {
       userId: technicianId,
       role: Role.TECHNICIAN,
     });
-    expect(accessible?.map((id) => id.toHexString())).toContain(machineId.toHexString());
+    expect(accessible?.map((id) => id.toHexString())).toContain(
+      machineId.toHexString(),
+    );
 
     await expect(
       service.assertCanAccessMachine(
@@ -227,7 +248,12 @@ describe('DocumentAccessService technician authorization consistency', () => {
   it('rejects a machine that became claimable only for a different technician assigned to it', async () => {
     const machineId = new Types.ObjectId();
     const workOrders: WorkOrderRecord[] = [
-      { _id: new Types.ObjectId(), machine_id: machineId, technician_id: null, status: 'ouvert' },
+      {
+        _id: new Types.ObjectId(),
+        machine_id: machineId,
+        technician_id: null,
+        status: 'ouvert',
+      },
     ];
     // Machine is assigned to the OTHER technician, not the requester.
     const service = buildService(workOrders, []);
@@ -245,8 +271,18 @@ describe('DocumentAccessService technician authorization consistency', () => {
     const claimableMachine = new Types.ObjectId();
     const assignedMachineIds = [claimableMachine];
     const workOrders: WorkOrderRecord[] = [
-      { _id: new Types.ObjectId(), machine_id: ownMachine, technician_id: technicianId, status: 'en cours' },
-      { _id: new Types.ObjectId(), machine_id: claimableMachine, technician_id: null, status: 'ouvert' },
+      {
+        _id: new Types.ObjectId(),
+        machine_id: ownMachine,
+        technician_id: technicianId,
+        status: 'en cours',
+      },
+      {
+        _id: new Types.ObjectId(),
+        machine_id: claimableMachine,
+        technician_id: null,
+        status: 'ouvert',
+      },
     ];
     const service = buildService(workOrders, assignedMachineIds);
 

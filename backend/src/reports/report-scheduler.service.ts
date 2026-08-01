@@ -51,8 +51,14 @@ function resolveScheduledParameters(
   }
 
   const dateTo = now;
-  const dateFrom = new Date(now.getTime() - relativeRangeDays * 24 * 60 * 60 * 1000);
-  return { ...template, dateFrom: dateFrom.toISOString(), dateTo: dateTo.toISOString() };
+  const dateFrom = new Date(
+    now.getTime() - relativeRangeDays * 24 * 60 * 60 * 1000,
+  );
+  return {
+    ...template,
+    dateFrom: dateFrom.toISOString(),
+    dateTo: dateTo.toISOString(),
+  };
 }
 
 /**
@@ -93,12 +99,13 @@ export class ReportSchedulerService {
     let failed = 0;
     for (const schedule of due) {
       try {
-        // eslint-disable-next-line no-await-in-loop
         await this.fireSchedule(schedule, now);
         generated += 1;
       } catch (error) {
         failed += 1;
-        this.logger.warn(`Failed to fire scheduled report ${schedule.schedule_id}: ${String(error)}`);
+        this.logger.warn(
+          `Failed to fire scheduled report ${schedule.schedule_id}: ${String(error)}`,
+        );
       }
     }
 
@@ -106,7 +113,10 @@ export class ReportSchedulerService {
     return { generated, failed, expiredCleaned };
   }
 
-  private async fireSchedule(schedule: ScheduledReportDocument, now: Date): Promise<void> {
+  private async fireSchedule(
+    schedule: ScheduledReportDocument,
+    now: Date,
+  ): Promise<void> {
     const actor = { userId: schedule.created_by.toString(), role: 'admin' };
     const parameters = resolveScheduledParameters(schedule.parameters, now);
 
@@ -142,28 +152,37 @@ export class ReportSchedulerService {
           referenceId: completed._id.toString(),
         })
         .catch((error) => {
-          this.logger.warn(`Failed to create report-ready notification: ${String(error)}`);
+          this.logger.warn(
+            `Failed to create report-ready notification: ${String(error)}`,
+          );
         });
     }
   }
 
   private async cleanupExpiredReports(): Promise<number> {
     const expired = await this.generatedReportModel
-      .find({ expires_at: { $lte: new Date() }, file_path: { $exists: true, $ne: null } })
+      .find({
+        expires_at: { $lte: new Date() },
+        file_path: { $exists: true, $ne: null },
+      })
       .exec();
 
     for (const report of expired) {
       try {
-        if (report.file_path && this.fileStorageService.ownsFile(report.file_path)) {
-          // eslint-disable-next-line no-await-in-loop
+        if (
+          report.file_path &&
+          this.fileStorageService.ownsFile(report.file_path)
+        ) {
           await this.fileStorageService.delete(report.file_path);
         }
-        // eslint-disable-next-line no-await-in-loop
+
         await this.generatedReportModel
           .findByIdAndUpdate(report._id, { $unset: { file_path: 1 } })
           .exec();
       } catch (error) {
-        this.logger.warn(`Failed to clean up expired report ${report.report_id}: ${String(error)}`);
+        this.logger.warn(
+          `Failed to clean up expired report ${report.report_id}: ${String(error)}`,
+        );
       }
     }
 

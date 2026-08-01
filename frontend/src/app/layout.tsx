@@ -43,7 +43,8 @@ function buildThemeInitScript() {
         .split('; ')
         .find((entry) => entry.startsWith(cookieName + '='))
         ?.split('=')[1];
-      const preference = storedTheme || cookieTheme || root.dataset.themePreference || 'system';
+      const isThemePreference = (value) => value === 'light' || value === 'dark' || value === 'system';
+      const preference = [storedTheme, cookieTheme, root.dataset.themePreference].find(isThemePreference) || 'system';
       const resolvedTheme = preference === 'system'
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : preference;

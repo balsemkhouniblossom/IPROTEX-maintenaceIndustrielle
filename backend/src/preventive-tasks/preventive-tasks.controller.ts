@@ -48,10 +48,7 @@ export class PreventiveTasksController {
   }
   @Patch(':id')
   @AdminOnly()
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdatePreventiveTaskDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdatePreventiveTaskDto) {
     return this.service.update(id, dto);
   }
   @Delete(':id')

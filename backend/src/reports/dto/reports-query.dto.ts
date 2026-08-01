@@ -1,6 +1,10 @@
 import { Transform } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { ReportFormat, ReportStatus, ReportType } from '../../schemas/generated-report.schema';
+import {
+  ReportFormat,
+  ReportStatus,
+  ReportType,
+} from '../../schemas/generated-report.schema';
 
 export class ReportsQueryDto {
   @IsOptional()

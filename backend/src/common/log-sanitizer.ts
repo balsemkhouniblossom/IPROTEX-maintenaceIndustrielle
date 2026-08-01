@@ -27,11 +27,7 @@ export function getRequestId(request: RequestWithLogContext): string {
 }
 
 export function getRequestPathname(request: Request): string {
-  const rawPath =
-    request.path ||
-    request.originalUrl ||
-    request.url ||
-    '/';
+  const rawPath = request.path || request.originalUrl || request.url || '/';
 
   try {
     const parsed = new URL(rawPath, 'http://internal.local');

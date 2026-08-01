@@ -136,6 +136,53 @@ describe('validateAccountAccess', () => {
       AccountAccessErrorCode.ACCOUNT_ROLE_NOT_ALLOWED,
     );
   });
+
+  it('blocks an otherwise fully valid account once must_reset_password is set', () => {
+    expectAccessCode(
+      {
+        approval_status: ApprovalStatus.APPROVED,
+        is_active: true,
+        is_verified: true,
+        role: Role.OPERATOR,
+        must_reset_password: true,
+      },
+      AccountAccessErrorCode.PASSWORD_RESET_REQUIRED,
+    );
+  });
+
+  it('does not block an account when must_reset_password is false or unset', () => {
+    expect(() =>
+      validateAccountAccess({
+        approval_status: ApprovalStatus.APPROVED,
+        is_active: true,
+        is_verified: true,
+        role: Role.OPERATOR,
+        must_reset_password: false,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      validateAccountAccess({
+        approval_status: ApprovalStatus.APPROVED,
+        is_active: true,
+        is_verified: true,
+        role: Role.OPERATOR,
+      }),
+    ).not.toThrow();
+  });
+
+  it('reports a more specific reason (e.g. rejected) ahead of must_reset_password', () => {
+    expectAccessCode(
+      {
+        approval_status: ApprovalStatus.REJECTED,
+        is_active: false,
+        is_verified: true,
+        role: Role.OPERATOR,
+        must_reset_password: true,
+      },
+      AccountAccessErrorCode.ACCOUNT_REJECTED,
+    );
+  });
 });
 
 describe('validateSessionRestoreAccess', () => {

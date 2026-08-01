@@ -27,10 +27,12 @@ export function getManagedAvatarFileName(photo?: string | null): string | null {
   return fileName;
 }
 
-export function shouldExposeUserAvatar(user?: {
-  is_active?: boolean;
-  approval_status?: string;
-} | null): boolean {
+export function shouldExposeUserAvatar(
+  user?: {
+    is_active?: boolean;
+    approval_status?: string;
+  } | null,
+): boolean {
   if (!user || user.is_active === false) return false;
   return (
     user.approval_status === ApprovalStatus.APPROVED ||

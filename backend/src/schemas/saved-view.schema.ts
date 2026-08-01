@@ -34,7 +34,4 @@ export class SavedView {
 
 export const SavedViewSchema = SchemaFactory.createForClass(SavedView);
 SavedViewSchema.index({ user_id: 1, page_key: 1 });
-SavedViewSchema.index(
-  { user_id: 1, page_key: 1, name: 1 },
-  { unique: true },
-);
+SavedViewSchema.index({ user_id: 1, page_key: 1, name: 1 }, { unique: true });

@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { FaultEvent, FaultEventDocument, FaultEventSeverity } from '../../schemas/fault-event.schema';
+import {
+  FaultEvent,
+  FaultEventDocument,
+  FaultEventSeverity,
+} from '../../schemas/fault-event.schema';
 import { DocumentAccessService } from '../../documents/document-access.service';
 import { resolveReportMachineScope } from '../report-machine-scope.util';
 import { buildDateRangeFilter } from '../report-date-filter.util';
@@ -26,11 +30,15 @@ export class FaultFrequencyReportProvider implements ReportDataProvider {
   readonly type = ReportType.FAULT_FREQUENCY;
 
   constructor(
-    @InjectModel(FaultEvent.name) private readonly faultEventModel: Model<FaultEventDocument>,
+    @InjectModel(FaultEvent.name)
+    private readonly faultEventModel: Model<FaultEventDocument>,
     private readonly documentAccessService: DocumentAccessService,
   ) {}
 
-  async buildDataset(params: ReportParams, actor: ReportActor): Promise<ReportDataset> {
+  async buildDataset(
+    params: ReportParams,
+    actor: ReportActor,
+  ): Promise<ReportDataset> {
     const machineIds = await resolveReportMachineScope(
       this.documentAccessService,
       actor,
@@ -51,7 +59,13 @@ export class FaultFrequencyReportProvider implements ReportDataProvider {
             _id: '$code_panne',
             count: { $sum: 1 },
             criticalCount: {
-              $sum: { $cond: [{ $eq: ['$severity', FaultEventSeverity.CRITICAL] }, 1, 0] },
+              $sum: {
+                $cond: [
+                  { $eq: ['$severity', FaultEventSeverity.CRITICAL] },
+                  1,
+                  0,
+                ],
+              },
             },
             lastRaisedAt: { $max: '$raised_at' },
           },
@@ -80,7 +94,10 @@ export class FaultFrequencyReportProvider implements ReportDataProvider {
       rows,
       summary: [
         { label: 'Distinct fault codes', value: rows.length },
-        { label: 'Total events', value: rows.reduce((sum, r) => sum + (r.occurrences as number), 0) },
+        {
+          label: 'Total events',
+          value: rows.reduce((sum, r) => sum + r.occurrences, 0),
+        },
       ],
     };
   }

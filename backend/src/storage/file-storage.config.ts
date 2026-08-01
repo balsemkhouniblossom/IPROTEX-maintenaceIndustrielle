@@ -37,7 +37,8 @@ export function resolveFileStorageConfig(
     );
   }
 
-  const driver = configuredDriver ?? (isProduction(configService) ? 'supabase' : 'local');
+  const driver =
+    configuredDriver ?? (isProduction(configService) ? 'supabase' : 'local');
   if (isProduction(configService) && driver !== 'supabase') {
     throw new Error('FILE_STORAGE_DRIVER must be supabase in production.');
   }
@@ -55,14 +56,23 @@ export function resolveFileStorageConfig(
   };
 
   if (driver === 'supabase') {
-    if (!supabase.url?.trim() || !supabase.secretKey?.trim() || !supabase.bucket?.trim()) {
+    if (
+      !supabase.url?.trim() ||
+      !supabase.secretKey?.trim() ||
+      !supabase.bucket?.trim()
+    ) {
       throw new Error(
         'Supabase storage requires SUPABASE_URL, SUPABASE_SECRET_KEY, and SUPABASE_STORAGE_BUCKET.',
       );
     }
 
-    if (!Number.isFinite(supabase.signedUrlExpiresInSeconds) || supabase.signedUrlExpiresInSeconds <= 0) {
-      throw new Error('SUPABASE_SIGNED_URL_EXPIRES_IN_SECONDS must be a positive number.');
+    if (
+      !Number.isFinite(supabase.signedUrlExpiresInSeconds) ||
+      supabase.signedUrlExpiresInSeconds <= 0
+    ) {
+      throw new Error(
+        'SUPABASE_SIGNED_URL_EXPIRES_IN_SECONDS must be a positive number.',
+      );
     }
   }
 

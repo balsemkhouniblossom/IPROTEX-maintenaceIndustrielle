@@ -27,6 +27,8 @@ import {
 } from '../auth/decorators/roles.decorator';
 import { Role } from '../schemas/user.schema';
 import { DecidePartRequestDto } from './dto/decide-part-request.dto';
+import { ValidateWorkOrderDto } from './dto/validate-work-order.dto';
+import { RescheduleWorkOrderDto } from './dto/reschedule-work-order.dto';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -174,9 +176,7 @@ export class WorkOrdersController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body()
-    payload: {
-      action?: 'approve' | 'reject' | 'request_correction';
-    },
+    payload: ValidateWorkOrderDto,
   ) {
     const action = payload.action || 'approve';
     return this.workOrdersService.applyValidationAction(
@@ -193,22 +193,16 @@ export class WorkOrdersController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body()
-    payload: {
-      new_due_date?: string;
-      reason?: string;
-    },
+    payload: RescheduleWorkOrderDto,
   ) {
     const userId = req.user?.userId;
     if (!userId) {
       throw new ForbiddenException('Missing authenticated user');
     }
-    if (!payload.new_due_date || !payload.reason?.trim()) {
-      throw new ForbiddenException('new_due_date and reason are required');
-    }
     return this.workOrdersService.reschedulePreventiveOccurrence({
       workOrderId: id,
       newDueDate: payload.new_due_date,
-      reason: payload.reason.trim(),
+      reason: payload.reason,
       userId,
       role: req.user?.role,
     });

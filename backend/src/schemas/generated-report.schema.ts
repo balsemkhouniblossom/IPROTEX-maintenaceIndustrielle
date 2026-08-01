@@ -98,7 +98,8 @@ export class GeneratedReport {
   expires_at?: Date;
 }
 
-export const GeneratedReportSchema = SchemaFactory.createForClass(GeneratedReport);
+export const GeneratedReportSchema =
+  SchemaFactory.createForClass(GeneratedReport);
 GeneratedReportSchema.index({ requested_by: 1, createdAt: -1 });
 GeneratedReportSchema.index({ status: 1 });
 // Supports the Admin "all reports" view's type/format filters and the
@@ -123,4 +124,5 @@ GeneratedReportSchema.index(
   },
 );
 
-export const DEFAULT_REPORT_RETENTION_MS = DEFAULT_REPORT_RETENTION_SECONDS * 1000;
+export const DEFAULT_REPORT_RETENTION_MS =
+  DEFAULT_REPORT_RETENTION_SECONDS * 1000;

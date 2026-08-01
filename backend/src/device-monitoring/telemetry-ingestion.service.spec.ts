@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { TelemetryIngestionService } from './telemetry-ingestion.service';
 import { DeviceConnectionStatus } from '../schemas/device.schema';
@@ -17,15 +21,29 @@ function device(overrides: Record<string, unknown> = {}) {
 describe('TelemetryIngestionService', () => {
   let deviceModel: { updateOne: jest.Mock };
   let telemetryModel: { create: jest.Mock };
-  let faultEventModel: { create: jest.Mock; findById: jest.Mock; findOneAndUpdate: jest.Mock };
+  let faultEventModel: {
+    create: jest.Mock;
+    findById: jest.Mock;
+    findOneAndUpdate: jest.Mock;
+  };
   let notificationCenterService: { createIfNotExists: jest.Mock };
   let service: TelemetryIngestionService;
 
   beforeEach(() => {
-    deviceModel = { updateOne: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(undefined) }) };
+    deviceModel = {
+      updateOne: jest
+        .fn()
+        .mockReturnValue({ exec: jest.fn().mockResolvedValue(undefined) }),
+    };
     telemetryModel = { create: jest.fn() };
-    faultEventModel = { create: jest.fn(), findById: jest.fn(), findOneAndUpdate: jest.fn() };
-    notificationCenterService = { createIfNotExists: jest.fn().mockResolvedValue(null) };
+    faultEventModel = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      findOneAndUpdate: jest.fn(),
+    };
+    notificationCenterService = {
+      createIfNotExists: jest.fn().mockResolvedValue(null),
+    };
 
     service = new TelemetryIngestionService(
       deviceModel as never,
@@ -43,7 +61,12 @@ describe('TelemetryIngestionService', () => {
       expect(result.cameOnline).toBe(true);
       expect(deviceModel.updateOne).toHaveBeenCalledWith(
         { _id: dev._id },
-        { $set: { last_seen_at: expect.any(Date), last_known_status: DeviceConnectionStatus.ONLINE } },
+        {
+          $set: {
+            last_seen_at: expect.any(Date),
+            last_known_status: DeviceConnectionStatus.ONLINE,
+          },
+        },
       );
     });
 
@@ -67,9 +90,12 @@ describe('TelemetryIngestionService', () => {
       const created = { metrics: { temperature: 72 }, recorded_at: new Date() };
       telemetryModel.create.mockResolvedValue(created);
 
-      const { record, cameOnline } = await service.recordTelemetry(dev as never, {
-        metrics: { temperature: 72 },
-      });
+      const { record, cameOnline } = await service.recordTelemetry(
+        dev as never,
+        {
+          metrics: { temperature: 72 },
+        },
+      );
 
       expect(record).toBe(created);
       expect(cameOnline).toBe(true);
@@ -93,20 +119,36 @@ describe('TelemetryIngestionService', () => {
 
     it('persists a fault event and does not notify for non-critical severity', async () => {
       const dev = device();
-      const created = { _id: new Types.ObjectId(), code_panne: 'E-42', severity: FaultEventSeverity.WARNING };
+      const created = {
+        _id: new Types.ObjectId(),
+        code_panne: 'E-42',
+        severity: FaultEventSeverity.WARNING,
+      };
       faultEventModel.create.mockResolvedValue(created);
 
-      await service.recordFault(dev as never, { codePanne: 'E-42', severity: FaultEventSeverity.WARNING });
+      await service.recordFault(dev as never, {
+        codePanne: 'E-42',
+        severity: FaultEventSeverity.WARNING,
+      });
 
-      expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
+      expect(
+        notificationCenterService.createIfNotExists,
+      ).not.toHaveBeenCalled();
     });
 
     it('creates a deduped Admin notification for a critical fault', async () => {
       const dev = device();
-      const created = { _id: new Types.ObjectId(), code_panne: 'E-99', severity: FaultEventSeverity.CRITICAL };
+      const created = {
+        _id: new Types.ObjectId(),
+        code_panne: 'E-99',
+        severity: FaultEventSeverity.CRITICAL,
+      };
       faultEventModel.create.mockResolvedValue(created);
 
-      await service.recordFault(dev as never, { codePanne: 'E-99', severity: FaultEventSeverity.CRITICAL });
+      await service.recordFault(dev as never, {
+        codePanne: 'E-99',
+        severity: FaultEventSeverity.CRITICAL,
+      });
 
       expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
         expect.objectContaining({ recipientRole: 'admin' }),
@@ -116,15 +158,21 @@ describe('TelemetryIngestionService', () => {
 
   describe('resolveFault', () => {
     it('throws NotFoundException for a nonexistent fault', async () => {
-      faultEventModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
-      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(NotFoundException);
+      faultEventModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ConflictException when already resolved', async () => {
       faultEventModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue({ resolved_at: new Date() }),
       });
-      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(ConflictException);
+      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('resolves an active fault, setting resolved_at and resolved_by', async () => {
@@ -132,7 +180,9 @@ describe('TelemetryIngestionService', () => {
         exec: jest.fn().mockResolvedValue({ resolved_at: undefined }),
       });
       const resolved = { resolved_at: new Date(), resolved_by: 'user-1' };
-      faultEventModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(resolved) });
+      faultEventModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(resolved),
+      });
 
       const result = await service.resolveFault('id', 'user-1');
       expect(result).toBe(resolved);
@@ -142,9 +192,13 @@ describe('TelemetryIngestionService', () => {
       faultEventModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue({ resolved_at: undefined }),
       });
-      faultEventModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      faultEventModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(ConflictException);
+      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });

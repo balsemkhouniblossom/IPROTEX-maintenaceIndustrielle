@@ -10,7 +10,9 @@ describe('StockMovementsReportProvider', () => {
         exec: jest.fn().mockResolvedValue(movements),
       }),
     };
-    const provider = new StockMovementsReportProvider(stockMovementModel as never);
+    const provider = new StockMovementsReportProvider(
+      stockMovementModel as never,
+    );
     return { provider, stockMovementModel };
   }
 

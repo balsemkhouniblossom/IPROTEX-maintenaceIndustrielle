@@ -38,7 +38,11 @@ export class DocumentsController {
   private ensureDocumentReader(req: AuthenticatedRequest): void {
     const role = req.user?.role;
 
-    if (role !== Role.ADMIN && role !== Role.TECHNICIAN && role !== Role.OPERATOR) {
+    if (
+      role !== Role.ADMIN &&
+      role !== Role.TECHNICIAN &&
+      role !== Role.OPERATOR
+    ) {
       throw new ForbiddenException('Document access required');
     }
   }
@@ -73,9 +77,8 @@ export class DocumentsController {
   ) {
     this.ensureDocumentReader(req);
     const pagination = normalizePagination(page, limit);
-    const machineIds = await this.documentAccessService.listAccessibleMachineIds(
-      req.user ?? {},
-    );
+    const machineIds =
+      await this.documentAccessService.listAccessibleMachineIds(req.user ?? {});
     return this.documentsService.findAll(
       pagination.page,
       pagination.limit,
@@ -147,9 +150,15 @@ export class DocumentsController {
   }
 
   @Get(':id/versions')
-  async listVersions(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+  async listVersions(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
     this.ensureDocumentReader(req);
-    await this.documentAccessService.resolveAccessibleDocument(req.user ?? {}, id);
+    await this.documentAccessService.resolveAccessibleDocument(
+      req.user ?? {},
+      id,
+    );
     return this.documentsService.listVersionHistory(id);
   }
 

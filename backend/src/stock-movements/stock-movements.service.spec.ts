@@ -50,7 +50,9 @@ describe('StockMovementsService', () => {
     stockMovementModel = {
       create: jest
         .fn()
-        .mockResolvedValue([{ _id: new Types.ObjectId(), movement_id: 'MOV-000001' }]),
+        .mockResolvedValue([
+          { _id: new Types.ObjectId(), movement_id: 'MOV-000001' },
+        ]),
       find: jest.fn().mockReturnValue({
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),

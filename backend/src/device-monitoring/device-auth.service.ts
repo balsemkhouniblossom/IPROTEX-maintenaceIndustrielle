@@ -43,7 +43,10 @@ export class DeviceAuthService {
    * deactivated device) throws the same generic `UnauthorizedException` so
    * a caller learns nothing about which part was wrong.
    */
-  async verifyCredentials(deviceId: string, rawKey: string): Promise<DeviceDocument> {
+  async verifyCredentials(
+    deviceId: string,
+    rawKey: string,
+  ): Promise<DeviceDocument> {
     if (!deviceId || !rawKey || !rawKey.includes('.')) {
       throw new UnauthorizedException('Invalid device credentials');
     }

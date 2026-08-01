@@ -1,4 +1,9 @@
-import { ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
   ThrottlerGuard,
@@ -42,10 +47,14 @@ export class AppThrottlerGuard extends ThrottlerGuard {
 
   async onModuleInit(): Promise<void> {
     await super.onModuleInit();
-    this.throttlers = this.throttlers.filter((throttler) => throttler.name !== 'device');
+    this.throttlers = this.throttlers.filter(
+      (throttler) => throttler.name !== 'device',
+    );
   }
 
-  protected async getTracker(req: Request & { user?: { userId?: string } }): Promise<string> {
+  protected async getTracker(
+    req: Request & { user?: { userId?: string } },
+  ): Promise<string> {
     const userId = req.user?.userId;
     if (userId) {
       return `user:${userId}`;
@@ -53,7 +62,9 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     return `ip:${this.getClientIp(req)}`;
   }
 
-  protected async throwThrottlingException(_context: ExecutionContext): Promise<void> {
+  protected async throwThrottlingException(
+    _context: ExecutionContext,
+  ): Promise<void> {
     throw new HttpException(
       {
         code: 'RATE_LIMIT_EXCEEDED',

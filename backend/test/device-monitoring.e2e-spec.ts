@@ -11,11 +11,17 @@ import { JwtService } from '@nestjs/jwt';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';
-import { MachineType, MachineTypeDocument } from '../src/schemas/machine-type.schema';
+import {
+  MachineType,
+  MachineTypeDocument,
+} from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
 import { Device, DeviceDocument } from '../src/schemas/device.schema';
 import { Telemetry, TelemetryDocument } from '../src/schemas/telemetry.schema';
-import { FaultEvent, FaultEventDocument } from '../src/schemas/fault-event.schema';
+import {
+  FaultEvent,
+  FaultEventDocument,
+} from '../src/schemas/fault-event.schema';
 
 describe('Device registration, REST device-gateway ingestion, and role-scoped live status (e2e)', () => {
   let mongo: MongoMemoryReplSet;
@@ -90,7 +96,10 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
   async function seedBaseData() {
     await connection.dropDatabase();
 
-    const machineType = await machineTypes.create({ type_id: 1, name: 'Device E2E machine type' });
+    const machineType = await machineTypes.create({
+      type_id: 1,
+      name: 'Device E2E machine type',
+    });
     const machineA = await machines.create({
       machine_id: 'MACHINE-DEV-A',
       type_id: machineType._id,
@@ -145,14 +154,22 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       await request(app.getHttpServer())
         .post('/devices')
         .set('Authorization', `Bearer ${technicianToken}`)
-        .send({ device_id: 'REST-1', machine_id: machineAId, device_type: 'simulator' })
+        .send({
+          device_id: 'REST-1',
+          machine_id: machineAId,
+          device_type: 'simulator',
+        })
         .expect(403);
     });
 
     it('rejects registration with no auth at all', async () => {
       await request(app.getHttpServer())
         .post('/devices')
-        .send({ device_id: 'REST-1', machine_id: machineAId, device_type: 'simulator' })
+        .send({
+          device_id: 'REST-1',
+          machine_id: machineAId,
+          device_type: 'simulator',
+        })
         .expect(401);
     });
 
@@ -164,7 +181,11 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       const response = await request(app.getHttpServer())
         .post('/devices')
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ device_id: deviceId, machine_id: machineAId, device_type: 'simulator' })
+        .send({
+          device_id: deviceId,
+          machine_id: machineAId,
+          device_type: 'simulator',
+        })
         .expect(201);
 
       expect(response.body.apiKey).toEqual(expect.any(String));
@@ -246,7 +267,10 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         .get(`/live-monitoring/machines/${machineAId}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
-      expect(status.body.latestTelemetry.metrics).toEqual({ temperature: 64.2, vibration: 0.03 });
+      expect(status.body.latestTelemetry.metrics).toEqual({
+        temperature: 64.2,
+        vibration: 0.03,
+      });
     });
 
     it('accepts a fault event, and it appears as an active alarm', async () => {
@@ -254,7 +278,11 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         .post('/device-gateway/fault')
         .set('x-device-id', deviceId)
         .set('x-device-key', apiKey)
-        .send({ code_panne: 'E-REST-1', severity: 'critical', message: 'Overheat' })
+        .send({
+          code_panne: 'E-REST-1',
+          severity: 'critical',
+          message: 'Overheat',
+        })
         .expect(201);
 
       const status = await request(app.getHttpServer())
@@ -274,7 +302,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
     });
 
     it('a Technician or Admin can resolve the active alarm; it then disappears from the active count', async () => {
-      const faultEvent = await faultEventModel.findOne({ code_panne: 'E-REST-1' }).exec();
+      const faultEvent = await faultEventModel
+        .findOne({ code_panne: 'E-REST-1' })
+        .exec();
       await request(app.getHttpServer())
         .patch(`/live-monitoring/faults/${faultEvent!._id.toString()}/resolve`)
         .set('Authorization', `Bearer ${technicianToken}`)
@@ -288,7 +318,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
     });
 
     it('resolving an already-resolved fault is rejected with a conflict', async () => {
-      const faultEvent = await faultEventModel.findOne({ code_panne: 'E-REST-1' }).exec();
+      const faultEvent = await faultEventModel
+        .findOne({ code_panne: 'E-REST-1' })
+        .exec();
       await request(app.getHttpServer())
         .patch(`/live-monitoring/faults/${faultEvent!._id.toString()}/resolve`)
         .set('Authorization', `Bearer ${adminToken}`)
@@ -340,7 +372,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         .get('/live-monitoring/machines')
         .set('Authorization', `Bearer ${operatorToken}`)
         .expect(200);
-      const machineIds = response.body.map((entry: { machineId: string }) => entry.machineId);
+      const machineIds = response.body.map(
+        (entry: { machineId: string }) => entry.machineId,
+      );
       expect(machineIds).not.toContain(machineBId);
     });
 
@@ -357,29 +391,41 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
       expect(response.body).toEqual(
-        expect.objectContaining({ hasDevice: false, online: false, activeAlarmCount: 0 }),
+        expect.objectContaining({
+          hasDevice: false,
+          online: false,
+          activeAlarmCount: 0,
+        }),
       );
     });
 
     it('rejects unauthenticated access to live-monitoring endpoints', async () => {
-      await request(app.getHttpServer()).get('/live-monitoring/machines').expect(401);
+      await request(app.getHttpServer())
+        .get('/live-monitoring/machines')
+        .expect(401);
     });
   });
 
   describe('bounded retention', () => {
     it('declares a TTL index on telemetry.received_at', async () => {
       const indexes = await telemetryModel.collection.indexes();
-      const ttlIndex = indexes.find((index) => index.name === 'telemetry_retention_ttl');
+      const ttlIndex = indexes.find(
+        (index) => index.name === 'telemetry_retention_ttl',
+      );
       expect(ttlIndex).toBeDefined();
       expect(ttlIndex?.expireAfterSeconds).toBeGreaterThan(0);
     });
 
     it('declares a partial TTL index on fault_event.received_at that exempts unresolved (active) alarms', async () => {
       const indexes = await faultEventModel.collection.indexes();
-      const ttlIndex = indexes.find((index) => index.name === 'fault_event_retention_ttl');
+      const ttlIndex = indexes.find(
+        (index) => index.name === 'fault_event_retention_ttl',
+      );
       expect(ttlIndex).toBeDefined();
       expect(ttlIndex?.expireAfterSeconds).toBeGreaterThan(0);
-      expect(ttlIndex?.partialFilterExpression).toEqual({ resolved_at: { $exists: true } });
+      expect(ttlIndex?.partialFilterExpression).toEqual({
+        resolved_at: { $exists: true },
+      });
     });
   });
 });

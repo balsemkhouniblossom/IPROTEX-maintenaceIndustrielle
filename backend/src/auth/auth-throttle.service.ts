@@ -37,8 +37,18 @@ const AUTH_THROTTLE_RULES: Record<
   Record<ThrottleScope, ThrottleRule>
 > = {
   login: {
-    ip: { windowMs: 15 * 60 * 1000, limit: 20, failureLimit: 10, lockoutMs: 15 * 60 * 1000 },
-    account: { windowMs: 15 * 60 * 1000, limit: 10, failureLimit: 5, lockoutMs: 15 * 60 * 1000 },
+    ip: {
+      windowMs: 15 * 60 * 1000,
+      limit: 20,
+      failureLimit: 10,
+      lockoutMs: 15 * 60 * 1000,
+    },
+    account: {
+      windowMs: 15 * 60 * 1000,
+      limit: 10,
+      failureLimit: 5,
+      lockoutMs: 15 * 60 * 1000,
+    },
   },
   register: {
     ip: { windowMs: 60 * 60 * 1000, limit: 10 },
@@ -49,20 +59,60 @@ const AUTH_THROTTLE_RULES: Record<
     account: { windowMs: 60 * 60 * 1000, limit: 3 },
   },
   'verify-reset-token': {
-    ip: { windowMs: 15 * 60 * 1000, limit: 30, failureLimit: 15, lockoutMs: 15 * 60 * 1000 },
-    account: { windowMs: 15 * 60 * 1000, limit: 8, failureLimit: 5, lockoutMs: 15 * 60 * 1000 },
+    ip: {
+      windowMs: 15 * 60 * 1000,
+      limit: 30,
+      failureLimit: 15,
+      lockoutMs: 15 * 60 * 1000,
+    },
+    account: {
+      windowMs: 15 * 60 * 1000,
+      limit: 8,
+      failureLimit: 5,
+      lockoutMs: 15 * 60 * 1000,
+    },
   },
   'reset-password': {
-    ip: { windowMs: 15 * 60 * 1000, limit: 20, failureLimit: 10, lockoutMs: 15 * 60 * 1000 },
-    account: { windowMs: 15 * 60 * 1000, limit: 8, failureLimit: 5, lockoutMs: 15 * 60 * 1000 },
+    ip: {
+      windowMs: 15 * 60 * 1000,
+      limit: 20,
+      failureLimit: 10,
+      lockoutMs: 15 * 60 * 1000,
+    },
+    account: {
+      windowMs: 15 * 60 * 1000,
+      limit: 8,
+      failureLimit: 5,
+      lockoutMs: 15 * 60 * 1000,
+    },
   },
   'google-exchange': {
-    ip: { windowMs: 15 * 60 * 1000, limit: 30, failureLimit: 15, lockoutMs: 15 * 60 * 1000 },
-    account: { windowMs: 15 * 60 * 1000, limit: 8, failureLimit: 5, lockoutMs: 15 * 60 * 1000 },
+    ip: {
+      windowMs: 15 * 60 * 1000,
+      limit: 30,
+      failureLimit: 15,
+      lockoutMs: 15 * 60 * 1000,
+    },
+    account: {
+      windowMs: 15 * 60 * 1000,
+      limit: 8,
+      failureLimit: 5,
+      lockoutMs: 15 * 60 * 1000,
+    },
   },
   'email-diagnostic': {
-    ip: { windowMs: 15 * 60 * 1000, limit: 5, failureLimit: 5, lockoutMs: 15 * 60 * 1000 },
-    account: { windowMs: 15 * 60 * 1000, limit: 3, failureLimit: 3, lockoutMs: 15 * 60 * 1000 },
+    ip: {
+      windowMs: 15 * 60 * 1000,
+      limit: 5,
+      failureLimit: 5,
+      lockoutMs: 15 * 60 * 1000,
+    },
+    account: {
+      windowMs: 15 * 60 * 1000,
+      limit: 3,
+      failureLimit: 3,
+      lockoutMs: 15 * 60 * 1000,
+    },
   },
 };
 
@@ -85,7 +135,10 @@ export class AuthThrottleService {
       }
 
       if (record.hits.length >= rule.limit) {
-        const retryAfterMs = Math.max(rule.windowMs - (now - record.hits[0]), 1000);
+        const retryAfterMs = Math.max(
+          rule.windowMs - (now - record.hits[0]),
+          1000,
+        );
         this.throwTooManyRequests(retryAfterMs);
       }
 
@@ -140,7 +193,10 @@ export class AuthThrottleService {
     const accountKey = this.getAccountKey(identity);
 
     if (accountKey) {
-      keys.push({ value: `${endpoint}:account:${accountKey}`, scope: 'account' });
+      keys.push({
+        value: `${endpoint}:account:${accountKey}`,
+        scope: 'account',
+      });
     }
 
     return keys;
@@ -178,7 +234,9 @@ export class AuthThrottleService {
   ): ThrottleRecord {
     const record = this.records.get(key) ?? { hits: [], failures: [] };
     record.hits = record.hits.filter((hit) => now - hit < rule.windowMs);
-    record.failures = record.failures.filter((hit) => now - hit < rule.windowMs);
+    record.failures = record.failures.filter(
+      (hit) => now - hit < rule.windowMs,
+    );
 
     if (record.lockedUntil && record.lockedUntil <= now) {
       record.lockedUntil = undefined;

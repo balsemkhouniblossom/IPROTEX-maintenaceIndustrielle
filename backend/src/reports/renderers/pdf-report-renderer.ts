@@ -32,14 +32,17 @@ export class PdfReportRenderer implements ReportRenderer {
       doc.on('error', reject);
 
       const left = doc.page.margins.left;
-      const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      const pageWidth =
+        doc.page.width - doc.page.margins.left - doc.page.margins.right;
       const bottomLimit = doc.page.height - doc.page.margins.bottom;
       const colWidth = pageWidth / Math.max(dataset.columns.length, 1);
 
       doc.fontSize(16).font('Helvetica-Bold').text(dataset.title);
-      doc.fontSize(9).font('Helvetica').fillColor('#555555').text(
-        `Generated: ${dataset.generatedAt.toISOString()}`,
-      );
+      doc
+        .fontSize(9)
+        .font('Helvetica')
+        .fillColor('#555555')
+        .text(`Generated: ${dataset.generatedAt.toISOString()}`);
       doc.fillColor('#000000');
       doc.moveDown();
 
@@ -48,11 +51,16 @@ export class PdfReportRenderer implements ReportRenderer {
       const drawRow = (values: unknown[], bold: boolean) => {
         doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8);
         values.forEach((value, index) => {
-          doc.text(value === null || value === undefined ? '' : String(value), left + index * colWidth, y, {
-            width: colWidth - 4,
-            height: ROW_HEIGHT,
-            ellipsis: true,
-          });
+          doc.text(
+            value === null || value === undefined ? '' : String(value),
+            left + index * colWidth,
+            y,
+            {
+              width: colWidth - 4,
+              height: ROW_HEIGHT,
+              ellipsis: true,
+            },
+          );
         });
       };
 
@@ -64,12 +72,18 @@ export class PdfReportRenderer implements ReportRenderer {
       };
 
       ensureSpace(HEADER_HEIGHT);
-      drawRow(dataset.columns.map((c) => c.label), true);
+      drawRow(
+        dataset.columns.map((c) => c.label),
+        true,
+      );
       y += HEADER_HEIGHT;
 
       for (const row of dataset.rows) {
         ensureSpace(ROW_HEIGHT);
-        drawRow(dataset.columns.map((c) => row[c.key]), false);
+        drawRow(
+          dataset.columns.map((c) => row[c.key]),
+          false,
+        );
         y += ROW_HEIGHT;
       }
 
@@ -80,7 +94,10 @@ export class PdfReportRenderer implements ReportRenderer {
         y += ROW_HEIGHT;
         for (const entry of dataset.summary) {
           ensureSpace(ROW_HEIGHT);
-          doc.font('Helvetica').fontSize(9).text(`${entry.label}: ${entry.value}`, left, y);
+          doc
+            .font('Helvetica')
+            .fontSize(9)
+            .text(`${entry.label}: ${entry.value}`, left, y);
           y += ROW_HEIGHT;
         }
       }

@@ -80,6 +80,8 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     if (user?.profile_completed === false) {
       router.replace(withLocale('/auth/complete-profile'));
     }
+    // withLocale is derived from the stable locale for this mounted layout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, user?.profile_completed]);
 
   useEffect(() => {
