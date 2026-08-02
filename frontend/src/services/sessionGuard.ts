@@ -55,7 +55,7 @@ export function getAccountStateRedirect(
 
   if (!user) {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, null),
+      to: `/${safeLocale}/auth/login`,
       reason: 'missing-session',
     };
   }

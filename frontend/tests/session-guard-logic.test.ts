@@ -33,12 +33,12 @@ test("protected route denies forged role access to another role dashboard", () =
   );
 });
 
-test("protected route rejects stale or missing sessions", () => {
+test("protected route sends an anonymous missing session to plain login", () => {
   assert.deepEqual(
     evaluateProtectedRouteAccess({ user: null, pathname: "/en/operator" }),
     {
       status: "redirect",
-      to: "/en/auth/login?session=expired",
+      to: "/en/auth/login",
       reason: "missing-session",
     },
   );
