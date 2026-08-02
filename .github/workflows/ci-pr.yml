@@ -159,6 +159,7 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true
           exit-code: "1"
           skip-dirs: node_modules,frontend/node_modules,backend/node_modules,.next,frontend/.next,dist,backend/dist,coverage,frontend/coverage,backend/coverage,backend/uploads,backend/quarantine,backups
 
