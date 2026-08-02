@@ -18,9 +18,11 @@ describe('MachinesService lifecycle history', () => {
       findById: jest.Mock;
       findByIdAndUpdate: jest.Mock;
     };
-    machineModel.findById = jest.fn().mockReturnValue(
-      chain(existingStatus === null ? null : { status: existingStatus }),
-    );
+    machineModel.findById = jest
+      .fn()
+      .mockReturnValue(
+        chain(existingStatus === null ? null : { status: existingStatus }),
+      );
     machineModel.findByIdAndUpdate = jest.fn().mockReturnValue(chain({}));
 
     const service = new MachinesService(
@@ -48,13 +50,16 @@ describe('MachinesService lifecycle history', () => {
       type_id: 'type-1',
       serial_no: 'SN-1',
       status: 'operational',
-    } as never);
+    });
 
     expect(machineModel).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'operational',
         lifecycle_history: [
-          expect.objectContaining({ action: 'created', to_status: 'operational' }),
+          expect.objectContaining({
+            action: 'created',
+            to_status: 'operational',
+          }),
         ],
       }),
     );
@@ -63,7 +68,7 @@ describe('MachinesService lifecycle history', () => {
   it('pushes a status_changed lifecycle entry when the status actually changes', async () => {
     const { service, machineModel } = buildService('operational');
 
-    await service.update('machine-1', { status: 'maintenance' } as never);
+    await service.update('machine-1', { status: 'maintenance' });
 
     expect(machineModel.findByIdAndUpdate).toHaveBeenCalledWith(
       'machine-1',
@@ -87,7 +92,7 @@ describe('MachinesService lifecycle history', () => {
     await service.update('machine-1', {
       status: 'operational',
       location: 'Bay 2',
-    } as never);
+    });
 
     expect(machineModel.findByIdAndUpdate).toHaveBeenCalledWith(
       'machine-1',

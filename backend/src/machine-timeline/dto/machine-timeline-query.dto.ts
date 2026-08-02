@@ -1,5 +1,12 @@
 import { Transform } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 /** Mirrors work-orders/dto/work-orders-query.dto.ts's shape/decorator conventions. No `sort` param — the timeline is always newest-first. */
 export class MachineTimelineQueryDto {

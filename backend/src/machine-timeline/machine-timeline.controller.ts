@@ -28,7 +28,10 @@ export class MachineTimelineController {
     @Param('machineId') machineId: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    await this.documentAccessService.assertCanAccessMachine(req.user ?? {}, machineId);
+    await this.documentAccessService.assertCanAccessMachine(
+      req.user ?? {},
+      machineId,
+    );
     return this.machineTimelineService.getSummary(machineId);
   }
 
@@ -38,7 +41,10 @@ export class MachineTimelineController {
     @Query() query: MachineTimelineQueryDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    await this.documentAccessService.assertCanAccessMachine(req.user ?? {}, machineId);
+    await this.documentAccessService.assertCanAccessMachine(
+      req.user ?? {},
+      machineId,
+    );
     return this.machineTimelineService.getTimeline(machineId, query);
   }
 }

@@ -1,7 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { MachineTimelineService } from './machine-timeline.service';
-import { MachineTimelineCategory, MachineTimelineEventType } from './machine-timeline.types';
+import {
+  MachineTimelineCategory,
+  MachineTimelineEventType,
+} from './machine-timeline.types';
 
 function chain<T>(value: T) {
   const result: {
@@ -61,7 +64,8 @@ describe('MachineTimelineService', () => {
             lifecycle_history: [],
           };
     const workOrders = overrides.workOrders ?? [];
-    const workOrderIds = overrides.workOrderIds ?? workOrders.map((wo: any) => wo._id);
+    const workOrderIds =
+      overrides.workOrderIds ?? workOrders.map((wo: any) => wo._id);
     const moduleIds = overrides.moduleIds ?? [];
 
     const machineModel = {
@@ -77,7 +81,9 @@ describe('MachineTimelineService', () => {
       select: jest.fn(),
     };
     const interventionReportModel = {
-      find: jest.fn().mockReturnValue(chain(overrides.interventionReports ?? [])),
+      find: jest
+        .fn()
+        .mockReturnValue(chain(overrides.interventionReports ?? [])),
     };
     const faultEventModel = {
       find: jest.fn().mockReturnValue(chain(overrides.faultEvents ?? [])),
@@ -127,12 +133,16 @@ describe('MachineTimelineService', () => {
 
   it('rejects an invalid machine id', async () => {
     const { service } = buildService({});
-    await expect(service.getTimeline('not-an-id', {})).rejects.toThrow(BadRequestException);
+    await expect(service.getTimeline('not-an-id', {})).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('throws NotFoundException when the machine does not exist', async () => {
     const { service } = buildService({ machine: null });
-    await expect(service.getTimeline(machineId, {})).rejects.toThrow(NotFoundException);
+    await expect(service.getTimeline(machineId, {})).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('merges events from multiple sources and sorts them newest-first', async () => {
@@ -194,7 +204,9 @@ describe('MachineTimelineService', () => {
       ],
     });
 
-    const result = await service.getTimeline(machineId, { types: MachineTimelineCategory.FAULTS });
+    const result = await service.getTimeline(machineId, {
+      types: MachineTimelineCategory.FAULTS,
+    });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].type).toBe(MachineTimelineEventType.FAULT_REPORTED);
@@ -220,7 +232,9 @@ describe('MachineTimelineService', () => {
       ],
     });
 
-    const result = await service.getTimeline(machineId, { search: 'hydraulic' });
+    const result = await service.getTimeline(machineId, {
+      search: 'hydraulic',
+    });
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0].description).toContain('Hydraulic');
@@ -241,7 +255,10 @@ describe('MachineTimelineService', () => {
     expect(result.totalItems).toBe(5);
     expect(result.totalPages).toBe(3);
     // Newest first overall: index 4, 3, 2, 1, 0 — page 2 (limit 2) is [2, 1].
-    expect(result.items.map((event) => event.metadata?.faultCode)).toEqual(['E-2', 'E-1']);
+    expect(result.items.map((event) => event.metadata?.faultCode)).toEqual([
+      'E-2',
+      'E-1',
+    ]);
   });
 
   it('resolves actor names in a single batched query', async () => {
@@ -304,7 +321,10 @@ describe('MachineTimelineService', () => {
       expect(summary.stats.preventiveCompleted).toBe(1);
       expect(summary.stats.correctiveCompleted).toBe(0);
       expect(summary.stats.downtimeHours).toBe(4);
-      expect(summary.machine.type).toEqual({ id: expect.any(String), name: 'Press' });
+      expect(summary.machine.type).toEqual({
+        id: expect.any(String),
+        name: 'Press',
+      });
     });
   });
 });

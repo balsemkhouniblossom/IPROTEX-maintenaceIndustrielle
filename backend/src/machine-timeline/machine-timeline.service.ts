@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
@@ -94,12 +98,13 @@ const DOCUMENT_LIFECYCLE_TYPES: Partial<
   superseded: MachineTimelineEventType.DOCUMENT_SUPERSEDED,
 };
 
-const DOCUMENT_EVENT_TITLES: Partial<Record<MachineTimelineEventType, string>> = {
-  [MachineTimelineEventType.DOCUMENT_UPLOADED]: 'Document uploaded',
-  [MachineTimelineEventType.DOCUMENT_PUBLISHED]: 'Document published',
-  [MachineTimelineEventType.DOCUMENT_ARCHIVED]: 'Document archived',
-  [MachineTimelineEventType.DOCUMENT_SUPERSEDED]: 'Document superseded',
-};
+const DOCUMENT_EVENT_TITLES: Partial<Record<MachineTimelineEventType, string>> =
+  {
+    [MachineTimelineEventType.DOCUMENT_UPLOADED]: 'Document uploaded',
+    [MachineTimelineEventType.DOCUMENT_PUBLISHED]: 'Document published',
+    [MachineTimelineEventType.DOCUMENT_ARCHIVED]: 'Document archived',
+    [MachineTimelineEventType.DOCUMENT_SUPERSEDED]: 'Document superseded',
+  };
 
 const PLAN_LIFECYCLE_TYPES: Partial<
   Record<MaintenancePlanLifecycleAction, MachineTimelineEventType>
@@ -114,13 +119,19 @@ const PLAN_LIFECYCLE_TYPES: Partial<
 };
 
 const PLAN_EVENT_TITLES: Partial<Record<MachineTimelineEventType, string>> = {
-  [MachineTimelineEventType.MAINTENANCE_PLAN_CREATED]: 'Maintenance plan created',
-  [MachineTimelineEventType.MAINTENANCE_PLAN_ACTIVATED]: 'Maintenance plan activated',
+  [MachineTimelineEventType.MAINTENANCE_PLAN_CREATED]:
+    'Maintenance plan created',
+  [MachineTimelineEventType.MAINTENANCE_PLAN_ACTIVATED]:
+    'Maintenance plan activated',
   [MachineTimelineEventType.MAINTENANCE_PLAN_PAUSED]: 'Maintenance plan paused',
-  [MachineTimelineEventType.MAINTENANCE_PLAN_RESUMED]: 'Maintenance plan resumed',
-  [MachineTimelineEventType.MAINTENANCE_PLAN_ARCHIVED]: 'Maintenance plan archived',
-  [MachineTimelineEventType.MAINTENANCE_PLAN_COMPLETED]: 'Maintenance plan completed',
-  [MachineTimelineEventType.MAINTENANCE_PLAN_UPDATED]: 'Maintenance plan updated',
+  [MachineTimelineEventType.MAINTENANCE_PLAN_RESUMED]:
+    'Maintenance plan resumed',
+  [MachineTimelineEventType.MAINTENANCE_PLAN_ARCHIVED]:
+    'Maintenance plan archived',
+  [MachineTimelineEventType.MAINTENANCE_PLAN_COMPLETED]:
+    'Maintenance plan completed',
+  [MachineTimelineEventType.MAINTENANCE_PLAN_UPDATED]:
+    'Maintenance plan updated',
 };
 
 const STOCK_MOVEMENT_TYPES: Partial<
@@ -158,7 +169,8 @@ function categoryForMaintenanceType(
 @Injectable()
 export class MachineTimelineService {
   constructor(
-    @InjectModel(Machine.name) private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     @InjectModel(ModuleEntity.name)
     private readonly moduleModel: Model<ModuleDocument>,
     @InjectModel(WorkOrder.name)
@@ -219,7 +231,12 @@ export class MachineTimelineService {
                 type: StockMovementType.CONSUMPTION,
               },
             },
-            { $group: { _id: null, total: { $sum: { $abs: '$quantity_delta' } } } },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $abs: '$quantity_delta' } },
+              },
+            },
           ])
           .exec(),
         this.preventiveTaskModel
@@ -249,12 +266,18 @@ export class MachineTimelineService {
       else openWorkOrders++;
 
       if (completed) {
-        if (categoryForMaintenanceType(wo.type_maintenance) === MachineTimelineCategory.PREVENTIVE) {
+        if (
+          categoryForMaintenanceType(wo.type_maintenance) ===
+          MachineTimelineCategory.PREVENTIVE
+        ) {
           preventiveCompleted++;
         } else {
           correctiveCompleted++;
         }
-        if (wo.date_end && (!lastMaintenanceAt || wo.date_end > lastMaintenanceAt)) {
+        if (
+          wo.date_end &&
+          (!lastMaintenanceAt || wo.date_end > lastMaintenanceAt)
+        ) {
           lastMaintenanceAt = wo.date_end;
         }
       }
@@ -277,19 +300,22 @@ export class MachineTimelineService {
 
     if (
       lastPreventiveTask?.completed_at &&
-      (!lastMaintenanceAt || lastPreventiveTask.completed_at > lastMaintenanceAt)
+      (!lastMaintenanceAt ||
+        lastPreventiveTask.completed_at > lastMaintenanceAt)
     ) {
       lastMaintenanceAt = lastPreventiveTask.completed_at;
     }
     if (
       lastLubrication?.date_application &&
-      (!lastMaintenanceAt || lastLubrication.date_application > lastMaintenanceAt)
+      (!lastMaintenanceAt ||
+        lastLubrication.date_application > lastMaintenanceAt)
     ) {
       lastMaintenanceAt = lastLubrication.date_application;
     }
 
     const downtimeHours = downtimeMs / 3_600_000;
-    const averageRepairTimeHours = downtimeCount > 0 ? downtimeHours / downtimeCount : null;
+    const averageRepairTimeHours =
+      downtimeCount > 0 ? downtimeHours / downtimeCount : null;
     const partsConsumed = partsConsumedAgg[0]?.total ?? 0;
 
     const machineType = machine.type_id as unknown as
@@ -355,7 +381,9 @@ export class MachineTimelineService {
       .find({ machine_id: machineObjectId })
       .exec();
     const workOrderIds = workOrders.map((wo) => wo._id);
-    const workOrderById = new Map(workOrders.map((wo) => [wo._id.toString(), wo]));
+    const workOrderById = new Map(
+      workOrders.map((wo) => [wo._id.toString(), wo]),
+    );
 
     const [
       modules,
@@ -369,7 +397,9 @@ export class MachineTimelineService {
       aiInteractions,
     ] = await Promise.all([
       this.moduleModel.find({ machine_id: machineObjectId }).exec(),
-      this.interventionReportModel.find({ ot_id: { $in: workOrderIds } }).exec(),
+      this.interventionReportModel
+        .find({ ot_id: { $in: workOrderIds } })
+        .exec(),
       this.faultEventModel.find({ machine_id: machineObjectId }).exec(),
       this.documentModel.find({ machine_id: machineObjectId }).exec(),
       this.maintenancePlanModel.find({ module_id: { $in: moduleIds } }).exec(),
@@ -435,7 +465,12 @@ export class MachineTimelineService {
 
     filtered.sort((a, b) => b.at.getTime() - a.at.getTime());
 
-    const { page, limit, skip } = normalizePagination(query.page, query.limit, 20, 100);
+    const { page, limit, skip } = normalizePagination(
+      query.page,
+      query.limit,
+      20,
+      100,
+    );
     const pageItems = filtered.slice(skip, skip + limit);
     return toPaginatedResponse(pageItems, filtered.length, page, limit);
   }
@@ -446,7 +481,8 @@ export class MachineTimelineService {
     const machineIdStr = machine._id.toString();
     const createdEntry = history.find((entry) => entry.action === 'created');
     const createdAt =
-      createdEntry?.at ?? (machine as unknown as { createdAt?: Date }).createdAt;
+      createdEntry?.at ??
+      (machine as unknown as { createdAt?: Date }).createdAt;
 
     if (createdAt) {
       events.push({
@@ -469,7 +505,9 @@ export class MachineTimelineService {
         at: entry.at,
         title: 'Machine status changed',
         description: `Status changed from "${entry.from_status ?? 'unknown'}" to "${entry.to_status}"`,
-        actorUserId: entry.actor_user_id ? this.idString(entry.actor_user_id) : undefined,
+        actorUserId: entry.actor_user_id
+          ? this.idString(entry.actor_user_id)
+          : undefined,
         machineStatus: entry.to_status,
         metadata: { fromStatus: entry.from_status, toStatus: entry.to_status },
       });
@@ -516,7 +554,11 @@ export class MachineTimelineService {
         title: 'Work order created',
         description: wo.description || `Work order ${wo.ot_id} was created`,
         relatedEntity: related,
-        metadata: { otId: wo.ot_id, priority: wo.priorite, faultCode: wo.code_panne },
+        metadata: {
+          otId: wo.ot_id,
+          priority: wo.priorite,
+          faultCode: wo.code_panne,
+        },
       });
     }
 
@@ -577,10 +619,17 @@ export class MachineTimelineService {
         at: entry.at,
         title: WORK_ORDER_LIFECYCLE_TITLES[entry.action],
         description:
-          entry.reason || `Work order ${wo.ot_id}: ${entry.action.replace(/_/g, ' ')}`,
-        actorUserId: entry.actor_user_id ? this.idString(entry.actor_user_id) : undefined,
+          entry.reason ||
+          `Work order ${wo.ot_id}: ${entry.action.replace(/_/g, ' ')}`,
+        actorUserId: entry.actor_user_id
+          ? this.idString(entry.actor_user_id)
+          : undefined,
         relatedEntity: related,
-        metadata: { otId: wo.ot_id, fromStatus: entry.from_status, toStatus: entry.to_status },
+        metadata: {
+          otId: wo.ot_id,
+          fromStatus: entry.from_status,
+          toStatus: entry.to_status,
+        },
       });
     }
 
@@ -608,7 +657,9 @@ export class MachineTimelineService {
         at,
         title: 'Intervention report submitted',
         description:
-          report.cause_racine || report.description_action || `Report ${report.report_id}`,
+          report.cause_racine ||
+          report.description_action ||
+          `Report ${report.report_id}`,
         actorUserId: this.idString(report.technician_id),
         relatedEntity: related,
         metadata: {
@@ -629,7 +680,9 @@ export class MachineTimelineService {
         at: report.validated_at,
         title: 'Intervention report validated',
         description: `Report ${report.report_id} was validated`,
-        actorUserId: report.validated_by ? this.idString(report.validated_by) : undefined,
+        actorUserId: report.validated_by
+          ? this.idString(report.validated_by)
+          : undefined,
         relatedEntity: related,
         metadata: { reportId: report.report_id },
       });
@@ -652,7 +705,8 @@ export class MachineTimelineService {
       category: MachineTimelineCategory.FAULTS,
       at: fault.raised_at,
       title: 'Fault reported',
-      description: fault.message || `Fault ${fault.code_panne} (${fault.severity})`,
+      description:
+        fault.message || `Fault ${fault.code_panne} (${fault.severity})`,
       machineStatus: fault.severity,
       relatedEntity: related,
       metadata: { faultCode: fault.code_panne, severity: fault.severity },
@@ -666,7 +720,9 @@ export class MachineTimelineService {
         at: fault.resolved_at,
         title: 'Fault resolved',
         description: `Fault ${fault.code_panne} was resolved`,
-        actorUserId: fault.resolved_by ? this.idString(fault.resolved_by) : undefined,
+        actorUserId: fault.resolved_by
+          ? this.idString(fault.resolved_by)
+          : undefined,
         relatedEntity: related,
         metadata: { faultCode: fault.code_panne },
       });
@@ -693,7 +749,9 @@ export class MachineTimelineService {
         at: entry.at,
         title: DOCUMENT_EVENT_TITLES[type] ?? 'Document updated',
         description: entry.reason || `${doc.file_name} (${doc.type_document})`,
-        actorUserId: entry.actor_user_id ? this.idString(entry.actor_user_id) : undefined,
+        actorUserId: entry.actor_user_id
+          ? this.idString(entry.actor_user_id)
+          : undefined,
         relatedEntity: related,
         metadata: {
           documentId: doc.document_id,
@@ -722,7 +780,9 @@ export class MachineTimelineService {
     return events;
   }
 
-  private maintenancePlanEvents(plan: MaintenancePlanDocument): MachineTimelineEvent[] {
+  private maintenancePlanEvents(
+    plan: MaintenancePlanDocument,
+  ): MachineTimelineEvent[] {
     const related: TimelineRelatedEntity = {
       kind: 'maintenance_plan',
       id: plan._id.toString(),
@@ -739,17 +799,25 @@ export class MachineTimelineService {
         category: MachineTimelineCategory.PLANS,
         at: entry.at,
         title: PLAN_EVENT_TITLES[type] ?? 'Maintenance plan updated',
-        description: entry.reason || `Plan ${plan.plan_id} (${plan.type_maintenance})`,
-        actorUserId: entry.actor_user_id ? this.idString(entry.actor_user_id) : undefined,
+        description:
+          entry.reason || `Plan ${plan.plan_id} (${plan.type_maintenance})`,
+        actorUserId: entry.actor_user_id
+          ? this.idString(entry.actor_user_id)
+          : undefined,
         relatedEntity: related,
-        metadata: { planId: plan.plan_id, typeMaintenance: plan.type_maintenance },
+        metadata: {
+          planId: plan.plan_id,
+          typeMaintenance: plan.type_maintenance,
+        },
       });
     }
 
     return events;
   }
 
-  private preventiveTaskEvents(task: PreventiveTaskDocument): MachineTimelineEvent[] {
+  private preventiveTaskEvents(
+    task: PreventiveTaskDocument,
+  ): MachineTimelineEvent[] {
     if (!task.completed_at) return [];
     return [
       {
@@ -769,8 +837,12 @@ export class MachineTimelineService {
     ];
   }
 
-  private lubricationLogEvents(log: LubrificationLogDocument): MachineTimelineEvent[] {
-    const lubrifiant = log.lubrifiant_id as unknown as { nom?: string } | undefined;
+  private lubricationLogEvents(
+    log: LubrificationLogDocument,
+  ): MachineTimelineEvent[] {
+    const lubrifiant = log.lubrifiant_id as unknown as
+      | { nom?: string }
+      | undefined;
     return [
       {
         id: `lubrication_${log._id.toString()}`,
@@ -787,7 +859,9 @@ export class MachineTimelineService {
     ];
   }
 
-  private stockMovementEvents(movement: StockMovementDocument): MachineTimelineEvent[] {
+  private stockMovementEvents(
+    movement: StockMovementDocument,
+  ): MachineTimelineEvent[] {
     const type = STOCK_MOVEMENT_TYPES[movement.type];
     if (!type) return [];
     const part = movement.part_id as unknown as
@@ -804,10 +878,17 @@ export class MachineTimelineService {
         category: MachineTimelineCategory.INVENTORY,
         at: createdAt,
         title: STOCK_EVENT_TITLES[type] ?? 'Stock movement',
-        description: part?.nom_piece ? `${part.nom_piece} x${quantity}` : `${quantity} unit(s)`,
-        actorUserId: movement.actor_user_id ? this.idString(movement.actor_user_id) : undefined,
+        description: part?.nom_piece
+          ? `${part.nom_piece} x${quantity}`
+          : `${quantity} unit(s)`,
+        actorUserId: movement.actor_user_id
+          ? this.idString(movement.actor_user_id)
+          : undefined,
         relatedEntity: movement.work_order_id
-          ? { kind: 'work_order', id: this.idString(movement.work_order_id) ?? '' }
+          ? {
+              kind: 'work_order',
+              id: this.idString(movement.work_order_id) ?? '',
+            }
           : undefined,
         metadata: {
           movementId: movement.movement_id,
@@ -819,8 +900,11 @@ export class MachineTimelineService {
     ];
   }
 
-  private aiInteractionEvents(interaction: AiInteractionDocument): MachineTimelineEvent[] {
-    const createdAt = (interaction as unknown as { createdAt?: Date }).createdAt;
+  private aiInteractionEvents(
+    interaction: AiInteractionDocument,
+  ): MachineTimelineEvent[] {
+    const createdAt = (interaction as unknown as { createdAt?: Date })
+      .createdAt;
     if (!createdAt) return [];
     return [
       {
@@ -832,9 +916,15 @@ export class MachineTimelineService {
         description: interaction.question,
         actorUserId: this.idString(interaction.actor_user_id),
         relatedEntity: interaction.work_order_id
-          ? { kind: 'work_order', id: this.idString(interaction.work_order_id) ?? '' }
+          ? {
+              kind: 'work_order',
+              id: this.idString(interaction.work_order_id) ?? '',
+            }
           : undefined,
-        metadata: { faultCode: interaction.fault_code, provider: interaction.provider },
+        metadata: {
+          faultCode: interaction.fault_code,
+          provider: interaction.provider,
+        },
       },
     ];
   }
@@ -843,7 +933,11 @@ export class MachineTimelineService {
     if (pattern.test(event.title)) return true;
     if (event.description && pattern.test(event.description)) return true;
     if (event.actor?.name && pattern.test(event.actor.name)) return true;
-    if (event.relatedEntity?.refCode && pattern.test(event.relatedEntity.refCode)) return true;
+    if (
+      event.relatedEntity?.refCode &&
+      pattern.test(event.relatedEntity.refCode)
+    )
+      return true;
     if (event.metadata) {
       for (const value of Object.values(event.metadata)) {
         if (typeof value === 'string' && pattern.test(value)) return true;
@@ -854,7 +948,11 @@ export class MachineTimelineService {
 
   private async resolveActors(events: MachineTimelineEvent[]): Promise<void> {
     const actorIds = [
-      ...new Set(events.map((event) => event.actorUserId).filter((id): id is string => Boolean(id))),
+      ...new Set(
+        events
+          .map((event) => event.actorUserId)
+          .filter((id): id is string => Boolean(id)),
+      ),
     ];
     if (!actorIds.length) return;
 
@@ -865,7 +963,11 @@ export class MachineTimelineService {
     const actorById = new Map(
       actors.map((actor) => [
         actor._id.toString(),
-        { id: actor._id.toString(), name: actor.nom_complet, role: actor.role as string },
+        {
+          id: actor._id.toString(),
+          name: actor.nom_complet,
+          role: actor.role,
+        },
       ]),
     );
 
@@ -883,7 +985,7 @@ export class MachineTimelineService {
     if (typeof value === 'string') return value;
     if (value instanceof Types.ObjectId) return value.toHexString();
     if (typeof value === 'object' && '_id' in value) {
-      return this.idString((value as { _id?: unknown })._id as never);
+      return this.idString(value._id as never);
     }
     return undefined;
   }

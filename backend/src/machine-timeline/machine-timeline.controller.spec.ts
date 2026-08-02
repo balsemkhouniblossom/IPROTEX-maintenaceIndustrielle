@@ -23,7 +23,9 @@ describe('MachineTimelineController authorization', () => {
   });
 
   it('checks machine access before building the summary', async () => {
-    const req = { user: { userId: 'user-1', role: Role.OPERATOR } } as AuthenticatedRequest;
+    const req = {
+      user: { userId: 'user-1', role: Role.OPERATOR },
+    } as AuthenticatedRequest;
 
     await controller.getSummary('machine-1', req);
 
@@ -35,27 +37,34 @@ describe('MachineTimelineController authorization', () => {
   });
 
   it('checks machine access before building the timeline', async () => {
-    const req = { user: { userId: 'user-1', role: Role.TECHNICIAN } } as AuthenticatedRequest;
+    const req = {
+      user: { userId: 'user-1', role: Role.TECHNICIAN },
+    } as AuthenticatedRequest;
     const query = { page: 1, limit: 20 };
 
-    await controller.getTimeline('machine-1', query as never, req);
+    await controller.getTimeline('machine-1', query, req);
 
     expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
       req.user,
       'machine-1',
     );
-    expect(machineTimelineService.getTimeline).toHaveBeenCalledWith('machine-1', query);
+    expect(machineTimelineService.getTimeline).toHaveBeenCalledWith(
+      'machine-1',
+      query,
+    );
   });
 
   it('blocks an unauthorized machine timeline request before any data is read', async () => {
     documentAccessService.assertCanAccessMachine.mockRejectedValue(
       new ForbiddenException('Operator is not assigned to this machine'),
     );
-    const req = { user: { userId: 'user-1', role: Role.OPERATOR } } as AuthenticatedRequest;
+    const req = {
+      user: { userId: 'user-1', role: Role.OPERATOR },
+    } as AuthenticatedRequest;
 
-    await expect(
-      controller.getTimeline('machine-1', {} as never, req),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(controller.getTimeline('machine-1', {}, req)).rejects.toThrow(
+      ForbiddenException,
+    );
     expect(machineTimelineService.getTimeline).not.toHaveBeenCalled();
   });
 });
