@@ -1494,6 +1494,164 @@
       "update": "تحديث",
       "create": "إنشاء",
       "saving": "جارٍ الحفظ..."
+    },
+    "actions": {
+      "viewTimeline": "الجدول الزمني"
+    }
+  },
+  "machineTimeline": {
+    "pageTitle": "الجدول الزمني للآلة",
+    "timelineTitle": "الجدول الزمني",
+    "timelineEventCount": "{count} حدث",
+    "loading": "جارٍ التحميل…",
+    "loadingMore": "جارٍ تحميل المزيد…",
+    "endOfTimeline": "لقد وصلت إلى بداية سجل هذه الآلة.",
+    "errors": {
+      "loadSummary": "تعذّر تحميل تفاصيل الآلة",
+      "loadTimeline": "تعذّر تحميل الأحداث",
+      "loadDocument": "تعذّر تحميل المستند"
+    },
+    "actions": {
+      "retry": "إعادة المحاولة",
+      "showMore": "عرض المزيد",
+      "showLess": "عرض أقل",
+      "viewDocument": "عرض المستند",
+      "viewWorkOrder": "عرض أمر العمل",
+      "previewDocument": "معاينة المستند",
+      "back": "رجوع",
+      "clearSearch": "مسح البحث",
+      "resetFilters": "إعادة ضبط عوامل التصفية",
+      "workOrders": "أوامر العمل"
+    },
+    "empty": {
+      "default": "لا توجد أحداث مسجّلة لهذه الآلة بعد.",
+      "filtered": "لا توجد أحداث مطابقة لعوامل التصفية."
+    },
+    "header": {
+      "noDetails": "لا توجد تفاصيل إضافية",
+      "lastMaintenance": "آخر صيانة",
+      "nextMaintenance": "الصيانة القادمة",
+      "openWorkOrders": "أوامر العمل المفتوحة",
+      "machineAge": "عمر الآلة",
+      "ageDays": "{days} يوم",
+      "currentTechnician": "الفني الحالي",
+      "none": "—"
+    },
+    "stats": {
+      "totalInterventions": "إجمالي التدخلات",
+      "preventiveCompleted": "الوقائية المكتملة",
+      "correctiveCompleted": "التصحيحية المكتملة",
+      "openWorkOrders": "أوامر العمل المفتوحة",
+      "closedWorkOrders": "أوامر العمل المغلقة",
+      "downtimeHours": "ساعات التوقف",
+      "averageRepairTime": "متوسط زمن الإصلاح (ساعة)",
+      "partsConsumed": "القطع المستهلكة"
+    },
+    "statsContext": {
+      "totalInterventions": "كل أوامر العمل",
+      "preventiveCompleted": "أوامر وقائية مكتملة",
+      "correctiveCompleted": "أوامر تصحيحية مكتملة",
+      "openWorkOrders": "نشطة حاليًا",
+      "closedWorkOrders": "مغلقة أو مؤرشفة",
+      "downtimeHours": "المدة من البداية إلى النهاية",
+      "averageRepairTime": "عبر أوامر العمل ذات التوقيت",
+      "partsConsumed": "كمية المخزون المستهلكة"
+    },
+    "status": {
+      "operational": "قيد التشغيل",
+      "maintenance": "قيد الصيانة",
+      "out_of_service": "خارج الخدمة",
+      "retired": "متوقفة نهائيًا"
+    },
+    "filters": {
+      "title": "التصفية حسب نوع الحدث",
+      "searchPlaceholder": "ابحث حسب الوصف أو الفني أو أمر العمل أو رمز العطل أو المستند أو القطعة…",
+      "all": "الكل",
+      "categories": {
+        "preventive": "وقائية",
+        "corrective": "تصحيحية",
+        "reports": "التقارير",
+        "faults": "الأعطال",
+        "documents": "المستندات",
+        "plans": "الخطط",
+        "inventory": "المخزون",
+        "ai": "الذكاء الاصطناعي",
+        "system": "النظام"
+      }
+    },
+    "groups": {
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "last7Days": "آخر 7 أيام",
+      "last30Days": "آخر 30 يومًا"
+    },
+    "roles": {
+      "admin": "مسؤول",
+      "technician": "فني",
+      "operator": "مشغّل"
+    },
+    "eventTypes": {
+      "machine_created": "تم إنشاء الآلة",
+      "machine_status_changed": "تغيّرت حالة الآلة",
+      "module_added": "تمت إضافة وحدة",
+      "work_order_created": "تم إنشاء أمر عمل",
+      "work_order_started": "تم بدء أمر العمل",
+      "work_order_completed": "تم إنجاز أمر العمل",
+      "work_order_cancelled": "تم إلغاء أمر العمل",
+      "work_order_closed": "تم إغلاق أمر العمل",
+      "work_order_validated": "تم اعتماد أمر العمل",
+      "work_order_rejected": "تم رفض أمر العمل",
+      "work_order_returned": "تمت إعادة أمر العمل إلى الفني",
+      "intervention_report_created": "تم إرسال تقرير التدخل",
+      "intervention_report_validated": "تم اعتماد تقرير التدخل",
+      "fault_reported": "تم الإبلاغ عن عطل",
+      "fault_resolved": "تم حل العطل",
+      "document_uploaded": "تم رفع مستند",
+      "document_published": "تم نشر المستند",
+      "document_archived": "تمت أرشفة المستند",
+      "document_superseded": "تم استبدال المستند",
+      "maintenance_plan_created": "تم إنشاء خطة صيانة",
+      "maintenance_plan_activated": "تم تفعيل خطة الصيانة",
+      "maintenance_plan_paused": "تم إيقاف خطة الصيانة مؤقتًا",
+      "maintenance_plan_resumed": "تم استئناف خطة الصيانة",
+      "maintenance_plan_archived": "تمت أرشفة خطة الصيانة",
+      "maintenance_plan_completed": "تم إنجاز خطة الصيانة",
+      "maintenance_plan_updated": "تم تحديث خطة الصيانة",
+      "preventive_task_completed": "تم إنجاز مهمة وقائية",
+      "lubrication_completed": "تم تنفيذ التزييت",
+      "parts_consumed": "تم استهلاك قطع",
+      "parts_returned": "تم إرجاع قطع",
+      "parts_adjusted": "تم تعديل المخزون",
+      "ai_recommendation_generated": "تم إنشاء توصية بالذكاء الاصطناعي"
+    },
+    "metadataLabels": {
+      "machineCode": "رمز الآلة",
+      "moduleCode": "رمز الوحدة",
+      "otId": "أمر العمل",
+      "priority": "الأولوية",
+      "faultCode": "رمز العطل",
+      "fromStatus": "الحالة السابقة",
+      "toStatus": "الحالة الجديدة",
+      "reportId": "التقرير",
+      "rootCause": "السبب الجذري",
+      "actionTaken": "الإجراء المتخذ",
+      "finalState": "الحالة النهائية",
+      "severity": "درجة الخطورة",
+      "documentId": "المستند",
+      "fileName": "اسم الملف",
+      "typeDocument": "نوع المستند",
+      "planId": "الخطة",
+      "typeMaintenance": "نوع الصيانة",
+      "taskId": "المهمة",
+      "responsable": "المسؤول",
+      "notes": "ملاحظات",
+      "source": "المصدر",
+      "logId": "السجل",
+      "quantity": "الكمية",
+      "movementId": "الحركة",
+      "partName": "القطعة",
+      "partRef": "مرجع القطعة",
+      "provider": "مزوّد الذكاء الاصطناعي"
     }
   },
   "interventionReports": {
@@ -2169,7 +2327,8 @@
       "status": "الحالة",
       "installation_date": "تاريخ التركيب",
       "poids_kg": "الوزن (كغ)",
-      "type": "نوع الآلة"
+      "type": "نوع الآلة",
+      "viewTimeline": "عرض الجدول الزمني"
     },
     "report": {
       "title": "تقرير التدخل",

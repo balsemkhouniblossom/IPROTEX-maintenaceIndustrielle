@@ -1432,6 +1432,146 @@
       "update": "Update",
       "create": "Create",
       "saving": "Saving..."
+    },
+    "actions": {
+      "viewTimeline": "Cronologia"
+    }
+  },
+  "machineTimeline": {
+    "pageTitle": "Cronologia della macchina",
+    "timelineTitle": "Cronologia",
+    "loading": "Caricamento…",
+    "loadingMore": "Caricamento altri eventi…",
+    "endOfTimeline": "Hai raggiunto l'inizio della cronologia di questa macchina.",
+    "errors": {
+      "loadSummary": "Impossibile caricare i dettagli della macchina",
+      "loadTimeline": "Impossibile caricare gli eventi",
+      "loadDocument": "Impossibile caricare il documento"
+    },
+    "actions": {
+      "retry": "Riprova",
+      "showMore": "Mostra di più",
+      "showLess": "Mostra meno",
+      "viewDocument": "Visualizza documento"
+    },
+    "empty": {
+      "default": "Nessun evento ancora registrato per questa macchina.",
+      "filtered": "Nessun evento corrisponde ai filtri selezionati."
+    },
+    "header": {
+      "noDetails": "Nessun dettaglio aggiuntivo",
+      "lastMaintenance": "Ultima manutenzione",
+      "nextMaintenance": "Prossima manutenzione",
+      "openWorkOrders": "Ordini di lavoro aperti",
+      "machineAge": "Età della macchina",
+      "ageDays": "{days, plural, one {# giorno} other {# giorni}}",
+      "none": "—"
+    },
+    "stats": {
+      "totalInterventions": "Interventi totali",
+      "preventiveCompleted": "Preventivi completati",
+      "correctiveCompleted": "Correttivi completati",
+      "openWorkOrders": "Ordini di lavoro aperti",
+      "closedWorkOrders": "Ordini di lavoro chiusi",
+      "downtimeHours": "Fermo macchina (ore)",
+      "averageRepairTime": "Tempo medio di riparazione (h)",
+      "partsConsumed": "Ricambi consumati"
+    },
+    "status": {
+      "operational": "Operativa",
+      "maintenance": "In manutenzione",
+      "out_of_service": "Fuori servizio",
+      "retired": "Dismessa"
+    },
+    "filters": {
+      "title": "Filtra per tipo di evento",
+      "searchPlaceholder": "Cerca per descrizione, tecnico, ordine di lavoro, codice guasto, documento, ricambio…",
+      "all": "Tutti",
+      "categories": {
+        "preventive": "Preventiva",
+        "corrective": "Correttiva",
+        "reports": "Report",
+        "faults": "Guasti",
+        "documents": "Documenti",
+        "plans": "Piani",
+        "inventory": "Magazzino",
+        "ai": "IA",
+        "system": "Sistema"
+      }
+    },
+    "groups": {
+      "today": "Oggi",
+      "yesterday": "Ieri",
+      "last7Days": "Ultimi 7 giorni",
+      "last30Days": "Ultimi 30 giorni"
+    },
+    "roles": {
+      "admin": "Amministratore",
+      "technician": "Tecnico",
+      "operator": "Operatore"
+    },
+    "eventTypes": {
+      "machine_created": "Macchina creata",
+      "machine_status_changed": "Stato macchina modificato",
+      "module_added": "Modulo aggiunto",
+      "work_order_created": "Ordine di lavoro creato",
+      "work_order_started": "Ordine di lavoro avviato",
+      "work_order_completed": "Ordine di lavoro completato",
+      "work_order_cancelled": "Ordine di lavoro annullato",
+      "work_order_closed": "Ordine di lavoro chiuso",
+      "work_order_validated": "Ordine di lavoro convalidato",
+      "work_order_rejected": "Ordine di lavoro respinto",
+      "work_order_returned": "Ordine di lavoro restituito al tecnico",
+      "intervention_report_created": "Report di intervento inviato",
+      "intervention_report_validated": "Report di intervento convalidato",
+      "fault_reported": "Guasto segnalato",
+      "fault_resolved": "Guasto risolto",
+      "document_uploaded": "Documento caricato",
+      "document_published": "Documento pubblicato",
+      "document_archived": "Documento archiviato",
+      "document_superseded": "Documento sostituito",
+      "maintenance_plan_created": "Piano di manutenzione creato",
+      "maintenance_plan_activated": "Piano di manutenzione attivato",
+      "maintenance_plan_paused": "Piano di manutenzione sospeso",
+      "maintenance_plan_resumed": "Piano di manutenzione ripreso",
+      "maintenance_plan_archived": "Piano di manutenzione archiviato",
+      "maintenance_plan_completed": "Piano di manutenzione completato",
+      "maintenance_plan_updated": "Piano di manutenzione aggiornato",
+      "preventive_task_completed": "Attività preventiva completata",
+      "lubrication_completed": "Lubrificazione eseguita",
+      "parts_consumed": "Ricambi consumati",
+      "parts_returned": "Ricambi restituiti",
+      "parts_adjusted": "Scorta rettificata",
+      "ai_recommendation_generated": "Raccomandazione IA generata"
+    },
+    "metadataLabels": {
+      "machineCode": "Codice macchina",
+      "moduleCode": "Codice modulo",
+      "otId": "Ordine di lavoro",
+      "priority": "Priorità",
+      "faultCode": "Codice guasto",
+      "fromStatus": "Stato precedente",
+      "toStatus": "Nuovo stato",
+      "reportId": "Report",
+      "rootCause": "Causa principale",
+      "actionTaken": "Azione eseguita",
+      "finalState": "Stato finale",
+      "severity": "Gravità",
+      "documentId": "Documento",
+      "fileName": "Nome file",
+      "typeDocument": "Tipo di documento",
+      "planId": "Piano",
+      "typeMaintenance": "Tipo di manutenzione",
+      "taskId": "Attività",
+      "responsable": "Responsabile",
+      "notes": "Note",
+      "source": "Origine",
+      "logId": "Registro",
+      "quantity": "Quantità",
+      "movementId": "Movimento",
+      "partName": "Ricambio",
+      "partRef": "Riferimento ricambio",
+      "provider": "Fornitore IA"
     }
   },
   "interventionReports": {
@@ -2107,7 +2247,8 @@
       "status": "Stato",
       "installation_date": "Data installazione",
       "poids_kg": "Peso (kg)",
-      "type": "Tipo macchina"
+      "type": "Tipo macchina",
+      "viewTimeline": "Visualizza cronologia"
     },
     "report": {
       "title": "Rapporto d'intervento",

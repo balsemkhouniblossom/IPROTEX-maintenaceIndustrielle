@@ -11,6 +11,7 @@ import {
     MapPinIcon,
     CalendarIcon,
     WrenchScrewdriverIcon,
+    ClockIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import LiveStatusBadge from "@/components/device-monitoring/LiveStatusBadge";
@@ -208,7 +209,15 @@ function OperatorMachinesPageContent() {
                             </div>
 
                             {/* FOOTER ACTIONS */}
-                            <div className="mt-5 grid gap-2 md:grid-cols-3">
+                            <div className="mt-5 grid gap-2 md:grid-cols-4">
+                                <button
+                                    onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
+                                    className="flex-1 bg-slate-700 hover:bg-slate-800 text-white rounded-lg px-3 py-2 text-sm font-medium flex items-center justify-center gap-2"
+                                >
+                                    <ClockIcon className="w-4 h-4" />
+                                    {tMachines("timeline", { default: "Timeline" })}
+                                </button>
+
                                 <button
                                     onClick={() =>
                                         router.push(

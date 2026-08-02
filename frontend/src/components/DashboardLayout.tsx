@@ -209,7 +209,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     <div className="dashboard-grid relative overflow-x-hidden overflow-y-visible" >
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:start-2 focus:z-1001 focus:rounded-md focus:bg-[var(--primary)] focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:inset-s-2 focus:z-1001 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-white"
       >
         {tCommon('skipToContent')}
       </a>

@@ -241,6 +241,22 @@ export const apiService = {
   updateMachine: (id: string, data: AnyObject) => api.patch(`/machines/${id}`, data),
   deleteMachine: (id: string) => api.delete(`/machines/${id}`),
 
+  // Machine timeline (header/stats + chronological event feed)
+  getMachineTimelineSummary: (machineId: string, options?: { signal?: AbortSignal }) =>
+    api.get(`/machines/${machineId}/timeline/summary`, { signal: options?.signal }),
+  getMachineTimeline: (
+    machineId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      types?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    },
+    options?: { signal?: AbortSignal },
+  ) => api.get(`/machines/${machineId}/timeline`, { params, signal: options?.signal }),
+
   // Device monitoring (Admin registration + role-scoped live status)
   getDevices: () => api.get('/devices'),
   getDevice: (id: string) => api.get(`/devices/${id}`),

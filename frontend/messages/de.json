@@ -1532,6 +1532,7 @@
     "serialNumber": "Seriennummer",
     "manufacturer": "Hersteller",
     "reportIssue": "Problem melden",
+    "timeline": "Zeitleiste",
     "details": "Details",
     "noMachinesFound": "Keine Maschinen gefunden",
     "status": {
@@ -1706,6 +1707,146 @@
       "update": "Aktualisieren",
       "create": "Erstellen",
       "saving": "Wird gespeichert..."
+    },
+    "actions": {
+      "viewTimeline": "Zeitleiste"
+    }
+  },
+  "machineTimeline": {
+    "pageTitle": "Maschinen-Zeitleiste",
+    "timelineTitle": "Zeitleiste",
+    "loading": "Wird geladen…",
+    "loadingMore": "Weitere Einträge werden geladen…",
+    "endOfTimeline": "Sie haben den Anfang der Historie dieser Maschine erreicht.",
+    "errors": {
+      "loadSummary": "Maschinendetails konnten nicht geladen werden",
+      "loadTimeline": "Ereignisse konnten nicht geladen werden",
+      "loadDocument": "Dokument konnte nicht geladen werden"
+    },
+    "actions": {
+      "retry": "Erneut versuchen",
+      "showMore": "Mehr anzeigen",
+      "showLess": "Weniger anzeigen",
+      "viewDocument": "Dokument ansehen"
+    },
+    "empty": {
+      "default": "Für diese Maschine wurden noch keine Ereignisse erfasst.",
+      "filtered": "Keine Ereignisse entsprechen Ihren Filtern."
+    },
+    "header": {
+      "noDetails": "Keine weiteren Details",
+      "lastMaintenance": "Letzte Wartung",
+      "nextMaintenance": "Nächste Wartung",
+      "openWorkOrders": "Offene Arbeitsaufträge",
+      "machineAge": "Maschinenalter",
+      "ageDays": "{days, plural, one {# Tag} other {# Tage}}",
+      "none": "—"
+    },
+    "stats": {
+      "totalInterventions": "Interventionen gesamt",
+      "preventiveCompleted": "Präventiv abgeschlossen",
+      "correctiveCompleted": "Korrektiv abgeschlossen",
+      "openWorkOrders": "Offene Arbeitsaufträge",
+      "closedWorkOrders": "Geschlossene Arbeitsaufträge",
+      "downtimeHours": "Ausfallzeit (Stunden)",
+      "averageRepairTime": "Ø Reparaturzeit (h)",
+      "partsConsumed": "Verbrauchte Teile"
+    },
+    "status": {
+      "operational": "Betriebsbereit",
+      "maintenance": "In Wartung",
+      "out_of_service": "Außer Betrieb",
+      "retired": "Stillgelegt"
+    },
+    "filters": {
+      "title": "Nach Ereignistyp filtern",
+      "searchPlaceholder": "Suche nach Beschreibung, Techniker, Arbeitsauftrag, Fehlercode, Dokument, Ersatzteil…",
+      "all": "Alle",
+      "categories": {
+        "preventive": "Präventiv",
+        "corrective": "Korrektiv",
+        "reports": "Berichte",
+        "faults": "Störungen",
+        "documents": "Dokumente",
+        "plans": "Pläne",
+        "inventory": "Lager",
+        "ai": "KI",
+        "system": "System"
+      }
+    },
+    "groups": {
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "last7Days": "Letzte 7 Tage",
+      "last30Days": "Letzte 30 Tage"
+    },
+    "roles": {
+      "admin": "Administrator",
+      "technician": "Techniker",
+      "operator": "Bediener"
+    },
+    "eventTypes": {
+      "machine_created": "Maschine erstellt",
+      "machine_status_changed": "Maschinenstatus geändert",
+      "module_added": "Modul hinzugefügt",
+      "work_order_created": "Arbeitsauftrag erstellt",
+      "work_order_started": "Arbeitsauftrag gestartet",
+      "work_order_completed": "Arbeitsauftrag abgeschlossen",
+      "work_order_cancelled": "Arbeitsauftrag storniert",
+      "work_order_closed": "Arbeitsauftrag geschlossen",
+      "work_order_validated": "Arbeitsauftrag validiert",
+      "work_order_rejected": "Arbeitsauftrag abgelehnt",
+      "work_order_returned": "Arbeitsauftrag an Techniker zurückgegeben",
+      "intervention_report_created": "Interventionsbericht eingereicht",
+      "intervention_report_validated": "Interventionsbericht validiert",
+      "fault_reported": "Störung gemeldet",
+      "fault_resolved": "Störung behoben",
+      "document_uploaded": "Dokument hochgeladen",
+      "document_published": "Dokument veröffentlicht",
+      "document_archived": "Dokument archiviert",
+      "document_superseded": "Dokument ersetzt",
+      "maintenance_plan_created": "Wartungsplan erstellt",
+      "maintenance_plan_activated": "Wartungsplan aktiviert",
+      "maintenance_plan_paused": "Wartungsplan pausiert",
+      "maintenance_plan_resumed": "Wartungsplan fortgesetzt",
+      "maintenance_plan_archived": "Wartungsplan archiviert",
+      "maintenance_plan_completed": "Wartungsplan abgeschlossen",
+      "maintenance_plan_updated": "Wartungsplan aktualisiert",
+      "preventive_task_completed": "Präventive Aufgabe abgeschlossen",
+      "lubrication_completed": "Schmierung durchgeführt",
+      "parts_consumed": "Teile verbraucht",
+      "parts_returned": "Teile zurückgegeben",
+      "parts_adjusted": "Bestand angepasst",
+      "ai_recommendation_generated": "KI-Empfehlung erstellt"
+    },
+    "metadataLabels": {
+      "machineCode": "Maschinencode",
+      "moduleCode": "Modulcode",
+      "otId": "Arbeitsauftrag",
+      "priority": "Priorität",
+      "faultCode": "Fehlercode",
+      "fromStatus": "Vorheriger Status",
+      "toStatus": "Neuer Status",
+      "reportId": "Bericht",
+      "rootCause": "Ursache",
+      "actionTaken": "Durchgeführte Maßnahme",
+      "finalState": "Endzustand",
+      "severity": "Schweregrad",
+      "documentId": "Dokument",
+      "fileName": "Dateiname",
+      "typeDocument": "Dokumenttyp",
+      "planId": "Plan",
+      "typeMaintenance": "Wartungsart",
+      "taskId": "Aufgabe",
+      "responsable": "Verantwortlich",
+      "notes": "Notizen",
+      "source": "Quelle",
+      "logId": "Protokoll",
+      "quantity": "Menge",
+      "movementId": "Bewegung",
+      "partName": "Teil",
+      "partRef": "Teilereferenz",
+      "provider": "KI-Anbieter"
     }
   },
   "interventionReports": {
@@ -2381,7 +2522,8 @@
       "status": "Status",
       "installation_date": "Installationsdatum",
       "poids_kg": "Gewicht (kg)",
-      "type": "Maschinentyp"
+      "type": "Maschinentyp",
+      "viewTimeline": "Zeitleiste ansehen"
     },
     "report": {
       "title": "Einsatzbericht",

@@ -20,7 +20,7 @@ export function AvatarSpeechBubble({ eyebrow, tone, title, message, closeLabel, 
         type="button"
         onClick={onClose}
         aria-label={closeLabel}
-        className="absolute -top-1 end-0 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent text-text-muted transition hover:border-border hover:bg-(--surface-elevated) hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600"
+        className="absolute -top-1 inset-e-0 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-transparent text-text-muted transition hover:border-border hover:bg-(--surface-elevated) hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600"
       >
         <XMarkIcon className="h-4 w-4" aria-hidden="true" />
       </button>

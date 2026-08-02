@@ -54,7 +54,16 @@ export class MachinesService {
   ) {}
 
   async create(createMachineDto: CreateMachineDto): Promise<Machine> {
-    const createdMachine = new this.machineModel(createMachineDto);
+    const createdMachine = new this.machineModel({
+      ...createMachineDto,
+      lifecycle_history: [
+        {
+          action: 'created',
+          to_status: createMachineDto.status,
+          at: new Date(),
+        },
+      ],
+    });
     return createdMachine.save();
   }
 
@@ -80,6 +89,32 @@ export class MachinesService {
   }
 
   async update(id: string, updateMachineDto: UpdateMachineDto): Promise<any> {
+    if (updateMachineDto.status !== undefined) {
+      const existing = await this.machineModel
+        .findById(id)
+        .select({ status: 1 })
+        .exec();
+      if (existing && existing.status !== updateMachineDto.status) {
+        return this.machineModel
+          .findByIdAndUpdate(
+            id,
+            {
+              $set: updateMachineDto,
+              $push: {
+                lifecycle_history: {
+                  action: 'status_changed',
+                  from_status: existing.status,
+                  to_status: updateMachineDto.status,
+                  at: new Date(),
+                },
+              },
+            },
+            { new: true },
+          )
+          .exec();
+      }
+    }
+
     return this.machineModel
       .findByIdAndUpdate(id, updateMachineDto, { new: true })
       .exec();

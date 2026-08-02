@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -195,13 +196,23 @@ export default function TechnicianWorkOrderDetail({ id }: { id: string }) {
           <section className="panel">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">{t("machine.title")}</h2>
-              {machine?._id ? (
-                <LiveStatusBadge
-                  machineId={machine._id}
-                  status={statusByMachine[machine._id]}
-                  onSubscribe={subscribeToMachine}
-                />
-              ) : null}
+              <div className="flex items-center gap-3">
+                {machine?._id ? (
+                  <LiveStatusBadge
+                    machineId={machine._id}
+                    status={statusByMachine[machine._id]}
+                    onSubscribe={subscribeToMachine}
+                  />
+                ) : null}
+                {machine?._id ? (
+                  <Link
+                    href={`/${locale}/machines/${machine._id}`}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                  >
+                    {t("machine.viewTimeline", { default: "View timeline" })}
+                  </Link>
+                ) : null}
+              </div>
             </div>
             <dl className="grid gap-3 text-sm md:grid-cols-3">
               {[

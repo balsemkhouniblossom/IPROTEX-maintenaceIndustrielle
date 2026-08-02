@@ -82,6 +82,7 @@ import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
 import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive-maintenance.module';
 import { ReportsModule } from './reports/reports.module';
 import { SavedViewsModule } from './saved-views/saved-views.module';
+import { MachineTimelineModule } from './machine-timeline/machine-timeline.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
@@ -216,6 +217,7 @@ const mongoLogger = new Logger('MongoDB');
     PredictiveMaintenanceModule,
     ReportsModule,
     SavedViewsModule,
+    MachineTimelineModule,
   ],
   controllers: [AppController],
   providers: [

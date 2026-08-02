@@ -1,0 +1,106 @@
+[
+  {
+    "role": "admin",
+    "locale": "en",
+    "width": 1440,
+    "height": 1000,
+    "name": "desktop-admin-en",
+    "interact": true,
+    "metrics": {
+      "url": "http://localhost:3000/en/machines/6a26cc2e5db6ad4ca8f1d2de",
+      "title": "Machine Timeline / F 040.01",
+      "dir": "ltr",
+      "overflowX": false,
+      "articleCount": 11,
+      "chipCount": 10,
+      "expandedButtons": 6,
+      "eventCountText": "35 events",
+      "hasTimeline": true
+    },
+    "messages": [],
+    "failed": [
+      "GET http://localhost:3001/machines/6a26cc2e5db6ad4ca8f1d2de/timeline?page=2&limit=20&search=WO net::ERR_ABORTED"
+    ]
+  },
+  {
+    "role": "technician",
+    "locale": "en",
+    "width": 1024,
+    "height": 900,
+    "name": "tablet-technician-en",
+    "metrics": {
+      "url": "http://localhost:3000/en/machines/6a26cc2e5db6ad4ca8f1d2de",
+      "title": "Machine Timeline / F 040.01",
+      "dir": "ltr",
+      "overflowX": false,
+      "articleCount": 10,
+      "chipCount": 10,
+      "expandedButtons": 6,
+      "eventCountText": "35 events",
+      "hasTimeline": true
+    },
+    "messages": [],
+    "failed": []
+  },
+  {
+    "role": "operator",
+    "locale": "en",
+    "width": 390,
+    "height": 844,
+    "name": "mobile-operator-en",
+    "metrics": {
+      "url": "http://localhost:3000/en/machines/6a26cc2e5db6ad4ca8f1d2de",
+      "title": "Machine Timeline / F 040.01",
+      "dir": "ltr",
+      "overflowX": false,
+      "articleCount": 9,
+      "chipCount": 10,
+      "expandedButtons": 5,
+      "eventCountText": "35 events",
+      "hasTimeline": true
+    },
+    "messages": [],
+    "failed": []
+  },
+  {
+    "role": "admin",
+    "locale": "ar",
+    "width": 390,
+    "height": 844,
+    "name": "mobile-admin-ar-rtl",
+    "metrics": {
+      "url": "http://localhost:3000/ar/machines/6a26cc2e5db6ad4ca8f1d2de",
+      "title": "الجدول الزمني للآلة / F 040.01",
+      "dir": "rtl",
+      "overflowX": false,
+      "articleCount": 6,
+      "chipCount": 10,
+      "expandedButtons": 4,
+      "eventCountText": "35 events",
+      "hasTimeline": false
+    },
+    "messages": [],
+    "failed": []
+  },
+  {
+    "role": "admin",
+    "locale": "en",
+    "width": 1440,
+    "height": 1000,
+    "name": "desktop-admin-dark",
+    "theme": "dark",
+    "metrics": {
+      "url": "http://localhost:3000/en/machines/6a26cc2e5db6ad4ca8f1d2de",
+      "title": "Machine Timeline / F 040.01",
+      "dir": "ltr",
+      "overflowX": false,
+      "articleCount": 11,
+      "chipCount": 10,
+      "expandedButtons": 6,
+      "eventCountText": "35 events",
+      "hasTimeline": true
+    },
+    "messages": [],
+    "failed": []
+  }
+]

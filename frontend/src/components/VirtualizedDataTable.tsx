@@ -178,13 +178,13 @@ export function VirtualizedDataTable<T>({
         ref={scrollRef}
         role="table"
         aria-label={ariaLabel}
-        className="min-w-full rounded-[var(--radius)] border border-[var(--border)] shadow-[var(--shadow)]"
+        className="min-w-full rounded-(--radius) border border-border shadow-(--shadow)"
         style={{ [GRID_TEMPLATE_VAR]: gridTemplateColumns, height, overflow: 'auto' } as GridTemplateStyle}
       >
         <div
           ref={headerRef}
           role="row"
-          className="sticky top-0 z-10 grid items-center gap-4 border-b border-[var(--border)] bg-gradient-to-br from-[var(--surface-secondary)] to-[var(--background)] px-4 py-3 text-sm font-semibold text-[var(--text-primary)]"
+          className="sticky top-0 z-10 grid items-center gap-4 border-b border-border bg-linear-to-br from-(--surface-secondary) to-background px-4 py-3 text-sm font-semibold text-text-primary"
           style={gridColumnStyle}
         >
           {selectable && (
@@ -210,7 +210,7 @@ export function VirtualizedDataTable<T>({
                 <button
                   type="button"
                   onClick={() => onSortChange(column.key)}
-                  className="inline-flex items-center gap-1 hover:text-[var(--text-primary)]"
+                  className="inline-flex items-center gap-1 hover:text-text-primary"
                 >
                   {column.header}
                   {sortField === column.key &&
@@ -235,7 +235,7 @@ export function VirtualizedDataTable<T>({
             <div role="cell" className="animate-pulse space-y-2 p-3" aria-live="polite">
               <span className="sr-only">{loadingLabel}</span>
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-10 rounded bg-[var(--surface-secondary)]" />
+                <div key={i} className="h-10 rounded bg-(--surface-secondary)" />
               ))}
             </div>
           </div>
@@ -243,7 +243,7 @@ export function VirtualizedDataTable<T>({
           <div role="row">
             <div role="cell" className="flex flex-col items-center gap-3 py-10 text-center" aria-live="assertive">
               <ExclamationTriangleIcon className="h-8 w-8 text-red-500" aria-hidden="true" />
-              <p className="text-sm text-[var(--text-secondary)]">{error}</p>
+              <p className="text-sm text-text-secondary">{error}</p>
               {onRetry && (
                 <button type="button" onClick={onRetry} className="btn-secondary inline-flex items-center gap-2">
                   <ArrowPathIcon className="h-4 w-4" />
@@ -254,7 +254,7 @@ export function VirtualizedDataTable<T>({
           </div>
         ) : rows.length === 0 ? (
           <div role="row">
-            <p role="cell" className="py-10 text-center text-sm text-[var(--text-secondary)]">
+            <p role="cell" className="py-10 text-center text-sm text-text-secondary">
               {emptyMessage}
             </p>
           </div>
@@ -272,8 +272,8 @@ export function VirtualizedDataTable<T>({
                   tabIndex={focusedIndex === virtualRow.index ? 0 : -1}
                   onFocus={() => setFocusedIndex(virtualRow.index)}
                   onKeyDown={(event) => handleRowKeyDown(event, virtualRow.index)}
-                  className={`grid items-center gap-4 border-b border-[var(--border-soft)] px-4 py-3 text-sm outline-offset-2 transition-colors hover:bg-[var(--surface-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] ${
-                    selected ? 'bg-[var(--surface-accent)]' : ''
+                  className={`grid items-center gap-4 border-b border-(--border-soft) px-4 py-3 text-sm outline-offset-2 transition-colors hover:bg-(--surface-secondary) focus-visible:outline-2 focus-visible:outline-primary ${
+                    selected ? 'bg-(--surface-accent)' : ''
                   }`}
                   style={{
                     ...gridColumnStyle,

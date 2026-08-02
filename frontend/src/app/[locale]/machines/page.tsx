@@ -11,8 +11,8 @@ import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
 import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import { apiService } from '@/services/api';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
-import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { useTranslations } from 'next-intl';
+import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
 interface Machine {
@@ -43,6 +43,7 @@ export default function MachinesPage() {
   const { statusByMachine, subscribeToMachine } = useLiveMonitoring();
   const { healthByMachine } = usePredictiveHealth();
   const router = useRouter();
+  const locale = useLocale();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
   const [page, setPage] = useState(1);
@@ -433,6 +434,16 @@ export default function MachinesPage() {
 
                         <td>
                           <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
+                              aria-label={tMachines('actions.viewTimeline', { default: 'View timeline' })}
+                              title={tMachines('actions.viewTimeline', { default: 'View timeline' })}
+                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                            >
+                              <ClockIcon className="h-4 w-4 shrink-0" />
+                              <span>{tMachines('actions.viewTimeline', { default: 'Timeline' })}</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleEdit(machine)}

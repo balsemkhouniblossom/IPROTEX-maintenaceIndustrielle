@@ -1,0 +1,35 @@
+[
+  {
+    "name": "desktop-admin-en-final",
+    "metrics": {
+      "dir": "ltr",
+      "overflowX": false,
+      "bodyHas35": true,
+      "articles": 11
+    },
+    "messages": [],
+    "failed": []
+  },
+  {
+    "name": "mobile-operator-en-final",
+    "metrics": {
+      "dir": "ltr",
+      "overflowX": false,
+      "bodyHas35": true,
+      "articles": 9
+    },
+    "messages": [],
+    "failed": []
+  },
+  {
+    "name": "mobile-admin-ar-rtl-final",
+    "metrics": {
+      "dir": "rtl",
+      "overflowX": false,
+      "bodyHas35": true,
+      "articles": 6
+    },
+    "messages": [],
+    "failed": []
+  }
+]

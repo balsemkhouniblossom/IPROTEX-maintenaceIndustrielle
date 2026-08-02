@@ -1703,6 +1703,164 @@
       "update": "Update",
       "create": "Create",
       "saving": "Saving..."
+    },
+    "actions": {
+      "viewTimeline": "Timeline"
+    }
+  },
+  "machineTimeline": {
+    "pageTitle": "Machine Timeline",
+    "timelineTitle": "Timeline",
+    "timelineEventCount": "{count, plural, one {# event} other {# events}}",
+    "loading": "Loading…",
+    "loadingMore": "Loading more…",
+    "endOfTimeline": "You've reached the beginning of this machine's history.",
+    "errors": {
+      "loadSummary": "Failed to load machine details",
+      "loadTimeline": "Failed to load timeline events",
+      "loadDocument": "Failed to load document"
+    },
+    "actions": {
+      "retry": "Retry",
+      "showMore": "Show more",
+      "showLess": "Show less",
+      "viewDocument": "View document",
+      "viewWorkOrder": "View work order",
+      "previewDocument": "Preview document",
+      "back": "Back",
+      "clearSearch": "Clear search",
+      "resetFilters": "Reset filters",
+      "workOrders": "Work orders"
+    },
+    "empty": {
+      "default": "No events recorded for this machine yet.",
+      "filtered": "No events match your filters."
+    },
+    "header": {
+      "noDetails": "No additional details",
+      "lastMaintenance": "Last maintenance",
+      "nextMaintenance": "Next maintenance",
+      "openWorkOrders": "Open work orders",
+      "machineAge": "Machine age",
+      "ageDays": "{days, plural, one {# day} other {# days}}",
+      "currentTechnician": "Current technician",
+      "none": "—"
+    },
+    "stats": {
+      "totalInterventions": "Total interventions",
+      "preventiveCompleted": "Preventive completed",
+      "correctiveCompleted": "Corrective completed",
+      "openWorkOrders": "Open work orders",
+      "closedWorkOrders": "Closed work orders",
+      "downtimeHours": "Downtime (hours)",
+      "averageRepairTime": "Avg. repair time (h)",
+      "partsConsumed": "Parts consumed"
+    },
+    "statsContext": {
+      "totalInterventions": "All work orders",
+      "preventiveCompleted": "Completed preventive WOs",
+      "correctiveCompleted": "Completed corrective WOs",
+      "openWorkOrders": "Currently active",
+      "closedWorkOrders": "Closed or archived",
+      "downtimeHours": "Start to end duration",
+      "averageRepairTime": "Across timed work orders",
+      "partsConsumed": "Consumed stock quantity"
+    },
+    "status": {
+      "operational": "Operational",
+      "maintenance": "Under Maintenance",
+      "out_of_service": "Out of Service",
+      "retired": "Retired"
+    },
+    "filters": {
+      "title": "Filter by event type",
+      "searchPlaceholder": "Search by description, technician, work order, fault code, document, spare part…",
+      "all": "All",
+      "categories": {
+        "preventive": "Preventive",
+        "corrective": "Corrective",
+        "reports": "Reports",
+        "faults": "Faults",
+        "documents": "Documents",
+        "plans": "Plans",
+        "inventory": "Inventory",
+        "ai": "AI",
+        "system": "System"
+      }
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days"
+    },
+    "roles": {
+      "admin": "Admin",
+      "technician": "Technician",
+      "operator": "Operator"
+    },
+    "eventTypes": {
+      "machine_created": "Machine created",
+      "machine_status_changed": "Machine status changed",
+      "module_added": "Module added",
+      "work_order_created": "Work order created",
+      "work_order_started": "Work order started",
+      "work_order_completed": "Work order completed",
+      "work_order_cancelled": "Work order cancelled",
+      "work_order_closed": "Work order closed",
+      "work_order_validated": "Work order validated",
+      "work_order_rejected": "Work order rejected",
+      "work_order_returned": "Work order returned to technician",
+      "intervention_report_created": "Intervention report submitted",
+      "intervention_report_validated": "Intervention report validated",
+      "fault_reported": "Fault reported",
+      "fault_resolved": "Fault resolved",
+      "document_uploaded": "Document uploaded",
+      "document_published": "Document published",
+      "document_archived": "Document archived",
+      "document_superseded": "Document superseded",
+      "maintenance_plan_created": "Maintenance plan created",
+      "maintenance_plan_activated": "Maintenance plan activated",
+      "maintenance_plan_paused": "Maintenance plan paused",
+      "maintenance_plan_resumed": "Maintenance plan resumed",
+      "maintenance_plan_archived": "Maintenance plan archived",
+      "maintenance_plan_completed": "Maintenance plan completed",
+      "maintenance_plan_updated": "Maintenance plan updated",
+      "preventive_task_completed": "Preventive task completed",
+      "lubrication_completed": "Lubrication completed",
+      "parts_consumed": "Parts consumed",
+      "parts_returned": "Parts returned",
+      "parts_adjusted": "Stock adjusted",
+      "ai_recommendation_generated": "AI recommendation generated"
+    },
+    "metadataLabels": {
+      "machineCode": "Machine code",
+      "moduleCode": "Module code",
+      "otId": "Work order",
+      "priority": "Priority",
+      "faultCode": "Fault code",
+      "fromStatus": "From status",
+      "toStatus": "To status",
+      "reportId": "Report",
+      "rootCause": "Root cause",
+      "actionTaken": "Action taken",
+      "finalState": "Final state",
+      "severity": "Severity",
+      "documentId": "Document",
+      "fileName": "File name",
+      "typeDocument": "Document type",
+      "planId": "Plan",
+      "typeMaintenance": "Maintenance type",
+      "taskId": "Task",
+      "responsable": "Responsible",
+      "notes": "Notes",
+      "source": "Source",
+      "logId": "Log",
+      "quantity": "Quantity",
+      "movementId": "Movement",
+      "partName": "Part",
+      "partRef": "Part reference",
+      "provider": "AI provider"
     }
   },
   "operatorMachines": {
@@ -1714,6 +1872,7 @@
     "serialNumber": "Serial Number",
     "manufacturer": "Manufacturer",
     "reportIssue": "Report Issue",
+    "timeline": "Timeline",
     "details": "Details",
     "noMachinesFound": "No machines found",
     "status": {
@@ -2395,7 +2554,8 @@
       "status": "Status",
       "installation_date": "Installation date",
       "poids_kg": "Weight (kg)",
-      "type": "Machine type"
+      "type": "Machine type",
+      "viewTimeline": "View timeline"
     },
     "report": {
       "title": "Intervention report",

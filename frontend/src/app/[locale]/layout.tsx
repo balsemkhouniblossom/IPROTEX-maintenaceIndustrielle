@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { locales } from "@/i18n/config";
 import React from "react";
 import { isRtlLocale } from "@/i18n/config";
+import LocaleDocumentAttributes from "./LocaleDocumentAttributes";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -38,6 +39,7 @@ export default async function LocaleLayout({
   const isRtl = isRtlLocale(locale);
   return (
     <div dir={isRtl ? "rtl" : "ltr"}>
+      <LocaleDocumentAttributes locale={locale} />
       <NextIntlClientProvider locale={locale} messages={messages}>
         {children}
       </NextIntlClientProvider>
