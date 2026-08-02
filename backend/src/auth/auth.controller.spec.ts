@@ -186,6 +186,88 @@ describe('AuthController refresh cookie configuration', () => {
     });
     expect(authService.refreshToken).not.toHaveBeenCalled();
   });
+
+  it('logs out by refresh cookie and clears cookies with matching options', async () => {
+    process.env.NODE_ENV = 'production';
+
+    const authService = {
+      logoutByRefreshToken: jest
+        .fn()
+        .mockResolvedValue({ message: 'Logged out successfully' }),
+    };
+    const controller = new AuthController(
+      authService as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
+    );
+    const res = { clearCookie: jest.fn() };
+
+    const result = await controller.logout(
+      {
+        headers: {
+          cookie: 'refresh_token=refresh-one; csrf_token=csrf-one',
+          'x-csrf-token': 'csrf-one',
+        },
+      } as never,
+      res as never,
+    );
+
+    expect(authService.logoutByRefreshToken).toHaveBeenCalledWith(
+      'refresh-one',
+    );
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      'refresh_token',
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      }),
+    );
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.objectContaining({
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+      }),
+    );
+    expect(result).toEqual({ message: 'Logged out successfully' });
+  });
+
+  it('rejects cookie logout when the CSRF token is missing', async () => {
+    const authService = {
+      logoutByRefreshToken: jest.fn(),
+    };
+    const controller = new AuthController(
+      authService as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
+    );
+
+    await expect(
+      controller.logout(
+        {
+          headers: {
+            cookie: 'refresh_token=refresh-one; csrf_token=csrf-one',
+          },
+        } as never,
+        { clearCookie: jest.fn() } as never,
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'CSRF_TOKEN_INVALID',
+      },
+    });
+    expect(authService.logoutByRefreshToken).not.toHaveBeenCalled();
+  });
 });
 
 describe('AuthController.forcePasswordReset', () => {

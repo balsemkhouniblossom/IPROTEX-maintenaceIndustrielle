@@ -2,7 +2,7 @@
 /**
  * Authenticated Lighthouse audit for Admin/Technician/Operator routes.
  *
- * The app keeps its session in localStorage (not a readable cookie), so a
+ * The app restores sessions through HttpOnly refresh cookies, so a
  * plain `lighthouse <url>` run never sees past the login page. This script
  * instead:
  *   1. Launches one real Chrome instance (via puppeteer-core) with a fixed
@@ -11,7 +11,7 @@
  *      no token-seeding shortcuts) and waits for the post-login redirect.
  *   3. Runs Lighthouse's Node API against that same Chrome instance (same
  *      `port`), so every audited tab shares the browser profile's
- *      cookies/localStorage the login just set.
+ *      cookies and in-memory access token the login just established.
  *   4. Clears storage + cookies before moving to the next role, so runs
  *      never leak a previous role's session.
  *

@@ -1,11 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import api, { getCsrfHeaders } from '../services/api';
+import api, { getCsrfHeaders, resetAuthRefreshState } from '../services/api';
 import {
   clearAuthSession,
-  getAuthSessionPersistence,
-  getStoredAuthSession,
   saveAuthSession,
 } from '../services/authStorage';
 import { getAuthErrorCode, isConfirmedRefreshAuthFailure } from '../services/authErrors';
@@ -34,6 +32,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  status: AuthStatus;
   login: (email: string, password: string, keepLoggedIn?: boolean) => Promise<string>;
   completeSocialLogin: (
     authToken: string,
@@ -50,17 +49,29 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
+type AuthStatus =
+  | 'initializing'
+  | 'authenticated'
+  | 'unauthenticated'
+  | 'incomplete_profile'
+  | 'pending_approval'
+  | 'rejected'
+  | 'inactive'
+  | 'error';
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState<AuthStatus>('initializing');
 
   const establishSession = (authToken: string, authUser: User, refreshToken?: string, persistent = true) => {
     setToken(authToken);
     setUser(authUser);
     saveAuthSession(authToken, refreshToken, authUser, persistent);
+    setStatus(getAuthStatusForUser(authUser));
 
     return authUser.role;
   };
@@ -68,7 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearLocalSession = () => {
     setToken(null);
     setUser(null);
+    setStatus('unauthenticated');
     clearAuthSession();
+    resetAuthRefreshState();
   };
 
   // Browser storage is only a credential cache; the backend is the session authority.
@@ -90,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           session.authToken,
           session.user,
           session.refreshToken,
-          getAuthSessionPersistence(),
+          true,
         );
       } catch (error) {
         if (!active) return;
@@ -99,11 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const storedSession = getStoredAuthSession();
-        if (storedSession) {
-          setToken(storedSession.token);
-          setUser(storedSession.user as User);
-        }
+        clearAuthSession();
+        setStatus('error');
       } finally {
         if (active) setIsLoading(false);
       }
@@ -120,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleSessionExpired = () => {
       setToken(null);
       setUser(null);
+      setStatus('unauthenticated');
     };
 
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
@@ -213,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     token,
+    status,
     login,
     completeSocialLogin,
     register,
@@ -223,6 +235,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function getAuthStatusForUser(user: User): AuthStatus {
+  if (user.profile_completed === false) return 'incomplete_profile';
+  if (user.approval_status === 'pending') return 'pending_approval';
+  if (user.approval_status === 'rejected') return 'rejected';
+  if (user.is_active !== true) return 'inactive';
+  return 'authenticated';
 }
 
 export function useAuth() {

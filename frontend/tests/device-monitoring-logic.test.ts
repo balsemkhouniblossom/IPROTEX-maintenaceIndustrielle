@@ -71,7 +71,7 @@ test("useLiveMonitoring always does an initial REST fetch and keeps polling as a
   );
 });
 
-test("useLiveMonitoring authenticates its WebSocket connection with the stored JWT, matching the gateway's expected handshake shape", () => {
+test("useLiveMonitoring authenticates its WebSocket connection with the in-memory JWT, matching the gateway's expected handshake shape", () => {
   const source = readSource(HOOK);
 
   assert.match(
@@ -81,8 +81,8 @@ test("useLiveMonitoring authenticates its WebSocket connection with the stored J
   );
   assert.match(
     source,
-    /getAuthItem\("token"\)/,
-    "the hook must read the same stored auth token apiService's interceptor uses",
+    /getAuthToken\(\)/,
+    "the hook must read the same in-memory auth token apiService's interceptor uses",
   );
 });
 

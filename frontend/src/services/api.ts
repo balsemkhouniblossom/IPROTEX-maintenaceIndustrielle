@@ -1,7 +1,7 @@
 import axios, { AxiosHeaders } from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { normalizeApiItems, readPaginationMeta } from './pagination';
-import { clearAuthSession, getAuthItem, updateStoredTokens, updateStoredUser } from './authStorage';
+import { clearAuthSession, getAuthToken, updateStoredTokens, updateStoredUser } from './authStorage';
 import {
   getLoginRedirectForAuthFailure,
   getStableAuthFailureCode,
@@ -32,7 +32,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Add auth token here if implemented
-    const token = getAuthItem('token');
+    const token = getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -92,7 +92,7 @@ api.interceptors.response.use(
 
     const status = error.response?.status;
     const requestUrl = String(error.config?.url || '');
-    const isAuthEndpoint = /\/auth\/(login|register|forgot-password|reset-password|refresh)/.test(requestUrl);
+    const isAuthEndpoint = /\/auth\/(login|logout|register|forgot-password|reset-password|refresh|google\/exchange)/.test(requestUrl);
     const isExpectedAuthFailure = status === 401 && isAuthEndpoint;
 
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
@@ -118,7 +118,13 @@ api.interceptors.response.use(
         });
 
       return refreshRequest.then((nextToken) => {
-        originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+        if (originalRequest.signal?.aborted) {
+          return Promise.reject(new axios.CanceledError('Request was canceled'));
+        }
+
+        const headers = AxiosHeaders.from(originalRequest.headers);
+        headers.set('Authorization', `Bearer ${nextToken}`);
+        originalRequest.headers = headers;
         return api(originalRequest);
       }).catch((refreshError) => {
         if (isConfirmedRefreshAuthFailure(refreshError)) {
@@ -156,6 +162,11 @@ function redirectToLoginOnce(error: unknown): void {
     const locale = window.location.pathname.split('/')[1] || 'en';
     window.location.href = getLoginRedirectForAuthFailure(locale, code);
   }
+}
+
+export function resetAuthRefreshState(): void {
+  refreshRequest = null;
+  sessionExpirationRedirectStarted = false;
 }
 
 export function getCsrfHeaders(): Record<string, string> {

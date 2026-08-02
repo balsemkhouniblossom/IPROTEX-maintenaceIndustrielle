@@ -203,20 +203,20 @@ export class AuthController {
     return this.authService.completeGoogleProfile(req.user.userId, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
-    @Request() req: JwtRequest,
+    @Request() req: ExpressRequest,
     @Res({ passthrough: true }) res: Response,
   ) {
-    if (!req.user?.userId) {
-      throw new UnauthorizedException('Authentication failed');
-    }
-
     this.assertCsrfToken(req);
+    const refreshToken = getCookieValue(
+      req.headers.cookie,
+      REFRESH_COOKIE_NAME,
+    );
     this.clearRefreshCookies(res);
-    return this.authService.logout(req.user.userId);
+    return this.authService.logoutByRefreshToken(refreshToken);
   }
 
   @Post('register')

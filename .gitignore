@@ -16,6 +16,11 @@ out
 # =====================
 dist
 build
+backend/uploads/
+backend/quarantine/
+backend/logs/
+backend/tmp/
+backend/temp/
 
 # =====================
 # TESTS

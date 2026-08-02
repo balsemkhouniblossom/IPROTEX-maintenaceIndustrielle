@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { apiService } from "@/services/api";
 import { getApiBaseUrl } from "@/config/api-base-url";
-import { getAuthItem } from "@/services/authStorage";
+import { getAuthToken } from "@/services/authStorage";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface LiveMachineStatus {
@@ -64,7 +64,7 @@ export function useLiveMonitoring() {
     const interval = window.setInterval(() => void refresh(), POLL_INTERVAL_MS);
     const currentSubscriptions = subscribedMachineIds.current;
 
-    const token = getAuthItem("token");
+    const token = getAuthToken();
     let socket: Socket | null = null;
     if (token) {
       socket = io(`${getApiBaseUrl()}/live`, {

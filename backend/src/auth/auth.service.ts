@@ -571,6 +571,45 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async logoutByRefreshToken(token: string): Promise<{ message: string }> {
+    if (!token?.trim()) {
+      return { message: 'Logged out successfully' };
+    }
+
+    let payload: JwtPayload;
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+    } catch {
+      return { message: 'Logged out successfully' };
+    }
+
+    if (
+      payload.type !== 'refresh' ||
+      !payload.sub ||
+      !Types.ObjectId.isValid(payload.sub)
+    ) {
+      return { message: 'Logged out successfully' };
+    }
+
+    const user = await this.userModel.findById(payload.sub).exec();
+    if (!user?.refresh_token_hash) {
+      return { message: 'Logged out successfully' };
+    }
+
+    const isCurrentRefreshToken = await bcrypt.compare(
+      this.hashRefreshToken(token),
+      user.refresh_token_hash,
+    );
+
+    if (isCurrentRefreshToken) {
+      await this.setRefreshTokenHash(user._id.toString(), null);
+    }
+
+    return { message: 'Logged out successfully' };
+  }
+
   async googleLogin(
     googleUser: GoogleUserProfile,
     res: Response,

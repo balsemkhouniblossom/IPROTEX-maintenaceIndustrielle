@@ -10,6 +10,7 @@ import {
 } from "../src/services/authErrors.ts";
 import {
   clearAuthSession,
+  getAuthToken,
   getAuthSessionPersistence,
   getStoredAuthSession,
   saveAuthSession,
@@ -145,30 +146,46 @@ test("cookie refresh response parser accepts responses without readable refresh 
   );
 });
 
-test("auth storage never stores frontend-readable refresh tokens", () => {
+test("auth storage keeps access tokens in memory and clears legacy browser storage", () => {
   const local = createStorage();
   const session = createStorage();
   globalThis.window = {} as typeof window;
   globalThis.localStorage = local as unknown as Storage;
   globalThis.sessionStorage = session as unknown as Storage;
 
+  local.setItem("token", "legacy-local-access-token");
+  local.setItem("user", JSON.stringify(safeUser));
+  local.setItem("refresh_token", "legacy-refresh-token");
+  session.setItem("token", "legacy-session-access-token");
+  session.setItem("user", JSON.stringify(safeUser));
+  session.setItem("refresh_token", "legacy-session-refresh-token");
+
   saveAuthSession("access-token", "refresh-token", safeUser, true);
-  assert.equal(local.getItem("token"), "access-token");
+  assert.equal(getAuthToken(), "access-token");
+  assert.equal(local.getItem("token"), null);
+  assert.equal(session.getItem("token"), null);
+  assert.equal(local.getItem("user"), null);
+  assert.equal(session.getItem("user"), null);
   assert.equal(local.getItem("refresh_token"), null);
   assert.equal(session.getItem("refresh_token"), null);
 
   local.setItem("refresh_token", "legacy-refresh-token");
   updateStoredTokens("rotated-access-token", "new-refresh-token");
-  assert.equal(local.getItem("token"), "rotated-access-token");
+  assert.equal(getAuthToken(), "rotated-access-token");
+  assert.equal(local.getItem("token"), null);
+  assert.equal(session.getItem("token"), null);
   assert.equal(local.getItem("refresh_token"), null);
   assert.equal(session.getItem("refresh_token"), null);
 
   clearAuthSession();
+  assert.equal(getAuthToken(), null);
+  assert.equal(local.getItem("token"), null);
+  assert.equal(session.getItem("token"), null);
   assert.equal(local.getItem("refresh_token"), null);
   assert.equal(session.getItem("refresh_token"), null);
 });
 
-test("remember-me sessions stay persistent across refresh recovery", () => {
+test("remember-me no longer persists access tokens across refresh recovery", () => {
   const local = createStorage();
   const session = createStorage();
   globalThis.window = {} as typeof window;
@@ -179,11 +196,12 @@ test("remember-me sessions stay persistent across refresh recovery", () => {
   assert.equal(getAuthSessionPersistence(), true);
   saveAuthSession("rotated-access-token", undefined, safeUser, getAuthSessionPersistence());
 
-  assert.equal(local.getItem("token"), "rotated-access-token");
+  assert.equal(getAuthToken(), "rotated-access-token");
+  assert.equal(local.getItem("token"), null);
   assert.equal(session.getItem("token"), null);
 });
 
-test("transient refresh failures can restore the cached session without clearing it", () => {
+test("transient refresh failures cannot restore a cached browser access token", () => {
   const local = createStorage();
   const session = createStorage();
   globalThis.window = {} as typeof window;
@@ -192,14 +210,12 @@ test("transient refresh failures can restore the cached session without clearing
 
   saveAuthSession("cached-access-token", undefined, safeUser, true);
 
-  assert.deepEqual(getStoredAuthSession(), {
-    token: "cached-access-token",
-    user: safeUser,
-    persistent: true,
-  });
+  assert.equal(getStoredAuthSession(), null);
+  assert.equal(local.getItem("token"), null);
+  assert.equal(session.getItem("token"), null);
 });
 
-test("session-only logins stay in sessionStorage across refresh recovery", () => {
+test("session-only logins do not write access tokens to sessionStorage", () => {
   const local = createStorage();
   const session = createStorage();
   globalThis.window = {} as typeof window;
@@ -207,11 +223,26 @@ test("session-only logins stay in sessionStorage across refresh recovery", () =>
   globalThis.sessionStorage = session as unknown as Storage;
 
   saveAuthSession("access-token", undefined, safeUser, false);
-  assert.equal(getAuthSessionPersistence(), false);
+  assert.equal(getAuthSessionPersistence(), true);
   saveAuthSession("rotated-access-token", undefined, safeUser, getAuthSessionPersistence());
 
   assert.equal(local.getItem("token"), null);
-  assert.equal(session.getItem("token"), "rotated-access-token");
+  assert.equal(session.getItem("token"), null);
+  assert.equal(getAuthToken(), "rotated-access-token");
+});
+
+test("access token is not present in frontend-readable cookies", () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    cookie: "csrf_token=csrf-value; NEXT_LOCALE=en",
+  } as Document;
+
+  saveAuthSession("access-token", undefined, safeUser, true);
+
+  assert.equal(document.cookie.includes("access-token"), false);
+  assert.equal(document.cookie.includes("token=access-token"), false);
+
+  globalThis.document = originalDocument;
 });
 
 test("API refresh uses credentials and CSRF instead of readable refresh-token body", () => {
@@ -223,6 +254,9 @@ test("API refresh uses credentials and CSRF instead of readable refresh-token bo
   assert.match(apiSource, /withCredentials:\s*true/);
   assert.match(apiSource, /X-CSRF-Token/);
   assert.match(apiSource, /isConfirmedRefreshAuthFailure\(refreshError\)/);
+  assert.match(apiSource, /let refreshRequest:\s*Promise<string>\s*\|\s*null\s*=\s*null/);
+  assert.match(apiSource, /refreshRequest \?\?= axios/);
+  assert.match(apiSource, /originalRequest\._retry\s*=\s*true/);
   assert.doesNotMatch(apiSource, /getAuthItem\('refresh_token'\)/);
   assert.doesNotMatch(apiSource, /refresh_token:\s*refreshToken/);
 });
@@ -302,6 +336,8 @@ test("frontend auth requests explicitly use cookie credentials and CSRF where re
 
   assert.match(authContextSource, /withCredentials:\s*true/g);
   assert.match(authContextSource, /getCsrfHeaders\(\)/g);
+  assert.match(authContextSource, /status:\s*AuthStatus/);
+  assert.match(authContextSource, /setStatus\('error'\)/);
   assert.match(googleAuthSource, /\/auth\/google\/exchange/);
   assert.match(googleAuthSource, /withCredentials:\s*true/);
   assert.match(authContextSource, /SESSION_EXPIRED_EVENT/);

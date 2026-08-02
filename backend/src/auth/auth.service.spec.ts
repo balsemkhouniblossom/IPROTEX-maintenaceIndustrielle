@@ -1830,6 +1830,65 @@ describe('AuthService', () => {
     );
   });
 
+  it('revokes the current refresh session during cookie logout', async () => {
+    const user = createUserDocument({
+      refresh_token_hash: 'stored-refresh-hash',
+    });
+    jwtService.verify.mockReturnValue({
+      sub: user._id.toString(),
+      type: 'refresh',
+    });
+    userModel.findById.mockReturnValue(createQuery(user));
+    userModel.findByIdAndUpdate.mockReturnValue(createQuery(user));
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+    await expect(
+      service.logoutByRefreshToken('refresh-token'),
+    ).resolves.toEqual({ message: 'Logged out successfully' });
+
+    expect(jwtService.verify).toHaveBeenCalledWith('refresh-token', {
+      secret: process.env.JWT_REFRESH_SECRET,
+    });
+    expect(bcrypt.compare).toHaveBeenCalledWith(
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+      'stored-refresh-hash',
+    );
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      user._id.toString(),
+      { refresh_token_hash: null },
+      { new: true },
+    );
+  });
+
+  it('treats missing, invalid, or mismatched refresh-cookie logout as locally successful without revoking another session', async () => {
+    await expect(service.logoutByRefreshToken('')).resolves.toEqual({
+      message: 'Logged out successfully',
+    });
+
+    jwtService.verify.mockImplementationOnce(() => {
+      throw new Error('invalid token');
+    });
+    await expect(service.logoutByRefreshToken('bad-token')).resolves.toEqual({
+      message: 'Logged out successfully',
+    });
+
+    const user = createUserDocument({
+      refresh_token_hash: 'stored-refresh-hash',
+    });
+    jwtService.verify.mockReturnValueOnce({
+      sub: user._id.toString(),
+      type: 'refresh',
+    });
+    userModel.findById.mockReturnValueOnce(createQuery(user));
+    (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
+
+    await expect(
+      service.logoutByRefreshToken('mismatched-refresh-token'),
+    ).resolves.toEqual({ message: 'Logged out successfully' });
+
+    expect(userModel.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
   it('stores hashed reset token and sends reset email link', async () => {
     const user = createUserDocument({
       email: 'reset@example.com',
