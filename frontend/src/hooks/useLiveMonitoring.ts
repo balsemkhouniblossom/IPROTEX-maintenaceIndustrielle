@@ -74,6 +74,10 @@ export function useLiveMonitoring() {
       });
       socketRef.current = socket;
 
+      socket.io.on("reconnect_attempt", () => {
+        socket!.auth = { token: getAuthToken() };
+      });
+
       socket.on("connect", () => {
         setSocketConnected(true);
         // Re-join every machine room already known about after a

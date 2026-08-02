@@ -8,6 +8,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model, Types } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
+import { io, Socket } from 'socket.io-client';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';
@@ -22,6 +23,9 @@ import {
   FaultEvent,
   FaultEventDocument,
 } from '../src/schemas/fault-event.schema';
+import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
+import { SecureSocketIoAdapter } from '../src/config/secure-socket-io.adapter';
+import { LiveMonitoringGateway } from '../src/device-monitoring/live-monitoring.gateway';
 
 describe('Device registration, REST device-gateway ingestion, and role-scoped live status (e2e)', () => {
   let mongo: MongoMemoryReplSet;
@@ -34,6 +38,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
   let devices: Model<DeviceDocument>;
   let telemetryModel: Model<TelemetryDocument>;
   let faultEventModel: Model<FaultEventDocument>;
+  let workOrders: Model<WorkOrderDocument>;
+  let gateway: LiveMonitoringGateway;
+  let httpUrl: string;
 
   let adminToken: string;
   let technicianToken: string;
@@ -48,6 +55,7 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
     process.env.JWT_SECRET = 'e2e-test-jwt-secret';
     process.env.JWT_REFRESH_SECRET = 'e2e-test-refresh-secret';
     process.env.EMAIL_VERIFICATION_SECRET = 'e2e-test-email-secret';
+    process.env.CORS_ORIGINS = 'http://allowed.example';
     delete process.env.MQTT_BROKER_URL;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -64,9 +72,17 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       }),
     );
     app.useGlobalFilters(new AllExceptionsFilter());
-    await app.init();
+    app.useWebSocketAdapter(
+      new SecureSocketIoAdapter(app, {
+        allowedOrigins: ['http://allowed.example'],
+        nodeEnv: 'test',
+      }),
+    );
+    await app.listen(0);
+    httpUrl = await app.getUrl();
 
     jwtService = app.get(JwtService);
+    gateway = app.get(LiveMonitoringGateway);
     connection = app.get(getConnectionToken());
     users = app.get(getModelToken(User.name));
     machineTypes = app.get(getModelToken(MachineType.name));
@@ -74,7 +90,7 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
     devices = app.get(getModelToken(Device.name));
     telemetryModel = app.get(getModelToken(Telemetry.name));
     faultEventModel = app.get(getModelToken(FaultEvent.name));
-
+    workOrders = app.get(getModelToken(WorkOrder.name));
     await seedBaseData();
   }, 120_000);
 
@@ -95,6 +111,10 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
 
   async function seedBaseData() {
     await connection.dropDatabase();
+    await Promise.all([
+      telemetryModel.syncIndexes(),
+      faultEventModel.syncIndexes(),
+    ]);
 
     const machineType = await machineTypes.create({
       type_id: 1,
@@ -132,6 +152,7 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       role: 'technician',
       is_active: true,
       is_verified: true,
+      assigned_machine_ids: [machineA._id],
     });
     const operator = await users.create({
       user_id: 'OP-DEV-E2E',
@@ -144,9 +165,98 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       assigned_machine_ids: [machineA._id], // only machine A
     });
 
+    await workOrders.create({
+      ot_id: 'LIVE-TECH-A',
+      machine_id: machineA._id,
+      status: 'open',
+      date_created: new Date(),
+    });
+
     adminToken = tokenFor(admin);
     technicianToken = tokenFor(technician);
     operatorToken = tokenFor(operator);
+  }
+
+  function connectLiveSocket(
+    token: string,
+    origin = 'http://allowed.example',
+  ): Promise<Socket> {
+    return new Promise((resolve, reject) => {
+      const socket = io(`${httpUrl}/live`, {
+        transports: ['websocket'],
+        auth: { token },
+        extraHeaders: { Origin: origin },
+        reconnection: false,
+        forceNew: true,
+      });
+      socket.once('connect', () => resolve(socket));
+      socket.once('connect_error', reject);
+    });
+  }
+
+  function expectConnectError(
+    token: string,
+    origin = 'http://allowed.example',
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const socket = io(`${httpUrl}/live`, {
+        transports: ['websocket'],
+        auth: { token },
+        extraHeaders: { Origin: origin },
+        reconnection: false,
+        forceNew: true,
+        timeout: 1000,
+      });
+      const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        socket.disconnect();
+        if (error) reject(error);
+        else resolve();
+      };
+      const timer = setTimeout(() => {
+        finish(new Error('socket rejection timed out'));
+      }, 1000);
+      socket.once('connect', () => {
+        socket.once('socket:error', () => finish());
+        socket.once('disconnect', () => finish());
+      });
+      socket.once('connect_error', () => finish());
+    });
+  }
+
+  function subscribeMachine(
+    socket: Socket,
+    id: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      socket
+        .timeout(1000)
+        .emit(
+          'subscribe:machine',
+          { machineId: id },
+          (error: Error | null, response?: { ok: boolean; error?: string }) => {
+            if (error) resolve({ ok: false, error: 'timeout' });
+            else resolve(response ?? { ok: false });
+          },
+        );
+    });
+  }
+
+  function waitForNoEvent(socket: Socket, eventName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        socket.off(eventName, onEvent);
+        resolve();
+      }, 150);
+      const onEvent = () => {
+        clearTimeout(timer);
+        reject(new Error(`unexpected ${eventName} event`));
+      };
+      socket.once(eventName, onEvent);
+    });
   }
 
   describe('device registration (Admin only)', () => {
@@ -403,6 +513,84 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       await request(app.getHttpServer())
         .get('/live-monitoring/machines')
         .expect(401);
+    });
+  });
+
+  describe('live WebSocket origin, authentication, and room isolation', () => {
+    it('accepts the configured origin and rejects an untrusted origin', async () => {
+      const socket = await connectLiveSocket(adminToken);
+      socket.disconnect();
+
+      await expect(
+        expectConnectError(adminToken, 'https://attacker.example'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('rejects missing, malformed, and expired user access tokens', async () => {
+      await expect(expectConnectError('')).resolves.toBeUndefined();
+      await expect(expectConnectError('not-a-jwt')).resolves.toBeUndefined();
+
+      const expired = jwtService.sign(
+        { sub: new Types.ObjectId().toString(), role: 'operator' },
+        { expiresIn: '-1s' },
+      );
+      await expect(expectConnectError(expired)).resolves.toBeUndefined();
+    });
+
+    it('allows operator, technician, and admin sockets to subscribe only through canonical machine access', async () => {
+      const operator = await connectLiveSocket(operatorToken);
+      const technician = await connectLiveSocket(technicianToken);
+      const admin = await connectLiveSocket(adminToken);
+
+      await expect(subscribeMachine(operator, machineAId)).resolves.toEqual({
+        ok: true,
+      });
+      await expect(subscribeMachine(operator, machineBId)).resolves.toEqual({
+        ok: false,
+        error: 'SOCKET_ACCESS_DENIED',
+      });
+      await expect(subscribeMachine(technician, machineAId)).resolves.toEqual({
+        ok: true,
+      });
+      await expect(subscribeMachine(technician, machineBId)).resolves.toEqual({
+        ok: false,
+        error: 'SOCKET_ACCESS_DENIED',
+      });
+      await expect(subscribeMachine(admin, machineBId)).resolves.toEqual({
+        ok: true,
+      });
+
+      operator.disconnect();
+      technician.disconnect();
+      admin.disconnect();
+    });
+
+    it('delivers machine-specific events only to subscribers of that generated machine room', async () => {
+      const machineASubscriber = await connectLiveSocket(operatorToken);
+      const machineBSubscriber = await connectLiveSocket(adminToken);
+      await subscribeMachine(machineASubscriber, machineAId);
+      await subscribeMachine(machineBSubscriber, machineBId);
+
+      const received = new Promise<Record<string, unknown>>((resolve) => {
+        machineASubscriber.once('telemetry', resolve);
+      });
+      const noLeak = waitForNoEvent(machineBSubscriber, 'telemetry');
+
+      gateway.emitTelemetry(machineAId, {
+        deviceId: 'DEV-A',
+        metrics: { temperature: 42 },
+      });
+
+      await expect(received).resolves.toEqual(
+        expect.objectContaining({
+          machineId: machineAId,
+          metrics: { temperature: 42 },
+        }),
+      );
+      await expect(noLeak).resolves.toBeUndefined();
+
+      machineASubscriber.disconnect();
+      machineBSubscriber.disconnect();
     });
   });
 

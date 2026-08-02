@@ -7,6 +7,7 @@ import { Device, DeviceSchema } from '../schemas/device.schema';
 import { Telemetry, TelemetrySchema } from '../schemas/telemetry.schema';
 import { FaultEvent, FaultEventSchema } from '../schemas/fault-event.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
+import { User, UserSchema } from '../schemas/user.schema';
 
 import { resolveJwtSecret } from '../auth/jwt.strategy';
 import { DocumentsModule } from '../documents/documents.module';
@@ -32,6 +33,7 @@ import { LiveMonitoringController } from './live-monitoring.controller';
       { name: Telemetry.name, schema: TelemetrySchema },
       { name: FaultEvent.name, schema: FaultEventSchema },
       { name: Machine.name, schema: MachineSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     // A dedicated JwtModule registration (rather than importing AuthModule)
     // keeps this module fully self-contained — it only needs to *verify*

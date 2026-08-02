@@ -1,7 +1,6 @@
 import './load-env';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import * as express from 'express';
 import { join } from 'path';
@@ -12,6 +11,8 @@ import compression from 'compression';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { validateEnvironment } from './config/env.validation';
 import { MANAGED_AVATAR_ROUTE } from './common/managed-file-url';
+import { buildCorsOriginDelegate } from './config/cors-origin-policy';
+import { SecureSocketIoAdapter } from './config/secure-socket-io.adapter';
 
 function isAtlasUri(uri: string): boolean {
   const normalized = uri.trim().toLowerCase();
@@ -63,7 +64,9 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: env.corsOrigins,
+    origin: buildCorsOriginDelegate(env.corsOrigins, {
+      allowOriginless: true,
+    }),
     credentials: true,
   });
 
@@ -74,7 +77,12 @@ async function bootstrap() {
   );
 
   app.enableShutdownHooks();
-  app.useWebSocketAdapter(new IoAdapter(app));
+  app.useWebSocketAdapter(
+    new SecureSocketIoAdapter(app, {
+      allowedOrigins: env.corsOrigins,
+      nodeEnv: env.nodeEnv,
+    }),
+  );
 
   await app.listen(env.port);
   logger.log(`Backend running in ${env.nodeEnv} mode on port ${env.port}`);

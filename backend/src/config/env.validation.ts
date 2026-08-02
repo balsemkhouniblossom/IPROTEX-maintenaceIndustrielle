@@ -1,11 +1,13 @@
-type RuntimeMode = 'development' | 'test' | 'production';
-type CorsOrigin = string | RegExp;
-export type TrustProxySetting = boolean | number | string;
+import {
+  CorsOrigin,
+  PRODUCTION_FRONTEND_ORIGIN,
+  PRODUCTION_RENDER_API_ORIGIN,
+  RuntimeMode,
+  normalizeCorsOrigin,
+  parseConfiguredCorsOrigin,
+} from './cors-origin-policy';
 
-const PRODUCTION_FRONTEND_ORIGIN =
-  'https://pfe-maintenace-industrielle.vercel.app';
-const PRODUCTION_RENDER_API_ORIGIN =
-  'https://pfe-maintenaceindustrielle.onrender.com';
+export type TrustProxySetting = boolean | number | string;
 
 type EnvValidationResult = {
   nodeEnv: RuntimeMode;
@@ -319,53 +321,6 @@ function isAtlasUri(uri: string): boolean {
   );
 }
 
-function wildcardToRegex(originPattern: string): RegExp {
-  const escaped = originPattern
-    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*');
-
-  return new RegExp(`^${escaped}$`);
-}
-
-function parseCorsOrigin(origin: string, nodeEnv: RuntimeMode): CorsOrigin {
-  if (origin.includes('*')) {
-    if (nodeEnv === 'production') {
-      throw new Error('CORS_ORIGINS cannot contain wildcards in production');
-    }
-
-    return wildcardToRegex(origin);
-  }
-
-  const parsed = parseUrl(origin, 'CORS_ORIGINS');
-  const url = new URL(parsed);
-
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('CORS_ORIGINS entries must use http or https URLs');
-  }
-
-  if (nodeEnv === 'production') {
-    if (url.protocol !== 'https:') {
-      throw new Error('CORS_ORIGINS entries must use https in production');
-    }
-
-    if (isLocalhost(url.hostname)) {
-      throw new Error('CORS_ORIGINS cannot include localhost in production');
-    }
-  }
-
-  return url.origin;
-}
-
-function isLocalhost(hostname: string): boolean {
-  const normalized = hostname.toLowerCase();
-  return (
-    normalized === 'localhost' ||
-    normalized === '127.0.0.1' ||
-    normalized === '::1' ||
-    normalized.endsWith('.localhost')
-  );
-}
-
 function buildCorsFallbackOrigins(
   frontendBaseUrl: string,
   backendUrl?: string,
@@ -411,7 +366,7 @@ function parseCorsOrigins(
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
-    .map((origin) => parseCorsOrigin(origin, nodeEnv));
+    .map((origin) => parseConfiguredCorsOrigin(origin, nodeEnv));
 
   if (nodeEnv === 'production' && origins.length === 0) {
     throw new Error(
@@ -429,7 +384,7 @@ function parseCorsOrigins(
     }
 
     const frontendOrigin = frontendBaseUrl
-      ? new URL(frontendBaseUrl).origin
+      ? normalizeCorsOrigin(frontendBaseUrl, 'FRONTEND_BASE_URL')
       : undefined;
     if (frontendOrigin && uniqueOrigins[0] !== frontendOrigin) {
       throw new Error(

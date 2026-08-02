@@ -84,6 +84,16 @@ test("useLiveMonitoring authenticates its WebSocket connection with the in-memor
     /getAuthToken\(\)/,
     "the hook must read the same in-memory auth token apiService's interceptor uses",
   );
+  assert.match(
+    source,
+    /socket\.io\.on\("reconnect_attempt",\s*\(\)\s*=>\s*\{[\s\S]*?socket!\.auth = \{ token: getAuthToken\(\) \};/,
+    "a reconnect must use the latest in-memory access token after API refresh",
+  );
+  assert.doesNotMatch(
+    source,
+    /query:\s*\{[\s\S]*token/,
+    "the socket token must not be sent through URL query parameters",
+  );
 });
 
 test("useLiveMonitoring only subscribes to a machine room once and re-subscribes after a reconnect", () => {

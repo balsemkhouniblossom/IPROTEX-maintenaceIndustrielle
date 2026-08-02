@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -8,9 +9,16 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { Model, Types } from 'mongoose';
 import type { Server, Socket } from 'socket.io';
 import { resolveJwtSecret } from '../auth/jwt.strategy';
 import { DocumentAccessService } from '../documents/document-access.service';
+import {
+  ApprovalStatus,
+  Role,
+  User,
+  UserDocument,
+} from '../schemas/user.schema';
 import { DeviceAuthService } from './device-auth.service';
 import { TelemetryIngestionService } from './telemetry-ingestion.service';
 import { DeviceConnectionStatus } from '../schemas/device.schema';
@@ -33,33 +41,42 @@ type SocketData = UserSocketData | DeviceSocketData;
 
 interface SocketAuthState {
   ready: Promise<SocketData>;
+  subscribedMachineIds: Set<string>;
+  unauthorizedSubscriptionAttempts: number;
 }
+
+const SOCKET_ERRORS = {
+  AUTH_REQUIRED: 'SOCKET_AUTH_REQUIRED',
+  AUTH_INVALID: 'SOCKET_AUTH_INVALID',
+  AUTH_EXPIRED: 'SOCKET_AUTH_EXPIRED',
+  ACCESS_DENIED: 'SOCKET_ACCESS_DENIED',
+  INVALID_PAYLOAD: 'SOCKET_INVALID_PAYLOAD',
+  INTERNAL_ERROR: 'SOCKET_INTERNAL_ERROR',
+} as const;
+
+const SOCKET_ERRORS_BY_VALUE = Object.fromEntries(
+  Object.values(SOCKET_ERRORS).map((code) => [code, true]),
+) as Record<string, true>;
+
+const MAX_MACHINE_SUBSCRIPTIONS_PER_SOCKET = 100;
+const MAX_UNAUTHORIZED_SUBSCRIPTION_ATTEMPTS = 5;
 
 function machineRoom(machineId: string): string {
   return `machine:${machineId}`;
 }
 
 /**
- * A single gateway, two structurally-separate connection kinds. A client
- * authenticates either with a user JWT (`handshake.auth.token`) or with
- * device credentials (`handshake.auth.deviceId` / `handshake.auth.deviceKey`)
- * — never both, and each kind can only reach its own message handlers
- * (enforced per-handler below, not just by what the client happens to try),
- * so a device socket can never subscribe to another machine's room and a
- * user socket can never inject telemetry.
+ * One gateway, two server-verified connection kinds:
+ * - browser user sockets authenticate with `handshake.auth.token`;
+ * - device sockets authenticate with `handshake.auth.deviceId/deviceKey`.
  *
- * Authentication itself (a bcrypt compare / DB lookup for devices, a JWT
- * verify for users) is asynchronous, but a client is free to emit its first
- * message the instant its own `'connect'` event fires — which happens
- * before an async `handleConnection` has necessarily finished. To avoid a
- * race where an early message reads `client.data` before it's been set,
- * `handleConnection` synchronously stashes a *promise* on `client.data` in
- * its very first tick (before any `await`), and every handler awaits that
- * same promise rather than reading a plain value.
+ * Query-string token authentication is intentionally unsupported. User
+ * sockets are revalidated against the current database record before any
+ * room subscription can succeed; device sockets re-check the device record
+ * before every ingestion event.
  */
 @WebSocketGateway({
   namespace: '/live',
-  cors: { origin: true, credentials: true },
 })
 export class LiveMonitoringGateway
   implements OnGatewayConnection, OnGatewayDisconnect
@@ -75,64 +92,79 @@ export class LiveMonitoringGateway
     private readonly documentAccessService: DocumentAccessService,
     private readonly deviceAuthService: DeviceAuthService,
     private readonly telemetryIngestionService: TelemetryIngestionService,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
   handleConnection(client: Socket): void {
     const ready = this.authenticate(client);
-    // A client that disconnects (or never sends a message) before this
-    // settles means nothing else ever attaches a rejection handler to
-    // `ready` — without this no-op `.catch`, that would surface as an
-    // unhandled promise rejection. `resolveSocketData()` below attaches its
-    // own independent `.catch` when a handler actually needs the result.
     ready.catch(() => undefined);
-    client.data = { ready } satisfies SocketAuthState;
+    client.data = {
+      ready,
+      subscribedMachineIds: new Set<string>(),
+      unauthorizedSubscriptionAttempts: 0,
+    } satisfies SocketAuthState;
   }
 
   handleDisconnect(): void {
-    // No per-connection server-side state to clean up beyond socket.io's
-    // own room bookkeeping, which it already handles on disconnect.
+    // Socket.IO removes room memberships and listeners for the disconnected
+    // socket. The per-socket state above is held only by the socket object.
   }
 
   private async authenticate(client: Socket): Promise<SocketData> {
     const auth = (client.handshake.auth ?? {}) as Record<string, unknown>;
+    const query = (client.handshake.query ?? {}) as Record<string, unknown>;
 
     try {
-      if (
-        typeof auth.deviceId === 'string' &&
-        typeof auth.deviceKey === 'string'
-      ) {
+      if (typeof query.token === 'string') {
+        throw this.socketAuthError(SOCKET_ERRORS.AUTH_INVALID);
+      }
+
+      const deviceId =
+        typeof auth.deviceId === 'string' ? auth.deviceId : undefined;
+      const deviceKey =
+        typeof auth.deviceKey === 'string' ? auth.deviceKey : undefined;
+      const token = typeof auth.token === 'string' ? auth.token : undefined;
+      const hasDeviceCredentials = Boolean(deviceId && deviceKey);
+      const hasUserToken = Boolean(token);
+
+      if (hasDeviceCredentials && hasUserToken) {
+        throw this.socketAuthError(SOCKET_ERRORS.AUTH_INVALID);
+      }
+
+      if (hasDeviceCredentials) {
         const device = await this.deviceAuthService.verifyCredentials(
-          auth.deviceId,
-          auth.deviceKey,
+          deviceId!,
+          deviceKey!,
         );
-        const data: DeviceSocketData = {
+        return {
           kind: 'device',
           deviceMongoId: String(device._id),
           deviceId: device.device_id,
           machineId: String(device.machine_id),
         };
-        return data;
       }
 
-      if (typeof auth.token === 'string') {
+      if (hasUserToken) {
         const secret = resolveJwtSecret(this.configService);
-        const payload = this.jwtService.verify<{ sub: string; role: string }>(
-          auth.token,
-          {
-            secret,
-          },
-        );
-        const data: UserSocketData = {
+        const payload = this.jwtService.verify<{
+          sub: string;
+          role?: string;
+          iat?: number;
+        }>(token!, { secret });
+        const user = await this.resolveActiveSocketUser(payload);
+
+        return {
           kind: 'user',
-          userId: payload.sub,
-          role: payload.role,
+          userId: user._id.toString(),
+          role: user.role,
         };
-        return data;
       }
 
-      throw new Error('No credentials provided');
+      throw this.socketAuthError(SOCKET_ERRORS.AUTH_REQUIRED);
     } catch (error) {
-      this.logger.warn(`Rejected WebSocket connection: ${String(error)}`);
+      const code = this.getSocketErrorCode(error);
+      client.emit('socket:error', { code });
+      this.logger.warn(`Rejected WebSocket connection: ${code}`);
       client.disconnect(true);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -145,22 +177,41 @@ export class LiveMonitoringGateway
   ): Promise<{ ok: boolean; error?: string }> {
     const data = await this.resolveSocketData(client);
     if (data?.kind !== 'user') {
-      return { ok: false, error: 'forbidden' };
+      return { ok: false, error: SOCKET_ERRORS.ACCESS_DENIED };
     }
-    if (!payload?.machineId) {
-      return { ok: false, error: 'machineId is required' };
+
+    const machineId = this.validatedMachineId(payload);
+    if (!machineId) {
+      return { ok: false, error: SOCKET_ERRORS.INVALID_PAYLOAD };
+    }
+
+    const state = this.getSocketState(client);
+    if (
+      state.subscribedMachineIds.size >= MAX_MACHINE_SUBSCRIPTIONS_PER_SOCKET
+    ) {
+      return { ok: false, error: SOCKET_ERRORS.ACCESS_DENIED };
     }
 
     try {
       await this.documentAccessService.assertCanAccessMachine(
         { userId: data.userId, role: data.role },
-        payload.machineId,
+        machineId,
       );
     } catch {
-      return { ok: false, error: 'forbidden' };
+      state.unauthorizedSubscriptionAttempts += 1;
+      if (
+        state.unauthorizedSubscriptionAttempts >
+        MAX_UNAUTHORIZED_SUBSCRIPTION_ATTEMPTS
+      ) {
+        client.disconnect(true);
+      }
+      return { ok: false, error: SOCKET_ERRORS.ACCESS_DENIED };
     }
 
-    await client.join(machineRoom(payload.machineId));
+    if (!state.subscribedMachineIds.has(machineId)) {
+      await client.join(machineRoom(machineId));
+      state.subscribedMachineIds.add(machineId);
+    }
     return { ok: true };
   }
 
@@ -169,8 +220,10 @@ export class LiveMonitoringGateway
     client: Socket,
     payload: { machineId?: string },
   ): Promise<{ ok: boolean }> {
-    if (payload?.machineId) {
-      await client.leave(machineRoom(payload.machineId));
+    const machineId = this.validatedMachineId(payload);
+    if (machineId) {
+      await client.leave(machineRoom(machineId));
+      this.getSocketState(client).subscribedMachineIds.delete(machineId);
     }
     return { ok: true };
   }
@@ -205,7 +258,7 @@ export class LiveMonitoringGateway
     payload: { metrics?: Record<string, number>; recorded_at?: string },
   ): Promise<{ ok: boolean; error?: string }> {
     const device = await this.requireDeviceSocket(client);
-    if (!device) return { ok: false, error: 'forbidden' };
+    if (!device) return { ok: false, error: SOCKET_ERRORS.ACCESS_DENIED };
 
     try {
       const record = await this.deviceAuthService.getDeviceOrThrow(
@@ -232,11 +285,8 @@ export class LiveMonitoringGateway
         });
       }
       return { ok: true };
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : 'ingestion failed',
-      };
+    } catch {
+      return { ok: false, error: SOCKET_ERRORS.INTERNAL_ERROR };
     }
   }
 
@@ -251,7 +301,7 @@ export class LiveMonitoringGateway
     },
   ): Promise<{ ok: boolean; error?: string }> {
     const device = await this.requireDeviceSocket(client);
-    if (!device) return { ok: false, error: 'forbidden' };
+    if (!device) return { ok: false, error: SOCKET_ERRORS.ACCESS_DENIED };
 
     try {
       const record = await this.deviceAuthService.getDeviceOrThrow(
@@ -283,18 +333,11 @@ export class LiveMonitoringGateway
         });
       }
       return { ok: true };
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : 'ingestion failed',
-      };
+    } catch {
+      return { ok: false, error: SOCKET_ERRORS.INTERNAL_ERROR };
     }
   }
 
-  // Every emitted payload carries `machineId` even though the room itself
-  // is already machine-scoped — a dashboard client subscribes to several
-  // machines' rooms at once, and without `machineId` in the payload it
-  // would have no way to tell which machine a given event belongs to.
   emitTelemetry(machineId: string, payload: Record<string, unknown>): void {
     this.server
       ?.to(machineRoom(machineId))
@@ -319,10 +362,97 @@ export class LiveMonitoringGateway
     return state.ready.catch(() => null);
   }
 
+  private getSocketState(client: Socket): SocketAuthState {
+    const state = client.data as SocketAuthState | undefined;
+    if (state?.subscribedMachineIds) return state;
+
+    const fallback: SocketAuthState = {
+      ready: Promise.reject(this.socketAuthError(SOCKET_ERRORS.AUTH_REQUIRED)),
+      subscribedMachineIds: new Set<string>(),
+      unauthorizedSubscriptionAttempts: 0,
+    };
+    fallback.ready.catch(() => undefined);
+    client.data = fallback;
+    return fallback;
+  }
+
   private async requireDeviceSocket(
     client: Socket,
   ): Promise<DeviceSocketData | null> {
     const data = await this.resolveSocketData(client);
     return data?.kind === 'device' ? data : null;
+  }
+
+  private async resolveActiveSocketUser(payload: {
+    sub?: string;
+    iat?: number;
+  }): Promise<UserDocument> {
+    if (!payload.sub || !Types.ObjectId.isValid(payload.sub)) {
+      throw this.socketAuthError(SOCKET_ERRORS.AUTH_INVALID);
+    }
+
+    const user = await this.userModel
+      .findById(payload.sub)
+      .select(
+        'role is_active is_verified approval_status profile_completed must_reset_password credentials_invalidated_at',
+      )
+      .exec();
+
+    if (!user) {
+      throw this.socketAuthError(SOCKET_ERRORS.AUTH_INVALID);
+    }
+
+    if (
+      user.credentials_invalidated_at &&
+      typeof payload.iat === 'number' &&
+      payload.iat * 1000 < user.credentials_invalidated_at.getTime()
+    ) {
+      throw this.socketAuthError(SOCKET_ERRORS.AUTH_EXPIRED);
+    }
+
+    if (
+      !user.is_active ||
+      !user.is_verified ||
+      user.must_reset_password ||
+      user.profile_completed === false ||
+      user.approval_status === ApprovalStatus.PENDING ||
+      user.approval_status === ApprovalStatus.REJECTED ||
+      (user.approval_status && user.approval_status !== ApprovalStatus.APPROVED)
+    ) {
+      throw this.socketAuthError(SOCKET_ERRORS.ACCESS_DENIED);
+    }
+
+    if (
+      user.role !== Role.ADMIN &&
+      user.role !== Role.TECHNICIAN &&
+      user.role !== Role.OPERATOR
+    ) {
+      throw this.socketAuthError(SOCKET_ERRORS.ACCESS_DENIED);
+    }
+
+    return user;
+  }
+
+  private validatedMachineId(payload: unknown): string | null {
+    if (!payload || typeof payload !== 'object') return null;
+    const machineId = (payload as { machineId?: unknown }).machineId;
+    if (typeof machineId !== 'string' || !Types.ObjectId.isValid(machineId)) {
+      return null;
+    }
+    return machineId;
+  }
+
+  private socketAuthError(code: string): Error {
+    const error = new Error(code);
+    error.name = code;
+    return error;
+  }
+
+  private getSocketErrorCode(error: unknown): string {
+    if (error instanceof Error) {
+      if (error.name in SOCKET_ERRORS_BY_VALUE) return error.name;
+      if (/expired/i.test(error.message)) return SOCKET_ERRORS.AUTH_EXPIRED;
+    }
+    return SOCKET_ERRORS.AUTH_INVALID;
   }
 }
