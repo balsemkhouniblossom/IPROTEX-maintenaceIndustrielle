@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -29,9 +29,32 @@ import {
   AutomationJobLock,
   AutomationJobLockDocument,
 } from '../schemas/automation-job-lock.schema';
+import {
+  SchedulerConfigService,
+  SchedulerRuntimeSettings,
+  defaultSchedulerSettings,
+} from '../scheduler/scheduler.config';
+import { SchedulerLockService } from '../scheduler/scheduler-lock.service';
+import {
+  SchedulerJobContext,
+  SchedulerJobResult,
+  SchedulerLockHandle,
+} from '../scheduler/scheduler.types';
+import {
+  buildSchedulerJobResult,
+  createRunId,
+  createSchedulerContext,
+  mapWithConcurrency,
+} from '../scheduler/scheduler-utils';
 
-interface JobResult {
+interface JobWorkResult {
   processed: number;
+  scanned?: number;
+  succeeded?: number;
+  failed?: number;
+  skipped?: number;
+  batches?: number;
+  retries?: number;
   details?: Record<string, unknown>;
 }
 
@@ -66,6 +89,10 @@ export class AutomationSchedulerService {
     private readonly automationJobLockModel: Model<AutomationJobLockDocument>,
     private readonly notificationCenterService: NotificationCenterService,
     private readonly kpiService: KpiService,
+    @Optional()
+    private readonly schedulerConfigService?: SchedulerConfigService,
+    @Optional()
+    private readonly schedulerLockService?: SchedulerLockService,
   ) {
     this.logger.log('Background scheduler initialized (automatic mode).');
   }
@@ -78,15 +105,21 @@ export class AutomationSchedulerService {
     await this.executeBatch('nightly', [
       [
         'job_generate_preventive_maintenance',
-        () => this.jobGeneratePreventiveMaintenance(),
+        (context) => this.jobGeneratePreventiveMaintenance(context),
       ],
-      ['job_mark_overdue_maintenance', () => this.jobMarkOverdueMaintenance()],
-      ['job_refresh_kpis', () => this.jobRefreshKpis()],
+      [
+        'job_mark_overdue_maintenance',
+        (context) => this.jobMarkOverdueMaintenance(context),
+      ],
+      ['job_refresh_kpis', (context) => this.jobRefreshKpis(context)],
       [
         'job_detect_duplicate_workorders',
-        () => this.jobDetectDuplicateWorkOrders(),
+        (context) => this.jobDetectDuplicateWorkOrders(context),
       ],
-      ['job_calendar_synchronization', () => this.jobCalendarSynchronization()],
+      [
+        'job_calendar_synchronization',
+        (context) => this.jobCalendarSynchronization(context),
+      ],
     ]);
   }
 
@@ -98,11 +131,17 @@ export class AutomationSchedulerService {
     await this.executeBatch('hourly', [
       [
         'job_upcoming_maintenance_reminders',
-        () => this.jobUpcomingMaintenanceReminders(),
+        (context) => this.jobUpcomingMaintenanceReminders(context),
       ],
-      ['job_overdue_escalation', () => this.jobOverdueEscalation()],
-      ['job_stock_monitoring', () => this.jobStockMonitoring()],
-      ['job_lubrication_reminders', () => this.jobLubricationReminders()],
+      [
+        'job_overdue_escalation',
+        (context) => this.jobOverdueEscalation(context),
+      ],
+      ['job_stock_monitoring', (context) => this.jobStockMonitoring(context)],
+      [
+        'job_lubrication_reminders',
+        (context) => this.jobLubricationReminders(context),
+      ],
     ]);
   }
 
@@ -112,15 +151,25 @@ export class AutomationSchedulerService {
   })
   async runTenMinuteJobs() {
     await this.executeBatch('10min', [
-      ['job_sensor_monitoring', () => this.jobSensorMonitoring()],
-      ['job_mark_overdue_maintenance', () => this.jobMarkOverdueMaintenance()],
+      ['job_sensor_monitoring', (context) => this.jobSensorMonitoring(context)],
+      [
+        'job_mark_overdue_maintenance',
+        (context) => this.jobMarkOverdueMaintenance(context),
+      ],
     ]);
   }
 
   private async executeBatch(
     label: string,
-    jobs: Array<[string, () => Promise<JobResult>]>,
+    jobs: Array<
+      [string, (context: SchedulerJobContext) => Promise<JobWorkResult>]
+    >,
   ) {
+    if (!this.getSchedulerSettings().enabled) {
+      this.logger.log(`Scheduler batch skipped: ${label} disabled=true`);
+      return;
+    }
+
     this.logger.log(`Scheduler batch started: ${label}`);
 
     for (const [name, job] of jobs) {
@@ -130,44 +179,134 @@ export class AutomationSchedulerService {
     this.logger.log(`Scheduler batch finished: ${label}`);
   }
 
-  private async runJob(name: string, job: () => Promise<JobResult>) {
-    const startedAt = Date.now();
-    const lock = await this.acquireJobLock(name);
+  private async runJob(
+    name: string,
+    job: (context: SchedulerJobContext) => Promise<JobWorkResult>,
+  ): Promise<SchedulerJobResult> {
+    const settings = this.getSchedulerSettings();
+    const triggerTime = new Date();
+    const runId = createRunId();
+    const instanceId =
+      this.schedulerLockService?.getInstanceId() ?? this.schedulerInstanceId;
+    const startedAt = new Date();
+    const lock = await this.acquireJobLock(name, runId, settings.lockTtlMs);
     if (!lock) {
       this.logger.warn(
-        `[${name}] skipped because another scheduler owns the lock`,
+        JSON.stringify({
+          jobName: name,
+          runId,
+          instanceId,
+          status: 'skipped',
+          lockAcquired: false,
+          reason: 'lock_not_acquired',
+        }),
       );
-      return;
+      return buildSchedulerJobResult({
+        jobName: name,
+        runId,
+        instanceId,
+        triggerTime,
+        startTime: startedAt,
+        status: 'skipped',
+        lockAcquired: false,
+      });
     }
 
-    this.logger.log(`[${name}] start`);
+    let finalStatus: SchedulerJobResult['status'] = 'completed';
+    const context = createSchedulerContext(
+      name,
+      runId,
+      instanceId,
+      settings.jobTimeoutMs,
+      () => this.heartbeatJobLock(lock, settings.lockTtlMs),
+    );
 
     try {
-      const result = await job();
-      const duration = Date.now() - startedAt;
       this.logger.log(
-        `[${name}] finish duration_ms=${duration} processed=${result.processed}`,
+        JSON.stringify({
+          jobName: name,
+          runId,
+          instanceId,
+          status: 'started',
+          triggerTime: triggerTime.toISOString(),
+        }),
       );
-      if (result.details) {
-        this.logger.debug(
-          `[${name}] details=${JSON.stringify(result.details)}`,
-        );
+      const heartbeatTimer = setInterval(() => {
+        void context.heartbeat().catch((error) => {
+          this.logger.warn(
+            `[${name}] heartbeat failed: ${this.sanitizedError(error)}`,
+          );
+        });
+      }, settings.lockHeartbeatMs);
+      heartbeatTimer.unref?.();
+
+      let result: JobWorkResult;
+      try {
+        result = await job(context);
+      } finally {
+        clearInterval(heartbeatTimer);
       }
+      finalStatus = context.shouldContinue()
+        ? result.failed && result.succeeded
+          ? 'partial'
+          : result.failed && !result.succeeded
+            ? 'failed'
+            : 'completed'
+        : 'timed_out';
+      const jobResult = buildSchedulerJobResult({
+        jobName: name,
+        runId,
+        instanceId,
+        triggerTime,
+        startTime: startedAt,
+        status: finalStatus,
+        lockAcquired: true,
+        counters: {
+          scanned:
+            result.scanned ??
+            (typeof result.details?.scanned === 'number'
+              ? result.details.scanned
+              : 0),
+          processed: result.processed,
+          succeeded: result.succeeded ?? result.processed,
+          failed: result.failed ?? 0,
+          skipped: result.skipped ?? 0,
+          batches: result.batches ?? 0,
+          retries: result.retries ?? 0,
+        },
+        details: result.details,
+      });
+      this.logger.log(JSON.stringify(jobResult));
+      return jobResult;
     } catch (error) {
-      const duration = Date.now() - startedAt;
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(
-        `[${name}] failed duration_ms=${duration} error=${message}`,
-      );
+      finalStatus = context.shouldContinue() ? 'failed' : 'timed_out';
+      const jobResult = buildSchedulerJobResult({
+        jobName: name,
+        runId,
+        instanceId,
+        triggerTime,
+        startTime: startedAt,
+        status: finalStatus,
+        lockAcquired: true,
+        counters: { failed: 1 },
+        details: { error: this.sanitizedError(error) },
+      });
+      this.logger.error(JSON.stringify(jobResult));
+      return jobResult;
     } finally {
-      await this.releaseJobLock(name, lock.owner);
+      await this.releaseJobLock(lock, finalStatus);
     }
   }
 
   private async acquireJobLock(
     name: string,
-    leaseMs = 15 * 60 * 1000,
-  ): Promise<{ owner: string } | null> {
+    runId: string,
+    leaseMs: number,
+  ): Promise<SchedulerLockHandle | null> {
+    if (this.schedulerLockService) {
+      return this.schedulerLockService.acquire(name, runId, leaseMs);
+    }
+
     const now = new Date();
     const owner = `${this.schedulerInstanceId}-${Date.now()}`;
     const expiresAt = new Date(now.getTime() + leaseMs);
@@ -186,7 +325,12 @@ export class AutomationSchedulerService {
             $set: {
               name,
               owner,
+              owner_id: owner,
+              run_id: runId,
+              acquired_at: now,
+              heartbeat_at: now,
               expires_at: expiresAt,
+              status: 'running',
             },
           },
           {
@@ -198,7 +342,9 @@ export class AutomationSchedulerService {
         .lean()
         .exec();
 
-      return lock?.owner === owner ? { owner } : null;
+      return lock?.owner === owner
+        ? { jobName: name, ownerId: owner, runId, expiresAt }
+        : null;
     } catch (error: unknown) {
       if ((error as { code?: number })?.code === 11000) {
         return null;
@@ -207,22 +353,77 @@ export class AutomationSchedulerService {
     }
   }
 
-  private async releaseJobLock(name: string, owner: string): Promise<void> {
-    await this.automationJobLockModel.deleteOne({ name, owner }).exec();
+  private async heartbeatJobLock(
+    lock: SchedulerLockHandle,
+    leaseMs: number,
+  ): Promise<boolean> {
+    if (this.schedulerLockService) {
+      return this.schedulerLockService.heartbeat(lock, leaseMs);
+    }
+    const now = new Date();
+    const result = await this.automationJobLockModel
+      .findOneAndUpdate(
+        {
+          name: lock.jobName,
+          owner_id: lock.ownerId,
+          run_id: lock.runId,
+          expires_at: { $gt: now },
+        },
+        {
+          $set: {
+            heartbeat_at: now,
+            expires_at: new Date(now.getTime() + leaseMs),
+          },
+        },
+      )
+      .lean()
+      .exec();
+    return Boolean(result);
   }
 
-  private async jobGeneratePreventiveMaintenance(): Promise<JobResult> {
-    const summary =
-      await this.workOrdersService.triggerScheduler('cron_nightly');
+  private async releaseJobLock(
+    lock: SchedulerLockHandle,
+    status: string,
+  ): Promise<void> {
+    if (this.schedulerLockService) {
+      await this.schedulerLockService.release(lock, status);
+      return;
+    }
+    await this.automationJobLockModel
+      .deleteOne({
+        name: lock.jobName,
+        owner_id: lock.ownerId,
+        run_id: lock.runId,
+      })
+      .exec();
+  }
+
+  private async jobGeneratePreventiveMaintenance(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
+    const summary = await this.workOrdersService.triggerScheduler(
+      'cron_nightly',
+      context,
+    );
     return {
       processed:
         Number(summary.createdFirstExecution || 0) +
         Number(summary.createdNextExecution || 0),
+      scanned: Number(summary.plansEvaluated || 0),
+      succeeded:
+        Number(summary.createdFirstExecution || 0) +
+        Number(summary.createdNextExecution || 0),
+      failed: Number(summary.failed || 0),
+      skipped: Number(summary.skippedDuplicates || 0),
+      batches: Number(summary.batches || 0),
       details: summary,
     };
   }
 
-  private async jobUpcomingMaintenanceReminders(): Promise<JobResult> {
+  private async jobUpcomingMaintenanceReminders(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
+    const settings = this.getSchedulerSettings();
     const now = new Date();
     const today = this.startOfDay(now);
 
@@ -253,39 +454,70 @@ export class AutomationSchedulerService {
         },
       )
       .lean()
+      .sort({ _id: 1 })
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
     let notifications = 0;
+    let failed = 0;
 
-    for (const row of rows) {
-      const dueSource = row.due_date || row.scheduled_date || row.date_start;
-      if (!dueSource) continue;
-      const dueDate = this.startOfDay(new Date(dueSource));
-      const days = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
-      if (![1, 3, 7].includes(days)) {
-        continue;
-      }
+    await mapWithConcurrency(
+      rows,
+      settings.externalConcurrency,
+      async (row) => {
+        if (context && !context.shouldContinue()) return;
+        try {
+          const dueSource =
+            row.due_date || row.scheduled_date || row.date_start;
+          if (!dueSource) return;
+          const dueDate = this.startOfDay(new Date(dueSource));
+          const days = Math.round(
+            (dueDate.getTime() - today.getTime()) / 86400000,
+          );
+          if (![1, 3, 7].includes(days)) {
+            return;
+          }
 
-      const workOrderId = this.objectIdString(row._id);
-      const dedupeKey = `upcoming:${workOrderId}:${days}:${today.toISOString()}`;
-      const created = await this.notificationCenterService.createIfNotExists({
-        dedupeKey,
-        type: NotificationType.PREVENTIVE_DUE,
-        title: `Upcoming maintenance in ${days} day(s) for ${row.ot_id || workOrderId}`,
-        workOrderId,
-        machineId: this.objectIdString(row.machine_id) || undefined,
-        ...this.resolveRecipient(this.objectIdString(row.technician_id)),
-      });
-      if (created) {
-        notifications += 1;
-      }
-    }
+          const workOrderId = this.objectIdString(row._id);
+          const dedupeKey = `upcoming:${workOrderId}:${days}:${today.toISOString()}`;
+          const created =
+            await this.notificationCenterService.createIfNotExists({
+              dedupeKey,
+              type: NotificationType.PREVENTIVE_DUE,
+              title: `Upcoming maintenance in ${days} day(s) for ${
+                row.ot_id || workOrderId
+              }`,
+              workOrderId,
+              machineId: this.objectIdString(row.machine_id) || undefined,
+              ...this.resolveRecipient(this.objectIdString(row.technician_id)),
+            });
+          if (created) {
+            notifications += 1;
+          }
+        } catch (error) {
+          failed += 1;
+          this.logger.warn(
+            `[job_upcoming_maintenance_reminders] item failed: ${this.sanitizedError(error)}`,
+          );
+        }
+      },
+    );
 
-    return { processed: notifications, details: { scanned: rows.length } };
+    return {
+      processed: notifications,
+      scanned: rows.length,
+      succeeded: notifications,
+      failed,
+      batches: rows.length ? 1 : 0,
+      details: { scanned: rows.length },
+    };
   }
 
-  private async jobMarkOverdueMaintenance(): Promise<JobResult> {
+  private async jobMarkOverdueMaintenance(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
     const now = new Date();
+    const settings = this.getSchedulerSettings();
 
     const overdueRows = await this.workOrderModel
       .find(
@@ -317,7 +549,8 @@ export class AutomationSchedulerService {
         },
       )
       .lean()
-      .limit(1000)
+      .sort({ _id: 1 })
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
     if (!overdueRows.length) {
@@ -337,24 +570,34 @@ export class AutomationSchedulerService {
       .exec();
 
     let notifications = 0;
-    for (const row of overdueRows) {
-      const workOrderId = this.objectIdString(row._id);
-      const dedupeKey = `overdue:${workOrderId}:${this.startOfDay(now).toISOString()}`;
-      const created = await this.notificationCenterService.createIfNotExists({
-        dedupeKey,
-        type: NotificationType.PREVENTIVE_OVERDUE,
-        title: `Work order ${row.ot_id || workOrderId} is overdue`,
-        workOrderId,
-        machineId: this.objectIdString(row.machine_id) || undefined,
-        ...this.resolveRecipient(this.objectIdString(row.technician_id)),
-      });
-      if (created) {
-        notifications += 1;
-      }
-    }
+    await mapWithConcurrency(
+      overdueRows,
+      settings.externalConcurrency,
+      async (row) => {
+        if (context && !context.shouldContinue()) {
+          return;
+        }
+        const workOrderId = this.objectIdString(row._id);
+        const dedupeKey = `overdue:${workOrderId}:${this.startOfDay(now).toISOString()}`;
+        const created = await this.notificationCenterService.createIfNotExists({
+          dedupeKey,
+          type: NotificationType.PREVENTIVE_OVERDUE,
+          title: `Work order ${row.ot_id || workOrderId} is overdue`,
+          workOrderId,
+          machineId: this.objectIdString(row.machine_id) || undefined,
+          ...this.resolveRecipient(this.objectIdString(row.technician_id)),
+        });
+        if (created) {
+          notifications += 1;
+        }
+      },
+    );
 
     return {
       processed: Number(updateResult.modifiedCount || 0),
+      scanned: overdueRows.length,
+      succeeded: Number(updateResult.modifiedCount || 0),
+      batches: overdueRows.length ? 1 : 0,
       details: {
         scanned: overdueRows.length,
         notifications,
@@ -362,8 +605,11 @@ export class AutomationSchedulerService {
     };
   }
 
-  private async jobOverdueEscalation(): Promise<JobResult> {
+  private async jobOverdueEscalation(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
     const now = new Date();
+    const settings = this.getSchedulerSettings();
     const threeDaysAgo = new Date(now);
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
@@ -398,7 +644,7 @@ export class AutomationSchedulerService {
       )
       .lean()
       .sort({ due_date: 1, scheduled_date: 1, date_start: 1, _id: 1 })
-      .limit(1000)
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
     const supervisors = await this.userModel
@@ -411,52 +657,77 @@ export class AutomationSchedulerService {
 
     let notifications = 0;
 
-    for (const row of overdueRows) {
-      const dueSource = row.due_date || row.scheduled_date || row.date_start;
-      if (!dueSource) continue;
-      const due = new Date(dueSource);
-      const overdueDays = Math.floor(
-        (now.getTime() - due.getTime()) / 86400000,
-      );
-      const workOrderId = this.objectIdString(row._id);
+    let failed = 0;
+    await mapWithConcurrency(
+      overdueRows,
+      settings.externalConcurrency,
+      async (row) => {
+        if (context && !context.shouldContinue()) return;
+        try {
+          const dueSource =
+            row.due_date || row.scheduled_date || row.date_start;
+          if (!dueSource) return;
+          const due = new Date(dueSource);
+          const overdueDays = Math.floor(
+            (now.getTime() - due.getTime()) / 86400000,
+          );
+          const workOrderId = this.objectIdString(row._id);
 
-      if (overdueDays >= 3) {
-        const dedupeKey = `escalation:tech:${workOrderId}:${Math.floor(overdueDays / 3)}`;
-        const created = await this.notificationCenterService.createIfNotExists({
-          dedupeKey,
-          type: NotificationType.OVERDUE_ESCALATION,
-          title: `Escalation 3+ days overdue for ${row.ot_id || workOrderId}`,
-          workOrderId,
-          ...this.resolveRecipient(this.objectIdString(row.technician_id)),
-        });
-        if (created) {
-          notifications += 1;
-        }
-      }
-
-      if (overdueDays >= 7) {
-        for (const supervisor of supervisors) {
-          const supervisorId = this.objectIdString(supervisor._id);
-          const dedupeKey = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
-            overdueDays / 7,
-          )}`;
-          const created =
-            await this.notificationCenterService.createIfNotExists({
-              dedupeKey,
-              type: NotificationType.OVERDUE_ESCALATION,
-              title: `Escalation 7+ days overdue for ${row.ot_id || workOrderId}`,
-              workOrderId,
-              recipientUserId: supervisorId,
-            });
-          if (created) {
-            notifications += 1;
+          if (overdueDays >= 3) {
+            const dedupeKey = `escalation:tech:${workOrderId}:${Math.floor(overdueDays / 3)}`;
+            const created =
+              await this.notificationCenterService.createIfNotExists({
+                dedupeKey,
+                type: NotificationType.OVERDUE_ESCALATION,
+                title: `Escalation 3+ days overdue for ${
+                  row.ot_id || workOrderId
+                }`,
+                workOrderId,
+                ...this.resolveRecipient(
+                  this.objectIdString(row.technician_id),
+                ),
+              });
+            if (created) {
+              notifications += 1;
+            }
           }
+
+          if (overdueDays >= 7) {
+            for (const supervisor of supervisors) {
+              const supervisorId = this.objectIdString(supervisor._id);
+              const dedupeKey = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
+                overdueDays / 7,
+              )}`;
+              const created =
+                await this.notificationCenterService.createIfNotExists({
+                  dedupeKey,
+                  type: NotificationType.OVERDUE_ESCALATION,
+                  title: `Escalation 7+ days overdue for ${
+                    row.ot_id || workOrderId
+                  }`,
+                  workOrderId,
+                  recipientUserId: supervisorId,
+                });
+              if (created) {
+                notifications += 1;
+              }
+            }
+          }
+        } catch (error) {
+          failed += 1;
+          this.logger.warn(
+            `[job_overdue_escalation] item failed: ${this.sanitizedError(error)}`,
+          );
         }
-      }
-    }
+      },
+    );
 
     return {
       processed: notifications,
+      scanned: overdueRows.length,
+      succeeded: notifications,
+      failed,
+      batches: overdueRows.length ? 1 : 0,
       details: { scanned: overdueRows.length, supervisors: supervisors.length },
     };
   }
@@ -468,27 +739,54 @@ export class AutomationSchedulerService {
    * comparison, so a stock never alerts here but not on the dashboard (or
    * vice versa).
    */
-  private async jobStockMonitoring(): Promise<JobResult> {
+  private async jobStockMonitoring(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
     const { items } = await this.kpiService.computeStockAlerts();
+    const settings = this.getSchedulerSettings();
 
     let alerts = 0;
-    for (const item of items) {
-      const created = await this.notificationCenterService.createIfNotExists({
-        dedupeKey: `stock_alert:${item.stockId}:${item.available}`,
-        type: NotificationType.STOCK_ALERT,
-        title: `Stock alert for ${item.stockCode}: available ${item.available} <= threshold ${item.threshold}`,
-        referenceId: item.partId,
-        recipientRole: Role.ADMIN,
-      });
-      if (created) {
-        alerts += 1;
-      }
-    }
+    let failed = 0;
+    await mapWithConcurrency(
+      items.slice(0, settings.maxItemsPerRun),
+      settings.externalConcurrency,
+      async (item) => {
+        if (context && !context.shouldContinue()) return;
+        try {
+          const created =
+            await this.notificationCenterService.createIfNotExists({
+              dedupeKey: `stock_alert:${item.stockId}:${item.available}`,
+              type: NotificationType.STOCK_ALERT,
+              title: `Stock alert for ${item.stockCode}: available ${item.available} <= threshold ${item.threshold}`,
+              referenceId: item.partId,
+              recipientRole: Role.ADMIN,
+            });
+          if (created) {
+            alerts += 1;
+          }
+        } catch (error) {
+          failed += 1;
+          this.logger.warn(
+            `[job_stock_monitoring] item failed: ${this.sanitizedError(error)}`,
+          );
+        }
+      },
+    );
 
-    return { processed: alerts, details: { scanned: items.length } };
+    return {
+      processed: alerts,
+      scanned: items.length,
+      succeeded: alerts,
+      failed,
+      batches: items.length ? 1 : 0,
+      details: { scanned: items.length },
+    };
   }
 
-  private async jobLubricationReminders(): Promise<JobResult> {
+  private async jobLubricationReminders(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
+    const settings = this.getSchedulerSettings();
     const latestLogs = await this.lubrificationLogModel
       .aggregate([
         { $sort: { date_application: -1 } },
@@ -499,6 +797,7 @@ export class AutomationSchedulerService {
             lastTechnician: { $first: '$technician_id' },
           },
         },
+        { $limit: settings.maxItemsPerRun },
       ])
       .exec();
 
@@ -539,50 +838,71 @@ export class AutomationSchedulerService {
     const today = this.startOfDay(new Date());
     let reminders = 0;
 
-    for (const entry of latestLogs) {
-      const moduleId = this.objectIdString(entry._id);
-      const moduleEntity = moduleMap.get(moduleId);
-      const plan = planByModule.get(moduleId);
+    let failed = 0;
+    await mapWithConcurrency(
+      latestLogs,
+      settings.externalConcurrency,
+      async (entry) => {
+        if (context && !context.shouldContinue()) return;
+        try {
+          const moduleId = this.objectIdString(entry._id);
+          const moduleEntity = moduleMap.get(moduleId);
+          const plan = planByModule.get(moduleId);
 
-      const frequency = plan?.frequence ?? 1;
-      const unit = plan?.unite_frequence ?? 'month';
-      const nextDue = this.computeNextDueDate(
-        new Date(entry.lastDate),
-        frequency,
-        unit,
-      );
-      const dueDays = Math.floor(
-        (this.startOfDay(nextDue).getTime() - today.getTime()) / 86400000,
-      );
+          const frequency = plan?.frequence ?? 1;
+          const unit = plan?.unite_frequence ?? 'month';
+          const nextDue = this.computeNextDueDate(
+            new Date(entry.lastDate),
+            frequency,
+            unit,
+          );
+          const dueDays = Math.floor(
+            (this.startOfDay(nextDue).getTime() - today.getTime()) / 86400000,
+          );
 
-      if (![1, 3, 7].includes(dueDays) && dueDays >= 0) {
-        continue;
-      }
+          if (![1, 3, 7].includes(dueDays) && dueDays >= 0) {
+            return;
+          }
 
-      const stage = dueDays < 0 ? 'overdue' : `due_in_${dueDays}_days`;
-      const dedupeKey = `lubrication:${moduleId}:${stage}:${this.startOfDay(nextDue).toISOString()}`;
+          const stage = dueDays < 0 ? 'overdue' : `due_in_${dueDays}_days`;
+          const dedupeKey = `lubrication:${moduleId}:${stage}:${this.startOfDay(nextDue).toISOString()}`;
 
-      const created = await this.notificationCenterService.createIfNotExists({
-        dedupeKey,
-        type: NotificationType.LUBRICATION_DUE,
-        title: `Lubrication reminder for module ${moduleEntity?.module_id || moduleId} (${stage})`,
-        machineId: moduleEntity
-          ? this.objectIdString(moduleEntity.machine_id) || undefined
-          : undefined,
-        recipientRole: Role.ADMIN,
-      });
-      if (created) {
-        reminders += 1;
-      }
-    }
+          const created =
+            await this.notificationCenterService.createIfNotExists({
+              dedupeKey,
+              type: NotificationType.LUBRICATION_DUE,
+              title: `Lubrication reminder for module ${moduleEntity?.module_id || moduleId} (${stage})`,
+              machineId: moduleEntity
+                ? this.objectIdString(moduleEntity.machine_id) || undefined
+                : undefined,
+              recipientRole: Role.ADMIN,
+            });
+          if (created) {
+            reminders += 1;
+          }
+        } catch (error) {
+          failed += 1;
+          this.logger.warn(
+            `[job_lubrication_reminders] item failed: ${this.sanitizedError(error)}`,
+          );
+        }
+      },
+    );
 
     return {
       processed: reminders,
+      scanned: latestLogs.length,
+      succeeded: reminders,
+      failed,
+      batches: latestLogs.length ? 1 : 0,
       details: { scannedModules: latestLogs.length, plans: plans.length },
     };
   }
 
-  private async jobSensorMonitoring(): Promise<JobResult> {
+  private async jobSensorMonitoring(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
+    const settings = this.getSchedulerSettings();
     const capteurs = await this.capteurModel
       .find(
         { is_active: true },
@@ -595,6 +915,8 @@ export class AutomationSchedulerService {
         },
       )
       .lean()
+      .sort({ _id: 1 })
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
     if (!capteurs.length) {
@@ -625,129 +947,222 @@ export class AutomationSchedulerService {
 
     let alerts = 0;
 
-    for (const capteur of capteurs) {
-      const sensorId = this.objectIdString(capteur._id);
-      const mesure = mesureMap.get(sensorId);
-      if (!mesure) continue;
+    let failed = 0;
+    await mapWithConcurrency(
+      capteurs,
+      settings.externalConcurrency,
+      async (capteur) => {
+        if (context && !context.shouldContinue()) return;
+        try {
+          const sensorId = this.objectIdString(capteur._id);
+          const mesure = mesureMap.get(sensorId);
+          if (!mesure) return;
 
-      const warningThreshold =
-        typeof capteur.seuil_avertissement === 'number'
-          ? capteur.seuil_avertissement
-          : undefined;
-      const criticalThreshold =
-        typeof capteur.seuil_critique === 'number'
-          ? capteur.seuil_critique
-          : undefined;
+          const warningThreshold =
+            typeof capteur.seuil_avertissement === 'number'
+              ? capteur.seuil_avertissement
+              : undefined;
+          const criticalThreshold =
+            typeof capteur.seuil_critique === 'number'
+              ? capteur.seuil_critique
+              : undefined;
 
-      const value = Number(mesure.valeur);
-      let level: 'warning' | 'critical' | null = null;
+          const value = Number(mesure.valeur);
+          let level: 'warning' | 'critical' | null = null;
 
-      if (typeof criticalThreshold === 'number' && value >= criticalThreshold) {
-        level = 'critical';
-      } else if (
-        typeof warningThreshold === 'number' &&
-        value >= warningThreshold
-      ) {
-        level = 'warning';
-      }
+          if (
+            typeof criticalThreshold === 'number' &&
+            value >= criticalThreshold
+          ) {
+            level = 'critical';
+          } else if (
+            typeof warningThreshold === 'number' &&
+            value >= warningThreshold
+          ) {
+            level = 'warning';
+          }
 
-      if (!level) {
-        continue;
-      }
+          if (!level) {
+            return;
+          }
 
-      const dedupeKey = `sensor:${sensorId}:${level}:${this.startOfDay(new Date(mesure.timestamp)).toISOString()}`;
-      const created = await this.notificationCenterService.createIfNotExists({
-        dedupeKey,
-        type: NotificationType.SENSOR_ALERT,
-        title: `Sensor ${capteur.capteur_id} ${level} threshold exceeded (value=${value})`,
-        referenceId: this.objectIdString(capteur.module_id) || undefined,
-        recipientRole: Role.ADMIN,
-      });
-      if (created) {
-        alerts += 1;
-      }
-    }
+          const dedupeKey = `sensor:${sensorId}:${level}:${this.startOfDay(new Date(mesure.timestamp)).toISOString()}`;
+          const created =
+            await this.notificationCenterService.createIfNotExists({
+              dedupeKey,
+              type: NotificationType.SENSOR_ALERT,
+              title: `Sensor ${capteur.capteur_id} ${level} threshold exceeded (value=${value})`,
+              referenceId: this.objectIdString(capteur.module_id) || undefined,
+              recipientRole: Role.ADMIN,
+            });
+          if (created) {
+            alerts += 1;
+          }
+        } catch (error) {
+          failed += 1;
+          this.logger.warn(
+            `[job_sensor_monitoring] item failed: ${this.sanitizedError(error)}`,
+          );
+        }
+      },
+    );
 
-    return { processed: alerts, details: { scannedSensors: capteurs.length } };
+    return {
+      processed: alerts,
+      scanned: capteurs.length,
+      succeeded: alerts,
+      failed,
+      batches: capteurs.length ? 1 : 0,
+      details: { scannedSensors: capteurs.length },
+    };
   }
 
-  private async jobRefreshKpis(): Promise<JobResult> {
-    const machines = await this.machineModel.find({}, { _id: 1 }).lean().exec();
-
+  private async jobRefreshKpis(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
+    const settings = this.getSchedulerSettings();
+    let lastId: Types.ObjectId | undefined;
     let refreshed = 0;
-    for (const machine of machines) {
-      await this.workOrdersService.updateKpiForMachine(
-        this.objectIdString(machine._id),
+    let scanned = 0;
+    let failed = 0;
+    let batches = 0;
+
+    while (
+      (!context || context.shouldContinue()) &&
+      scanned < settings.maxItemsPerRun
+    ) {
+      const remaining = settings.maxItemsPerRun - scanned;
+      const filter = lastId ? { _id: { $gt: lastId } } : {};
+      const machines = await this.machineModel
+        .find(filter, { _id: 1, is_active: 1 })
+        .lean()
+        .sort({ _id: 1 })
+        .limit(Math.min(settings.batchSize, remaining))
+        .exec();
+
+      if (!machines.length) break;
+      batches += 1;
+      scanned += machines.length;
+      await mapWithConcurrency(
+        machines,
+        settings.concurrency,
+        async (machine) => {
+          if (context && !context.shouldContinue()) return;
+          try {
+            await this.workOrdersService.updateKpiForMachine(
+              this.objectIdString(machine._id),
+            );
+            refreshed += 1;
+          } catch (error) {
+            failed += 1;
+            this.logger.warn(
+              `[job_refresh_kpis] item failed: ${this.sanitizedError(error)}`,
+            );
+          }
+        },
       );
-      refreshed += 1;
+      lastId = machines[machines.length - 1]._id;
+      if (machines.length < settings.batchSize) break;
+      if (context && !(await context.heartbeat())) break;
     }
 
-    return { processed: refreshed };
+    return {
+      processed: refreshed,
+      scanned,
+      succeeded: refreshed,
+      failed,
+      batches,
+    };
   }
 
-  private async jobDetectDuplicateWorkOrders(): Promise<JobResult> {
-    const duplicateGroups = await this.workOrderModel
-      .aggregate([
-        {
-          $match: {
-            status: { $nin: ['completed', 'validated', 'cancelled'] },
-            date_start: { $ne: null },
+  private async jobDetectDuplicateWorkOrders(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
+    const settings = this.getSchedulerSettings();
+    const aggregation = this.workOrderModel.aggregate([
+      {
+        $match: {
+          status: { $nin: ['completed', 'validated', 'cancelled'] },
+          date_start: { $ne: null },
+        },
+      },
+      {
+        $project: {
+          machine_id: 1,
+          module_id: 1,
+          plan_id: 1,
+          type_maintenance: 1,
+          date_key: {
+            $dateToString: { format: '%Y-%m-%d', date: '$date_start' },
           },
         },
-        {
-          $project: {
-            machine_id: 1,
-            module_id: 1,
-            plan_id: 1,
-            type_maintenance: 1,
-            date_key: {
-              $dateToString: { format: '%Y-%m-%d', date: '$date_start' },
-            },
+      },
+      {
+        $group: {
+          _id: {
+            machine_id: '$machine_id',
+            module_id: '$module_id',
+            plan_id: '$plan_id',
+            type_maintenance: '$type_maintenance',
+            date_key: '$date_key',
           },
+          count: { $sum: 1 },
         },
-        {
-          $group: {
-            _id: {
-              machine_id: '$machine_id',
-              module_id: '$module_id',
-              plan_id: '$plan_id',
-              type_maintenance: '$type_maintenance',
-              date_key: '$date_key',
-            },
-            count: { $sum: 1 },
-          },
-        },
-        { $match: { count: { $gt: 1 } } },
-      ])
-      .exec();
+      },
+      { $match: { count: { $gt: 1 } } },
+      { $sort: { '_id.date_key': 1 } },
+      { $limit: settings.maxItemsPerRun },
+    ]);
 
     let notifications = 0;
+    let scanned = 0;
+    let failed = 0;
 
-    for (const group of duplicateGroups) {
-      const dedupeKey = `duplicate:${JSON.stringify(group._id)}`;
-      const created = await this.notificationCenterService.createIfNotExists({
-        dedupeKey,
-        type: NotificationType.DUPLICATE_WORK_ORDER,
-        title: `Duplicate work order pattern detected (${group.count} matches)`,
-        machineId: this.objectIdString(group._id?.machine_id) || undefined,
-        recipientRole: Role.ADMIN,
-      });
-      if (created) {
-        notifications += 1;
+    const cursor = aggregation.cursor({ batchSize: settings.batchSize });
+    for await (const group of cursor as AsyncIterable<{
+      _id?: Record<string, unknown>;
+      count: number;
+    }>) {
+      if (context && !context.shouldContinue()) break;
+      scanned += 1;
+      try {
+        const dedupeKey = `duplicate:${JSON.stringify(group._id)}`;
+        const created = await this.notificationCenterService.createIfNotExists({
+          dedupeKey,
+          type: NotificationType.DUPLICATE_WORK_ORDER,
+          title: `Duplicate work order pattern detected (${group.count} matches)`,
+          machineId: this.objectIdString(group._id?.machine_id) || undefined,
+          recipientRole: Role.ADMIN,
+        });
+        if (created) {
+          notifications += 1;
+        }
+      } catch (error) {
+        failed += 1;
+        this.logger.warn(
+          `[job_detect_duplicate_workorders] item failed: ${this.sanitizedError(error)}`,
+        );
       }
     }
 
     return {
-      processed: duplicateGroups.length,
+      processed: scanned,
+      scanned,
+      succeeded: scanned - failed,
+      failed,
+      batches: Math.ceil(scanned / settings.batchSize),
       details: { notifications },
     };
   }
 
-  private async jobCalendarSynchronization(): Promise<JobResult> {
+  private async jobCalendarSynchronization(
+    context?: SchedulerJobContext,
+  ): Promise<JobWorkResult> {
     // Smart calendar is generated directly from WorkOrder data.
     // Synchronization means normalizing WorkOrder lifecycle fields to keep calendar views accurate.
     const now = new Date();
 
+    const settings = this.getSchedulerSettings();
     const completedWithoutCloseDate = await this.workOrderModel
       .find(
         {
@@ -757,11 +1172,13 @@ export class AutomationSchedulerService {
         { _id: 1, date_end: 1 },
       )
       .lean()
-      .limit(2000)
+      .sort({ _id: 1 })
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
     let updated = 0;
     for (const row of completedWithoutCloseDate) {
+      if (context && !context.shouldContinue()) break;
       await this.workOrderModel
         .findByIdAndUpdate(row._id, {
           date_closed: row.date_end || now,
@@ -774,6 +1191,10 @@ export class AutomationSchedulerService {
 
     return {
       processed: updated,
+      scanned: completedWithoutCloseDate.length,
+      succeeded: updated,
+      failed: duplicateSummary.failed,
+      batches: completedWithoutCloseDate.length ? 1 : 0,
       details: {
         completedRowsPatched: updated,
         duplicateGroups: duplicateSummary.processed,
@@ -811,6 +1232,17 @@ export class AutomationSchedulerService {
       return this.objectIdString((value as { _id?: unknown })._id);
     }
     return '';
+  }
+
+  private getSchedulerSettings(): SchedulerRuntimeSettings {
+    return (
+      this.schedulerConfigService?.getSettings() ?? defaultSchedulerSettings()
+    );
+  }
+
+  private sanitizedError(error: unknown): string {
+    if (error instanceof Error) return error.message.slice(0, 300);
+    return String(error).slice(0, 300);
   }
 
   private normalizeFrequencyUnit(value?: string): string {

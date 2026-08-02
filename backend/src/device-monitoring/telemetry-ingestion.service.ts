@@ -1,12 +1,13 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   Device,
   DeviceConnectionStatus,
@@ -21,6 +22,11 @@ import {
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
 import { Role } from '../schemas/user.schema';
+import {
+  DocumentAccessService,
+  type DocumentActor,
+} from '../documents/document-access.service';
+import { ResolveFaultDto } from './dto/resolve-fault.dto';
 
 export interface TelemetryPayload {
   metrics: Record<string, number>;
@@ -67,6 +73,7 @@ export class TelemetryIngestionService {
     @InjectModel(FaultEvent.name)
     private readonly faultEventModel: Model<FaultEventDocument>,
     private readonly notificationCenterService: NotificationCenterService,
+    private readonly documentAccessService: DocumentAccessService,
   ) {}
 
   async recordHeartbeat(
@@ -151,27 +158,66 @@ export class TelemetryIngestionService {
 
   async resolveFault(
     faultId: string,
-    resolvedByUserId: string,
+    actor: DocumentActor,
+    dto: ResolveFaultDto = {},
   ): Promise<FaultEventDocument> {
-    const existing = await this.faultEventModel.findById(faultId).exec();
-    if (!existing) {
-      throw new NotFoundException('Fault event not found');
-    }
-    if (existing.resolved_at) {
-      throw new ConflictException('This fault event has already been resolved');
-    }
+    const startedAt = Date.now();
+    const userId = actor.userId;
 
-    const updated = await this.faultEventModel
-      .findOneAndUpdate(
-        { _id: faultId, resolved_at: { $exists: false } },
-        { $set: { resolved_at: new Date(), resolved_by: resolvedByUserId } },
-        { new: true },
-      )
-      .exec();
-    if (!updated) {
-      throw new ConflictException('This fault event has already been resolved');
+    try {
+      if (!Types.ObjectId.isValid(faultId)) {
+        throw new BadRequestException('Invalid fault_id');
+      }
+
+      if (!userId || !Types.ObjectId.isValid(userId)) {
+        throw new BadRequestException('Invalid resolved_by');
+      }
+
+      const existing = await this.faultEventModel
+        .findById(faultId)
+        .select({ machine_id: 1 })
+        .exec();
+      if (!existing) {
+        throw new NotFoundException('Fault event not found');
+      }
+
+      await this.documentAccessService.assertCanAccessMachine(
+        actor,
+        String(existing.machine_id),
+      );
+
+      const $set: Record<string, unknown> = {
+        resolved_at: new Date(),
+        resolved_by: new Types.ObjectId(userId),
+      };
+      if (dto.resolution_note) {
+        $set.resolution_note = dto.resolution_note;
+      }
+
+      const updated = await this.faultEventModel
+        .findOneAndUpdate(
+          { _id: faultId, resolved_at: { $exists: false } },
+          { $set },
+          { new: true },
+        )
+        .exec();
+      if (!updated) {
+        throw new ConflictException(
+          'This fault event has already been resolved',
+        );
+      }
+
+      this.logResolveAttempt(faultId, userId, 'resolved', startedAt);
+      return updated;
+    } catch (error) {
+      this.logResolveAttempt(
+        faultId,
+        userId,
+        this.statusFromError(error),
+        startedAt,
+      );
+      throw error;
     }
-    return updated;
   }
 
   private async markSeenAndOnline(device: DeviceDocument): Promise<void> {
@@ -187,5 +233,27 @@ export class TelemetryIngestionService {
         },
       )
       .exec();
+  }
+
+  private logResolveAttempt(
+    faultId: string,
+    actorId: string | undefined,
+    result: string,
+    startedAt: number,
+  ): void {
+    this.logger.log({
+      event: 'fault_resolution_attempt',
+      faultId,
+      actorId,
+      result,
+      durationMs: Date.now() - startedAt,
+    });
+  }
+
+  private statusFromError(error: unknown): string {
+    if (error instanceof HttpException) {
+      return String(error.getStatus());
+    }
+    return 'error';
   }
 }

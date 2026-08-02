@@ -49,6 +49,7 @@ import { ReportsService } from './reports.service';
 import { ScheduledReportsService } from './scheduled-reports.service';
 import { ReportSchedulerService } from './report-scheduler.service';
 import { ReportsController } from './reports.controller';
+import { SchedulerSupportModule } from '../scheduler/scheduler-support.module';
 
 const DATA_PROVIDERS = [
   MachineHistoryReportProvider,
@@ -85,6 +86,7 @@ const RENDERERS = [CsvReportRenderer, ExcelReportRenderer, PdfReportRenderer];
     PredictiveMaintenanceModule,
     NotificationCenterModule,
     FileStorageModule,
+    SchedulerSupportModule,
   ],
   controllers: [ReportsController],
   providers: [

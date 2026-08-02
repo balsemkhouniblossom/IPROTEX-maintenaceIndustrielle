@@ -135,6 +135,8 @@ const mongoLogger = new Logger('MongoDB');
 
         return {
           uri: mongoUri,
+          autoCreate: process.env.NODE_ENV !== 'production',
+          autoIndex: process.env.NODE_ENV !== 'production',
           connectionFactory: (connection: Connection) => {
             connection.on('connected', () => {
               const host = connection.host || 'unknown-host';

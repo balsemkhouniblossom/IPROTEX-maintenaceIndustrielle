@@ -42,4 +42,8 @@ export class InterventionReport {
 export const InterventionReportSchema =
   SchemaFactory.createForClass(InterventionReport);
 InterventionReportSchema.index({ ot_id: 1 });
+InterventionReportSchema.index(
+  { ot_id: 1, date_fin: -1 },
+  { name: 'intervention_reports_work_order_finished_desc' },
+);
 InterventionReportSchema.index({ technician_id: 1, date_debut: -1 });

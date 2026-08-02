@@ -96,6 +96,9 @@ export class WorkOrder {
   @Prop({ type: Types.ObjectId, ref: 'WorkOrder' })
   recurrence_source_occurrence_id?: Types.ObjectId;
 
+  @Prop()
+  preventive_occurrence_key?: string;
+
   @Prop({ type: Date })
   original_due_date?: Date;
 
@@ -121,6 +124,14 @@ export class WorkOrder {
 export const WorkOrderSchema = SchemaFactory.createForClass(WorkOrder);
 WorkOrderSchema.index({ machine_id: 1, status: 1 });
 WorkOrderSchema.index({ technician_id: 1, status: 1 });
+WorkOrderSchema.index(
+  { technician_id: 1, date_created: -1 },
+  { name: 'work_orders_technician_created_desc' },
+);
+WorkOrderSchema.index(
+  { machine_id: 1, date_created: -1 },
+  { name: 'work_orders_machine_created_desc' },
+);
 WorkOrderSchema.index({ date_created: -1, status: 1 });
 WorkOrderSchema.index({ due_date: 1, status: 1 });
 WorkOrderSchema.index({
@@ -129,6 +140,24 @@ WorkOrderSchema.index({
   type_maintenance: 1,
   due_date: 1,
 });
+WorkOrderSchema.index(
+  { preventive_occurrence_key: 1 },
+  {
+    name: 'work_orders_preventive_occurrence_key_unique',
+    unique: true,
+    partialFilterExpression: { preventive_occurrence_key: { $exists: true } },
+  },
+);
+WorkOrderSchema.index(
+  {
+    plan_id: 1,
+    machine_id: 1,
+    module_id: 1,
+    date_start: -1,
+    date_created: -1,
+  },
+  { name: 'work_orders_plan_target_latest_desc' },
+);
 // Supports the Admin work orders list's status+priority filters and
 // combined-status/date sort.
 WorkOrderSchema.index({ status: 1, priorite: 1, date_created: -1 });

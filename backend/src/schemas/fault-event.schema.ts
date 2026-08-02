@@ -51,6 +51,9 @@ export class FaultEvent {
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
   resolved_by?: Types.ObjectId;
+
+  @Prop({ trim: true, maxlength: 1000 })
+  resolution_note?: string;
 }
 
 export const FaultEventSchema = SchemaFactory.createForClass(FaultEvent);

@@ -31,3 +31,7 @@ export class KPI {
 }
 
 export const KPISchema = SchemaFactory.createForClass(KPI);
+KPISchema.index(
+  { machine_id: 1, date_calcul: -1 },
+  { name: 'kpis_machine_calculated_desc' },
+);

@@ -37,6 +37,7 @@ import { PredictiveMaintenanceTrainingService } from './predictive-maintenance-t
 import { PredictiveMaintenanceService } from './predictive-maintenance.service';
 import { PredictiveMaintenanceSchedulerService } from './predictive-maintenance-scheduler.service';
 import { PredictiveMaintenanceController } from './predictive-maintenance.controller';
+import { SchedulerSupportModule } from '../scheduler/scheduler-support.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { PredictiveMaintenanceController } from './predictive-maintenance.contro
       { name: InterventionReport.name, schema: InterventionReportSchema },
     ]),
     DocumentsModule,
+    SchedulerSupportModule,
   ],
   controllers: [PredictiveMaintenanceController],
   providers: [

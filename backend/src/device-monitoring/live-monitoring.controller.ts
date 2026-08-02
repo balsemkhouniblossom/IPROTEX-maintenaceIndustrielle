@@ -14,6 +14,8 @@ import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { DocumentAccessService } from '../documents/document-access.service';
 import { LiveStatusService } from './live-status.service';
 import { TelemetryIngestionService } from './telemetry-ingestion.service';
+import { ResolveFaultDto } from './dto/resolve-fault.dto';
+import { LiveMonitoringGateway } from './live-monitoring.gateway';
 
 /**
  * Read-only, role-scoped live-monitoring endpoints for Admin/Technician/
@@ -31,6 +33,7 @@ export class LiveMonitoringController {
     private readonly liveStatusService: LiveStatusService,
     private readonly documentAccessService: DocumentAccessService,
     private readonly telemetryIngestionService: TelemetryIngestionService,
+    private readonly liveMonitoringGateway: LiveMonitoringGateway,
   ) {}
 
   @Get('machines')
@@ -57,11 +60,18 @@ export class LiveMonitoringController {
   @Patch('faults/:id/resolve')
   async resolveFault(
     @Param('id') id: string,
+    @Body() dto: ResolveFaultDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.telemetryIngestionService.resolveFault(
+    const fault = await this.telemetryIngestionService.resolveFault(
       id,
-      req.user?.userId ?? '',
+      req.user ?? {},
+      dto,
     );
+    this.liveMonitoringGateway.emitFaultResolved(String(fault.machine_id), {
+      id: String(fault._id),
+      resolvedAt: fault.resolved_at?.toISOString(),
+    });
+    return fault;
   }
 }

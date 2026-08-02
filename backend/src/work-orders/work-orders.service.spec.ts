@@ -1838,7 +1838,11 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
     };
   }
 
-  let workOrderModel: { findOne: jest.Mock; create: jest.Mock };
+  let workOrderModel: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    updateOne: jest.Mock;
+  };
   let maintenancePlanModel: { findById: jest.Mock };
   let counterService: { getNextSequence: jest.Mock };
   let service: WorkOrdersService;
@@ -1846,6 +1850,14 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
   beforeEach(() => {
     workOrderModel = {
       findOne: jest.fn().mockReturnValue(execResult(null)),
+      updateOne: jest.fn().mockReturnValue(
+        execResult({
+          acknowledged: true,
+          matchedCount: 0,
+          modifiedCount: 0,
+          upsertedCount: 1,
+        }),
+      ),
       create: jest
         .fn()
         .mockResolvedValue({ _id: new Types.ObjectId(), status: 'pending' }),
@@ -1901,8 +1913,20 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
     const created = await callEnsureNext(schedulableWorkOrder());
 
     expect(created).toBe(true);
-    expect(workOrderModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ plan_id: planId, machine_id: machineId }),
+    expect(workOrderModel.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preventive_occurrence_key: expect.stringContaining(
+          `preventive:preventive:${machineId.toHexString()}:${moduleId.toHexString()}:${planId.toHexString()}:`,
+        ),
+      }),
+      expect.objectContaining({
+        $setOnInsert: expect.objectContaining({
+          plan_id: planId,
+          machine_id: machineId,
+          preventive_occurrence_key: expect.any(String),
+        }),
+      }),
+      { upsert: true },
     );
   });
 
@@ -1914,7 +1938,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
     const created = await callEnsureNext(schedulableWorkOrder());
 
     expect(created).toBe(true);
-    expect(workOrderModel.create).toHaveBeenCalled();
+    expect(workOrderModel.updateOne).toHaveBeenCalled();
   });
 
   it.each(['paused', 'archived', 'draft', 'completed'])(
@@ -1927,7 +1951,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
       const created = await callEnsureNext(schedulableWorkOrder());
 
       expect(created).toBe(false);
-      expect(workOrderModel.create).not.toHaveBeenCalled();
+      expect(workOrderModel.updateOne).not.toHaveBeenCalled();
     },
   );
 
@@ -1947,8 +1971,12 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
       );
 
       expect(created).toBe(true);
-      expect(workOrderModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({ type_maintenance: type }),
+      expect(workOrderModel.updateOne).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          $setOnInsert: expect.objectContaining({ type_maintenance: type }),
+        }),
+        { upsert: true },
       );
     },
   );
@@ -1963,7 +1991,7 @@ describe('WorkOrdersService maintenance-plan scheduling gate', () => {
     );
 
     expect(created).toBe(false);
-    expect(workOrderModel.create).not.toHaveBeenCalled();
+    expect(workOrderModel.updateOne).not.toHaveBeenCalled();
   });
 
   describe('scheduleFirstPreventiveOccurrence plan status guard', () => {

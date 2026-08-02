@@ -350,6 +350,12 @@ export class LiveMonitoringGateway
       .emit('fault', { machineId, ...payload });
   }
 
+  emitFaultResolved(machineId: string, payload: Record<string, unknown>): void {
+    this.server
+      ?.to(machineRoom(machineId))
+      .emit('fault:resolved', { machineId, ...payload });
+  }
+
   emitStatusChange(machineId: string, payload: Record<string, unknown>): void {
     this.server
       ?.to(machineRoom(machineId))

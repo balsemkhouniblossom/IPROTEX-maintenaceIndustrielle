@@ -11,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { io, Socket } from 'socket.io-client';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
-import { User, UserDocument } from '../src/schemas/user.schema';
+import { ApprovalStatus, User, UserDocument } from '../src/schemas/user.schema';
 import {
   MachineType,
   MachineTypeDocument,
@@ -22,6 +22,7 @@ import { Telemetry, TelemetryDocument } from '../src/schemas/telemetry.schema';
 import {
   FaultEvent,
   FaultEventDocument,
+  FaultEventSeverity,
 } from '../src/schemas/fault-event.schema';
 import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
 import { SecureSocketIoAdapter } from '../src/config/secure-socket-io.adapter';
@@ -256,6 +257,20 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         reject(new Error(`unexpected ${eventName} event`));
       };
       socket.once(eventName, onEvent);
+    });
+  }
+
+  async function createFaultEvent(
+    machineId: string,
+    codePanne: string,
+  ): Promise<FaultEventDocument> {
+    return faultEventModel.create({
+      device_id: new Types.ObjectId(),
+      machine_id: new Types.ObjectId(machineId),
+      code_panne: codePanne,
+      severity: FaultEventSeverity.CRITICAL,
+      message: 'Synthetic e2e fault',
+      raised_at: new Date(),
     });
   }
 
@@ -513,6 +528,183 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       await request(app.getHttpServer())
         .get('/live-monitoring/machines')
         .expect(401);
+    });
+  });
+
+  describe('role-scoped fault resolution', () => {
+    it('rejects malformed fault identifiers without exposing fault details', async () => {
+      const response = await request(app.getHttpServer())
+        .patch('/live-monitoring/faults/not-an-object-id/resolve')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400);
+
+      expect(JSON.stringify(response.body)).not.toContain(machineAId);
+      expect(JSON.stringify(response.body)).not.toContain(machineBId);
+    });
+
+    it('rejects forged resolution body fields through DTO validation', async () => {
+      const fault = await createFaultEvent(machineAId, 'E-FORGED-BODY');
+
+      await request(app.getHttpServer())
+        .patch(`/live-monitoring/faults/${fault._id.toString()}/resolve`)
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .send({
+          machine_id: machineBId,
+          resolved_by: new Types.ObjectId().toHexString(),
+          resolved_at: new Date().toISOString(),
+          status: 'resolved',
+        })
+        .expect(400);
+
+      const stored = await faultEventModel.findById(fault._id).exec();
+      expect(stored?.resolved_at).toBeUndefined();
+      expect(stored?.resolved_by).toBeUndefined();
+    });
+
+    it('lets an Operator resolve a fault only on an assigned machine', async () => {
+      const accessibleFault = await createFaultEvent(
+        machineAId,
+        'E-OP-ACCESSIBLE',
+      );
+      const inaccessibleFault = await createFaultEvent(
+        machineBId,
+        'E-OP-INACCESSIBLE',
+      );
+      const machineBSubscriber = await connectLiveSocket(adminToken);
+      await subscribeMachine(machineBSubscriber, machineBId);
+      const noDeniedResolutionEvent = waitForNoEvent(
+        machineBSubscriber,
+        'fault:resolved',
+      );
+
+      const resolvedResponse = await request(app.getHttpServer())
+        .patch(
+          `/live-monitoring/faults/${accessibleFault._id.toString()}/resolve`,
+        )
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+
+      expect(resolvedResponse.body.machine_id).toBe(machineAId);
+      expect(resolvedResponse.body.resolved_at).toEqual(expect.any(String));
+      expect(resolvedResponse.body.resolved_by).toEqual(expect.any(String));
+
+      const deniedResponse = await request(app.getHttpServer())
+        .patch(
+          `/live-monitoring/faults/${inaccessibleFault._id.toString()}/resolve`,
+        )
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(403);
+
+      expect(JSON.stringify(deniedResponse.body)).not.toContain(machineBId);
+      expect(deniedResponse.body.message).not.toContain(machineBId);
+      expect(deniedResponse.body.message).not.toContain(
+        inaccessibleFault._id.toString(),
+      );
+      await expect(noDeniedResolutionEvent).resolves.toBeUndefined();
+      machineBSubscriber.disconnect();
+
+      const storedDeniedFault = await faultEventModel
+        .findById(inaccessibleFault._id)
+        .exec();
+      expect(storedDeniedFault?.resolved_at).toBeUndefined();
+      expect(storedDeniedFault?.resolved_by).toBeUndefined();
+    });
+
+    it('rejects disabled, pending, rejected, and unverified users before mutating a fault', async () => {
+      const restrictedUsers = await users.create([
+        {
+          user_id: 'OP-DISABLED-FAULT',
+          nom_complet: 'Disabled Fault Operator',
+          email: 'fault-disabled@example.test',
+          password: 'x',
+          role: 'operator',
+          is_active: false,
+          is_verified: true,
+          approval_status: ApprovalStatus.APPROVED,
+          assigned_machine_ids: [new Types.ObjectId(machineAId)],
+        },
+        {
+          user_id: 'OP-PENDING-FAULT',
+          nom_complet: 'Pending Fault Operator',
+          email: 'fault-pending@example.test',
+          password: 'x',
+          role: 'operator',
+          is_active: true,
+          is_verified: true,
+          approval_status: ApprovalStatus.PENDING,
+          assigned_machine_ids: [new Types.ObjectId(machineAId)],
+        },
+        {
+          user_id: 'OP-REJECTED-FAULT',
+          nom_complet: 'Rejected Fault Operator',
+          email: 'fault-rejected@example.test',
+          password: 'x',
+          role: 'operator',
+          is_active: true,
+          is_verified: true,
+          approval_status: ApprovalStatus.REJECTED,
+          assigned_machine_ids: [new Types.ObjectId(machineAId)],
+        },
+        {
+          user_id: 'OP-UNVERIFIED-FAULT',
+          nom_complet: 'Unverified Fault Operator',
+          email: 'fault-unverified@example.test',
+          password: 'x',
+          role: 'operator',
+          is_active: true,
+          is_verified: false,
+          approval_status: ApprovalStatus.APPROVED,
+          assigned_machine_ids: [new Types.ObjectId(machineAId)],
+        },
+      ]);
+      const fault = await createFaultEvent(machineAId, 'E-ACCOUNT-STATE');
+
+      for (const user of restrictedUsers) {
+        await request(app.getHttpServer())
+          .patch(`/live-monitoring/faults/${fault._id.toString()}/resolve`)
+          .set('Authorization', `Bearer ${tokenFor(user)}`)
+          .expect(403);
+      }
+
+      const stored = await faultEventModel.findById(fault._id).exec();
+      expect(stored?.resolved_at).toBeUndefined();
+      expect(stored?.resolved_by).toBeUndefined();
+    });
+
+    it('permits exactly one winner when two authorized callers resolve concurrently', async () => {
+      const fault = await createFaultEvent(machineAId, 'E-CONCURRENT');
+      const machineASubscriber = await connectLiveSocket(adminToken);
+      await subscribeMachine(machineASubscriber, machineAId);
+      const resolvedEvents: Array<Record<string, unknown>> = [];
+      machineASubscriber.on('fault:resolved', (payload) => {
+        resolvedEvents.push(payload as Record<string, unknown>);
+      });
+
+      const [adminResult, technicianResult] = await Promise.all([
+        request(app.getHttpServer())
+          .patch(`/live-monitoring/faults/${fault._id.toString()}/resolve`)
+          .set('Authorization', `Bearer ${adminToken}`),
+        request(app.getHttpServer())
+          .patch(`/live-monitoring/faults/${fault._id.toString()}/resolve`)
+          .set('Authorization', `Bearer ${technicianToken}`),
+      ]);
+
+      const statuses = [adminResult.status, technicianResult.status].sort();
+      expect(statuses).toEqual([200, 409]);
+
+      const stored = await faultEventModel.findById(fault._id).exec();
+      expect(stored?.resolved_at).toBeInstanceOf(Date);
+      expect(stored?.resolved_by).toBeDefined();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(resolvedEvents).toHaveLength(1);
+      expect(resolvedEvents[0]).toEqual(
+        expect.objectContaining({
+          id: fault._id.toString(),
+          machineId: machineAId,
+          resolvedAt: expect.any(String),
+        }),
+      );
+      machineASubscriber.disconnect();
     });
   });
 

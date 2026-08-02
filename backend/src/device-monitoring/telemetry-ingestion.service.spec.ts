@@ -27,6 +27,7 @@ describe('TelemetryIngestionService', () => {
     findOneAndUpdate: jest.Mock;
   };
   let notificationCenterService: { createIfNotExists: jest.Mock };
+  let documentAccessService: { assertCanAccessMachine: jest.Mock };
   let service: TelemetryIngestionService;
 
   beforeEach(() => {
@@ -44,12 +45,16 @@ describe('TelemetryIngestionService', () => {
     notificationCenterService = {
       createIfNotExists: jest.fn().mockResolvedValue(null),
     };
+    documentAccessService = {
+      assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new TelemetryIngestionService(
       deviceModel as never,
       telemetryModel as never,
       faultEventModel as never,
       notificationCenterService as never,
+      documentAccessService as never,
     );
   });
 
@@ -157,46 +162,113 @@ describe('TelemetryIngestionService', () => {
   });
 
   describe('resolveFault', () => {
+    const faultId = new Types.ObjectId().toHexString();
+    const userId = new Types.ObjectId().toHexString();
+    const machineId = new Types.ObjectId();
+    const actor = { userId, role: 'technician' };
+
+    function mockFaultLookup(value: unknown) {
+      const exec = jest.fn().mockResolvedValue(value);
+      const select = jest.fn().mockReturnValue({ exec });
+      faultEventModel.findById.mockReturnValue({ select });
+      return { select, exec };
+    }
+
+    it('throws BadRequestException for a malformed fault id without touching storage', async () => {
+      await expect(service.resolveFault('not-an-id', actor)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(faultEventModel.findById).not.toHaveBeenCalled();
+      expect(faultEventModel.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
     it('throws NotFoundException for a nonexistent fault', async () => {
-      faultEventModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
-      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(
+      mockFaultLookup(null);
+      await expect(service.resolveFault(faultId, actor)).rejects.toThrow(
         NotFoundException,
       );
+      expect(
+        documentAccessService.assertCanAccessMachine,
+      ).not.toHaveBeenCalled();
     });
 
-    it('throws ConflictException when already resolved', async () => {
-      faultEventModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ resolved_at: new Date() }),
-      });
-      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(
-        ConflictException,
-      );
-    });
-
-    it('resolves an active fault, setting resolved_at and resolved_by', async () => {
-      faultEventModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ resolved_at: undefined }),
-      });
-      const resolved = { resolved_at: new Date(), resolved_by: 'user-1' };
+    it('authorizes the fault machine before attempting the atomic update', async () => {
+      mockFaultLookup({ machine_id: machineId });
+      const resolved = {
+        resolved_at: new Date(),
+        resolved_by: new Types.ObjectId(userId),
+      };
       faultEventModel.findOneAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(resolved),
       });
 
-      const result = await service.resolveFault('id', 'user-1');
+      await expect(service.resolveFault(faultId, actor)).resolves.toBe(
+        resolved,
+      );
+
+      expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
+        actor,
+        machineId.toHexString(),
+      );
+      expect(faultEventModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: faultId, resolved_at: { $exists: false } },
+        {
+          $set: {
+            resolved_at: expect.any(Date),
+            resolved_by: new Types.ObjectId(userId),
+          },
+        },
+        { new: true },
+      );
+    });
+
+    it('does not update the fault when machine authorization fails', async () => {
+      mockFaultLookup({ machine_id: machineId });
+      documentAccessService.assertCanAccessMachine.mockRejectedValue(
+        new Error('denied'),
+      );
+
+      await expect(service.resolveFault(faultId, actor)).rejects.toThrow(
+        'denied',
+      );
+      expect(faultEventModel.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('persists an optional validated resolution note with server audit fields', async () => {
+      mockFaultLookup({ machine_id: machineId });
+      const resolved = {
+        resolved_at: new Date(),
+        resolved_by: new Types.ObjectId(userId),
+        resolution_note: 'Cleared after inspection',
+      };
+      faultEventModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(resolved),
+      });
+
+      const result = await service.resolveFault(faultId, actor, {
+        resolution_note: 'Cleared after inspection',
+      });
       expect(result).toBe(resolved);
+      expect(faultEventModel.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.any(Object),
+        {
+          $set: expect.objectContaining({
+            resolved_at: expect.any(Date),
+            resolved_by: new Types.ObjectId(userId),
+            resolution_note: 'Cleared after inspection',
+          }),
+        },
+        { new: true },
+      );
     });
 
     it('raises a conflict if the update races and matches nothing', async () => {
-      faultEventModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ resolved_at: undefined }),
-      });
+      mockFaultLookup({ machine_id: machineId });
       faultEventModel.findOneAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.resolveFault('id', 'user-1')).rejects.toThrow(
+      await expect(service.resolveFault(faultId, actor)).rejects.toThrow(
         ConflictException,
       );
     });

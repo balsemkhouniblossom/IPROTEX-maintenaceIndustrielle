@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -17,6 +17,12 @@ import { NotificationCenterService } from '../notification-center/notification-c
 import { NotificationType } from '../schemas/notification.schema';
 import { FileStorageService } from '../storage/file-storage.service';
 import { ReportsService } from './reports.service';
+import {
+  SchedulerConfigService,
+  defaultSchedulerSettings,
+} from '../scheduler/scheduler.config';
+import { SchedulerLockService } from '../scheduler/scheduler-lock.service';
+import { createRunId } from '../scheduler/scheduler-utils';
 
 type JobResult = { generated: number; failed: number; expiredCleaned: number };
 
@@ -82,6 +88,10 @@ export class ReportSchedulerService {
     private readonly reportsService: ReportsService,
     private readonly notificationCenterService: NotificationCenterService,
     private readonly fileStorageService: FileStorageService,
+    @Optional()
+    private readonly schedulerConfigService?: SchedulerConfigService,
+    @Optional()
+    private readonly schedulerLockService?: SchedulerLockService,
   ) {}
 
   @Cron('15 * * * *', { name: 'report-schedule-sweep' })
@@ -90,14 +100,45 @@ export class ReportSchedulerService {
   }
 
   async runSweep(): Promise<JobResult> {
+    const settings =
+      this.schedulerConfigService?.getSettings() ?? defaultSchedulerSettings();
+    if (!settings.enabled) {
+      this.logger.log('Report scheduler skipped disabled=true');
+      return { generated: 0, failed: 0, expiredCleaned: 0 };
+    }
+
+    const runId = createRunId();
+    const lock = await this.schedulerLockService?.acquire(
+      'report-schedule-sweep',
+      runId,
+      settings.lockTtlMs,
+    );
+    if (this.schedulerLockService && !lock) {
+      this.logger.warn(
+        JSON.stringify({
+          jobName: 'report-schedule-sweep',
+          runId,
+          instanceId: this.schedulerLockService.getInstanceId(),
+          status: 'skipped',
+          lockAcquired: false,
+        }),
+      );
+      return { generated: 0, failed: 0, expiredCleaned: 0 };
+    }
+
+    const startedAt = Date.now();
+    const deadline = startedAt + settings.jobTimeoutMs;
     const now = new Date();
     const due = await this.scheduledReportModel
       .find({ active: true, next_run_at: { $lte: now } })
+      .sort({ next_run_at: 1, _id: 1 })
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
     let generated = 0;
     let failed = 0;
     for (const schedule of due) {
+      if (Date.now() >= deadline) break;
       try {
         await this.fireSchedule(schedule, now);
         generated += 1;
@@ -109,7 +150,28 @@ export class ReportSchedulerService {
       }
     }
 
-    const expiredCleaned = await this.cleanupExpiredReports();
+    const expiredCleaned =
+      Date.now() < deadline ? await this.cleanupExpiredReports(deadline) : 0;
+    const status = Date.now() >= deadline ? 'timed_out' : 'completed';
+    this.logger.log(
+      JSON.stringify({
+        jobName: 'report-schedule-sweep',
+        runId,
+        instanceId: this.schedulerLockService?.getInstanceId() ?? 'local-test',
+        status,
+        lockAcquired: Boolean(lock),
+        scanned: due.length,
+        processed: generated + failed + expiredCleaned,
+        succeeded: generated + expiredCleaned,
+        failed,
+        skipped: 0,
+        batches: due.length ? 1 : 0,
+        durationMs: Date.now() - startedAt,
+      }),
+    );
+    if (lock) {
+      await this.schedulerLockService?.release(lock, status);
+    }
     return { generated, failed, expiredCleaned };
   }
 
@@ -159,15 +221,21 @@ export class ReportSchedulerService {
     }
   }
 
-  private async cleanupExpiredReports(): Promise<number> {
+  private async cleanupExpiredReports(deadline: number): Promise<number> {
+    const settings =
+      this.schedulerConfigService?.getSettings() ?? defaultSchedulerSettings();
     const expired = await this.generatedReportModel
       .find({
         expires_at: { $lte: new Date() },
         file_path: { $exists: true, $ne: null },
       })
+      .sort({ expires_at: 1, _id: 1 })
+      .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
+    let cleaned = 0;
     for (const report of expired) {
+      if (Date.now() >= deadline) break;
       try {
         if (
           report.file_path &&
@@ -179,6 +247,7 @@ export class ReportSchedulerService {
         await this.generatedReportModel
           .findByIdAndUpdate(report._id, { $unset: { file_path: 1 } })
           .exec();
+        cleaned += 1;
       } catch (error) {
         this.logger.warn(
           `Failed to clean up expired report ${report.report_id}: ${String(error)}`,
@@ -186,6 +255,6 @@ export class ReportSchedulerService {
       }
     }
 
-    return expired.length;
+    return cleaned;
   }
 }

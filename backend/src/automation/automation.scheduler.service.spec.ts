@@ -129,7 +129,8 @@ describe('AutomationSchedulerService notification persistence', () => {
       expect(job).toHaveBeenCalledTimes(1);
       expect(automationJobLockModel.deleteOne).toHaveBeenCalledWith({
         name: 'job_overdue_escalation',
-        owner: acquiredOwner,
+        owner_id: acquiredOwner,
+        run_id: expect.any(String),
       });
     });
   });
@@ -286,7 +287,7 @@ describe('AutomationSchedulerService notification persistence', () => {
         date_start: 1,
         _id: 1,
       });
-      expect(query.limit).toHaveBeenCalledWith(1000);
+      expect(query.limit).toHaveBeenCalledWith(250);
     });
   });
 

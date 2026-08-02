@@ -67,4 +67,12 @@ export class StockMovement {
 export const StockMovementSchema = SchemaFactory.createForClass(StockMovement);
 StockMovementSchema.index({ stock_id: 1, createdAt: -1 });
 StockMovementSchema.index({ work_order_id: 1 });
+StockMovementSchema.index(
+  { createdAt: -1 },
+  { name: 'stock_movements_created_desc' },
+);
+StockMovementSchema.index(
+  { work_order_id: 1, type: 1 },
+  { name: 'stock_movements_work_order_type' },
+);
 StockMovementSchema.index({ part_request_id: 1 });

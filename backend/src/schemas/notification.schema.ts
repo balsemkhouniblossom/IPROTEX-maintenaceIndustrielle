@@ -76,3 +76,11 @@ export class Notification {
 export const NotificationSchema = SchemaFactory.createForClass(Notification);
 NotificationSchema.index({ recipient_user_id: 1, is_read: 1, createdAt: -1 });
 NotificationSchema.index({ recipient_role: 1, is_read: 1, createdAt: -1 });
+NotificationSchema.index(
+  { recipient_user_id: 1, createdAt: -1 },
+  { name: 'notifications_user_created_desc' },
+);
+NotificationSchema.index(
+  { recipient_role: 1, createdAt: -1 },
+  { name: 'notifications_role_created_desc' },
+);

@@ -226,6 +226,13 @@ UserSchema.index({ role: 1, is_active: 1 });
 // Supports the Admin users list's approval-status filter and the
 // pending-approvals queue's chronological sort/pagination.
 UserSchema.index({ approval_status: 1, created_at: -1 });
+UserSchema.index(
+  { reset_password_token: 1, reset_password_expires: 1 },
+  {
+    name: 'users_reset_token_expires',
+    partialFilterExpression: { reset_password_token: { $exists: true } },
+  },
+);
 
 /**
  * Fields that must never leave the server, under any code path that

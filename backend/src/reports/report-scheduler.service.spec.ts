@@ -8,7 +8,11 @@ import {
 import { ScheduleFrequency } from '../schemas/scheduled-report.schema';
 
 function execResolves(result: unknown) {
-  return { exec: jest.fn().mockResolvedValue(result) };
+  return {
+    sort: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+  };
 }
 
 describe('ReportSchedulerService', () => {

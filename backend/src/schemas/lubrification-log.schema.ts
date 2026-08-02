@@ -26,3 +26,7 @@ export class LubrificationLog {
 
 export const LubrificationLogSchema =
   SchemaFactory.createForClass(LubrificationLog);
+LubrificationLogSchema.index(
+  { module_id: 1, date_application: -1 },
+  { name: 'lubrification_logs_module_application_desc' },
+);

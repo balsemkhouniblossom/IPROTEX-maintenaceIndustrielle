@@ -25,8 +25,16 @@ describe('DeviceOfflineSweepService', () => {
     );
   });
 
+  function findResolves(value: unknown[]) {
+    return {
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(value),
+    };
+  }
+
   it('only scans active devices not already known offline', async () => {
-    deviceModel.find.mockReturnValue({ exec: jest.fn().mockResolvedValue([]) });
+    deviceModel.find.mockReturnValue(findResolves([]));
     await service.runSweep();
     expect(deviceModel.find).toHaveBeenCalledWith({
       is_active: true,
@@ -40,16 +48,17 @@ describe('DeviceOfflineSweepService', () => {
       device_id: 'DEV-1',
       last_known_status: 'online',
     };
-    deviceModel.find.mockReturnValue({
-      exec: jest.fn().mockResolvedValue([dev]),
-    });
+    deviceModel.find.mockReturnValue(findResolves([dev]));
     liveStatusService.isOnline.mockReturnValue(true);
 
     const result = await service.runSweep();
 
     expect(deviceModel.findOneAndUpdate).not.toHaveBeenCalled();
     expect(liveMonitoringGateway.emitStatusChange).not.toHaveBeenCalled();
-    expect(result).toEqual({ processed: 0, details: { scanned: 1 } });
+    expect(result).toEqual({
+      processed: 0,
+      details: { scanned: 1, failed: 0, batches: 1 },
+    });
   });
 
   it('flips a stale device to offline exactly once, pushes a WS event, and notifies Admin', async () => {
@@ -61,9 +70,7 @@ describe('DeviceOfflineSweepService', () => {
       last_seen_at: new Date(),
       last_known_status: 'online',
     };
-    deviceModel.find.mockReturnValue({
-      exec: jest.fn().mockResolvedValue([dev]),
-    });
+    deviceModel.find.mockReturnValue(findResolves([dev]));
     liveStatusService.isOnline.mockReturnValue(false);
     deviceModel.findOneAndUpdate.mockReturnValue({
       exec: jest.fn().mockResolvedValue({
@@ -94,9 +101,7 @@ describe('DeviceOfflineSweepService', () => {
       machine_id: new Types.ObjectId(),
       last_known_status: 'online',
     };
-    deviceModel.find.mockReturnValue({
-      exec: jest.fn().mockResolvedValue([dev]),
-    });
+    deviceModel.find.mockReturnValue(findResolves([dev]));
     liveStatusService.isOnline.mockReturnValue(false);
     // Another concurrent sweep already flipped it — the guarded update matches nothing.
     deviceModel.findOneAndUpdate.mockReturnValue({

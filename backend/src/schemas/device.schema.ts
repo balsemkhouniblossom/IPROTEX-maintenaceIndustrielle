@@ -86,3 +86,7 @@ export const DeviceSchema = SchemaFactory.createForClass(Device);
 DeviceSchema.index({ machine_id: 1 });
 DeviceSchema.index({ key_prefix: 1 });
 DeviceSchema.index({ is_active: 1 });
+DeviceSchema.index(
+  { is_active: 1, last_known_status: 1 },
+  { name: 'devices_active_status' },
+);

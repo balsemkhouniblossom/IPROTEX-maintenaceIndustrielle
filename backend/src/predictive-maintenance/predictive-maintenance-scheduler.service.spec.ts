@@ -2,10 +2,6 @@ import { Types } from 'mongoose';
 import { PredictiveMaintenanceSchedulerService } from './predictive-maintenance-scheduler.service';
 import { PredictionModelType } from './prediction-model.interface';
 
-function execResolves(result: unknown) {
-  return { exec: jest.fn().mockResolvedValue(result) };
-}
-
 describe('PredictiveMaintenanceSchedulerService', () => {
   let configService: { get: jest.Mock };
   let machineModel: { find: jest.Mock };
@@ -25,7 +21,10 @@ describe('PredictiveMaintenanceSchedulerService', () => {
     configService = { get: jest.fn().mockReturnValue(undefined) };
     machineModel = {
       find: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue(execResolves([])),
+        select: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([]),
       }),
     };
     trainingService = { trainAllMissing: jest.fn().mockResolvedValue([]) };
@@ -48,9 +47,10 @@ describe('PredictiveMaintenanceSchedulerService', () => {
   it('runs a prediction for every machine and reports how many were processed', async () => {
     const ids = [new Types.ObjectId(), new Types.ObjectId()];
     machineModel.find = jest.fn().mockReturnValue({
-      select: jest
-        .fn()
-        .mockReturnValue(execResolves(ids.map((_id) => ({ _id })))),
+      select: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(ids.map((_id) => ({ _id }))),
     });
     const service = buildService();
 
@@ -65,9 +65,10 @@ describe('PredictiveMaintenanceSchedulerService', () => {
   it('continues sweeping remaining machines when one machine fails', async () => {
     const ids = [new Types.ObjectId(), new Types.ObjectId()];
     machineModel.find = jest.fn().mockReturnValue({
-      select: jest
-        .fn()
-        .mockReturnValue(execResolves(ids.map((_id) => ({ _id })))),
+      select: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(ids.map((_id) => ({ _id }))),
     });
     predictiveMaintenanceService.runPredictionForMachine = jest
       .fn()

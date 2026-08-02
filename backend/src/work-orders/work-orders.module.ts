@@ -36,6 +36,7 @@ import { MaintenanceSchedulingService } from './maintenance-scheduling.service';
 import { NotificationCenterModule } from '../notification-center/notification-center.module';
 import { StockMovementsModule } from '../stock-movements/stock-movements.module';
 import { KpiModule } from '../kpi/kpi.module';
+import { SchedulerSupportModule } from '../scheduler/scheduler-support.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { KpiModule } from '../kpi/kpi.module';
     NotificationCenterModule,
     StockMovementsModule,
     KpiModule,
+    SchedulerSupportModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: Machine.name, schema: MachineSchema },

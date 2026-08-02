@@ -102,9 +102,17 @@ export const GeneratedReportSchema =
   SchemaFactory.createForClass(GeneratedReport);
 GeneratedReportSchema.index({ requested_by: 1, createdAt: -1 });
 GeneratedReportSchema.index({ status: 1 });
+GeneratedReportSchema.index(
+  { status: 1, createdAt: -1 },
+  { name: 'generated_reports_status_created_desc' },
+);
 // Supports the Admin "all reports" view's type/format filters and the
 // scheduler's "reports produced by this schedule" lookups.
 GeneratedReportSchema.index({ type: 1, createdAt: -1 });
+GeneratedReportSchema.index(
+  { type: 1, format: 1, createdAt: -1 },
+  { name: 'generated_reports_type_format_created_desc' },
+);
 GeneratedReportSchema.index({ scheduled_report_id: 1 });
 
 /**

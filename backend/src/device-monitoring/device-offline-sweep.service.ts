@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import {
   Device,
   DeviceConnectionStatus,
@@ -12,6 +12,12 @@ import { LiveMonitoringGateway } from './live-monitoring.gateway';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
 import { Role } from '../schemas/user.schema';
+import {
+  SchedulerConfigService,
+  defaultSchedulerSettings,
+} from '../scheduler/scheduler.config';
+import { SchedulerLockService } from '../scheduler/scheduler-lock.service';
+import { createRunId, mapWithConcurrency } from '../scheduler/scheduler-utils';
 
 interface JobResult {
   processed: number;
@@ -43,6 +49,10 @@ export class DeviceOfflineSweepService {
     private readonly liveStatusService: LiveStatusService,
     private readonly liveMonitoringGateway: LiveMonitoringGateway,
     private readonly notificationCenterService: NotificationCenterService,
+    @Optional()
+    private readonly schedulerConfigService?: SchedulerConfigService,
+    @Optional()
+    private readonly schedulerLockService?: SchedulerLockService,
   ) {}
 
   @Cron('*/1 * * * *', { name: 'device-offline-sweep' })
@@ -51,54 +61,156 @@ export class DeviceOfflineSweepService {
   }
 
   async runSweep(): Promise<JobResult> {
-    const candidates = await this.deviceModel
-      .find({
-        is_active: true,
-        last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
-      })
-      .exec();
-
-    let transitioned = 0;
-    for (const device of candidates) {
-      if (this.liveStatusService.isOnline(device)) continue;
-
-      const flipped = await this.deviceModel
-        .findOneAndUpdate(
-          {
-            _id: device._id,
-            last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
-          },
-          { $set: { last_known_status: DeviceConnectionStatus.OFFLINE } },
-          { new: true },
-        )
-        .exec();
-      if (!flipped) continue;
-
-      transitioned += 1;
-      const machineId = String(flipped.machine_id);
-
-      this.liveMonitoringGateway.emitStatusChange(machineId, {
-        deviceId: flipped.device_id,
-        status: DeviceConnectionStatus.OFFLINE,
-        lastSeenAt: flipped.last_seen_at?.toISOString() ?? null,
-      });
-
-      await this.notificationCenterService
-        .createIfNotExists({
-          dedupeKey: `device_offline:${flipped._id.toString()}:${flipped.last_seen_at?.getTime() ?? 0}`,
-          type: NotificationType.DEVICE_OFFLINE,
-          title: `Device ${flipped.device_id} went offline`,
-          machineId,
-          referenceId: String(flipped._id),
-          recipientRole: Role.ADMIN,
-        })
-        .catch((error) => {
-          this.logger.warn(
-            `Failed to create device-offline notification: ${String(error)}`,
-          );
-        });
+    const settings =
+      this.schedulerConfigService?.getSettings() ?? defaultSchedulerSettings();
+    if (!settings.enabled) {
+      this.logger.log('Device offline sweep skipped scheduler disabled.');
+      return { processed: 0 };
     }
 
-    return { processed: transitioned, details: { scanned: candidates.length } };
+    const runId = createRunId();
+    const lock = await this.schedulerLockService?.acquire(
+      'device-offline-sweep',
+      runId,
+      settings.lockTtlMs,
+    );
+    if (this.schedulerLockService && !lock) {
+      this.logger.warn(
+        JSON.stringify({
+          jobName: 'device-offline-sweep',
+          runId,
+          instanceId: this.schedulerLockService.getInstanceId(),
+          status: 'skipped',
+          lockAcquired: false,
+        }),
+      );
+      return { processed: 0 };
+    }
+
+    const startedAt = Date.now();
+    const deadline = startedAt + settings.jobTimeoutMs;
+
+    let transitioned = 0;
+    let scanned = 0;
+    let failed = 0;
+    let batches = 0;
+    let lastId: Types.ObjectId | undefined;
+    let status = 'completed';
+
+    try {
+      while (Date.now() < deadline && scanned < settings.maxItemsPerRun) {
+        const remaining = settings.maxItemsPerRun - scanned;
+        const filter = {
+          is_active: true,
+          last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
+          ...(lastId ? { _id: { $gt: lastId } } : {}),
+        };
+        const candidates = await this.deviceModel
+          .find(filter)
+          .sort({ _id: 1 })
+          .limit(Math.min(settings.batchSize, remaining))
+          .exec();
+
+        if (!candidates.length) break;
+        batches += 1;
+        scanned += candidates.length;
+
+        await mapWithConcurrency(
+          candidates,
+          settings.externalConcurrency,
+          async (device) => {
+            if (Date.now() >= deadline) return;
+            try {
+              if (this.liveStatusService.isOnline(device)) return;
+
+              const flipped = await this.deviceModel
+                .findOneAndUpdate(
+                  {
+                    _id: device._id,
+                    last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
+                  },
+                  {
+                    $set: { last_known_status: DeviceConnectionStatus.OFFLINE },
+                  },
+                  { new: true },
+                )
+                .exec();
+              if (!flipped) return;
+
+              transitioned += 1;
+              const machineId = String(flipped.machine_id);
+
+              this.liveMonitoringGateway.emitStatusChange(machineId, {
+                deviceId: flipped.device_id,
+                status: DeviceConnectionStatus.OFFLINE,
+                lastSeenAt: flipped.last_seen_at?.toISOString() ?? null,
+              });
+
+              await this.notificationCenterService
+                .createIfNotExists({
+                  dedupeKey: `device_offline:${flipped._id.toString()}:${
+                    flipped.last_seen_at?.getTime() ?? 0
+                  }`,
+                  type: NotificationType.DEVICE_OFFLINE,
+                  title: `Device ${flipped.device_id} went offline`,
+                  machineId,
+                  referenceId: String(flipped._id),
+                  recipientRole: Role.ADMIN,
+                })
+                .catch((error) => {
+                  this.logger.warn(
+                    `Failed to create device-offline notification: ${String(error)}`,
+                  );
+                });
+            } catch (error) {
+              failed += 1;
+              this.logger.warn(
+                `Failed to process device offline candidate ${String(
+                  device._id,
+                )}: ${String(error)}`,
+              );
+            }
+          },
+        );
+
+        lastId = candidates[candidates.length - 1]._id;
+        if (candidates.length < settings.batchSize) break;
+        if (lock) {
+          const ownsLock = await this.schedulerLockService?.heartbeat(
+            lock,
+            settings.lockTtlMs,
+          );
+          if (!ownsLock) break;
+        }
+      }
+
+      if (Date.now() >= deadline) {
+        status = 'timed_out';
+      }
+
+      this.logger.log(
+        JSON.stringify({
+          jobName: 'device-offline-sweep',
+          runId,
+          instanceId:
+            this.schedulerLockService?.getInstanceId() ?? 'local-test',
+          status,
+          lockAcquired: Boolean(lock),
+          scanned,
+          processed: transitioned,
+          succeeded: transitioned,
+          failed,
+          skipped: Math.max(0, scanned - transitioned - failed),
+          batches,
+          durationMs: Date.now() - startedAt,
+        }),
+      );
+
+      return { processed: transitioned, details: { scanned, failed, batches } };
+    } finally {
+      if (lock) {
+        await this.schedulerLockService?.release(lock, status);
+      }
+    }
   }
 }

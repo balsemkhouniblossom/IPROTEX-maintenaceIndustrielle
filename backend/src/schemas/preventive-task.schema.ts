@@ -46,3 +46,11 @@ export const PreventiveTaskSchema =
   SchemaFactory.createForClass(PreventiveTask);
 PreventiveTaskSchema.index({ status: 1, module_id: 1 });
 PreventiveTaskSchema.index({ plan_id: 1 });
+PreventiveTaskSchema.index(
+  { module_id: 1, status: 1, completed_at: -1 },
+  { name: 'preventive_tasks_module_status_completed_desc' },
+);
+PreventiveTaskSchema.index(
+  { status: 1, createdAt: -1 },
+  { name: 'preventive_tasks_active_status_created_desc' },
+);

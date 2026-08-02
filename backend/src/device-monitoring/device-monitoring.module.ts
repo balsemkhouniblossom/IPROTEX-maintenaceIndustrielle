@@ -12,6 +12,7 @@ import { User, UserSchema } from '../schemas/user.schema';
 import { resolveJwtSecret } from '../auth/jwt.strategy';
 import { DocumentsModule } from '../documents/documents.module';
 import { NotificationCenterModule } from '../notification-center/notification-center.module';
+import { SchedulerSupportModule } from '../scheduler/scheduler-support.module';
 
 import { DeviceAuthService } from './device-auth.service';
 import { DeviceAuthGuard } from './device-auth.guard';
@@ -48,6 +49,7 @@ import { LiveMonitoringController } from './live-monitoring.controller';
     }),
     DocumentsModule,
     NotificationCenterModule,
+    SchedulerSupportModule,
   ],
   controllers: [
     DevicesController,

@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
@@ -119,6 +120,19 @@ import { NotificationCenterService } from '../notification-center/notification-c
 import { NotificationType } from '../schemas/notification.schema';
 import { StockMovementsService } from '../stock-movements/stock-movements.service';
 import { KpiService } from '../kpi/kpi.service';
+import {
+  SchedulerConfigService,
+  SchedulerRuntimeSettings,
+  defaultSchedulerSettings,
+} from '../scheduler/scheduler.config';
+import { SchedulerLockService } from '../scheduler/scheduler-lock.service';
+import { SchedulerJobContext } from '../scheduler/scheduler.types';
+import {
+  createInstanceId,
+  createRunId,
+  createSchedulerContext,
+  mapWithConcurrency,
+} from '../scheduler/scheduler-utils';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 type ValidationAction = 'approve' | 'reject' | 'request_correction';
@@ -137,6 +151,13 @@ interface SchedulerRunSummary {
   createdFirstExecution: number;
   createdNextExecution: number;
   skippedDuplicates: number;
+  plansDue?: number;
+  targetsScanned?: number;
+  occurrencesEvaluated?: number;
+  alreadyExisting?: number;
+  batches?: number;
+  failed?: number;
+  timedOut?: boolean;
 }
 
 interface CalendarFilters {
@@ -255,6 +276,9 @@ const OPERATOR_STARTABLE_STATUSES = ['scheduled', 'overdue', 'pending'];
 export class WorkOrdersService {
   private readonly logger = new Logger(WorkOrdersService.name);
   private static readonly CORRECTIVE_REPORT_DEDUPE_WINDOW_MS = 2 * 60 * 1000;
+  private readonly schedulerInstanceId = createInstanceId(
+    'work-orders-scheduler',
+  );
 
   constructor(
     @InjectModel(WorkOrder.name)
@@ -296,6 +320,10 @@ export class WorkOrdersService {
     private notificationCenterService: NotificationCenterService,
     private stockMovementsService: StockMovementsService,
     private kpiService: KpiService,
+    @Optional()
+    private readonly schedulerConfigService?: SchedulerConfigService,
+    @Optional()
+    private readonly schedulerLockService?: SchedulerLockService,
   ) {}
 
   async create(createWorkOrderDto: CreateWorkOrderDto): Promise<WorkOrder> {
@@ -459,8 +487,10 @@ export class WorkOrdersService {
     };
   }
 
-  async triggerScheduler(source = 'manual') {
-    const summary = await this.seedMissingPreventiveWorkOrders();
+  async triggerScheduler(source = 'manual', context?: SchedulerJobContext) {
+    const summary = context
+      ? await this.seedMissingPreventiveWorkOrders(context)
+      : await this.runManualPreventiveScheduler();
     this.logger.log(
       `Scheduler run (${source}) created_first=${summary.createdFirstExecution} created_next=${summary.createdNextExecution} skipped=${summary.skippedDuplicates}`,
     );
@@ -2256,116 +2286,251 @@ export class WorkOrdersService {
     };
   }
 
-  private async seedMissingPreventiveWorkOrders(): Promise<SchedulerRunSummary> {
+  private async runManualPreventiveScheduler(): Promise<SchedulerRunSummary> {
+    const settings = this.getSchedulerSettings();
+
+    if (!this.schedulerLockService) {
+      const context = createSchedulerContext(
+        'job_generate_preventive_maintenance',
+        createRunId(),
+        this.schedulerInstanceId,
+        settings.jobTimeoutMs,
+        () => Promise.resolve(true),
+      );
+      return this.seedMissingPreventiveWorkOrders(context);
+    }
+
+    const runId = createRunId();
+    const lock = await this.schedulerLockService.acquire(
+      'job_generate_preventive_maintenance',
+      runId,
+      settings.lockTtlMs,
+    );
+    if (!lock) {
+      return {
+        plansEvaluated: 0,
+        createdFirstExecution: 0,
+        createdNextExecution: 0,
+        skippedDuplicates: 0,
+        alreadyExisting: 0,
+        batches: 0,
+      };
+    }
+
+    const heartbeatTimer = setInterval(() => {
+      void this.schedulerLockService
+        ?.heartbeat(lock, settings.lockTtlMs)
+        .catch((error) => {
+          this.logger.warn(
+            `[job_generate_preventive_maintenance] heartbeat failed: ${this.sanitizedError(error)}`,
+          );
+        });
+    }, settings.lockHeartbeatMs);
+    heartbeatTimer.unref?.();
+
+    const context = createSchedulerContext(
+      'job_generate_preventive_maintenance',
+      runId,
+      this.schedulerInstanceId,
+      settings.jobTimeoutMs,
+      () => this.schedulerLockService!.heartbeat(lock, settings.lockTtlMs),
+    );
+
+    try {
+      return await this.seedMissingPreventiveWorkOrders(context);
+    } finally {
+      clearInterval(heartbeatTimer);
+      await this.schedulerLockService.release(
+        lock,
+        context.shouldContinue() ? 'completed' : 'timed_out',
+      );
+    }
+  }
+
+  private async seedMissingPreventiveWorkOrders(
+    context?: SchedulerJobContext,
+  ): Promise<SchedulerRunSummary> {
     const summary: SchedulerRunSummary = {
       plansEvaluated: 0,
       createdFirstExecution: 0,
       createdNextExecution: 0,
       skippedDuplicates: 0,
+      plansDue: 0,
+      targetsScanned: 0,
+      occurrencesEvaluated: 0,
+      alreadyExisting: 0,
+      batches: 0,
+      failed: 0,
+      timedOut: false,
     };
 
-    const plans = await this.maintenancePlanModel.find().exec();
-    if (!plans.length) {
-      return summary;
-    }
-
-    const modules = await this.moduleModel.find().exec();
-    const machines = await this.machineModel.find().exec();
-    const existingPreventiveOrders = await this.workOrderModel
-      .find(NOT_CORRECTIVE_TYPE_FILTER, {
-        _id: 1,
-        machine_id: 1,
-        module_id: 1,
-        plan_id: 1,
-        type_maintenance: 1,
-        status: 1,
-        date_start: 1,
-        date_created: 1,
-        date_end: 1,
-        date_closed: 1,
-        technician_id: 1,
-        description: 1,
-        priorite: 1,
-      })
-      .lean()
-      .exec();
-
-    const moduleById = new Map<string, any>();
-    const machineById = new Map<string, any>();
-    const latestOrderByPlanKey = new Map<string, any>();
+    const settings = this.getSchedulerSettings();
+    let lastId: Types.ObjectId | undefined;
     const dueKeySet = new Set<string>();
 
-    modules.forEach((module) => {
-      moduleById.set(module._id.toString(), module);
-    });
-    machines.forEach((machine) => {
-      machineById.set(machine._id.toString(), machine);
-    });
+    while (
+      (!context || context.shouldContinue()) &&
+      summary.plansEvaluated < settings.maxItemsPerRun
+    ) {
+      const remaining = settings.maxItemsPerRun - summary.plansEvaluated;
+      const filter: FilterQuery<MaintenancePlanDocument> = {
+        ...NOT_CORRECTIVE_TYPE_FILTER,
+        $and: [
+          {
+            $or: [
+              { status: MaintenancePlanStatus.ACTIVE },
+              { status: { $exists: false } },
+              { status: null },
+            ],
+          },
+          ...(lastId ? [{ _id: { $gt: lastId } }] : []),
+        ],
+      };
 
-    for (const order of existingPreventiveOrders) {
-      const key = this.buildPlanKey(
-        order.machine_id,
-        order.module_id,
-        order.plan_id,
-      );
-      const current = latestOrderByPlanKey.get(key);
-      const currentDate = current
-        ? new Date(current.date_start || current.date_created || 0).getTime()
-        : -1;
-      const nextDate = new Date(
-        order.date_start || order.date_created || 0,
-      ).getTime();
+      const plans = await this.maintenancePlanModel
+        .find(filter, {
+          _id: 1,
+          plan_id: 1,
+          module_id: 1,
+          type_maintenance: 1,
+          frequence: 1,
+          unite_frequence: 1,
+          frequence_label: 1,
+          instruction: 1,
+          status: 1,
+        })
+        .lean()
+        .sort({ _id: 1 })
+        .limit(Math.min(settings.batchSize, remaining))
+        .exec();
 
-      if (!current || nextDate >= currentDate) {
-        latestOrderByPlanKey.set(key, order);
+      if (!plans.length) {
+        break;
       }
 
-      const dueTime = new Date(
-        order.date_start || order.date_created || 0,
-      ).getTime();
-      dueKeySet.add(`${key}|${dueTime}`);
-    }
+      summary.batches! += 1;
+      summary.plansEvaluated += plans.length;
+      lastId = plans[plans.length - 1]._id;
 
-    for (const plan of plans) {
-      summary.plansEvaluated += 1;
-      const planType = plan.type_maintenance || '';
-      if (planType && isCorrectiveMaintenanceType(planType)) {
-        continue;
+      const moduleIds = plans
+        .map((plan) => this.objectIdString(plan.module_id))
+        .filter((id) => Types.ObjectId.isValid(id))
+        .map((id) => new Types.ObjectId(id));
+
+      const modules = moduleIds.length
+        ? await this.moduleModel
+            .find(
+              { _id: { $in: moduleIds } },
+              { _id: 1, machine_id: 1, module_id: 1 },
+            )
+            .lean()
+            .exec()
+        : [];
+      const moduleById = new Map<string, any>();
+      for (const moduleEntity of modules) {
+        moduleById.set(this.objectIdString(moduleEntity._id), moduleEntity);
       }
 
-      const moduleId = this.objectIdString(plan.module_id);
-      const moduleEntity = moduleById.get(moduleId);
-      if (!moduleEntity) {
-        continue;
+      const machineIds = modules
+        .map((moduleEntity) => this.objectIdString(moduleEntity.machine_id))
+        .filter((id) => Types.ObjectId.isValid(id))
+        .map((id) => new Types.ObjectId(id));
+      const machines = machineIds.length
+        ? await this.machineModel
+            .find(
+              { _id: { $in: machineIds } },
+              { _id: 1, machine_id: 1, installation_date: 1 },
+            )
+            .lean()
+            .exec()
+        : [];
+      const machineById = new Map<string, any>();
+      for (const machine of machines) {
+        machineById.set(this.objectIdString(machine._id), machine);
       }
 
-      const machineId = this.objectIdString(moduleEntity.machine_id);
-      const machine = machineById.get(machineId);
-      if (!machine) {
-        continue;
-      }
-
-      const key = this.buildPlanKey(machine, moduleEntity, plan);
-      const existing = latestOrderByPlanKey.get(key);
-
-      if (!existing) {
-        summary.skippedDuplicates += 1;
-        continue;
-      }
-
-      if (this.isCompletedStatus(existing.status)) {
-        const created = await this.ensureNextPreventiveWorkOrder(
-          existing,
-          dueKeySet,
-          latestOrderByPlanKey,
+      const latestOrderByPlanKey =
+        await this.findLatestPreventiveOrdersForPlans(
+          plans.map((plan) => plan._id),
         );
-        if (created) {
-          summary.createdNextExecution += 1;
-        } else {
-          summary.skippedDuplicates += 1;
+
+      const duePlans: Array<{
+        plan: any;
+        latest: any;
+      }> = [];
+
+      for (const plan of plans) {
+        if (!this.isPlanSchedulable(plan)) {
+          continue;
         }
+        const moduleEntity = moduleById.get(
+          this.objectIdString(plan.module_id),
+        );
+        if (!moduleEntity) {
+          summary.skippedDuplicates += 1;
+          continue;
+        }
+        const machine = machineById.get(
+          this.objectIdString(moduleEntity.machine_id),
+        );
+        if (!machine) {
+          summary.skippedDuplicates += 1;
+          continue;
+        }
+        summary.targetsScanned! += 1;
+
+        const key = this.buildPlanKey(machine, moduleEntity, plan);
+        const latest = latestOrderByPlanKey.get(key);
+        if (!latest) {
+          summary.skippedDuplicates += 1;
+          continue;
+        }
+        if (!this.isCompletedStatus(latest.status)) {
+          summary.alreadyExisting! += 1;
+          summary.skippedDuplicates += 1;
+          continue;
+        }
+        duePlans.push({ plan, latest });
+      }
+
+      summary.plansDue! += duePlans.length;
+      await mapWithConcurrency(
+        duePlans,
+        settings.concurrency,
+        async ({ plan, latest }) => {
+          if (context && !context.shouldContinue()) return;
+          summary.occurrencesEvaluated! += 1;
+          try {
+            const created = await this.createNextPreventiveWorkOrderAtomically(
+              latest,
+              plan,
+              dueKeySet,
+              latestOrderByPlanKey,
+            );
+            if (created) {
+              summary.createdNextExecution += 1;
+            } else {
+              summary.alreadyExisting! += 1;
+              summary.skippedDuplicates += 1;
+            }
+          } catch (error) {
+            summary.failed! += 1;
+            this.logger.warn(
+              `[job_generate_preventive_maintenance] item failed: ${this.sanitizedError(error)}`,
+            );
+          }
+        },
+      );
+
+      if (plans.length < settings.batchSize) {
+        break;
+      }
+      if (context && !(await context.heartbeat())) {
+        break;
       }
     }
+
+    summary.timedOut = Boolean(context && !context.shouldContinue());
 
     return summary;
   }
@@ -2398,6 +2563,13 @@ export class WorkOrdersService {
       machine_id: this.objectIdString(machine),
       module_id: this.objectIdString(moduleEntity),
       plan_id: this.objectIdString(plan),
+      preventive_occurrence_key: this.buildPreventiveOccurrenceKey(
+        plan.type_maintenance,
+        this.objectIdString(machine),
+        this.objectIdString(moduleEntity),
+        this.objectIdString(plan),
+        dueDate,
+      ),
       description: plan.instruction || 'Preventive maintenance task',
       type_maintenance: plan.type_maintenance,
       status: 'pending',
@@ -2437,6 +2609,20 @@ export class WorkOrdersService {
       return false;
     }
 
+    return this.createNextPreventiveWorkOrderAtomically(
+      workOrder,
+      plan,
+      dueKeySet,
+      latestOrderByPlanKey,
+    );
+  }
+
+  private async createNextPreventiveWorkOrderAtomically(
+    workOrder: any,
+    plan: any,
+    dueKeySet?: Set<string>,
+    latestOrderByPlanKey?: Map<string, any>,
+  ): Promise<boolean> {
     const baseDate =
       workOrder.execution_date ||
       workOrder.date_closed ||
@@ -2460,6 +2646,13 @@ export class WorkOrdersService {
       workOrder.plan_id,
     );
     const dueKey = `${key}|${nextDue.getTime()}`;
+    const occurrenceKey = this.buildPreventiveOccurrenceKey(
+      workOrder.type_maintenance,
+      workOrder.machine_id,
+      workOrder.module_id,
+      workOrder.plan_id,
+      nextDue,
+    );
     if (dueKeySet?.has(dueKey)) {
       return false;
     }
@@ -2480,12 +2673,13 @@ export class WorkOrdersService {
     const nextOtId = await this.generateWorkOrderCode(
       workOrder.type_maintenance,
     );
-    const created = await this.workOrderModel.create({
+    const createdPayload = {
       ot_id: nextOtId,
       machine_id: workOrder.machine_id,
       module_id: workOrder.module_id,
       technician_id: workOrder.technician_id,
       plan_id: workOrder.plan_id,
+      preventive_occurrence_key: occurrenceKey,
       description: workOrder.description,
       type_maintenance: workOrder.type_maintenance,
       status: 'pending',
@@ -2497,10 +2691,36 @@ export class WorkOrdersService {
       recurrence_source_occurrence_id: new Types.ObjectId(
         this.objectIdString(workOrder),
       ),
-    });
+    };
+
+    let created = false;
+    try {
+      const result = await this.workOrderModel
+        .updateOne(
+          { preventive_occurrence_key: occurrenceKey },
+          { $setOnInsert: createdPayload },
+          { upsert: true },
+        )
+        .exec();
+      created = Boolean(
+        (result as { upsertedCount?: number; upsertedId?: unknown })
+          .upsertedCount ||
+        (result as { upsertedCount?: number; upsertedId?: unknown }).upsertedId,
+      );
+    } catch (error: unknown) {
+      if ((error as { code?: number })?.code === 11000) {
+        created = false;
+      } else {
+        throw error;
+      }
+    }
+
+    if (!created) {
+      return false;
+    }
 
     dueKeySet?.add(dueKey);
-    latestOrderByPlanKey?.set(key, created);
+    latestOrderByPlanKey?.set(key, createdPayload);
 
     return true;
   }
@@ -3216,7 +3436,7 @@ export class WorkOrdersService {
     };
   }
 
-  private toPersistedObjectId(value: unknown): Types.ObjectId | unknown {
+  private toPersistedObjectId(value: unknown): unknown {
     const id = this.objectIdString(value);
     return Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : value;
   }
@@ -3231,6 +3451,92 @@ export class WorkOrdersService {
       this.objectIdString(moduleEntity),
       this.objectIdString(plan),
     ].join('|');
+  }
+
+  private buildPreventiveOccurrenceKey(
+    maintenanceType: unknown,
+    machine: unknown,
+    moduleEntity: unknown,
+    plan: unknown,
+    dueDate: Date,
+  ): string {
+    return [
+      'preventive',
+      (typeof maintenanceType === 'string' && maintenanceType.trim()
+        ? maintenanceType
+        : 'maintenance'
+      )
+        .trim()
+        .toLowerCase(),
+      this.objectIdString(machine),
+      this.objectIdString(moduleEntity),
+      this.objectIdString(plan),
+      new Date(dueDate).toISOString(),
+    ].join(':');
+  }
+
+  private async findLatestPreventiveOrdersForPlans(
+    planIds: Types.ObjectId[],
+  ): Promise<Map<string, any>> {
+    const latestOrderByPlanKey = new Map<string, any>();
+    if (!planIds.length) {
+      return latestOrderByPlanKey;
+    }
+
+    const rows = await this.workOrderModel
+      .aggregate([
+        {
+          $match: {
+            ...NOT_CORRECTIVE_TYPE_FILTER,
+            plan_id: { $in: planIds },
+          },
+        },
+        {
+          $sort: {
+            plan_id: 1,
+            machine_id: 1,
+            module_id: 1,
+            date_start: -1,
+            date_created: -1,
+            _id: -1,
+          },
+        },
+        {
+          $group: {
+            _id: {
+              machine_id: '$machine_id',
+              module_id: '$module_id',
+              plan_id: '$plan_id',
+            },
+            order: { $first: '$$ROOT' },
+          },
+        },
+      ])
+      .exec();
+
+    for (const row of rows as Array<{ order?: any }>) {
+      const order = row.order;
+      if (!order) {
+        continue;
+      }
+      latestOrderByPlanKey.set(
+        this.buildPlanKey(order.machine_id, order.module_id, order.plan_id),
+        order,
+      );
+    }
+
+    return latestOrderByPlanKey;
+  }
+
+  private getSchedulerSettings(): SchedulerRuntimeSettings {
+    return (
+      this.schedulerConfigService?.getSettings() ?? defaultSchedulerSettings()
+    );
+  }
+
+  private sanitizedError(error: unknown): string {
+    if (error instanceof Error) return error.message.slice(0, 300);
+    return String(error).slice(0, 300);
   }
 
   private async generateWorkOrderCode(type?: string) {
