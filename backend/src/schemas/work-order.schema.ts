@@ -1,5 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import {
+  PREVENTIVE_OCCURRENCE_KEY_INDEX_NAME,
+  PREVENTIVE_OCCURRENCE_KEY_PARTIAL_FILTER,
+} from '../work-orders/preventive-occurrence-key';
 
 export type WorkOrderDocument = WorkOrder & Document;
 
@@ -143,9 +147,9 @@ WorkOrderSchema.index({
 WorkOrderSchema.index(
   { preventive_occurrence_key: 1 },
   {
-    name: 'work_orders_preventive_occurrence_key_unique',
+    name: PREVENTIVE_OCCURRENCE_KEY_INDEX_NAME,
     unique: true,
-    partialFilterExpression: { preventive_occurrence_key: { $exists: true } },
+    partialFilterExpression: PREVENTIVE_OCCURRENCE_KEY_PARTIAL_FILTER,
   },
 );
 WorkOrderSchema.index(

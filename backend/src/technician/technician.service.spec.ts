@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -37,6 +38,7 @@ describe('TechnicianService authorization policy', () => {
     listAccessibleMachineIds: jest.Mock;
     assertCanAccessMachine: jest.Mock;
   };
+  let workOrderAssignmentService: { claimForTechnician: jest.Mock };
   let service: TechnicianService;
 
   beforeEach(() => {
@@ -58,6 +60,13 @@ describe('TechnicianService authorization policy', () => {
       listAccessibleMachineIds: jest.fn().mockResolvedValue([machineId]),
       assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
     };
+    workOrderAssignmentService = {
+      claimForTechnician: jest
+        .fn()
+        .mockRejectedValue(
+          new Error('Work order is closed or already assigned'),
+        ),
+    };
     service = new TechnicianService(
       workOrdersModel as never,
       {} as never,
@@ -66,6 +75,8 @@ describe('TechnicianService authorization policy', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      workOrderAssignmentService as never,
       {} as never,
       documentAccessService as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
@@ -119,14 +130,11 @@ describe('TechnicianService authorization policy', () => {
       service.claim(technicianId, new Types.ObjectId().toHexString()),
     ).rejects.toThrow('Work order is closed or already assigned');
 
-    expect(workOrdersModel.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        _id: expect.any(Types.ObjectId),
-        machine_id: { $in: [] },
-      }),
-      expect.any(Object),
-      expect.any(Object),
-    );
+    expect(workOrderAssignmentService.claimForTechnician).toHaveBeenCalledWith({
+      technicianId,
+      workOrderId: expect.any(String),
+      accessibleMachineIds: [],
+    });
   });
 
   it('requires document machine authorization before returning technician manuals for a requested machine', async () => {
@@ -185,6 +193,8 @@ describe('TechnicianService.details', () => {
       partsModel as never,
       {} as never,
       stockModel as never,
+      {} as never,
+      {} as never,
       {} as never,
       documentAccessService as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
@@ -341,6 +351,8 @@ describe('TechnicianService.workOrders — technician projection', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
       documentAccessService as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
       {} as never,
@@ -363,9 +375,14 @@ describe('TechnicianService.close notifications', () => {
   const technicianId = new Types.ObjectId().toHexString();
   const workOrderId = new Types.ObjectId().toHexString();
   const reportId = new Types.ObjectId();
+  const machineId = new Types.ObjectId();
 
   let workOrdersModel: { findOneAndUpdate: jest.Mock };
   let reportsModel: { findOne: jest.Mock; updateOne: jest.Mock };
+  let workOrderLifecycleService: {
+    requireInterventionReport: jest.Mock;
+    closeForTechnician: jest.Mock;
+  };
   let notificationCenterService: { createIfNotExists: jest.Mock };
   let service: TechnicianService;
 
@@ -375,7 +392,7 @@ describe('TechnicianService.close notifications', () => {
         execResult({
           _id: workOrderId,
           ot_id: 'WO-COR-000001',
-          machine_id: new Types.ObjectId(),
+          machine_id: machineId,
         }),
       ),
     };
@@ -392,6 +409,18 @@ describe('TechnicianService.close notifications', () => {
     notificationCenterService = {
       createIfNotExists: jest.fn().mockResolvedValue(null),
     };
+    workOrderLifecycleService = {
+      requireInterventionReport: jest.fn().mockResolvedValue({
+        _id: reportId,
+        description_action: 'Replaced belt',
+        etat_final: 'resolved',
+      }),
+      closeForTechnician: jest.fn().mockResolvedValue({
+        _id: new Types.ObjectId(workOrderId),
+        ot_id: 'WO-COR-000001',
+        machine_id: machineId,
+      }),
+    };
 
     service = new TechnicianService(
       workOrdersModel as never,
@@ -402,6 +431,8 @@ describe('TechnicianService.close notifications', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
+      workOrderLifecycleService as never,
       {} as never,
       notificationCenterService as never,
       {} as never,
@@ -425,31 +456,17 @@ describe('TechnicianService.close notifications', () => {
   it('submits the closed work for independent validation instead of self-completing', async () => {
     await service.close(technicianId, workOrderId);
 
-    expect(workOrdersModel.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'in_progress' }),
-      expect.objectContaining({
-        $set: expect.objectContaining({ status: 'waiting_validation' }),
-        $push: expect.objectContaining({
-          lifecycle_history: expect.objectContaining({
-            action: 'closed_for_validation',
-            to_status: 'waiting_validation',
-          }),
-        }),
-      }),
-      expect.anything(),
-    );
-    expect(reportsModel.updateOne).toHaveBeenCalledWith(
-      { _id: reportId },
-      {
-        $set: expect.objectContaining({
-          validation_responsable: 'waiting_validation',
-        }),
-      },
-    );
+    expect(workOrderLifecycleService.closeForTechnician).toHaveBeenCalledWith({
+      technicianId,
+      workOrderId,
+      report: expect.objectContaining({ _id: reportId }),
+    });
   });
 
   it('does not notify when the work order cannot be closed (not in progress)', async () => {
-    workOrdersModel.findOneAndUpdate.mockReturnValue(execResult(null));
+    workOrderLifecycleService.closeForTechnician.mockRejectedValue(
+      new ConflictException('Work order must be in progress before closing'),
+    );
 
     await expect(service.close(technicianId, workOrderId)).rejects.toThrow(
       'Work order must be in progress before closing',
@@ -466,6 +483,7 @@ describe('TechnicianService.review', () => {
   let reportsModel: { updateOne: jest.Mock };
   let documentAccessService: { listAccessibleMachineIds: jest.Mock };
   let workOrdersService: { applyValidationAction: jest.Mock };
+  let workOrderLifecycleService: { startForTechnician: jest.Mock };
   let service: TechnicianService;
 
   beforeEach(() => {
@@ -488,6 +506,11 @@ describe('TechnicianService.review', () => {
         .fn()
         .mockResolvedValue({ status: 'returned' }),
     };
+    workOrderLifecycleService = {
+      startForTechnician: jest
+        .fn()
+        .mockResolvedValue({ _id: workOrderId, status: 'in_progress' }),
+    };
     service = new TechnicianService(
       workOrdersModel as never,
       reportsModel as never,
@@ -497,6 +520,8 @@ describe('TechnicianService.review', () => {
       {} as never,
       {} as never,
       workOrdersService as never,
+      {} as never,
+      workOrderLifecycleService as never,
       documentAccessService as never,
       { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
       {} as never,
@@ -522,17 +547,14 @@ describe('TechnicianService.review', () => {
   });
 
   it('delegates an "intervene" action to start()', async () => {
-    // start() first checks for an already-in-progress record of its own
-    // (a no-op fast path) before falling through to the real transition —
-    // return null here so the test exercises the findOneAndUpdate path.
-    workOrdersModel.findOne.mockReturnValue(execResult(null));
-    workOrdersModel.findOneAndUpdate.mockReturnValue(
-      execResult({ _id: workOrderId, status: 'in_progress' }),
-    );
-
     const result = await service.review(technicianId, workOrderId, 'intervene');
 
     expect(result).toEqual(expect.objectContaining({ status: 'in_progress' }));
+    expect(workOrderLifecycleService.startForTechnician).toHaveBeenCalledWith({
+      technicianId,
+      workOrderId,
+      accessibleMachineIds: [],
+    });
     expect(workOrdersService.applyValidationAction).not.toHaveBeenCalled();
   });
 });
@@ -590,6 +612,8 @@ describe('TechnicianService.setPartQuantity', () => {
       partsModel as never,
       catalogueModel as never,
       stockModel as never,
+      {} as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,

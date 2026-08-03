@@ -25,6 +25,8 @@ import { Catalogue, CatalogueDocument } from '../schemas/catalogue.schema';
 import { Stock, StockDocument } from '../schemas/stock.schema';
 import { StockMovementsService } from '../stock-movements/stock-movements.service';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { WorkOrderAssignmentService } from '../work-orders/services/work-order-assignment.service';
+import { WorkOrderLifecycleService } from '../work-orders/services/work-order-lifecycle.service';
 import { DocumentAccessService } from '../documents/document-access.service';
 import { Role } from '../schemas/user.schema';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
@@ -39,12 +41,6 @@ const CLOSED_STATUSES = CLOSED_WORK_ORDER_STATUSES;
 const REVIEW_STATUSES = [
   'waiting_validation',
   'technician_required',
-  'returned',
-];
-const STARTABLE_STATUSES = [
-  'waiting_validation',
-  'technician_required',
-  'assigned',
   'returned',
 ];
 const STATUS_FILTERS: Record<string, string[]> = {
@@ -102,6 +98,8 @@ export class TechnicianService {
     private readonly catalogueModel: Model<CatalogueDocument>,
     @InjectModel(Stock.name) private readonly stockModel: Model<StockDocument>,
     private readonly workOrdersService: WorkOrdersService,
+    private readonly workOrderAssignmentService: WorkOrderAssignmentService,
+    private readonly workOrderLifecycleService: WorkOrderLifecycleService,
     private readonly documentAccessService: DocumentAccessService,
     private readonly notificationCenterService: NotificationCenterService,
     private readonly stockMovementsService: StockMovementsService,
@@ -160,18 +158,6 @@ export class TechnicianService {
     technicianId: string,
   ): Promise<FilterQuery<WorkOrderDocument>> {
     return this.actionableScope(technicianId);
-  }
-
-  private async claimableWorkOrderScope(
-    technicianId: string,
-  ): Promise<FilterQuery<WorkOrderDocument>> {
-    const claimableScope = this.claimableUnassignedScope(
-      await this.getAccessibleMachineIds(technicianId),
-    );
-    if (!claimableScope) {
-      return { machine_id: { $in: [] } };
-    }
-    return claimableScope;
   }
 
   private async accessibleManualMachineFilter(
@@ -551,25 +537,11 @@ export class TechnicianService {
   }
 
   async claim(technicianId: string, workOrderId: string) {
-    const technician = this.objectId(technicianId, 'technician');
-    const id = this.objectId(workOrderId, 'work order');
-    const alreadyMine = await this.workOrdersModel
-      .findOne({ _id: id, technician_id: this.technicianScope(technicianId) })
-      .exec();
-    if (alreadyMine) return alreadyMine;
-    const claimed = await this.workOrdersModel
-      .findOneAndUpdate(
-        {
-          _id: id,
-          ...(await this.claimableWorkOrderScope(technicianId)),
-        },
-        { $set: { technician_id: technician, status: 'assigned' } },
-        { new: true },
-      )
-      .exec();
-    if (!claimed)
-      throw new ConflictException('Work order is closed or already assigned');
-    return claimed;
+    return this.workOrderAssignmentService.claimForTechnician({
+      technicianId,
+      workOrderId,
+      accessibleMachineIds: await this.getAccessibleMachineIds(technicianId),
+    });
   }
 
   /**
@@ -609,88 +581,29 @@ export class TechnicianService {
   }
 
   async start(technicianId: string, workOrderId: string) {
-    const id = this.objectId(workOrderId, 'work order');
-    const technician = this.objectId(technicianId, 'technician');
-    const existing = await this.workOrdersModel
-      .findOne({
-        _id: id,
-        technician_id: this.technicianScope(technicianId),
-        status: 'in_progress',
-      })
-      .exec();
-    if (existing) return existing;
-    const updated = await this.workOrdersModel
-      .findOneAndUpdate(
-        {
-          _id: id,
-          status: { $in: STARTABLE_STATUSES },
-          $or: [
-            { technician_id: this.technicianScope(technicianId) },
-            await this.claimableWorkOrderScope(technicianId),
-          ],
-        },
-        {
-          $set: {
-            status: 'in_progress',
-            technician_id: technician,
-            date_start: new Date(),
-          },
-        },
-        { new: true },
-      )
-      .exec();
-    if (!updated) throw new ConflictException('Work order cannot be started');
-    await this.reportsModel
-      .updateOne(
-        { ot_id: id },
-        {
-          $set: {
-            validation_responsable: 'validated',
-          },
-        },
-      )
-      .exec();
-    return updated;
+    return this.workOrderLifecycleService.startForTechnician({
+      technicianId,
+      workOrderId,
+      accessibleMachineIds: await this.getAccessibleMachineIds(technicianId),
+    });
   }
 
   async waitingParts(technicianId: string, workOrderId: string) {
-    return this.transition(
+    return this.workOrderLifecycleService.transitionForTechnician({
       technicianId,
       workOrderId,
-      ['in_progress'],
-      'waiting_parts',
-    );
+      from: ['in_progress'],
+      to: 'waiting_parts',
+    });
   }
 
   async resume(technicianId: string, workOrderId: string) {
-    return this.transition(
+    return this.workOrderLifecycleService.transitionForTechnician({
       technicianId,
       workOrderId,
-      ['waiting_parts'],
-      'in_progress',
-    );
-  }
-
-  private async transition(
-    technicianId: string,
-    workOrderId: string,
-    from: string[],
-    to: string,
-  ) {
-    const updated = await this.workOrdersModel
-      .findOneAndUpdate(
-        {
-          _id: this.objectId(workOrderId, 'work order'),
-          technician_id: this.technicianScope(technicianId),
-          status: { $in: from },
-        },
-        { $set: { status: to } },
-        { new: true },
-      )
-      .exec();
-    if (!updated)
-      throw new ConflictException('Invalid work-order status transition');
-    return updated;
+      from: ['waiting_parts'],
+      to: 'in_progress',
+    });
   }
 
   async updateReport(
@@ -802,54 +715,20 @@ export class TechnicianService {
    */
   async close(technicianId: string, workOrderId: string) {
     const id = this.objectId(workOrderId, 'work order');
-    const report = await this.reportsModel.findOne({ ot_id: id }).exec();
-    if (!report) throw new NotFoundException('Intervention report not found');
-    if (!report.description_action?.trim() || !report.etat_final?.trim())
-      throw new BadRequestException('Technical action and result are required');
-    const now = new Date();
-    const updated = await this.workOrdersModel
-      .findOneAndUpdate(
-        {
-          _id: id,
-          technician_id: this.technicianScope(technicianId),
-          status: 'in_progress',
-        },
-        {
-          $set: {
-            status: 'waiting_validation',
-            date_end: now,
-            date_closed: now,
-          },
-          $push: {
-            lifecycle_history: {
-              action: 'closed_for_validation',
-              from_status: 'in_progress',
-              to_status: 'waiting_validation',
-              actor_user_id: this.objectId(technicianId, 'technician'),
-              at: now,
-            },
-          },
-        },
-        { new: true },
-      )
-      .exec();
-    if (!updated)
-      throw new ConflictException(
-        'Work order must be in progress before closing',
+    const report =
+      await this.workOrderLifecycleService.requireInterventionReport(
+        workOrderId,
       );
-    await this.reportsModel
-      .updateOne(
-        { _id: report._id },
-        {
-          $set: { date_fin: now, validation_responsable: 'waiting_validation' },
-        },
-      )
-      .exec();
+    const updated = await this.workOrderLifecycleService.closeForTechnician({
+      technicianId,
+      workOrderId,
+      report,
+    });
 
     await this.notificationCenterService.createIfNotExists({
       dedupeKey: `intervention_completed:${id.toString()}`,
       type: NotificationType.INTERVENTION_COMPLETED,
-      title: `Intervention completed for work order ${updated.ot_id} — awaiting validation`,
+      title: `Intervention completed for work order ${updated.ot_id} - awaiting validation`,
       recipientRole: Role.ADMIN,
       workOrderId: id.toString(),
       machineId: updated.machine_id?.toString(),

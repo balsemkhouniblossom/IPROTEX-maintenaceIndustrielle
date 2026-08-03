@@ -1,4 +1,8 @@
 import type { IndexDirection } from 'mongoose';
+import {
+  PREVENTIVE_OCCURRENCE_KEY_INDEX_NAME,
+  PREVENTIVE_OCCURRENCE_KEY_PARTIAL_FILTER,
+} from '../work-orders/preventive-occurrence-key';
 
 export interface RecommendedMongoIndex {
   collection: string;
@@ -30,11 +34,11 @@ export const RECOMMENDED_MONGODB_INDEXES: RecommendedMongoIndex[] = [
   },
   {
     collection: 'workorders',
-    name: 'work_orders_preventive_occurrence_key_unique',
+    name: PREVENTIVE_OCCURRENCE_KEY_INDEX_NAME,
     key: { preventive_occurrence_key: 1 },
     options: {
       unique: true,
-      partialFilterExpression: { preventive_occurrence_key: { $exists: true } },
+      partialFilterExpression: PREVENTIVE_OCCURRENCE_KEY_PARTIAL_FILTER,
     },
     rationale:
       'Preventive scheduler upserts by deterministic occurrence key so concurrent runs cannot create duplicate next work orders.',

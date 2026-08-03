@@ -9,12 +9,12 @@ import {
 } from '../schemas/maintenance-plan.schema';
 import { WorkOrder, WorkOrderSchema } from '../schemas/work-order.schema';
 import { MaintenanceSchedulingService } from './maintenance-scheduling.service';
-import { WorkOrdersService } from './work-orders.service';
+import { WorkOrderPreventiveSchedulingService } from './services/work-order-preventive-scheduling.service';
 
-describe('WorkOrdersService preventive scheduler generation', () => {
+describe('WorkOrderPreventiveSchedulingService preventive scheduler generation', () => {
   let mongod: MongoMemoryServer;
   let connection: Connection;
-  let service: WorkOrdersService;
+  let service: WorkOrderPreventiveSchedulingService;
   let workOrderModel: any;
   let machineModel: any;
   let moduleModel: any;
@@ -42,7 +42,7 @@ describe('WorkOrdersService preventive scheduler generation', () => {
   });
 
   beforeEach(async () => {
-    counter = 0;
+    counter = 1;
     await Promise.all([
       workOrderModel.deleteMany({}),
       machineModel.deleteMany({}),
@@ -50,29 +50,13 @@ describe('WorkOrdersService preventive scheduler generation', () => {
       planModel.deleteMany({}),
     ]);
 
-    service = new WorkOrdersService(
+    service = new WorkOrderPreventiveSchedulingService(
       workOrderModel as never,
       machineModel as never,
       moduleModel as never,
       planModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
       { getNextSequence: jest.fn(async () => ++counter) } as never,
       new MaintenanceSchedulingService(),
-      { createIfNotExists: jest.fn() } as never,
-      {} as never,
-      {} as never,
       {
         getSettings: () => ({
           enabled: true,
@@ -144,7 +128,7 @@ describe('WorkOrdersService preventive scheduler generation', () => {
 
     expect(generated).toHaveLength(1);
     expect(generated[0].preventive_occurrence_key).toBe(
-      `preventive:preventive:${machineId.toHexString()}:${moduleId.toHexString()}:${planId.toHexString()}:2026-07-15T08:30:00.000Z`,
+      `preventive:v1:preventive:${machineId.toHexString()}:${moduleId.toHexString()}:${planId.toHexString()}:2026-07-15T08:30:00.000Z`,
     );
     expect(first.createdNextExecution + second.createdNextExecution).toBe(1);
     expect(first.alreadyExisting! + second.alreadyExisting!).toBeGreaterThan(0);

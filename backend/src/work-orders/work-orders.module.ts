@@ -37,6 +37,19 @@ import { NotificationCenterModule } from '../notification-center/notification-ce
 import { StockMovementsModule } from '../stock-movements/stock-movements.module';
 import { KpiModule } from '../kpi/kpi.module';
 import { SchedulerSupportModule } from '../scheduler/scheduler-support.module';
+import { WorkOrderQueryService } from './services/work-order-query.service';
+import { WorkOrderNotificationService } from './services/work-order-notification.service';
+import { WorkOrderAssignmentService } from './services/work-order-assignment.service';
+import { WorkOrderLifecycleService } from './services/work-order-lifecycle.service';
+import { WorkOrderPreventiveSchedulingService } from './services/work-order-preventive-scheduling.service';
+import { WorkOrderPartsService } from './services/work-order-parts.service';
+import { WorkOrderReportService } from './services/work-order-report.service';
+import { WorkOrderCalendarQueryService } from './services/work-order-calendar-query.service';
+import { WorkOrderDashboardQueryService } from './services/work-order-dashboard-query.service';
+import { WorkOrderAssistantContextService } from './services/work-order-assistant-context.service';
+import { WorkOrderCommandService } from './services/work-order-command.service';
+import { WorkOrderOperatorCommandService } from './services/work-order-operator-command.service';
+import { WorkOrderKpiService } from './services/work-order-kpi.service';
 
 @Module({
   imports: [
@@ -66,7 +79,37 @@ import { SchedulerSupportModule } from '../scheduler/scheduler-support.module';
     ]),
   ],
   controllers: [WorkOrdersController],
-  providers: [WorkOrdersService, MaintenanceSchedulingService],
-  exports: [WorkOrdersService, MaintenanceSchedulingService],
+  providers: [
+    WorkOrdersService,
+    MaintenanceSchedulingService,
+    WorkOrderQueryService,
+    WorkOrderNotificationService,
+    WorkOrderAssignmentService,
+    WorkOrderLifecycleService,
+    WorkOrderPreventiveSchedulingService,
+    WorkOrderPartsService,
+    WorkOrderReportService,
+    WorkOrderCalendarQueryService,
+    WorkOrderDashboardQueryService,
+    WorkOrderAssistantContextService,
+    WorkOrderCommandService,
+    WorkOrderOperatorCommandService,
+    WorkOrderKpiService,
+  ],
+  exports: [
+    WorkOrdersService,
+    MaintenanceSchedulingService,
+    WorkOrderAssignmentService,
+    WorkOrderLifecycleService,
+    WorkOrderPreventiveSchedulingService,
+    WorkOrderPartsService,
+    WorkOrderReportService,
+    WorkOrderCalendarQueryService,
+    WorkOrderDashboardQueryService,
+    WorkOrderAssistantContextService,
+    WorkOrderCommandService,
+    WorkOrderOperatorCommandService,
+    WorkOrderKpiService,
+  ],
 })
 export class WorkOrdersModule {}

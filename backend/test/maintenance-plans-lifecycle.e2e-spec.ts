@@ -288,6 +288,10 @@ describe('Maintenance plan lifecycle (e2e)', () => {
     });
 
     it('validating the existing occurrence while the plan is Paused does not generate a next occurrence', async () => {
+      await workOrders.findByIdAndUpdate(firstOccurrenceId, {
+        $set: { status: 'waiting_validation' },
+      });
+
       await request(app.getHttpServer())
         .post(`/work-orders/${firstOccurrenceId}/validation`)
         .set('Authorization', `Bearer ${adminToken}`)
