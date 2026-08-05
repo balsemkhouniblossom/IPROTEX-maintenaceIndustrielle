@@ -33,6 +33,7 @@ import { User, UserDocument } from '../../schemas/user.schema';
 import { OTPieces, OTPiecesDocument } from '../../schemas/ot-pieces.schema';
 import { MaintenanceSchedulingService } from '../maintenance-scheduling.service';
 import { WorkOrderReportService } from './work-order-report.service';
+import { serializeDate } from '../../common/response/serialization.util';
 
 export type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -89,6 +90,90 @@ export interface CalendarEventRow {
   reminderStage: string;
 }
 
+export interface CalendarEventsResponse {
+  view: CalendarView;
+  date: string;
+  rangeStart: string;
+  rangeEnd: string;
+  totalItems: number;
+  items: CalendarEventRow[];
+}
+
+export type CalendarTimelineGroupKey =
+  | 'today'
+  | 'tomorrow'
+  | 'nextWeek'
+  | 'nextMonth'
+  | 'sixMonths'
+  | 'oneYear';
+
+export type CalendarTimelineResponse = Record<
+  CalendarTimelineGroupKey,
+  CalendarEventRow[]
+>;
+
+export interface CalendarEventDetailsResponse {
+  id: string;
+  machine: {
+    id: string;
+    code: string;
+    model?: string;
+  };
+  machineType: {
+    id: string;
+    name: string;
+  };
+  module: {
+    id: string;
+    code: string;
+    location: string;
+  };
+  maintenanceType: string;
+  description: string;
+  frequency: {
+    value?: number;
+    unit?: string;
+    label: string;
+  };
+  assignedOperator: {
+    id: string;
+    name: string;
+  };
+  currentStatus: string;
+  spareParts: Array<{
+    id: string;
+    quantity: number;
+    name: string;
+  }>;
+  manuals: Array<{
+    id: string;
+    type: string;
+    fileName: string;
+    filePath: string;
+  }>;
+  history: Array<{
+    id: string;
+    reportId: string;
+    start: string;
+    end: string;
+    action?: string;
+    status: string;
+  }>;
+  corrective: {
+    faultCode: string;
+    faultDescription?: string;
+    probableCause?: string;
+    recommendedSolution?: string;
+  } | null;
+  actions: {
+    canStart: boolean;
+    canComplete: boolean;
+    canGenerateReport: boolean;
+    canOpenManual: boolean;
+    canViewHistory: boolean;
+  };
+}
+
 /**
  * Owns every Work Order calendar/timeline read projection: event lists,
  * event detail lookups, and the multi-horizon timeline grouping. Purely
@@ -125,7 +210,7 @@ export class WorkOrderCalendarQueryService {
     view: CalendarView,
     date: Date,
     filters: CalendarFilters,
-  ) {
+  ): Promise<CalendarEventsResponse> {
     const { rangeStart, rangeEnd } = this.getViewDateRange(view, date);
     const query: Record<string, unknown> = {
       $or: [
@@ -187,7 +272,7 @@ export class WorkOrderCalendarQueryService {
     date: Date,
     operatorId: string,
     filters: CalendarFilters,
-  ) {
+  ): Promise<CalendarEventsResponse> {
     const timeZone = this.schedulingService.getBusinessTimezone();
     const { rangeStart, rangeEnd } = this.getViewDateRange(
       view,
@@ -240,7 +325,9 @@ export class WorkOrderCalendarQueryService {
     };
   }
 
-  async getCalendarEventDetails(workOrderId: string) {
+  async getCalendarEventDetails(
+    workOrderId: string,
+  ): Promise<CalendarEventDetailsResponse | null> {
     const workOrder = await this.workOrderModel
       .findById(workOrderId)
       .populate('machine_id')
@@ -357,8 +444,8 @@ export class WorkOrderCalendarQueryService {
       history: reports.map((report) => ({
         id: report._id.toString(),
         reportId: report.report_id,
-        start: report.date_debut,
-        end: report.date_fin,
+        start: serializeDate(report.date_debut)!,
+        end: serializeDate(report.date_fin)!,
         action: report.description_action,
         status: report.validation_responsable || 'waiting_validation',
       })),
@@ -382,7 +469,7 @@ export class WorkOrderCalendarQueryService {
   async getCalendarEventDetailsForOperator(
     workOrderId: string,
     operatorId: string,
-  ) {
+  ): Promise<CalendarEventDetailsResponse | null> {
     if (!Types.ObjectId.isValid(workOrderId)) {
       throw new BadRequestException('Invalid work order id');
     }
@@ -404,7 +491,11 @@ export class WorkOrderCalendarQueryService {
     return this.getCalendarEventDetails(workOrderId);
   }
 
-  async getTimeline(date: Date, machineId?: string, technicianId?: string) {
+  async getTimeline(
+    date: Date,
+    machineId?: string,
+    technicianId?: string,
+  ): Promise<CalendarTimelineResponse> {
     const timeZone = technicianId
       ? this.schedulingService.getBusinessTimezone()
       : undefined;
@@ -447,7 +538,7 @@ export class WorkOrderCalendarQueryService {
       .sort({ date_start: 1 })
       .exec();
 
-    const groups: Record<string, CalendarEventRow[]> = {
+    const groups: CalendarTimelineResponse = {
       today: [],
       tomorrow: [],
       nextWeek: [],
@@ -514,12 +605,12 @@ export class WorkOrderCalendarQueryService {
     date: Date,
     operatorId: string,
     machineId?: string,
-  ) {
+  ): Promise<CalendarTimelineResponse> {
     return this.getTimeline(date, machineId, operatorId);
   }
 
   private async toCalendarEvents(
-    workOrders: any[],
+    workOrders: WorkOrderDocument[],
   ): Promise<CalendarEventRow[]> {
     const machineTypeCache = new Map<string, MachineType | null>();
     const userCache = new Map<string, User | null>();

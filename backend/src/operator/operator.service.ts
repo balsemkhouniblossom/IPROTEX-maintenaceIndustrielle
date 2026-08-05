@@ -38,6 +38,13 @@ import {
   PreventiveTaskDocument,
 } from '../schemas/preventive-task.schema';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
+import { CalendarEventsResponse } from '../work-orders/services/work-order-calendar-query.service';
+import { toWorkOrderResponse } from '../work-orders/contracts/work-order-response.mapper';
+import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
+import {
+  InterventionReportResponse,
+  toInterventionReportResponse,
+} from '../common/response/intervention-report-response';
 import { KpiService } from '../kpi/kpi.service';
 import { PreventiveTasksService } from '../preventive-tasks/preventive-tasks.service';
 import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
@@ -204,7 +211,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<WorkOrder>> {
+  ): Promise<PaginatedResponse<WorkOrderResponse>> {
     const query = { technician_id: this.technicianScopeFilter(userId) };
 
     const [items, totalItems] = await Promise.all([
@@ -220,7 +227,12 @@ export class OperatorService {
       this.workOrderModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toWorkOrderResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getMachineTypes(
@@ -500,7 +512,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<InterventionReport>> {
+  ): Promise<PaginatedResponse<InterventionReportResponse>> {
     const query = { technician_id: this.technicianScopeFilter(userId) };
 
     const [items, totalItems] = await Promise.all([
@@ -515,7 +527,12 @@ export class OperatorService {
       this.reportModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toInterventionReportResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getMyMachines(
@@ -569,7 +586,7 @@ export class OperatorService {
       week?: number;
       year?: number;
     },
-  ): Promise<unknown> {
+  ): Promise<CalendarEventsResponse> {
     const filters: CalendarFilters = {
       machineId: params.machineId,
       machineTypeId: params.machineTypeId,

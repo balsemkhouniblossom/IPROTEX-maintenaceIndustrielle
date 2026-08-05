@@ -55,6 +55,13 @@ import {
   toPaginatedResponse,
 } from '../common/pagination';
 import {
+  readPopulatedField,
+  readTimestamps,
+} from '../common/response/serialization.util';
+import { MachineTypeDocument } from '../schemas/machine-type.schema';
+import { Catalogue } from '../schemas/catalogue.schema';
+import { Lubrifiant } from '../schemas/lubrifiant.schema';
+import {
   buildCaseInsensitiveSearchFilter,
   parseCsvParam,
 } from '../common/query-params.util';
@@ -318,10 +325,10 @@ export class MachineTimelineService {
       downtimeCount > 0 ? downtimeHours / downtimeCount : null;
     const partsConsumed = partsConsumedAgg[0]?.total ?? 0;
 
-    const machineType = machine.type_id as unknown as
-      | { _id?: unknown; name?: string }
-      | undefined;
-    const createdAt = (machine as unknown as { createdAt?: Date }).createdAt;
+    const machineType = readPopulatedField<MachineTypeDocument>(
+      machine.type_id,
+    );
+    const createdAt = readTimestamps(machine).createdAt;
     const ageSource = machine.installation_date ?? createdAt;
     const ageDays = ageSource
       ? Math.floor((now.getTime() - ageSource.getTime()) / 86_400_000)
@@ -480,9 +487,7 @@ export class MachineTimelineService {
     const history = machine.lifecycle_history ?? [];
     const machineIdStr = machine._id.toString();
     const createdEntry = history.find((entry) => entry.action === 'created');
-    const createdAt =
-      createdEntry?.at ??
-      (machine as unknown as { createdAt?: Date }).createdAt;
+    const createdAt = createdEntry?.at ?? readTimestamps(machine).createdAt;
 
     if (createdAt) {
       events.push({
@@ -517,7 +522,7 @@ export class MachineTimelineService {
   }
 
   private moduleEvents(module: ModuleDocument): MachineTimelineEvent[] {
-    const createdAt = (module as unknown as { createdAt?: Date }).createdAt;
+    const createdAt = readTimestamps(module).createdAt;
     if (!createdAt) return [];
     return [
       {
@@ -840,9 +845,7 @@ export class MachineTimelineService {
   private lubricationLogEvents(
     log: LubrificationLogDocument,
   ): MachineTimelineEvent[] {
-    const lubrifiant = log.lubrifiant_id as unknown as
-      | { nom?: string }
-      | undefined;
+    const lubrifiant = readPopulatedField<Lubrifiant>(log.lubrifiant_id);
     return [
       {
         id: `lubrication_${log._id.toString()}`,
@@ -864,11 +867,9 @@ export class MachineTimelineService {
   ): MachineTimelineEvent[] {
     const type = STOCK_MOVEMENT_TYPES[movement.type];
     if (!type) return [];
-    const part = movement.part_id as unknown as
-      | { nom_piece?: string; ref_constructeur?: string }
-      | undefined;
+    const part = readPopulatedField<Catalogue>(movement.part_id);
     const quantity = Math.abs(movement.quantity_delta);
-    const createdAt = (movement as unknown as { createdAt?: Date }).createdAt;
+    const createdAt = readTimestamps(movement).createdAt;
     if (!createdAt) return [];
 
     return [
@@ -903,8 +904,7 @@ export class MachineTimelineService {
   private aiInteractionEvents(
     interaction: AiInteractionDocument,
   ): MachineTimelineEvent[] {
-    const createdAt = (interaction as unknown as { createdAt?: Date })
-      .createdAt;
+    const createdAt = readTimestamps(interaction).createdAt;
     if (!createdAt) return [];
     return [
       {

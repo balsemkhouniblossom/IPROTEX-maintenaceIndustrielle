@@ -28,6 +28,11 @@ import { CreateMachineDto } from './dto/create-machine.dto';
 import { UpdateMachineDto } from './dto/update-machine.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { assertNoDependencies } from '../common/dependency-protection';
+import {
+  toMachineResponse,
+  toMachineResponseOrNull,
+} from './contracts/machine-response.mapper';
+import { MachineResponse } from './contracts/machine-response.types';
 
 @Injectable()
 export class MachinesService {
@@ -53,7 +58,7 @@ export class MachinesService {
     private aiInteractionModel: Model<AiInteractionDocument>,
   ) {}
 
-  async create(createMachineDto: CreateMachineDto): Promise<Machine> {
+  async create(createMachineDto: CreateMachineDto): Promise<MachineResponse> {
     const createdMachine = new this.machineModel({
       ...createMachineDto,
       lifecycle_history: [
@@ -64,7 +69,8 @@ export class MachinesService {
         },
       ],
     });
-    return createdMachine.save();
+    const saved = await createdMachine.save();
+    return toMachineResponse(saved);
   }
 
   async countAll(): Promise<number> {
@@ -75,27 +81,36 @@ export class MachinesService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<Machine>> {
+  ): Promise<PaginatedResponse<MachineResponse>> {
     const [items, totalItems] = await Promise.all([
       this.machineModel.find().skip(skip).limit(limit).exec(),
       this.machineModel.countDocuments().exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toMachineResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
-  async findOne(id: string): Promise<any> {
-    return this.machineModel.findById(id).exec();
+  async findOne(id: string): Promise<MachineResponse | null> {
+    const found = await this.machineModel.findById(id).exec();
+    return toMachineResponseOrNull(found);
   }
 
-  async update(id: string, updateMachineDto: UpdateMachineDto): Promise<any> {
+  async update(
+    id: string,
+    updateMachineDto: UpdateMachineDto,
+  ): Promise<MachineResponse | null> {
     if (updateMachineDto.status !== undefined) {
       const existing = await this.machineModel
         .findById(id)
         .select({ status: 1 })
         .exec();
       if (existing && existing.status !== updateMachineDto.status) {
-        return this.machineModel
+        const updated = await this.machineModel
           .findByIdAndUpdate(
             id,
             {
@@ -112,15 +127,17 @@ export class MachinesService {
             { new: true },
           )
           .exec();
+        return toMachineResponseOrNull(updated);
       }
     }
 
-    return this.machineModel
+    const updated = await this.machineModel
       .findByIdAndUpdate(id, updateMachineDto, { new: true })
       .exec();
+    return toMachineResponseOrNull(updated);
   }
 
-  async remove(id: string): Promise<any> {
+  async remove(id: string): Promise<MachineResponse | null> {
     await assertNoDependencies('Machine', [
       { label: 'modules', model: this.moduleModel, filter: { machine_id: id } },
       {
@@ -161,6 +178,7 @@ export class MachinesService {
         filter: { machine_id: id },
       },
     ]);
-    return this.machineModel.findByIdAndDelete(id).exec();
+    const removed = await this.machineModel.findByIdAndDelete(id).exec();
+    return toMachineResponseOrNull(removed);
   }
 }

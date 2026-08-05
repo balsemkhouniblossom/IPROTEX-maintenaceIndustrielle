@@ -16,6 +16,8 @@ import { UpdateMachineTypeDto } from './dto/update-machine-type.dto';
 import { CounterService } from '../counters/counter.service';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { assertNoDependencies } from '../common/dependency-protection';
+import { toMachineTypeSummary } from '../common/response/reference-summaries';
+import { MachineTypeResponse } from './contracts/machine-type-response.types';
 
 @Injectable()
 export class MachineTypesService {
@@ -30,20 +32,21 @@ export class MachineTypesService {
     private counterService: CounterService,
   ) {}
 
-  async create(dto: CreateMachineTypeDto): Promise<MachineType> {
+  async create(dto: CreateMachineTypeDto): Promise<MachineTypeResponse> {
     const nextId = await this.counterService.getNextSequence('machine_type');
     const created = new this.machineTypeModel({
       ...dto,
       type_id: nextId,
     });
-    return created.save();
+    const saved = await created.save();
+    return toMachineTypeSummary(saved);
   }
 
   async findAll(
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<MachineType>> {
+  ): Promise<PaginatedResponse<MachineTypeResponse>> {
     const [items, totalItems] = await Promise.all([
       this.machineTypeModel
         .find()
@@ -54,23 +57,30 @@ export class MachineTypesService {
       this.machineTypeModel.countDocuments().exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toMachineTypeSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
-  async findOne(id: string): Promise<any> {
-    return this.machineTypeModel.findById(id).exec();
+  async findOne(id: string): Promise<MachineTypeResponse | null> {
+    const found = await this.machineTypeModel.findById(id).exec();
+    return found ? toMachineTypeSummary(found) : null;
   }
 
   async update(
     id: string,
     updateMachineTypeDto: UpdateMachineTypeDto,
-  ): Promise<any> {
-    return this.machineTypeModel
+  ): Promise<MachineTypeResponse | null> {
+    const updated = await this.machineTypeModel
       .findByIdAndUpdate(id, updateMachineTypeDto, { new: true })
       .exec();
+    return updated ? toMachineTypeSummary(updated) : null;
   }
 
-  async remove(id: string): Promise<any> {
+  async remove(id: string): Promise<MachineTypeResponse | null> {
     await assertNoDependencies('Machine type', [
       { label: 'machines', model: this.machineModel, filter: { type_id: id } },
       {
@@ -84,6 +94,7 @@ export class MachineTypesService {
         filter: { machine_type_id: id },
       },
     ]);
-    return this.machineTypeModel.findByIdAndDelete(id).exec();
+    const removed = await this.machineTypeModel.findByIdAndDelete(id).exec();
+    return removed ? toMachineTypeSummary(removed) : null;
   }
 }

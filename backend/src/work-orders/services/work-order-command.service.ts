@@ -9,6 +9,11 @@ import { WorkOrderNotificationService } from './work-order-notification.service'
 import { WorkOrderReportService } from './work-order-report.service';
 import { WorkOrderPreventiveSchedulingService } from './work-order-preventive-scheduling.service';
 import { WorkOrderKpiService } from './work-order-kpi.service';
+import {
+  toWorkOrderResponse,
+  toWorkOrderResponseOrNull,
+} from '../contracts/work-order-response.mapper';
+import { WorkOrderResponse } from '../contracts/work-order-response.types';
 
 /**
  * Owns generic Work Order command mutations: `create`, `update`, `remove`.
@@ -35,7 +40,9 @@ export class WorkOrderCommandService {
     private readonly kpiService: WorkOrderKpiService,
   ) {}
 
-  async create(createWorkOrderDto: CreateWorkOrderDto): Promise<WorkOrder> {
+  async create(
+    createWorkOrderDto: CreateWorkOrderDto,
+  ): Promise<WorkOrderResponse> {
     if (!createWorkOrderDto.ot_id) {
       createWorkOrderDto.ot_id = await this.generateWorkOrderCode(
         createWorkOrderDto.type_maintenance,
@@ -78,19 +85,19 @@ export class WorkOrderCommandService {
       await this.notificationService.notifyCreated(savedWorkOrder);
     }
 
-    return savedWorkOrder;
+    return toWorkOrderResponse(savedWorkOrder);
   }
 
   async update(
     id: string,
     updateWorkOrderDto: UpdateWorkOrderDto,
-  ): Promise<any> {
+  ): Promise<WorkOrderResponse | null> {
     const updated = await this.workOrderModel
       .findByIdAndUpdate(id, updateWorkOrderDto, { new: true })
       .exec();
 
     if (!updated) {
-      return updated;
+      return null;
     }
 
     if (this.isCompletedStatus(updated.status)) {
@@ -101,11 +108,12 @@ export class WorkOrderCommandService {
       await this.kpiService.updateKpiForMachine(updated.machine_id?.toString());
     }
 
-    return updated;
+    return toWorkOrderResponse(updated);
   }
 
-  async remove(id: string): Promise<any> {
-    return this.workOrderModel.findByIdAndDelete(id).exec();
+  async remove(id: string): Promise<WorkOrderResponse | null> {
+    const removed = await this.workOrderModel.findByIdAndDelete(id).exec();
+    return toWorkOrderResponseOrNull(removed);
   }
 
   private async generateWorkOrderCode(type?: string) {

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
+import { WorkOrderDocument } from '../schemas/work-order.schema';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { WorkOrdersQueryDto } from './dto/work-orders-query.dto';
@@ -26,8 +26,11 @@ import {
   WorkOrderReportService,
 } from './services/work-order-report.service';
 import {
+  CalendarEventDetailsResponse,
   CalendarEventRow,
+  CalendarEventsResponse,
   CalendarFilters,
+  CalendarTimelineResponse,
   CalendarView,
   WorkOrderCalendarQueryService,
 } from './services/work-order-calendar-query.service';
@@ -39,8 +42,21 @@ import {
   WorkOrderOperatorCommandService,
 } from './services/work-order-operator-command.service';
 import { WorkOrderKpiService } from './services/work-order-kpi.service';
+import { toWorkOrderResponseOrNull } from './contracts/work-order-response.mapper';
+import {
+  WorkOrderResponse,
+  WorkOrderSchedulingResultResponse,
+} from './contracts/work-order-response.types';
+import {
+  CalendarWidgetResponse,
+  MachinePreventiveStatesResponse,
+  NotificationCardResponse,
+  WorkOrderStatisticsResponse,
+} from './contracts/work-order-dashboard-response.types';
+import { CorrectiveAssistantResponse } from './contracts/work-order-assistant-response.types';
 
 export type { CalendarEventRow };
+export type { WorkOrderResponse, WorkOrderSchedulingResultResponse };
 
 /**
  * Compatibility facade for every Work Order use case. Every method here is
@@ -66,7 +82,9 @@ export class WorkOrdersService {
     private readonly kpiService: WorkOrderKpiService,
   ) {}
 
-  async create(createWorkOrderDto: CreateWorkOrderDto): Promise<WorkOrder> {
+  async create(
+    createWorkOrderDto: CreateWorkOrderDto,
+  ): Promise<WorkOrderResponse> {
     return this.commandService.create(createWorkOrderDto);
   }
 
@@ -75,22 +93,22 @@ export class WorkOrdersService {
     limit: number,
     skip: number,
     query: WorkOrdersQueryDto = {},
-  ): Promise<PaginatedResponse<WorkOrder>> {
+  ): Promise<PaginatedResponse<WorkOrderResponse>> {
     return this.queryService.findAll(page, limit, skip, query);
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(id: string): Promise<WorkOrderResponse | null> {
     return this.queryService.findOne(id);
   }
 
   async update(
     id: string,
     updateWorkOrderDto: UpdateWorkOrderDto,
-  ): Promise<any> {
+  ): Promise<WorkOrderResponse | null> {
     return this.commandService.update(id, updateWorkOrderDto);
   }
 
-  async remove(id: string): Promise<any> {
+  async remove(id: string): Promise<WorkOrderResponse | null> {
     return this.commandService.remove(id);
   }
 
@@ -99,7 +117,7 @@ export class WorkOrdersService {
    * `WorkOrderDashboardQueryService`, the canonical owner of Work Order
    * dashboard/statistics read projections.
    */
-  async getStatistics() {
+  async getStatistics(): Promise<WorkOrderStatisticsResponse> {
     return this.dashboardQueryService.getStatistics();
   }
 
@@ -121,7 +139,7 @@ export class WorkOrdersService {
     workOrderId: string,
     action: ValidationAction,
     validatorId?: string,
-  ) {
+  ): Promise<WorkOrderResponse | null> {
     const updatedWorkOrder = await this.reportService.applyValidationDecision({
       workOrderId,
       action,
@@ -137,7 +155,7 @@ export class WorkOrdersService {
       );
     }
 
-    return updatedWorkOrder;
+    return toWorkOrderResponseOrNull(updatedWorkOrder);
   }
 
   /**
@@ -145,7 +163,9 @@ export class WorkOrdersService {
    * `WorkOrderDashboardQueryService`, the canonical owner of Work Order
    * dashboard/statistics read projections.
    */
-  async getMachinePreventiveStates(machineId: string) {
+  async getMachinePreventiveStates(
+    machineId: string,
+  ): Promise<MachinePreventiveStatesResponse> {
     return this.dashboardQueryService.getMachinePreventiveStates(machineId);
   }
 
@@ -178,10 +198,17 @@ export class WorkOrdersService {
     );
   }
 
-  async reschedulePreventiveOccurrence(input: RescheduleInput) {
-    return this.preventiveSchedulingService.reschedulePreventiveOccurrence(
-      input,
-    );
+  async reschedulePreventiveOccurrence(
+    input: RescheduleInput,
+  ): Promise<WorkOrderSchedulingResultResponse> {
+    const result =
+      await this.preventiveSchedulingService.reschedulePreventiveOccurrence(
+        input,
+      );
+    return {
+      occurrence: toWorkOrderResponseOrNull(result.occurrence),
+      schedulingState: result.schedulingState,
+    };
   }
 
   /**
@@ -247,7 +274,7 @@ export class WorkOrdersService {
     date: Date,
     operatorId: string,
     filters: CalendarFilters,
-  ) {
+  ): Promise<CalendarEventsResponse> {
     return this.calendarQueryService.getCalendarEventsForOperator(
       view,
       date,
@@ -259,7 +286,7 @@ export class WorkOrdersService {
   async getCalendarEventDetailsForOperator(
     workOrderId: string,
     operatorId: string,
-  ) {
+  ): Promise<CalendarEventDetailsResponse | null> {
     return this.calendarQueryService.getCalendarEventDetailsForOperator(
       workOrderId,
       operatorId,
@@ -267,12 +294,16 @@ export class WorkOrdersService {
   }
 
   /** Personal dashboard widget, scoped to work orders assigned to this Operator. */
-  async getCalendarWidgetForOperator(operatorId: string) {
+  async getCalendarWidgetForOperator(
+    operatorId: string,
+  ): Promise<CalendarWidgetResponse> {
     return this.dashboardQueryService.getCalendarWidgetForOperator(operatorId);
   }
 
   /** Personal notification cards, scoped to work orders assigned to this Operator. */
-  async getNotificationCardsForOperator(operatorId: string) {
+  async getNotificationCardsForOperator(
+    operatorId: string,
+  ): Promise<NotificationCardResponse[]> {
     return this.dashboardQueryService.getNotificationCardsForOperator(
       operatorId,
     );
@@ -283,7 +314,7 @@ export class WorkOrdersService {
     date: Date,
     operatorId: string,
     machineId?: string,
-  ) {
+  ): Promise<CalendarTimelineResponse> {
     return this.calendarQueryService.getTimelineForOperator(
       date,
       operatorId,
@@ -336,15 +367,21 @@ export class WorkOrdersService {
     view: CalendarView,
     date: Date,
     filters: CalendarFilters,
-  ) {
+  ): Promise<CalendarEventsResponse> {
     return this.calendarQueryService.getCalendarEvents(view, date, filters);
   }
 
-  async getCalendarEventDetails(workOrderId: string) {
+  async getCalendarEventDetails(
+    workOrderId: string,
+  ): Promise<CalendarEventDetailsResponse | null> {
     return this.calendarQueryService.getCalendarEventDetails(workOrderId);
   }
 
-  async getTimeline(date: Date, machineId?: string, technicianId?: string) {
+  async getTimeline(
+    date: Date,
+    machineId?: string,
+    technicianId?: string,
+  ): Promise<CalendarTimelineResponse> {
     return this.calendarQueryService.getTimeline(date, machineId, technicianId);
   }
 
@@ -353,11 +390,15 @@ export class WorkOrdersService {
    * Delegates to `WorkOrderDashboardQueryService`, the canonical owner of
    * Work Order dashboard/statistics read projections.
    */
-  async getDashboardCalendarWidget(scope?: { technicianId?: string }) {
+  async getDashboardCalendarWidget(scope?: {
+    technicianId?: string;
+  }): Promise<CalendarWidgetResponse> {
     return this.dashboardQueryService.getDashboardCalendarWidget(scope);
   }
 
-  async getNotificationCards(scope?: { technicianId?: string }) {
+  async getNotificationCards(scope?: {
+    technicianId?: string;
+  }): Promise<NotificationCardResponse[]> {
     return this.dashboardQueryService.getNotificationCards(scope);
   }
 
@@ -367,7 +408,9 @@ export class WorkOrdersService {
    * `WorkOrderAssistantContextService` — never calls an external AI
    * provider.
    */
-  async getCorrectiveAssistant(machineId?: string) {
+  async getCorrectiveAssistant(
+    machineId?: string,
+  ): Promise<CorrectiveAssistantResponse> {
     return this.assistantContextService.getCorrectiveAssistant(machineId);
   }
 

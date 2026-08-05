@@ -18,6 +18,15 @@ import { TechnicianOnly } from '../auth/decorators/roles.decorator';
 import { ReviewWorkOrderDto } from './dto/review-work-order.dto';
 import { UpdateTechnicianReportDto } from './dto/update-technician-report.dto';
 import { SetPartQuantityDto } from './dto/set-part-quantity.dto';
+import { PaginatedResponse } from '../common/pagination';
+import { DocumentEntity } from '../schemas/document.schema';
+import { StockDocument } from '../schemas/stock.schema';
+import {
+  TechnicianDashboardResponse,
+  TechnicianWorkOrderView,
+} from './technician.service';
+import { TechnicianWorkOrderDetailResponse } from './contracts/technician-response.types';
+import { InterventionReportResponse } from '../common/response/intervention-report-response';
 
 interface TechnicianRequest extends Request {
   user?: { userId?: string; role?: string };
@@ -37,7 +46,9 @@ export class TechnicianController {
   }
 
   @Get('dashboard')
-  dashboard(@Req() req: TechnicianRequest) {
+  dashboard(
+    @Req() req: TechnicianRequest,
+  ): Promise<TechnicianDashboardResponse> {
     return this.technicianService.dashboard(this.technicianId(req));
   }
 
@@ -53,7 +64,7 @@ export class TechnicianController {
     @Query('machineTypeId') machineTypeId?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
-  ) {
+  ): Promise<PaginatedResponse<TechnicianWorkOrderView>> {
     const pagination = normalizePagination(page, limit, 20);
     return this.technicianService.workOrders(
       this.technicianId(req),
@@ -71,7 +82,10 @@ export class TechnicianController {
   }
 
   @Get('work-orders/:id')
-  details(@Req() req: TechnicianRequest, @Param('id') id: string) {
+  details(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<TechnicianWorkOrderDetailResponse> {
     return this.technicianService.details(this.technicianId(req), id);
   }
 
@@ -81,7 +95,7 @@ export class TechnicianController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('machineId') machineId?: string,
-  ) {
+  ): Promise<PaginatedResponse<DocumentEntity>> {
     const pagination = normalizePagination(page, limit, 20);
     return this.technicianService.manuals(
       this.technicianId(req),
@@ -95,7 +109,7 @@ export class TechnicianController {
     @Req() req: TechnicianRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-  ) {
+  ): Promise<PaginatedResponse<StockDocument>> {
     const pagination = normalizePagination(page, limit, 50);
     return this.technicianService.availableParts(
       this.technicianId(req),
@@ -142,7 +156,7 @@ export class TechnicianController {
     @Param('id') id: string,
     @Body()
     body: UpdateTechnicianReportDto,
-  ) {
+  ): Promise<InterventionReportResponse> {
     return this.technicianService.updateReport(
       this.technicianId(req),
       id,

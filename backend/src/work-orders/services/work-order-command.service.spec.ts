@@ -69,7 +69,15 @@ describe('WorkOrderCommandService.create', () => {
       status: 'scheduled',
     } as never);
 
-    expect(notificationService.notifyCreated).toHaveBeenCalledWith(result);
+    expect(notificationService.notifyCreated).toHaveBeenCalledWith(
+      savedWorkOrder,
+    );
+    expect(result).toMatchObject({
+      ot_id: savedWorkOrder.ot_id,
+      status: savedWorkOrder.status,
+      machine_id: machineId.toString(),
+      technician_id: technicianId.toString(),
+    });
     expect(reportService.ensureAutoInterventionReport).not.toHaveBeenCalled();
     expect(kpiService.updateKpiForMachine).not.toHaveBeenCalled();
   });
@@ -195,7 +203,11 @@ describe('WorkOrderCommandService.update', () => {
     expect(kpiService.updateKpiForMachine).toHaveBeenCalledWith(
       machineId.toString(),
     );
-    expect(result).toBe(updated);
+    expect(result).toMatchObject({
+      _id: updated._id.toString(),
+      status: 'validated',
+      machine_id: machineId.toString(),
+    });
   });
 
   it('does not trigger report/preventive/KPI side effects for a non-completed update', async () => {
@@ -235,6 +247,6 @@ describe('WorkOrderCommandService.remove', () => {
     expect(workOrderModel.findByIdAndDelete).toHaveBeenCalledWith(
       deleted._id.toHexString(),
     );
-    expect(result).toBe(deleted);
+    expect(result).toMatchObject({ _id: deleted._id.toString() });
   });
 });

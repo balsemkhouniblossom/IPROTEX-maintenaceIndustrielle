@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
   Body,
   Controller,
@@ -18,7 +17,7 @@ import { WorkOrdersService } from './work-orders.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { WorkOrdersQueryDto } from './dto/work-orders-query.dto';
-import { normalizePagination } from '../common/pagination';
+import { normalizePagination, PaginatedResponse } from '../common/pagination';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   AdminOnly,
@@ -29,6 +28,22 @@ import { Role } from '../schemas/user.schema';
 import { DecidePartRequestDto } from './dto/decide-part-request.dto';
 import { ValidateWorkOrderDto } from './dto/validate-work-order.dto';
 import { RescheduleWorkOrderDto } from './dto/reschedule-work-order.dto';
+import { PartRequestDocument } from '../schemas/part-request.schema';
+import {
+  WorkOrderResponse,
+  WorkOrderSchedulingResultResponse,
+} from './contracts/work-order-response.types';
+import {
+  CalendarEventDetailsResponse,
+  CalendarEventsResponse,
+  CalendarTimelineResponse,
+} from './services/work-order-calendar-query.service';
+import {
+  CalendarWidgetResponse,
+  NotificationCardResponse,
+  WorkOrderStatisticsResponse,
+} from './contracts/work-order-dashboard-response.types';
+import { CorrectiveAssistantResponse } from './contracts/work-order-assistant-response.types';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -44,13 +59,17 @@ export class WorkOrdersController {
 
   @Post()
   @AdminOnly()
-  create(@Body() createWorkOrderDto: CreateWorkOrderDto) {
+  create(
+    @Body() createWorkOrderDto: CreateWorkOrderDto,
+  ): Promise<WorkOrderResponse> {
     return this.workOrdersService.create(createWorkOrderDto);
   }
 
   @Get()
   @AdminOnly()
-  findAll(@Query() query: WorkOrdersQueryDto) {
+  findAll(
+    @Query() query: WorkOrdersQueryDto,
+  ): Promise<PaginatedResponse<WorkOrderResponse>> {
     const pagination = normalizePagination(query.page, query.limit);
     return this.workOrdersService.findAll(
       pagination.page,
@@ -62,7 +81,7 @@ export class WorkOrdersController {
 
   @Get('statistics')
   @AdminOnly()
-  getStatistics() {
+  getStatistics(): Promise<WorkOrderStatisticsResponse> {
     return this.workOrdersService.getStatistics();
   }
 
@@ -72,7 +91,7 @@ export class WorkOrdersController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: DecidePartRequestDto,
-  ) {
+  ): Promise<PartRequestDocument> {
     const deciderId = req.user?.userId;
     if (!deciderId) {
       throw new ForbiddenException('Missing authenticated user');
@@ -100,7 +119,7 @@ export class WorkOrdersController {
     @Query('month') month?: string,
     @Query('week') week?: string,
     @Query('year') year?: string,
-  ): Promise<any> {
+  ): Promise<CalendarEventsResponse> {
     return this.workOrdersService.getCalendarEvents(
       view || 'month',
       date ? new Date(date) : new Date(),
@@ -124,7 +143,7 @@ export class WorkOrdersController {
   getTimeline(
     @Query('date') date?: string,
     @Query('machineId') machineId?: string,
-  ): Promise<any> {
+  ): Promise<CalendarTimelineResponse> {
     return this.workOrdersService.getTimeline(
       date ? new Date(date) : new Date(),
       machineId,
@@ -133,25 +152,29 @@ export class WorkOrdersController {
 
   @Get('calendar/widget')
   @AdminOnly()
-  getCalendarWidget(): Promise<any> {
+  getCalendarWidget(): Promise<CalendarWidgetResponse> {
     return this.workOrdersService.getDashboardCalendarWidget();
   }
 
   @Get('calendar/notifications')
   @AdminOnly()
-  getNotificationCards(): Promise<any> {
+  getNotificationCards(): Promise<NotificationCardResponse[]> {
     return this.workOrdersService.getNotificationCards();
   }
 
   @Get('calendar/corrective-assistant')
   @AdminOnly()
-  getCorrectiveAssistant(@Query('machineId') machineId?: string): Promise<any> {
+  getCorrectiveAssistant(
+    @Query('machineId') machineId?: string,
+  ): Promise<CorrectiveAssistantResponse> {
     return this.workOrdersService.getCorrectiveAssistant(machineId);
   }
 
   @Get('calendar/event/:id')
   @AdminOnly()
-  async getCalendarEventDetails(@Param('id') id: string) {
+  async getCalendarEventDetails(
+    @Param('id') id: string,
+  ): Promise<CalendarEventDetailsResponse> {
     const details = await this.workOrdersService.getCalendarEventDetails(id);
     if (!details) {
       throw new NotFoundException('Calendar event not found');
@@ -161,7 +184,9 @@ export class WorkOrdersController {
 
   @Post(':id/complete')
   @AdminOnly()
-  async complete(@Param('id') id: string) {
+  async complete(
+    @Param('id') id: string,
+  ): Promise<WorkOrderResponse | null> {
     const nowIso = new Date().toISOString();
     return this.workOrdersService.update(id, {
       status: 'completed',
@@ -177,7 +202,7 @@ export class WorkOrdersController {
     @Param('id') id: string,
     @Body()
     payload: ValidateWorkOrderDto,
-  ) {
+  ): Promise<WorkOrderResponse | null> {
     const action = payload.action || 'approve';
     return this.workOrdersService.applyValidationAction(
       id,
@@ -194,7 +219,7 @@ export class WorkOrdersController {
     @Param('id') id: string,
     @Body()
     payload: RescheduleWorkOrderDto,
-  ) {
+  ): Promise<WorkOrderSchedulingResultResponse> {
     const userId = req.user?.userId;
     if (!userId) {
       throw new ForbiddenException('Missing authenticated user');
@@ -210,7 +235,7 @@ export class WorkOrdersController {
 
   @Get(':id')
   @AdminOnly()
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string): Promise<WorkOrderResponse | null> {
     return this.workOrdersService.findOne(id);
   }
 
@@ -219,13 +244,13 @@ export class WorkOrdersController {
   update(
     @Param('id') id: string,
     @Body() updateWorkOrderDto: UpdateWorkOrderDto,
-  ) {
+  ): Promise<WorkOrderResponse | null> {
     return this.workOrdersService.update(id, updateWorkOrderDto);
   }
 
   @Delete(':id')
   @AdminOnly()
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string): Promise<WorkOrderResponse | null> {
     return this.workOrdersService.remove(id);
   }
 }

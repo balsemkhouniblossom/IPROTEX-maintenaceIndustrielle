@@ -252,7 +252,7 @@ describe('TechnicianService.details', () => {
       machineId.toHexString(),
     );
     expect(result.workOrder).toEqual(
-      expect.objectContaining({ _id: workOrderId }),
+      expect.objectContaining({ _id: workOrderId.toHexString() }),
     );
   });
 

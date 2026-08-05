@@ -21,6 +21,10 @@ import { CreatePartRequestDto } from './dto/create-part-request.dto';
 import { RescheduleCalendarEventDto } from './dto/reschedule-calendar-event.dto';
 import { SchedulePreventiveDto } from './dto/schedule-preventive.dto';
 import { UpdatePreventiveTaskChecklistDto } from './dto/update-preventive-task-checklist.dto';
+import { PaginatedResponse } from '../common/pagination';
+import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
+import { CalendarEventsResponse } from '../work-orders/services/work-order-calendar-query.service';
+import { InterventionReportResponse } from '../common/response/intervention-report-response';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -59,7 +63,7 @@ export class OperatorController {
     @Req() req: AuthenticatedRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-  ) {
+  ): Promise<PaginatedResponse<WorkOrderResponse>> {
     const userId = this.ensureOperator(req);
     const pagination = normalizePagination(page, limit);
     return this.operatorService.getMyWorkOrders(
@@ -75,7 +79,7 @@ export class OperatorController {
     @Req() req: AuthenticatedRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-  ) {
+  ): Promise<PaginatedResponse<InterventionReportResponse>> {
     const userId = this.ensureOperator(req);
     const pagination = normalizePagination(page, limit);
     return this.operatorService.getMyReports(
@@ -263,7 +267,7 @@ export class OperatorController {
     @Query('month') month?: string,
     @Query('week') week?: string,
     @Query('year') year?: string,
-  ) {
+  ): Promise<CalendarEventsResponse> {
     const userId = this.ensureOperator(req);
     return this.operatorService.getMyCalendar(userId, {
       view: view || 'month',

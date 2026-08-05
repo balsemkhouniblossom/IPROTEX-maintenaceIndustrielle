@@ -23,6 +23,18 @@ import {
 import { NOT_CORRECTIVE_TYPE_FILTER } from '../../common/maintenance-type';
 import { MaintenanceSchedulingService } from '../maintenance-scheduling.service';
 import { KpiService } from '../../kpi/kpi.service';
+import {
+  toMaintenancePlanSummary,
+  toModuleSummary,
+} from '../../common/response/reference-summaries';
+import { toWorkOrderResponse } from '../contracts/work-order-response.mapper';
+import {
+  MachinePreventiveStatesResponse,
+  CalendarWidgetResponse,
+  CalendarWidgetRowResponse,
+  NotificationCardResponse,
+  WorkOrderStatisticsResponse,
+} from '../contracts/work-order-dashboard-response.types';
 
 /**
  * Owns Work Order dashboard/statistics/widget read projections: the legacy
@@ -57,7 +69,7 @@ export class WorkOrderDashboardQueryService {
    * `GET /dashboard/admin` (`KpiService.getAdminDashboard()`) is the fuller,
    * canonical replacement new frontend code should prefer.
    */
-  async getStatistics() {
+  async getStatistics(): Promise<WorkOrderStatisticsResponse> {
     const adminDashboard = await this.kpiService.getAdminDashboard();
     const pendingOrders = await this.workOrderModel
       .countDocuments({
@@ -74,7 +86,9 @@ export class WorkOrderDashboardQueryService {
     };
   }
 
-  async getMachinePreventiveStates(machineId: string) {
+  async getMachinePreventiveStates(
+    machineId: string,
+  ): Promise<MachinePreventiveStatesResponse> {
     if (!Types.ObjectId.isValid(machineId)) {
       throw new BadRequestException('Invalid machine_id');
     }
@@ -170,10 +184,13 @@ export class WorkOrderDashboardQueryService {
           )
         : null;
 
+      const moduleEntity =
+        moduleById.get(this.objectIdString(plan.module_id)) || null;
+
       return {
-        plan,
-        module: moduleById.get(this.objectIdString(plan.module_id)) || null,
-        currentOccurrence: active || null,
+        plan: toMaintenancePlanSummary(plan),
+        module: moduleEntity ? toModuleSummary(moduleEntity) : null,
+        currentOccurrence: active ? toWorkOrderResponse(active) : null,
         currentState: this.schedulingService.calculateOperationalStatus({
           status: active?.status,
           dueDate: activeDue,
@@ -214,7 +231,9 @@ export class WorkOrderDashboardQueryService {
     };
   }
 
-  async getDashboardCalendarWidget(scope?: { technicianId?: string }) {
+  async getDashboardCalendarWidget(scope?: {
+    technicianId?: string;
+  }): Promise<CalendarWidgetResponse> {
     // Always business-timezone-aware — regardless of whether this is an
     // Admin's unscoped fleet-wide view or an Operator/Technician's own
     // scoped view, "today" must mean the same instant everywhere.
@@ -279,27 +298,41 @@ export class WorkOrderDashboardQueryService {
     };
 
     const rows = baseOrders.map(classify);
+    const toResponseRow = (
+      row: (typeof rows)[number],
+    ): CalendarWidgetRowResponse => ({
+      ...row,
+      dueDate: row.dueDate ? row.dueDate.toISOString() : null,
+    });
     return {
-      today: rows.filter((row) => {
-        const due = row.dueDate;
-        return due !== null && due >= todayStart && due < todayEnd;
-      }),
-      thisWeek: rows.filter((row) => {
-        const due = row.dueDate;
-        return due !== null && due >= todayStart && due < weekEnd;
-      }),
-      nextWeek: rows.filter((row) => {
-        const due = row.dueDate;
-        return due !== null && due >= nextWeekStart && due < nextWeekEnd;
-      }),
-      nextMonth: rows.filter((row) => {
-        const due = row.dueDate;
-        return due !== null && due >= todayStart && due < nextMonthEnd;
-      }),
-      overdue: rows.filter((row) => row.color === 'red'),
-      waitingValidation: rows.filter(
-        (row) => row.status === 'waiting_validation',
-      ),
+      today: rows
+        .filter((row) => {
+          const due = row.dueDate;
+          return due !== null && due >= todayStart && due < todayEnd;
+        })
+        .map(toResponseRow),
+      thisWeek: rows
+        .filter((row) => {
+          const due = row.dueDate;
+          return due !== null && due >= todayStart && due < weekEnd;
+        })
+        .map(toResponseRow),
+      nextWeek: rows
+        .filter((row) => {
+          const due = row.dueDate;
+          return due !== null && due >= nextWeekStart && due < nextWeekEnd;
+        })
+        .map(toResponseRow),
+      nextMonth: rows
+        .filter((row) => {
+          const due = row.dueDate;
+          return due !== null && due >= todayStart && due < nextMonthEnd;
+        })
+        .map(toResponseRow),
+      overdue: rows.filter((row) => row.color === 'red').map(toResponseRow),
+      waitingValidation: rows
+        .filter((row) => row.status === 'waiting_validation')
+        .map(toResponseRow),
       counts: {
         today: rows.filter((row) => {
           const due = row.dueDate;
@@ -326,11 +359,15 @@ export class WorkOrderDashboardQueryService {
   }
 
   /** Personal dashboard widget, scoped to work orders assigned to this Operator. */
-  async getCalendarWidgetForOperator(operatorId: string) {
+  async getCalendarWidgetForOperator(
+    operatorId: string,
+  ): Promise<CalendarWidgetResponse> {
     return this.getDashboardCalendarWidget({ technicianId: operatorId });
   }
 
-  async getNotificationCards(scope?: { technicianId?: string }) {
+  async getNotificationCards(scope?: {
+    technicianId?: string;
+  }): Promise<NotificationCardResponse[]> {
     // Always business-timezone-aware — see getDashboardCalendarWidget for
     // why this can no longer fall back to server-local boundaries just
     // because no technician scope was supplied (the Admin-facing route).
@@ -469,7 +506,9 @@ export class WorkOrderDashboardQueryService {
   }
 
   /** Personal notification cards, scoped to work orders assigned to this Operator. */
-  async getNotificationCardsForOperator(operatorId: string) {
+  async getNotificationCardsForOperator(
+    operatorId: string,
+  ): Promise<NotificationCardResponse[]> {
     return this.getNotificationCards({ technicianId: operatorId });
   }
 

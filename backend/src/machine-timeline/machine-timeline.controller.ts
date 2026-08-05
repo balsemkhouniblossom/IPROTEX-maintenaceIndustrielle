@@ -5,6 +5,11 @@ import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { DocumentAccessService } from '../documents/document-access.service';
 import { MachineTimelineService } from './machine-timeline.service';
 import { MachineTimelineQueryDto } from './dto/machine-timeline-query.dto';
+import { PaginatedResponse } from '../common/pagination';
+import {
+  MachineTimelineEvent,
+  MachineTimelineSummary,
+} from './machine-timeline.types';
 
 /**
  * Scoped to admin/technician/operator alike (unlike `MachinesController`,
@@ -27,7 +32,7 @@ export class MachineTimelineController {
   async getSummary(
     @Param('machineId') machineId: string,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<MachineTimelineSummary> {
     await this.documentAccessService.assertCanAccessMachine(
       req.user ?? {},
       machineId,
@@ -40,7 +45,7 @@ export class MachineTimelineController {
     @Param('machineId') machineId: string,
     @Query() query: MachineTimelineQueryDto,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<PaginatedResponse<MachineTimelineEvent>> {
     await this.documentAccessService.assertCanAccessMachine(
       req.user ?? {},
       machineId,

@@ -14,6 +14,11 @@ import {
   WORK_ORDERS_SORT_ALLOWED_FIELDS,
   buildWorkOrdersFilter,
 } from '../work-order-query.util';
+import {
+  toWorkOrderResponse,
+  toWorkOrderResponseOrNull,
+} from '../contracts/work-order-response.mapper';
+import { WorkOrderResponse } from '../contracts/work-order-response.types';
 
 @Injectable()
 export class WorkOrderQueryService {
@@ -27,7 +32,7 @@ export class WorkOrderQueryService {
     limit: number,
     skip: number,
     query: WorkOrdersQueryDto = {},
-  ): Promise<PaginatedResponse<WorkOrder>> {
+  ): Promise<PaginatedResponse<WorkOrderResponse>> {
     const filter = buildWorkOrdersFilter(query);
     const sort = parseSortParam(
       query.sort,
@@ -49,7 +54,12 @@ export class WorkOrderQueryService {
         this.workOrderModel.countDocuments(filter).exec(),
       ]);
 
-      return toPaginatedResponse(items, totalItems, page, limit);
+      return toPaginatedResponse(
+        items.map(toWorkOrderResponse),
+        totalItems,
+        page,
+        limit,
+      );
     } catch (error) {
       console.warn('Failed to populate work order references:', error);
       const [items, totalItems] = await Promise.all([
@@ -62,25 +72,32 @@ export class WorkOrderQueryService {
         this.workOrderModel.countDocuments(filter).exec(),
       ]);
 
-      return toPaginatedResponse(items, totalItems, page, limit);
+      return toPaginatedResponse(
+        items.map(toWorkOrderResponse),
+        totalItems,
+        page,
+        limit,
+      );
     }
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(id: string): Promise<WorkOrderResponse | null> {
     try {
-      return await this.workOrderModel
+      const found = await this.workOrderModel
         .findById(id)
         .populate('machine_id')
         .populate('module_id')
         .populate('technician_id', SAFE_USER_PROJECTION)
         .exec();
+      return toWorkOrderResponseOrNull(found);
     } catch (error) {
       console.warn(
         'Failed to populate work order references for id:',
         id,
         error,
       );
-      return this.workOrderModel.findById(id).exec();
+      const found = await this.workOrderModel.findById(id).exec();
+      return toWorkOrderResponseOrNull(found);
     }
   }
 }

@@ -65,4 +65,32 @@ export default tseslint.config(
       'no-control-regex': 'warn',
     },
   },
+  {
+    // Response-contract hardening (production-readiness audit): the
+    // `contracts/**` mapper/type files and the priority-module controllers
+    // (Work Orders, Machines, Machine Types, Operator, Technician, Machine
+    // Timeline) are the actual HTTP response boundary this rule set exists
+    // to protect, so they hold a stricter bar than the repo default above.
+    // Scoped narrowly on purpose — flipping these to `error` repo-wide would
+    // fail on pre-existing `any` usage in unrelated business-logic files
+    // that this task did not touch.
+    files: [
+      '**/contracts/**/*.ts',
+      'src/work-orders/work-orders.controller.ts',
+      'src/machines/machines.controller.ts',
+      'src/machine-types/machine-types.controller.ts',
+      'src/operator/operator.controller.ts',
+      'src/technician/technician.controller.ts',
+      'src/machine-timeline/machine-timeline.controller.ts',
+    ],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+    },
+  },
 );

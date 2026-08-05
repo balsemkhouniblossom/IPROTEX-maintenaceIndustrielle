@@ -11,11 +11,12 @@ import {
 import { MachinesService } from './machines.service';
 import { CreateMachineDto } from './dto/create-machine.dto';
 import { UpdateMachineDto } from './dto/update-machine.dto';
-import { normalizePagination } from '../common/pagination';
+import { normalizePagination, PaginatedResponse } from '../common/pagination';
 import {
   AdminOnly,
   AuthenticatedRoles,
 } from '../auth/decorators/roles.decorator';
+import { MachineResponse } from './contracts/machine-response.types';
 
 @Controller('machines')
 @AuthenticatedRoles()
@@ -24,17 +25,20 @@ export class MachinesController {
 
   @Post()
   @AdminOnly()
-  create(@Body() createMachineDto: CreateMachineDto) {
+  create(@Body() createMachineDto: CreateMachineDto): Promise<MachineResponse> {
     return this.machinesService.create(createMachineDto);
   }
   @Get('total')
   @AdminOnly()
-  countTotal() {
+  countTotal(): Promise<number> {
     return this.machinesService.countAll();
   }
   @Get()
   @AdminOnly()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedResponse<MachineResponse>> {
     const pagination = normalizePagination(page, limit);
     return this.machinesService.findAll(
       pagination.page,
@@ -45,19 +49,22 @@ export class MachinesController {
 
   @Get(':id')
   @AdminOnly()
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string): Promise<MachineResponse | null> {
     return this.machinesService.findOne(id);
   }
 
   @Patch(':id')
   @AdminOnly()
-  update(@Param('id') id: string, @Body() updateMachineDto: UpdateMachineDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateMachineDto: UpdateMachineDto,
+  ): Promise<MachineResponse | null> {
     return this.machinesService.update(id, updateMachineDto);
   }
 
   @Delete(':id')
   @AdminOnly()
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string): Promise<MachineResponse | null> {
     return this.machinesService.remove(id);
   }
 }

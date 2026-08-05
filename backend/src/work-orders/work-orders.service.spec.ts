@@ -206,7 +206,7 @@ describe('WorkOrdersService facade delegation', () => {
       expect(kpiService.updateKpiForMachine).toHaveBeenCalledWith(
         machineId.toString(),
       );
-      expect(result).toBe(updated);
+      expect(result).toMatchObject({ machine_id: machineId.toString() });
     });
 
     it('does not trigger KPI recomputation on rejection', async () => {

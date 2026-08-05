@@ -10,6 +10,7 @@ import {
   DocumentEntity,
   DocumentDocument,
 } from '../../schemas/document.schema';
+import { CorrectiveAssistantResponse } from '../contracts/work-order-assistant-response.types';
 
 /**
  * Owns the "corrective assistant" context projection: known faults and
@@ -29,7 +30,9 @@ export class WorkOrderAssistantContextService {
     private readonly documentModel: Model<DocumentDocument>,
   ) {}
 
-  async getCorrectiveAssistant(machineId?: string) {
+  async getCorrectiveAssistant(
+    machineId?: string,
+  ): Promise<CorrectiveAssistantResponse> {
     const pannes = await this.panneModel.find().exec();
     const panneIds = pannes.map((item) => item._id);
     const solutions = await this.panneSolutionModel

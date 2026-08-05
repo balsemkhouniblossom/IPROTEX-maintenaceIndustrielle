@@ -36,6 +36,14 @@ import {
   COMPLETED_WORK_ORDER_STATUSES,
 } from '../common/work-order-status';
 import { KpiService } from '../kpi/kpi.service';
+import { toWorkOrderResponse } from '../work-orders/contracts/work-order-response.mapper';
+import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
+import {
+  InterventionReportResponse,
+  toInterventionReportResponse,
+  toInterventionReportResponseOrNull,
+} from '../common/response/intervention-report-response';
+import { TechnicianWorkOrderDetailResponse } from './contracts/technician-response.types';
 
 const CLOSED_STATUSES = CLOSED_WORK_ORDER_STATUSES;
 const REVIEW_STATUSES = [
@@ -77,9 +85,28 @@ export interface OperatorSummary {
   nom_complet: string;
 }
 
-export type TechnicianWorkOrderView = Record<string, unknown> & {
+export type TechnicianWorkOrderView = WorkOrderResponse & {
   operator?: OperatorSummary;
 };
+
+export interface TechnicianDashboardResponse {
+  counters: {
+    assigned: number;
+    inProgress: number;
+    waitingParts: number;
+    waitingReview: number;
+    completedToday: number;
+    urgent: number;
+    overdue: number;
+    dueToday: number;
+    waitingValidation: number;
+  };
+  urgentTasks: TechnicianWorkOrderView[];
+  current: TechnicianWorkOrderView[];
+  waitingPartsTasks: TechnicianWorkOrderView[];
+  recent: TechnicianWorkOrderView[];
+  manuals: DocumentEntity[];
+}
 
 @Injectable()
 export class TechnicianService {
@@ -170,7 +197,9 @@ export class TechnicianService {
     };
   }
 
-  async dashboard(technicianId: string) {
+  async dashboard(
+    technicianId: string,
+  ): Promise<TechnicianDashboardResponse> {
     const scope = { technician_id: this.technicianScope(technicianId) };
 
     const [
@@ -393,9 +422,9 @@ export class TechnicianService {
     }
 
     return workOrders.map((workOrder) => {
-      const object = workOrder.toObject() as unknown as Record<string, unknown>;
+      const response = toWorkOrderResponse(workOrder);
       const operator = operatorsByWorkOrder.get(workOrder._id.toString());
-      return operator ? { ...object, operator } : object;
+      return operator ? { ...response, operator } : response;
     });
   }
 
@@ -441,7 +470,10 @@ export class TechnicianService {
     });
   }
 
-  async details(technicianId: string, workOrderId: string) {
+  async details(
+    technicianId: string,
+    workOrderId: string,
+  ): Promise<TechnicianWorkOrderDetailResponse> {
     const workOrder = await this.workOrdersModel
       .findOne({
         _id: this.objectId(workOrderId, 'work order'),
@@ -483,7 +515,13 @@ export class TechnicianService {
       })
       .populate('part_id')
       .exec();
-    return { workOrder, report, parts, stock, manuals };
+    return {
+      workOrder: toWorkOrderResponse(workOrder),
+      report: toInterventionReportResponseOrNull(report),
+      parts,
+      stock,
+      manuals,
+    };
   }
 
   async manuals(
@@ -614,7 +652,7 @@ export class TechnicianService {
       description_action?: string;
       etat_final?: string;
     },
-  ) {
+  ): Promise<InterventionReportResponse> {
     const id = this.objectId(workOrderId, 'work order');
     const workOrder = await this.workOrdersModel
       .findOne({
@@ -635,7 +673,7 @@ export class TechnicianService {
       .findOneAndUpdate({ ot_id: id }, { $set: allowed }, { new: true })
       .exec();
     if (!report) throw new NotFoundException('Intervention report not found');
-    return report;
+    return toInterventionReportResponse(report);
   }
 
   async setPartQuantity(

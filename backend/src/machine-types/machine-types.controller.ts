@@ -11,11 +11,12 @@ import {
 import { MachineTypesService } from './machine-types.service';
 import { CreateMachineTypeDto } from './dto/create-machine-type.dto';
 import { UpdateMachineTypeDto } from './dto/update-machine-type.dto';
-import { normalizePagination } from '../common/pagination';
+import { normalizePagination, PaginatedResponse } from '../common/pagination';
 import {
   AdminOnly,
   AuthenticatedRoles,
 } from '../auth/decorators/roles.decorator';
+import { MachineTypeResponse } from './contracts/machine-type-response.types';
 @Controller('machine-types')
 @AuthenticatedRoles()
 export class MachineTypesController {
@@ -23,13 +24,18 @@ export class MachineTypesController {
 
   @Post()
   @AdminOnly()
-  create(@Body() createMachineTypeDto: CreateMachineTypeDto) {
+  create(
+    @Body() createMachineTypeDto: CreateMachineTypeDto,
+  ): Promise<MachineTypeResponse> {
     return this.machineTypesService.create(createMachineTypeDto);
   }
 
   @Get()
   @AdminOnly()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedResponse<MachineTypeResponse>> {
     const pagination = normalizePagination(page, limit);
 
     return this.machineTypesService.findAll(
@@ -41,7 +47,7 @@ export class MachineTypesController {
 
   @Get(':id')
   @AdminOnly()
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string): Promise<MachineTypeResponse | null> {
     return this.machineTypesService.findOne(id);
   }
 
@@ -50,13 +56,13 @@ export class MachineTypesController {
   update(
     @Param('id') id: string,
     @Body() updateMachineTypeDto: UpdateMachineTypeDto,
-  ) {
+  ): Promise<MachineTypeResponse | null> {
     return this.machineTypesService.update(id, updateMachineTypeDto);
   }
 
   @Delete(':id')
   @AdminOnly()
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string): Promise<MachineTypeResponse | null> {
     return this.machineTypesService.remove(id);
   }
 }
