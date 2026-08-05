@@ -79,6 +79,8 @@ import {
   MachineTimelineSummary,
   TimelineRelatedEntity,
 } from './machine-timeline.types';
+import { MachineTimelineEventResponse } from './contracts/machine-timeline-event-response.types';
+import { toMachineTimelineEventResponse } from './contracts/machine-timeline-event.mapper';
 
 const WORK_ORDER_LIFECYCLE_TYPES: Partial<
   Record<WorkOrderLifecycleAction, MachineTimelineEventType>
@@ -375,7 +377,7 @@ export class MachineTimelineService {
   async getTimeline(
     machineId: string,
     query: MachineTimelineQueryDto,
-  ): Promise<PaginatedResponse<MachineTimelineEvent>> {
+  ): Promise<PaginatedResponse<MachineTimelineEventResponse>> {
     this.assertObjectId(machineId);
     const machineObjectId = new Types.ObjectId(machineId);
     const machine = await this.machineModel.findById(machineObjectId).exec();
@@ -479,7 +481,12 @@ export class MachineTimelineService {
       100,
     );
     const pageItems = filtered.slice(skip, skip + limit);
-    return toPaginatedResponse(pageItems, filtered.length, page, limit);
+    return toPaginatedResponse(
+      pageItems.map(toMachineTimelineEventResponse),
+      filtered.length,
+      page,
+      limit,
+    );
   }
 
   private machineEvents(machine: MachineDocument): MachineTimelineEvent[] {

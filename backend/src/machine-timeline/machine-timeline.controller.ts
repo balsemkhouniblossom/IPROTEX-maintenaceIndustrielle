@@ -6,10 +6,8 @@ import { DocumentAccessService } from '../documents/document-access.service';
 import { MachineTimelineService } from './machine-timeline.service';
 import { MachineTimelineQueryDto } from './dto/machine-timeline-query.dto';
 import { PaginatedResponse } from '../common/pagination';
-import {
-  MachineTimelineEvent,
-  MachineTimelineSummary,
-} from './machine-timeline.types';
+import { MachineTimelineSummary } from './machine-timeline.types';
+import { MachineTimelineEventResponse } from './contracts/machine-timeline-event-response.types';
 
 /**
  * Scoped to admin/technician/operator alike (unlike `MachinesController`,
@@ -45,7 +43,7 @@ export class MachineTimelineController {
     @Param('machineId') machineId: string,
     @Query() query: MachineTimelineQueryDto,
     @Req() req: AuthenticatedRequest,
-  ): Promise<PaginatedResponse<MachineTimelineEvent>> {
+  ): Promise<PaginatedResponse<MachineTimelineEventResponse>> {
     await this.documentAccessService.assertCanAccessMachine(
       req.user ?? {},
       machineId,

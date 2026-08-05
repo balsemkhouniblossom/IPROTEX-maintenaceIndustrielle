@@ -38,7 +38,11 @@ import {
   PreventiveTaskDocument,
 } from '../schemas/preventive-task.schema';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
-import { CalendarEventsResponse } from '../work-orders/services/work-order-calendar-query.service';
+import {
+  CalendarEventDetailsResponse,
+  CalendarEventsResponse,
+  CalendarTimelineResponse,
+} from '../work-orders/services/work-order-calendar-query.service';
 import { toWorkOrderResponse } from '../work-orders/contracts/work-order-response.mapper';
 import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
 import {
@@ -48,6 +52,52 @@ import {
 import { KpiService } from '../kpi/kpi.service';
 import { PreventiveTasksService } from '../preventive-tasks/preventive-tasks.service';
 import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
+import {
+  MachineSummaryResponse,
+  MachineTypeSummaryResponse,
+  MaintenancePlanSummaryResponse,
+  ModuleSummaryResponse,
+  toMachineSummary,
+  toMachineTypeSummary,
+  toMaintenancePlanSummary,
+  toModuleSummary,
+} from '../common/response/reference-summaries';
+import {
+  CatalogueSummaryResponse,
+  StockResponse,
+  toCatalogueSummary,
+  toStockResponse,
+} from '../common/response/catalogue-response';
+import {
+  DocumentSummaryResponse,
+  toDocumentSummary,
+} from '../common/response/document-response';
+import {
+  KpiResponse,
+  LubrifiantResponse,
+  OperatorDashboardResponse,
+  OperatorPreventiveTaskResponse,
+  PanneResponse,
+  PanneSolutionResponse,
+} from './contracts/operator-response.types';
+import {
+  toKpiResponse,
+  toLubrifiantResponse,
+  toOperatorPreventiveTaskResponse,
+  toPanneResponse,
+  toPanneSolutionResponse,
+} from './contracts/operator-response.mapper';
+import {
+  CalendarWidgetResponse,
+  MachinePreventiveStatesResponse,
+  NotificationCardResponse,
+} from '../work-orders/contracts/work-order-dashboard-response.types';
+import { PartRequestResponse } from '../work-orders/contracts/part-request-response.types';
+import {
+  CorrectiveReportForOperatorResponse,
+  PreventiveSubmissionForOperatorResponse,
+} from '../work-orders/contracts/operator-workflow-response.types';
+import { WorkOrderSchedulingResultResponse } from '../work-orders/contracts/work-order-response.types';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -240,7 +290,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<MachineType>> {
+  ): Promise<PaginatedResponse<MachineTypeSummaryResponse>> {
     const machineIds = await this.getAllowedMachineIds(userId);
     if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
 
@@ -263,7 +313,12 @@ export class OperatorService {
       this.machineTypeModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toMachineTypeSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getModules(
@@ -271,7 +326,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<Module>> {
+  ): Promise<PaginatedResponse<ModuleSummaryResponse>> {
     const machineIds = await this.getAllowedMachineIds(userId);
     if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
     const query = this.machineIdStringExpr(machineIds);
@@ -288,7 +343,12 @@ export class OperatorService {
       this.moduleModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toModuleSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getMaintenancePlans(
@@ -296,7 +356,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<MaintenancePlan>> {
+  ): Promise<PaginatedResponse<MaintenancePlanSummaryResponse>> {
     const machineIds = await this.getAllowedMachineIds(userId);
     if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
     const modules = await this.moduleModel
@@ -321,7 +381,12 @@ export class OperatorService {
       this.maintenancePlanModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toMaintenancePlanSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getPreventiveTaskChecklist(
@@ -330,7 +395,7 @@ export class OperatorService {
     limit: number,
     skip: number,
     filters: { machineId?: string; machineTypeId?: string; status?: string },
-  ): Promise<PaginatedResponse<PreventiveTask>> {
+  ): Promise<PaginatedResponse<OperatorPreventiveTaskResponse>> {
     const machineIds = await this.getVisibleMachineIds({
       userId,
       machineId: filters.machineId,
@@ -373,14 +438,19 @@ export class OperatorService {
       this.preventiveTaskModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toOperatorPreventiveTaskResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async updatePreventiveTaskChecklist(
     userId: string,
     taskId: string,
     dto: { status?: 'pending' | 'completed'; notes?: string },
-  ): Promise<PreventiveTaskDocument> {
+  ): Promise<OperatorPreventiveTaskResponse> {
     this.assertValidObjectId(taskId, 'task_id');
     const task = await this.preventiveTaskModel
       .findOne({ _id: taskId, deleted_at: { $exists: false } })
@@ -420,7 +490,7 @@ export class OperatorService {
     if (!updated) {
       throw new NotFoundException('Preventive task not found');
     }
-    return updated;
+    return toOperatorPreventiveTaskResponse(updated);
   }
 
   async getLubrifiants(
@@ -428,7 +498,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<Lubrifiant>> {
+  ): Promise<PaginatedResponse<LubrifiantResponse>> {
     await this.assertHasOperatorScope(userId);
     const [items, totalItems] = await Promise.all([
       this.lubrifiantModel
@@ -440,7 +510,12 @@ export class OperatorService {
       this.lubrifiantModel.countDocuments().exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toLubrifiantResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getKpis(
@@ -448,7 +523,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<KPI>> {
+  ): Promise<PaginatedResponse<KpiResponse>> {
     const machineIds = await this.getAllowedMachineIds(userId);
     if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
     const query = { machine_id: { $in: this.toObjectIdList(machineIds) } };
@@ -463,7 +538,12 @@ export class OperatorService {
       this.kpiModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toKpiResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getCatalogues(
@@ -471,7 +551,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<Catalogue>> {
+  ): Promise<PaginatedResponse<CatalogueSummaryResponse>> {
     await this.assertHasOperatorScope(userId);
     const [items, totalItems] = await Promise.all([
       this.catalogueModel
@@ -483,7 +563,12 @@ export class OperatorService {
       this.catalogueModel.countDocuments().exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toCatalogueSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getStocks(
@@ -491,7 +576,7 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
-  ): Promise<PaginatedResponse<Stock>> {
+  ): Promise<PaginatedResponse<StockResponse>> {
     await this.assertHasOperatorScope(userId);
     const [items, totalItems] = await Promise.all([
       this.stockModel
@@ -504,7 +589,12 @@ export class OperatorService {
       this.stockModel.countDocuments().exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toStockResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getMyReports(
@@ -541,7 +631,7 @@ export class OperatorService {
     limit: number,
     skip: number,
     machineTypeId?: string,
-  ): Promise<PaginatedResponse<Machine>> {
+  ): Promise<PaginatedResponse<MachineSummaryResponse>> {
     const machineIds = await this.getVisibleMachineIds({
       userId,
       machineTypeId,
@@ -569,7 +659,12 @@ export class OperatorService {
       this.machineModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toMachineSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getMyCalendar(
@@ -609,7 +704,10 @@ export class OperatorService {
     });
   }
 
-  async getPreventiveStates(userId: string, machineId: string) {
+  async getPreventiveStates(
+    userId: string,
+    machineId: string,
+  ): Promise<MachinePreventiveStatesResponse> {
     await this.assertCanAccessMachine(userId, machineId);
     return this.workOrdersService.getMachinePreventiveStates(machineId);
   }
@@ -617,7 +715,7 @@ export class OperatorService {
   async schedulePreventive(
     userId: string,
     input: { machineId: string; planId: string; scheduledDate: string },
-  ) {
+  ): Promise<WorkOrderSchedulingResultResponse> {
     await this.assertCanAccessMachine(userId, input.machineId);
     return this.workOrdersService.scheduleFirstPreventiveOccurrence({
       ...input,
@@ -634,7 +732,7 @@ export class OperatorService {
       actions: string[];
       priority?: string;
     },
-  ) {
+  ): Promise<CorrectiveReportForOperatorResponse> {
     await this.assertCanAccessMachine(userId, input.machineId);
     return this.workOrdersService.createCorrectiveReportForOperator({
       machineId: input.machineId,
@@ -655,7 +753,7 @@ export class OperatorService {
       comments?: string;
       lubrication?: { lubrifiantId: string; quantity: number };
     },
-  ) {
+  ): Promise<PreventiveSubmissionForOperatorResponse> {
     this.assertValidObjectId(input.workOrderId, 'work_order_id');
     const target = await this.workOrderModel
       .findById(input.workOrderId)
@@ -683,7 +781,7 @@ export class OperatorService {
   async requestParts(
     userId: string,
     input: { workOrderId: string; partId: string; quantity: number },
-  ) {
+  ): Promise<PartRequestResponse> {
     this.assertValidObjectId(input.workOrderId, 'work_order_id');
     const target = await this.workOrderModel
       .findById(input.workOrderId)
@@ -731,22 +829,24 @@ export class OperatorService {
    * fetching every page of the operator's work orders/reports and
    * re-deriving these counts in the browser.
    */
-  async getDashboard(userId: string) {
+  async getDashboard(userId: string): Promise<OperatorDashboardResponse> {
     return this.kpiService.getOperatorDashboard(userId);
   }
 
-  async getCalendarWidget(userId: string) {
+  async getCalendarWidget(userId: string): Promise<CalendarWidgetResponse> {
     return this.workOrdersService.getCalendarWidgetForOperator(userId);
   }
 
-  async getCalendarNotifications(userId: string) {
+  async getCalendarNotifications(
+    userId: string,
+  ): Promise<NotificationCardResponse[]> {
     return this.workOrdersService.getNotificationCardsForOperator(userId);
   }
 
   async getCalendarTimeline(
     userId: string,
     params: { date: Date; machineId?: string },
-  ) {
+  ): Promise<CalendarTimelineResponse> {
     if (params.machineId) {
       await this.assertCanAccessMachine(userId, params.machineId);
     }
@@ -757,7 +857,10 @@ export class OperatorService {
     );
   }
 
-  async getCalendarEventDetails(userId: string, workOrderId: string) {
+  async getCalendarEventDetails(
+    userId: string,
+    workOrderId: string,
+  ): Promise<CalendarEventDetailsResponse | null> {
     await this.assertOperatorCanActOnWorkOrder(userId, workOrderId);
     return this.workOrdersService.getCalendarEventDetailsForOperator(
       workOrderId,
@@ -765,7 +868,10 @@ export class OperatorService {
     );
   }
 
-  async startCalendarEvent(userId: string, workOrderId: string) {
+  async startCalendarEvent(
+    userId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
     await this.assertOperatorCanActOnWorkOrder(userId, workOrderId);
     return this.workOrdersService.startWorkOrderForOperator({
       operatorId: userId,
@@ -773,7 +879,10 @@ export class OperatorService {
     });
   }
 
-  async completeCalendarEvent(userId: string, workOrderId: string) {
+  async completeCalendarEvent(
+    userId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
     await this.assertOperatorCanActOnWorkOrder(userId, workOrderId);
     return this.workOrdersService.completeWorkOrderForOperator({
       operatorId: userId,
@@ -785,7 +894,7 @@ export class OperatorService {
     userId: string,
     workOrderId: string,
     input: { newDueDate: string; reason: string },
-  ) {
+  ): Promise<WorkOrderSchedulingResultResponse> {
     await this.assertOperatorCanActOnWorkOrder(userId, workOrderId);
     return this.workOrdersService.rescheduleWorkOrderForOperator({
       operatorId: userId,
@@ -802,7 +911,7 @@ export class OperatorService {
     skip: number,
     machineId?: string,
     machineTypeId?: string,
-  ): Promise<PaginatedResponse<DocumentEntity>> {
+  ): Promise<PaginatedResponse<DocumentSummaryResponse>> {
     const operatorMachines = await this.getMyMachines(
       userId,
       1,
@@ -845,7 +954,12 @@ export class OperatorService {
       this.documentModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toDocumentSummary),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   private async buildFaultScope(
@@ -887,7 +1001,7 @@ export class OperatorService {
     limit: number,
     skip: number,
     filters: FaultFilters,
-  ): Promise<PaginatedResponse<Panne>> {
+  ): Promise<PaginatedResponse<PanneResponse>> {
     const scope = await this.buildFaultScope(userId, filters);
 
     if (!scope.machineIds.length) {
@@ -917,7 +1031,12 @@ export class OperatorService {
       this.panneModel.countDocuments(query).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toPanneResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   async getFaultSolutionsForOperator(
@@ -926,7 +1045,7 @@ export class OperatorService {
     limit: number,
     skip: number,
     filters: FaultSolutionFilters,
-  ): Promise<PaginatedResponse<PanneSolution>> {
+  ): Promise<PaginatedResponse<PanneSolutionResponse>> {
     const scope = await this.buildFaultScope(userId, filters);
 
     if (!scope.machineIds.length) {
@@ -990,7 +1109,12 @@ export class OperatorService {
       this.panneSolutionModel.countDocuments(solutionQuery).exec(),
     ]);
 
-    return toPaginatedResponse(items, totalItems, page, limit);
+    return toPaginatedResponse(
+      items.map(toPanneSolutionResponse),
+      totalItems,
+      page,
+      limit,
+    );
   }
 
   private async assertCanAccessMachine(

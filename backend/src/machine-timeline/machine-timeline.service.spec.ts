@@ -255,10 +255,11 @@ describe('MachineTimelineService', () => {
     expect(result.totalItems).toBe(5);
     expect(result.totalPages).toBe(3);
     // Newest first overall: index 4, 3, 2, 1, 0 — page 2 (limit 2) is [2, 1].
-    expect(result.items.map((event) => event.metadata?.faultCode)).toEqual([
-      'E-2',
-      'E-1',
-    ]);
+    expect(
+      result.items.map(
+        (event) => (event.metadata as { faultCode?: string }).faultCode,
+      ),
+    ).toEqual(['E-2', 'E-1']);
   });
 
   it('resolves actor names in a single batched query', async () => {

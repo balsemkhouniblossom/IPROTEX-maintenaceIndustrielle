@@ -43,7 +43,20 @@ import {
   toInterventionReportResponse,
   toInterventionReportResponseOrNull,
 } from '../common/response/intervention-report-response';
-import { TechnicianWorkOrderDetailResponse } from './contracts/technician-response.types';
+import { asPopulatedDoc } from '../common/response/serialization.util';
+import {
+  TechnicianPartResponse,
+  TechnicianWorkOrderDetailResponse,
+} from './contracts/technician-response.types';
+import { toTechnicianPartResponse } from './contracts/technician-response.mapper';
+import {
+  StockResponse,
+  toStockResponse,
+} from '../common/response/catalogue-response';
+import {
+  DocumentSummaryResponse,
+  toDocumentSummary,
+} from '../common/response/document-response';
 
 const CLOSED_STATUSES = CLOSED_WORK_ORDER_STATUSES;
 const REVIEW_STATUSES = [
@@ -105,7 +118,7 @@ export interface TechnicianDashboardResponse {
   current: TechnicianWorkOrderView[];
   waitingPartsTasks: TechnicianWorkOrderView[];
   recent: TechnicianWorkOrderView[];
-  manuals: DocumentEntity[];
+  manuals: DocumentSummaryResponse[];
 }
 
 @Injectable()
@@ -298,7 +311,7 @@ export class TechnicianService {
       current: currentWithOperators,
       waitingPartsTasks: waitingWithOperators,
       recent: recentWithOperators,
-      manuals,
+      manuals: manuals.map(toDocumentSummary),
     };
   }
 
@@ -405,12 +418,12 @@ export class TechnicianService {
 
     const operatorsByWorkOrder = new Map<string, OperatorSummary>();
     for (const report of reports) {
-      const owner = report.technician_id as unknown as {
+      const owner = asPopulatedDoc<{
         _id?: Types.ObjectId;
         user_id?: string;
         nom_complet?: string;
         role?: string;
-      } | null;
+      }>(report.technician_id);
       if (!owner?.nom_complet || owner.role !== 'operator') continue;
       const workOrderId = this.referenceId(report.ot_id)?.toString() || '';
       if (!workOrderId || operatorsByWorkOrder.has(workOrderId)) continue;
@@ -518,9 +531,9 @@ export class TechnicianService {
     return {
       workOrder: toWorkOrderResponse(workOrder),
       report: toInterventionReportResponseOrNull(report),
-      parts,
-      stock,
-      manuals,
+      parts: parts.map(toTechnicianPartResponse),
+      stock: stock.map(toStockResponse),
+      manuals: manuals.map(toDocumentSummary),
     };
   }
 
@@ -528,7 +541,7 @@ export class TechnicianService {
     technicianId: string,
     pagination: PaginationParams,
     machineId?: string,
-  ): Promise<PaginatedResponse<DocumentEntity>> {
+  ): Promise<PaginatedResponse<DocumentSummaryResponse>> {
     this.objectId(technicianId, 'technician');
     const query: FilterQuery<DocumentDocument> = {
       ...MANUAL_DOCUMENT_FILTER,
@@ -551,10 +564,18 @@ export class TechnicianService {
         .exec(),
       this.documentsModel.countDocuments(query).exec(),
     ]);
-    return toPaginatedResponse(items, total, pagination.page, pagination.limit);
+    return toPaginatedResponse(
+      items.map(toDocumentSummary),
+      total,
+      pagination.page,
+      pagination.limit,
+    );
   }
 
-  async availableParts(technicianId: string, pagination: PaginationParams) {
+  async availableParts(
+    technicianId: string,
+    pagination: PaginationParams,
+  ): Promise<PaginatedResponse<StockResponse>> {
     this.objectId(technicianId, 'technician');
     const [stocks, total] = await Promise.all([
       this.stockModel
@@ -567,19 +588,23 @@ export class TechnicianService {
       this.stockModel.countDocuments().exec(),
     ]);
     return toPaginatedResponse(
-      stocks,
+      stocks.map(toStockResponse),
       total,
       pagination.page,
       pagination.limit,
     );
   }
 
-  async claim(technicianId: string, workOrderId: string) {
-    return this.workOrderAssignmentService.claimForTechnician({
+  async claim(
+    technicianId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
+    const workOrder = await this.workOrderAssignmentService.claimForTechnician({
       technicianId,
       workOrderId,
       accessibleMachineIds: await this.getAccessibleMachineIds(technicianId),
     });
+    return toWorkOrderResponse(workOrder);
   }
 
   /**
@@ -596,7 +621,7 @@ export class TechnicianService {
     technicianId: string,
     workOrderId: string,
     action?: 'return' | 'intervene',
-  ) {
+  ): Promise<WorkOrderResponse | null> {
     if (!action || !['return', 'intervene'].includes(action))
       throw new BadRequestException('Invalid review action');
     if (action === 'intervene') return this.start(technicianId, workOrderId);
@@ -610,38 +635,51 @@ export class TechnicianService {
       .exec();
     if (!reviewable)
       throw new ConflictException('Report is no longer awaiting review');
-    const updated = await this.workOrdersService.applyValidationAction(
+    return this.workOrdersService.applyValidationAction(
       workOrderId,
       'request_correction',
       technicianId,
     );
-    return updated;
   }
 
-  async start(technicianId: string, workOrderId: string) {
-    return this.workOrderLifecycleService.startForTechnician({
+  async start(
+    technicianId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
+    const workOrder = await this.workOrderLifecycleService.startForTechnician({
       technicianId,
       workOrderId,
       accessibleMachineIds: await this.getAccessibleMachineIds(technicianId),
     });
+    return toWorkOrderResponse(workOrder);
   }
 
-  async waitingParts(technicianId: string, workOrderId: string) {
-    return this.workOrderLifecycleService.transitionForTechnician({
-      technicianId,
-      workOrderId,
-      from: ['in_progress'],
-      to: 'waiting_parts',
-    });
+  async waitingParts(
+    technicianId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
+    const workOrder =
+      await this.workOrderLifecycleService.transitionForTechnician({
+        technicianId,
+        workOrderId,
+        from: ['in_progress'],
+        to: 'waiting_parts',
+      });
+    return toWorkOrderResponse(workOrder);
   }
 
-  async resume(technicianId: string, workOrderId: string) {
-    return this.workOrderLifecycleService.transitionForTechnician({
-      technicianId,
-      workOrderId,
-      from: ['waiting_parts'],
-      to: 'in_progress',
-    });
+  async resume(
+    technicianId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
+    const workOrder =
+      await this.workOrderLifecycleService.transitionForTechnician({
+        technicianId,
+        workOrderId,
+        from: ['waiting_parts'],
+        to: 'in_progress',
+      });
+    return toWorkOrderResponse(workOrder);
   }
 
   async updateReport(
@@ -681,7 +719,7 @@ export class TechnicianService {
     workOrderId: string,
     partId?: string,
     quantity?: number,
-  ) {
+  ): Promise<TechnicianPartResponse> {
     if (!partId) throw new BadRequestException('Part is required');
     if (!Number.isInteger(quantity) || (quantity ?? 0) <= 0)
       throw new BadRequestException('Part quantity must be a positive integer');
@@ -689,7 +727,7 @@ export class TechnicianService {
     const part = this.objectId(partId, 'part');
     const session = await this.workOrdersModel.db.startSession();
     try {
-      return await session.withTransaction(async () => {
+      const result = await session.withTransaction(async () => {
         const [order, catalogue] = await Promise.all([
           this.workOrdersModel
             .findOne({
@@ -736,6 +774,7 @@ export class TechnicianService {
           })
           .then((rows) => rows[0]);
       });
+      return toTechnicianPartResponse(result);
     } finally {
       await session.endSession();
     }
@@ -751,7 +790,10 @@ export class TechnicianService {
    * let the performer validate themselves. This mirrors how an Operator's
    * own submission already works — never straight to a terminal status.
    */
-  async close(technicianId: string, workOrderId: string) {
+  async close(
+    technicianId: string,
+    workOrderId: string,
+  ): Promise<WorkOrderResponse> {
     const id = this.objectId(workOrderId, 'work order');
     const report =
       await this.workOrderLifecycleService.requireInterventionReport(
@@ -773,7 +815,7 @@ export class TechnicianService {
       referenceId: report._id.toString(),
     });
 
-    return updated;
+    return toWorkOrderResponse(updated);
   }
 
   private referenceId(value: unknown): Types.ObjectId | undefined {

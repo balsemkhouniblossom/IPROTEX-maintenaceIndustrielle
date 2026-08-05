@@ -4,9 +4,6 @@ import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { WorkOrdersQueryDto } from './dto/work-orders-query.dto';
 import { PaginatedResponse } from '../common/pagination';
-import { InterventionReportDocument } from '../schemas/intervention-report.schema';
-import { LubrificationLogDocument } from '../schemas/lubrification-log.schema';
-import { PartRequestDocument } from '../schemas/part-request.schema';
 import { SchedulerJobContext } from '../scheduler/scheduler.types';
 import { WorkOrderQueryService } from './services/work-order-query.service';
 import {
@@ -42,7 +39,10 @@ import {
   WorkOrderOperatorCommandService,
 } from './services/work-order-operator-command.service';
 import { WorkOrderKpiService } from './services/work-order-kpi.service';
-import { toWorkOrderResponseOrNull } from './contracts/work-order-response.mapper';
+import {
+  toWorkOrderResponse,
+  toWorkOrderResponseOrNull,
+} from './contracts/work-order-response.mapper';
 import {
   WorkOrderResponse,
   WorkOrderSchedulingResultResponse,
@@ -54,6 +54,16 @@ import {
   WorkOrderStatisticsResponse,
 } from './contracts/work-order-dashboard-response.types';
 import { CorrectiveAssistantResponse } from './contracts/work-order-assistant-response.types';
+import { toPartRequestResponse } from './contracts/part-request-response.mapper';
+import { PartRequestResponse } from './contracts/part-request-response.types';
+import { toLubricationLogResponseOrNull } from './contracts/lubrication-log-response.mapper';
+import {
+  toInterventionReportResponse,
+} from '../common/response/intervention-report-response';
+import {
+  CorrectiveReportForOperatorResponse,
+  PreventiveSubmissionForOperatorResponse,
+} from './contracts/operator-workflow-response.types';
 
 export type { CalendarEventRow };
 export type { WorkOrderResponse, WorkOrderSchedulingResultResponse };
@@ -169,10 +179,17 @@ export class WorkOrdersService {
     return this.dashboardQueryService.getMachinePreventiveStates(machineId);
   }
 
-  async scheduleFirstPreventiveOccurrence(input: PreventiveScheduleInput) {
-    return this.preventiveSchedulingService.scheduleFirstPreventiveOccurrence(
-      input,
-    );
+  async scheduleFirstPreventiveOccurrence(
+    input: PreventiveScheduleInput,
+  ): Promise<WorkOrderSchedulingResultResponse> {
+    const result =
+      await this.preventiveSchedulingService.scheduleFirstPreventiveOccurrence(
+        input,
+      );
+    return {
+      occurrence: toWorkOrderResponseOrNull(result.occurrence),
+      schedulingState: result.schedulingState,
+    };
   }
 
   /**
@@ -219,12 +236,14 @@ export class WorkOrdersService {
    */
   async createCorrectiveReportForOperator(
     input: CorrectiveReportForOperatorInput,
-  ): Promise<{
-    workOrder: WorkOrderDocument;
-    report: InterventionReportDocument;
-    duplicate: boolean;
-  }> {
-    return this.reportService.createCorrectiveReportForOperator(input);
+  ): Promise<CorrectiveReportForOperatorResponse> {
+    const result =
+      await this.reportService.createCorrectiveReportForOperator(input);
+    return {
+      workOrder: toWorkOrderResponse(result.workOrder),
+      report: toInterventionReportResponse(result.report),
+      duplicate: result.duplicate,
+    };
   }
 
   /**
@@ -234,12 +253,14 @@ export class WorkOrdersService {
    */
   async submitPreventiveMaintenanceForOperator(
     input: SubmitPreventiveMaintenanceInput,
-  ): Promise<{
-    workOrder: WorkOrderDocument;
-    report: InterventionReportDocument;
-    lubricationLog: LubrificationLogDocument | null;
-  }> {
-    return this.reportService.submitPreventiveMaintenanceForOperator(input);
+  ): Promise<PreventiveSubmissionForOperatorResponse> {
+    const result =
+      await this.reportService.submitPreventiveMaintenanceForOperator(input);
+    return {
+      workOrder: toWorkOrderResponse(result.workOrder),
+      report: toInterventionReportResponse(result.report),
+      lubricationLog: toLubricationLogResponseOrNull(result.lubricationLog),
+    };
   }
 
   /**
@@ -249,8 +270,9 @@ export class WorkOrdersService {
    */
   async requestPartsForOperator(
     input: PartRequestForOperatorInput,
-  ): Promise<PartRequestDocument> {
-    return this.partsService.requestPartsForOperator(input);
+  ): Promise<PartRequestResponse> {
+    const request = await this.partsService.requestPartsForOperator(input);
+    return toPartRequestResponse(request);
   }
 
   /**
@@ -260,8 +282,9 @@ export class WorkOrdersService {
    */
   async decidePartRequest(
     input: DecidePartRequestInput,
-  ): Promise<PartRequestDocument> {
-    return this.partsService.decidePartRequest(input);
+  ): Promise<PartRequestResponse> {
+    const request = await this.partsService.decidePartRequest(input);
+    return toPartRequestResponse(request);
   }
 
   /**
@@ -329,8 +352,10 @@ export class WorkOrdersService {
    */
   async startWorkOrderForOperator(
     scope: OperatorCalendarScope,
-  ): Promise<WorkOrderDocument> {
-    return this.operatorCommandService.startWorkOrderForOperator(scope);
+  ): Promise<WorkOrderResponse> {
+    const workOrder =
+      await this.operatorCommandService.startWorkOrderForOperator(scope);
+    return toWorkOrderResponse(workOrder);
   }
 
   /**
@@ -340,8 +365,10 @@ export class WorkOrdersService {
    */
   async completeWorkOrderForOperator(
     scope: OperatorCalendarScope,
-  ): Promise<WorkOrderDocument> {
-    return this.operatorCommandService.completeWorkOrderForOperator(scope);
+  ): Promise<WorkOrderResponse> {
+    const workOrder =
+      await this.operatorCommandService.completeWorkOrderForOperator(scope);
+    return toWorkOrderResponse(workOrder);
   }
 
   /**
@@ -354,8 +381,13 @@ export class WorkOrdersService {
     workOrderId: string;
     newDueDate: string;
     reason: string;
-  }) {
-    return this.operatorCommandService.rescheduleWorkOrderForOperator(input);
+  }): Promise<WorkOrderSchedulingResultResponse> {
+    const result =
+      await this.operatorCommandService.rescheduleWorkOrderForOperator(input);
+    return {
+      occurrence: toWorkOrderResponseOrNull(result.occurrence),
+      schedulingState: result.schedulingState,
+    };
   }
 
   /**

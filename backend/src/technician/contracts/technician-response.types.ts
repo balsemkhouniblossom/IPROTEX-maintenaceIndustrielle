@@ -1,20 +1,21 @@
 import { InterventionReportResponse } from '../../common/response/intervention-report-response';
-import { OTPiecesDocument } from '../../schemas/ot-pieces.schema';
-import { StockDocument } from '../../schemas/stock.schema';
-import { DocumentDocument } from '../../schemas/document.schema';
+import { StockResponse } from '../../common/response/catalogue-response';
+import { DocumentSummaryResponse } from '../../common/response/document-response';
 import { WorkOrderResponse } from '../../work-orders/contracts/work-order-response.types';
+import { CatalogueSummaryResponse } from '../../common/response/catalogue-response';
 
-/**
- * `parts`/`stock` keep their raw populated-document shape (Catalogue has no
- * sensitive fields to hide, unlike User) rather than a dedicated mapper —
- * only `workOrder`/`report` go through the shared response contracts
- * because those are the fields with a populated-User-ref sensitivity
- * concern.
- */
+/** The actual serialized shape of an OTPieces row — `part_id` is a plain ObjectId string on endpoints that don't populate it and a `CatalogueSummaryResponse` on endpoints that do. */
+export interface TechnicianPartResponse {
+  _id: string;
+  ot_id: string;
+  part_id: string | CatalogueSummaryResponse;
+  quantite: number;
+}
+
 export interface TechnicianWorkOrderDetailResponse {
   workOrder: WorkOrderResponse;
   report: InterventionReportResponse | null;
-  parts: OTPiecesDocument[];
-  stock: StockDocument[];
-  manuals: DocumentDocument[];
+  parts: TechnicianPartResponse[];
+  stock: StockResponse[];
+  manuals: DocumentSummaryResponse[];
 }

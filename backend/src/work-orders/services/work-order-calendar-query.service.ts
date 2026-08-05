@@ -33,7 +33,10 @@ import { User, UserDocument } from '../../schemas/user.schema';
 import { OTPieces, OTPiecesDocument } from '../../schemas/ot-pieces.schema';
 import { MaintenanceSchedulingService } from '../maintenance-scheduling.service';
 import { WorkOrderReportService } from './work-order-report.service';
-import { serializeDate } from '../../common/response/serialization.util';
+import {
+  asPopulatedDoc,
+  serializeDate,
+} from '../../common/response/serialization.util';
 
 export type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -381,11 +384,9 @@ export class WorkOrderCalendarQueryService {
         id: machine?._id?.toString() || machineId,
         code:
           machine?.machine_id ||
-          (typeof workOrder.machine_id === 'object' &&
-          'machine_id' in workOrder.machine_id
-            ? (workOrder.machine_id as unknown as { machine_id?: string })
-                .machine_id || ''
-            : ''),
+          asPopulatedDoc<{ machine_id?: string }>(workOrder.machine_id)
+            ?.machine_id ||
+          '',
         model: machine?.model,
       },
       machineType: {
@@ -395,17 +396,11 @@ export class WorkOrderCalendarQueryService {
       module: {
         id: this.objectIdString(workOrder.module_id),
         code:
-          typeof workOrder.module_id === 'object' &&
-          'module_id' in workOrder.module_id
-            ? (workOrder.module_id as unknown as { module_id?: string })
-                .module_id || ''
-            : '',
+          asPopulatedDoc<{ module_id?: string }>(workOrder.module_id)
+            ?.module_id || '',
         location:
-          typeof workOrder.module_id === 'object' &&
-          'localisation' in workOrder.module_id
-            ? (workOrder.module_id as unknown as { localisation?: string })
-                .localisation || ''
-            : '',
+          asPopulatedDoc<{ localisation?: string }>(workOrder.module_id)
+            ?.localisation || '',
       },
       maintenanceType: workOrder.type_maintenance || 'preventive',
       description: workOrder.description || plan?.instruction || '',
@@ -417,21 +412,16 @@ export class WorkOrderCalendarQueryService {
       assignedOperator: {
         id: this.objectIdString(workOrder.technician_id),
         name:
-          typeof workOrder.technician_id === 'object' &&
-          'nom_complet' in workOrder.technician_id
-            ? (workOrder.technician_id as unknown as { nom_complet?: string })
-                .nom_complet || ''
-            : '',
+          asPopulatedDoc<{ nom_complet?: string }>(workOrder.technician_id)
+            ?.nom_complet || '',
       },
       currentStatus: workOrder.status,
       spareParts: otPieces.map((piece) => ({
         id: piece._id.toString(),
         quantity: piece.quantite,
         name:
-          typeof piece.part_id === 'object' && 'nom_piece' in piece.part_id
-            ? (piece.part_id as unknown as { nom_piece?: string }).nom_piece ||
-              'Unknown'
-            : 'Unknown',
+          asPopulatedDoc<{ nom_piece?: string }>(piece.part_id)?.nom_piece ||
+          'Unknown',
       })),
       manuals: documentation
         .filter((doc) => this.isMaintenanceDocumentType(doc.type_document))
@@ -693,12 +683,9 @@ export class WorkOrderCalendarQueryService {
             this.objectIdString(workOrder.machine_id),
           code:
             machine?.machine_id ||
-            (workOrder.machine_id &&
-            typeof workOrder.machine_id === 'object' &&
-            'machine_id' in workOrder.machine_id
-              ? (workOrder.machine_id as unknown as { machine_id?: string })
-                  .machine_id || ''
-              : ''),
+            asPopulatedDoc<{ machine_id?: string }>(workOrder.machine_id)
+              ?.machine_id ||
+            '',
           model: machine?.model,
           typeId: this.objectIdString(machineType) || machineTypeId,
           typeName: machineType?.name,

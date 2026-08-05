@@ -594,7 +594,12 @@ describe('TechnicianService.setPartQuantity', () => {
       create: jest
         .fn()
         .mockResolvedValue([
-          { ot_id: workOrderId, part_id: partId, quantite: 4 },
+          {
+            _id: new Types.ObjectId(),
+            ot_id: workOrderId,
+            part_id: partId,
+            quantite: 4,
+          },
         ]),
     };
     stockModel = {
@@ -703,9 +708,9 @@ describe('TechnicianService.setPartQuantity', () => {
       { session },
     );
     expect(session.endSession).toHaveBeenCalled();
-    expect(result).toEqual({
-      ot_id: workOrderId,
-      part_id: partId,
+    expect(result).toMatchObject({
+      ot_id: workOrderId.toString(),
+      part_id: partId.toString(),
       quantite: 4,
     });
   });

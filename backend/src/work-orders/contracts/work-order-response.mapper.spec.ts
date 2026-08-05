@@ -119,7 +119,7 @@ describe('toWorkOrderResponse', () => {
     const response = toWorkOrderResponse(doc);
 
     expect(response.date_created).toBe(doc.date_created.toISOString());
-    expect(response.date_start).toBe(doc.date_start!.toISOString());
+    expect(response.date_start).toBe(doc.date_start.toISOString());
     expect(typeof response.date_created).toBe('string');
   });
 

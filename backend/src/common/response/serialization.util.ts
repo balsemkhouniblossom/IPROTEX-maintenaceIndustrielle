@@ -85,3 +85,22 @@ export function readTimestamps(doc: unknown): MongooseTimestamps {
 export function readPopulatedField<T>(ref: unknown): T | undefined {
   return ref as T | undefined;
 }
+
+/**
+ * Distinguishes the four real shapes a `.populate(...)`-able ref can be in
+ * memory — an un-populated `ObjectId`, an already-serialized id string, a
+ * populated sub-document, or `null`/missing — and returns the populated
+ * document typed as `T` only in that last case. Replaces the
+ * `typeof x === 'object' && 'field' in x ? (x as unknown as {...}).field :
+ * fallback` duck-typing pattern with one named, reusable type guard: callers
+ * read a single field off a ref that may or may not have been populated via
+ * `asPopulatedDoc<Shape>(ref)?.field ?? fallback`, without ever asserting a
+ * shape onto a bare ObjectId.
+ */
+export function asPopulatedDoc<T>(
+  ref: unknown,
+): T | undefined {
+  if (ref === null || ref === undefined) return undefined;
+  if (isObjectIdRef(ref) || typeof ref === 'string') return undefined;
+  return ref as T;
+}

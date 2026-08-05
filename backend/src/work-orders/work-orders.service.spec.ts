@@ -269,17 +269,34 @@ describe('WorkOrdersService facade delegation', () => {
       scheduledDate: '2026-08-02',
       operatorId: 'operator',
     };
+    const machineId = new Types.ObjectId();
+    const occurrenceId = new Types.ObjectId();
     const expected = {
-      occurrence: { _id: 'wo' },
+      occurrence: {
+        _id: occurrenceId,
+        ot_id: 'WO-PREV-000001',
+        machine_id: machineId,
+        status: 'scheduled',
+        date_created: new Date('2026-08-01T00:00:00.000Z'),
+        lifecycle_history: [],
+      },
       schedulingState: 'scheduled',
     };
     preventiveSchedulingService.scheduleFirstPreventiveOccurrence.mockResolvedValue(
       expected,
     );
 
-    await expect(
-      service.scheduleFirstPreventiveOccurrence(input),
-    ).resolves.toBe(expected);
+    const result = await service.scheduleFirstPreventiveOccurrence(input);
+
+    expect(result).toMatchObject({
+      occurrence: {
+        _id: occurrenceId.toString(),
+        ot_id: 'WO-PREV-000001',
+        machine_id: machineId.toString(),
+        status: 'scheduled',
+      },
+      schedulingState: 'scheduled',
+    });
     expect(
       preventiveSchedulingService.scheduleFirstPreventiveOccurrence,
     ).toHaveBeenCalledWith(input);
@@ -326,12 +343,35 @@ describe('WorkOrdersService facade delegation', () => {
       codePanne: 'F1',
       actions: ['reset'],
     };
-    const expected = { workOrder: {}, report: {}, duplicate: false };
+    const workOrderId = new Types.ObjectId();
+    const reportId = new Types.ObjectId();
+    const reportOtId = new Types.ObjectId();
+    const expected = {
+      workOrder: {
+        _id: workOrderId,
+        ot_id: 'WO-COR-000001',
+        status: 'waiting_validation',
+        date_created: new Date('2026-08-01T00:00:00.000Z'),
+        lifecycle_history: [],
+      },
+      report: {
+        _id: reportId,
+        report_id: 'REP-000001',
+        ot_id: reportOtId,
+        date_debut: new Date('2026-08-01T00:00:00.000Z'),
+        date_fin: new Date('2026-08-01T00:00:00.000Z'),
+      },
+      duplicate: false,
+    };
     reportService.createCorrectiveReportForOperator.mockResolvedValue(expected);
 
-    await expect(
-      service.createCorrectiveReportForOperator(input),
-    ).resolves.toBe(expected);
+    const result = await service.createCorrectiveReportForOperator(input);
+
+    expect(result).toMatchObject({
+      workOrder: { _id: workOrderId.toString(), status: 'waiting_validation' },
+      report: { _id: reportId.toString(), report_id: 'REP-000001' },
+      duplicate: false,
+    });
     expect(
       reportService.createCorrectiveReportForOperator,
     ).toHaveBeenCalledWith(input);
@@ -344,14 +384,37 @@ describe('WorkOrdersService facade delegation', () => {
       tasksCompleted: ['check'],
       condition: 'good',
     };
-    const expected = { workOrder: {}, report: {}, lubricationLog: null };
+    const workOrderId = new Types.ObjectId();
+    const reportId = new Types.ObjectId();
+    const reportOtId = new Types.ObjectId();
+    const expected = {
+      workOrder: {
+        _id: workOrderId,
+        ot_id: 'WO-PREV-000001',
+        status: 'waiting_validation',
+        date_created: new Date('2026-08-01T00:00:00.000Z'),
+        lifecycle_history: [],
+      },
+      report: {
+        _id: reportId,
+        report_id: 'REP-000002',
+        ot_id: reportOtId,
+        date_debut: new Date('2026-08-01T00:00:00.000Z'),
+        date_fin: new Date('2026-08-01T00:00:00.000Z'),
+      },
+      lubricationLog: null,
+    };
     reportService.submitPreventiveMaintenanceForOperator.mockResolvedValue(
       expected,
     );
 
-    await expect(
-      service.submitPreventiveMaintenanceForOperator(input),
-    ).resolves.toBe(expected);
+    const result = await service.submitPreventiveMaintenanceForOperator(input);
+
+    expect(result).toMatchObject({
+      workOrder: { _id: workOrderId.toString(), status: 'waiting_validation' },
+      report: { _id: reportId.toString(), report_id: 'REP-000002' },
+      lubricationLog: null,
+    });
     expect(
       reportService.submitPreventiveMaintenanceForOperator,
     ).toHaveBeenCalledWith(input);
@@ -364,12 +427,27 @@ describe('WorkOrdersService facade delegation', () => {
       partId: 'part',
       quantity: 1,
     };
-    const expected = { _id: 'pr-1' };
+    const requestId = new Types.ObjectId();
+    const expected = {
+      _id: requestId,
+      request_id: 'PR-000001',
+      ot_id: new Types.ObjectId(),
+      part_id: new Types.ObjectId(),
+      quantity: 1,
+      requested_by: new Types.ObjectId(),
+      status: 'pending',
+      requested_at: new Date('2026-08-01T00:00:00.000Z'),
+    };
     partsService.requestPartsForOperator.mockResolvedValue(expected);
 
-    await expect(service.requestPartsForOperator(input)).resolves.toBe(
-      expected,
-    );
+    const result = await service.requestPartsForOperator(input);
+
+    expect(result).toMatchObject({
+      _id: requestId.toString(),
+      request_id: 'PR-000001',
+      quantity: 1,
+      status: 'pending',
+    });
     expect(partsService.requestPartsForOperator).toHaveBeenCalledWith(input);
   });
 
@@ -379,10 +457,26 @@ describe('WorkOrdersService facade delegation', () => {
       decision: 'approve' as const,
       deciderId: 'admin',
     };
-    const expected = { _id: 'pr-1', status: 'reserved' };
+    const requestId = new Types.ObjectId();
+    const expected = {
+      _id: requestId,
+      request_id: 'PR-000002',
+      ot_id: new Types.ObjectId(),
+      part_id: new Types.ObjectId(),
+      quantity: 2,
+      requested_by: new Types.ObjectId(),
+      status: 'reserved',
+      requested_at: new Date('2026-08-01T00:00:00.000Z'),
+    };
     partsService.decidePartRequest.mockResolvedValue(expected);
 
-    await expect(service.decidePartRequest(input)).resolves.toBe(expected);
+    const result = await service.decidePartRequest(input);
+
+    expect(result).toMatchObject({
+      _id: requestId.toString(),
+      request_id: 'PR-000002',
+      status: 'reserved',
+    });
     expect(partsService.decidePartRequest).toHaveBeenCalledWith(input);
   });
 
@@ -460,14 +554,24 @@ describe('WorkOrdersService facade delegation', () => {
 
   it('startWorkOrderForOperator delegates to WorkOrderOperatorCommandService', async () => {
     const scope = { operatorId: 'op', workOrderId: 'wo' };
-    const expected = { _id: 'wo', status: 'in_progress' };
+    const workOrderId = new Types.ObjectId();
+    const expected = {
+      _id: workOrderId,
+      ot_id: 'WO-COR-000001',
+      status: 'in_progress',
+      date_created: new Date('2026-08-01T00:00:00.000Z'),
+      lifecycle_history: [],
+    };
     operatorCommandService.startWorkOrderForOperator.mockResolvedValue(
       expected,
     );
 
-    await expect(service.startWorkOrderForOperator(scope)).resolves.toBe(
-      expected,
-    );
+    const result = await service.startWorkOrderForOperator(scope);
+
+    expect(result).toMatchObject({
+      _id: workOrderId.toString(),
+      status: 'in_progress',
+    });
     expect(
       operatorCommandService.startWorkOrderForOperator,
     ).toHaveBeenCalledWith(scope);
@@ -475,14 +579,24 @@ describe('WorkOrdersService facade delegation', () => {
 
   it('completeWorkOrderForOperator delegates to WorkOrderOperatorCommandService', async () => {
     const scope = { operatorId: 'op', workOrderId: 'wo' };
-    const expected = { _id: 'wo', status: 'waiting_validation' };
+    const workOrderId = new Types.ObjectId();
+    const expected = {
+      _id: workOrderId,
+      ot_id: 'WO-COR-000001',
+      status: 'waiting_validation',
+      date_created: new Date('2026-08-01T00:00:00.000Z'),
+      lifecycle_history: [],
+    };
     operatorCommandService.completeWorkOrderForOperator.mockResolvedValue(
       expected,
     );
 
-    await expect(service.completeWorkOrderForOperator(scope)).resolves.toBe(
-      expected,
-    );
+    const result = await service.completeWorkOrderForOperator(scope);
+
+    expect(result).toMatchObject({
+      _id: workOrderId.toString(),
+      status: 'waiting_validation',
+    });
     expect(
       operatorCommandService.completeWorkOrderForOperator,
     ).toHaveBeenCalledWith(scope);
@@ -495,14 +609,27 @@ describe('WorkOrdersService facade delegation', () => {
       newDueDate: '2026-08-01T00:00:00.000Z',
       reason: 'unavailable',
     };
-    const expected = { occurrence: {}, schedulingState: 'scheduled' };
+    const occurrenceId = new Types.ObjectId();
+    const expected = {
+      occurrence: {
+        _id: occurrenceId,
+        ot_id: 'WO-PREV-000001',
+        status: 'scheduled',
+        date_created: new Date('2026-08-01T00:00:00.000Z'),
+        lifecycle_history: [],
+      },
+      schedulingState: 'scheduled',
+    };
     operatorCommandService.rescheduleWorkOrderForOperator.mockResolvedValue(
       expected,
     );
 
-    await expect(service.rescheduleWorkOrderForOperator(input)).resolves.toBe(
-      expected,
-    );
+    const result = await service.rescheduleWorkOrderForOperator(input);
+
+    expect(result).toMatchObject({
+      occurrence: { _id: occurrenceId.toString(), status: 'scheduled' },
+      schedulingState: 'scheduled',
+    });
     expect(
       operatorCommandService.rescheduleWorkOrderForOperator,
     ).toHaveBeenCalledWith(input);

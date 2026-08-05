@@ -57,27 +57,27 @@ void _reportMapperOutput;
 // --- Controller return type matches its service's declared return type ----
 const _createMatches: WorkOrdersController['create'] = (
   null as unknown as WorkOrdersService
-).create.bind(null as unknown as WorkOrdersService);
+).create.bind(null);
 void _createMatches;
 
 const _findOneMatches: WorkOrdersController['findOne'] = (
   null as unknown as WorkOrdersService
-).findOne.bind(null as unknown as WorkOrdersService);
+).findOne.bind(null);
 void _findOneMatches;
 
 const _machineCreateMatches: MachinesController['create'] = (
   null as unknown as MachinesService
-).create.bind(null as unknown as MachinesService);
+).create.bind(null);
 void _machineCreateMatches;
 
 const _machineFindOneMatches: MachinesController['findOne'] = (
   null as unknown as MachinesService
-).findOne.bind(null as unknown as MachinesService);
+).findOne.bind(null);
 void _machineFindOneMatches;
 
 const _machineTypeFindOneMatches: MachineTypesController['findOne'] = (
   null as unknown as MachineTypesService
-).findOne.bind(null as unknown as MachineTypesService);
+).findOne.bind(null);
 void _machineTypeFindOneMatches;
 
 // --- No `any` leaks into the public response contracts ---------------------

@@ -28,7 +28,7 @@ import { Role } from '../schemas/user.schema';
 import { DecidePartRequestDto } from './dto/decide-part-request.dto';
 import { ValidateWorkOrderDto } from './dto/validate-work-order.dto';
 import { RescheduleWorkOrderDto } from './dto/reschedule-work-order.dto';
-import { PartRequestDocument } from '../schemas/part-request.schema';
+import { PartRequestResponse } from './contracts/part-request-response.types';
 import {
   WorkOrderResponse,
   WorkOrderSchedulingResultResponse,
@@ -91,7 +91,7 @@ export class WorkOrdersController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: DecidePartRequestDto,
-  ): Promise<PartRequestDocument> {
+  ): Promise<PartRequestResponse> {
     const deciderId = req.user?.userId;
     if (!deciderId) {
       throw new ForbiddenException('Missing authenticated user');

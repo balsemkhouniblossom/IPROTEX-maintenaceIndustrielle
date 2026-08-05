@@ -1,6 +1,7 @@
 import { MachineDocument } from '../../schemas/machine.schema';
 import { MachineTypeDocument } from '../../schemas/machine-type.schema';
 import { ModuleDocument } from '../../schemas/module.schema';
+import { ModuleTypeDocument } from '../../schemas/module-type.schema';
 import { MaintenancePlanDocument } from '../../schemas/maintenance-plan.schema';
 import { Role } from '../../schemas/user.schema';
 import { mapPopulatedRef, serializeObjectId } from './serialization.util';
@@ -35,11 +36,20 @@ export interface MachineSummaryResponse {
   type_id?: string | MachineTypeSummaryResponse;
 }
 
+/** Mirrors the full `ModuleType` document — every `.populate('mod_type_id')` call site populates it unprojected. */
+export interface ModuleTypeSummaryResponse {
+  _id: string;
+  mod_type_id: string;
+  type_id?: string;
+  nom_module: string;
+  categorie_module?: string;
+}
+
 export interface ModuleSummaryResponse {
   _id: string;
   module_id: string;
   machine_id?: string | MachineSummaryResponse;
-  mod_type_id?: string;
+  mod_type_id?: string | ModuleTypeSummaryResponse;
   parent_module_id?: string;
   localisation?: string;
 }
@@ -111,6 +121,18 @@ export function toMachineSummary(
   };
 }
 
+export function toModuleTypeSummary(
+  doc: ModuleTypeDocument,
+): ModuleTypeSummaryResponse {
+  return {
+    _id: serializeObjectId(doc._id)!,
+    mod_type_id: doc.mod_type_id,
+    type_id: serializeObjectId(doc.type_id),
+    nom_module: doc.nom_module,
+    categorie_module: doc.categorie_module,
+  };
+}
+
 export function toModuleSummary(doc: ModuleDocument): ModuleSummaryResponse {
   return {
     _id: serializeObjectId(doc._id)!,
@@ -119,7 +141,14 @@ export function toModuleSummary(doc: ModuleDocument): ModuleSummaryResponse {
       doc.machine_id as unknown as MachineDocument | string | undefined | null,
       toMachineSummary,
     ),
-    mod_type_id: serializeObjectId(doc.mod_type_id),
+    mod_type_id: mapPopulatedRef(
+      doc.mod_type_id as unknown as
+        | ModuleTypeDocument
+        | string
+        | undefined
+        | null,
+      toModuleTypeSummary,
+    ),
     parent_module_id: serializeObjectId(doc.parent_module_id),
     localisation: doc.localisation,
   };

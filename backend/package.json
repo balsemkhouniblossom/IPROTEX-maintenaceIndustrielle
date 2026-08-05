@@ -23,6 +23,7 @@
     "work-orders:report-benchmark": "ts-node scripts/work-order-report-benchmark.ts",
     "work-orders:projections-benchmark": "ts-node scripts/work-order-projections-benchmark.ts",
     "work-orders:command-benchmark": "ts-node scripts/work-order-command-benchmark.ts",
+    "response-mapper-benchmark": "ts-node scripts/response-mapper-benchmark.ts",
     "scheduler:benchmark": "ts-node scripts/scheduler-benchmark.ts",
     "seed:lighthouse-users": "ts-node scripts/seed-lighthouse-users.ts",
     "import:braiding-maintenance": "node scripts/import-braiding-maintenance-plan.js",

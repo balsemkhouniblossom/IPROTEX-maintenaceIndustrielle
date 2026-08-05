@@ -19,14 +19,18 @@ import { ReviewWorkOrderDto } from './dto/review-work-order.dto';
 import { UpdateTechnicianReportDto } from './dto/update-technician-report.dto';
 import { SetPartQuantityDto } from './dto/set-part-quantity.dto';
 import { PaginatedResponse } from '../common/pagination';
-import { DocumentEntity } from '../schemas/document.schema';
-import { StockDocument } from '../schemas/stock.schema';
 import {
   TechnicianDashboardResponse,
   TechnicianWorkOrderView,
 } from './technician.service';
-import { TechnicianWorkOrderDetailResponse } from './contracts/technician-response.types';
+import {
+  TechnicianPartResponse,
+  TechnicianWorkOrderDetailResponse,
+} from './contracts/technician-response.types';
 import { InterventionReportResponse } from '../common/response/intervention-report-response';
+import { DocumentSummaryResponse } from '../common/response/document-response';
+import { StockResponse } from '../common/response/catalogue-response';
+import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
 
 interface TechnicianRequest extends Request {
   user?: { userId?: string; role?: string };
@@ -95,7 +99,7 @@ export class TechnicianController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('machineId') machineId?: string,
-  ): Promise<PaginatedResponse<DocumentEntity>> {
+  ): Promise<PaginatedResponse<DocumentSummaryResponse>> {
     const pagination = normalizePagination(page, limit, 20);
     return this.technicianService.manuals(
       this.technicianId(req),
@@ -109,7 +113,7 @@ export class TechnicianController {
     @Req() req: TechnicianRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-  ): Promise<PaginatedResponse<StockDocument>> {
+  ): Promise<PaginatedResponse<StockResponse>> {
     const pagination = normalizePagination(page, limit, 50);
     return this.technicianService.availableParts(
       this.technicianId(req),
@@ -118,7 +122,10 @@ export class TechnicianController {
   }
 
   @Patch('work-orders/:id/claim')
-  claim(@Req() req: TechnicianRequest, @Param('id') id: string) {
+  claim(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<WorkOrderResponse> {
     return this.technicianService.claim(this.technicianId(req), id);
   }
 
@@ -127,7 +134,7 @@ export class TechnicianController {
     @Req() req: TechnicianRequest,
     @Param('id') id: string,
     @Body() body: ReviewWorkOrderDto,
-  ) {
+  ): Promise<WorkOrderResponse | null> {
     return this.technicianService.review(
       this.technicianId(req),
       id,
@@ -136,17 +143,26 @@ export class TechnicianController {
   }
 
   @Patch('work-orders/:id/start')
-  start(@Req() req: TechnicianRequest, @Param('id') id: string) {
+  start(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<WorkOrderResponse> {
     return this.technicianService.start(this.technicianId(req), id);
   }
 
   @Patch('work-orders/:id/waiting-parts')
-  waitingParts(@Req() req: TechnicianRequest, @Param('id') id: string) {
+  waitingParts(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<WorkOrderResponse> {
     return this.technicianService.waitingParts(this.technicianId(req), id);
   }
 
   @Patch('work-orders/:id/resume')
-  resume(@Req() req: TechnicianRequest, @Param('id') id: string) {
+  resume(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<WorkOrderResponse> {
     return this.technicianService.resume(this.technicianId(req), id);
   }
 
@@ -169,7 +185,7 @@ export class TechnicianController {
     @Req() req: TechnicianRequest,
     @Param('id') id: string,
     @Body() body: SetPartQuantityDto,
-  ) {
+  ): Promise<TechnicianPartResponse> {
     return this.technicianService.setPartQuantity(
       this.technicianId(req),
       id,
@@ -179,7 +195,10 @@ export class TechnicianController {
   }
 
   @Patch('work-orders/:id/close')
-  close(@Req() req: TechnicianRequest, @Param('id') id: string) {
+  close(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<WorkOrderResponse> {
     return this.technicianService.close(this.technicianId(req), id);
   }
 }
