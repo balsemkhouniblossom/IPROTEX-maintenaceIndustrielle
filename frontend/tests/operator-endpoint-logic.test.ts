@@ -84,8 +84,19 @@ test("apiService exposes the scoped Operator corrective-report endpoint with no 
 });
 
 test("Preventive page submits through the single scoped Operator preventive-submission endpoint only", () => {
-  const relativePath = "src/app/[locale]/operator/preventive/page.tsx";
+  // The submission call now lives in usePreventiveSubmission.ts (the page
+  // was decomposed into hooks/components) — the positive assertion targets
+  // that hook directly; the negative "never calls X" assertions scan the
+  // whole feature directory so a forbidden call couldn't hide in any
+  // extracted file either.
+  const relativePath = "src/app/[locale]/operator/preventive/hooks/usePreventiveSubmission.ts";
   const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const featureDir = path.join(process.cwd(), "src/app/[locale]/operator/preventive");
+  const featureFiles = fs.readdirSync(featureDir, { recursive: true }) as string[];
+  const featureSource = featureFiles
+    .filter((file) => /\.tsx?$/.test(file))
+    .map((file) => fs.readFileSync(path.join(featureDir, file), "utf8"))
+    .join("\n---\n");
 
   assert.match(
     source,
@@ -93,24 +104,24 @@ test("Preventive page submits through the single scoped Operator preventive-subm
     `${relativePath} must submit through apiService.submitOperatorPreventiveMaintenance`,
   );
   assert.doesNotMatch(
-    source,
+    featureSource,
     /apiService\.createWorkOrder\(/,
-    `${relativePath} must not call the Admin-only /work-orders endpoint directly`,
+    "the operator preventive feature must not call the Admin-only /work-orders endpoint directly",
   );
   assert.doesNotMatch(
-    source,
+    featureSource,
     /apiService\.createInterventionReport\(/,
-    `${relativePath} must not call the Admin-only /intervention-reports endpoint directly`,
+    "the operator preventive feature must not call the Admin-only /intervention-reports endpoint directly",
   );
   assert.doesNotMatch(
-    source,
+    featureSource,
     /apiService\.createLubrificationLog\(/,
-    `${relativePath} must not call the Admin-only /lubrification-logs endpoint directly`,
+    "the operator preventive feature must not call the Admin-only /lubrification-logs endpoint directly",
   );
   assert.doesNotMatch(
-    source,
+    featureSource,
     /technician_id\s*:\s*user\??\.\s*_id/,
-    `${relativePath} must not send a client-supplied technician/author id`,
+    "the operator preventive feature must not send a client-supplied technician/author id",
   );
 });
 
@@ -247,20 +258,41 @@ test("Smart maintenance calendar is organized around the operator's next task ac
   assert.doesNotMatch(source, /timelineView/);
 });
 
-test("Preventive page reschedules through the single scoped Operator calendar endpoint only", () => {
-  const relativePath = "src/app/[locale]/operator/preventive/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+// The "Preventive page reschedules through the single scoped Operator
+// calendar endpoint only" test that used to live here was removed during
+// the page's decomposition. Investigation found `rescheduleOccurrence` /
+// `setRescheduleOccurrence` were only ever assigned `null` — no reachable
+// control in the UI ever opened that modal, so the reschedule handler and
+// its call to `apiService.rescheduleMyCalendarEvent` were unreachable dead
+// code and have been deleted along with the modal. The endpoint itself
+// isn't orphaned: `rescheduleMyCalendarEvent`'s route/shape is still
+// covered independently by the "apiService exposes the scoped Operator
+// calendar endpoints..." test in list-pages-migration-logic.test.ts, which
+// asserts against src/services/api.ts directly rather than against a caller.
+test("the operator preventive feature has no unreachable schedule/reschedule modal state left behind", () => {
+  const featureDir = path.join(process.cwd(), "src/app/[locale]/operator/preventive");
+  const featureFiles = fs.readdirSync(featureDir, { recursive: true }) as string[];
+  const featureSource = featureFiles
+    .filter((file) => /\.tsx?$/.test(file))
+    .map((file) => fs.readFileSync(path.join(featureDir, file), "utf8"))
+    .join("\n---\n");
 
-  assert.match(
-    source,
-    /apiService\.rescheduleMyCalendarEvent\(/,
-    `${relativePath} must reschedule through apiService.rescheduleMyCalendarEvent`,
-  );
-  assert.doesNotMatch(
-    source,
-    /apiService\.rescheduleWorkOrder\(/,
-    `${relativePath} must not call the Admin-only /work-orders/:id/reschedule endpoint directly`,
-  );
+  for (const removedIdentifier of [
+    "schedulePlan",
+    "setSchedulePlan",
+    "rescheduleOccurrence",
+    "setRescheduleOccurrence",
+    "createFirstSchedule",
+    "rescheduleSelectedOccurrence",
+    "ScheduleFirstInterventionModal",
+    "RescheduleOccurrenceModal",
+  ]) {
+    assert.doesNotMatch(
+      featureSource,
+      new RegExp(removedIdentifier),
+      `the operator preventive feature must not reference the removed dead schedule/reschedule identifier: ${removedIdentifier}`,
+    );
+  }
 });
 
 test("apiService exposes the scoped Operator calendar endpoints pointing at /operator/calendar/*, not /work-orders/calendar/*", () => {
@@ -424,6 +456,12 @@ test("Operator maintenance forms opt into readable dark-mode text mapping", () =
     path.join(process.cwd(), "src/app/[locale]/operator/preventive/page.tsx"),
     "utf8",
   );
+  // The preventive page's report-details dialog body (which carries the
+  // "space-y-5" wrapper) was extracted into its own presentational component.
+  const preventiveReportDetailsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/preventive/components/ReportDetailsContent.tsx"),
+    "utf8",
+  );
   const globalsSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/globals.css"),
     "utf8",
@@ -432,7 +470,7 @@ test("Operator maintenance forms opt into readable dark-mode text mapping", () =
   assert.match(correctiveSource, /operator-dashboard-theme bento-grid/);
   assert.match(correctiveSource, /operator-dashboard-theme space-y-5/);
   assert.match(preventiveSource, /operator-dashboard-theme bento-grid/);
-  assert.match(preventiveSource, /operator-dashboard-theme space-y-5/);
+  assert.match(preventiveReportDetailsSource, /operator-dashboard-theme space-y-5/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-black/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-900/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-600/);

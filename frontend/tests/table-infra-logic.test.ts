@@ -17,6 +17,8 @@ const OFFLINE_BANNER = "src/components/OfflineBanner.tsx";
 const DASHBOARD_LAYOUT = "src/components/DashboardLayout.tsx";
 const STATUS_BADGE = "src/components/StatusBadge.tsx";
 const USERS_PAGE = "src/app/[locale]/users/page.tsx";
+const USERS_BULK_ACTIONS_HOOK = "src/app/[locale]/users/hooks/useBulkUserActions.ts";
+const USERS_SAVED_VIEWS_HOOK = "src/app/[locale]/users/hooks/useSavedUserViews.ts";
 const RESOURCE_CRUD_PAGE = "src/components/ResourceCrudPage.tsx";
 const MACHINE_TYPES_PAGE = "src/app/[locale]/machine-types/page.tsx";
 const MODULE_TYPES_PAGE = "src/app/[locale]/module-types/page.tsx";
@@ -184,28 +186,29 @@ test("apiService exposes saved-views CRUD and transactional bulk user approve/re
 });
 
 test("Users page wires bulk approve/reject with an optimistic update and a rollback on failure", () => {
-  const source = readSource(USERS_PAGE);
+  const hookSource = readSource(USERS_BULK_ACTIONS_HOOK);
 
-  assert.match(source, /apiService\.bulkApproveUsers\(ids\)/);
-  assert.match(source, /apiService\.bulkRejectUsers\(ids, trimmedReason\)/);
+  assert.match(hookSource, /apiService\.bulkApproveUsers\(ids\)/);
+  assert.match(hookSource, /apiService\.bulkRejectUsers\(ids, trimmedReason\)/);
   // Optimistic removal before the request resolves...
   assert.match(
-    source,
+    hookSource,
     /setItems\(\(prev\) => prev\.filter\(\(user\) => !selectedIds\.has\(getActionId\(user\)\)\)\);/,
   );
   // ...and rollback to the pre-mutation snapshot in the catch block.
-  assert.match(source, /setItems\(previousItems\);/);
-  // Bulk selection is scoped to the pending queue only.
-  assert.match(source, /selectable=\{isPending\}/);
+  assert.match(hookSource, /setItems\(previousItems\);/);
+  // Bulk selection is scoped to the pending queue only (still rendered in the page shell).
+  assert.match(readSource(USERS_PAGE), /selectable=\{isPending\}/);
 });
 
 test("Users page wires the SavedViewsBar to the users page-key and replays a saved query on apply", () => {
-  const source = readSource(USERS_PAGE);
+  const pageSource = readSource(USERS_PAGE);
+  const hookSource = readSource(USERS_SAVED_VIEWS_HOOK);
 
-  assert.match(source, /import \{ SavedViewsBar, SavedView \} from '@\/components\/SavedViewsBar';/);
-  assert.match(source, /apiService\.getSavedViews\('users'\)/);
-  assert.match(source, /pageKey: 'users'/);
-  assert.match(source, /function applySavedView\(view: SavedView\)/);
+  assert.match(pageSource, /import \{ SavedViewsBar \} from '@\/components\/SavedViewsBar';/);
+  assert.match(hookSource, /apiService\.getSavedViews\('users'\)/);
+  assert.match(hookSource, /pageKey: 'users'/);
+  assert.match(hookSource, /function applySavedView\(view: SavedView\)/);
 });
 
 test("all supported locales define the new common accessibility keys and users.savedViews/users.bulk namespaces with matching keys", () => {
