@@ -66,7 +66,7 @@ function DocumentAttachmentViewerInner({ document, title }: Props) {
     setFileLoading(true);
 
     api
-      .get(viewerUrl, { responseType: "blob" })
+      .get(viewerUrl, { responseType: "blob", timeout: 60000 })
       .then((response) => {
         if (!active) return;
         nextObjectUrl = URL.createObjectURL(response.data);

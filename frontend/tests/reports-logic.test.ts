@@ -44,7 +44,7 @@ test("apiService exposes the reports read, write, and schedule endpoints", () =>
   );
   assert.match(
     source,
-    /downloadReportFile:\s*\(id:\s*string\)\s*=>\s*\n?\s*api\.get\(`\/reports\/\$\{id\}\/download`,\s*\{\s*responseType:\s*'blob'\s*\}\)/,
+    /downloadReportFile:\s*\(id:\s*string\)\s*=>\s*\n?\s*api\.get\(`\/reports\/\$\{id\}\/download`,\s*\{[\s\S]*?responseType:\s*'blob'[\s\S]*?\}\)/,
     "apiService.downloadReportFile must GET /reports/:id/download as a blob",
   );
   assert.match(source, /getReportSchedules:\s*\(\)\s*=>\s*api\.get\('\/reports\/schedules'\)/);

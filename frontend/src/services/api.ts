@@ -20,9 +20,16 @@ if (typeof window === 'undefined') {
   void API_BASE_URL;
 }
 
+// Axios has no default timeout (0 = never times out). A hung backend
+// request previously left the UI spinning forever with no recovery path.
+// File upload/download endpoints override this with a longer budget below.
+const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const UPLOAD_REQUEST_TIMEOUT_MS = 60000;
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: DEFAULT_REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -58,15 +65,56 @@ api.interceptors.request.use(
 let refreshRequest: Promise<string> | null = null;
 let sessionExpirationRedirectStarted = false;
 
+// Bounded retry for idempotent GET requests only — a transient network
+// blip, timeout, or 5xx shouldn't strand a user who just needs the same
+// read repeated. POST/PATCH/PUT/DELETE are never retried here: retrying a
+// write after an ambiguous failure risks double-submitting it.
+const MAX_GET_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 500;
+
+function isIdempotentGetRequest(config: { method?: string } | undefined): boolean {
+  return (config?.method ?? '').toLowerCase() === 'get';
+}
+
+function isTransientError(error: {
+  response?: { status?: number };
+  code?: string;
+}): boolean {
+  if (!error.response) return true; // network error, CORS failure, or timeout
+  const status = error.response.status ?? 0;
+  return status >= 500 && status < 600;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (axios.isCancel(error)) {
       // Expected: useServerTable (and similar callers) abort an in-flight
       // request when filters/pagination change before it resolves. Not a
       // network failure, so don't scare the console or fire the
       // network-error UI event for it.
       return Promise.reject(error);
+    }
+
+    const retryConfig = error.config as
+      | (typeof error.config & { _getRetryCount?: number })
+      | undefined;
+
+    if (
+      retryConfig &&
+      isIdempotentGetRequest(retryConfig) &&
+      isTransientError(error)
+    ) {
+      const retryCount = retryConfig._getRetryCount ?? 0;
+      if (retryCount < MAX_GET_RETRIES) {
+        retryConfig._getRetryCount = retryCount + 1;
+        await wait(RETRY_BASE_DELAY_MS * 2 ** retryCount);
+        return api(retryConfig);
+      }
     }
 
     if (error.code === 'ERR_NETWORK' || !error.response) {
@@ -105,6 +153,7 @@ api.interceptors.response.use(
           {
             withCredentials: true,
             headers: getCsrfHeaders(),
+            timeout: DEFAULT_REQUEST_TIMEOUT_MS,
           },
         )
         .then((response) => {
@@ -229,6 +278,7 @@ export const apiService = {
   deleteUser: (id: string) => api.delete(`/users/${id}`),
   uploadPhoto(formData: FormData) {
     return api.post('/users/upload-photo', formData, {
+      timeout: UPLOAD_REQUEST_TIMEOUT_MS,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -238,6 +288,7 @@ export const apiService = {
     const formData = new FormData();
     formData.append('photo', file);
     return api.post('/users/upload-photo', formData, {
+      timeout: UPLOAD_REQUEST_TIMEOUT_MS,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -492,6 +543,7 @@ export const apiService = {
 
   uploadDocument: (formData: FormData) =>
     api.post('/documents/upload', formData, {
+      timeout: UPLOAD_REQUEST_TIMEOUT_MS,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -509,6 +561,7 @@ export const apiService = {
 
   replaceDocument: (id: string, formData: FormData) =>
     api.post(`/documents/${id}/replace`, formData, {
+      timeout: UPLOAD_REQUEST_TIMEOUT_MS,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -727,7 +780,10 @@ export const apiService = {
   // behind JwtAuthGuard and needs the Authorization header the axios
   // interceptor attaches — mirrors DocumentAttachmentViewer's pattern.
   downloadReportFile: (id: string) =>
-    api.get(`/reports/${id}/download`, { responseType: 'blob' }),
+    api.get(`/reports/${id}/download`, {
+      responseType: 'blob',
+      timeout: UPLOAD_REQUEST_TIMEOUT_MS,
+    }),
   getReportSchedules: () => api.get('/reports/schedules'),
   createReportSchedule: (data: {
     type: string;
