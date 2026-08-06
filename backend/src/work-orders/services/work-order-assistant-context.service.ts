@@ -33,15 +33,19 @@ export class WorkOrderAssistantContextService {
   async getCorrectiveAssistant(
     machineId?: string,
   ): Promise<CorrectiveAssistantResponse> {
-    const pannes = await this.panneModel.find().exec();
+    // Every field read below is via explicit `.map()`/`.filter()` into
+    // `CorrectiveAssistantResponse`'s plain shape, never saved back or
+    // passed through a schema's `toJSON` — safe to fetch as plain objects.
+    const pannes = await this.panneModel.find().lean().exec();
     const panneIds = pannes.map((item) => item._id);
     const solutions = await this.panneSolutionModel
       .find({ panne_id: { $in: panneIds } })
       .populate('panne_id')
+      .lean()
       .exec();
 
     const machineDocuments = machineId
-      ? await this.documentModel.find({ machine_id: machineId }).exec()
+      ? await this.documentModel.find({ machine_id: machineId }).lean().exec()
       : [];
 
     return {

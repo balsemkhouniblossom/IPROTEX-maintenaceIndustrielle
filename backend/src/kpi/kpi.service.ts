@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
@@ -105,6 +107,9 @@ function extractFacetCount(rows: FacetCountRow[] | undefined): number {
  * role's dashboard is asking or what timezone the server host happens to
  * be running in.
  */
+const ADMIN_DASHBOARD_CACHE_KEY = 'kpi:admin-dashboard';
+const ADMIN_DASHBOARD_CACHE_TTL_MS = 30_000;
+
 @Injectable()
 export class KpiService {
   constructor(
@@ -116,6 +121,7 @@ export class KpiService {
     private readonly machineModel: Model<MachineDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   private toMongoFilter(
@@ -530,13 +536,39 @@ export class KpiService {
   }
 
   /**
+   * `computeAdminDashboard()` below runs ten queries/aggregations across
+   * four collections on every call, with no per-caller variance (same
+   * result for every Admin) — so a short TTL cache here turns N concurrent
+   * dashboard loads into one real computation instead of N. This is the
+   * audit's flagged hot path; `WorkOrderDashboardQueryService` also calls
+   * this directly, so caching here benefits that call site too, not just
+   * this controller.
+   */
+  async getAdminDashboard() {
+    const cached = await this.cache.get<
+      Awaited<ReturnType<KpiService['computeAdminDashboard']>>
+    >(ADMIN_DASHBOARD_CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+
+    const result = await this.computeAdminDashboard();
+    await this.cache.set(
+      ADMIN_DASHBOARD_CACHE_KEY,
+      result,
+      ADMIN_DASHBOARD_CACHE_TTL_MS,
+    );
+    return result;
+  }
+
+  /**
    * Everything the Admin dashboard shows: fleet-wide work order status
    * counts and month-over-month volume, stock alerts, preventive
    * compliance, corrective response time, MTTR/MTBF/availability,
    * per-technician workload, and machine/user totals — all computed
    * fresh, all in parallel.
    */
-  async getAdminDashboard() {
+  private async computeAdminDashboard() {
     const now = new Date();
     const monthStart = businessTime.startOfBusinessMonth(now);
     const lastMonthStart = businessTime.addBusinessMonths(monthStart, -1);

@@ -2,7 +2,12 @@ import { Types } from 'mongoose';
 import { WorkOrderAssistantContextService } from './work-order-assistant-context.service';
 
 function execResult<T>(value: T) {
-  return { exec: jest.fn().mockResolvedValue(value) };
+  const chain = {
+    lean: jest.fn(),
+    exec: jest.fn().mockResolvedValue(value),
+  };
+  chain.lean.mockReturnValue(chain);
+  return chain;
 }
 
 function findChain<T>(value: T) {

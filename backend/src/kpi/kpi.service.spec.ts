@@ -39,6 +39,7 @@ describe('KpiService', () => {
   let stockModel: { find: jest.Mock };
   let machineModel: { countDocuments: jest.Mock };
   let userModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let cache: { get: jest.Mock; set: jest.Mock };
   let service: KpiService;
 
   beforeEach(() => {
@@ -53,12 +54,17 @@ describe('KpiService', () => {
       find: jest.fn().mockReturnValue(findChain([])),
       countDocuments: jest.fn().mockReturnValue(execResult(0)),
     };
+    cache = {
+      get: jest.fn().mockResolvedValue(undefined),
+      set: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new KpiService(
       workOrderModel as never,
       stockModel as never,
       machineModel as never,
       userModel as never,
+      cache as never,
     );
   });
 
@@ -493,6 +499,24 @@ describe('KpiService', () => {
       const result = await service.getAdminDashboard();
 
       expect(result.workOrders.percentageChange).toBe(0);
+    });
+
+    it('serves the second call from cache instead of recomputing', async () => {
+      const first = await service.getAdminDashboard();
+      const callsAfterFirst = workOrderModel.countDocuments.mock.calls.length;
+      expect(cache.set).toHaveBeenCalledWith(
+        'kpi:admin-dashboard',
+        first,
+        30_000,
+      );
+
+      cache.get.mockResolvedValueOnce(first);
+      const second = await service.getAdminDashboard();
+
+      expect(second).toBe(first);
+      expect(workOrderModel.countDocuments.mock.calls.length).toBe(
+        callsAfterFirst,
+      );
     });
   });
 

@@ -83,6 +83,22 @@ export class Device {
 }
 
 export const DeviceSchema = SchemaFactory.createForClass(Device);
+
+// `api_key_hash` (bcrypt) was, until now, serialized into every device
+// list/detail response with no exclusion — contradicting this class's own
+// doc comment ("the raw key is returned... exactly once... and never
+// again"). The raw key was indeed never re-exposed, but its hash was on
+// every read. Stripped here the same way `UserSchema` strips its own
+// sensitive fields, rather than trusting every call site to remember to
+// omit it.
+function stripDeviceApiKeyHash(_doc: unknown, ret: any): any {
+  delete ret.api_key_hash;
+  return ret;
+}
+
+DeviceSchema.set('toJSON', { transform: stripDeviceApiKeyHash });
+DeviceSchema.set('toObject', { transform: stripDeviceApiKeyHash });
+
 DeviceSchema.index({ machine_id: 1 });
 DeviceSchema.index({ key_prefix: 1 });
 DeviceSchema.index({ is_active: 1 });

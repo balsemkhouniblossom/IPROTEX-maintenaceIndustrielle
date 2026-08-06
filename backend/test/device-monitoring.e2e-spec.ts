@@ -315,7 +315,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
 
       expect(response.body.apiKey).toEqual(expect.any(String));
       expect(response.body.device.device_id).toBe(deviceId);
-      expect(response.body.device.api_key_hash).not.toBe(response.body.apiKey);
+      // api_key_hash is never serialized at all (Device schema's toJSON
+      // transform strips it) — nothing to compare against the raw key.
+      expect(response.body.device.api_key_hash).toBeUndefined();
       deviceMongoId = response.body.device._id;
       apiKey = response.body.apiKey;
     });
