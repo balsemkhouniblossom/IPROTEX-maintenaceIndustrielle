@@ -1,7 +1,41 @@
+/**
+ * Fills in missing `frontend/messages/<locale>.json` keys by translating
+ * from `en.json` via Gemini. Every translated value is structurally
+ * validated against the real ICU MessageFormat parser before being
+ * written (see `./icu-validation.mjs`) — a translation that drops a
+ * placeholder, renames an argument, or corrupts a plural/select
+ * construct is rejected with a specific error rather than written.
+ *
+ * Requires network access to generativelanguage.googleapis.com — will not
+ * run (except --dry-run) from a network-restricted sandbox.
+ *
+ * Usage (run from `backend/`):
+ *
+ *   GEMINI_API_KEY=<key> npm run translate:gemini
+ *
+ * `GEMINI_API_KEY` is the only required environment variable; it is also
+ * picked up automatically from `backend/.env` if present there (see
+ * `loadEnvFile` below), matching how the rest of this backend loads
+ * config, so an explicit `GEMINI_API_KEY=...` prefix is only needed if
+ * it isn't already in `backend/.env`.
+ *
+ * Useful flags:
+ *   --dry-run              report missing-key counts per locale, write nothing
+ *                           (this doubles as the translation-key parity
+ *                           check — see FINAL_RELEASE_READINESS_REPORT.md)
+ *   --locales=fr,es        limit to specific locales (default: fr,ar,es,de,it)
+ *   --keys=a.b,c.d         limit to specific dotted message keys
+ *   --force                re-translate keys that already have a value
+ *
+ * Also runnable as `npm run translate:gemini:dry-run` (no key required).
+ * Regression tests for the ICU structural validation:
+ * `npm run translate:icu-test`.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
+import { assertIcuStructureMatches } from './icu-validation.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendDir = path.resolve(__dirname, '..');
@@ -122,23 +156,18 @@ async function translateEntries({ ai, model, locale, entries }) {
     if (!(key in parsed)) {
       throw new Error(`${locale}: Gemini omitted key ${key}`);
     }
-    assertPlaceholdersMatch(key, input[key], parsed[key]);
+    // Structural ICU validation (argument names, plural/select type + case
+    // keys, `#` counts, tag names) via the real MessageFormat parser — not
+    // a raw-text brace comparison. A naive comparison of literal `{...}`
+    // substrings can't tell a plural/select construct's syntax apart from
+    // the translatable words inside it, and rejects every correctly
+    // translated plural message in every target language. See
+    // `backend/scripts/icu-validation.mjs` for the full explanation and
+    // `backend/scripts/icu-validation.test.mjs` for the regression tests
+    // covering the exact corruption this once let through.
+    assertIcuStructureMatches(`${locale}:${key}`, input[key], parsed[key]);
   }
   return parsed;
-}
-
-function assertPlaceholdersMatch(key, source, translated) {
-  const sourcePlaceholders = placeholders(source);
-  const translatedPlaceholders = placeholders(String(translated));
-  if (sourcePlaceholders.join('|') !== translatedPlaceholders.join('|')) {
-    throw new Error(
-      `Placeholder mismatch for ${key}: expected [${sourcePlaceholders.join(', ')}], got [${translatedPlaceholders.join(', ')}]`,
-    );
-  }
-}
-
-function placeholders(value) {
-  return [...String(value).matchAll(/\{[^{}]+\}/g)].map((match) => match[0]).sort();
 }
 
 function flatten(value, prefix = '', output = {}) {

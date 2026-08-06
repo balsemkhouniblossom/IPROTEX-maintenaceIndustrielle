@@ -1,6 +1,16 @@
 # Git History Purge — 2026-08-01
 
-**Status as of this writing: history has been rewritten and verified locally. It has NOT been pushed to GitHub yet — that step is manual, see "What you still need to do" below.**
+> **STALE — superseded by [`SECRET_ROTATION_RUNBOOK.md`](SECRET_ROTATION_RUNBOOK.md).**
+> This document is kept as a historical record of the first purge attempt
+> only. The mirror it references below (`GMAO-purge-workspace.git`) no
+> longer exists and was superseded twice over — see
+> `SECRET_ROTATION_RUNBOOK.md` Section A, "History of this mirror (why it
+> changed twice)". **Do not push from the mirror path named in this
+> document.** For current status, the actual mirror to push from, and
+> everything still outstanding, see `SECRET_ROTATION_RUNBOOK.md` — as of
+> 2026-08-06 the incident it describes is still unresolved.
+
+**Status as of this writing (2026-08-01, now historical): history had been rewritten and verified locally in the mirror described below. It was NOT pushed to GitHub — see the superseding runbook for what happened after this document was written.**
 
 ## What happened
 

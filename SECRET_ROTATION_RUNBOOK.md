@@ -1,11 +1,30 @@
 # Secret Rotation & Git History Remediation Runbook
 
+> **This is the single canonical source of truth for the git-exposure
+> incident.** `GIT_HISTORY_PURGE.md` and `DEPLOYMENT.md`'s "Environment
+> file & secret hygiene" section both point here rather than restate
+> status themselves — if either ever seems to say something different
+> about whether this is resolved, this document is correct and the other
+> is stale. Re-run the checks in Section D yourself before trusting any
+> status claim, including this one.
+
 **Status as of 2026-08-06: the exposure is still live and UNRESOLVED.**
 `origin/main` on GitHub (`balsemkhouniblossom/IPROTEX-maintenaceIndustrielle`,
 a **public** repository) still has commits reachable in its history
 containing `backups/mongodb/*/GMAO_IPROTEX/users.bson` — raw MongoDB exports
-with bcrypt password hashes and refresh-token hashes. This is true right now,
-as of the last check in this document.
+with bcrypt password hashes and refresh-token hashes. **Verified directly,
+right now, not assumed**: `git rev-list --objects origin/main | grep
+'\.bson'` against a fresh clone of `origin/main` still lists every one of
+those blobs by path and hash (see Section A).
+
+Since this document was first written, `origin/main` has moved forward
+(ordinary, non-force pushes — new work landing normally) from tip `ff74a10`
+to tip `670d26b`. **This does not touch the incident either way**: a normal
+push only adds commits, it never removes anything already reachable in
+history, so all the old exposed commits are still exactly as reachable
+today as they were before. Do not mistake "origin/main has new commits
+since the last status check" for "the exposure was addressed" — it wasn't;
+they're unrelated facts that happen to both be true right now.
 
 This document supersedes `GIT_HISTORY_PURGE.md`'s "What you still need to
 do" section — that doc's prepared mirror is stale (see History below).
@@ -15,11 +34,33 @@ credential rotation is prepared and verified; the actions marked
 perform, and are not yet done. **Do not treat this incident as closed until
 every checkbox in section D is checked and independently confirmed.**
 
+## Owner-only actions required (nothing below can be done from this tool)
+
+1. **Push the rewritten history** — Section A, "YOU RUN THIS — push the
+   rewritten history". Requires `git push --force` from
+   `GMAO-purge-workspace-final-v2.git`, a destructive operation this tool
+   will not perform under any circumstances.
+2. **Reset every existing local clone** to the new history afterward —
+   Section A, second "YOU RUN THIS". Every collaborator, not just this
+   machine.
+3. **Decide repository visibility** (keep public now that history is clean,
+   or flip to private) — Section A.
+4. **Force-reset the 4 active leaked accounts** — Section B. Either approve
+   the direct DB write this tool already attempted and was blocked from, or
+   run the admin-panel action yourself.
+5. **Rotate `JWT_SECRET` / `JWT_REFRESH_SECRET` / `MONGODB_URI` /
+   `GOOGLE_CLIENT_SECRET` / `SUPABASE_SECRET_KEY` / `SMTP_PASS` /
+   `BREVO_API_KEY`** — Section C. All require dashboard access (Render,
+   MongoDB Atlas, Google Cloud Console, Supabase, Brevo/SMTP) this tool has
+   none of.
+6. **Independently confirm every box in Section D** after doing the above —
+   this tool cannot verify any of them from inside this environment.
+
 ---
 
 ## A. Git history purge — current, verified-clean mirror
 
-### History of this mirror (why it changed twice)
+### History of this mirror (why it changed three times)
 
 1. `GIT_HISTORY_PURGE.md` (2026-08-01) prepared a mirror at
    `GMAO-purge-workspace.git`. By 2026-08-06 it was **20 commits behind**
@@ -37,46 +78,84 @@ every checkbox in section D is checked and independently confirmed.**
    reachable even after filtering — confirmed by direct inspection
    (`git rev-list --objects --all` still showed 19 `.bson` blobs after the
    "clean" run). This mirror was discarded, unpushed.
-3. **Current, verified-clean mirror**: cloned fresh from `origin` (GitHub
-   only — no local refs involved), then the single new commit was pulled in
-   by SHA (`git fetch <local-repo> 087d37e...`, which only walks that
-   commit's own ancestry, not sibling refs), *then* filtered. Verified:
-   - Only one ref present: `refs/heads/main` (no stray refs).
+3. `GMAO-purge-workspace-final.git` (built from `origin` + the single
+   `087d37e` commit, filtered, verified clean) was the mirror this document
+   pointed to for several days. By the final release-closure pass
+   (2026-08-06, later the same day) it was **9 commits behind** current
+   `origin/main` — nine more commits (Phases C through G of the
+   enterprise-hardening work, `a7b69b2`..`670d26b`) had landed on
+   `origin/main` in the meantime via ordinary pushes. Pushing that mirror
+   would have silently discarded all nine. Discarded, rebuilt a third time.
+4. **Current, verified-clean mirror** (built this pass): cloned fresh from
+   `origin` (GitHub only, `git clone --mirror`), confirmed its tip matched
+   current `origin/main` exactly (`670d26bfea71dae9ad47d7f0284b475c88fbbb12`,
+   120 commits) before filtering, *then* filtered with the same command as
+   every prior attempt (`git filter-repo --path backups --path-glob
+   '*.bson' --invert-paths --force`). Verified:
+   - Only one ref present: `refs/heads/main` (no stray refs — a fresh clone
+     from GitHub never picks up local-only refs like `refs/codex/*` in the
+     first place).
    - `git rev-list --objects --all | grep -i backups/` → 0 hits.
    - `git rev-list --objects --all | grep -i "\.bson"` → 0 hits.
-   - `main` tip: `6dd9bc20ad984350f97128817b8501d3e3ca4ea3`, 110 commits,
-     ending in `fix(critical): close MongoDB index drift and add Next.js
-     error boundaries` — i.e. it has the exposure removed *and* the latest
-     local work, in one consistent history.
+   - `git log --all --oneline -- backups` → 0 hits.
+   - `git fsck --full` → clean, no errors.
+   - `main` tip: `ffaef7555fc906fcfbd610ad39ed989054bf4ca6`, 119 commits
+     (filter-repo drops the one commit whose only change was under
+     `backups/`, same as every prior filter run — expected, not data loss),
+     ending in `a11y: associate form labels with their controls via
+     htmlFor/id` — the actual latest commit on `main` as of this pass.
+   - **File-tree parity, not just a tip-message match**: `git archive
+     <mirror-tip> | tar -t` (files only) diffed against `git ls-tree -r
+     --name-only HEAD` from the live working tree — **zero differences,
+     964 files on both sides**. The mirror's tip is byte-identical in
+     content to current `main`, minus only the removed `backups/*.bson`
+     files.
 
-**Location: `C:\Users\Balsem\Desktop\GMAO-purge-workspace-final.git`.**
-This is the only mirror that should be pushed from. Both prior mirrors
-(`GMAO-purge-workspace.git`, `GMAO-purge-workspace-current.git`) no longer
-exist on disk (removed during this session's disk-space cleanup or by this
-remediation) — if either reappears from a backup, do not use it.
+**Location: `C:\Users\Balsem\Desktop\GMAO-purge-workspace-final-v2.git`.**
+This is the only mirror that should be pushed from. All three prior
+mirrors (`GMAO-purge-workspace.git`, `GMAO-purge-workspace-current.git`,
+`GMAO-purge-workspace-final.git`) have been deleted from disk (stale,
+superseded) — if any reappears from a backup, do not use it; rebuild
+following the process below instead, since `origin/main` may well have
+moved again since this document was last updated.
 
-**Lesson for future history rewrites on this machine**: always build the
-mirror from a fresh `git clone <github-url> --mirror`, never from
-`git clone --mirror <local-working-tree>`, and always run
-`git for-each-ref` on the fresh mirror before filtering to confirm it has
-exactly one `refs/heads/main` and nothing under `refs/codex/*` or similar
-before trusting a "clean" result.
+**Lesson for future history rewrites on this machine (updated after two
+separate staleness incidents, not just the original refs/codex/ one)**:
+
+1. Always build the mirror from a fresh `git clone <github-url> --mirror`,
+   never from `git clone --mirror <local-working-tree>`.
+2. Always run `git for-each-ref` on the fresh mirror before filtering, to
+   confirm it has exactly one `refs/heads/main` and nothing under
+   `refs/codex/*` or similar.
+3. **Always confirm the mirror's pre-filter tip matches current
+   `origin/main`'s tip** (`git ls-remote origin main` vs. the mirror's
+   `refs/heads/main`) immediately before filtering — a "verified clean"
+   mirror from even a few hours ago can already be behind `origin/main` if
+   any ordinary push has landed since, and pushing a stale filtered mirror
+   silently discards every commit that landed after it was built.
+4. After filtering, verify file-tree parity against the live working tree
+   (`git archive <tip> | tar -t`, files only, diffed against `git ls-tree
+   -r --name-only HEAD`) — a tip commit *message* matching isn't proof the
+   *content* matches; the file list must match too.
 
 ### Safety net
 
-The original untouched mirror (`GMAO-backup-before-purge.git`) no longer
-exists on disk (also removed during cleanup). Since nothing has been pushed
-yet, `origin/main` on GitHub itself is still the authoritative unfiltered
-history — recreated a local copy anyway as cheap insurance:
-**`C:\Users\Balsem\Desktop\GMAO-backup-before-purge-2.git`** (fresh mirror
-clone, unfiltered, confirmed 19 `.bson` blobs present, tip `ff74a10`,
-untouched — do not filter or push from this one, it exists only as a
-restore point).
+**`C:\Users\Balsem\Desktop\GMAO-backup-before-purge-3.git`** — fresh,
+unfiltered mirror clone of current `origin/main`, confirmed 19 `.bson`
+blobs present (the exposure, as it currently exists on GitHub), tip
+`670d26bfea71dae9ad47d7f0284b475c88fbbb12`. Untouched — do not filter or
+push from this one, it exists only as a restore point in case the push
+below goes wrong. (Two earlier safety-net copies —
+`GMAO-backup-before-purge.git` and `GMAO-backup-before-purge-2.git` — are
+stale relative to current `origin/main` and should not be relied on;
+`GMAO-backup-before-purge-2.git` is left on disk only because deleting it
+isn't necessary for correctness, `GMAO-backup-before-purge.git` no longer
+exists.)
 
 ### YOU RUN THIS — push the rewritten history
 
 ```bash
-cd "C:/Users/Balsem/Desktop/GMAO-purge-workspace-final.git"
+cd "C:/Users/Balsem/Desktop/GMAO-purge-workspace-final-v2.git"
 git remote add origin https://github.com/balsemkhouniblossom/IPROTEX-maintenaceIndustrielle.git
 git push --force origin refs/heads/main:refs/heads/main
 ```
@@ -195,9 +274,10 @@ time.
 
 ## D. Verification checklist — none of these are checked yet
 
-- [ ] `git push --force` completed from `GMAO-purge-workspace-final.git`;
-      `git log --all --oneline -- backups` against a **fresh** clone of
-      `origin/main` returns nothing.
+- [ ] `git push --force` completed from `GMAO-purge-workspace-final-v2.git`
+      (rebuild it first if `origin/main` has moved since — see "Lesson for
+      future history rewrites" in Section A); `git log --all --oneline --
+      backups` (against a **fresh** clone of `origin/main`) returns nothing.
 - [ ] Repository visibility reviewed (private, or accepted as public with
       the exposure now closed).
 - [ ] This working tree and every other local clone reset to the new
@@ -214,13 +294,15 @@ time.
 **The git exposure incident is not resolved until every box above is
 checked.** As of this writing, none are.
 
-## E. Done this session (all read-only against production, or local-mirror-only — nothing pushed, no production writes beyond the index repair in the separate MongoDB report)
+## E. Done across sessions (all read-only against production or GitHub, or local-mirror-only — nothing pushed, no production writes beyond the index repair in the separate MongoDB report)
+
+**Earlier session:**
 
 - Diagnosed and fixed a real contamination bug in the mirror-rebuild process
   (stray non-GitHub refs defeating the filter) before it could have produced
   a false sense of "clean" — see History above.
 - Rebuilt the mirror correctly: verified clean, current, and lossless
-  (includes the latest commit).
+  (includes the latest commit at that time).
 - Recreated a local safety-net copy of the unfiltered original.
 - Re-confirmed the 4 currently-active affected accounts (no hashes read into
   any output).
@@ -228,3 +310,25 @@ checked.** As of this writing, none are.
   permission classifier, awaiting your approval.
 - Re-confirmed no `.env`/`.env.production` file has ever appeared in git
   history.
+
+**This session (final release-closure pass):**
+
+- Discovered the mirror built in the earlier session had gone stale again —
+  9 ordinary (non-force) pushes to `origin/main` had landed since it was
+  built, none of them related to the incident. Rebuilt the mirror a third
+  time from a fresh GitHub clone, this time also verifying full file-tree
+  parity against the live working tree (not just a matching tip commit
+  message) and running `git fsck --full` — see History above.
+- Directly confirmed, right now, that `origin/main` still has every
+  `users.bson` blob reachable (`git rev-list --objects origin/main | grep
+  '\.bson'` against a fresh clone) — the exposure was re-verified rather
+  than assumed still present from an earlier check.
+- Rebuilt the safety-net mirror to match current `origin/main` (the old one
+  was itself stale by the same 9 commits); the first clone attempt failed
+  from network flakiness mid-transfer and was caught by direct verification
+  (file count, object count) rather than trusted from the tool's own "done"
+  signal — retried and confirmed clean on the second attempt.
+- Reconciled this document, `GIT_HISTORY_PURGE.md`, and `DEPLOYMENT.md` into
+  one consistent status: this document is now the single canonical source,
+  the other two point here instead of restating (and previously
+  contradicting) the incident's status.

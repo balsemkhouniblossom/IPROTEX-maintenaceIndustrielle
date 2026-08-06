@@ -256,10 +256,15 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     });
     expect(allowed).toEqual({ ok: true });
 
+    // Matches LiveMonitoringGateway's SOCKET_ERRORS.ACCESS_DENIED
+    // ('SOCKET_ACCESS_DENIED') — the gateway's structured per-failure-kind
+    // error codes (see live-monitoring.gateway.ts), not a generic
+    // 'forbidden' string. This Operator legitimately has machine A but has
+    // no assignment to machine B at all, so the subscription is denied.
     const denied = await emitWithAck(socket, 'subscribe:machine', {
       machineId: machineBId,
     });
-    expect(denied).toEqual({ ok: false, error: 'forbidden' });
+    expect(denied).toEqual({ ok: false, error: 'SOCKET_ACCESS_DENIED' });
 
     socket.disconnect();
   });
@@ -274,7 +279,11 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     const response = await emitWithAck(socket, 'subscribe:machine', {
       machineId: machineAId,
     });
-    expect(response).toEqual({ ok: false, error: 'forbidden' });
+    // SOCKET_ERRORS.ACCESS_DENIED — handleSubscribeMachine rejects any
+    // non-'user' socket kind outright, before ever consulting machine
+    // assignment, so a device socket hits the same code as an
+    // out-of-scope user, by design (see live-monitoring.gateway.ts).
+    expect(response).toEqual({ ok: false, error: 'SOCKET_ACCESS_DENIED' });
 
     socket.disconnect();
   });
@@ -286,7 +295,10 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     const response = await emitWithAck(socket, 'device:telemetry', {
       metrics: { x: 1 },
     });
-    expect(response).toEqual({ ok: false, error: 'forbidden' });
+    // SOCKET_ERRORS.ACCESS_DENIED — requireDeviceSocket() returns null for
+    // a 'user'-kind socket, so handleDeviceTelemetry rejects it the same
+    // way it would reject any caller that isn't an authenticated device.
+    expect(response).toEqual({ ok: false, error: 'SOCKET_ACCESS_DENIED' });
 
     socket.disconnect();
   });
@@ -337,7 +349,9 @@ describe('LiveMonitoringGateway (WebSocket integration)', () => {
     const denied = await emitWithAck(socket, 'subscribe:machine', {
       machineId: machineBId,
     });
-    expect(denied).toEqual({ ok: false, error: 'forbidden' });
+    // SOCKET_ERRORS.ACCESS_DENIED — see the identical assertion above for
+    // why this is the gateway's real, intended error code.
+    expect(denied).toEqual({ ok: false, error: 'SOCKET_ACCESS_DENIED' });
     socket.disconnect();
   });
 

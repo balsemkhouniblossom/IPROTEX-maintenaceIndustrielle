@@ -151,6 +151,17 @@ GEMINI_API_KEY=<gemini-api-key>
 GEMINI_MODEL=gemini-flash-lite-latest
 AI_ASSISTANT_TIMEOUT_MS=12000
 AI_ASSISTANT_RATE_LIMIT_PER_HOUR=20
+
+# Optional — all have safe code-level defaults if unset (see
+# backend/.env.example for the exact default of each).
+REQUEST_TIMEOUT_MS=30000
+LOG_FORMAT=json
+SLOW_QUERY_THRESHOLD_MS=200
+# Backend error tracking — unset means Sentry stays fully uninitialized
+# (safe no-op). A Sentry DSN is not a secret (write-only, publishable by
+# design), so no special handling is needed if it's ever set here.
+SENTRY_DSN=
+SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
 Render terminates TLS and routes traffic to the backend directly — no
@@ -182,6 +193,12 @@ Configure only public frontend variables in Vercel:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://your-backend.onrender.com
+
+# Optional frontend error tracking — unset means Sentry stays fully
+# uninitialized (safe no-op). See frontend/src/instrumentation*.ts and
+# frontend/src/sentry.*.config.ts.
+NEXT_PUBLIC_SENTRY_DSN=
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
 
 Do not configure any of the following in Vercel — none of them are read by
@@ -309,11 +326,17 @@ npm run smoke-test -- --url=https://gmao-staging-api.onrender.com
 - If a real secret is ever accidentally staged, rotate it — do not rely on
   `git rm`/history rewriting alone, since any clone made before the rewrite
   still has it.
-- This already happened once: `backups/mongodb/*/users.bson` was committed
-  and reached `origin/main` before being purged from history on
-  2026-08-01. See [`GIT_HISTORY_PURGE.md`](GIT_HISTORY_PURGE.md) for what
-  was done, the re-clone steps every collaborator must follow, and the
-  credentials that were rotated as a result.
+- **This already happened once, and as of 2026-08-06 it is still
+  unresolved on GitHub**: `backups/mongodb/*/users.bson` (bcrypt password
+  hashes, refresh-token hashes) was committed and is still reachable in
+  `origin/main`'s history on GitHub right now. A clean, verified mirror
+  with the exposure removed has been prepared locally but not yet pushed,
+  no leaked account's session has been invalidated yet, and no credential
+  has been confirmed rotated. See
+  [`SECRET_ROTATION_RUNBOOK.md`](SECRET_ROTATION_RUNBOOK.md) — the
+  canonical, current status and the exact remaining steps — not
+  [`GIT_HISTORY_PURGE.md`](GIT_HISTORY_PURGE.md), which describes an
+  earlier, now-superseded attempt and is kept only as historical record.
 
 ## Historical documents
 
@@ -321,3 +344,8 @@ npm run smoke-test -- --url=https://gmao-staging-api.onrender.com
 `SECURITY_HARDENING_REPORT.md` describe an earlier Docker Compose + Nginx
 deployment that is **no longer used**. They are marked superseded by this
 document and kept only as historical record.
+
+`GIT_HISTORY_PURGE.md` describes the first (2026-08-01) attempt at the git
+history purge covered above; its prepared mirror is stale and superseded.
+[`SECRET_ROTATION_RUNBOOK.md`](SECRET_ROTATION_RUNBOOK.md) is the current,
+canonical status for that incident.
