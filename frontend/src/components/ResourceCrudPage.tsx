@@ -288,13 +288,16 @@ function ResourceCrudPageInner({
     </div>
     <Modal isOpen={open} onClose={() => setOpen(false)} title={editing ? labels.edit : labels.add} size="lg">
       <form className="min-w-0 space-y-4" onSubmit={submit}>
-        {fields.map((field) => (
+        {fields.map((field) => {
+          const fieldId = `resource-crud-field-${field.key}`;
+          return (
           <div key={field.key} className="min-w-0">
-            <label className="mb-1 block min-w-0 truncate text-sm font-medium" title={field.label}>
+            <label htmlFor={fieldId} className="mb-1 block min-w-0 truncate text-sm font-medium" title={field.label}>
               {field.label}
             </label>
             {field.type === 'select' ? (
               <select
+                id={fieldId}
                 className="input-field w-full"
                 required={field.required}
                 value={String(form[field.key] ?? '')}
@@ -309,6 +312,7 @@ function ResourceCrudPageInner({
               </select>
             ) : field.type === 'textarea' ? (
               <textarea
+                id={fieldId}
                 className="input-field min-h-24 w-full"
                 required={field.required}
                 value={String(form[field.key] ?? '')}
@@ -316,6 +320,7 @@ function ResourceCrudPageInner({
               />
             ) : (
               <input
+                id={fieldId}
                 className="input-field w-full"
                 type={field.type ?? 'text'}
                 required={field.required}
@@ -326,7 +331,8 @@ function ResourceCrudPageInner({
               />
             )}
           </div>
-        ))}
+          );
+        })}
         <div className="flex min-w-0 flex-wrap justify-end gap-3">
           <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
             <span className="truncate" title={labels.cancel}>{labels.cancel}</span>

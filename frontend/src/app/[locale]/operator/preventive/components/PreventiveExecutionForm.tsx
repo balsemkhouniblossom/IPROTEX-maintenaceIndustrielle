@@ -56,8 +56,9 @@ function PreventiveExecutionFormInner({
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div>
-        <label className="block text-sm font-semibold text-slate-700">{t("machineCondition")}</label>
+        <label htmlFor="preventive-execution-condition" className="block text-sm font-semibold text-slate-700">{t("machineCondition")}</label>
         <select
+          id="preventive-execution-condition"
           value={condition}
           onChange={(event) => onConditionChange(event.target.value as MachineCondition)}
           title={t("machineCondition")}
@@ -79,8 +80,9 @@ function PreventiveExecutionFormInner({
         ) : null}
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-700">{t("comments")}</label>
+        <label htmlFor="preventive-execution-comments" className="block text-sm font-semibold text-slate-700">{t("comments")}</label>
         <input
+          id="preventive-execution-comments"
           value={comments}
           onChange={(event) => onCommentsChange(event.target.value.slice(0, 180))}
           className="mt-2 w-full rounded-lg border px-3 py-2"
@@ -88,8 +90,9 @@ function PreventiveExecutionFormInner({
         />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-700">{t("lubricant")}</label>
+        <label htmlFor="preventive-execution-lubrifiant" className="block text-sm font-semibold text-slate-700">{t("lubricant")}</label>
         <select
+          id="preventive-execution-lubrifiant"
           value={selectedLubrifiant}
           onChange={(event) => onSelectedLubrifiantChange(event.target.value)}
           title={t("lubricant")}
@@ -105,8 +108,9 @@ function PreventiveExecutionFormInner({
         </select>
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-700">{t("quantity")}</label>
+        <label htmlFor="preventive-execution-qty-mode" className="block text-sm font-semibold text-slate-700">{t("quantity")}</label>
         <select
+          id="preventive-execution-qty-mode"
           value={selectedLubrificationQtyMode}
           onChange={(event) => {
             const value = event.target.value;
@@ -139,8 +143,9 @@ function PreventiveExecutionFormInner({
         ) : null}
       </div>
       <div>
-        <label className="block text-sm font-semibold text-slate-700">{t("photoUpload")}</label>
+        <label htmlFor="preventive-execution-photo" className="block text-sm font-semibold text-slate-700">{t("photoUpload")}</label>
         <input
+          id="preventive-execution-photo"
           type="file"
           accept="image/*"
           onChange={(event) => onPhotoChange(event.target.files?.[0] ?? null)}

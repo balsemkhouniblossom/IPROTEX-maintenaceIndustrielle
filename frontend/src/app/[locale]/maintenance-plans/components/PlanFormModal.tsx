@@ -79,8 +79,9 @@ function PlanFormModalInner({
     <Modal isOpen={isOpen} onClose={onClose} title={editingPlan ? t('modal.edit') : t('modal.add')}>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.planCode', { default: 'Plan Code' })}</label>
+          <label htmlFor="plan-form-plan-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.planCode', { default: 'Plan Code' })}</label>
           <select
+            id="plan-form-plan-id"
             value={getSelectValue(planIdOptions, formData.plan_id)}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -113,8 +114,9 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.module')}</label>
+          <label htmlFor="plan-form-module-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.module')}</label>
           <select
+            id="plan-form-module-id"
             value={formData.module_id}
             onChange={(event) => setFormData((prev) => ({ ...prev, module_id: event.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -132,8 +134,9 @@ function PlanFormModalInner({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceType')}</label>
+            <label htmlFor="plan-form-type-maintenance" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceType')}</label>
             <select
+              id="plan-form-type-maintenance"
               value={getSelectValue(MAINTENANCE_TYPE_OPTIONS, formData.type_maintenance)}
               onChange={(event) =>
                 setFormData((prev) => ({
@@ -164,8 +167,9 @@ function PlanFormModalInner({
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequency')}</label>
+            <label htmlFor="plan-form-frequence" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequency')}</label>
             <select
+              id="plan-form-frequence"
               value={getSelectValue(FREQUENCE_OPTIONS, formData.frequence)}
               onChange={(event) =>
                 setFormData((prev) => ({
@@ -199,8 +203,9 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequencyUnit')}</label>
+          <label htmlFor="plan-form-unite-frequence" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequencyUnit')}</label>
           <select
+            id="plan-form-unite-frequence"
             value={getSelectValue(FREQUENCE_UNIT_OPTIONS, formData.unite_frequence)}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -233,8 +238,9 @@ function PlanFormModalInner({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceCode')}</label>
+            <label htmlFor="plan-form-maintenance-code" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceCode')}</label>
             <select
+              id="plan-form-maintenance-code"
               value={getSelectValue(maintenanceCodeOptions, formData.maintenance_code)}
               onChange={(event) =>
                 setFormData((prev) => ({
@@ -264,8 +270,9 @@ function PlanFormModalInner({
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequencyLabel')}</label>
+            <label htmlFor="plan-form-frequence-label" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequencyLabel')}</label>
             <select
+              id="plan-form-frequence-label"
               value={getSelectValue(frequenceLabelOptions, formData.frequence_label)}
               onChange={(event) =>
                 setFormData((prev) => ({
@@ -297,8 +304,9 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.responsable')}</label>
+          <label htmlFor="plan-form-responsable" className="block text-sm font-medium text-slate-700 mb-1">{t('form.responsable')}</label>
           <select
+            id="plan-form-responsable"
             value={getSelectValue(RESPONSABLE_OPTIONS, formData.responsable)}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -329,8 +337,9 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.huileGraisse')}</label>
+          <label htmlFor="plan-form-huile-graisse" className="block text-sm font-medium text-slate-700 mb-1">{t('form.huileGraisse')}</label>
           <select
+            id="plan-form-huile-graisse"
             value={getSelectValue(HUILE_GRAISSE_OPTIONS, formData.huile_graisse)}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -361,8 +370,9 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.documentation')}</label>
+          <label htmlFor="plan-form-documentation" className="block text-sm font-medium text-slate-700 mb-1">{t('form.documentation')}</label>
           <select
+            id="plan-form-documentation"
             value={getSelectValue(DOCUMENTATION_OPTIONS, formData.documentation)}
             onChange={(event) =>
               setFormData((prev) => ({
@@ -393,8 +403,9 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">{t('form.instruction')}</label>
+          <label htmlFor="plan-form-instruction" className="block text-sm font-medium text-slate-700 mb-1">{t('form.instruction')}</label>
           <select
+            id="plan-form-instruction"
             value={getSelectValue(INSTRUCTION_OPTIONS, formData.instruction)}
             onChange={(event) =>
               setFormData((prev) => ({

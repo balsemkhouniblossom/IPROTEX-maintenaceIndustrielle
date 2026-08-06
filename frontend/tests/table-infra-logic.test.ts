@@ -155,6 +155,21 @@ test("simple admin CRUD pages are configuration-only wrappers around ResourceCru
   }
 });
 
+test("ResourceCrudPage's create/edit form fields associate every label with its input via htmlFor/id", () => {
+  const source = readSource(RESOURCE_CRUD_PAGE);
+  assert.match(
+    source,
+    /<label htmlFor=\{fieldId\}/,
+    "each field's <label> must be explicitly associated with its control via htmlFor",
+  );
+  const controlIdCount = (source.match(/\bid=\{fieldId\}/g) ?? []).length;
+  assert.equal(
+    controlIdCount,
+    3,
+    "the select, textarea, and input branches must each carry id={fieldId} matching the label's htmlFor",
+  );
+});
+
 test("the Reports page lazy-loads BarChartCard via next/dynamic instead of a static import", () => {
   const source = readSource("src/app/[locale]/reports/page.tsx");
   assert.match(source, /import dynamic from 'next\/dynamic';/);

@@ -142,3 +142,21 @@ test("all supported locales contain the new maintenance plan lifecycle translati
     );
   }
 });
+
+test("PlanFormModal associates every field label with its control via matching htmlFor/id", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/maintenance-plans/components/PlanFormModal.tsx"),
+    "utf8",
+  );
+
+  const htmlForIds = [...source.matchAll(/htmlFor="([^"]+)"/g)].map((m) => m[1]);
+  const idAttrs = [...source.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+
+  assert.equal(htmlForIds.length, 11, "PlanFormModal should have 11 labeled fields");
+  for (const forId of htmlForIds) {
+    assert.ok(
+      idAttrs.includes(forId),
+      `label htmlFor="${forId}" has no matching id="${forId}" on a control`,
+    );
+  }
+});
