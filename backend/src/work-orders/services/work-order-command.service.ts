@@ -70,18 +70,45 @@ export class WorkOrderCommandService {
       },
     );
 
-    const createdWorkOrder = new this.workOrderModel(createWorkOrderDto);
-    const savedWorkOrder = await createdWorkOrder.save();
+    // A work order that lands directly in a completed status carries three
+    // follow-on writes (auto report, next preventive occurrence, KPI
+    // snapshot) alongside its own save. Without a shared transaction, a
+    // failure in any of those three left a persisted "completed" work
+    // order with no matching report/schedule/KPI — a silent, hard-to-spot
+    // data gap. Wrapping the save with them means either all four writes
+    // land or none do.
+    const session = await this.workOrderModel.db.startSession();
+    let savedWorkOrder: WorkOrderDocument;
+    try {
+      savedWorkOrder = await session.withTransaction(async () => {
+        const createdWorkOrder = new this.workOrderModel(createWorkOrderDto);
+        const saved = await createdWorkOrder.save({ session });
 
-    if (this.isCompletedStatus(savedWorkOrder.status)) {
-      await this.reportService.ensureAutoInterventionReport(savedWorkOrder);
-      await this.preventiveSchedulingService.ensureNextPreventiveWorkOrder(
-        savedWorkOrder,
-      );
-      await this.kpiService.updateKpiForMachine(
-        savedWorkOrder.machine_id?.toString(),
-      );
-    } else {
+        if (this.isCompletedStatus(saved.status)) {
+          await this.reportService.ensureAutoInterventionReport(saved, session);
+          await this.preventiveSchedulingService.ensureNextPreventiveWorkOrder(
+            saved,
+            undefined,
+            undefined,
+            session,
+          );
+          await this.kpiService.updateKpiForMachine(
+            saved.machine_id?.toString(),
+            session,
+          );
+        }
+
+        return saved;
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    // Notifications are a fire-and-forget side effect, not a data-
+    // consistency concern — they stay outside the transaction so a
+    // notification failure can never roll back an otherwise-successful
+    // work order creation.
+    if (!this.isCompletedStatus(savedWorkOrder.status)) {
       await this.notificationService.notifyCreated(savedWorkOrder);
     }
 
@@ -92,20 +119,43 @@ export class WorkOrderCommandService {
     id: string,
     updateWorkOrderDto: UpdateWorkOrderDto,
   ): Promise<WorkOrderResponse | null> {
-    const updated = await this.workOrderModel
-      .findByIdAndUpdate(id, updateWorkOrderDto, { new: true })
-      .exec();
+    const session = await this.workOrderModel.db.startSession();
+    let updated: WorkOrderDocument | null;
+    try {
+      updated = await session.withTransaction(async () => {
+        const result = await this.workOrderModel
+          .findByIdAndUpdate(id, updateWorkOrderDto, { new: true, session })
+          .exec();
+
+        if (!result) {
+          return null;
+        }
+
+        if (this.isCompletedStatus(result.status)) {
+          await this.reportService.ensureAutoInterventionReport(
+            result,
+            session,
+          );
+          await this.preventiveSchedulingService.ensureNextPreventiveWorkOrder(
+            result,
+            undefined,
+            undefined,
+            session,
+          );
+          await this.kpiService.updateKpiForMachine(
+            result.machine_id?.toString(),
+            session,
+          );
+        }
+
+        return result;
+      });
+    } finally {
+      await session.endSession();
+    }
 
     if (!updated) {
       return null;
-    }
-
-    if (this.isCompletedStatus(updated.status)) {
-      await this.reportService.ensureAutoInterventionReport(updated);
-      await this.preventiveSchedulingService.ensureNextPreventiveWorkOrder(
-        updated,
-      );
-      await this.kpiService.updateKpiForMachine(updated.machine_id?.toString());
     }
 
     return toWorkOrderResponse(updated);

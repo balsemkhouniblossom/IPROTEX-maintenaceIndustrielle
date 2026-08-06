@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { WorkOrder, WorkOrderDocument } from '../../schemas/work-order.schema';
 import { KPI, KPIDocument } from '../../schemas/kpi.schema';
 import { CounterService } from '../../counters/counter.service';
@@ -32,7 +32,7 @@ export class WorkOrderKpiService {
     private readonly counterService: CounterService,
   ) {}
 
-  async updateKpiForMachine(machineId?: string) {
+  async updateKpiForMachine(machineId?: string, session?: ClientSession) {
     if (!machineId) {
       return;
     }
@@ -41,6 +41,7 @@ export class WorkOrderKpiService {
     const orders = await this.workOrderModel
       .find({ machine_id: machineObjectId })
       .sort({ date_created: 1 })
+      .session(session ?? null)
       .exec();
 
     if (!orders.length) {
@@ -116,6 +117,7 @@ export class WorkOrderKpiService {
     const existing = await this.kpiModel
       .findOne({ machine_id: machineObjectId })
       .sort({ date_calcul: -1 })
+      .session(session ?? null)
       .exec();
 
     const payload = {
@@ -133,9 +135,11 @@ export class WorkOrderKpiService {
     };
 
     if (existing) {
-      await this.kpiModel.findByIdAndUpdate(existing._id, payload).exec();
+      await this.kpiModel
+        .findByIdAndUpdate(existing._id, payload, { session })
+        .exec();
     } else {
-      await this.kpiModel.create(payload);
+      await this.kpiModel.create([payload], { session });
     }
   }
 

@@ -7,7 +7,9 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { OtPiecesService } from './ot-pieces.service';
 import { normalizePagination } from '../common/pagination';
 import {
@@ -17,6 +19,10 @@ import {
 import { CreateOtPieceDto } from './dto/create-ot-piece.dto';
 import { UpdateOtPieceDto } from './dto/update-ot-piece.dto';
 
+interface AuthenticatedRequest extends Request {
+  user?: { userId?: string; role?: string };
+}
+
 @Controller('ot-pieces')
 @AuthenticatedRoles()
 export class OtPiecesController {
@@ -24,8 +30,8 @@ export class OtPiecesController {
 
   @Post()
   @AdminOnly()
-  create(@Body() payload: CreateOtPieceDto) {
-    return this.otPiecesService.create(payload);
+  create(@Req() req: AuthenticatedRequest, @Body() payload: CreateOtPieceDto) {
+    return this.otPiecesService.create(payload, req.user?.userId);
   }
 
   @Get()
@@ -47,13 +53,17 @@ export class OtPiecesController {
 
   @Patch(':id')
   @AdminOnly()
-  update(@Param('id') id: string, @Body() payload: UpdateOtPieceDto) {
-    return this.otPiecesService.update(id, payload);
+  update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() payload: UpdateOtPieceDto,
+  ) {
+    return this.otPiecesService.update(id, payload, req.user?.userId);
   }
 
   @Delete(':id')
   @AdminOnly()
-  remove(@Param('id') id: string) {
-    return this.otPiecesService.remove(id);
+  remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.otPiecesService.remove(id, req.user?.userId);
   }
 }

@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { WorkOrder, WorkOrderDocument } from '../../schemas/work-order.schema';
 import { Machine, MachineDocument } from '../../schemas/machine.schema';
 import {
@@ -473,9 +473,13 @@ export class WorkOrderReportService {
    * report already exists for this Work Order, so it is safe to call on
    * every create/update of an already-completed Work Order.
    */
-  async ensureAutoInterventionReport(workOrder: any): Promise<void> {
+  async ensureAutoInterventionReport(
+    workOrder: any,
+    session?: ClientSession,
+  ): Promise<void> {
     const existing = await this.interventionReportModel
       .findOne({ ot_id: this.objectIdString(workOrder) })
+      .session(session ?? null)
       .exec();
     if (existing) {
       return;
@@ -495,21 +499,29 @@ export class WorkOrderReportService {
       ? await this.resolveCorrectiveData(codePanne)
       : null;
 
-    await this.interventionReportModel.create({
-      report_id: reportId,
-      ot_id: this.objectIdString(workOrder),
-      technician_id: workOrder.technician_id,
-      date_debut: dateDebut,
-      date_fin: dateFin,
-      cause_racine: correctiveInfo?.faultDescription || workOrder.code_panne,
-      description_action:
-        correctiveInfo?.recommendedSolution || workOrder.description,
-      etat_final: this.isCompletedStatus(workOrder.status)
-        ? 'completed'
-        : 'in_progress',
-      validation_responsable:
-        workOrder.status === 'validated' ? 'validated' : 'waiting_validation',
-    });
+    await this.interventionReportModel.create(
+      [
+        {
+          report_id: reportId,
+          ot_id: this.objectIdString(workOrder),
+          technician_id: workOrder.technician_id,
+          date_debut: dateDebut,
+          date_fin: dateFin,
+          cause_racine:
+            correctiveInfo?.faultDescription || workOrder.code_panne,
+          description_action:
+            correctiveInfo?.recommendedSolution || workOrder.description,
+          etat_final: this.isCompletedStatus(workOrder.status)
+            ? 'completed'
+            : 'in_progress',
+          validation_responsable:
+            workOrder.status === 'validated'
+              ? 'validated'
+              : 'waiting_validation',
+        },
+      ],
+      { session },
+    );
   }
 
   /**

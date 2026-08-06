@@ -4,7 +4,12 @@ import { WorkOrderPreventiveSchedulingService } from './work-order-preventive-sc
 import { MaintenanceSchedulingService } from '../maintenance-scheduling.service';
 
 function execResult<T>(value: T) {
-  return { exec: jest.fn().mockResolvedValue(value) };
+  const chain = {
+    session: jest.fn(),
+    exec: jest.fn().mockResolvedValue(value),
+  };
+  chain.session.mockReturnValue(chain);
+  return chain;
 }
 
 describe('WorkOrderPreventiveSchedulingService.ensureNextPreventiveWorkOrder', () => {

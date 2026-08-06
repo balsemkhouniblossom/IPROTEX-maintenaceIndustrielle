@@ -6,6 +6,13 @@ function execResult<T>(value: T) {
   return { exec: jest.fn().mockResolvedValue(value) };
 }
 
+function mockSession() {
+  return {
+    withTransaction: jest.fn(async (fn: () => Promise<unknown>) => fn()),
+    endSession: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('WorkOrderCommandService.create', () => {
   const machineId = new Types.ObjectId();
   const technicianId = new Types.ObjectId();
@@ -34,6 +41,9 @@ describe('WorkOrderCommandService.create', () => {
     workOrderModel = jest.fn().mockImplementation(() => ({
       save: jest.fn().mockResolvedValue(savedWorkOrder),
     })) as never;
+    (workOrderModel as unknown as { db: { startSession: jest.Mock } }).db = {
+      startSession: jest.fn().mockResolvedValue(mockSession()),
+    };
 
     counterService = { getNextSequence: jest.fn().mockResolvedValue(1) };
     notificationService = { notifyCreated: jest.fn().mockResolvedValue(null) };
@@ -95,12 +105,19 @@ describe('WorkOrderCommandService.create', () => {
 
     expect(reportService.ensureAutoInterventionReport).toHaveBeenCalledWith(
       savedWorkOrder,
+      expect.anything(),
     );
     expect(
       preventiveSchedulingService.ensureNextPreventiveWorkOrder,
-    ).toHaveBeenCalledWith(savedWorkOrder);
+    ).toHaveBeenCalledWith(
+      savedWorkOrder,
+      undefined,
+      undefined,
+      expect.anything(),
+    );
     expect(kpiService.updateKpiForMachine).toHaveBeenCalledWith(
       machineId.toString(),
+      expect.anything(),
     );
     expect(notificationService.notifyCreated).not.toHaveBeenCalled();
   });
@@ -148,7 +165,8 @@ describe('WorkOrderCommandService.update', () => {
   beforeEach(() => {
     workOrderModel = {
       findByIdAndUpdate: jest.fn().mockReturnValue(execResult(null)),
-    };
+      db: { startSession: jest.fn().mockResolvedValue(mockSession()) },
+    } as never;
     reportService = {
       ensureAutoInterventionReport: jest.fn().mockResolvedValue(undefined),
     };
@@ -196,12 +214,14 @@ describe('WorkOrderCommandService.update', () => {
 
     expect(reportService.ensureAutoInterventionReport).toHaveBeenCalledWith(
       updated,
+      expect.anything(),
     );
     expect(
       preventiveSchedulingService.ensureNextPreventiveWorkOrder,
-    ).toHaveBeenCalledWith(updated);
+    ).toHaveBeenCalledWith(updated, undefined, undefined, expect.anything());
     expect(kpiService.updateKpiForMachine).toHaveBeenCalledWith(
       machineId.toString(),
+      expect.anything(),
     );
     expect(result).toMatchObject({
       _id: updated._id.toString(),

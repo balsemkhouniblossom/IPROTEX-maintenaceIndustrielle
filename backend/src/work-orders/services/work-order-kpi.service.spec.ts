@@ -6,10 +6,12 @@ function execResult<T>(value: T) {
 }
 
 function findChain<T>(value: T) {
-  return {
+  const chain = {
     sort: jest.fn().mockReturnThis(),
+    session: jest.fn().mockReturnThis(),
     exec: jest.fn().mockResolvedValue(value),
   };
+  return chain;
 }
 
 describe('WorkOrderKpiService.updateKpiForMachine', () => {
@@ -75,10 +77,13 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
 
     expect(counterService.getNextSequence).toHaveBeenCalledWith('kpi');
     expect(kpiModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kpi_id: 'KPI-000007',
-        machine_id: machineId,
-      }),
+      [
+        expect.objectContaining({
+          kpi_id: 'KPI-000007',
+          machine_id: machineId,
+        }),
+      ],
+      expect.anything(),
     );
     expect(kpiModel.findByIdAndUpdate).not.toHaveBeenCalled();
   });
@@ -98,6 +103,7 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     expect(kpiModel.findByIdAndUpdate).toHaveBeenCalledWith(
       existing._id,
       expect.objectContaining({ kpi_id: 'KPI-000001' }),
+      expect.anything(),
     );
   });
 
@@ -118,7 +124,8 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     await service.updateKpiForMachine(machineId.toHexString());
 
     expect(kpiModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ mttr_value: 3 }),
+      [expect.objectContaining({ mttr_value: 3 })],
+      expect.anything(),
     );
   });
 
@@ -139,7 +146,8 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     await service.updateKpiForMachine(machineId.toHexString());
 
     expect(kpiModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ mtbf_value: 48 }),
+      [expect.objectContaining({ mtbf_value: 48 })],
+      expect.anything(),
     );
   });
 
@@ -151,7 +159,8 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     await service.updateKpiForMachine(machineId.toHexString());
 
     expect(kpiModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ mtbf_value: 0 }),
+      [expect.objectContaining({ mtbf_value: 0 })],
+      expect.anything(),
     );
   });
 
@@ -167,10 +176,13 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     await service.updateKpiForMachine(machineId.toHexString());
 
     expect(kpiModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        completed_corrective: 1,
-        completed_preventive: 2,
-      }),
+      [
+        expect.objectContaining({
+          completed_corrective: 1,
+          completed_preventive: 2,
+        }),
+      ],
+      expect.anything(),
     );
   });
 
@@ -197,7 +209,8 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     await service.updateKpiForMachine(machineId.toHexString());
 
     expect(kpiModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ overdue_rate: 50 }),
+      [expect.objectContaining({ overdue_rate: 50 })],
+      expect.anything(),
     );
   });
 
@@ -206,11 +219,11 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     workOrderModel.find.mockReturnValue(findChain(orders));
 
     await service.updateKpiForMachine(machineId.toHexString());
-    const firstPayload = kpiModel.create.mock.calls[0][0];
+    const firstPayload = kpiModel.create.mock.calls[0][0][0];
 
     kpiModel.create.mockClear();
     await service.updateKpiForMachine(machineId.toHexString());
-    const secondPayload = kpiModel.create.mock.calls[0][0];
+    const secondPayload = kpiModel.create.mock.calls[0][0][0];
 
     expect(secondPayload.mtbf_value).toBe(firstPayload.mtbf_value);
     expect(secondPayload.mttr_value).toBe(firstPayload.mttr_value);

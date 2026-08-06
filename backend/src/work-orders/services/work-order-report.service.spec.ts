@@ -8,7 +8,12 @@ import { Types } from 'mongoose';
 import { WorkOrderReportService } from './work-order-report.service';
 
 function execResult<T>(value: T) {
-  return { exec: jest.fn().mockResolvedValue(value) };
+  const chain = {
+    session: jest.fn(),
+    exec: jest.fn().mockResolvedValue(value),
+  };
+  chain.session.mockReturnValue(chain);
+  return chain;
 }
 
 function findOneChain<T>(value: T) {
@@ -738,13 +743,16 @@ describe('WorkOrderReportService.ensureAutoInterventionReport', () => {
     });
 
     expect(interventionReportModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        ot_id: workOrderId.toHexString(),
-        cause_racine: 'Overheating',
-        description_action: 'Replace fan',
-        etat_final: 'completed',
-        validation_responsable: 'waiting_validation',
-      }),
+      [
+        expect.objectContaining({
+          ot_id: workOrderId.toHexString(),
+          cause_racine: 'Overheating',
+          description_action: 'Replace fan',
+          etat_final: 'completed',
+          validation_responsable: 'waiting_validation',
+        }),
+      ],
+      expect.anything(),
     );
   });
 
@@ -757,7 +765,8 @@ describe('WorkOrderReportService.ensureAutoInterventionReport', () => {
     });
 
     expect(interventionReportModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ validation_responsable: 'validated' }),
+      [expect.objectContaining({ validation_responsable: 'validated' })],
+      expect.anything(),
     );
   });
 });

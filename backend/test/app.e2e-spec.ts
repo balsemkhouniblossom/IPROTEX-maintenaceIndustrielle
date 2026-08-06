@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model, Types } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -62,7 +62,7 @@ import {
 } from '../src/schemas/panne-solution.schema';
 
 describe('Preventive scheduling lifecycle (e2e)', () => {
-  let mongo: MongoMemoryServer;
+  let mongo: MongoMemoryReplSet;
   let app: INestApplication<App>;
   let jwtService: JwtService;
   let authService: AuthService;
@@ -96,7 +96,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
   let w7: MaintenancePlanDocument;
 
   beforeAll(async () => {
-    mongo = await MongoMemoryServer.create();
+    mongo = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     process.env.NODE_ENV = 'test';
     process.env.MONGODB_URI = mongo.getUri('gmao_e2e');
     process.env.JWT_SECRET = 'e2e-test-jwt-secret';

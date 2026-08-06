@@ -9,7 +9,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { ClientSession, FilterQuery, Model, Types } from 'mongoose';
 import {
   isSchedulableMaintenanceType,
   NOT_CORRECTIVE_TYPE_FILTER,
@@ -330,6 +330,7 @@ export class WorkOrderPreventiveSchedulingService {
     workOrder: any,
     dueKeySet?: Set<string>,
     latestOrderByPlanKey?: Map<string, any>,
+    session?: ClientSession,
   ): Promise<boolean> {
     if (!isSchedulableMaintenanceType(workOrder.type_maintenance)) {
       return false;
@@ -340,7 +341,10 @@ export class WorkOrderPreventiveSchedulingService {
       return false;
     }
 
-    const plan = await this.maintenancePlanModel.findById(planId).exec();
+    const plan = await this.maintenancePlanModel
+      .findById(planId)
+      .session(session ?? null)
+      .exec();
     if (!plan) {
       return false;
     }
@@ -353,6 +357,7 @@ export class WorkOrderPreventiveSchedulingService {
       plan,
       dueKeySet,
       latestOrderByPlanKey,
+      session,
     );
   }
 
@@ -610,6 +615,7 @@ export class WorkOrderPreventiveSchedulingService {
     plan: any,
     dueKeySet?: Set<string>,
     latestOrderByPlanKey?: Map<string, any>,
+    session?: ClientSession,
   ): Promise<boolean> {
     const baseDate =
       workOrder.execution_date ||
@@ -653,6 +659,7 @@ export class WorkOrderPreventiveSchedulingService {
         status: { $nin: ['completed', 'validated', 'cancelled', 'canceled'] },
         due_date: nextDue,
       })
+      .session(session ?? null)
       .exec();
     if (duplicate) {
       return false;
@@ -687,7 +694,7 @@ export class WorkOrderPreventiveSchedulingService {
         .updateOne(
           { preventive_occurrence_key: occurrenceKey },
           { $setOnInsert: createdPayload },
-          { upsert: true },
+          { upsert: true, session },
         )
         .exec();
       created = Boolean(
