@@ -32,6 +32,7 @@ import {
   DocumentUploadValidationResult,
   validateManagedDocumentUpload,
 } from './document-file-validation';
+import { SkipTimeout } from '../common/decorators/skip-timeout.decorator';
 
 interface UploadDocumentBody {
   document_id?: string;
@@ -255,9 +256,11 @@ export class DocumentsUploadController {
   @Post('upload')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @SkipTimeout()
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: MAX_UPLOAD_BYTES },
     }),
   )
   async uploadFile(
@@ -390,9 +393,11 @@ export class DocumentsUploadController {
   @Post(':id/replace')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @SkipTimeout()
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
+      limits: { fileSize: MAX_UPLOAD_BYTES },
     }),
   )
   async replaceFile(

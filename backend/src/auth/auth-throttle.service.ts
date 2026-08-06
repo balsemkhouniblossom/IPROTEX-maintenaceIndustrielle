@@ -1,6 +1,19 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+  Optional,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 import type { Request } from 'express';
+import {
+  AUTH_THROTTLE_STORE,
+  AuthThrottleStore,
+  InMemoryAuthThrottleStore,
+  ThrottleRecord,
+} from './auth-throttle-store';
 
 export type AuthThrottleEndpoint =
   | 'login'
@@ -18,12 +31,6 @@ type ThrottleRule = {
   limit: number;
   failureLimit?: number;
   lockoutMs?: number;
-};
-
-type ThrottleRecord = {
-  hits: number[];
-  failures: number[];
-  lockedUntil?: number;
 };
 
 type AuthThrottleIdentity = {
@@ -116,9 +123,30 @@ const AUTH_THROTTLE_RULES: Record<
   },
 };
 
+// Every unique IP/account this service has ever seen gets a permanent Map
+// entry unless something evicts it — under sustained traffic against auth
+// endpoints (including hostile traffic from many distinct IPs) that grows
+// without bound. A periodic sweep removes entries that have decayed back
+// to empty (no hits, no failures, no active lockout) so steady-state
+// memory tracks *active* callers, not everyone ever seen.
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+
 @Injectable()
-export class AuthThrottleService {
-  private readonly records = new Map<string, ThrottleRecord>();
+export class AuthThrottleService implements OnModuleDestroy {
+  private readonly sweepTimer: NodeJS.Timeout;
+
+  constructor(
+    @Optional()
+    @Inject(AUTH_THROTTLE_STORE)
+    private readonly store: AuthThrottleStore = new InMemoryAuthThrottleStore(),
+  ) {
+    this.sweepTimer = setInterval(() => this.sweep(), SWEEP_INTERVAL_MS);
+    this.sweepTimer.unref?.();
+  }
+
+  onModuleDestroy(): void {
+    clearInterval(this.sweepTimer);
+  }
 
   async consume(
     endpoint: AuthThrottleEndpoint,
@@ -143,6 +171,7 @@ export class AuthThrottleService {
       }
 
       record.hits.push(now);
+      this.store.set(key.value, record);
     }
   }
 
@@ -160,6 +189,8 @@ export class AuthThrottleService {
       if (rule.failureLimit && record.failures.length >= rule.failureLimit) {
         record.lockedUntil = now + (rule.lockoutMs ?? rule.windowMs);
       }
+
+      this.store.set(key.value, record);
     }
   }
 
@@ -169,16 +200,21 @@ export class AuthThrottleService {
     identity: AuthThrottleIdentity = {},
   ): void {
     for (const key of this.buildKeys(endpoint, request, identity)) {
-      const record = this.records.get(key.value);
+      const record = this.store.get(key.value);
       if (record) {
         record.failures = [];
         record.lockedUntil = undefined;
+        this.store.set(key.value, record);
       }
     }
   }
 
   resetForTests(): void {
-    this.records.clear();
+    this.store.clear();
+  }
+
+  recordCountForTests(): number {
+    return this.store.size;
   }
 
   private buildKeys(
@@ -232,7 +268,17 @@ export class AuthThrottleService {
     rule: ThrottleRule,
     now: number,
   ): ThrottleRecord {
-    const record = this.records.get(key) ?? { hits: [], failures: [] };
+    const record = this.store.get(key) ?? { hits: [], failures: [] };
+    this.pruneRecord(record, rule, now);
+    this.store.set(key, record);
+    return record;
+  }
+
+  private pruneRecord(
+    record: ThrottleRecord,
+    rule: ThrottleRule,
+    now: number,
+  ): void {
     record.hits = record.hits.filter((hit) => now - hit < rule.windowMs);
     record.failures = record.failures.filter(
       (hit) => now - hit < rule.windowMs,
@@ -241,9 +287,45 @@ export class AuthThrottleService {
     if (record.lockedUntil && record.lockedUntil <= now) {
       record.lockedUntil = undefined;
     }
+  }
 
-    this.records.set(key, record);
-    return record;
+  private isRecordEmpty(record: ThrottleRecord, now: number): boolean {
+    return (
+      record.hits.length === 0 &&
+      record.failures.length === 0 &&
+      (!record.lockedUntil || record.lockedUntil <= now)
+    );
+  }
+
+  /**
+   * Evicts decayed entries. Exported at package-private visibility (not
+   * `private`) purely so tests can trigger a sweep deterministically
+   * instead of waiting on the real interval or faking timers.
+   */
+  sweep(): void {
+    const now = Date.now();
+    for (const [key, record] of this.store.entries()) {
+      const rule = this.resolveRuleForKey(key);
+      if (!rule) {
+        this.store.delete(key);
+        continue;
+      }
+
+      this.pruneRecord(record, rule, now);
+      if (this.isRecordEmpty(record, now)) {
+        this.store.delete(key);
+      } else {
+        this.store.set(key, record);
+      }
+    }
+  }
+
+  private resolveRuleForKey(key: string): ThrottleRule | undefined {
+    const [endpoint, scope] = key.split(':') as [
+      AuthThrottleEndpoint,
+      ThrottleScope,
+    ];
+    return AUTH_THROTTLE_RULES[endpoint]?.[scope];
   }
 
   private digest(value: string): string {

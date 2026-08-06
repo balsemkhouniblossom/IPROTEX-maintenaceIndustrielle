@@ -38,6 +38,7 @@ import {
   toManagedUserPhotoPath,
 } from './user-photo-url';
 import { AdminOnly } from '../auth/decorators/roles.decorator';
+import { SkipTimeout } from '../common/decorators/skip-timeout.decorator';
 
 @Controller('users')
 @AdminOnly()
@@ -103,6 +104,7 @@ export class UsersController {
 
   @Post('upload-photo')
   @UseGuards(JwtAuthGuard, AdminAccountGuard)
+  @SkipTimeout()
   @UseInterceptors(
     FileInterceptor('photo', FileUploadService.createMulterOptions()),
   )

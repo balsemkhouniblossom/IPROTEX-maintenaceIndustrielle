@@ -30,6 +30,7 @@ type EnvValidationResult = {
   predictiveMaintenanceEnabled: boolean;
   predictionHistoryRetentionSeconds: number;
   trustProxy: TrustProxySetting;
+  requestTimeoutMs: number;
 };
 
 function parseNodeEnv(input: string | undefined): RuntimeMode {
@@ -309,6 +310,18 @@ function validateRetentionSeconds(
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`${key} must be a positive integer number of seconds`);
+  }
+  return parsed;
+}
+
+function validateRequestTimeoutMs(value: string | undefined): number {
+  const fallbackMs = 30000;
+  if (!value?.trim()) return fallbackMs;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(
+      'REQUEST_TIMEOUT_MS must be a positive integer number of milliseconds',
+    );
   }
   return parsed;
 }
@@ -598,6 +611,9 @@ export function validateEnvironment(): EnvValidationResult {
     180 * 24 * 60 * 60,
   );
   const trustProxy = validateTrustProxy(process.env.TRUST_PROXY);
+  const requestTimeoutMs = validateRequestTimeoutMs(
+    process.env.REQUEST_TIMEOUT_MS,
+  );
   validateThrottleConfig();
 
   return {
@@ -621,6 +637,7 @@ export function validateEnvironment(): EnvValidationResult {
     predictiveMaintenanceEnabled,
     predictionHistoryRetentionSeconds,
     trustProxy,
+    requestTimeoutMs,
   };
 }
 

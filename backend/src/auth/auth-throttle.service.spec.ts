@@ -1,6 +1,7 @@
 import { HttpException } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthThrottleService } from './auth-throttle.service';
+import { InMemoryAuthThrottleStore } from './auth-throttle-store';
 
 function createRequest(ip: string): Request {
   return {
@@ -67,6 +68,51 @@ describe('AuthThrottleService', () => {
     await expect(
       service.consume('login', request, { email: 'user@example.com' }),
     ).resolves.toBeUndefined();
+  });
+
+  it('reads and writes through an injected store instead of an internal Map, proving the storage seam is real', async () => {
+    const store = new InMemoryAuthThrottleStore();
+    const injectedService = new AuthThrottleService(store);
+    const request = createRequest('203.0.113.50');
+
+    await injectedService.consume('register', request);
+
+    expect(store.size).toBeGreaterThan(0);
+  });
+
+  it('sweeps decayed records but keeps an active lockout in place', async () => {
+    const staleRequest = createRequest('203.0.113.40');
+    await service.consume('register', staleRequest);
+    expect(service.recordCountForTests()).toBe(1);
+
+    const nowSpy = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(Date.now() + 60 * 60 * 1000 + 1);
+    try {
+      service.sweep();
+      expect(service.recordCountForTests()).toBe(0);
+    } finally {
+      nowSpy.mockRestore();
+    }
+
+    const lockedRequest = createRequest('203.0.113.41');
+    for (let i = 0; i < 5; i += 1) {
+      await service.consume('login', lockedRequest, {
+        email: 'locked@example.com',
+      });
+      service.recordFailure('login', lockedRequest, {
+        email: 'locked@example.com',
+      });
+    }
+    expect(service.recordCountForTests()).toBeGreaterThan(0);
+
+    service.sweep();
+
+    await expect(
+      service.consume('login', lockedRequest, {
+        email: 'locked@example.com',
+      }),
+    ).rejects.toMatchObject({ status: 429 });
   });
 
   it('hashes reset tokens and Google exchange codes before keying account buckets', async () => {

@@ -632,6 +632,33 @@ describe('validateEnvironment', () => {
     );
   });
 
+  it('defaults REQUEST_TIMEOUT_MS to 30 seconds', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.REQUEST_TIMEOUT_MS;
+
+    const env = validateEnvironment();
+
+    expect(env.requestTimeoutMs).toBe(30000);
+  });
+
+  it('accepts a configured REQUEST_TIMEOUT_MS', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.REQUEST_TIMEOUT_MS = '45000';
+
+    const env = validateEnvironment();
+
+    expect(env.requestTimeoutMs).toBe(45000);
+  });
+
+  it('rejects a non-positive REQUEST_TIMEOUT_MS', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.REQUEST_TIMEOUT_MS = '0';
+
+    expect(() => validateEnvironment()).toThrow(
+      'REQUEST_TIMEOUT_MS must be a positive integer number of milliseconds',
+    );
+  });
+
   it('defaults TRUST_PROXY to false when unset', () => {
     process.env.NODE_ENV = 'test';
     delete process.env.TRUST_PROXY;

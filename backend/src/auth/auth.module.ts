@@ -23,6 +23,10 @@ import {
 } from './schemas/google-login-exchange.schema';
 import { FileStorageModule } from '../storage/file-storage.module';
 import { AuthThrottleService } from './auth-throttle.service';
+import {
+  AUTH_THROTTLE_STORE,
+  InMemoryAuthThrottleStore,
+} from './auth-throttle-store';
 
 function resolveJwtSecret(configService: ConfigService): string {
   const secret = configService.get<string>('JWT_SECRET')?.trim();
@@ -74,6 +78,7 @@ function resolveJwtSecret(configService: ConfigService): string {
     FeatureFlagsConfigService,
     EmailVerificationTokenService,
     GoogleLoginExchangeService,
+    { provide: AUTH_THROTTLE_STORE, useClass: InMemoryAuthThrottleStore },
     AuthThrottleService,
   ],
   exports: [AuthService],

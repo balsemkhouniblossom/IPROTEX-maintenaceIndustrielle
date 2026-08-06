@@ -1,6 +1,6 @@
 import './load-env';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as express from 'express';
 import { join } from 'path';
@@ -12,7 +12,9 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { validateEnvironment } from './config/env.validation';
 import { MANAGED_AVATAR_ROUTE } from './common/managed-file-url';
 import { buildCorsOriginDelegate } from './config/cors-origin-policy';
+import { buildHelmetOptions } from './config/security-headers.config';
 import { SecureSocketIoAdapter } from './config/secure-socket-io.adapter';
+import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 
 function isAtlasUri(uri: string): boolean {
   const normalized = uri.trim().toLowerCase();
@@ -29,7 +31,16 @@ function sanitizeMongoUri(uri: string): string {
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
-  const app = await NestFactory.create(AppModule);
+  // Nest's default body parser applies body-parser's own default limit
+  // (100kb) implicitly. Disabling it and registering json/urlencoded
+  // parsing ourselves makes that limit an explicit, intentional choice
+  // instead of an inherited default — matching the multer fix's spirit
+  // for the JSON side of the same "how much can an unauthenticated
+  // request make us buffer" question. Multipart uploads are unaffected:
+  // Multer parses those itself, independent of this.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   const env = validateEnvironment();
 
   app.getHttpAdapter().getInstance().set('trust proxy', env.trustProxy);
@@ -48,7 +59,7 @@ async function bootstrap() {
     `Mongoose debug queries: ${env.mongoDebug ? 'enabled' : 'disabled'}`,
   );
 
-  app.use(helmet());
+  app.use(helmet(buildHelmetOptions()));
   app.use(hpp());
   app.use(compression());
 
@@ -61,6 +72,9 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(
+    new TimeoutInterceptor(app.get(Reflector), env.requestTimeoutMs),
+  );
 
   // CORS
   app.enableCors({

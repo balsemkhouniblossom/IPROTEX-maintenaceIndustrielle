@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { MulterError } from 'multer';
 import {
   buildRequestLogMessage,
   getRequestId,
@@ -23,14 +24,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<RequestWithLogContext>();
 
+    // Multer rejects an oversized upload mid-stream once its configured
+    // `limits.fileSize` is exceeded, before any of our own handlers ever
+    // run — that MulterError would otherwise fall through to the generic
+    // 500 branch below instead of the 413 a caller streaming too large a
+    // file should see.
+    const isMulterFileSizeError =
+      exception instanceof MulterError && exception.code === 'LIMIT_FILE_SIZE';
     const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status = isMulterFileSizeError
+      ? HttpStatus.PAYLOAD_TOO_LARGE
+      : isHttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const exceptionResponse = isHttpException
-      ? exception.getResponse()
-      : 'Internal server error';
+    const exceptionResponse = isMulterFileSizeError
+      ? 'Uploaded file exceeds the maximum allowed size'
+      : isHttpException
+        ? exception.getResponse()
+        : 'Internal server error';
     const exceptionCode =
       typeof exceptionResponse === 'object' &&
       exceptionResponse !== null &&
