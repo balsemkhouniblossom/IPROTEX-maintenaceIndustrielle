@@ -53,3 +53,45 @@ jobs:
           FRONTEND_DEPLOY_HOOK_URL: ${{ secrets.FRONTEND_DEPLOY_HOOK_URL }}
         run: |
           curl --fail --silent --show-error --request POST "$FRONTEND_DEPLOY_HOOK_URL"
+
+      # Deploy hooks return as soon as Render/Vercel *accept* the trigger,
+      # not once the new build is actually live — polling here is what
+      # catches a deploy that was accepted but then failed to come up
+      # healthy (bad build, crashed boot, wrong env var), instead of
+      # finding out from a user report.
+      - name: Wait for backend to report healthy
+        if: steps.hooks.outputs.backend_configured == 'true'
+        env:
+          BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL || 'https://pfe-maintenaceindustrielle.onrender.com' }}
+        run: |
+          cd backend
+          npm ci
+          for attempt in $(seq 1 20); do
+            if npm run smoke-test -- --url="$BACKEND_HEALTH_URL"; then
+              echo "Backend healthy after $attempt attempt(s)." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt/20: backend not healthy yet, retrying in 15s..."
+            sleep 15
+          done
+          echo "::error::Backend never reported healthy at $BACKEND_HEALTH_URL after deployment."
+          echo "- Backend post-deploy health check FAILED at $BACKEND_HEALTH_URL" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Wait for frontend to respond
+        if: steps.hooks.outputs.frontend_configured == 'true'
+        env:
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL || 'https://pfe-maintenace-industrielle.vercel.app' }}
+        run: |
+          for attempt in $(seq 1 20); do
+            status=$(curl --silent --output /dev/null --write-out "%{http_code}" "$FRONTEND_URL" || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "Frontend responded 200 after $attempt attempt(s)." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt/20: frontend returned $status, retrying in 15s..."
+            sleep 15
+          done
+          echo "::error::Frontend never responded 200 at $FRONTEND_URL after deployment."
+          echo "- Frontend post-deploy health check FAILED at $FRONTEND_URL (last status: $status)" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

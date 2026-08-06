@@ -431,7 +431,7 @@ describe('validateEnvironment', () => {
     expect(env.emailVerificationSecret).toBe(process.env.JWT_SECRET);
   });
 
-  it('rejects using Render external URL as the production frontend origin', () => {
+  it('rejects a frontend origin that silently fell back to the backend’s own RENDER_EXTERNAL_URL', () => {
     process.env.NODE_ENV = 'production';
     process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
     process.env.JWT_SECRET = 'a'.repeat(32);
@@ -441,15 +441,34 @@ describe('validateEnvironment', () => {
     process.env.GOOGLE_CLIENT_ID =
       'google-client-id.apps.googleusercontent.com';
     process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
-    process.env.BACKEND_URL = 'https://pfe-maintenaceindustrielle.onrender.com';
+    process.env.BACKEND_URL = 'https://gmao-api.onrender.com';
     process.env.RENDER_EXTERNAL_URL = 'https://gmao-api.onrender.com';
     process.env.CORS_ORIGINS = 'https://gmao-api.onrender.com';
     delete process.env.FRONTEND_BASE_URL;
     delete process.env.APP_URL;
 
     expect(() => validateEnvironment()).toThrow(
-      'FRONTEND_BASE_URL must be https://pfe-maintenace-industrielle.vercel.app in production',
+      'FRONTEND_BASE_URL and BACKEND_URL must not be the same origin in production',
     );
+  });
+
+  it('accepts a staging frontend/backend origin pair that differs from the primary production domains', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.MONGODB_URI = 'mongodb://localhost:27017/gmao';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
+    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    process.env.GOOGLE_CLIENT_ID =
+      'google-client-id.apps.googleusercontent.com';
+    process.env.GOOGLE_CLIENT_SECRET = 'google-client-secret';
+    process.env.BACKEND_URL = 'https://gmao-staging-api.onrender.com';
+    process.env.FRONTEND_BASE_URL = 'https://gmao-staging.vercel.app';
+    process.env.CORS_ORIGINS = 'https://gmao-staging.vercel.app';
+
+    const env = validateEnvironment();
+
+    expect(env.corsOrigins).toEqual(['https://gmao-staging.vercel.app']);
   });
 
   it('does not require strict env variables during tests', () => {

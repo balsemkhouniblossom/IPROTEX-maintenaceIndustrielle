@@ -1,8 +1,7 @@
 import {
   CorsOrigin,
-  PRODUCTION_FRONTEND_ORIGIN,
-  PRODUCTION_RENDER_API_ORIGIN,
   RuntimeMode,
+  isLocalhost,
   normalizeCorsOrigin,
   parseConfiguredCorsOrigin,
 } from './cors-origin-policy';
@@ -404,17 +403,23 @@ function parseCorsOrigins(
         'CORS_ORIGINS must exactly match FRONTEND_BASE_URL in production',
       );
     }
-
-    if (uniqueOrigins[0] !== PRODUCTION_FRONTEND_ORIGIN) {
-      throw new Error(
-        `CORS_ORIGINS must exactly match ${PRODUCTION_FRONTEND_ORIGIN} in production`,
-      );
-    }
   }
 
   return uniqueOrigins;
 }
 
+/**
+ * Deliberately validates general safety properties (HTTPS, non-localhost,
+ * frontend/backend never the same origin) rather than pinning to one
+ * hardcoded production domain — a hardcoded literal here made a second
+ * (staging) environment impossible to configure at all. The
+ * frontend-equals-backend check specifically guards the real
+ * misconfiguration this used to catch: with FRONTEND_BASE_URL/FRONTEND_URL/
+ * APP_URL all unset, `frontendBaseUrl` falls back to RENDER_EXTERNAL_URL
+ * (Render's own self-referential URL for the backend service), which is
+ * always HTTPS and never localhost — so only an explicit same-origin check
+ * still catches it.
+ */
 function validateProductionDeploymentUrls(
   nodeEnv: RuntimeMode,
   frontendBaseUrl: string,
@@ -422,19 +427,29 @@ function validateProductionDeploymentUrls(
 ): void {
   if (nodeEnv !== 'production') return;
 
-  if (new URL(frontendBaseUrl).origin !== PRODUCTION_FRONTEND_ORIGIN) {
-    throw new Error(
-      `FRONTEND_BASE_URL must be ${PRODUCTION_FRONTEND_ORIGIN} in production`,
-    );
+  const frontend = new URL(frontendBaseUrl);
+  if (frontend.protocol !== 'https:') {
+    throw new Error('FRONTEND_BASE_URL must use https in production');
+  }
+  if (isLocalhost(frontend.hostname)) {
+    throw new Error('FRONTEND_BASE_URL cannot be localhost in production');
   }
 
   if (!backendUrl) {
     throw new Error('BACKEND_URL is required in production');
   }
 
-  if (new URL(backendUrl).origin !== PRODUCTION_RENDER_API_ORIGIN) {
+  const backend = new URL(backendUrl);
+  if (backend.protocol !== 'https:') {
+    throw new Error('BACKEND_URL must use https in production');
+  }
+  if (isLocalhost(backend.hostname)) {
+    throw new Error('BACKEND_URL cannot be localhost in production');
+  }
+
+  if (frontend.origin === backend.origin) {
     throw new Error(
-      `BACKEND_URL must be ${PRODUCTION_RENDER_API_ORIGIN} in production`,
+      'FRONTEND_BASE_URL and BACKEND_URL must not be the same origin in production (FRONTEND_BASE_URL may have silently fallen back to RENDER_EXTERNAL_URL — set it explicitly)',
     );
   }
 }

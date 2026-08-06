@@ -156,6 +156,15 @@ AI_ASSISTANT_RATE_LIMIT_PER_HOUR=20
 Render terminates TLS and routes traffic to the backend directly — no
 self-hosted Nginx or reverse proxy is used.
 
+### Render Blueprint (`render.yaml`)
+
+The repo-root [`render.yaml`](render.yaml) declares this service (build/start
+commands, health check path, and every env var *name* above — never a
+value; every entry uses Render's `sync: false`, which makes the Render
+dashboard prompt for the real value instead of reading one from the file).
+Applying it (Render dashboard → New → Blueprint, pointing at this repo)
+creates the service; it does not deploy code or set secrets on its own.
+
 ### Render AI Assistant
 
 When `AI_ASSISTANT_ENABLED=true` in production, startup validation requires
@@ -190,6 +199,100 @@ An automated test (`frontend/tests/env-secret-exposure.test.ts`) enforces
 this by scanning `frontend/src` for `process.env` references and failing if
 anything other than `NEXT_PUBLIC_API_BASE_URL`/`NODE_ENV` is ever read —
 run as part of `npm run test` in `frontend/`.
+
+### Vercel project config (`frontend/vercel.json`)
+
+[`frontend/vercel.json`](frontend/vercel.json) declares the framework
+preset and build/install commands. Two things it deliberately does **not**
+do, because the format has no way to:
+
+- **Root Directory.** This is a Vercel Project Settings value, not file
+  config — set it to `frontend` in the dashboard (or run `vercel link` from
+  inside `frontend/`) so Vercel finds this file and runs its commands from
+  the right place.
+- **`NEXT_PUBLIC_API_BASE_URL`.** Set directly in the Vercel dashboard for
+  this project — see the table above for the exact value and everything
+  that must *not* be set here.
+
+Security headers (CSP, `X-Frame-Options`, etc.) live in
+`frontend/next.config.mjs`'s `headers()` function, not `vercel.json` — one
+source of truth instead of two files that can silently drift apart.
+
+## Staging environment
+
+There is currently no staging environment — every deploy from `main` goes
+straight to production. Standing one up:
+
+1. **Render**: create a second Web Service from [`render.yaml`](render.yaml)
+   (or manually) pointing at the same repo/branch strategy you want to
+   stage from (e.g. a `staging` branch). Give it its own `MONGODB_URI`
+   (a **separate Atlas project/database** — never point staging at the
+   production database) and its own `BACKEND_URL`
+   (e.g. `https://gmao-staging-api.onrender.com`).
+2. **Vercel**: create a second Vercel project (or use Vercel's Preview
+   Deployments against a `staging` branch) with its own
+   `NEXT_PUBLIC_API_BASE_URL` pointing at the staging backend from step 1.
+3. Set the staging backend's `FRONTEND_BASE_URL` and `CORS_ORIGINS` to the
+   staging frontend's origin, and `AI_ASSISTANT_ENABLED=false` unless
+   staging genuinely needs to exercise the (billable) Gemini integration.
+
+Until 2026-08, step 1 was impossible: `env.validation.ts` rejected any
+`CORS_ORIGINS`/`FRONTEND_BASE_URL`/`BACKEND_URL` in production that didn't
+match the exact hardcoded production domains, so a second Render+Vercel
+pair could never pass startup validation. That check now validates general
+safety properties instead (HTTPS, non-localhost, frontend and backend
+never the same origin — the latter specifically catches
+`FRONTEND_BASE_URL` silently falling back to Render's own
+`RENDER_EXTERNAL_URL`) rather than one hardcoded pair, so a staging
+environment with its own domains passes the same validation production
+does.
+
+## Rollback
+
+**Render (backend)**: Render keeps a history of previous successful
+deploys for the service — from the service's dashboard, open the "Events"
+or "Deploys" tab and use "Rollback to this deploy" on the last known-good
+build. This restarts the service on the previous build's compiled output;
+it does **not** touch environment variables (a rollback that depends on an
+env var change being reverted too needs that done manually first) and does
+**not** touch the database.
+
+**Vercel (frontend)**: Vercel keeps every deployment immutably — from the
+project's "Deployments" tab, find the last known-good deployment and use
+"Promote to Production". This is near-instant (it repoints production
+traffic at an already-built deployment, no rebuild).
+
+**If the rollback crosses a database migration boundary**: this codebase
+has no separate migration-runner (schema changes ship as part of the
+backend deploy itself — see `backend/src/database/`). Rolling the backend
+back to a version that predates a schema/index change some already-written
+documents now rely on can reintroduce the exact drift
+`mongodb:indexes:check` (wired into CI, see `ci-pr.yml`) exists to catch.
+Before rolling back across such a boundary: run
+`npm run mongodb:indexes:check` against production from the rolled-back
+commit locally first, and treat any reported drift as a signal to fix
+forward (deploy a patch) instead of rolling back, not something to ignore.
+
+## Post-deploy verification
+
+`.github/workflows/cd-deploy.yml` triggers the Render/Vercel deploy hooks,
+then polls each service (up to 20 attempts, 15s apart) until it reports
+healthy, failing the workflow with a `$GITHUB_STEP_SUMMARY` entry if it
+never does — so a deploy that was *accepted* but came up crashed or
+misconfigured is caught by CI, not by a user report. The backend check
+runs [`backend/scripts/smoke-test.ts`](backend/scripts/smoke-test.ts)
+against `secrets.BACKEND_HEALTH_URL` (`/health` and `/health/api`); the
+frontend check polls `secrets.FRONTEND_URL` for a 200. Both secrets are
+optional — unset, they default to the production URLs already documented
+above.
+
+Run the same smoke test manually against any environment, including a
+staging one:
+
+```bash
+cd backend
+npm run smoke-test -- --url=https://gmao-staging-api.onrender.com
+```
 
 ## Environment file & secret hygiene
 

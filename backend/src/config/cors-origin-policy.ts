@@ -1,11 +1,6 @@
 export type RuntimeMode = 'development' | 'test' | 'production';
 export type CorsOrigin = string | RegExp;
 
-export const PRODUCTION_FRONTEND_ORIGIN =
-  'https://pfe-maintenace-industrielle.vercel.app';
-export const PRODUCTION_RENDER_API_ORIGIN =
-  'https://pfe-maintenaceindustrielle.onrender.com';
-
 export function normalizeCorsOrigin(value: string, key = 'origin'): string {
   try {
     const url = new URL(value.trim());
