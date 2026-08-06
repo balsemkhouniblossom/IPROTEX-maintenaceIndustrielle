@@ -1,4 +1,23 @@
 {
+  "errors": {
+    "widget": {
+      "title": "Si è verificato un errore",
+      "description": "Non è stato possibile visualizzare questa sezione. Puoi riprovare o continuare a usare il resto della pagina.",
+      "retry": "Riprova"
+    },
+    "route": {
+      "title": "Si è verificato un errore",
+      "description": "Questa pagina ha riscontrato un errore imprevisto. Gli altri dati sono al sicuro: riprova o torna alla dashboard.",
+      "retry": "Riprova",
+      "home": "Vai alla dashboard",
+      "digest": "Riferimento: {digest}"
+    },
+    "notFound": {
+      "title": "Pagina non trovata",
+      "description": "La pagina cercata non esiste o potrebbe essere stata spostata.",
+      "home": "Vai alla dashboard"
+    }
+  },
   "language": {
     "label": "Lingua",
     "en": "English",

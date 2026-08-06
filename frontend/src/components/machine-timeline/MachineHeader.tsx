@@ -20,6 +20,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
 import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import type { MachineTimelineSummary } from './types';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   operational: 'bg-green-100 text-green-800 border-green-200',
@@ -36,7 +38,18 @@ interface MachineHeaderProps {
   loading: boolean;
 }
 
-export default function MachineHeader({ machineId, machine, stats, loading }: MachineHeaderProps) {
+export default function MachineHeader(props: MachineHeaderProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="machine-header"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <MachineHeaderInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function MachineHeaderInner({ machineId, machine, stats, loading }: MachineHeaderProps) {
   const t = useTranslations('machineTimeline');
   const locale = useLocale();
   const { user } = useAuth();

@@ -96,6 +96,11 @@ jobs:
           NODE_ENV: test
           MONGODB_URI: mongodb://127.0.0.1:27017/GMAO_IPROTEX_TEST
 
+      - name: Verify MongoDB index definitions are creatable
+        run: npm run mongodb:indexes:apply
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/GMAO_IPROTEX_INDEX_CHECK
+
       - name: Build
         run: npm run build
 

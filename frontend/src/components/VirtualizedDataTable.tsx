@@ -11,6 +11,8 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -76,7 +78,18 @@ type GridTemplateStyle = CSSProperties & { [GRID_TEMPLATE_VAR]?: string };
  * there is no second, independently-scrolling container that could ever
  * drift out of width/position sync with the first.
  */
-export function VirtualizedDataTable<T>({
+export function VirtualizedDataTable<T>(props: VirtualizedDataTableProps<T>) {
+  return (
+    <ErrorBoundary
+      boundaryName="virtualized-data-table"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <VirtualizedDataTableInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function VirtualizedDataTableInner<T>({
   columns,
   rows,
   rowKey,

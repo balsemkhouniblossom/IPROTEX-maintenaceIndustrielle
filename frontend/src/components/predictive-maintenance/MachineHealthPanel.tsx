@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
 import type { RiskLevel } from "@/hooks/usePredictiveHealth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type PredictionExplanation = {
   measuredFacts: string[];
@@ -42,7 +44,18 @@ const RISK_TEXT_COLOR: Record<RiskLevel, string> = {
  * there is no machine or no stored prediction yet, so it can be dropped
  * into any page without touching that page's own logic.
  */
-export default function MachineHealthPanel({ machineId }: { machineId?: string }) {
+export default function MachineHealthPanel(props: { machineId?: string }) {
+  return (
+    <ErrorBoundary
+      boundaryName="machine-health-panel"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <MachineHealthPanelInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function MachineHealthPanelInner({ machineId }: { machineId?: string }) {
   const t = useTranslations("predictiveMaintenance");
   const [predictions, setPredictions] = useState<MachineHealthPrediction[]>([]);
 

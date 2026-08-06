@@ -1,25 +1,9 @@
 import { useTranslations } from "next-intl";
 import { CUSTOM_OPTION, Kpi, Lubrifiant, LUBRIFICATION_QTY_OPTIONS, MachineCondition } from "../types.ts";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
-export function PreventiveExecutionForm({
-  condition,
-  onConditionChange,
-  customCondition,
-  onCustomConditionChange,
-  comments,
-  onCommentsChange,
-  lubrifiants,
-  selectedLubrifiant,
-  onSelectedLubrifiantChange,
-  selectedLubrificationQtyMode,
-  onSelectedLubrificationQtyModeChange,
-  lubrificationQty,
-  onLubrificationQtyChange,
-  onPhotoChange,
-  selectedMachineKpi,
-  t,
-  tCommon,
-}: {
+type PreventiveExecutionFormProps = {
   condition: MachineCondition;
   onConditionChange: (value: MachineCondition) => void;
   customCondition: string;
@@ -37,7 +21,38 @@ export function PreventiveExecutionForm({
   selectedMachineKpi: Kpi | null;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+};
+
+export function PreventiveExecutionForm(props: PreventiveExecutionFormProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="preventive-execution-form"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <PreventiveExecutionFormInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function PreventiveExecutionFormInner({
+  condition,
+  onConditionChange,
+  customCondition,
+  onCustomConditionChange,
+  comments,
+  onCommentsChange,
+  lubrifiants,
+  selectedLubrifiant,
+  onSelectedLubrifiantChange,
+  selectedLubrificationQtyMode,
+  onSelectedLubrificationQtyModeChange,
+  lubrificationQty,
+  onLubrificationQtyChange,
+  onPhotoChange,
+  selectedMachineKpi,
+  t,
+  tCommon,
+}: PreventiveExecutionFormProps) {
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
       <div>

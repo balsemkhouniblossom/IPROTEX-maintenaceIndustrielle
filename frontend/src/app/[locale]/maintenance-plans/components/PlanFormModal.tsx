@@ -16,6 +16,8 @@ import {
   getNextFieldValue,
   getSelectValue,
 } from '../utils';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export type PlanFormData = {
   plan_id: string;
@@ -31,21 +33,7 @@ export type PlanFormData = {
   documentation: string;
 };
 
-export function PlanFormModal({
-  isOpen,
-  editingPlan,
-  formData,
-  setFormData,
-  submitting,
-  modules,
-  planIdOptions,
-  maintenanceCodeOptions,
-  frequenceLabelOptions,
-  onClose,
-  onSubmit,
-  t,
-  tCommon,
-}: {
+type PlanFormModalProps = {
   isOpen: boolean;
   editingPlan: MaintenancePlan | null;
   formData: PlanFormData;
@@ -59,7 +47,34 @@ export function PlanFormModal({
   onSubmit: (event: React.FormEvent) => void;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+};
+
+export function PlanFormModal(props: PlanFormModalProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="plan-form-modal"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <PlanFormModalInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function PlanFormModalInner({
+  isOpen,
+  editingPlan,
+  formData,
+  setFormData,
+  submitting,
+  modules,
+  planIdOptions,
+  maintenanceCodeOptions,
+  frequenceLabelOptions,
+  onClose,
+  onSubmit,
+  t,
+  tCommon,
+}: PlanFormModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={editingPlan ? t('modal.edit') : t('modal.add')}>
       <form onSubmit={onSubmit} className="space-y-4">

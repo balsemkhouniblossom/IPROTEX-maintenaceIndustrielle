@@ -1,4 +1,23 @@
 {
+  "errors": {
+    "widget": {
+      "title": "Se produjo un error",
+      "description": "No se pudo mostrar esta sección. Puede intentarlo de nuevo o seguir usando el resto de la página.",
+      "retry": "Reintentar"
+    },
+    "route": {
+      "title": "Se produjo un error",
+      "description": "Esta página encontró un error inesperado. Sus otros datos están seguros: intente de nuevo o vuelva al panel de control.",
+      "retry": "Reintentar",
+      "home": "Ir al panel de control",
+      "digest": "Referencia: {digest}"
+    },
+    "notFound": {
+      "title": "Página no encontrada",
+      "description": "La página que busca no existe o puede haber sido movida.",
+      "home": "Ir al panel de control"
+    }
+  },
   "language": {
     "label": "Idioma",
     "en": "English",

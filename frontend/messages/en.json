@@ -1,4 +1,23 @@
 {
+  "errors": {
+    "widget": {
+      "title": "Something went wrong",
+      "description": "This section couldn't be displayed. You can try again or continue using the rest of the page.",
+      "retry": "Try again"
+    },
+    "route": {
+      "title": "Something went wrong",
+      "description": "This page ran into an unexpected error. Your other data is safe — try again or go back to the dashboard.",
+      "retry": "Try again",
+      "home": "Go to dashboard",
+      "digest": "Reference: {digest}"
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "The page you're looking for doesn't exist or may have been moved.",
+      "home": "Go to dashboard"
+    }
+  },
   "language": {
     "label": "Language",
     "en": "English",

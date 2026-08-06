@@ -9,6 +9,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export interface ChartDatum {
   label: string;
@@ -29,7 +31,18 @@ interface BarChartCardProps {
  * use) so it matches light/dark mode automatically. Feed it any
  * `{label, value}[]` — nothing here is tied to any particular feature.
  */
-export function BarChartCard({
+export function BarChartCard(props: BarChartCardProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="bar-chart-card"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <BarChartCardInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function BarChartCardInner({
   title,
   data,
   emptyLabel,

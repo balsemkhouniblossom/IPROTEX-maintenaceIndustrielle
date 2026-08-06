@@ -1,4 +1,23 @@
 {
+  "errors": {
+    "widget": {
+      "title": "Une erreur est survenue",
+      "description": "Cette section n'a pas pu s'afficher. Vous pouvez réessayer ou continuer à utiliser le reste de la page.",
+      "retry": "Réessayer"
+    },
+    "route": {
+      "title": "Une erreur est survenue",
+      "description": "Cette page a rencontré une erreur inattendue. Vos autres données sont en sécurité — réessayez ou retournez au tableau de bord.",
+      "retry": "Réessayer",
+      "home": "Aller au tableau de bord",
+      "digest": "Référence : {digest}"
+    },
+    "notFound": {
+      "title": "Page introuvable",
+      "description": "La page que vous recherchez n'existe pas ou a peut-être été déplacée.",
+      "home": "Aller au tableau de bord"
+    }
+  },
   "language": {
     "label": "Langue",
     "en": "English",

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { SparklesIcon, ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { useLocale, useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type AiAssistantAnswer = {
   knownFacts: string[];
@@ -48,15 +50,28 @@ type AiRecommendationResponse = {
  * is always shown regardless of outcome. Additive to whichever page embeds
  * it: it never reads from or writes into that page's own form state.
  */
-export default function AiAssistantPanel({
-  machineId,
-  workOrderId,
-  faultCode,
-}: {
+type AiAssistantPanelProps = {
   machineId?: string;
   workOrderId?: string;
   faultCode?: string;
-}) {
+};
+
+export default function AiAssistantPanel(props: AiAssistantPanelProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="ai-assistant-panel"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <AiAssistantPanelInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function AiAssistantPanelInner({
+  machineId,
+  workOrderId,
+  faultCode,
+}: AiAssistantPanelProps) {
   const t = useTranslations("aiAssistant");
   const locale = useLocale();
   const [question, setQuestion] = useState("");

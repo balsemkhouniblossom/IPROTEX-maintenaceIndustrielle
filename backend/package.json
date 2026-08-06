@@ -16,6 +16,7 @@
     "invalidate:all-sessions": "ts-node scripts/invalidate-all-sessions.ts",
     "mongodb:indexes": "ts-node scripts/mongodb-index-manager.ts",
     "mongodb:indexes:apply": "ts-node scripts/mongodb-index-manager.ts --apply",
+    "mongodb:indexes:check": "ts-node scripts/mongodb-index-manager.ts --check",
     "mongodb:indexes:benchmark": "ts-node scripts/mongodb-index-benchmark.ts",
     "preventive-occurrences:audit": "ts-node scripts/preventive-occurrences-audit.ts --json",
     "work-orders:lifecycle-benchmark": "ts-node scripts/work-order-lifecycle-benchmark.ts",

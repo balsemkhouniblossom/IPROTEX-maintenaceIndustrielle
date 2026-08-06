@@ -5,8 +5,10 @@ import InternationalPhoneInput from '@/components/InternationalPhoneInput';
 import { Modal } from '@/components/Modal';
 import ProfileAvatar from '@/components/ProfileAvatar';
 import { User, UserFormData } from '../types';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
-export function UserFormModal(props: {
+type UserFormModalProps = {
   isOpen: boolean;
   editingUser: User | null;
   formData: UserFormData;
@@ -21,7 +23,20 @@ export function UserFormModal(props: {
   onFormDataChange: (data: UserFormData) => void;
   tUsers: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+};
+
+export function UserFormModal(props: UserFormModalProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="user-form-modal"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <UserFormModalInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function UserFormModalInner(props: UserFormModalProps) {
   const {
     isOpen,
     editingUser,

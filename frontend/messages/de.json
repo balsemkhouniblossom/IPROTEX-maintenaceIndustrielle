@@ -1,4 +1,23 @@
 {
+  "errors": {
+    "widget": {
+      "title": "Etwas ist schiefgelaufen",
+      "description": "Dieser Bereich konnte nicht angezeigt werden. Sie können es erneut versuchen oder die restliche Seite weiter nutzen.",
+      "retry": "Erneut versuchen"
+    },
+    "route": {
+      "title": "Etwas ist schiefgelaufen",
+      "description": "Auf dieser Seite ist ein unerwarteter Fehler aufgetreten. Ihre übrigen Daten sind sicher — versuchen Sie es erneut oder kehren Sie zum Dashboard zurück.",
+      "retry": "Erneut versuchen",
+      "home": "Zum Dashboard",
+      "digest": "Referenz: {digest}"
+    },
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "description": "Die gesuchte Seite existiert nicht oder wurde möglicherweise verschoben.",
+      "home": "Zum Dashboard"
+    }
+  },
   "language": {
     "label": "Sprache",
     "en": "English",

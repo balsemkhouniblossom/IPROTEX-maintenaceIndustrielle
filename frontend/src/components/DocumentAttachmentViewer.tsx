@@ -12,6 +12,8 @@ import {
 import { resolveManagedFileUrl } from "@/services/managedFileUrls";
 import api from "@/services/api";
 import { getApiBaseUrl } from "@/config/api-base-url";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), {
   ssr: false,
@@ -27,7 +29,18 @@ type Props = {
   title?: string;
 };
 
-export default function DocumentAttachmentViewer({ document, title }: Props) {
+export default function DocumentAttachmentViewer(props: Props) {
+  return (
+    <ErrorBoundary
+      boundaryName="document-attachment-viewer"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} bare />}
+    >
+      <DocumentAttachmentViewerInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function DocumentAttachmentViewerInner({ document, title }: Props) {
   const t = useTranslations("documents.viewer");
   const [fileLoading, setFileLoading] = useState(false);
   const [fileBroken, setFileBroken] = useState(false);

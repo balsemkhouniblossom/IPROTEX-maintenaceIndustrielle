@@ -9,6 +9,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export interface ChartDatum {
   label: string;
@@ -29,7 +31,18 @@ interface LineChartCardProps {
  * `{label, value}[]` (e.g. a period label paired with a metric) — nothing
  * here is tied to any particular feature.
  */
-export function LineChartCard({
+export function LineChartCard(props: LineChartCardProps) {
+  return (
+    <ErrorBoundary
+      boundaryName="line-chart-card"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <LineChartCardInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function LineChartCardInner({
   title,
   data,
   emptyLabel,

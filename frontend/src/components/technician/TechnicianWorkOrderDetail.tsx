@@ -14,6 +14,8 @@ import LiveStatusBadge from "@/components/device-monitoring/LiveStatusBadge";
 import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
 import { apiService } from "@/services/api";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type Detail = {
   workOrder: any;
@@ -32,7 +34,18 @@ type AvailablePart = {
     ref_constructeur?: string;
   };
 };
-export default function TechnicianWorkOrderDetail({ id }: { id: string }) {
+export default function TechnicianWorkOrderDetail(props: { id: string }) {
+  return (
+    <ErrorBoundary
+      boundaryName="technician-work-order-detail"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+    >
+      <TechnicianWorkOrderDetailInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
   const t = useTranslations("technician");
   const locale = useLocale();
   const [detail, setDetail] = useState<Detail>();

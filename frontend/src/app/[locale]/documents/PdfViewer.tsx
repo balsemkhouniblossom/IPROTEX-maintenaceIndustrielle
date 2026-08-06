@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 // Ensure styles for react-pdf text and annotation layers don't break layout
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -13,7 +15,18 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-export default function PdfViewer({ file }: { file: string }) {
+export default function PdfViewer(props: { file: string }) {
+  return (
+    <ErrorBoundary
+      boundaryName="pdf-viewer"
+      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} bare />}
+    >
+      <PdfViewerInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function PdfViewerInner({ file }: { file: string }) {
   const [numPages, setNumPages] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
