@@ -1648,6 +1648,7 @@
   "machineTimeline": {
     "pageTitle": "Chronologie de la machine",
     "timelineTitle": "Chronologie",
+    "timelineEventCount": "{count, plural, one {# événement} other {# événements}}",
     "loading": "Chargement…",
     "loadingMore": "Chargement de la suite…",
     "endOfTimeline": "Vous avez atteint le début de l'historique de cette machine.",

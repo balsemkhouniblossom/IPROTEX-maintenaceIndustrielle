@@ -1734,6 +1734,7 @@
   "machineTimeline": {
     "pageTitle": "Maschinen-Zeitleiste",
     "timelineTitle": "Zeitleiste",
+    "timelineEventCount": "{count, plural, one {# Ereignis} other {# Ereignisse}}",
     "loading": "Wird geladen…",
     "loadingMore": "Weitere Einträge werden geladen…",
     "endOfTimeline": "Sie haben den Anfang der Historie dieser Maschine erreicht.",
