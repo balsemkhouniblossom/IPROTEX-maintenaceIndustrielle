@@ -26,7 +26,12 @@ const FORBIDDEN_SECRET_NAMES = [
   "GEMINI_API_KEY",
 ];
 
-const ALLOWED_PROCESS_ENV_NAMES = new Set(["NODE_ENV"]);
+// NEXT_RUNTIME is not a project-configured variable at all — Next.js sets
+// it itself ("nodejs" | "edge") and its own documented instrumentation.ts
+// convention reads it to conditionally import runtime-specific code (see
+// src/instrumentation.ts). Nothing a developer configures, nothing that
+// could ever carry a secret value.
+const ALLOWED_PROCESS_ENV_NAMES = new Set(["NODE_ENV", "NEXT_RUNTIME"]);
 
 const SRC_DIR = path.join(process.cwd(), "src");
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs"]);

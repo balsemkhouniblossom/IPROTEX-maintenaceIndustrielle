@@ -1,3 +1,4 @@
+import './instrument';
 import './load-env';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';

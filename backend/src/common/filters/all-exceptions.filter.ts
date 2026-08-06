@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { MulterError } from 'multer';
+import * as Sentry from '@sentry/nestjs';
 import {
   buildRequestLogMessage,
   getRequestId,
@@ -64,18 +65,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const requestId = getRequestId(request);
     const pathname = getRequestPathname(request);
-    const logMessage = `${buildRequestLogMessage({
+    const logMessage = buildRequestLogMessage({
       requestId,
       method: request.method,
       pathname,
       status,
-    })} message=${messageText}`;
+      message: messageText,
+    });
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
         logMessage,
         exception instanceof Error ? exception.stack : undefined,
       );
+      // A safe no-op when SENTRY_DSN is unset (see instrument.ts) — only
+      // unexpected 5xx failures are worth an error-tracking event; the
+      // 4xx branch below is expected-shape client error handling, not a
+      // bug to alert on.
+      Sentry.captureException(exception, {
+        tags: { requestId },
+        contexts: {
+          request: { method: request.method, path: pathname, status },
+        },
+      });
     } else {
       this.logger.warn(logMessage);
     }

@@ -26,6 +26,21 @@ describe('backend log sanitization', () => {
     jest.restoreAllMocks();
   });
 
+  it('prefers originalUrl over a mount-truncated path/url (NestJS forRoutes(\'*\') rewrites both to "/")', () => {
+    // Reproduces what a real request looks like inside RequestLoggingMiddleware:
+    // NestJS's `consumer.apply(...).forRoutes('*')` passes the literal
+    // string '*' to Express as a mount path, which makes Express rewrite
+    // `req.path`/`req.url` to '/' for everything inside the mount — only
+    // `req.originalUrl` still holds the real path at that point.
+    const request = {
+      path: '/',
+      url: '/',
+      originalUrl: '/health/db',
+    } as unknown as Request;
+
+    expect(getRequestPathname(request)).toBe('/health/db');
+  });
+
   it('extracts only the request pathname from tokenized URLs', () => {
     const request = {
       originalUrl:
@@ -55,7 +70,9 @@ describe('backend log sanitization', () => {
   });
 
   it('does not log verification tokens from request logging middleware', () => {
-    const middleware = new RequestLoggingMiddleware();
+    const middleware = new RequestLoggingMiddleware({
+      record: jest.fn(),
+    } as never);
     const response = createMockResponse(200);
     const request = {
       method: 'GET',
@@ -114,6 +131,67 @@ describe('backend log sanitization', () => {
         path: '/auth/verify-reset-token',
       }),
     );
+  });
+
+  describe('LOG_FORMAT=json', () => {
+    const originalLogFormat = process.env.LOG_FORMAT;
+
+    beforeEach(() => {
+      process.env.LOG_FORMAT = 'json';
+    });
+
+    afterEach(() => {
+      if (originalLogFormat === undefined) {
+        delete process.env.LOG_FORMAT;
+      } else {
+        process.env.LOG_FORMAT = originalLogFormat;
+      }
+    });
+
+    it('emits a single-line JSON object instead of the pipe-style text format', () => {
+      const rendered = buildRequestLogMessage({
+        requestId: 'req-json-1',
+        method: 'GET',
+        pathname: '/work-orders',
+        status: 200,
+        durationMs: 42,
+      });
+
+      const parsed = JSON.parse(rendered) as Record<string, unknown>;
+      expect(parsed).toMatchObject({
+        requestId: 'req-json-1',
+        method: 'GET',
+        path: '/work-orders',
+        status: 200,
+        durationMs: 42,
+      });
+      expect(typeof parsed.timestamp).toBe('string');
+    });
+
+    it('includes the message field in the JSON object when supplied', () => {
+      const rendered = buildRequestLogMessage({
+        requestId: 'req-json-2',
+        method: 'POST',
+        pathname: '/auth/login',
+        status: 429,
+        message: 'Too many authentication attempts',
+      });
+
+      const parsed = JSON.parse(rendered) as Record<string, unknown>;
+      expect(parsed.message).toBe('Too many authentication attempts');
+    });
+
+    it('omits durationMs from the JSON object when not supplied', () => {
+      const rendered = buildRequestLogMessage({
+        requestId: 'req-json-3',
+        method: 'GET',
+        pathname: '/health',
+        status: 200,
+      });
+
+      const parsed = JSON.parse(rendered) as Record<string, unknown>;
+      expect(parsed).not.toHaveProperty('durationMs');
+    });
   });
 });
 

@@ -2,6 +2,11 @@ import { Logger, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
+import {
+  buildSlowQueryLogMessage,
+  isSlowQuery,
+  type MongoCommandSucceededEvent,
+} from './common/slow-query-logger';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { User, UserSchema } from './schemas/user.schema';
@@ -86,7 +91,10 @@ import { MachineTimelineModule } from './machine-timeline/machine-timeline.modul
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
+import { MetricsModule } from './common/metrics/metrics.module';
 const mongoLogger = new Logger('MongoDB');
+const SLOW_QUERY_THRESHOLD_MS =
+  Number(process.env.SLOW_QUERY_THRESHOLD_MS) || 200;
 
 @Module({
   imports: [
@@ -137,6 +145,11 @@ const mongoLogger = new Logger('MongoDB');
           uri: mongoUri,
           autoCreate: process.env.NODE_ENV !== 'production',
           autoIndex: process.env.NODE_ENV !== 'production',
+          // Required for the native driver to emit the `commandSucceeded`
+          // events the slow-query listener below depends on — Mongoose's
+          // own `debug` mode fires *before* a command runs, so it never
+          // has a duration to compare against a threshold with.
+          monitorCommands: true,
           connectionFactory: (connection: Connection) => {
             connection.on('connected', () => {
               const host = connection.host || 'unknown-host';
@@ -155,6 +168,14 @@ const mongoLogger = new Logger('MongoDB');
             connection.on('error', (error: Error) => {
               mongoLogger.error(`MongoDB connection error: ${error.message}`);
             });
+
+            connection
+              .getClient()
+              .on('commandSucceeded', (event: MongoCommandSucceededEvent) => {
+                if (isSlowQuery(event, SLOW_QUERY_THRESHOLD_MS)) {
+                  mongoLogger.warn(buildSlowQueryLogMessage(event));
+                }
+              });
 
             return connection;
           },
@@ -220,6 +241,7 @@ const mongoLogger = new Logger('MongoDB');
     ReportsModule,
     SavedViewsModule,
     MachineTimelineModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [

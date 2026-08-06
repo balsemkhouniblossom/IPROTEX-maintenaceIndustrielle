@@ -97,3 +97,11 @@ services:
       # Phase C addition — see main.ts's TimeoutInterceptor.
       - key: REQUEST_TIMEOUT_MS
         value: "30000"
+      # Phase F additions — see src/instrument.ts and src/app.module.ts.
+      # LOG_FORMAT/SLOW_QUERY_THRESHOLD_MS are left unset here to keep
+      # their code-level defaults (text logs, 200ms); set explicitly only
+      # if this environment needs to override them.
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.1"

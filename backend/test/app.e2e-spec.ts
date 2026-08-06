@@ -1247,6 +1247,10 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     expect(JSON.stringify(healthResponse.body)).not.toContain('smtp');
     expect(JSON.stringify(healthResponse.body)).not.toContain('brevoApi');
     expect(JSON.stringify(healthResponse.body)).not.toContain('errorCode');
+    const livenessResponse = await request(app.getHttpServer())
+      .get('/health/live')
+      .expect(200);
+    expect(livenessResponse.body).toMatchObject({ status: 'ok' });
     await request(app.getHttpServer()).get('/health/db').expect(401);
     await request(app.getHttpServer()).get('/health/email').expect(401);
     await request(app.getHttpServer())
@@ -1257,6 +1261,19 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .get('/health/db')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
+
+    await request(app.getHttpServer()).get('/health/metrics').expect(401);
+    const metricsResponse = await request(app.getHttpServer())
+      .get('/health/metrics')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(metricsResponse.headers['content-type']).toContain('text/plain');
+    expect(metricsResponse.text).toContain(
+      '# TYPE http_requests_total counter',
+    );
+    expect(metricsResponse.text).toContain(
+      'http_requests_total{method="GET",route="/health",status="200"}',
+    );
 
     await request(app.getHttpServer())
       .post('/auth/forgot-password')

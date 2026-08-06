@@ -57,6 +57,7 @@
     "@nestjs/serve-static": "^5.0.5",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.28",
+    "@sentry/nestjs": "^10.69.0",
     "@supabase/supabase-js": "^2.110.8",
     "@types/multer": "^2.1.0",
     "@types/pdfkit": "^0.17.6",

@@ -6,10 +6,13 @@ import {
   getRequestPathname,
   type RequestWithLogContext,
 } from '../log-sanitizer';
+import { MetricsRegistry } from '../metrics/metrics-registry';
 
 @Injectable()
 export class RequestLoggingMiddleware implements NestMiddleware {
   private readonly logger = new Logger('HTTP');
+
+  constructor(private readonly metrics: MetricsRegistry) {}
 
   use(req: RequestWithLogContext, res: Response, next: NextFunction): void {
     if (req.url.startsWith('/.well-known')) {
@@ -22,6 +25,7 @@ export class RequestLoggingMiddleware implements NestMiddleware {
 
     res.on('finish', () => {
       const durationMs = Date.now() - startedAt;
+      this.metrics.record(req.method, pathname, res.statusCode, durationMs);
       const level =
         res.statusCode >= 500
           ? 'error'
