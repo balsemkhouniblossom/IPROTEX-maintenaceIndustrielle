@@ -33,9 +33,15 @@ const nextConfig = {
     // real limitation (it doesn't stop inline script injection), not full
     // script isolation. It does stop loading scripts/styles/frames/objects
     // from any other origin, which is the gap this closes.
+    // 'unsafe-eval' is dev-only: React dev mode uses eval() to reconstruct
+    // component stacks for debugging; production React never calls eval().
+    const scriptSrc =
+      process.env.NODE_ENV === 'production'
+        ? "script-src 'self' 'unsafe-inline'"
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
     const csp = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'`,
+      scriptSrc,
       `style-src 'self' 'unsafe-inline'`,
       `img-src 'self' data: blob: ${apiOrigin}`,
       "font-src 'self' data:",

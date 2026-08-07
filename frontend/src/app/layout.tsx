@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { cookies } from "next/headers";
 import { getLocale } from "next-intl/server";
 import { Montserrat, Source_Sans_3 } from "next/font/google";
@@ -81,7 +82,9 @@ export default async function RootLayout({
       style={initialTheme ? { colorScheme: initialTheme } : undefined}
     >
       <body className={`${montserrat.variable} ${sourceSans.variable}`}>
-        <script dangerouslySetInnerHTML={{ __html: buildThemeInitScript() }} />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {buildThemeInitScript()}
+        </Script>
         <ThemeProvider>
           <AuthProvider>
             {children}
