@@ -1,6 +1,13 @@
 import { UserSummaryResponse } from './reference-summaries';
-import { mapPopulatedRef, serializeDate, serializeObjectId } from './serialization.util';
-import { InterventionReport, InterventionReportDocument } from '../../schemas/intervention-report.schema';
+import {
+  mapPopulatedRef,
+  serializeDate,
+  serializeObjectId,
+} from './serialization.util';
+import {
+  InterventionReport,
+  InterventionReportDocument,
+} from '../../schemas/intervention-report.schema';
 import { WorkOrderDocument } from '../../schemas/work-order.schema';
 import { toWorkOrderResponse } from '../../work-orders/contracts/work-order-response.mapper';
 import { WorkOrderResponse } from '../../work-orders/contracts/work-order-response.types';
@@ -29,7 +36,10 @@ export interface InterventionReportResponse {
   validated_at?: string;
 }
 
-type InterventionReportLike = (InterventionReport | InterventionReportDocument) & {
+type InterventionReportLike = (
+  | InterventionReport
+  | InterventionReportDocument
+) & {
   _id: unknown;
 };
 

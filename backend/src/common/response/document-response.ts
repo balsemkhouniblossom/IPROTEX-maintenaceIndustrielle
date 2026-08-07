@@ -104,9 +104,7 @@ export function toDocumentSummary(doc: DocumentLike): DocumentSummaryResponse {
     revision: doc.revision,
     root_document_id: serializeObjectId(doc.root_document_id),
     supersedes_document_id: serializeObjectId(doc.supersedes_document_id),
-    superseded_by_document_id: serializeObjectId(
-      doc.superseded_by_document_id,
-    ),
+    superseded_by_document_id: serializeObjectId(doc.superseded_by_document_id),
     lifecycle_history: (doc.lifecycle_history ?? []).map(
       toLifecycleEntryResponse,
     ),

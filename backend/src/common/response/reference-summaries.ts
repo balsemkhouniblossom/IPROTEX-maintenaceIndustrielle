@@ -102,9 +102,7 @@ export function toMachineTypeSummary(
   };
 }
 
-export function toMachineSummary(
-  doc: MachineDocument,
-): MachineSummaryResponse {
+export function toMachineSummary(doc: MachineDocument): MachineSummaryResponse {
   return {
     _id: serializeObjectId(doc._id)!,
     machine_id: doc.machine_id,

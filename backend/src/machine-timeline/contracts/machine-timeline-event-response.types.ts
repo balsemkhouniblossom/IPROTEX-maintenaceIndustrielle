@@ -55,8 +55,7 @@ export interface WorkOrderTimelineMetadata {
   toStatus?: string;
 }
 
-export interface WorkOrderTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface WorkOrderTimelineEventResponse extends BaseTimelineEventResponse {
   type:
     | MachineTimelineEventType.WORK_ORDER_CREATED
     | MachineTimelineEventType.WORK_ORDER_STARTED
@@ -80,8 +79,7 @@ export interface InterventionReportTimelineMetadata {
   finalState?: string;
 }
 
-export interface InterventionReportTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface InterventionReportTimelineEventResponse extends BaseTimelineEventResponse {
   type:
     | MachineTimelineEventType.INTERVENTION_REPORT_CREATED
     | MachineTimelineEventType.INTERVENTION_REPORT_VALIDATED;
@@ -108,8 +106,7 @@ export interface DocumentTimelineMetadata {
   typeDocument?: string;
 }
 
-export interface DocumentTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface DocumentTimelineEventResponse extends BaseTimelineEventResponse {
   type:
     | MachineTimelineEventType.DOCUMENT_UPLOADED
     | MachineTimelineEventType.DOCUMENT_PUBLISHED
@@ -124,8 +121,7 @@ export interface MaintenancePlanTimelineMetadata {
   typeMaintenance?: string;
 }
 
-export interface MaintenancePlanTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface MaintenancePlanTimelineEventResponse extends BaseTimelineEventResponse {
   type:
     | MachineTimelineEventType.MAINTENANCE_PLAN_CREATED
     | MachineTimelineEventType.MAINTENANCE_PLAN_ACTIVATED
@@ -145,8 +141,7 @@ export interface PreventiveTaskTimelineMetadata {
   source?: string;
 }
 
-export interface PreventiveTaskTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface PreventiveTaskTimelineEventResponse extends BaseTimelineEventResponse {
   type: MachineTimelineEventType.PREVENTIVE_TASK_COMPLETED;
   category: MachineTimelineCategory.PREVENTIVE;
   metadata: PreventiveTaskTimelineMetadata;
@@ -157,8 +152,7 @@ export interface LubricationTimelineMetadata {
   quantity?: number;
 }
 
-export interface LubricationTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface LubricationTimelineEventResponse extends BaseTimelineEventResponse {
   type: MachineTimelineEventType.LUBRICATION_COMPLETED;
   category: MachineTimelineCategory.PREVENTIVE;
   metadata: LubricationTimelineMetadata;
@@ -185,8 +179,7 @@ export interface AiRecommendationTimelineMetadata {
   provider?: string;
 }
 
-export interface AiRecommendationTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface AiRecommendationTimelineEventResponse extends BaseTimelineEventResponse {
   type: MachineTimelineEventType.AI_RECOMMENDATION_GENERATED;
   category: MachineTimelineCategory.AI;
   metadata: AiRecommendationTimelineMetadata;
@@ -198,8 +191,7 @@ export interface AiRecommendationTimelineEventResponse
  * shipped without contract coverage). The mapper degrades to this instead of
  * throwing, so a single bad row can never 500 the whole timeline page.
  */
-export interface UnknownTimelineEventResponse
-  extends BaseTimelineEventResponse {
+export interface UnknownTimelineEventResponse extends BaseTimelineEventResponse {
   type: 'unknown';
   category: MachineTimelineCategory | 'unknown';
   metadata: Record<string, unknown>;

@@ -89,9 +89,7 @@ describe('readTimestamps / readPopulatedField', () => {
   });
 
   it('reads a populated field in place without validating its shape', () => {
-    expect(readPopulatedField<{ name: string }>({ name: 'x' })?.name).toBe(
-      'x',
-    );
+    expect(readPopulatedField<{ name: string }>({ name: 'x' })?.name).toBe('x');
     expect(readPopulatedField(undefined)).toBeUndefined();
   });
 });

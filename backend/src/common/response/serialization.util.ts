@@ -97,9 +97,7 @@ export function readPopulatedField<T>(ref: unknown): T | undefined {
  * `asPopulatedDoc<Shape>(ref)?.field ?? fallback`, without ever asserting a
  * shape onto a bare ObjectId.
  */
-export function asPopulatedDoc<T>(
-  ref: unknown,
-): T | undefined {
+export function asPopulatedDoc<T>(ref: unknown): T | undefined {
   if (ref === null || ref === undefined) return undefined;
   if (isObjectIdRef(ref) || typeof ref === 'string') return undefined;
   return ref as T;
