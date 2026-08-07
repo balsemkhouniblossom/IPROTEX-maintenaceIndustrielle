@@ -18,7 +18,8 @@ test("theme config has one preference contract shared by storage, cookie, and pr
 test("root layout bootstraps data-theme before hydration and validates stored preferences", () => {
   const layout = readSource("src/app/layout.tsx");
   assert.match(layout, /suppressHydrationWarning/);
-  assert.match(layout, /dangerouslySetInnerHTML=\{\{ __html: buildThemeInitScript\(\) \}\}/);
+  assert.match(layout, /<Script id="theme-init" strategy="beforeInteractive">/);
+  assert.match(layout, /\{buildThemeInitScript\(\)\}/);
   assert.match(layout, /const isThemePreference = \(value\) => value === 'light' \|\| value === 'dark' \|\| value === 'system';/);
   assert.match(layout, /\[storedTheme, cookieTheme, root\.dataset\.themePreference\]\.find\(isThemePreference\) \|\| 'system'/);
   assert.match(layout, /root\.dataset\.theme = resolvedTheme/);
