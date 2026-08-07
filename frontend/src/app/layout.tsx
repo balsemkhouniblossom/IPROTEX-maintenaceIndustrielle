@@ -82,9 +82,11 @@ export default async function RootLayout({
       style={initialTheme ? { colorScheme: initialTheme } : undefined}
     >
       <body className={`${montserrat.variable} ${sourceSans.variable}`}>
-        <Script id="theme-init" strategy="beforeInteractive">
-          {buildThemeInitScript()}
-        </Script>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: buildThemeInitScript() }}
+        />
         <ThemeProvider>
           <AuthProvider>
             {children}
