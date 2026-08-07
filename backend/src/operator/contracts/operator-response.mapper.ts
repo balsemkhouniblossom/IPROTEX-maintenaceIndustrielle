@@ -13,7 +13,10 @@ import {
   PreventiveTask,
   PreventiveTaskDocument,
 } from '../../schemas/preventive-task.schema';
-import { Lubrifiant, LubrifiantDocument } from '../../schemas/lubrifiant.schema';
+import {
+  Lubrifiant,
+  LubrifiantDocument,
+} from '../../schemas/lubrifiant.schema';
 import { KPI, KPIDocument } from '../../schemas/kpi.schema';
 import { Panne, PanneDocument } from '../../schemas/panne.schema';
 import {
@@ -46,10 +49,7 @@ export function toOperatorPreventiveTaskResponse(
     task_id: doc.task_id,
     plan_id: mapPopulatedRef(
       doc.plan_id as unknown as
-        | MaintenancePlanDocument
-        | string
-        | undefined
-        | null,
+        MaintenancePlanDocument | string | undefined | null,
       toMaintenancePlanSummary,
     ),
     plan_code: doc.plan_code,

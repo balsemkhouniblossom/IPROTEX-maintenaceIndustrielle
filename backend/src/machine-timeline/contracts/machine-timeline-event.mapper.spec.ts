@@ -22,7 +22,9 @@ function baseEvent(
 describe('toMachineTimelineEventResponse', () => {
   it('is exhaustive over every MachineTimelineEventType member (compile-time + runtime proof)', () => {
     for (const type of Object.values(MachineTimelineEventType)) {
-      expect(() => assertEveryMachineTimelineEventTypeIsCovered(type)).not.toThrow();
+      expect(() =>
+        assertEveryMachineTimelineEventTypeIsCovered(type),
+      ).not.toThrow();
     }
   });
 

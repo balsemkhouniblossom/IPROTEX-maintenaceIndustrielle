@@ -30,7 +30,8 @@ describe('AuthThrottleService', () => {
       service.consume('login', request, { email: 'user@example.com' }),
     ).rejects.toMatchObject({
       status: 429,
-      response: expect.objectContaining({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      response: expect.objectContaining<Record<string, unknown>>({
         code: 'AUTH_TOO_MANY_ATTEMPTS',
       }),
     });
@@ -130,7 +131,8 @@ describe('AuthThrottleService', () => {
     await expect(
       service.consume('google-exchange', request, { code: 'secret-code' }),
     ).rejects.toMatchObject({
-      response: expect.objectContaining({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      response: expect.objectContaining<Record<string, unknown>>({
         message: 'Too many authentication attempts. Please try again later.',
       }),
     });

@@ -106,7 +106,16 @@ describe('GeminiAiProvider', () => {
 
     await provider.generate(request(), controller.signal);
 
-    const [params] = mockGenerateContent.mock.calls[0];
+    const [params] = mockGenerateContent.mock.calls[0] as [
+      {
+        model: string;
+        config: {
+          responseMimeType: string;
+          responseSchema: { required: string[] };
+          abortSignal: AbortSignal;
+        };
+      },
+    ];
     expect(params.model).toBe('gemini-2.5-flash');
     expect(params.config.responseMimeType).toBe('application/json');
     expect(params.config.responseSchema.required).toContain('knownFacts');

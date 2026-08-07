@@ -591,16 +591,14 @@ describe('TechnicianService.setPartQuantity', () => {
     };
     partsModel = {
       findOne: jest.fn().mockReturnValue(sessionChain(null)),
-      create: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            _id: new Types.ObjectId(),
-            ot_id: workOrderId,
-            part_id: partId,
-            quantite: 4,
-          },
-        ]),
+      create: jest.fn().mockResolvedValue([
+        {
+          _id: new Types.ObjectId(),
+          ot_id: workOrderId,
+          part_id: partId,
+          quantite: 4,
+        },
+      ]),
     };
     stockModel = {
       findOne: jest.fn().mockReturnValue(sessionChain({ _id: stockId })),

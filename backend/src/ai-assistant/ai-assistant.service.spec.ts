@@ -5,6 +5,12 @@ import { AiInteractionStatus } from '../schemas/ai-interaction.schema';
 import { AiProviderError, AiProviderResult } from './ai-provider.interface';
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
 
+type ProviderGenerateCall = [
+  {
+    question: string;
+  },
+];
+
 function emptyGroundedContext() {
   return { activeAlarms: [], maintenanceHistory: [], knowledgeArticles: [] };
 }
@@ -190,7 +196,9 @@ describe('AiAssistantService', () => {
       }),
     );
 
-    const [[requestArg]] = provider.generate.mock.calls;
+    const mockCalls = provider.generate.mock
+      .calls as Array<ProviderGenerateCall>;
+    const [[requestArg]] = mockCalls;
     expect(requestArg.question).toBe(
       '[redacted: instruction-like text removed]',
     );

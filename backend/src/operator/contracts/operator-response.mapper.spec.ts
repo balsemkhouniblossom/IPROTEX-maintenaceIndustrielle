@@ -19,7 +19,11 @@ describe('toOperatorPreventiveTaskResponse', () => {
   }
 
   it('serializes unpopulated plan_id/module_id refs to plain id strings', () => {
-    const doc = { ...baseTask(), plan_id: new Types.ObjectId(), module_id: new Types.ObjectId() };
+    const doc = {
+      ...baseTask(),
+      plan_id: new Types.ObjectId(),
+      module_id: new Types.ObjectId(),
+    };
     const response = toOperatorPreventiveTaskResponse(doc);
     expect(response.plan_id).toBe(doc.plan_id.toString());
     expect(response.module_id).toBe(doc.module_id.toString());

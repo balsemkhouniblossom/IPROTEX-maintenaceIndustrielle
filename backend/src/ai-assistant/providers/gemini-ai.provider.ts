@@ -120,8 +120,10 @@ export class MisconfiguredAiProvider implements AiProvider {
     };
   }
 
-  async generate(): Promise<AiProviderResult> {
-    throw new AiProviderError('missing_configuration', this.message);
+  generate(): Promise<AiProviderResult> {
+    return Promise.reject(
+      new AiProviderError('missing_configuration', this.message),
+    );
   }
 }
 
