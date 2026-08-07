@@ -57,9 +57,7 @@ import { CorrectiveAssistantResponse } from './contracts/work-order-assistant-re
 import { toPartRequestResponse } from './contracts/part-request-response.mapper';
 import { PartRequestResponse } from './contracts/part-request-response.types';
 import { toLubricationLogResponseOrNull } from './contracts/lubrication-log-response.mapper';
-import {
-  toInterventionReportResponse,
-} from '../common/response/intervention-report-response';
+import { toInterventionReportResponse } from '../common/response/intervention-report-response';
 import {
   CorrectiveReportForOperatorResponse,
   PreventiveSubmissionForOperatorResponse,

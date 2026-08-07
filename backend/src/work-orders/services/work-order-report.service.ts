@@ -52,6 +52,19 @@ export interface SubmitPreventiveMaintenanceInput {
   lubrication?: { lubrifiantId: string; quantity: number };
 }
 
+export interface WorkOrderForAutoInterventionReport {
+  _id?: Types.ObjectId | string;
+  execution_date?: Date;
+  date_start?: Date;
+  date_created?: Date;
+  date_end?: Date;
+  date_closed?: Date;
+  code_panne?: string;
+  technician_id?: Types.ObjectId;
+  description?: string;
+  status?: string;
+}
+
 export interface ApplyValidationDecisionInput {
   workOrderId: string;
   action: ValidationAction;
@@ -474,7 +487,7 @@ export class WorkOrderReportService {
    * every create/update of an already-completed Work Order.
    */
   async ensureAutoInterventionReport(
-    workOrder: any,
+    workOrder: WorkOrderForAutoInterventionReport,
     session?: ClientSession,
   ): Promise<void> {
     const existing = await this.interventionReportModel

@@ -184,9 +184,7 @@ export class WorkOrdersController {
 
   @Post(':id/complete')
   @AdminOnly()
-  async complete(
-    @Param('id') id: string,
-  ): Promise<WorkOrderResponse | null> {
+  async complete(@Param('id') id: string): Promise<WorkOrderResponse | null> {
     const nowIso = new Date().toISOString();
     return this.workOrdersService.update(id, {
       status: 'completed',

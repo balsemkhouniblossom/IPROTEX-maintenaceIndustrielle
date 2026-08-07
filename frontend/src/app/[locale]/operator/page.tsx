@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { MiniAvatarAssistant } from "@/components/avatar/MiniAvatarAssistant";
 import type { AvatarActionKey } from "@/components/avatar/avatar-types";
+import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
@@ -13,6 +14,7 @@ import {
     ClockIcon,
     ArrowRightIcon,
     ClipboardDocumentListIcon,
+    SparklesIcon,
     WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
@@ -469,6 +471,19 @@ export default function OperatorDashboard() {
                             </div>
                         </section>
 
+                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                            <div className="mb-6 text-center">
+                                <div className="mb-2 text-xl font-semibold text-text-primary md:text-2xl">{tOperator("dashboard.aiAssistantTitle")}</div>
+                                <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">{tOperator("dashboard.aiAssistantSubtitle")}</p>
+                            </div>
+
+                            <AiAssistantPanel
+                                machineId={nextTask?.machineId || undefined}
+                                workOrderId={nextTask?.workOrderId || undefined}
+                                faultCode={nextTask?.maintenanceType.toLowerCase().includes("correct") ? "" : undefined}
+                            />
+                        </section>
+
                         <section id="operator-maintenance-entry" className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
                             <div className="mb-6 text-center">
                                 <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">{tOperator("dashboard.chooseMaintenance")}</div>
@@ -514,6 +529,23 @@ export default function OperatorDashboard() {
                                     </div>
                                 </button>
                             </div>
+                        </section>
+
+                        <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>
+                            <div className="mb-6 flex flex-col items-center justify-center gap-3 text-center">
+                                <div>
+                                    <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">{tOperator("dashboard.aiAssistantTitle")}</div>
+                                    <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">{tOperator("dashboard.aiAssistantSubtitle")}</p>
+                                </div>
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                                    <SparklesIcon className="h-5 w-5" />
+                                </div>
+                            </div>
+
+                            <AiAssistantPanel
+                                machineId={nextTask?.machineId || undefined}
+                                workOrderId={nextTask?.workOrderId || undefined}
+                            />
                         </section>
 
                         <section className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}>

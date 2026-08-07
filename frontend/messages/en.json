@@ -432,6 +432,8 @@
         "overdueTasks": "Overdue Tasks",
         "emptyValue": "Not assigned",
         "chooseMaintenance": "Choose Maintenance",
+        "aiAssistantTitle": "Maintenance AI Assistant",
+        "aiAssistantSubtitle": "Ask the assistant for help with the current machine or task. It is advisory only and will not modify work orders.",
         "primaryActions": "Primary Actions",
         "preventiveDescription": "Open the guided preventive workflow and work from the maintenance plan already imported into the system.",
         "correctiveDescription": "Capture a fault, see the recommended solution, and generate a corrective report with minimal typing.",
