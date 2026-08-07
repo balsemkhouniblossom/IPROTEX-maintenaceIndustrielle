@@ -82,14 +82,14 @@ export class AutoencoderModel implements PredictionModel {
       samples.map((s) => s.features),
       inputSize,
     );
-    const standardizedSamples = samples.map((s) =>
+    const standardizedSamples: number[][] = samples.map((s) =>
       standardize(s.features, stats),
     );
 
-    let w1 = initMatrix(hiddenSize, inputSize, rng);
-    let b1 = new Array(hiddenSize).fill(0);
-    let w2 = initMatrix(inputSize, hiddenSize, rng);
-    let b2 = new Array(inputSize).fill(0);
+    let w1: number[][] = initMatrix(hiddenSize, inputSize, rng);
+    let b1: number[] = new Array<number>(hiddenSize).fill(0);
+    let w2: number[][] = initMatrix(inputSize, hiddenSize, rng);
+    let b2: number[] = new Array<number>(inputSize).fill(0);
 
     let finalTrainingLoss = 0;
 

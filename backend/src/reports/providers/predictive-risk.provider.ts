@@ -73,9 +73,10 @@ export class PredictiveRiskReportProvider implements ReportDataProvider {
         { label: 'Machines covered', value: rows.length },
         {
           label: 'Critical/High risk machines',
-          value: rows.filter(
-            (r) => r.risk_level === 'critical' || r.risk_level === 'high',
-          ).length,
+          value: rows.filter((r) => {
+            const riskLevel = String(r.risk_level);
+            return riskLevel === 'critical' || riskLevel === 'high';
+          }).length,
         },
       ],
     };

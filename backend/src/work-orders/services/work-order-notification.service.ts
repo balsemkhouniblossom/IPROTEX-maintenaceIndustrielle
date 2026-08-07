@@ -3,21 +3,30 @@ import { NotificationCenterService } from '../../notification-center/notificatio
 import { NotificationType } from '../../schemas/notification.schema';
 import { Role } from '../../schemas/user.schema';
 
+type WorkOrderNotificationPayload = {
+  technician_id?: string | { toString(): string };
+  _id?: string | { toString(): string };
+  machine_id?: string | { toString(): string };
+  ot_id?: string;
+  description?: string;
+};
+
 @Injectable()
 export class WorkOrderNotificationService {
   constructor(
     private readonly notificationCenterService: NotificationCenterService,
   ) {}
 
-  notifyCreated(workOrder: any) {
-    if (!workOrder.technician_id) return Promise.resolve(null);
+  notifyCreated(workOrder: WorkOrderNotificationPayload) {
+    const technicianId = workOrder.technician_id?.toString?.();
+    if (!technicianId) return Promise.resolve(null);
     return this.notificationCenterService.createIfNotExists({
-      dedupeKey: `work_order_created:${workOrder._id.toString()}`,
+      dedupeKey: `work_order_created:${workOrder._id?.toString?.()}`,
       type: NotificationType.WORK_ORDER_CREATED,
       title: `New work order ${workOrder.ot_id} assigned`,
-      recipientUserId: workOrder.technician_id.toString(),
-      workOrderId: workOrder._id.toString(),
-      machineId: workOrder.machine_id?.toString(),
+      recipientUserId: technicianId,
+      workOrderId: workOrder._id?.toString?.(),
+      machineId: workOrder.machine_id?.toString?.(),
     });
   }
 

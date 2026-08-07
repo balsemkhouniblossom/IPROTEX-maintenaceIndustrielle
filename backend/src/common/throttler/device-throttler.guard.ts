@@ -47,13 +47,13 @@ export class DeviceThrottlerGuard extends ThrottlerGuard {
     );
   }
 
-  protected async getTracker(
+  protected getTracker(
     req: Request & { device?: DeviceDocument },
   ): Promise<string> {
-    return `device:${req.device?.device_id ?? 'unknown'}`;
+    return Promise.resolve(`device:${req.device?.device_id ?? 'unknown'}`);
   }
 
-  protected async throwThrottlingException(
+  protected throwThrottlingException(
     _context: ExecutionContext,
   ): Promise<void> {
     throw new HttpException(

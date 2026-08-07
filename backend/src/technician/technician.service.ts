@@ -210,9 +210,7 @@ export class TechnicianService {
     };
   }
 
-  async dashboard(
-    technicianId: string,
-  ): Promise<TechnicianDashboardResponse> {
+  async dashboard(technicianId: string): Promise<TechnicianDashboardResponse> {
     const scope = { technician_id: this.technicianScope(technicianId) };
 
     const [

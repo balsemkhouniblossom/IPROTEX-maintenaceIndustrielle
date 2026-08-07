@@ -5,6 +5,7 @@ const MAX_FILE_NAME_LENGTH = 255;
 // derive an extension and for display (the stored file name on disk/in
 // object storage is always a freshly generated UUID), but a malicious
 // original name must never be trusted even for that.
+// eslint-disable-next-line no-control-regex
 const UNSAFE_FILE_NAME_PATTERN = /[\\/\x00-\x1f]/;
 
 interface DocumentKindRule {

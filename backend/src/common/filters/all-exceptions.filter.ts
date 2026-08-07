@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { MulterError } from 'multer';
 import * as Sentry from '@sentry/nestjs';
 import {
@@ -33,7 +33,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const isMulterFileSizeError =
       exception instanceof MulterError && exception.code === 'LIMIT_FILE_SIZE';
     const isHttpException = exception instanceof HttpException;
-    const status = isMulterFileSizeError
+    const status: HttpStatus = isMulterFileSizeError
       ? HttpStatus.PAYLOAD_TOO_LARGE
       : isHttpException
         ? exception.getStatus()
@@ -73,7 +73,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message: messageText,
     });
 
-    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
         logMessage,
         exception instanceof Error ? exception.stack : undefined,

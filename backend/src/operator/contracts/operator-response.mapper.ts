@@ -49,7 +49,10 @@ export function toOperatorPreventiveTaskResponse(
     task_id: doc.task_id,
     plan_id: mapPopulatedRef(
       doc.plan_id as unknown as
-        MaintenancePlanDocument | string | undefined | null,
+        | MaintenancePlanDocument
+        | string
+        | undefined
+        | null,
       toMaintenancePlanSummary,
     ),
     plan_code: doc.plan_code,

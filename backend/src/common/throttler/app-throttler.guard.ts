@@ -52,17 +52,17 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     );
   }
 
-  protected async getTracker(
+  protected getTracker(
     req: Request & { user?: { userId?: string } },
   ): Promise<string> {
     const userId = req.user?.userId;
     if (userId) {
-      return `user:${userId}`;
+      return Promise.resolve(`user:${userId}`);
     }
-    return `ip:${this.getClientIp(req)}`;
+    return Promise.resolve(`ip:${this.getClientIp(req)}`);
   }
 
-  protected async throwThrottlingException(
+  protected throwThrottlingException(
     _context: ExecutionContext,
   ): Promise<void> {
     throw new HttpException(

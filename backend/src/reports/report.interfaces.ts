@@ -1,6 +1,7 @@
 import { ReportFormat, ReportType } from '../schemas/generated-report.schema';
+import { Role } from '../schemas/user.schema';
 
-export type ReportActor = { userId: string; role: string };
+export type ReportActor = { userId: string; role: Role };
 
 /** Normalized, already-parsed filter values every data provider receives — dates are real `Date` objects, never ISO strings. */
 export type ReportParams = {

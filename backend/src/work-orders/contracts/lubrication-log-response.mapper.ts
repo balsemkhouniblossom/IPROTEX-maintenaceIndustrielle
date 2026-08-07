@@ -1,4 +1,7 @@
-import { serializeDate, serializeObjectId } from '../../common/response/serialization.util';
+import {
+  serializeDate,
+  serializeObjectId,
+} from '../../common/response/serialization.util';
 import {
   LubrificationLog,
   LubrificationLogDocument,

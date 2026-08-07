@@ -14,7 +14,6 @@ import {
   ClockIcon,
   ArrowRightIcon,
   ClipboardDocumentListIcon,
-  SparklesIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";

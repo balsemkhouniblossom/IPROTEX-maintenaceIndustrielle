@@ -44,7 +44,8 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   const env = validateEnvironment();
 
-  app.getHttpAdapter().getInstance().set('trust proxy', env.trustProxy);
+  const expressApp = app.getHttpAdapter().getInstance() as express.Express;
+  expressApp.set('trust proxy', env.trustProxy);
 
   mongoose.set('debug', env.mongoDebug);
 

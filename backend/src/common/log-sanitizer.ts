@@ -90,7 +90,7 @@ export function buildRequestLogMessage(input: {
 }
 
 function normalizeRequestId(value: unknown): string | null {
-  const candidate = Array.isArray(value) ? value[0] : value;
+  const candidate: unknown = Array.isArray(value) ? value[0] : value;
   if (typeof candidate !== 'string') {
     return null;
   }

@@ -74,6 +74,23 @@ export interface RescheduleInput {
   role?: string;
 }
 
+type WorkOrderPayload = {
+  _id?: string | { toString(): string };
+  machine_id?: string | { toString(): string };
+  module_id?: string | { toString(): string };
+  plan_id?: string | { toString(): string };
+  technician_id?: string | { toString(): string };
+  type_maintenance?: string | null;
+  execution_date?: string | number | Date;
+  date_closed?: string | number | Date;
+  date_end?: string | number | Date;
+  date_start?: string | number | Date;
+  original_due_date?: string | number | Date;
+  description?: string;
+  priorite?: string;
+  status?: string;
+};
+
 @Injectable()
 export class WorkOrderPreventiveSchedulingService {
   private readonly logger = new Logger(
@@ -327,9 +344,9 @@ export class WorkOrderPreventiveSchedulingService {
   }
 
   async ensureNextPreventiveWorkOrder(
-    workOrder: any,
+    workOrder: WorkOrderPayload,
     dueKeySet?: Set<string>,
-    latestOrderByPlanKey?: Map<string, any>,
+    latestOrderByPlanKey?: Map<string, WorkOrderPayload>,
     session?: ClientSession,
   ): Promise<boolean> {
     if (!isSchedulableMaintenanceType(workOrder.type_maintenance)) {
@@ -470,7 +487,7 @@ export class WorkOrderPreventiveSchedulingService {
 
       const duePlans: Array<{
         plan: any;
-        latest: any;
+        latest: WorkOrderPayload;
       }> = [];
 
       for (const plan of plans) {
@@ -611,10 +628,10 @@ export class WorkOrderPreventiveSchedulingService {
   }
 
   private async createNextPreventiveWorkOrderAtomically(
-    workOrder: any,
+    workOrder: WorkOrderPayload,
     plan: any,
     dueKeySet?: Set<string>,
-    latestOrderByPlanKey?: Map<string, any>,
+    latestOrderByPlanKey?: Map<string, WorkOrderPayload>,
     session?: ClientSession,
   ): Promise<boolean> {
     const baseDate =
@@ -764,8 +781,8 @@ export class WorkOrderPreventiveSchedulingService {
 
   private async findLatestPreventiveOrdersForPlans(
     planIds: Types.ObjectId[],
-  ): Promise<Map<string, any>> {
-    const latestOrderByPlanKey = new Map<string, any>();
+  ): Promise<Map<string, WorkOrderPayload>> {
+    const latestOrderByPlanKey = new Map<string, WorkOrderPayload>();
     if (!planIds.length) {
       return latestOrderByPlanKey;
     }
@@ -801,7 +818,7 @@ export class WorkOrderPreventiveSchedulingService {
       ])
       .exec();
 
-    for (const row of rows as Array<{ order?: any }>) {
+    for (const row of rows as Array<{ order?: WorkOrderPayload }>) {
       const order = row.order;
       if (!order) {
         continue;
