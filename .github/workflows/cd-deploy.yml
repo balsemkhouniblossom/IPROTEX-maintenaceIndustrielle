@@ -18,6 +18,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     environment: production
     steps:
+      - uses: actions/checkout@v4
+
       - name: Detect configured deployment hooks
         id: hooks
         env:
