@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as fs from 'fs/promises';
 import { Model, Types } from 'mongoose';
+import { resolve } from 'path';
 import {
   DocumentEntity,
   DocumentDocument,
@@ -422,7 +424,16 @@ export class DocumentsService {
       throw new NotFoundException('Managed document file not found');
     }
 
-    return this.fileStorageService.readProtectedFile(storageReference);
+    try {
+      return await this.fileStorageService.readProtectedFile(storageReference);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        const fallbackFile = await this.readSeededManualFallback(doc);
+        if (fallbackFile) return fallbackFile;
+      }
+
+      throw error;
+    }
   }
 
   private async applyTransition(
@@ -613,5 +624,42 @@ export class DocumentsService {
       (plain.file_path as string | undefined) ??
       null
     );
+  }
+
+  private async readSeededManualFallback(
+    doc: DocumentDocument,
+  ): Promise<ProtectedStoredFile | null> {
+    const plain = doc.toObject() as Record<string, unknown>;
+    const fileName = plain.file_name as string | undefined;
+    const typeDocument =
+      typeof plain.type_document === 'string'
+        ? plain.type_document.toLowerCase()
+        : '';
+    const tags = Array.isArray(plain.tags)
+      ? plain.tags.map((tag) => String(tag).toLowerCase())
+      : [];
+
+    if (
+      !fileName ||
+      !/^[A-Za-z0-9._ -]+\.xlsx$/i.test(fileName) ||
+      (!typeDocument.includes('manual') && !tags.includes('manual'))
+    ) {
+      return null;
+    }
+
+    const resourcePath = resolve(process.cwd(), '..', 'resources', fileName);
+
+    try {
+      const buffer = await fs.readFile(resourcePath);
+      return {
+        buffer,
+        contentType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        fileName,
+        size: buffer.length,
+      };
+    } catch {
+      return null;
+    }
   }
 }

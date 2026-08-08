@@ -1432,7 +1432,7 @@
     }
   },
   "machines": {
-    "description": "وصف",
+    "description": "إدارة ومراقبة جميع الآلات في النظام",
     "pageTitle": "إدارة الآلات",
     "heading": "إدارة الآلات",
     "totalMachines": "إجمالي الآلات",
@@ -1450,7 +1450,7 @@
       "weight": "الوزن (كجم)",
       "location": "الموقع",
       "actions": "الإجراءات",
-      "machineCode": "??? ?????"
+      "machineCode": "رمز الآلة"
     },
     "empty": {
       "search": "لم يتم العثور على آلات تطابق بحثك.",
@@ -1471,7 +1471,7 @@
       "weight": "الوزن (كجم)",
       "location": "الموقع",
       "selectType": "اختر نوع الآلة",
-      "machineCode": "??? ?????"
+      "machineCode": "رمز الآلة"
     },
     "options": {
       "operational": "قيد التشغيل",
@@ -1506,7 +1506,9 @@
       "modelRequired": "الموديل مطلوب",
       "installationRequired": "تاريخ التثبيت مطلوب",
       "confirmDelete": "هل أنت متأكد من حذف هذه الآلة؟ لا يمكن التراجع عن هذا الإجراء.",
-      "machineCodeRequired": "??? ????? ?????"
+      "machineCodeRequired": "رمز الآلة مطلوب",
+      "manualNotFound": "لا يوجد دليل لهذه الآلة",
+      "manualOpenFailed": "تعذر فتح دليل الآلة"
     },
     "button": {
       "cancel": "إلغاء",
@@ -1515,7 +1517,8 @@
       "saving": "جارٍ الحفظ..."
     },
     "actions": {
-      "viewTimeline": "الجدول الزمني"
+      "viewTimeline": "الجدول الزمني",
+      "openManual": "فتح الدليل"
     }
   },
   "machineTimeline": {

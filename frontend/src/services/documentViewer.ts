@@ -48,7 +48,7 @@ export function getTrustedDocumentMimeType(doc: ViewableDocument): string {
 }
 
 export function getNormalizedDocumentExtension(doc: ViewableDocument): string {
-  const raw = firstString([doc.preview_path, doc.file_name, doc.file_path]);
+  const raw = firstString([doc.file_name, doc.file_path, doc.file_url, doc.preview_path]);
   const normalized = normalizeManagedPath(raw).split(/[?#]/, 1)[0];
   const lastSegment = normalized.split("/").pop() ?? "";
   const extension = lastSegment.includes(".") ? lastSegment.split(".").pop() : "";
@@ -70,7 +70,10 @@ export function getAttachmentViewerKind(doc: ViewableDocument): AttachmentViewer
 }
 
 export function getAttachmentViewerPath(doc: ViewableDocument): string {
-  const explicitPath = firstString([doc.preview_path, doc.file_url]);
+  const extension = getNormalizedDocumentExtension(doc);
+  const explicitPath = DOWNLOAD_EXTENSIONS.has(extension)
+    ? firstString([doc.file_url, doc.file_path])
+    : firstString([doc.preview_path, doc.file_url]);
   if (explicitPath) return explicitPath;
 
   const documentId = firstString([doc._id, doc.id]);

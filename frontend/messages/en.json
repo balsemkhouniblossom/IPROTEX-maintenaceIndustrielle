@@ -1717,7 +1717,9 @@
       "modelRequired": "Model is required",
       "installationRequired": "Installation date is required",
       "confirmDelete": "Are you sure you want to delete this machine? This action cannot be undone.",
-      "machineCodeRequired": "Machine code is required"
+      "machineCodeRequired": "Machine code is required",
+      "manualNotFound": "No manual found for this machine",
+      "manualOpenFailed": "Could not open the machine manual"
     },
     "button": {
       "cancel": "Cancel",
@@ -1726,7 +1728,8 @@
       "saving": "Saving..."
     },
     "actions": {
-      "viewTimeline": "Timeline"
+      "viewTimeline": "Timeline",
+      "openManual": "Open manual"
     }
   },
   "machineTimeline": {

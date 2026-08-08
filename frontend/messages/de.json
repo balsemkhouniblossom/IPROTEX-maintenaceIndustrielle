@@ -1651,7 +1651,7 @@
     "addMachine": "Maschine hinzufügen",
     "allMachines": "Alle Maschinen",
     "searchPlaceholder": "Maschinen nach ID, Seriennummer, Hersteller, Modell oder Standort suchen...",
-    "description": "Maschinen und Geräte verwalten",
+    "description": "Maschinen und Anlagen im System verwalten und uberwachen",
     "table": {
       "machineId": "Maschinen-ID",
       "serialNumber": "Seriennummer",
@@ -1698,7 +1698,7 @@
       "enterManufacturer": "Hersteller eingeben",
       "enterModel": "Modell eingeben",
       "enterLocation": "Standort eingeben",
-      "selectType": "Typ auswählen"
+      "selectType": "Typ auswahlen"
     },
     "status": {
       "operational": "Betriebsbereit",
@@ -1719,7 +1719,9 @@
       "modelRequired": "Modell ist erforderlich",
       "installationRequired": "Installationsdatum ist erforderlich",
       "confirmDelete": "Möchten Sie diese Maschine wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
-      "machineCodeRequired": "Maschinencode ist erforderlich"
+      "machineCodeRequired": "Maschinencode ist erforderlich",
+      "manualNotFound": "Fur diese Maschine wurde kein Handbuch gefunden",
+      "manualOpenFailed": "Das Maschinenhandbuch konnte nicht geoffnet werden"
     },
     "button": {
       "cancel": "Abbrechen",
@@ -1728,7 +1730,8 @@
       "saving": "Wird gespeichert..."
     },
     "actions": {
-      "viewTimeline": "Zeitleiste"
+      "viewTimeline": "Zeitleiste",
+      "openManual": "Handbuch offnen"
     }
   },
   "machineTimeline": {

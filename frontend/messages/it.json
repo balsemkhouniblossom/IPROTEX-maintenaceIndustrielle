@@ -1375,86 +1375,94 @@
     }
   },
   "machines": {
-    "pageTitle": "Machine Management",
-    "heading": "Machine Management",
-    "totalMachines": "Total Machines",
-    "addMachine": "Add Machine",
-    "allMachines": "All Machines",
-    "searchPlaceholder": "Search machines by ID, serial number, manufacturer, model, or location...",
+    "pageTitle": "Gestione macchine",
+    "heading": "Gestione macchine",
+    "totalMachines": "Totale macchine",
+    "addMachine": "Aggiungi macchina",
+    "allMachines": "Tutte le macchine",
+    "searchPlaceholder": "Cerca macchine per codice, numero di serie, produttore, modello o posizione...",
     "table": {
-      "machineId": "Machine ID",
-      "serialNumber": "Serial Number",
-      "type": "Type",
-      "status": "Status",
-      "installationDate": "Installation Date",
-      "weight": "Weight (kg)",
-      "actions": "Actions",
-      "machineCode": "Codice macchina"
+      "machineId": "ID macchina",
+      "serialNumber": "Numero di serie",
+      "type": "Tipo",
+      "status": "Stato",
+      "installationDate": "Data di installazione",
+      "weight": "Peso (kg)",
+      "actions": "Azioni",
+      "machineCode": "Codice macchina",
+      "manufacturer": "Produttore",
+      "model": "Modello",
+      "location": "Posizione"
     },
     "empty": {
-      "search": "No machines found matching your search.",
-      "default": "No machines available."
+      "search": "Nessuna macchina corrisponde alla ricerca.",
+      "default": "Nessuna macchina disponibile."
     },
     "modal": {
-      "edit": "Edit Machine",
-      "add": "Add New Machine"
+      "edit": "Modifica macchina",
+      "add": "Aggiungi nuova macchina"
     },
     "form": {
-      "machineId": "Machine ID",
-      "serialNumber": "Serial Number",
-      "manufacturer": "Manufacturer",
-      "model": "Model",
-      "machineType": "Machine Type",
-      "status": "Status",
-      "installationDate": "Installation Date",
-      "weight": "Weight (kg)",
-      "location": "Location",
-      "selectType": "Select Type",
+      "machineId": "ID macchina",
+      "serialNumber": "Numero di serie",
+      "manufacturer": "Produttore",
+      "model": "Modello",
+      "machineType": "Tipo di macchina",
+      "status": "Stato",
+      "installationDate": "Data di installazione",
+      "weight": "Peso (kg)",
+      "location": "Posizione",
+      "selectType": "Seleziona tipo",
       "machineCode": "Codice macchina"
     },
     "options": {
-      "operational": "Operational",
-      "maintenance": "Under Maintenance",
-      "outOfService": "Out of Service",
-      "retired": "Retired"
+      "operational": "Operativa",
+      "maintenance": "In manutenzione",
+      "outOfService": "Fuori servizio",
+      "retired": "Ritirata"
     },
     "placeholders": {
-      "enterMachineId": "Enter machine ID",
-      "enterSerial": "Enter serial number",
-      "enterManufacturer": "Enter manufacturer",
-      "enterModel": "Enter model",
-      "enterLocation": "Enter location"
+      "enterMachineId": "Inserisci ID macchina",
+      "enterSerial": "Inserisci numero di serie",
+      "enterManufacturer": "Inserisci produttore",
+      "enterModel": "Inserisci modello",
+      "enterLocation": "Inserisci posizione",
+      "selectType": "Seleziona un tipo"
     },
     "status": {
-      "operational": "Operational",
-      "maintenance": "Under Maintenance",
-      "outOfService": "Out of Service",
-      "retired": "Retired"
+      "operational": "Operativa",
+      "maintenance": "In manutenzione",
+      "outOfService": "Fuori servizio",
+      "retired": "Ritirata"
     },
     "notifications": {
-      "deleted": "Machine deleted successfully",
-      "deleteFailed": "Failed to delete machine",
-      "updated": "Machine updated successfully",
-      "created": "Machine created successfully",
-      "saveFailed": "Failed to save machine",
-      "loadFailed": "Failed to load data",
-      "machineIdRequired": "Machine ID is required",
-      "serialRequired": "Serial number is required",
-      "manufacturerRequired": "Manufacturer is required",
-      "modelRequired": "Model is required",
-      "installationRequired": "Installation date is required",
-      "confirmDelete": "Are you sure you want to delete this machine? This action cannot be undone.",
-      "machineCodeRequired": "Il codice macchina ? obbligatorio"
+      "deleted": "Macchina eliminata correttamente",
+      "deleteFailed": "Impossibile eliminare la macchina",
+      "updated": "Macchina aggiornata correttamente",
+      "created": "Macchina creata correttamente",
+      "saveFailed": "Impossibile salvare la macchina",
+      "loadFailed": "Impossibile caricare i dati",
+      "machineIdRequired": "ID macchina obbligatorio",
+      "serialRequired": "Numero di serie obbligatorio",
+      "manufacturerRequired": "Produttore obbligatorio",
+      "modelRequired": "Modello obbligatorio",
+      "installationRequired": "Data di installazione obbligatoria",
+      "confirmDelete": "Vuoi davvero eliminare questa macchina? Questa azione non puo essere annullata.",
+      "machineCodeRequired": "Il codice macchina e obbligatorio",
+      "manualNotFound": "Nessun manuale trovato per questa macchina",
+      "manualOpenFailed": "Impossibile aprire il manuale della macchina"
     },
     "button": {
-      "cancel": "Cancel",
-      "update": "Update",
-      "create": "Create",
-      "saving": "Saving..."
+      "cancel": "Annulla",
+      "update": "Aggiorna",
+      "create": "Crea",
+      "saving": "Salvataggio..."
     },
     "actions": {
-      "viewTimeline": "Cronologia"
-    }
+      "viewTimeline": "Cronologia",
+      "openManual": "Apri manuale"
+    },
+    "description": "Gestisci e monitora tutte le macchine del sistema"
   },
   "machineTimeline": {
     "pageTitle": "Cronologia della macchina",

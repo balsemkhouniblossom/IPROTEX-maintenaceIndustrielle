@@ -533,6 +533,7 @@ export const apiService = {
   deletePanneSolution: (id: string) => api.delete(`/panne-solutions/${id}`),
 
   getDocuments: (params?: PaginationParams) => api.get('/documents', withPagination(params)),
+  getDocumentsByMachine: (machineId: string) => api.get(`/documents/machine/${machineId}`),
   getOperatorManuals: (params?: AnyObject) => api.get('/operator/manuals', { params }),
 
   getDocument: (id: string) => api.get(`/documents/${id}`),

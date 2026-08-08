@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
+import DocumentAttachmentViewer from '@/components/DocumentAttachmentViewer';
 import { Modal } from '@/components/Modal';
 import Pagination from '@/components/Pagination';
 import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
@@ -11,7 +12,7 @@ import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
 import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import { apiService } from '@/services/api';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
-import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
@@ -35,6 +36,56 @@ interface MachineType {
   description?: string;
 }
 
+type EntityRef = string | { _id?: string; id?: string };
+
+interface DocumentEntity {
+  _id: string;
+  machine_id: EntityRef;
+  type_document?: string;
+  file_name: string;
+  file_path: string;
+  file_url?: string;
+  preview_path?: string;
+  description?: string;
+  tags?: string[];
+  status?: string;
+}
+
+function isManualDocument(document: DocumentEntity): boolean {
+  const type = (document.type_document || '').toLowerCase();
+  const fileName = (document.file_name || document.file_path || '').toLowerCase();
+  const haystack = [type, fileName, document.description, ...(document.tags || [])]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (type.includes('photo') || type.includes('image')) return false;
+
+  return (
+    haystack.includes('manual') ||
+    haystack.includes('procedure') ||
+    haystack.includes('diagram') ||
+    fileName.endsWith('.xlsx') ||
+    fileName.endsWith('.xls') ||
+    fileName.endsWith('.pdf')
+  );
+}
+
+function machineStatusTranslationKey(status?: string): string {
+  switch (status) {
+    case 'operational':
+      return 'status.operational';
+    case 'maintenance':
+      return 'status.maintenance';
+    case 'out_of_service':
+      return 'status.outOfService';
+    case 'retired':
+      return 'status.retired';
+    default:
+      return '';
+  }
+}
+
 export default function MachinesPage() {
   const tMachines = useTranslations('machines');
   const tCommon = useTranslations('common');
@@ -52,6 +103,9 @@ export default function MachinesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(null);
+  const [manualsByMachine, setManualsByMachine] = useState<Record<string, DocumentEntity[]>>({});
+  const [loadingManualMachineId, setLoadingManualMachineId] = useState<string | null>(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,6 +143,21 @@ export default function MachinesPage() {
       }));
 
       setMachines(normalized);
+
+      const manualEntries = await Promise.all(
+        normalized.map(async (machine: Machine) => {
+          try {
+            const response = await apiService.getDocumentsByMachine(machine._id);
+            const documents = Array.isArray(response.data) ? response.data : [];
+            return [machine._id, documents.filter(isManualDocument)] as const;
+          } catch (error) {
+            console.error(`Error loading manuals for machine ${machine._id}:`, error);
+            return [machine._id, []] as const;
+          }
+        }),
+      );
+
+      setManualsByMachine(Object.fromEntries(manualEntries));
 
       const types = Array.isArray(typesRes.data)
         ? typesRes.data
@@ -233,6 +302,32 @@ export default function MachinesPage() {
       location: machine.location || '',
     });
     setShowModal(true);
+  };
+
+  const handleOpenManual = async (machine: Machine) => {
+    const cachedManual = manualsByMachine[machine._id]?.[0];
+    if (cachedManual) {
+      setPreviewManual(cachedManual);
+      return;
+    }
+
+    setLoadingManualMachineId(machine._id);
+    try {
+      const response = await apiService.getDocumentsByMachine(machine._id);
+      const manuals = (Array.isArray(response.data) ? response.data : []).filter(isManualDocument);
+      setManualsByMachine((current) => ({ ...current, [machine._id]: manuals }));
+
+      if (manuals[0]) {
+        setPreviewManual(manuals[0]);
+      } else {
+        showNotification('error', tMachines('notifications.manualNotFound', { default: 'No manual found for this machine' }));
+      }
+    } catch (error) {
+      console.error('Error opening machine manual:', error);
+      showNotification('error', tMachines('notifications.manualOpenFailed', { default: 'Could not open the machine manual' }));
+    } finally {
+      setLoadingManualMachineId(null);
+    }
   };
 
   const handleDelete = async (machineId: string) => {
@@ -391,9 +486,22 @@ export default function MachinesPage() {
                 ) : (
                   filtered.map((machine: Machine) => {
                     const machineType = machineTypeMap[String(machine.type_id)];
+                    const statusTranslationKey = machineStatusTranslationKey(machine.status);
                     return (
                       <tr key={machine._id}>
-                        <td className="font-medium">{machine.machine_id || tCommon('notAvailable')}</td>
+                        <td className="font-medium">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenManual(machine)}
+                            disabled={loadingManualMachineId === machine._id}
+                            aria-label={tMachines('actions.openManual', { default: 'Open manual' })}
+                            title={tMachines('actions.openManual', { default: 'Open manual' })}
+                            className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900 disabled:cursor-wait disabled:text-slate-400"
+                          >
+                            <DocumentTextIcon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{machine.machine_id || tCommon('notAvailable')}</span>
+                          </button>
+                        </td>
                         <td>{machine.serial_no}</td>
                         <td>{machine.fabricant || tCommon('notAvailable')}</td>
                         <td>{machine.model || tCommon('notAvailable')}</td>
@@ -404,7 +512,9 @@ export default function MachinesPage() {
                               machine.status === 'out_of_service' ? 'bg-red-100 text-red-800' :
                                 'bg-gray-100 text-gray-600'
                             }`}>
-                            {machine.status?.replace('_', ' ') || tCommon('role')}
+                            {statusTranslationKey
+                              ? tMachines(statusTranslationKey)
+                              : tCommon('notAvailable')}
                           </span>
                         </td>
                         <td>
@@ -657,6 +767,16 @@ export default function MachinesPage() {
             </button>
           </div>
         </form>
+      </Modal>
+      <Modal
+        isOpen={Boolean(previewManual)}
+        onClose={() => setPreviewManual(null)}
+        title={previewManual?.file_name || tMachines('actions.openManual', { default: 'Open manual' })}
+        size="xl"
+      >
+        {previewManual ? (
+          <DocumentAttachmentViewer document={previewManual} title={previewManual.file_name} />
+        ) : null}
       </Modal>
     </DashboardLayout>
   );

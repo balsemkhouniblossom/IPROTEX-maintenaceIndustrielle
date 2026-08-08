@@ -1559,7 +1559,7 @@
     }
   },
   "machines": {
-    "description": "Gérez et surveillez toutes les machines",
+    "description": "Gerez et surveillez toutes les machines du systeme",
     "pageTitle": "Gestion des machines",
     "heading": "Gestion des machines",
     "totalMachines": "Total des machines",
@@ -1575,7 +1575,7 @@
       "weight": "Poids (kg)",
       "actions": "Actions",
       "manufacturer": "Fabricant",
-      "model": "Modèle",
+      "model": "Modele",
       "location": "Emplacement",
       "machineCode": "Code machine"
     },
@@ -1612,7 +1612,7 @@
       "enterManufacturer": "Entrez le fabricant",
       "enterModel": "Entrez le modèle",
       "enterLocation": "Entrez l'emplacement",
-      "selectType": "Sélectionner un type"
+      "selectType": "Selectionner un type"
     },
     "status": {
       "operational": "Opérationnel",
@@ -1633,7 +1633,9 @@
       "modelRequired": "Le modèle est obligatoire",
       "installationRequired": "La date d'installation est obligatoire",
       "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette machine ? Cette action est irréversible.",
-      "machineCodeRequired": "Le code machine est obligatoire"
+      "machineCodeRequired": "Le code machine est obligatoire",
+      "manualNotFound": "Aucun manuel trouve pour cette machine",
+      "manualOpenFailed": "Impossible d ouvrir le manuel de la machine"
     },
     "button": {
       "cancel": "Annuler",
@@ -1642,7 +1644,8 @@
       "saving": "Enregistrement en cours..."
     },
     "actions": {
-      "viewTimeline": "Chronologie"
+      "viewTimeline": "Chronologie",
+      "openManual": "Ouvrir le manuel"
     }
   },
   "machineTimeline": {
