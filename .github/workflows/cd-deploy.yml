@@ -86,7 +86,8 @@ jobs:
           FRONTEND_URL: ${{ secrets.FRONTEND_URL || 'https://pfe-maintenace-industrielle.vercel.app' }}
         run: |
           for attempt in $(seq 1 20); do
-            status=$(curl --silent --output /dev/null --write-out "%{http_code}" "$FRONTEND_URL" || echo "000")
+            status=$(curl --location --max-redirs 5 --silent --output /dev/null --write-out "%{http_code}" "$FRONTEND_URL" || true)
+            status=${status:-000}
             if [ "$status" = "200" ]; then
               echo "Frontend responded 200 after $attempt attempt(s)." >> "$GITHUB_STEP_SUMMARY"
               exit 0
