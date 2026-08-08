@@ -683,7 +683,7 @@ export class WorkOrderPreventiveSchedulingService {
     }
 
     const nextOtId = await this.generateWorkOrderCode(
-      workOrder.type_maintenance,
+      workOrder.type_maintenance ?? undefined,
     );
     const createdPayload = {
       ot_id: nextOtId,

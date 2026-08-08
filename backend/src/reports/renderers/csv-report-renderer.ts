@@ -3,7 +3,7 @@ import { ReportFormat } from '../../schemas/generated-report.schema';
 import { ReportDataset, ReportRenderer } from '../report.interfaces';
 
 /** RFC 4180 field quoting: wrap in quotes (doubling any embedded quote) whenever the value contains a comma, quote, or newline. */
-function csvField(value: unknown): string {
+function csvField(value: string | number | null | undefined): string {
   const text = value === null || value === undefined ? '' : String(value);
   if (/[",\n\r]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
@@ -11,7 +11,7 @@ function csvField(value: unknown): string {
   return text;
 }
 
-function csvLine(values: unknown[]): string {
+function csvLine(values: Array<string | number | null | undefined>): string {
   return values.map(csvField).join(',');
 }
 
@@ -22,7 +22,7 @@ export class CsvReportRenderer implements ReportRenderer {
   readonly fileExtension = 'csv';
   readonly contentType = 'text/csv; charset=utf-8';
 
-  async render(dataset: ReportDataset): Promise<Buffer> {
+  render(dataset: ReportDataset): Promise<Buffer> {
     const lines: string[] = [];
     lines.push(csvLine([dataset.title]));
     lines.push(csvLine([`Generated: ${dataset.generatedAt.toISOString()}`]));
@@ -41,9 +41,11 @@ export class CsvReportRenderer implements ReportRenderer {
 
     // UTF-8 BOM so Excel (which CSV exports are very often opened in)
     // correctly detects encoding instead of mangling non-ASCII text.
-    return Buffer.concat([
-      Buffer.from('﻿', 'utf8'),
-      Buffer.from(lines.join('\r\n'), 'utf8'),
-    ]);
+    return Promise.resolve(
+      Buffer.concat([
+        Buffer.from('﻿', 'utf8'),
+        Buffer.from(lines.join('\r\n'), 'utf8'),
+      ]),
+    );
   }
 }

@@ -73,7 +73,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message: messageText,
     });
 
-    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
         logMessage,
         exception instanceof Error ? exception.stack : undefined,

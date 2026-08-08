@@ -48,7 +48,10 @@ export class PdfReportRenderer implements ReportRenderer {
 
       let y = doc.y;
 
-      const drawRow = (values: unknown[], bold: boolean) => {
+      const drawRow = (
+        values: Array<string | number | null | undefined>,
+        bold: boolean,
+      ) => {
         doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8);
         values.forEach((value, index) => {
           doc.text(

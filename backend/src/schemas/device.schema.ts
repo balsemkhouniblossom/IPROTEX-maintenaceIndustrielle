@@ -91,7 +91,14 @@ export const DeviceSchema = SchemaFactory.createForClass(Device);
 // every read. Stripped here the same way `UserSchema` strips its own
 // sensitive fields, rather than trusting every call site to remember to
 // omit it.
-function stripDeviceApiKeyHash(_doc: unknown, ret: any): any {
+type SerializedDevice = Omit<Device, 'api_key_hash'> & {
+  api_key_hash?: string;
+};
+
+function stripDeviceApiKeyHash(
+  _doc: unknown,
+  ret: SerializedDevice,
+): SerializedDevice {
   delete ret.api_key_hash;
   return ret;
 }

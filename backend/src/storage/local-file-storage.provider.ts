@@ -109,11 +109,11 @@ export class LocalFileStorageProvider implements FileStorageProvider {
     return fileName.startsWith(MANAGED_AVATAR_FILE_PREFIX);
   }
 
-  async resolveUrl(
+  resolveUrl(
     stablePath?: string | null,
     storedUrl?: string | null,
   ): Promise<string> {
-    return storedUrl || stablePath || '';
+    return Promise.resolve(storedUrl || stablePath || '');
   }
 
   private toManagedUploadFileName(reference: string): string | null {

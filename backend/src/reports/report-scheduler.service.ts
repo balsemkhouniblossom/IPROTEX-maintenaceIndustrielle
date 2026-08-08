@@ -15,6 +15,7 @@ import {
 } from '../schemas/scheduled-report.schema';
 import { NotificationCenterService } from '../notification-center/notification-center.service';
 import { NotificationType } from '../schemas/notification.schema';
+import { Role } from '../schemas/user.schema';
 import { FileStorageService } from '../storage/file-storage.service';
 import { ReportsService } from './reports.service';
 import {
@@ -179,7 +180,7 @@ export class ReportSchedulerService {
     schedule: ScheduledReportDocument,
     now: Date,
   ): Promise<void> {
-    const actor = { userId: schedule.created_by.toString(), role: 'admin' };
+    const actor = { userId: schedule.created_by.toString(), role: Role.ADMIN };
     const parameters = resolveScheduledParameters(schedule.parameters, now);
 
     const report = await this.reportsService.requestReport(

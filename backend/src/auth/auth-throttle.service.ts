@@ -153,6 +153,7 @@ export class AuthThrottleService implements OnModuleDestroy {
     request: Request,
     identity: AuthThrottleIdentity = {},
   ): Promise<void> {
+    await Promise.resolve();
     const now = Date.now();
     for (const key of this.buildKeys(endpoint, request, identity)) {
       const rule = AUTH_THROTTLE_RULES[endpoint][key.scope];

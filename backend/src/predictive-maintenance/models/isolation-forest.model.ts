@@ -114,7 +114,7 @@ export class IsolationForestModel implements PredictionModel {
     for (let t = 0; t < NUM_TREES; t += 1) {
       const subsample: number[][] = [];
       if (allData.length === 0) {
-        subsample.push(new Array(featureCount).fill(0));
+        subsample.push(Array<number>(featureCount).fill(0));
       } else {
         for (let i = 0; i < subsampleSize; i += 1) {
           subsample.push(allData[randomInt(rng, allData.length)]);

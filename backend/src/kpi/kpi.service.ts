@@ -292,9 +292,9 @@ export class KpiService {
         stockId: String(stock._id),
         stockCode: stock.stock_id,
         partId: partIsPopulated
-          ? String((part as { _id?: Types.ObjectId })._id)
-          : part
-            ? String(part)
+          ? (part as { _id?: Types.ObjectId })._id?.toHexString()
+          : part instanceof Types.ObjectId
+            ? part.toHexString()
             : undefined,
         partLabel: partIsPopulated
           ? ((part as { nom_piece?: string; part_id?: string }).nom_piece ??

@@ -258,15 +258,13 @@ const SENSITIVE_USER_FIELDS = [
   'google_auth_history',
 ] as const;
 
-// `ret` is typed `any` deliberately: Mongoose's own `transform` type is the
-// exact `User`-shaped object (no index signature), which a
-// `Record<string, unknown>` parameter can't structurally satisfy. `any`
-// keeps this assignable to `SchemaOptions['toJSON'/'toObject'].transform`
-// for every schema it might ever be reused on, without weakening the
-// deletion logic itself (still driven by the literal `SENSITIVE_USER_FIELDS`
-// tuple).
+type SensitiveUserField = (typeof SENSITIVE_USER_FIELDS)[number];
+type SerializedUser = User & Partial<Record<SensitiveUserField, unknown>>;
 
-function stripSensitiveUserFields(_doc: unknown, ret: any): any {
+function stripSensitiveUserFields(
+  _doc: unknown,
+  ret: SerializedUser,
+): SerializedUser {
   for (const field of SENSITIVE_USER_FIELDS) {
     delete ret[field];
   }

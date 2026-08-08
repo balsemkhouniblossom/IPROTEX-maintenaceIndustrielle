@@ -584,7 +584,12 @@ export class DocumentsService {
     doc: DocumentDocument,
   ): Promise<Record<string, unknown>> {
     const plain = doc.toObject() as Record<string, unknown>;
-    const id = String(plain._id ?? '');
+    const id =
+      plain._id instanceof Types.ObjectId
+        ? plain._id.toHexString()
+        : typeof plain._id === 'string'
+          ? plain._id
+          : '';
     const stablePath =
       (plain.storage_path as string | undefined) ??
       (plain.file_path as string | undefined);

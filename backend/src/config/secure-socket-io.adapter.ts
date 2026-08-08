@@ -1,6 +1,6 @@
 import { INestApplicationContext } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import type { ServerOptions } from 'socket.io';
+import type { Server, ServerOptions } from 'socket.io';
 import {
   buildCorsOriginDelegate,
   CorsOrigin,
@@ -19,7 +19,7 @@ export class SecureSocketIoAdapter extends IoAdapter {
     super(app);
   }
 
-  createIOServer(port: number, options?: Partial<ServerOptions>) {
+  createIOServer(port: number, options?: Partial<ServerOptions>): Server {
     const serverOptions: Partial<ServerOptions> = {
       ...options,
       cors: {
@@ -44,6 +44,6 @@ export class SecureSocketIoAdapter extends IoAdapter {
       ),
     };
 
-    return super.createIOServer(port, serverOptions);
+    return super.createIOServer(port, serverOptions) as Server;
   }
 }

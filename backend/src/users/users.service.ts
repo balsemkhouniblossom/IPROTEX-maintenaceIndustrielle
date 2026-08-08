@@ -95,6 +95,21 @@ export type BulkRejectionResult = {
   succeeded: string[];
 };
 
+function responseMessageToString(message: unknown): string {
+  if (typeof message === 'string') return message;
+  if (
+    typeof message === 'number' ||
+    typeof message === 'boolean' ||
+    typeof message === 'bigint'
+  ) {
+    return String(message);
+  }
+  if (Array.isArray(message)) {
+    return message.map(responseMessageToString).filter(Boolean).join(', ');
+  }
+  return '';
+}
+
 /**
  * Re-throws a per-item failure inside a bulk transaction with the failing
  * id folded into both the message text and a `targetId` field, so the
@@ -111,10 +126,7 @@ function annotateBulkFailure(error: unknown, targetId: string): never {
       typeof response === 'object' && response !== null
         ? (response as Record<string, unknown>)
         : { message: response };
-    const originalMessage =
-      typeof original.message === 'string'
-        ? original.message
-        : String(original.message ?? '');
+    const originalMessage = responseMessageToString(original.message);
     // Re-thrown as the plain base class (not `new error.constructor(...)`)
     // because subclasses like ConflictException fix their own status code
     // and interpret a second constructor argument as a description, not a

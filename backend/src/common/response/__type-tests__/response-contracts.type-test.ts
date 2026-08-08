@@ -29,6 +29,16 @@ function assertNotAny<T>(_value: IsAny<T> extends false ? true : never): void {
   void _value;
 }
 
+function assertSameType<A, B>(
+  _value: (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? (<T>() => T extends B ? 1 : 2) extends <T>() => T extends A ? 1 : 2
+      ? true
+      : never
+    : never,
+): void {
+  void _value;
+}
+
 // --- Mapper output satisfies its declared response contract ---------------
 declare const workOrderDoc: Parameters<typeof toWorkOrderResponse>[0];
 const _workOrderMapperOutput = toWorkOrderResponse(
@@ -55,30 +65,18 @@ const _reportMapperOutput = toInterventionReportResponse(
 void _reportMapperOutput;
 
 // --- Controller return type matches its service's declared return type ----
-const _createMatches: WorkOrdersController['create'] = (
-  null as unknown as WorkOrdersService
-).create.bind(null);
-void _createMatches;
-
-const _findOneMatches: WorkOrdersController['findOne'] = (
-  null as unknown as WorkOrdersService
-).findOne.bind(null);
-void _findOneMatches;
-
-const _machineCreateMatches: MachinesController['create'] = (
-  null as unknown as MachinesService
-).create.bind(null);
-void _machineCreateMatches;
-
-const _machineFindOneMatches: MachinesController['findOne'] = (
-  null as unknown as MachinesService
-).findOne.bind(null);
-void _machineFindOneMatches;
-
-const _machineTypeFindOneMatches: MachineTypesController['findOne'] = (
-  null as unknown as MachineTypesService
-).findOne.bind(null);
-void _machineTypeFindOneMatches;
+assertSameType<WorkOrdersController['create'], WorkOrdersService['create']>(
+  true,
+);
+assertSameType<WorkOrdersController['findOne'], WorkOrdersService['findOne']>(
+  true,
+);
+assertSameType<MachinesController['create'], MachinesService['create']>(true);
+assertSameType<MachinesController['findOne'], MachinesService['findOne']>(true);
+assertSameType<
+  MachineTypesController['findOne'],
+  MachineTypesService['findOne']
+>(true);
 
 // --- No `any` leaks into the public response contracts ---------------------
 assertNotAny<WorkOrderResponse>(true);

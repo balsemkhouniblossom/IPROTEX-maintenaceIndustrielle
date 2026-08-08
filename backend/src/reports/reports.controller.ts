@@ -26,9 +26,11 @@ import { CreateScheduledReportDto } from './dto/create-scheduled-report.dto';
 import { UpdateScheduledReportDto } from './dto/update-scheduled-report.dto';
 import { ReportsQueryDto } from './dto/reports-query.dto';
 import { REPORT_TYPE_ROLES } from './report-access';
+import type { ReportActor } from './report.interfaces';
+import { Role } from '../schemas/user.schema';
 
-function actorFrom(req: AuthenticatedRequest) {
-  return { userId: req.user!.userId!, role: req.user!.role! };
+function actorFrom(req: AuthenticatedRequest): ReportActor {
+  return { userId: req.user!.userId!, role: req.user!.role as Role };
 }
 
 function sanitizeDownloadFileName(fileName: string): string {
