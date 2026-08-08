@@ -307,8 +307,7 @@ export default function OperatorDashboard() {
       textTone: "text-[var(--text-primary)]",
     },
     {
-      label: tOperator("stats.dueToday"),
-      value: kpiCounts.dueTodayCount,
+      label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount,
       icon: ClockIcon,
       accent: "from-cyan-700 via-sky-700 to-blue-800",
       textTone: "text-[var(--text-primary)]",
@@ -322,8 +321,7 @@ export default function OperatorDashboard() {
         overdueTasksCount > 0 ? "text-rose-500" : "text-[var(--text-primary)]",
     },
     {
-      label: tOperator("stats.completedToday"),
-      value: kpiCounts.completedTodayCount,
+      label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount,
       icon: CheckCircleIcon,
       accent: "from-cyan-700 via-sky-700 to-indigo-800",
       textTone: "text-[var(--text-primary)]",

@@ -1,8 +1,9 @@
 import { Types } from 'mongoose';
+import { Role } from '../../schemas/user.schema';
 import { FaultFrequencyReportProvider } from './fault-frequency.provider';
 
 describe('FaultFrequencyReportProvider', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'admin' };
+  const actor = { userId: new Types.ObjectId().toString(), role: Role.ADMIN };
 
   function buildProvider(aggregateRows: unknown[]) {
     const faultEventModel = {

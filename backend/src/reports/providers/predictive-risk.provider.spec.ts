@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { Role } from '../../schemas/user.schema';
 import { PredictiveRiskReportProvider } from './predictive-risk.provider';
 
 function execResolves(result: unknown) {
@@ -6,7 +7,7 @@ function execResolves(result: unknown) {
 }
 
 describe('PredictiveRiskReportProvider', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'admin' };
+  const actor = { userId: new Types.ObjectId().toString(), role: Role.ADMIN };
 
   function buildProvider(summaries: unknown[], machines: unknown[]) {
     const machineModel = {

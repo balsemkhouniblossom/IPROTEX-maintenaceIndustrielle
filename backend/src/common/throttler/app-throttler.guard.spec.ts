@@ -85,7 +85,7 @@ describe('AppThrottlerGuard', () => {
 
   describe('throwThrottlingException', () => {
     it('throws a 429 HttpException with the RATE_LIMIT_EXCEEDED code', async () => {
-      await expect(
+      await expect(async () =>
         (
           guard as unknown as {
             throwThrottlingException: (

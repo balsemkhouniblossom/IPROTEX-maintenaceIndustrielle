@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { Role } from '../../schemas/user.schema';
 import { MachineHistoryReportProvider } from './machine-history.provider';
 
 function execResolves(result: unknown) {
@@ -7,7 +8,10 @@ function execResolves(result: unknown) {
 }
 
 describe('MachineHistoryReportProvider', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'technician' };
+  const actor = {
+    userId: new Types.ObjectId().toString(),
+    role: Role.TECHNICIAN,
+  };
   const machineId = new Types.ObjectId().toString();
 
   function buildProvider(workOrders: unknown[], reports: unknown[] = []) {

@@ -1,8 +1,9 @@
 import { Types } from 'mongoose';
+import { Role } from '../../schemas/user.schema';
 import { MttrMtbfTrendsReportProvider } from './mttr-mtbf-trends.provider';
 
 describe('MttrMtbfTrendsReportProvider', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'admin' };
+  const actor = { userId: new Types.ObjectId().toString(), role: Role.ADMIN };
 
   function buildProvider(resultPerBucket: unknown) {
     const kpiService = {

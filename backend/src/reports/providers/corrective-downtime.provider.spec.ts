@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { Role } from '../../schemas/user.schema';
 import { CorrectiveDowntimeReportProvider } from './corrective-downtime.provider';
 
 function execResolves(result: unknown) {
@@ -6,7 +7,7 @@ function execResolves(result: unknown) {
 }
 
 describe('CorrectiveDowntimeReportProvider', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'admin' };
+  const actor = { userId: new Types.ObjectId().toString(), role: Role.ADMIN };
 
   function buildProvider(workOrders: unknown[]) {
     const workOrderModel = {

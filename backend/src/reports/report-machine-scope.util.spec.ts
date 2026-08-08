@@ -1,9 +1,13 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { Role } from '../schemas/user.schema';
 import { resolveReportMachineScope } from './report-machine-scope.util';
 
 describe('resolveReportMachineScope', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'technician' };
+  const actor = {
+    userId: new Types.ObjectId().toString(),
+    role: Role.TECHNICIAN,
+  };
 
   it('checks and returns a single-element scope when machineId is given', async () => {
     const machineId = new Types.ObjectId().toString();

@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { Role } from '../../schemas/user.schema';
 import { PreventiveComplianceReportProvider } from './preventive-compliance.provider';
 
 function execResolves(result: unknown) {
@@ -6,7 +7,7 @@ function execResolves(result: unknown) {
 }
 
 describe('PreventiveComplianceReportProvider', () => {
-  const actor = { userId: new Types.ObjectId().toString(), role: 'admin' };
+  const actor = { userId: new Types.ObjectId().toString(), role: Role.ADMIN };
 
   function buildProvider(
     machines: unknown[],
@@ -111,7 +112,7 @@ describe('PreventiveComplianceReportProvider', () => {
       { machineId: machineId.toString() },
       {
         userId: actor.userId,
-        role: 'admin',
+        role: Role.ADMIN,
       },
     );
 
