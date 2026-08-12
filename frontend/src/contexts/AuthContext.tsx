@@ -146,6 +146,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.removeEventListener(AUTH_SESSION_REFRESHED_EVENT, handleSessionRefreshed);
       };
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let active = true;
+    const refreshSession = async () => {
+      try {
+        const session = await requestAuthRefresh();
+        if (!active) return;
+        setToken(session.authToken);
+        setUser(session.user);
+        setStatus(getAuthStatusForUser(session.user));
+      } catch (error) {
+        if (active && isConfirmedRefreshAuthFailure(error)) {
+          clearLocalSession();
+        }
+      }
+    };
+
+    const interval = window.setInterval(refreshSession, 10 * 60 * 1000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshSession();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [token]);
+
   const login = async (email: string, password: string, keepLoggedIn = true) => {
     try {
       const response = await api.post(
