@@ -14,6 +14,9 @@ const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://localhost:3001";
 const apiOrigin = new URL(apiBaseUrl).origin;
 const apiWebSocketOrigin = apiOrigin.replace(/^http/, "ws");
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : null;
+const supabaseImageSource = supabaseOrigin || "https://*.supabase.co";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -43,7 +46,7 @@ const nextConfig = {
       "default-src 'self'",
       scriptSrc,
       `style-src 'self' 'unsafe-inline'`,
-      `img-src 'self' data: blob: ${apiOrigin}`,
+      `img-src 'self' data: blob: ${apiOrigin} ${supabaseImageSource}`,
       "font-src 'self' data:",
       `connect-src 'self' ${apiOrigin} ${apiWebSocketOrigin}`,
       "object-src 'none'",
