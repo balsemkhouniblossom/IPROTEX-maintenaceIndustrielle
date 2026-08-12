@@ -33,10 +33,12 @@ services:
         sync: false
       - key: JWT_REFRESH_SECRET
         sync: false
-      - key: JWT_ACCESS_EXPIRES_IN
+      - key: JWT_EXPIRES_IN
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
-        value: 7d
+        value: 1d
+      - key: JWT_REFRESH_COOKIE_MAX_AGE_MS
+        value: "86400000"
       - key: EMAIL_VERIFICATION_SECRET
         sync: false
       - key: GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY

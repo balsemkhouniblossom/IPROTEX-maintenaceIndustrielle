@@ -3,6 +3,10 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import api, { getCsrfHeaders, resetAuthRefreshState } from '../services/api';
 import {
+  AUTH_SESSION_REFRESHED_EVENT,
+  requestAuthRefresh,
+} from '../services/authRefreshCoordinator';
+import {
   clearAuthSession,
   saveAuthSession,
 } from '../services/authStorage';
@@ -90,12 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const validateBackendSession = async () => {
       try {
-        const response = await api.post(
-          '/auth/refresh',
-          {},
-          { withCredentials: true, headers: getCsrfHeaders() },
-        );
-        const session = parseLocalLoginSession(response.data);
+        const session = await requestAuthRefresh();
 
         if (!active) return;
 
@@ -112,7 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        clearAuthSession();
         setStatus('error');
       } finally {
         if (active) setIsLoading(false);
@@ -132,10 +130,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setStatus('unauthenticated');
     };
+    const handleSessionRefreshed = (event: Event) => {
+      const session = (event as CustomEvent).detail;
+      if (!session?.authToken || !session?.user) return;
+      setToken(session.authToken);
+      setUser(session.user);
+      setStatus(getAuthStatusForUser(session.user));
+    };
 
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    window.addEventListener(AUTH_SESSION_REFRESHED_EVENT, handleSessionRefreshed);
     return () =>
-      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+      {
+        window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+        window.removeEventListener(AUTH_SESSION_REFRESHED_EVENT, handleSessionRefreshed);
+      };
   }, []);
   const login = async (email: string, password: string, keepLoggedIn = true) => {
     try {

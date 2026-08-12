@@ -1,14 +1,18 @@
 import axios, { AxiosHeaders } from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { normalizeApiItems, readPaginationMeta } from './pagination';
-import { clearAuthSession, getAuthToken, updateStoredTokens, updateStoredUser } from './authStorage';
+import { clearAuthSession, getAuthToken } from './authStorage';
 import {
   getLoginRedirectForAuthFailure,
   getStableAuthFailureCode,
   isConfirmedRefreshAuthFailure,
 } from './authErrors';
 import { dispatchSessionExpired } from './authSessionEvents';
-import { parseLocalLoginSession } from './localLogin';
+import {
+  getCsrfHeaders,
+  requestAuthRefresh,
+  resetAuthRefreshCoordinator,
+} from './authRefreshCoordinator';
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -62,7 +66,6 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for error handling
-let refreshRequest: Promise<string> | null = null;
 let sessionExpirationRedirectStarted = false;
 
 // Bounded retry for idempotent GET requests only — a transient network
@@ -146,33 +149,14 @@ api.interceptors.response.use(
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
     if (status === 401 && !isAuthEndpoint && !originalRequest?._retry) {
       originalRequest._retry = true;
-      refreshRequest ??= axios
-        .post(
-          `${API_BASE_URL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-            headers: getCsrfHeaders(),
-            timeout: DEFAULT_REQUEST_TIMEOUT_MS,
-          },
-        )
-        .then((response) => {
-          const session = parseLocalLoginSession(response.data);
-          updateStoredTokens(session.authToken);
-          updateStoredUser(session.user);
-          return session.authToken;
-        })
-        .finally(() => {
-          refreshRequest = null;
-        });
 
-      return refreshRequest.then((nextToken) => {
+      return requestAuthRefresh().then((session) => {
         if (originalRequest.signal?.aborted) {
           return Promise.reject(new axios.CanceledError('Request was canceled'));
         }
 
         const headers = AxiosHeaders.from(originalRequest.headers);
-        headers.set('Authorization', `Bearer ${nextToken}`);
+        headers.set('Authorization', `Bearer ${session.authToken}`);
         originalRequest.headers = headers;
         return api(originalRequest);
       }).catch((refreshError) => {
@@ -198,6 +182,7 @@ api.interceptors.response.use(
 );
 
 export default api;
+export { getCsrfHeaders };
 
 function redirectToLoginOnce(error: unknown): void {
   if (sessionExpirationRedirectStarted) return;
@@ -214,22 +199,8 @@ function redirectToLoginOnce(error: unknown): void {
 }
 
 export function resetAuthRefreshState(): void {
-  refreshRequest = null;
+  resetAuthRefreshCoordinator();
   sessionExpirationRedirectStarted = false;
-}
-
-export function getCsrfHeaders(): Record<string, string> {
-  const csrfToken = getCookieValue('csrf_token');
-  return csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
-}
-
-function getCookieValue(key: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const entry = document.cookie
-    .split(';')
-    .map((item) => item.trim())
-    .find((item) => item.startsWith(`${key}=`));
-  return entry ? decodeURIComponent(entry.slice(key.length + 1)) : null;
 }
 
 type AnyObject = Record<string, unknown>;

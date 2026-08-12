@@ -10,6 +10,7 @@ describe('AuthController refresh cookie configuration', () => {
 
   it('sets production refresh cookies for cross-site Vercel-to-Render sessions', async () => {
     process.env.NODE_ENV = 'production';
+    process.env.JWT_REFRESH_COOKIE_MAX_AGE_MS = '86400000';
 
     const authService = {
       login: jest.fn().mockResolvedValue({
@@ -48,6 +49,7 @@ describe('AuthController refresh cookie configuration', () => {
         secure: true,
         sameSite: 'none',
         path: '/',
+        maxAge: 86400000,
       }),
     );
     expect(res.cookie).toHaveBeenCalledWith(
@@ -58,6 +60,7 @@ describe('AuthController refresh cookie configuration', () => {
         secure: true,
         sameSite: 'none',
         path: '/',
+        maxAge: 86400000,
       }),
     );
     expect(res.cookie.mock.calls[0][2]).not.toHaveProperty('domain');

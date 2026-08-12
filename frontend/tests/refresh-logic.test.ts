@@ -250,15 +250,72 @@ test("API refresh uses credentials and CSRF instead of readable refresh-token bo
     join(process.cwd(), "src", "services", "api.ts"),
     "utf8",
   );
+  const coordinatorSource = readFileSync(
+    join(process.cwd(), "src", "services", "authRefreshCoordinator.ts"),
+    "utf8",
+  );
 
   assert.match(apiSource, /withCredentials:\s*true/);
-  assert.match(apiSource, /X-CSRF-Token/);
+  assert.match(coordinatorSource, /X-CSRF-Token/);
   assert.match(apiSource, /isConfirmedRefreshAuthFailure\(refreshError\)/);
-  assert.match(apiSource, /let refreshRequest:\s*Promise<string>\s*\|\s*null\s*=\s*null/);
-  assert.match(apiSource, /refreshRequest \?\?= axios/);
+  assert.match(apiSource, /requestAuthRefresh\(\)/);
+  assert.match(coordinatorSource, /let refreshRequest:\s*Promise<LoginSession>\s*\|\s*null\s*=\s*null/);
+  assert.match(coordinatorSource, /if\s*\(refreshRequest\)\s*return refreshRequest/);
+  assert.match(coordinatorSource, /axios\s*\.\s*post\(\s*`\$\{API_BASE_URL\}\/auth\/refresh`/);
   assert.match(apiSource, /originalRequest\._retry\s*=\s*true/);
   assert.doesNotMatch(apiSource, /getAuthItem\('refresh_token'\)/);
-  assert.doesNotMatch(apiSource, /refresh_token:\s*refreshToken/);
+  assert.doesNotMatch(coordinatorSource, /refresh_token:\s*refreshToken/);
+});
+
+test("bootstrap and interceptor share the same refresh coordinator", () => {
+  const apiSource = readFileSync(
+    join(process.cwd(), "src", "services", "api.ts"),
+    "utf8",
+  );
+  const authContextSource = readFileSync(
+    join(process.cwd(), "src", "contexts", "AuthContext.tsx"),
+    "utf8",
+  );
+
+  assert.match(apiSource, /import\s*\{[\s\S]*requestAuthRefresh[\s\S]*\}\s*from\s*['"]\.\/authRefreshCoordinator['"]/);
+  assert.match(authContextSource, /import\s*\{[\s\S]*requestAuthRefresh[\s\S]*\}\s*from\s*['"]\.\.\/services\/authRefreshCoordinator['"]/);
+  assert.match(authContextSource, /const session = await requestAuthRefresh\(\)/);
+  assert.doesNotMatch(authContextSource, /api\.post\(\s*['"]\/auth\/refresh['"]/);
+  assert.match(authContextSource, /AUTH_SESSION_REFRESHED_EVENT/);
+});
+
+test("refresh coordinator prevents same-tab and cross-tab refresh races", () => {
+  const coordinatorSource = readFileSync(
+    join(process.cwd(), "src", "services", "authRefreshCoordinator.ts"),
+    "utf8",
+  );
+
+  assert.match(coordinatorSource, /const REFRESH_CHANNEL_NAME = ['"]gmao-auth-refresh['"]/);
+  assert.match(coordinatorSource, /new BroadcastChannel\(REFRESH_CHANNEL_NAME\)/);
+  assert.match(coordinatorSource, /const REFRESH_LOCK_KEY = ['"]gmao:auth-refresh-lock['"]/);
+  assert.match(coordinatorSource, /if\s*\(!acquireRefreshLock\(\)\)\s*\{\s*return getOrCreateRemoteRefreshRequest\(\)/);
+  assert.match(coordinatorSource, /type:\s*['"]refresh-started['"]/);
+  assert.match(coordinatorSource, /type:\s*['"]refresh-success['"]/);
+  assert.match(coordinatorSource, /type:\s*['"]refresh-failure['"]/);
+  assert.match(coordinatorSource, /resolveRemoteRefresh\?\.\(message\.session\)/);
+  assert.match(coordinatorSource, /rejectRemoteRefresh\?\.\(message\.error\)/);
+});
+
+test("silent refresh can cover a full working day with short access tokens", () => {
+  const renderSource = readFileSync(join(process.cwd(), "..", "render.yaml"), "utf8");
+  const envExampleSource = readFileSync(join(process.cwd(), "..", ".env.example"), "utf8");
+  const controllerSource = readFileSync(
+    join(process.cwd(), "..", "backend", "src", "auth", "auth.controller.ts"),
+    "utf8",
+  );
+
+  assert.match(renderSource, /key:\s*JWT_EXPIRES_IN\s*\r?\n\s*value:\s*15m/);
+  assert.match(renderSource, /key:\s*JWT_REFRESH_EXPIRES_IN\s*\r?\n\s*value:\s*1d/);
+  assert.match(renderSource, /key:\s*JWT_REFRESH_COOKIE_MAX_AGE_MS\s*\r?\n\s*value:\s*"86400000"/);
+  assert.match(envExampleSource, /JWT_EXPIRES_IN=15m/);
+  assert.match(envExampleSource, /JWT_REFRESH_EXPIRES_IN=1d/);
+  assert.match(envExampleSource, /JWT_REFRESH_COOKIE_MAX_AGE_MS=86400000/);
+  assert.match(controllerSource, /process\.env\.JWT_REFRESH_COOKIE_MAX_AGE_MS/);
 });
 
 test("production API base URL must be the HTTPS Render backend URL", () => {
@@ -319,14 +376,13 @@ test("frontend auth requests explicitly use cookie credentials and CSRF where re
   assert.match(apiSource, /axios\.create\(\{[\s\S]*baseURL:\s*API_BASE_URL,[\s\S]*withCredentials:\s*true/);
   assert.equal(apiSource.includes("/\\/auth\\/(refresh|logout)/"), true);
   assert.match(apiSource, /config\.withCredentials\s*=\s*true/);
-  assert.match(apiSource, /headers:\s*getCsrfHeaders\(\)/);
+  assert.match(apiSource, /Object\.entries\(getCsrfHeaders\(\)\)/);
   assert.match(apiSource, /let sessionExpirationRedirectStarted\s*=\s*false/);
   assert.match(apiSource, /function redirectToLoginOnce\(error:\s*unknown\):\s*void/);
   assert.match(apiSource, /if\s*\(sessionExpirationRedirectStarted\)\s*return/);
   assert.match(apiSource, /dispatchSessionExpired\(\)/);
 
   for (const endpoint of [
-    "/auth/refresh",
     "/auth/login",
     "/auth/register",
     "/auth/logout",
@@ -338,6 +394,7 @@ test("frontend auth requests explicitly use cookie credentials and CSRF where re
   assert.match(authContextSource, /getCsrfHeaders\(\)/g);
   assert.match(authContextSource, /status:\s*AuthStatus/);
   assert.match(authContextSource, /setStatus\('error'\)/);
+  assert.doesNotMatch(authContextSource, /clearAuthSession\(\);\s*setStatus\('error'\)/);
   assert.match(googleAuthSource, /\/auth\/google\/exchange/);
   assert.match(googleAuthSource, /withCredentials:\s*true/);
   assert.match(authContextSource, /SESSION_EXPIRED_EVENT/);
