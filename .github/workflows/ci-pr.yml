@@ -91,10 +91,17 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm run test -- --runInBand
+        run: npm run test:cov -- --runInBand
         env:
           NODE_ENV: test
           MONGODB_URI: mongodb://127.0.0.1:27017/GMAO_IPROTEX_TEST
+
+      - name: Upload coverage for SonarQube
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/lcov.info
+          if-no-files-found: error
 
       - name: Verify MongoDB index definitions are creatable
         run: npm run mongodb:indexes:apply
@@ -103,6 +110,26 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  sonarqube:
+    name: SonarQube Analysis
+    needs: [frontend, backend]
+    if: ${{ vars.SONAR_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+
+      - uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
 
   backend-e2e:
     name: Backend E2E
