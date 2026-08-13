@@ -48,16 +48,7 @@ export async function requestAuthRefresh(): Promise<LoginSession> {
 
   postRefreshMessage({ type: 'refresh-started', ownerId: tabId });
 
-  refreshRequest = axios
-    .post(
-      `${API_BASE_URL}/auth/refresh`,
-      {},
-      {
-        withCredentials: true,
-        headers: getCsrfHeaders(),
-        timeout: DEFAULT_REQUEST_TIMEOUT_MS,
-      },
-    )
+  refreshRequest = performRefreshWithReuseRetry()
     .then((response) => {
       const session = parseLocalLoginSession(response.data);
       applyRefreshSession(session);
@@ -78,6 +69,42 @@ export async function requestAuthRefresh(): Promise<LoginSession> {
     });
 
   return refreshRequest;
+}
+
+// Two refreshes can legitimately race (proactive timer, 401 retry, or a
+// sibling tab) against the backend's compare-and-swap token rotation. The
+// request that loses the race gets REFRESH_TOKEN_REUSE_DETECTED even though
+// the winner already rotated the shared refresh-token cookie successfully.
+// Retrying once picks up that freshly rotated cookie instead of forcing a
+// full logout for a session that is still perfectly valid.
+function postRefreshRequest() {
+  return axios.post(
+    `${API_BASE_URL}/auth/refresh`,
+    {},
+    {
+      withCredentials: true,
+      headers: getCsrfHeaders(),
+      timeout: DEFAULT_REQUEST_TIMEOUT_MS,
+    },
+  );
+}
+
+function getRefreshErrorCode(error: unknown): string | undefined {
+  const data = (error as { response?: { data?: { code?: unknown } } })
+    ?.response?.data;
+  return typeof data?.code === 'string' ? data.code : undefined;
+}
+
+async function performRefreshWithReuseRetry() {
+  try {
+    return await postRefreshRequest();
+  } catch (error) {
+    const code = getRefreshErrorCode(error);
+    if (code === 'REFRESH_TOKEN_REUSE_DETECTED') {
+      return await postRefreshRequest();
+    }
+    throw error;
+  }
 }
 
 export function getCsrfHeaders(): Record<string, string> {

@@ -177,8 +177,11 @@ export class DocumentsService {
   }
 
   async findByMachine(machineId: string) {
+    if (!Types.ObjectId.isValid(machineId)) {
+      throw new BadRequestException('Invalid machine_id');
+    }
     const docs = await this.documentModel
-      .find({ machine_id: machineId })
+      .find({ machine_id: new Types.ObjectId(machineId) })
       .populate('machine_id')
       .exec();
     return Promise.all(docs.map((doc) => this.resolveDocumentFileUrl(doc)));

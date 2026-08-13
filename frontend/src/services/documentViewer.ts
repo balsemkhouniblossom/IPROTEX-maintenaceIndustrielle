@@ -4,7 +4,13 @@ import {
   resolveManagedFileUrl,
 } from "./managedFileUrls.ts";
 
-export type AttachmentViewerKind = "image" | "pdf" | "download" | "unsupported";
+export type AttachmentViewerKind =
+  | "image"
+  | "pdf"
+  | "spreadsheet"
+  | "text"
+  | "download"
+  | "unsupported";
 
 export type ViewableDocument = {
   _id?: string | null;
@@ -24,14 +30,18 @@ const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DOWNLOAD_MIME_TYPES = new Set([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "text/csv",
-  "text/plain",
 ]);
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
-const DOWNLOAD_EXTENSIONS = new Set(["doc", "docx", "xls", "xlsx", "csv", "txt"]);
+const SPREADSHEET_MIME_TYPES = new Set([
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+]);
+const SPREADSHEET_EXTENSIONS = new Set(["xls", "xlsx", "csv"]);
+const TEXT_MIME_TYPES = new Set(["text/plain"]);
+const TEXT_EXTENSIONS = new Set(["txt"]);
+const DOWNLOAD_EXTENSIONS = new Set(["doc", "docx"]);
 
 function firstString(values: Array<string | null | undefined>): string {
   return values.find((value) => typeof value === "string" && value.trim())?.trim() ?? "";
@@ -59,27 +69,33 @@ export function getAttachmentViewerKind(doc: ViewableDocument): AttachmentViewer
   const mimeType = getTrustedDocumentMimeType(doc);
   if (IMAGE_MIME_TYPES.has(mimeType)) return "image";
   if (mimeType === "application/pdf") return "pdf";
+  if (SPREADSHEET_MIME_TYPES.has(mimeType)) return "spreadsheet";
+  if (TEXT_MIME_TYPES.has(mimeType)) return "text";
   if (DOWNLOAD_MIME_TYPES.has(mimeType)) return "download";
 
   const extension = getNormalizedDocumentExtension(doc);
   if (IMAGE_EXTENSIONS.has(extension)) return "image";
   if (extension === "pdf") return "pdf";
+  if (SPREADSHEET_EXTENSIONS.has(extension)) return "spreadsheet";
+  if (TEXT_EXTENSIONS.has(extension)) return "text";
   if (DOWNLOAD_EXTENSIONS.has(extension)) return "download";
 
   return "unsupported";
 }
 
 export function getAttachmentViewerPath(doc: ViewableDocument): string {
-  const extension = getNormalizedDocumentExtension(doc);
-  const explicitPath = DOWNLOAD_EXTENSIONS.has(extension)
-    ? firstString([doc.file_url, doc.file_path])
-    : firstString([doc.preview_path, doc.file_url]);
-  if (explicitPath) return explicitPath;
-
   const documentId = firstString([doc._id, doc.id]);
   if (documentId && isManagedRelativeUploadPath(doc.file_path)) {
     return `/documents/${encodeURIComponent(documentId)}/file`;
   }
+
+  const extension = getNormalizedDocumentExtension(doc);
+  const explicitPath = DOWNLOAD_EXTENSIONS.has(extension) ||
+    SPREADSHEET_EXTENSIONS.has(extension) ||
+    TEXT_EXTENSIONS.has(extension)
+    ? firstString([doc.file_url, doc.file_path])
+    : firstString([doc.preview_path, doc.file_url]);
+  if (explicitPath) return explicitPath;
 
   return firstString([doc.file_path]);
 }

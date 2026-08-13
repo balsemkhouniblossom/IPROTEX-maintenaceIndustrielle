@@ -67,18 +67,29 @@ function stringifyValue(value: unknown, depth = 0, maxDepth = DEFAULT_MAX_DEPTH)
   return normalizeSearchText(String(value));
 }
 
-function isSearchableFieldPath(path: string, exclude: Set<string>): boolean {
+function isSearchableFieldPath(path: string, exclude: Set<string>, include: Set<string>): boolean {
   if (!path || exclude.has(path)) {
     return false;
+  }
+
+  if (include.has(path)) {
+    return true;
   }
 
   const normalizedPath = path.toLowerCase();
   return !SEARCHABLE_EXCLUSION_PATTERNS.some((pattern) => pattern.test(normalizedPath));
 }
 
-function scoreSearchableField(path: string): number {
+function scoreSearchableField(path: string, include: Set<string>): number {
   const normalizedPath = path.toLowerCase();
   let score = 0;
+
+  if (include.has(path)) {
+    // Force explicitly-included fields (e.g. Machine's own code field, which
+    // shares a name with foreign-key fields on other entities) to the front
+    // so they aren't dropped by the maxFields cap below.
+    score += 10_000;
+  }
 
   SEARCHABLE_PRIORITY_PATTERNS.forEach((pattern, index) => {
     if (pattern.test(normalizedPath)) {
@@ -164,7 +175,7 @@ function hasDataField<T>(obj: unknown): obj is { data: T[] } {
 
 export function getSearchableFields<T>(
   items: T[] | unknown,
-  options?: { maxDepth?: number; sampleSize?: number; maxFields?: number; exclude?: string[] },
+  options?: { maxDepth?: number; sampleSize?: number; maxFields?: number; exclude?: string[]; include?: string[] },
 ): string[] {
   const safeItems: T[] =
     Array.isArray(items)
@@ -195,6 +206,7 @@ export function getSearchableFields<T>(
   const sampleSize = options?.sampleSize ?? DEFAULT_SAMPLE_SIZE;
   const maxFields = options?.maxFields ?? DEFAULT_MAX_FIELDS;
   const exclude = new Set(options?.exclude ?? []);
+  const include = new Set(options?.include ?? []);
 
   const collector = new Set<string>();
 
@@ -203,9 +215,9 @@ export function getSearchableFields<T>(
   });
 
   return Array.from(collector)
-    .filter((field) => isSearchableFieldPath(field, exclude))
+    .filter((field) => isSearchableFieldPath(field, exclude, include))
     .sort((left, right) => {
-      const scoreDiff = scoreSearchableField(right) - scoreSearchableField(left);
+      const scoreDiff = scoreSearchableField(right, include) - scoreSearchableField(left, include);
       if (scoreDiff !== 0) {
         return scoreDiff;
       }
@@ -220,6 +232,7 @@ export function matchesDynamicSearch<T>(
   searchTerm: string,
   selectedField = ALL_FIELDS_TOKEN,
   maxDepth = DEFAULT_MAX_DEPTH,
+  options?: { include?: string[] },
 ): boolean {
   const normalizedTerm = normalizeSearchText(searchTerm.trim());
   if (!normalizedTerm) return true;
@@ -229,6 +242,7 @@ export function matchesDynamicSearch<T>(
       maxDepth,
       sampleSize: 1,
       maxFields: DEFAULT_MAX_FIELDS,
+      include: options?.include,
     });
 
     if (scopedFields.length === 0) {

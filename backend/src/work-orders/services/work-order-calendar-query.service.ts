@@ -360,7 +360,9 @@ export class WorkOrderCalendarQueryService {
       : null;
 
     const documentation = machineId
-      ? await this.documentModel.find({ machine_id: machineId }).exec()
+      ? await this.documentModel
+          .find({ machine_id: new Types.ObjectId(machineId) })
+          .exec()
       : [];
 
     const otPieces = await this.otPiecesModel

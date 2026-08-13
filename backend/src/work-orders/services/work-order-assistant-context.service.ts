@@ -44,9 +44,13 @@ export class WorkOrderAssistantContextService {
       .lean()
       .exec();
 
-    const machineDocuments = machineId
-      ? await this.documentModel.find({ machine_id: machineId }).lean().exec()
-      : [];
+    const machineDocuments =
+      machineId && Types.ObjectId.isValid(machineId)
+        ? await this.documentModel
+            .find({ machine_id: new Types.ObjectId(machineId) })
+            .lean()
+            .exec()
+        : [];
 
     return {
       machineId,

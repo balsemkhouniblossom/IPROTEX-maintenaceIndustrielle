@@ -4,14 +4,18 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
+import { Modal } from "@/components/Modal";
 import { apiService } from "@/services/api";
 import { fetchAllPaginated } from "@/services/pagination";
+import { sortMachineDocumentsForMachine } from "@/services/machineManuals";
 import {
     CogIcon,
     MapPinIcon,
     CalendarIcon,
     WrenchScrewdriverIcon,
     ClockIcon,
+    DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import LiveStatusBadge from "@/components/device-monitoring/LiveStatusBadge";
@@ -37,6 +41,20 @@ interface MachineType {
     name: string;
 }
 
+interface DocumentEntity {
+    _id: string;
+    machine_id: string | { _id?: string; id?: string };
+    type_document?: string;
+    file_name: string;
+    file_path: string;
+    file_url?: string;
+    preview_path?: string;
+    description?: string;
+    tags?: string[];
+    status?: string;
+    date_ajout?: string;
+}
+
 const normalizeMachineTypeId = (machine: { type_id?: unknown }) =>
     typeof machine.type_id === "object" && machine.type_id !== null && "_id" in machine.type_id
         ? String((machine.type_id as { _id?: unknown })._id ?? "")
@@ -55,6 +73,11 @@ function OperatorMachinesPageContent() {
     const [machines, setMachines] = useState<Machine[]>([]);
     const [category, setCategory] = useState<MachineType | null>(null);
     const [loading, setLoading] = useState(true);
+    const [manualsByMachine, setManualsByMachine] = useState<Record<string, DocumentEntity[]>>({});
+    const [loadingManualMachineId, setLoadingManualMachineId] = useState<string | null>(null);
+    const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(null);
+    const [, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
+    const [notification, setNotification] = useState<{ type: "error"; message: string } | null>(null);
     const locale = params?.locale ?? "en";
 
     const typeId = searchParams.get("type");
@@ -99,6 +122,75 @@ function OperatorMachinesPageContent() {
         void loadData();
     }, [loadData]);
 
+    function showError(message: string) {
+        setNotification({ type: "error", message });
+        window.setTimeout(() => setNotification(null), 5000);
+    }
+
+    function isNotFoundError(error: unknown): boolean {
+        return (
+            typeof error === "object" &&
+            error !== null &&
+            "response" in error &&
+            typeof error.response === "object" &&
+            error.response !== null &&
+            "status" in error.response &&
+            error.response.status === 404
+        );
+    }
+
+    function openManualQueue(manuals: DocumentEntity[]) {
+        setPreviewManualQueue(manuals);
+        setPreviewManual(manuals[0] ?? null);
+    }
+
+    function handleManualLoadError() {
+        setPreviewManualQueue((queue) => {
+            const currentIndex = previewManual ? queue.findIndex((doc) => doc._id === previewManual._id) : -1;
+            const next = queue[currentIndex + 1];
+            if (next) {
+                setPreviewManual(next);
+            } else {
+                setPreviewManual(null);
+                showError("No available document for this machine.");
+            }
+            return queue;
+        });
+    }
+
+    async function handleOpenManual(machine: Machine) {
+        const cachedManuals = manualsByMachine[machine._id];
+        if (cachedManuals) {
+            if (cachedManuals[0]) {
+                openManualQueue(cachedManuals);
+            } else {
+                showError("No available document for this machine.");
+            }
+            return;
+        }
+
+        setLoadingManualMachineId(machine._id);
+        try {
+            const response = await apiService.getDocumentsByMachine(machine._id);
+            const manuals = sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []);
+            setManualsByMachine((current) => ({ ...current, [machine._id]: manuals }));
+            if (manuals[0]) {
+                openManualQueue(manuals);
+            } else {
+                showError("No available document for this machine.");
+            }
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                showError("No available document for this machine.");
+            } else {
+                console.error("Error opening machine manual:", error);
+                showError(tOperator("manualOpenFailed", { default: "Could not open the machine manual" }));
+            }
+        } finally {
+            setLoadingManualMachineId(null);
+        }
+    }
+
     if (loading) {
         return (
             <DashboardLayout title={tMachines("pageTitle")}>
@@ -114,6 +206,11 @@ function OperatorMachinesPageContent() {
             <DashboardLayout
                 title={category?.name || tMachines("pageTitle")}
             >
+                {notification ? (
+                    <div className="fixed top-4 right-4 z-50 rounded-lg border border-red-200 bg-red-100 p-4 text-red-800 shadow-lg">
+                        {notification.message}
+                    </div>
+                ) : null}
                 <div className="operator-dashboard-theme bento-grid">
 
                     {/* Header */}
@@ -151,9 +248,17 @@ function OperatorMachinesPageContent() {
                             {/* HEADER */}
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900">
-                                        {machine.machine_id}
-                                    </h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenManual(machine)}
+                                        disabled={loadingManualMachineId === machine._id}
+                                        className="inline-flex max-w-full items-center gap-1.5 text-left text-lg font-bold text-blue-700 hover:text-blue-900 disabled:cursor-wait disabled:text-slate-400"
+                                        aria-label={tOperator("openManual")}
+                                        title={tOperator("openManual")}
+                                    >
+                                        <DocumentTextIcon className="h-4 w-4 shrink-0" />
+                                        <span className="truncate">{machine.machine_id}</span>
+                                    </button>
 
                                   
                                 </div>
@@ -240,17 +345,37 @@ function OperatorMachinesPageContent() {
                                 </button>
 
                                 <button
-                                    onClick={() =>
-                                        router.push(`/${locale}/operator/manuals?machine=${machine._id}`)
-                                    }
-                                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg px-3 py-2 text-sm font-medium"
+                                    type="button"
+                                    onClick={() => handleOpenManual(machine)}
+                                    disabled={loadingManualMachineId === machine._id}
+                                    className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-500 text-white rounded-lg px-3 py-2 text-sm font-medium flex items-center justify-center gap-2"
                                 >
+                                    <DocumentTextIcon className="w-4 h-4" />
                                     {tOperator("openManual")}
                                 </button>
                             </div>
                         </div>
                     ))}
                 </div>
+                <Modal
+                    isOpen={Boolean(previewManual)}
+                    onClose={() => {
+                        setPreviewManual(null);
+                        setPreviewManualQueue([]);
+                    }}
+                    title={previewManual?.file_name || tOperator("openManual")}
+                    size="xl"
+                >
+                    {previewManual ? (
+                        <div className="operator-dashboard-theme">
+                            <DocumentAttachmentViewer
+                                document={previewManual}
+                                title={previewManual.file_name}
+                                onError={handleManualLoadError}
+                            />
+                        </div>
+                    ) : null}
+                </Modal>
             </DashboardLayout>
         </ProtectedRoute>
     );

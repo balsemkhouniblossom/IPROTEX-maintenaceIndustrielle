@@ -6,12 +6,11 @@ import DynamicSearchControls from '@/components/DynamicSearchControls';
 import DocumentAttachmentViewer from '@/components/DocumentAttachmentViewer';
 import { Modal } from '@/components/Modal';
 import Pagination from '@/components/Pagination';
-import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
 import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
-import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
 import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import { apiService } from '@/services/api';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
+import { sortMachineDocumentsForMachine } from '@/services/machineManuals';
 import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -51,26 +50,6 @@ interface DocumentEntity {
   status?: string;
 }
 
-function isManualDocument(document: DocumentEntity): boolean {
-  const type = (document.type_document || '').toLowerCase();
-  const fileName = (document.file_name || document.file_path || '').toLowerCase();
-  const haystack = [type, fileName, document.description, ...(document.tags || [])]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  if (type.includes('photo') || type.includes('image')) return false;
-
-  return (
-    haystack.includes('manual') ||
-    haystack.includes('procedure') ||
-    haystack.includes('diagram') ||
-    fileName.endsWith('.xlsx') ||
-    fileName.endsWith('.xls') ||
-    fileName.endsWith('.pdf')
-  );
-}
-
 function machineStatusTranslationKey(status?: string): string {
   switch (status) {
     case 'operational':
@@ -89,9 +68,7 @@ function machineStatusTranslationKey(status?: string): string {
 export default function MachinesPage() {
   const tMachines = useTranslations('machines');
   const tCommon = useTranslations('common');
-  const tDeviceMonitoring = useTranslations('deviceMonitoring');
   const tPredictiveMaintenance = useTranslations('predictiveMaintenance');
-  const { statusByMachine, subscribeToMachine } = useLiveMonitoring();
   const { healthByMachine } = usePredictiveHealth();
   const router = useRouter();
   const locale = useLocale();
@@ -104,6 +81,7 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(null);
+  const [previewManualQueue, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
   const [manualsByMachine, setManualsByMachine] = useState<Record<string, DocumentEntity[]>>({});
   const [loadingManualMachineId, setLoadingManualMachineId] = useState<string | null>(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
@@ -149,9 +127,11 @@ export default function MachinesPage() {
           try {
             const response = await apiService.getDocumentsByMachine(machine._id);
             const documents = Array.isArray(response.data) ? response.data : [];
-            return [machine._id, documents.filter(isManualDocument)] as const;
+            return [machine._id, sortMachineDocumentsForMachine(machine._id, documents)] as const;
           } catch (error) {
-            console.error(`Error loading manuals for machine ${machine._id}:`, error);
+            if (!isNotFoundError(error)) {
+              console.error(`Error loading manuals for machine ${machine._id}:`, error);
+            }
             return [machine._id, []] as const;
           }
         }),
@@ -304,31 +284,74 @@ export default function MachinesPage() {
     setShowModal(true);
   };
 
+  const openManualQueue = (manuals: DocumentEntity[]) => {
+    setPreviewManualQueue(manuals);
+    setPreviewManual(manuals[0] ?? null);
+  };
+
+  // A machine can have several manual-like documents (e.g. an uploaded PDF
+  // whose underlying file is missing, plus a seeded xlsx that still works).
+  // If the one we're showing fails to load, fall through to the next one
+  // instead of leaving the user stuck on a broken preview.
+  const handleManualLoadError = () => {
+    setPreviewManualQueue((queue) => {
+      const currentIndex = previewManual ? queue.findIndex((doc) => doc._id === previewManual._id) : -1;
+      const next = queue[currentIndex + 1];
+      if (next) {
+        setPreviewManual(next);
+      } else {
+        setPreviewManual(null);
+        showNotification('error', tMachines('notifications.manualOpenFailed', { default: 'Could not open the machine manual' }));
+      }
+      return queue;
+    });
+  };
+
   const handleOpenManual = async (machine: Machine) => {
-    const cachedManual = manualsByMachine[machine._id]?.[0];
-    if (cachedManual) {
-      setPreviewManual(cachedManual);
+    const cachedManuals = manualsByMachine[machine._id];
+    if (cachedManuals) {
+      if (cachedManuals[0]) {
+        openManualQueue(cachedManuals);
+      } else {
+        showNotification('error', tMachines('notifications.manualNotFound', { default: 'No available document for this machine.' }));
+      }
       return;
     }
 
     setLoadingManualMachineId(machine._id);
     try {
       const response = await apiService.getDocumentsByMachine(machine._id);
-      const manuals = (Array.isArray(response.data) ? response.data : []).filter(isManualDocument);
+      const manuals = sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []);
       setManualsByMachine((current) => ({ ...current, [machine._id]: manuals }));
 
       if (manuals[0]) {
-        setPreviewManual(manuals[0]);
+        openManualQueue(manuals);
       } else {
-        showNotification('error', tMachines('notifications.manualNotFound', { default: 'No manual found for this machine' }));
+        showNotification('error', tMachines('notifications.manualNotFound', { default: 'No available document for this machine.' }));
       }
     } catch (error) {
-      console.error('Error opening machine manual:', error);
-      showNotification('error', tMachines('notifications.manualOpenFailed', { default: 'Could not open the machine manual' }));
+      if (isNotFoundError(error)) {
+        showNotification('error', tMachines('notifications.manualNotFound', { default: 'No available document for this machine.' }));
+      } else {
+        console.error('Error opening machine manual:', error);
+        showNotification('error', tMachines('notifications.manualOpenFailed', { default: 'Could not open the machine manual' }));
+      }
     } finally {
       setLoadingManualMachineId(null);
     }
   };
+
+  function isNotFoundError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'response' in error &&
+      typeof error.response === 'object' &&
+      error.response !== null &&
+      'status' in error.response &&
+      error.response.status === 404
+    );
+  }
 
   const handleDelete = async (machineId: string) => {
     if (confirm(tMachines('notifications.confirmDelete'))) {
@@ -453,7 +476,6 @@ export default function MachinesPage() {
                 <col className="machines-table__model" />
                 <col className="machines-table__type" />
                 <col className="machines-table__status" />
-                <col className="machines-table__live-status" />
                 <col className="machines-table__health" />
                 <col className="machines-table__date" />
                 <col className="machines-table__weight" />
@@ -468,7 +490,6 @@ export default function MachinesPage() {
                   <th>{tMachines('table.model')}</th>
                   <th>{tMachines('table.type')}</th>
                   <th>{tMachines('table.status')}</th>
-                  <th>{tDeviceMonitoring('table.liveStatus')}</th>
                   <th>{tPredictiveMaintenance('table.health')}</th>
                   <th>{tMachines('table.installationDate')}</th>
                   <th>{tMachines('table.weight')}</th>
@@ -479,7 +500,7 @@ export default function MachinesPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="text-center py-8 text-gray-500">
+                    <td colSpan={11} className="text-center py-8 text-gray-500">
                       {searchTerm ? tMachines('empty.search') : tMachines('empty.default')}
                     </td>
                   </tr>
@@ -516,13 +537,6 @@ export default function MachinesPage() {
                               ? tMachines(statusTranslationKey)
                               : tCommon('notAvailable')}
                           </span>
-                        </td>
-                        <td>
-                          <LiveStatusBadge
-                            machineId={machine._id}
-                            status={statusByMachine[machine._id]}
-                            onSubscribe={subscribeToMachine}
-                          />
                         </td>
                         <td>
                           <MachineHealthBadge status={healthByMachine[machine._id]} />
@@ -770,12 +784,19 @@ export default function MachinesPage() {
       </Modal>
       <Modal
         isOpen={Boolean(previewManual)}
-        onClose={() => setPreviewManual(null)}
+        onClose={() => {
+          setPreviewManual(null);
+          setPreviewManualQueue([]);
+        }}
         title={previewManual?.file_name || tMachines('actions.openManual', { default: 'Open manual' })}
         size="xl"
       >
         {previewManual ? (
-          <DocumentAttachmentViewer document={previewManual} title={previewManual.file_name} />
+          <DocumentAttachmentViewer
+            document={previewManual}
+            title={previewManual.file_name}
+            onError={handleManualLoadError}
+          />
         ) : null}
       </Modal>
     </DashboardLayout>

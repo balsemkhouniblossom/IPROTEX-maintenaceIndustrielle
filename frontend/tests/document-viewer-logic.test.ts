@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   getAttachmentViewerKind,
   getNormalizedDocumentExtension,
@@ -28,7 +29,8 @@ test("document viewer prefers trusted MIME type over extension", () => {
 test("document viewer detects normalized extensions when MIME is absent", () => {
   assert.equal(getAttachmentViewerKind({ file_path: "/files/uploads/photo.WebP?x=1" }), "image");
   assert.equal(getAttachmentViewerKind({ file_name: "manual.PDF" }), "pdf");
-  assert.equal(getAttachmentViewerKind({ file_name: "parts.xlsx" }), "download");
+  assert.equal(getAttachmentViewerKind({ file_name: "parts.xlsx" }), "spreadsheet");
+  assert.equal(getAttachmentViewerKind({ file_name: "notes.txt" }), "text");
   assert.equal(getNormalizedDocumentExtension({ file_path: "\\uploads\\report.TXT#page=1" }), "txt");
 });
 
@@ -56,4 +58,18 @@ test("document viewer preserves absolute and unsupported files", () => {
     resolveAttachmentViewerUrl({ file_path: "https://cdn.example.com/photo.webp" }),
     "https://cdn.example.com/photo.webp",
   );
+});
+
+test("shared attachment viewer renders spreadsheets directly without legacy preview code", () => {
+  const source = readFileSync(
+    new URL("../src/components/DocumentAttachmentViewer.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /viewerKind === "spreadsheet"/);
+  assert.match(source, /<SpreadsheetViewer[\s\S]*file=\{fileBlob \?\? displayUrl\}[\s\S]*onError=\{\(\) => setFileBroken\(true\)\}/);
+  assert.doesNotMatch(source, /@js-preview\/excel/);
+  assert.doesNotMatch(source, /exceljs/);
+  assert.doesNotMatch(source, /jsPreviewExcel\.init/);
+  assert.doesNotMatch(source, /withPatchedBlobXhrForPreview/);
 });

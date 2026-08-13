@@ -24,9 +24,15 @@ const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), {
   ),
 });
 
+const SpreadsheetViewer = dynamic(
+  () => import("@/app/[locale]/documents/SpreadsheetViewer"),
+  { ssr: false },
+);
+
 type Props = {
   document: ViewableDocument;
   title?: string;
+  onError?: () => void;
 };
 
 export default function DocumentAttachmentViewer(props: Props) {
@@ -40,11 +46,12 @@ export default function DocumentAttachmentViewer(props: Props) {
   );
 }
 
-function DocumentAttachmentViewerInner({ document, title }: Props) {
+function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
   const t = useTranslations("documents.viewer");
   const [fileLoading, setFileLoading] = useState(false);
   const [fileBroken, setFileBroken] = useState(false);
   const [objectUrl, setObjectUrl] = useState("");
+  const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const viewerKind = getAttachmentViewerKind(document);
   const viewerUrl = useMemo(() => resolveAttachmentViewerUrl(document), [document]);
   const fileUrl = resolveManagedFileUrl(document.file_path);
@@ -55,6 +62,7 @@ function DocumentAttachmentViewerInner({ document, title }: Props) {
   useEffect(() => {
     setFileBroken(false);
     setObjectUrl("");
+    setFileBlob(null);
 
     if (!viewerUrl || !shouldFetchWithAuth || viewerKind === "unsupported") {
       setFileLoading(false);
@@ -70,10 +78,14 @@ function DocumentAttachmentViewerInner({ document, title }: Props) {
       .then((response) => {
         if (!active) return;
         nextObjectUrl = URL.createObjectURL(response.data);
+        setFileBlob(response.data);
         setObjectUrl(nextObjectUrl);
       })
       .catch(() => {
-        if (active) setFileBroken(true);
+        if (active) {
+          setFileBroken(true);
+          onError?.();
+        }
       })
       .finally(() => {
         if (active) setFileLoading(false);
@@ -135,7 +147,26 @@ function DocumentAttachmentViewerInner({ document, title }: Props) {
     );
   }
 
-  if (viewerKind === "download" && viewerUrl) {
+  if (viewerKind === "spreadsheet" && viewerUrl && !fileBroken) {
+    return fileLoading && !displayUrl ? (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+        {t("loading")}
+      </div>
+    ) : (
+      <SpreadsheetViewer
+        file={fileBlob ?? displayUrl}
+        onError={() => setFileBroken(true)}
+      />
+    );
+  }
+
+  if (
+    (viewerKind === "download" ||
+      viewerKind === "spreadsheet" ||
+      viewerKind === "text") &&
+    viewerUrl
+  ) {
     const actionUrl = objectUrl || viewerUrl || fileUrl;
     return (
       <div className="flex min-h-[32vh] flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-6 text-center">

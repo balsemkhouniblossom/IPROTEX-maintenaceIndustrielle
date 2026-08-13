@@ -141,22 +141,21 @@ test("LiveStatusBadge renders nothing for a machine with no registered device, p
   );
 });
 
-test("Machines and Operator Machines pages call useLiveMonitoring exactly once and pass the shared state down to each row's badge", () => {
+test("Admin Machines page does not render or subscribe to Live Status", () => {
   const machinesPage = readSource("src/app/[locale]/machines/page.tsx");
-  const operatorMachinesPage = readSource("src/app/[locale]/operator/machines/page.tsx");
 
-  for (const [label, source] of [
-    ["admin machines page", machinesPage],
-    ["operator machines page", operatorMachinesPage],
-  ] as const) {
-    const hookCalls = source.match(/useLiveMonitoring\(\)/g) ?? [];
-    assert.equal(hookCalls.length, 1, `${label} must call useLiveMonitoring() exactly once`);
-    assert.match(
-      source,
-      /<LiveStatusBadge\s+machineId=\{machine\._id\}\s+status=\{statusByMachine\[machine\._id\]\}\s+onSubscribe=\{subscribeToMachine\}/,
-      `${label} must pass status/onSubscribe down to LiveStatusBadge`,
-    );
-  }
+  assert.doesNotMatch(machinesPage, /useLiveMonitoring\(\)|LiveStatusBadge|liveStatus/);
+});
+
+test("Operator Machines page calls useLiveMonitoring once and passes shared state to each row", () => {
+  const operatorMachinesPage = readSource("src/app/[locale]/operator/machines/page.tsx");
+  const hookCalls = operatorMachinesPage.match(/useLiveMonitoring\(\)/g) ?? [];
+
+  assert.equal(hookCalls.length, 1);
+  assert.match(
+    operatorMachinesPage,
+    /<LiveStatusBadge\s+machineId=\{machine\._id\}\s+status=\{statusByMachine\[machine\._id\]\}\s+onSubscribe=\{subscribeToMachine\}/,
+  );
 });
 
 test("the Devices admin page reveals a newly registered or rotated API key exactly once and never re-displays it", () => {

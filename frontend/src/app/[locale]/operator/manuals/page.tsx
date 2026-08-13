@@ -9,7 +9,8 @@ import { useTranslations } from "next-intl";
 import { fetchAllPaginated } from "@/services/pagination";
 import { Modal } from "@/components/Modal";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
-import { resolveManagedFileUrl } from "@/services/managedFileUrls";
+import { resolveAttachmentViewerUrl } from "@/services/documentViewer";
+import { isMachineManualDocument, sortMachineManuals } from "@/services/machineManuals";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -33,6 +34,7 @@ interface DocumentEntity {
   file_path: string;
   preview_path?: string;
   description?: string;
+  tags?: string[];
 }
 
 function refId(value: EntityRef | undefined): string {
@@ -92,28 +94,15 @@ export default function OperatorManualsPage() {
   );
 
   const visibleDocuments = useMemo(() => {
-    return documents.filter((doc) => {
+    return sortMachineManuals(documents.filter((doc) => {
       if (selectedMachine && refId(doc.machine_id) !== selectedMachine) return false;
       if (!selectedMachine && selectedType) {
         const machine = machines.find((item) => item._id === refId(doc.machine_id));
         if (!machine || refId(machine.type_id) !== selectedType) return false;
       }
 
-      const type = (doc.type_document ?? "").toLowerCase();
-      const name = (doc.file_name ?? "").toLowerCase();
-      return (
-        type.includes("manual") ||
-        type.includes("pdf") ||
-        type.includes("procedure") ||
-        type.includes("diagram") ||
-        type.includes("excel") ||
-        type.includes("xlsx") ||
-        type.includes("xls") ||
-        type.includes("spreadsheet") ||
-        name.endsWith(".xlsx") ||
-        name.endsWith(".xls")
-      );
-    });
+      return isMachineManualDocument(doc);
+    }));
   }, [documents, machines, selectedMachine, selectedType]);
 
   function openManualPreview(doc: DocumentEntity) {
@@ -197,7 +186,7 @@ export default function OperatorManualsPage() {
                         {t("openManual")}
                       </button>
                       <a
-                        href={resolveManagedFileUrl(doc.file_path)}
+                        href={resolveAttachmentViewerUrl(doc)}
                         download
                         className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                       >
