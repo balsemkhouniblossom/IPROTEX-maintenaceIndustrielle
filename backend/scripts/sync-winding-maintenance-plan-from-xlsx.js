@@ -149,12 +149,30 @@ const PLAN_TEMPLATES = [
 ];
 
 function slugify(value) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toUpperCase();
+  let slug = '';
+  let pendingSeparator = false;
+
+  for (const character of String(value).normalize('NFD').toUpperCase()) {
+    const code = character.codePointAt(0);
+    if (code === undefined || (code >= 0x0300 && code <= 0x036f)) {
+      continue;
+    }
+
+    const isDigit = code >= 48 && code <= 57;
+    const isUppercaseLetter = code >= 65 && code <= 90;
+
+    if (isDigit || isUppercaseLetter) {
+      if (pendingSeparator && slug) {
+        slug += '-';
+      }
+      slug += character;
+      pendingSeparator = false;
+    } else if (slug) {
+      pendingSeparator = true;
+    }
+  }
+
+  return slug;
 }
 
 async function ensureModuleType(db, machineTypeId) {

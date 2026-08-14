@@ -51,9 +51,9 @@ async function nextUserId(
     { sort: { created_at: -1 }, projection: { user_id: 1 } },
   );
   let nextId = 1;
-  const match = lastUser?.user_id?.match(/USER-(\d+)/);
+  const match = /USER-(\d+)/.exec(String(lastUser?.user_id ?? ''));
   if (match) {
-    nextId = parseInt(match[1], 10) + 1;
+    nextId = Number.parseInt(match[1], 10) + 1;
   }
   return `USER-${nextId.toString().padStart(3, '0')}`;
 }

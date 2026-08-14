@@ -424,28 +424,46 @@ function normalizeText(value) {
 }
 
 function slugify(value) {
-  return String(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toUpperCase();
+  let slug = '';
+  let pendingSeparator = false;
+
+  for (const character of String(value).normalize('NFD').toUpperCase()) {
+    const code = character.codePointAt(0);
+    if (code === undefined || (code >= 0x0300 && code <= 0x036f)) {
+      continue;
+    }
+
+    const isDigit = code >= 48 && code <= 57;
+    const isUppercaseLetter = code >= 65 && code <= 90;
+
+    if (isDigit || isUppercaseLetter) {
+      if (pendingSeparator && slug) {
+        slug += '-';
+      }
+      slug += character;
+      pendingSeparator = false;
+    } else if (slug) {
+      pendingSeparator = true;
+    }
+  }
+
+  return slug;
 }
 
 function parseFrequency(rawFrequency) {
   const value = normalizeText(rawFrequency);
 
-  let match = value.match(/^(\d+)\s*x\s*per\s*(day|week|month|year)s?$/i);
+  let match = /^(\d+)\s*x\s*per\s*(day|week|month|year)s?$/i.exec(value);
   if (match) {
     return { frequence: Number(match[1]), unite_frequence: match[2].toLowerCase() };
   }
 
-  match = value.match(/^Every\s+(\d+)\s+(day|week|month|year)s?$/i);
+  match = /^Every\s+(\d+)\s+(day|week|month|year)s?$/i.exec(value);
   if (match) {
     return { frequence: Number(match[1]), unite_frequence: match[2].toLowerCase() };
   }
 
-  if (/^At each loading$/i.test(value)) {
+  if (value.toLowerCase() === 'at each loading') {
     return { frequence: 1, unite_frequence: 'loading' };
   }
 

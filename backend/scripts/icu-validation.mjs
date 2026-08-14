@@ -1,5 +1,7 @@
 import { parse, TYPE } from '@formatjs/icu-messageformat-parser';
 
+const compareSignatureTokens = (left, right) => left.localeCompare(right);
+
 /**
  * A naive brace-text placeholder check (comparing raw `{...}` substrings)
  * cannot tell an ICU plural/select's structural syntax apart from the
@@ -26,7 +28,7 @@ export function extractIcuSignature(value) {
   const ast = parse(value, { ignoreTag: false });
   const tokens = [];
   walk(ast, tokens);
-  return tokens.sort();
+  return tokens.sort(compareSignatureTokens);
 }
 
 function walk(nodes, tokens) {
@@ -48,7 +50,7 @@ function walk(nodes, tokens) {
       case TYPE.plural:
       case TYPE.select: {
         const kind = node.type === TYPE.plural ? 'plural' : 'select';
-        const optionKeys = Object.keys(node.options).sort();
+        const optionKeys = Object.keys(node.options).sort(compareSignatureTokens);
         tokens.push(`${kind}:${node.value}:${optionKeys.join(',')}`);
         for (const key of optionKeys) {
           walk(node.options[key].value, tokens);
