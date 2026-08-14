@@ -14,6 +14,32 @@ const TARGET_FILE = path.resolve(__dirname, `../uploads/${TARGET_FILE_NAME}`);
 const FILE_PATH = `/uploads/${TARGET_FILE_NAME}`;
 const PREVIEW_PATH = '/uploads/Plan_maintenance_tresseuses_EN_preview.pdf';
 
+function toDocumentIdSuffix(value) {
+  let suffix = '';
+  let pendingSeparator = false;
+
+  for (const character of String(value).toUpperCase()) {
+    const code = character.codePointAt(0);
+    if (code === undefined) {
+      continue;
+    }
+    const isDigit = code >= 48 && code <= 57;
+    const isUppercaseLetter = code >= 65 && code <= 90;
+
+    if (isDigit || isUppercaseLetter) {
+      if (pendingSeparator && suffix) {
+        suffix += '-';
+      }
+      suffix += character;
+      pendingSeparator = false;
+    } else if (suffix) {
+      pendingSeparator = true;
+    }
+  }
+
+  return suffix;
+}
+
 async function main() {
   if (!fs.existsSync(SOURCE_FILE)) {
     throw new Error(`Source file not found: ${SOURCE_FILE}`);
@@ -42,11 +68,9 @@ async function main() {
   const summary = [];
 
   for (const machine of machines) {
-    const document_id = `DOC-BRAIDING-MANUAL-${machine.machine_id
-      .replace(/[^A-Za-z0-9]+/g, '-')
-      .replace(/^-+/, '')
-      .replace(/-+$/, '')
-      .toUpperCase()}`;
+    const document_id = `DOC-BRAIDING-MANUAL-${toDocumentIdSuffix(
+      machine.machine_id,
+    )}`;
 
     await db.collection('documententities').updateOne(
       { document_id },
