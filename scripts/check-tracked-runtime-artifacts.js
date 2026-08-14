@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { execFileSync } = require('node:child_process');
+const { existsSync } = require('node:fs');
 
 const forbiddenPaths = [
   'backend/uploads',
@@ -15,7 +16,21 @@ const forbiddenPaths = [
   'backups',
 ];
 
-const output = execFileSync('git', ['ls-files', ...forbiddenPaths], {
+const gitExecutable = [
+  '/usr/bin/git',
+  '/bin/git',
+  String.raw`C:\Program Files\Git\cmd\git.exe`,
+  String.raw`C:\Program Files\Git\bin\git.exe`,
+  String.raw`C:\Program Files (x86)\Git\cmd\git.exe`,
+  String.raw`C:\Program Files (x86)\Git\bin\git.exe`,
+].find((candidate) => existsSync(candidate));
+
+if (!gitExecutable) {
+  console.error('Unable to locate git in a fixed system install directory.');
+  process.exit(1);
+}
+
+const output = execFileSync(gitExecutable, ['ls-files', ...forbiddenPaths], {
   encoding: 'utf8',
 });
 

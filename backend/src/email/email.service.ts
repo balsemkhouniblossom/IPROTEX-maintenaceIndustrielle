@@ -29,8 +29,8 @@ type EmailDeliveryMode = 'auto' | 'smtp' | 'brevo-api';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter?: Transporter<SMTPTransport.SentMessageInfo>;
-  private fromAddress: string;
+  private readonly transporter?: Transporter<SMTPTransport.SentMessageInfo>;
+  private readonly fromAddress: string;
   private readonly brevoApiKey: string;
   private readonly brevoApiUrl: string;
   private readonly brevoApiTimeoutMs: number;
@@ -155,8 +155,8 @@ export class EmailService {
 
         const etherealTransporter = nodemailer.createTransport({
           host: 'smtp.ethereal.email',
-          port: 587,
-          secure: false,
+          port: 465,
+          secure: true,
           auth: {
             user: etherealAccount.user,
             pass: etherealAccount.pass,
@@ -236,10 +236,7 @@ export class EmailService {
       return {
         status: 'down',
         service: 'email',
-        mode:
-          process.env.NODE_ENV === 'production'
-            ? 'unconfigured'
-            : 'development-fallback',
+        mode: this.getUnconfiguredMode(),
         smtp: {
           configured: false,
         },
@@ -267,9 +264,9 @@ export class EmailService {
 
     if (!this.transporter) {
       return {
-        status: brevoConfigured ? 'degraded' : 'down',
+        status: this.getUnavailableSmtpStatus(brevoConfigured),
         service: 'email',
-        mode: brevoConfigured ? 'brevo-api' : 'smtp',
+        mode: this.getUnavailableSmtpMode(brevoConfigured),
         smtp: {
           configured: true,
           reachable: false,
@@ -284,9 +281,9 @@ export class EmailService {
 
     if (this.shouldBypassSmtp()) {
       return {
-        status: brevoConfigured ? 'degraded' : 'down',
+        status: this.getUnavailableSmtpStatus(brevoConfigured),
         service: 'email',
-        mode: brevoConfigured ? 'brevo-api' : 'smtp',
+        mode: this.getUnavailableSmtpMode(brevoConfigured),
         smtp: {
           configured: true,
           reachable: false,
@@ -302,17 +299,15 @@ export class EmailService {
     const verifyResult = await this.verifySmtpConnectivity();
 
     return {
-      status: verifyResult.reachable
-        ? 'ok'
-        : brevoConfigured
-          ? 'degraded'
-          : 'down',
+      status: this.getVerifiedSmtpStatus(
+        verifyResult.reachable,
+        brevoConfigured,
+      ),
       service: 'email',
-      mode: verifyResult.reachable
-        ? 'smtp'
-        : brevoConfigured
-          ? 'brevo-api'
-          : 'smtp',
+      mode: this.getVerifiedSmtpMode(
+        verifyResult.reachable,
+        brevoConfigured,
+      ),
       smtp: {
         configured: true,
         reachable: verifyResult.reachable,
@@ -367,6 +362,48 @@ export class EmailService {
 
   private shouldBypassSmtp(): boolean {
     return Boolean(this.brevoApiKey) && Date.now() < this.smtpBypassUntil;
+  }
+
+  private getUnconfiguredMode(): EmailDiagnostics['mode'] {
+    if (process.env.NODE_ENV === 'production') {
+      return 'unconfigured';
+    }
+
+    return 'development-fallback';
+  }
+
+  private getUnavailableSmtpStatus(
+    brevoConfigured: boolean,
+  ): EmailDiagnostics['status'] {
+    return brevoConfigured ? 'degraded' : 'down';
+  }
+
+  private getUnavailableSmtpMode(
+    brevoConfigured: boolean,
+  ): EmailDiagnostics['mode'] {
+    return brevoConfigured ? 'brevo-api' : 'smtp';
+  }
+
+  private getVerifiedSmtpStatus(
+    reachable: boolean,
+    brevoConfigured: boolean,
+  ): EmailDiagnostics['status'] {
+    if (reachable) {
+      return 'ok';
+    }
+
+    return this.getUnavailableSmtpStatus(brevoConfigured);
+  }
+
+  private getVerifiedSmtpMode(
+    reachable: boolean,
+    brevoConfigured: boolean,
+  ): EmailDiagnostics['mode'] {
+    if (reachable) {
+      return 'smtp';
+    }
+
+    return this.getUnavailableSmtpMode(brevoConfigured);
   }
 
   private markSmtpFailure(error: unknown): void {
@@ -437,7 +474,7 @@ export class EmailService {
   private async sendViaBrevoApi(
     options: SendEmailOptions,
   ): Promise<string | undefined> {
-    const fromEmailMatch = this.fromAddress.match(/<([^>]+)>/);
+    const fromEmailMatch = /<([^>]+)>/.exec(this.fromAddress);
     const fromEmail = fromEmailMatch ? fromEmailMatch[1] : this.fromAddress;
     const fromName =
       this.fromAddress.replace(/<[^>]+>/, '').trim() || 'Iprotex';

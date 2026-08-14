@@ -39,7 +39,7 @@ export function getRequestPathname(request: Request): string {
   const rawPath = request.originalUrl || request.path || request.url || '/';
 
   try {
-    const parsed = new URL(rawPath, 'http://internal.local');
+    const parsed = new URL(rawPath, 'https://internal.local');
     return parsed.pathname || '/';
   } catch {
     return rawPath.split('?')[0] || '/';

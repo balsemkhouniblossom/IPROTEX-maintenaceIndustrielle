@@ -292,16 +292,37 @@ async function request(method, path, body) {
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${method} ${path} failed: ${res.status} ${text}`);
+    throw new Error(`API request failed with status ${res.status}`);
   }
 
   return res.json();
 }
 
+function asArrayResponse(value, resourceName) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${resourceName} response was not an array`);
+  }
+
+  return value;
+}
+
+function logMetric(name, value) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new TypeError(`${name} metric was not a safe non-negative integer`);
+  }
+
+  console.log(`${name}=${value.toString(10)}`);
+}
+
 async function main() {
-  const existingPannes = await request('GET', '/pannes');
-  const existingSolutions = await request('GET', '/panne-solutions');
+  const existingPannes = asArrayResponse(
+    await request('GET', '/pannes'),
+    'Pannes',
+  );
+  const existingSolutions = asArrayResponse(
+    await request('GET', '/panne-solutions'),
+    'Panne solutions',
+  );
 
   const panneByCode = new Map(existingPannes.map((p) => [p.panne_id, p]));
   const solutionById = new Map(existingSolutions.map((s) => [s.solution_id, s]));
@@ -347,15 +368,12 @@ async function main() {
     }
   }
 
-  const finalPannes = await request('GET', '/pannes');
-  const finalSolutions = await request('GET', '/panne-solutions');
-
-  console.log(`PANNES_CREATED=${panneCreated}`);
-  console.log(`PANNES_UPDATED=${panneUpdated}`);
-  console.log(`SOLUTIONS_CREATED=${solutionCreated}`);
-  console.log(`SOLUTIONS_UPDATED=${solutionUpdated}`);
-  console.log(`PANNES_TOTAL=${finalPannes.length}`);
-  console.log(`SOLUTIONS_TOTAL=${finalSolutions.length}`);
+  logMetric('PANNES_CREATED', panneCreated);
+  logMetric('PANNES_UPDATED', panneUpdated);
+  logMetric('SOLUTIONS_CREATED', solutionCreated);
+  logMetric('SOLUTIONS_UPDATED', solutionUpdated);
+  logMetric('PANNES_TOTAL', rows.length);
+  logMetric('SOLUTIONS_TOTAL', rows.length);
 }
 
 main().catch((error) => {
