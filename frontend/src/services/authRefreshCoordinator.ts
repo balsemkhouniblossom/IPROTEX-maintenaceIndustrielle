@@ -73,10 +73,9 @@ export async function requestAuthRefresh(): Promise<LoginSession> {
 
 // Two refreshes can legitimately race (proactive timer, 401 retry, or a
 // sibling tab) against the backend's compare-and-swap token rotation. The
-// request that loses the race gets REFRESH_TOKEN_REUSE_DETECTED even though
-// the winner already rotated the shared refresh-token cookie successfully.
-// Retrying once picks up that freshly rotated cookie instead of forcing a
-// full logout for a session that is still perfectly valid.
+// request that loses the race may receive either reuse detection or revoked:
+// the winner has already rotated the shared refresh-token cookie. Retrying
+// once picks up that new cookie; a genuinely revoked session still fails.
 function postRefreshRequest() {
   return axios.post(
     `${API_BASE_URL}/auth/refresh`,
@@ -100,7 +99,10 @@ async function performRefreshWithReuseRetry() {
     return await postRefreshRequest();
   } catch (error) {
     const code = getRefreshErrorCode(error);
-    if (code === 'REFRESH_TOKEN_REUSE_DETECTED') {
+    if (
+      code === 'REFRESH_TOKEN_REUSE_DETECTED' ||
+      code === 'REFRESH_TOKEN_REVOKED'
+    ) {
       return await postRefreshRequest();
     }
     throw error;

@@ -262,6 +262,7 @@ test("API refresh uses credentials and CSRF instead of readable refresh-token bo
   assert.match(coordinatorSource, /let refreshRequest:\s*Promise<LoginSession>\s*\|\s*null\s*=\s*null/);
   assert.match(coordinatorSource, /if\s*\(refreshRequest\)\s*return refreshRequest/);
   assert.match(coordinatorSource, /axios\s*\.\s*post\(\s*`\$\{API_BASE_URL\}\/auth\/refresh`/);
+  assert.match(coordinatorSource, /REFRESH_TOKEN_REVOKED/);
   assert.match(apiSource, /originalRequest\._retry\s*=\s*true/);
   assert.doesNotMatch(apiSource, /getAuthItem\('refresh_token'\)/);
   assert.doesNotMatch(coordinatorSource, /refresh_token:\s*refreshToken/);

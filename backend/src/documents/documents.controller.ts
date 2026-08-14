@@ -139,6 +139,32 @@ export class DocumentsController {
     res.send(file.buffer);
   }
 
+  @Get(':id/preview')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async previewSpreadsheet(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ) {
+    this.ensureDocumentReader(req);
+    const document = await this.documentAccessService.resolveAccessibleDocument(
+      req.user ?? {},
+      id,
+    );
+    const preview = await this.documentsService.createSpreadsheetPreview(
+      id,
+      document,
+    );
+    res.setHeader('Content-Type', preview.contentType);
+    res.setHeader('Content-Length', String(preview.size));
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${sanitizeDownloadFileName(preview.fileName)}"`,
+    );
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(preview.buffer);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     this.ensureDocumentReader(req);

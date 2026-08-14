@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders } from 'axios';
+import axios, { AxiosHeaders, type AxiosRequestConfig } from 'axios';
 import { getApiBaseUrl } from '@/config/api-base-url';
 import { normalizeApiItems, readPaginationMeta } from './pagination';
 import { clearAuthSession, getAuthToken } from './authStorage';
@@ -204,8 +204,7 @@ export function resetAuthRefreshState(): void {
 }
 
 type AnyObject = Record<string, unknown>;
-type QuietAxiosConfig = {
-  params?: AnyObject;
+type QuietAxiosConfig = AxiosRequestConfig & {
   suppressErrorLog?: boolean;
 };
 type PaginationParams = {
@@ -230,7 +229,7 @@ function withPagination(params?: PaginationParams) {
   };
 }
 
-function quiet(config: QuietAxiosConfig = {}) {
+export function quiet(config: QuietAxiosConfig = {}) {
   return {
     ...config,
     suppressErrorLog: true,

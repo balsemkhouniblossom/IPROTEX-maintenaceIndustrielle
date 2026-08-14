@@ -8,6 +8,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as fs from 'fs/promises';
 import { Model, Types } from 'mongoose';
+import PDFDocument from 'pdfkit';
+import * as XLSX from 'xlsx';
 import { resolve } from 'path';
 import {
   DocumentEntity,
@@ -439,6 +441,27 @@ export class DocumentsService {
     }
   }
 
+  async createSpreadsheetPreview(
+    id: string,
+    resolvedDoc?: DocumentDocument,
+  ): Promise<ProtectedStoredFile> {
+    const source = await this.readProtectedFile(id, resolvedDoc);
+    if (!/\.xlsx$/i.test(source.fileName)) {
+      throw new BadRequestException(
+        'Spreadsheet preview is only available for .xlsx files',
+      );
+    }
+
+    const workbook = XLSX.read(source.buffer, { type: 'buffer' });
+    const buffer = await renderWorkbookPdf(workbook, source.fileName);
+    return {
+      buffer,
+      contentType: 'application/pdf',
+      fileName: `${source.fileName.replace(/\.xlsx$/i, '')}.pdf`,
+      size: buffer.length,
+    };
+  }
+
   private async applyTransition(
     id: string,
     rule: TransitionRule,
@@ -665,4 +688,50 @@ export class DocumentsService {
       return null;
     }
   }
+}
+
+function renderWorkbookPdf(
+  workbook: XLSX.WorkBook,
+  title: string,
+): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    const pdf = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 32 });
+    const chunks: Buffer[] = [];
+    pdf.on('data', (chunk: Buffer) => chunks.push(chunk));
+    pdf.on('end', () => resolve(Buffer.concat(chunks)));
+    pdf.on('error', reject);
+
+    workbook.SheetNames.forEach((sheetName, sheetIndex) => {
+      if (sheetIndex) pdf.addPage();
+      pdf.font('Helvetica-Bold').fontSize(13).text(`${title} - ${sheetName}`);
+      pdf.moveDown(0.5);
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], {
+        header: 1,
+        defval: '',
+        raw: false,
+      });
+      const columnCount = Math.min(
+        Math.max(...rows.map((row) => row.length), 1),
+        12,
+      );
+      const columnWidth = (pdf.page.width - 64) / columnCount;
+
+      rows.slice(0, 200).forEach((row, rowIndex) => {
+        if (pdf.y > pdf.page.height - 52) pdf.addPage();
+        const rowY = pdf.y;
+        row.slice(0, columnCount).forEach((cell, columnIndex) => {
+          pdf
+            .font(rowIndex === 0 ? 'Helvetica-Bold' : 'Helvetica')
+            .fontSize(7)
+            .text(String(cell ?? ''), 32 + columnIndex * columnWidth, rowY, {
+              width: columnWidth - 3,
+              height: 12,
+              ellipsis: true,
+            });
+        });
+        pdf.y = rowY + 12;
+      });
+    });
+    pdf.end();
+  });
 }

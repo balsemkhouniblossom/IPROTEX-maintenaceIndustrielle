@@ -49,6 +49,7 @@ const nextConfig = {
       `img-src 'self' data: blob: ${apiOrigin} ${supabaseImageSource}`,
       "font-src 'self' data:",
       `connect-src 'self' ${apiOrigin} ${apiWebSocketOrigin}`,
+      "frame-src 'self' blob:",
       "object-src 'none'",
       "frame-ancestors 'none'",
       "base-uri 'self'",

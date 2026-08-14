@@ -106,3 +106,15 @@ export function resolveAttachmentViewerUrl(doc: ViewableDocument): string {
 
   return resolveManagedFileUrl(path);
 }
+
+export function resolveAttachmentPreviewUrl(doc: ViewableDocument): string {
+  const documentId = firstString([doc._id, doc.id]);
+  if (
+    getAttachmentViewerKind(doc) === "spreadsheet" &&
+    getNormalizedDocumentExtension(doc) === "xlsx" &&
+    documentId
+  ) {
+    return resolveManagedFileUrl(`/documents/${encodeURIComponent(documentId)}/preview`);
+  }
+  return resolveAttachmentViewerUrl(doc);
+}

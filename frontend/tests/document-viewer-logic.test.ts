@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import {
   getAttachmentViewerKind,
   getNormalizedDocumentExtension,
+  resolveAttachmentPreviewUrl,
   resolveAttachmentViewerUrl,
 } from "../src/services/documentViewer.ts";
 
@@ -52,6 +53,13 @@ test("document viewer prefers API-provided protected file urls", () => {
   );
 });
 
+test("document viewer resolves spreadsheets through protected PDF preview endpoints", () => {
+  assert.equal(
+    resolveAttachmentPreviewUrl({ _id: "doc-1", file_path: "/uploads/manual.xlsx" }),
+    "http://localhost:3001/documents/doc-1/preview",
+  );
+});
+
 test("document viewer preserves absolute and unsupported files", () => {
   assert.equal(getAttachmentViewerKind({ file_path: "/uploads/archive.zip" }), "unsupported");
   assert.equal(
@@ -60,16 +68,21 @@ test("document viewer preserves absolute and unsupported files", () => {
   );
 });
 
-test("shared attachment viewer renders spreadsheets directly without legacy preview code", () => {
+test("shared attachment viewer renders spreadsheet PDF previews", () => {
   const source = readFileSync(
     new URL("../src/components/DocumentAttachmentViewer.tsx", import.meta.url),
     "utf8",
   );
 
   assert.match(source, /viewerKind === "spreadsheet"/);
-  assert.match(source, /<SpreadsheetViewer[\s\S]*file=\{fileBlob \?\? displayUrl\}[\s\S]*onError=\{\(\) => setFileBroken\(true\)\}/);
+  assert.match(source, /viewerKind === "pdf" \|\| isSpreadsheetPdfPreview/);
+  assert.match(source, /\{!displayUrl \? \(/);
+  assert.match(source, /<PdfViewer key=\{displayUrl\} file=\{displayUrl\} \/>/);
+  assert.match(source, /quiet\(\{[\s\S]*responseType:\s*"blob"/);
+  assert.match(source, /\/documents\\\/\[\^\/\]\+\\\/\(\?:file\|preview\)\$/);
+  assert.doesNotMatch(source, /<iframe/);
   assert.doesNotMatch(source, /@js-preview\/excel/);
-  assert.doesNotMatch(source, /exceljs/);
+  assert.doesNotMatch(source, /from "xlsx"/);
   assert.doesNotMatch(source, /jsPreviewExcel\.init/);
   assert.doesNotMatch(source, /withPatchedBlobXhrForPreview/);
 });

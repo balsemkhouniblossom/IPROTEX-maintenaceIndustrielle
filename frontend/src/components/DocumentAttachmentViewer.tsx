@@ -6,11 +6,12 @@ import { Download, ExternalLink, FileWarning, ImageOff, Loader2 } from "lucide-r
 import { useTranslations } from "next-intl";
 import {
   getAttachmentViewerKind,
-  resolveAttachmentViewerUrl,
+  getNormalizedDocumentExtension,
+  resolveAttachmentPreviewUrl,
   type ViewableDocument,
 } from "@/services/documentViewer";
 import { resolveManagedFileUrl } from "@/services/managedFileUrls";
-import api from "@/services/api";
+import api, { quiet } from "@/services/api";
 import { getApiBaseUrl } from "@/config/api-base-url";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
@@ -23,11 +24,6 @@ const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), {
     </div>
   ),
 });
-
-const SpreadsheetViewer = dynamic(
-  () => import("@/app/[locale]/documents/SpreadsheetViewer"),
-  { ssr: false },
-);
 
 type Props = {
   document: ViewableDocument;
@@ -51,9 +47,11 @@ function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
   const [fileLoading, setFileLoading] = useState(false);
   const [fileBroken, setFileBroken] = useState(false);
   const [objectUrl, setObjectUrl] = useState("");
-  const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const viewerKind = getAttachmentViewerKind(document);
-  const viewerUrl = useMemo(() => resolveAttachmentViewerUrl(document), [document]);
+  const isSpreadsheetPdfPreview =
+    viewerKind === "spreadsheet" &&
+    getNormalizedDocumentExtension(document) === "xlsx";
+  const viewerUrl = useMemo(() => resolveAttachmentPreviewUrl(document), [document]);
   const fileUrl = resolveManagedFileUrl(document.file_path);
   const label = title || document.file_name || t("title");
   const shouldFetchWithAuth = isBackendDocumentFileUrl(viewerUrl);
@@ -62,7 +60,6 @@ function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
   useEffect(() => {
     setFileBroken(false);
     setObjectUrl("");
-    setFileBlob(null);
 
     if (!viewerUrl || !shouldFetchWithAuth || viewerKind === "unsupported") {
       setFileLoading(false);
@@ -74,11 +71,13 @@ function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
     setFileLoading(true);
 
     api
-      .get(viewerUrl, { responseType: "blob", timeout: 60000 })
+      .get(viewerUrl, quiet({
+        responseType: "blob",
+        timeout: 60000,
+      }))
       .then((response) => {
         if (!active) return;
         nextObjectUrl = URL.createObjectURL(response.data);
-        setFileBlob(response.data);
         setObjectUrl(nextObjectUrl);
       })
       .catch(() => {
@@ -132,32 +131,18 @@ function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
     );
   }
 
-  if (viewerKind === "pdf" && viewerUrl) {
+  if ((viewerKind === "pdf" || isSpreadsheetPdfPreview) && viewerUrl) {
     return (
       <div className="max-h-[78vh] w-full overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-2 sm:p-4">
-        {fileLoading && !displayUrl ? (
+        {!displayUrl ? (
           <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             {t("loading")}
           </div>
         ) : (
-          <PdfViewer file={displayUrl} />
+          <PdfViewer key={displayUrl} file={displayUrl} />
         )}
       </div>
-    );
-  }
-
-  if (viewerKind === "spreadsheet" && viewerUrl && !fileBroken) {
-    return fileLoading && !displayUrl ? (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-        {t("loading")}
-      </div>
-    ) : (
-      <SpreadsheetViewer
-        file={fileBlob ?? displayUrl}
-        onError={() => setFileBroken(true)}
-      />
     );
   }
 
@@ -206,7 +191,11 @@ function isBackendDocumentFileUrl(url: string): boolean {
   if (!url) return false;
   const normalizedBase = getApiBaseUrl().replace(/\/$/, "");
   const normalizedUrl = url.replace(/\\/g, "/");
-  if (normalizedUrl.startsWith("/documents/")) return /\/documents\/[^/]+\/file$/.test(normalizedUrl);
+  if (normalizedUrl.startsWith("/documents/")) return isProtectedDocumentUrl(normalizedUrl);
   if (!normalizedUrl.startsWith(`${normalizedBase}/documents/`)) return false;
-  return /\/documents\/[^/]+\/file$/.test(normalizedUrl.slice(normalizedBase.length));
+  return isProtectedDocumentUrl(normalizedUrl.slice(normalizedBase.length));
+}
+
+function isProtectedDocumentUrl(url: string): boolean {
+  return /\/documents\/[^/]+\/(?:file|preview)$/.test(url);
 }
