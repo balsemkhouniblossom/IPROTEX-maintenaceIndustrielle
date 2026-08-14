@@ -8,8 +8,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as fs from 'node:fs/promises';
 import { Model, Types } from 'mongoose';
+import { Workbook } from 'exceljs';
 import PDFDocument from 'pdfkit';
-import * as XLSX from 'xlsx';
 import { resolve } from 'node:path';
 import {
   DocumentEntity,
@@ -452,7 +452,9 @@ export class DocumentsService {
       );
     }
 
-    const workbook = XLSX.read(source.buffer, { type: 'buffer' });
+    const workbook = new Workbook();
+    const workbookBuffer = Uint8Array.from(source.buffer).buffer;
+    await workbook.xlsx.load(workbookBuffer);
     const buffer = await renderWorkbookPdf(workbook, source.fileName);
     return {
       buffer,
@@ -691,7 +693,7 @@ export class DocumentsService {
 }
 
 function renderWorkbookPdf(
-  workbook: XLSX.WorkBook,
+  workbook: Workbook,
   title: string,
 ): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
@@ -705,18 +707,19 @@ function renderWorkbookPdf(
     pdf.on('end', () => resolve(Buffer.concat(chunks)));
     pdf.on('error', reject);
 
-    workbook.SheetNames.forEach((sheetName, sheetIndex) => {
+    workbook.worksheets.forEach((worksheet, sheetIndex) => {
       if (sheetIndex) pdf.addPage();
-      pdf.font('Helvetica-Bold').fontSize(13).text(`${title} - ${sheetName}`);
+      pdf
+        .font('Helvetica-Bold')
+        .fontSize(13)
+        .text(`${title} - ${worksheet.name}`);
       pdf.moveDown(0.5);
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(
-        workbook.Sheets[sheetName],
-        {
-          header: 1,
-          defval: '',
-          raw: false,
-        },
-      );
+      const rows = worksheet
+        .getSheetValues()
+        .slice(1)
+        .map((row) =>
+          Array.isArray(row) ? row.slice(1).map((cell) => cellToPdfText(cell)) : [],
+        );
       const columnCount = Math.min(
         Math.max(...rows.map((row) => row.length), 1),
         12,
@@ -743,10 +746,40 @@ function renderWorkbookPdf(
   });
 }
 
-function cellToPdfText(value: unknown): string {
-  return typeof value === 'string' || typeof value === 'number'
-    ? String(value)
-    : value instanceof Date
-      ? value.toLocaleDateString('en-CA')
-      : '';
+function cellToPdfText(value: unknown, seen = new Set<object>()): string {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return String(value);
+  }
+  if (value instanceof Date) {
+    return value.toLocaleDateString('en-CA');
+  }
+  if (value && typeof value === 'object') {
+    if (seen.has(value)) {
+      return '';
+    }
+    seen.add(value);
+    if ('text' in value && typeof value.text === 'string') {
+      return value.text;
+    }
+    if ('error' in value && typeof value.error === 'string') {
+      return value.error;
+    }
+    if ('richText' in value && Array.isArray(value.richText)) {
+      return value.richText
+        .map((part) =>
+          part && typeof part === 'object' && 'text' in part
+            ? cellToPdfText(part.text, seen)
+            : '',
+        )
+        .join('');
+    }
+    if ('result' in value && value.result !== undefined && value.result !== null) {
+      return cellToPdfText(value.result, seen);
+    }
+  }
+  return '';
 }

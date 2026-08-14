@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Workbook } from 'exceljs';
 import { Types } from 'mongoose';
 import { DocumentsService } from './documents.service';
 import type { FileStorageService } from '../storage/file-storage.service';
@@ -158,6 +159,37 @@ describe('DocumentsService storage URL resolution', () => {
     expect(storage.readProtectedFile).toHaveBeenCalledWith(
       '/uploads/manual.pdf',
     );
+  });
+
+  it('creates spreadsheet previews from managed xlsx files without the vulnerable xlsx package', async () => {
+    storage.ownsFile.mockReturnValue(true);
+    const workbook = new Workbook();
+    const sheet = workbook.addWorksheet('Machines');
+    sheet.addRow(['Machine', 'Status']);
+    sheet.addRow(['Braider-01', 'OK']);
+    const spreadsheetBuffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    storage.readProtectedFile.mockResolvedValue({
+      buffer: spreadsheetBuffer,
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      fileName: 'machines.xlsx',
+      size: spreadsheetBuffer.length,
+    });
+    documentModel.findById = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue(
+        doc({
+          _id: 'doc-sheet',
+          file_path: '/uploads/machines.xlsx',
+        }),
+      ),
+    });
+
+    const preview = await service.createSpreadsheetPreview('doc-sheet');
+
+    expect(preview.contentType).toBe('application/pdf');
+    expect(preview.fileName).toBe('machines.pdf');
+    expect(preview.size).toBeGreaterThan(0);
   });
 
   it('rejects protected file reads for external document URLs', async () => {
