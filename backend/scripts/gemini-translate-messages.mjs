@@ -201,19 +201,46 @@ function extractJsonText(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed) throw new Error('Gemini returned no translation content');
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) return trimmed;
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]?.trim()) return fenced[1].trim();
+  const fenced = extractFencedJsonText(trimmed);
+  if (fenced) return fenced;
   const first = trimmed.indexOf('{');
   const last = trimmed.lastIndexOf('}');
   if (first >= 0 && last > first) return trimmed.slice(first, last + 1);
   throw new Error('Gemini returned non-JSON translation content');
 }
 
+function extractFencedJsonText(text) {
+  if (!text.startsWith('```')) {
+    return null;
+  }
+
+  const firstLineEnd = text.indexOf('\n');
+  if (firstLineEnd < 0) {
+    return null;
+  }
+
+  const fenceInfo = text.slice(3, firstLineEnd).trim();
+  if (fenceInfo && fenceInfo.toLowerCase() !== 'json') {
+    return null;
+  }
+
+  const closingFenceStart = text.lastIndexOf('```');
+  if (closingFenceStart <= firstLineEnd) {
+    return null;
+  }
+
+  const fenced = text.slice(firstLineEnd + 1, closingFenceStart).trim();
+  return fenced || null;
+}
+
 function parseArgs(values) {
   const parsed = {};
   for (const value of values) {
     if (!value.startsWith('--')) continue;
-    const [rawKey, rawValue] = value.slice(2).split(/=(.*)/s);
+    const argument = value.slice(2);
+    const separator = argument.indexOf('=');
+    const rawKey = separator < 0 ? argument : argument.slice(0, separator);
+    const rawValue = separator < 0 ? undefined : argument.slice(separator + 1);
     parsed[rawKey] = rawValue === undefined || rawValue === '' ? true : rawValue;
   }
   return parsed;
@@ -228,7 +255,21 @@ function loadEnvFile(filePath) {
     const index = trimmed.indexOf('=');
     if (index < 0) continue;
     const key = trimmed.slice(0, index).trim();
-    const value = trimmed.slice(index + 1).trim().replace(/^['"]|['"]$/g, '');
+    const value = stripBoundingQuotes(trimmed.slice(index + 1).trim());
     if (!process.env[key]) process.env[key] = value;
   }
+}
+
+function stripBoundingQuotes(value) {
+  if (value.length < 2) {
+    return value;
+  }
+
+  const first = value[0];
+  const last = value.at(-1);
+  if ((first === "'" || first === '"') && first === last) {
+    return value.slice(1, -1);
+  }
+
+  return value;
 }
