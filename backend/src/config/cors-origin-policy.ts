@@ -63,8 +63,8 @@ export function buildCorsOriginDelegate(
 
 export function wildcardToRegex(originPattern: string): RegExp {
   const escaped = originPattern
-    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*');
+    .replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)
+    .replaceAll('*', '.*');
 
   return new RegExp(`^${escaped}$`);
 }

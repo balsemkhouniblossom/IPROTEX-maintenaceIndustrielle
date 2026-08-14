@@ -92,7 +92,7 @@ export class EmailController {
   }
 
   private extractEmailAddress(value: string): string {
-    const match = value.match(/<([^>]+)>/);
+    const match = /<([^>]+)>/.exec(value);
     return (match ? match[1] : value).trim();
   }
 

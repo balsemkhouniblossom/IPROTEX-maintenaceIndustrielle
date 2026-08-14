@@ -69,8 +69,8 @@ export class AppConfigService {
     }
 
     const pattern = entry
-      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*/g, '.*');
+      .replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`)
+      .replaceAll('*', '.*');
 
     return new RegExp(`^${pattern}$`).test(origin);
   }

@@ -29,6 +29,9 @@ export interface IndexManagerOptions {
   logger?: Pick<Console, 'log' | 'error'>;
 }
 
+const compareIndexNames = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 export function normalize(value: unknown): string {
   if (value === undefined) return '';
   if (!value || typeof value !== 'object') return JSON.stringify(value);
@@ -45,7 +48,7 @@ function textIndexFieldNames(key: Record<string, unknown>): string[] {
   return Object.entries(key)
     .filter(([, direction]) => direction === 'text')
     .map(([field]) => field)
-    .sort();
+    .sort(compareIndexNames);
 }
 
 /**
@@ -63,7 +66,9 @@ function textIndexEquivalent(
   if (!existingIsTextIndex) return false;
 
   const specFields = textIndexFieldNames(spec.key);
-  const existingFields = Object.keys(existing.weights ?? {}).sort();
+  const existingFields = Object.keys(existing.weights ?? {}).sort(
+    compareIndexNames,
+  );
   return normalize(specFields) === normalize(existingFields);
 }
 
@@ -230,6 +235,49 @@ export async function loadExistingIndexes(
   return result;
 }
 
+async function applyMissingIndex(
+  connection: Connection,
+  existing: Map<string, ExistingMongoIndex[]>,
+  spec: RecommendedMongoIndex,
+  logger: Pick<Console, 'log' | 'error'>,
+): Promise<void> {
+  await dropDriftedSameNameIndex(connection, existing, spec, logger);
+
+  await connection.db
+    ?.collection(spec.collection)
+    .createIndex(spec.key as IndexSpecification, createIndexOptions(spec));
+  logger.log(`[created] ${spec.collection}.${spec.name}`);
+}
+
+async function dropDriftedSameNameIndex(
+  connection: Connection,
+  existing: Map<string, ExistingMongoIndex[]>,
+  spec: RecommendedMongoIndex,
+  logger: Pick<Console, 'log' | 'error'>,
+): Promise<void> {
+  const hasStaleSameName = (existing.get(spec.collection) ?? []).some(
+    (index) => index.name === spec.name,
+  );
+  if (!hasStaleSameName) {
+    return;
+  }
+
+  logger.log(
+    `[drift] ${spec.collection}.${spec.name} exists with a different definition — dropping before recreate`,
+  );
+  await connection.db?.collection(spec.collection).dropIndex(spec.name);
+}
+
+function createIndexOptions(
+  spec: RecommendedMongoIndex,
+): Record<string, unknown> {
+  const createOptions: Record<string, unknown> = { name: spec.name };
+  for (const [key, value] of Object.entries(spec.options ?? {})) {
+    if (value !== undefined) createOptions[key] = value;
+  }
+  return createOptions;
+}
+
 export async function runIndexManager({
   uri,
   apply = false,
@@ -268,30 +316,7 @@ export async function runIndexManager({
         )}`,
       );
       if (apply) {
-        // A same-name index with a different definition (e.g. a
-        // partialFilterExpression that no longer matches the code) can't be
-        // created over in place — Mongo rejects it as IndexOptionsConflict.
-        // Drop the stale definition first so `--apply` can heal drift, not
-        // just fill genuine gaps.
-        const staleSameName = (existing.get(spec.collection) ?? []).find(
-          (index) => index.name === spec.name,
-        );
-        if (staleSameName) {
-          logger.log(
-            `[drift] ${spec.collection}.${spec.name} exists with a different definition — dropping before recreate`,
-          );
-          await connection.db?.collection(spec.collection).dropIndex(spec.name);
-        }
-
-        const createOptions: Record<string, unknown> = { name: spec.name };
-        for (const [key, value] of Object.entries(spec.options ?? {})) {
-          if (value !== undefined) createOptions[key] = value;
-        }
-
-        await connection.db
-          ?.collection(spec.collection)
-          .createIndex(spec.key as IndexSpecification, createOptions);
-        logger.log(`[created] ${spec.collection}.${spec.name}`);
+        await applyMissingIndex(connection, existing, spec, logger);
       }
     }
 

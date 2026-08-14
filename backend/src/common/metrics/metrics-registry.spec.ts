@@ -44,6 +44,14 @@ describe('MetricsRegistry', () => {
     expect(text).toContain('# TYPE http_request_duration_ms_sum counter');
   });
 
+  it('escapes route label values for Prometheus text output', () => {
+    registry.record('GET', String.raw`/docs/"manual"\v1`, 200, 5);
+
+    const text = registry.renderPrometheusText();
+
+    expect(text).toContain(String.raw`route="/docs/\"manual\"\\v1"`);
+  });
+
   it('renders an empty body (just HELP/TYPE headers) when nothing has been recorded', () => {
     const text = registry.renderPrometheusText();
 

@@ -86,6 +86,19 @@ describe('CORS origin policy', () => {
     ).toBe('http://localhost:3000');
   });
 
+  it('matches development wildcard origins while escaping other regex characters', () => {
+    const allowed = [
+      parseConfiguredCorsOrigin('https://*.preview.example.com', 'development'),
+    ];
+
+    expect(
+      isAllowedCorsOrigin('https://one.preview.example.com', allowed),
+    ).toBe(true);
+    expect(isAllowedCorsOrigin('https://previewxexample.com', allowed)).toBe(
+      false,
+    );
+  });
+
   it('shares the same delegate shape for HTTP and WebSocket policy callbacks', async () => {
     await expect(
       checkDelegate('https://pfe-maintenace-industrielle.vercel.app', false),

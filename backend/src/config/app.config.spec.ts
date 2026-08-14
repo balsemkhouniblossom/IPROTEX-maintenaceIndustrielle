@@ -50,4 +50,20 @@ describe('frontend URL configuration', () => {
       'https://app.example.com',
     );
   });
+
+  it('accepts wildcard CORS entries while escaping other regex characters', () => {
+    const config = new AppConfigService(
+      createConfig({
+        FRONTEND_BASE_URL: 'https://app.example.com',
+        CORS_ORIGINS: 'https://*.preview.example.com',
+      }),
+    );
+
+    expect(
+      config.resolveFrontendBaseUrl('https://one.preview.example.com'),
+    ).toBe('https://one.preview.example.com');
+    expect(config.resolveFrontendBaseUrl('https://previewxexample.com')).toBe(
+      'https://app.example.com',
+    );
+  });
 });
