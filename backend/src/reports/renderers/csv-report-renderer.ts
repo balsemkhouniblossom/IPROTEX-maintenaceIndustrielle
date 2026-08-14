@@ -6,7 +6,7 @@ import { ReportDataset, ReportRenderer } from '../report.interfaces';
 function csvField(value: string | number | null | undefined): string {
   const text = value === null || value === undefined ? '' : String(value);
   if (/[",\n\r]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
+    return `"${text.replaceAll('"', '""')}"`;
   }
   return text;
 }
@@ -24,16 +24,17 @@ export class CsvReportRenderer implements ReportRenderer {
 
   render(dataset: ReportDataset): Promise<Buffer> {
     const lines: string[] = [];
-    lines.push(csvLine([dataset.title]));
-    lines.push(csvLine([`Generated: ${dataset.generatedAt.toISOString()}`]));
-    lines.push('');
-    lines.push(csvLine(dataset.columns.map((c) => c.label)));
+    lines.push(
+      csvLine([dataset.title]),
+      csvLine([`Generated: ${dataset.generatedAt.toISOString()}`]),
+      '',
+      csvLine(dataset.columns.map((c) => c.label)),
+    );
     for (const row of dataset.rows) {
       lines.push(csvLine(dataset.columns.map((c) => row[c.key])));
     }
     if (dataset.summary?.length) {
-      lines.push('');
-      lines.push(csvLine(['Summary']));
+      lines.push('', csvLine(['Summary']));
       for (const entry of dataset.summary) {
         lines.push(csvLine([entry.label, entry.value]));
       }

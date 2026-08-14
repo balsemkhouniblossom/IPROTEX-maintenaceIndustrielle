@@ -157,12 +157,25 @@ const STOCK_EVENT_TITLES: Partial<Record<MachineTimelineEventType, string>> = {
   [MachineTimelineEventType.PARTS_ADJUSTED]: 'Stock adjusted',
 };
 
+interface WorkOrderSummaryStats {
+  openWorkOrders: number;
+  closedWorkOrders: number;
+  preventiveCompleted: number;
+  correctiveCompleted: number;
+  downtimeMs: number;
+  downtimeCount: number;
+  lastMaintenanceAt: Date | null;
+  nextMaintenanceAt: Date | null;
+}
+
 function categoryForMaintenanceType(
   typeMaintenance?: string,
 ): MachineTimelineCategory {
-  return typeMaintenance && /preventive/i.test(typeMaintenance)
-    ? MachineTimelineCategory.PREVENTIVE
-    : MachineTimelineCategory.CORRECTIVE;
+  if (typeMaintenance && /preventive/i.test(typeMaintenance)) {
+    return MachineTimelineCategory.PREVENTIVE;
+  }
+
+  return MachineTimelineCategory.CORRECTIVE;
 }
 
 /**
@@ -258,73 +271,17 @@ export class MachineTimelineService {
           .exec(),
       ]);
 
-    let openWorkOrders = 0;
-    let closedWorkOrders = 0;
-    let preventiveCompleted = 0;
-    let correctiveCompleted = 0;
-    let downtimeMs = 0;
-    let downtimeCount = 0;
-    let lastMaintenanceAt: Date | null = null;
-    let nextMaintenanceAt: Date | null = null;
     const now = new Date();
+    const stats = this.summarizeWorkOrders(workOrders, now);
+    const lastMaintenanceAt = this.latestDate(
+      stats.lastMaintenanceAt,
+      lastPreventiveTask?.completed_at,
+      lastLubrication?.date_application,
+    );
 
-    for (const wo of workOrders) {
-      const closed = CLOSED_WORK_ORDER_STATUSES.includes(wo.status);
-      const completed = COMPLETED_WORK_ORDER_STATUSES.includes(wo.status);
-      if (closed) closedWorkOrders++;
-      else openWorkOrders++;
-
-      if (completed) {
-        if (
-          categoryForMaintenanceType(wo.type_maintenance) ===
-          MachineTimelineCategory.PREVENTIVE
-        ) {
-          preventiveCompleted++;
-        } else {
-          correctiveCompleted++;
-        }
-        if (
-          wo.date_end &&
-          (!lastMaintenanceAt || wo.date_end > lastMaintenanceAt)
-        ) {
-          lastMaintenanceAt = wo.date_end;
-        }
-      }
-
-      if (wo.date_start && wo.date_end) {
-        downtimeMs += wo.date_end.getTime() - wo.date_start.getTime();
-        downtimeCount++;
-      }
-
-      const dueCandidate = wo.due_date ?? wo.scheduled_date;
-      if (
-        !closed &&
-        dueCandidate &&
-        dueCandidate >= now &&
-        (!nextMaintenanceAt || dueCandidate < nextMaintenanceAt)
-      ) {
-        nextMaintenanceAt = dueCandidate;
-      }
-    }
-
-    if (
-      lastPreventiveTask?.completed_at &&
-      (!lastMaintenanceAt ||
-        lastPreventiveTask.completed_at > lastMaintenanceAt)
-    ) {
-      lastMaintenanceAt = lastPreventiveTask.completed_at;
-    }
-    if (
-      lastLubrication?.date_application &&
-      (!lastMaintenanceAt ||
-        lastLubrication.date_application > lastMaintenanceAt)
-    ) {
-      lastMaintenanceAt = lastLubrication.date_application;
-    }
-
-    const downtimeHours = downtimeMs / 3_600_000;
+    const downtimeHours = stats.downtimeMs / 3_600_000;
     const averageRepairTimeHours =
-      downtimeCount > 0 ? downtimeHours / downtimeCount : null;
+      stats.downtimeCount > 0 ? downtimeHours / stats.downtimeCount : null;
     const partsConsumed = partsConsumedAgg[0]?.total ?? 0;
 
     const machineType = readPopulatedField<MachineTypeDocument>(
@@ -332,9 +289,6 @@ export class MachineTimelineService {
     );
     const createdAt = readTimestamps(machine).createdAt;
     const ageSource = machine.installation_date ?? createdAt;
-    const ageDays = ageSource
-      ? Math.floor((now.getTime() - ageSource.getTime()) / 86_400_000)
-      : null;
 
     return {
       machine: {
@@ -342,32 +296,26 @@ export class MachineTimelineService {
         machineId: machine.machine_id,
         serialNo: machine.serial_no,
         reference: machine.reference,
-        type:
-          machineType?.name && machineType._id
-            ? { id: this.idString(machineType) ?? '', name: machineType.name }
-            : null,
+        type: this.toMachineTypeSummary(machineType),
         fabricant: machine.fabricant,
         model: machine.model,
         location: machine.location,
         status: machine.status,
         installationDate: machine.installation_date,
         createdAt,
-        ageDays,
+        ageDays: this.ageInDays(ageSource, now),
       },
       stats: {
         totalInterventions: workOrders.length,
-        preventiveCompleted,
-        correctiveCompleted,
-        openWorkOrders,
-        closedWorkOrders,
+        preventiveCompleted: stats.preventiveCompleted,
+        correctiveCompleted: stats.correctiveCompleted,
+        openWorkOrders: stats.openWorkOrders,
+        closedWorkOrders: stats.closedWorkOrders,
         downtimeHours: Math.round(downtimeHours * 100) / 100,
-        averageRepairTimeHours:
-          averageRepairTimeHours !== null
-            ? Math.round(averageRepairTimeHours * 100) / 100
-            : null,
+        averageRepairTimeHours: this.roundNullableHours(averageRepairTimeHours),
         partsConsumed,
         lastMaintenanceAt,
-        nextMaintenanceAt,
+        nextMaintenanceAt: stats.nextMaintenanceAt,
         lastInspectionAt: lastPreventiveTask?.completed_at ?? null,
         lastLubricationAt: lastLubrication?.date_application ?? null,
       },
@@ -446,32 +394,7 @@ export class MachineTimelineService {
 
     await this.resolveActors(events);
 
-    let filtered = events;
-    const types = parseCsvParam(query.types);
-    if (types?.length) {
-      const typeSet = new Set(types);
-      filtered = filtered.filter((event) => typeSet.has(event.category));
-    }
-
-    if (query.dateFrom || query.dateTo) {
-      const dateFilter = buildDateRangeFilter(
-        query.dateFrom ? new Date(query.dateFrom) : undefined,
-        query.dateTo ? new Date(query.dateTo) : undefined,
-      );
-      if (dateFilter) {
-        filtered = filtered.filter((event) => {
-          if (dateFilter.$gte && event.at < dateFilter.$gte) return false;
-          if (dateFilter.$lt && event.at >= dateFilter.$lt) return false;
-          return true;
-        });
-      }
-    }
-
-    if (query.search) {
-      const pattern = buildCaseInsensitiveSearchFilter(query.search);
-      filtered = filtered.filter((event) => this.matchesSearch(event, pattern));
-    }
-
+    const filtered = this.filterTimelineEvents(events, query);
     filtered.sort((a, b) => b.at.getTime() - a.at.getTime());
 
     const { page, limit, skip } = normalizePagination(
@@ -592,15 +515,14 @@ export class MachineTimelineService {
       const cancelled =
         CLOSED_WORK_ORDER_STATUSES.includes(wo.status) &&
         !COMPLETED_WORK_ORDER_STATUSES.includes(wo.status);
+      const endDetails = this.workOrderEndDetails(cancelled);
       events.push({
         id: `wo_ended_${woId}`,
-        type: cancelled
-          ? MachineTimelineEventType.WORK_ORDER_CANCELLED
-          : MachineTimelineEventType.WORK_ORDER_COMPLETED,
+        type: endDetails.type,
         category,
         at: wo.date_end,
-        title: cancelled ? 'Work order cancelled' : 'Work order completed',
-        description: `Work order ${wo.ot_id} was ${cancelled ? 'cancelled' : 'completed'}`,
+        title: endDetails.title,
+        description: `Work order ${wo.ot_id} was ${endDetails.verb}`,
         actorUserId: technicianActorId,
         machineStatus: wo.status,
         relatedEntity: related,
@@ -632,7 +554,7 @@ export class MachineTimelineService {
         title: WORK_ORDER_LIFECYCLE_TITLES[entry.action],
         description:
           entry.reason ||
-          `Work order ${wo.ot_id}: ${entry.action.replace(/_/g, ' ')}`,
+          `Work order ${wo.ot_id}: ${entry.action.replaceAll('_', ' ')}`,
         actorUserId: entry.actor_user_id
           ? this.idString(entry.actor_user_id)
           : undefined,
@@ -860,9 +782,7 @@ export class MachineTimelineService {
         category: MachineTimelineCategory.PREVENTIVE,
         at: log.date_application,
         title: 'Lubrication completed',
-        description: lubrifiant?.nom
-          ? `Applied ${lubrifiant.nom} (${log.quantite})`
-          : `Lubrication logged (${log.quantite})`,
+        description: this.lubricationDescription(lubrifiant, log.quantite),
         actorUserId: this.idString(log.technician_id),
         metadata: { logId: log.log_id, quantity: log.quantite },
       },
@@ -886,18 +806,11 @@ export class MachineTimelineService {
         category: MachineTimelineCategory.INVENTORY,
         at: createdAt,
         title: STOCK_EVENT_TITLES[type] ?? 'Stock movement',
-        description: part?.nom_piece
-          ? `${part.nom_piece} x${quantity}`
-          : `${quantity} unit(s)`,
+        description: this.stockMovementDescription(part, quantity),
         actorUserId: movement.actor_user_id
           ? this.idString(movement.actor_user_id)
           : undefined,
-        relatedEntity: movement.work_order_id
-          ? {
-              kind: 'work_order',
-              id: this.idString(movement.work_order_id) ?? '',
-            }
-          : undefined,
+        relatedEntity: this.toWorkOrderRelatedEntity(movement.work_order_id),
         metadata: {
           movementId: movement.movement_id,
           partName: part?.nom_piece,
@@ -922,12 +835,7 @@ export class MachineTimelineService {
         title: 'AI recommendation generated',
         description: interaction.question,
         actorUserId: this.idString(interaction.actor_user_id),
-        relatedEntity: interaction.work_order_id
-          ? {
-              kind: 'work_order',
-              id: this.idString(interaction.work_order_id) ?? '',
-            }
-          : undefined,
+        relatedEntity: this.toWorkOrderRelatedEntity(interaction.work_order_id),
         metadata: {
           faultCode: interaction.fault_code,
           provider: interaction.provider,
@@ -951,6 +859,258 @@ export class MachineTimelineService {
       }
     }
     return false;
+  }
+
+  private summarizeWorkOrders(
+    workOrders: WorkOrderDocument[],
+    now: Date,
+  ): WorkOrderSummaryStats {
+    const stats: WorkOrderSummaryStats = {
+      openWorkOrders: 0,
+      closedWorkOrders: 0,
+      preventiveCompleted: 0,
+      correctiveCompleted: 0,
+      downtimeMs: 0,
+      downtimeCount: 0,
+      lastMaintenanceAt: null,
+      nextMaintenanceAt: null,
+    };
+
+    for (const wo of workOrders) {
+      this.addWorkOrderStatusStats(stats, wo);
+      this.addWorkOrderDowntimeStats(stats, wo);
+      this.addUpcomingMaintenanceCandidate(stats, wo, now);
+    }
+
+    return stats;
+  }
+
+  private addWorkOrderStatusStats(
+    stats: WorkOrderSummaryStats,
+    wo: WorkOrderDocument,
+  ): void {
+    const closed = CLOSED_WORK_ORDER_STATUSES.includes(wo.status);
+    if (closed) {
+      stats.closedWorkOrders += 1;
+    } else {
+      stats.openWorkOrders += 1;
+    }
+
+    if (!COMPLETED_WORK_ORDER_STATUSES.includes(wo.status)) {
+      return;
+    }
+
+    if (
+      categoryForMaintenanceType(wo.type_maintenance) ===
+      MachineTimelineCategory.PREVENTIVE
+    ) {
+      stats.preventiveCompleted += 1;
+    } else {
+      stats.correctiveCompleted += 1;
+    }
+    stats.lastMaintenanceAt = this.latestDate(
+      stats.lastMaintenanceAt,
+      wo.date_end,
+    );
+  }
+
+  private addWorkOrderDowntimeStats(
+    stats: WorkOrderSummaryStats,
+    wo: WorkOrderDocument,
+  ): void {
+    if (!wo.date_start || !wo.date_end) {
+      return;
+    }
+
+    stats.downtimeMs += wo.date_end.getTime() - wo.date_start.getTime();
+    stats.downtimeCount += 1;
+  }
+
+  private addUpcomingMaintenanceCandidate(
+    stats: WorkOrderSummaryStats,
+    wo: WorkOrderDocument,
+    now: Date,
+  ): void {
+    if (CLOSED_WORK_ORDER_STATUSES.includes(wo.status)) {
+      return;
+    }
+
+    const dueCandidate = wo.due_date ?? wo.scheduled_date;
+    if (!dueCandidate || dueCandidate < now) {
+      return;
+    }
+
+    if (!stats.nextMaintenanceAt || dueCandidate < stats.nextMaintenanceAt) {
+      stats.nextMaintenanceAt = dueCandidate;
+    }
+  }
+
+  private filterTimelineEvents(
+    events: MachineTimelineEvent[],
+    query: MachineTimelineQueryDto,
+  ): MachineTimelineEvent[] {
+    const typeSet = this.timelineTypeSet(query.types);
+    const dateFilter = this.timelineDateFilter(query);
+    const searchPattern = this.timelineSearchPattern(query.search);
+
+    return events
+      .filter((event) => this.matchesTypeFilter(event, typeSet))
+      .filter((event) => this.matchesDateFilter(event, dateFilter))
+      .filter((event) => this.matchesSearchFilter(event, searchPattern));
+  }
+
+  private timelineTypeSet(typesParam?: string): Set<string> | null {
+    const types = parseCsvParam(typesParam);
+    if (types?.length) {
+      return new Set(types);
+    }
+
+    return null;
+  }
+
+  private timelineDateFilter(
+    query: MachineTimelineQueryDto,
+  ): ReturnType<typeof buildDateRangeFilter> | undefined {
+    if (!query.dateFrom && !query.dateTo) {
+      return undefined;
+    }
+
+    return buildDateRangeFilter(
+      this.toOptionalDate(query.dateFrom),
+      this.toOptionalDate(query.dateTo),
+    );
+  }
+
+  private timelineSearchPattern(search?: string): RegExp | null {
+    if (!search) {
+      return null;
+    }
+
+    return buildCaseInsensitiveSearchFilter(search);
+  }
+
+  private toOptionalDate(value?: string): Date | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    return new Date(value);
+  }
+
+  private matchesTypeFilter(
+    event: MachineTimelineEvent,
+    typeSet: Set<string> | null,
+  ): boolean {
+    return !typeSet || typeSet.has(event.category);
+  }
+
+  private matchesDateFilter(
+    event: MachineTimelineEvent,
+    dateFilter: ReturnType<typeof buildDateRangeFilter>,
+  ): boolean {
+    if (!dateFilter) {
+      return true;
+    }
+
+    if (dateFilter.$gte && event.at < dateFilter.$gte) return false;
+    if (dateFilter.$lt && event.at >= dateFilter.$lt) return false;
+    return true;
+  }
+
+  private matchesSearchFilter(
+    event: MachineTimelineEvent,
+    pattern: RegExp | null,
+  ): boolean {
+    return !pattern || this.matchesSearch(event, pattern);
+  }
+
+  private latestDate(...dates: Array<Date | null | undefined>): Date | null {
+    return dates.reduce<Date | null>((latest, date) => {
+      if (!date) return latest;
+      if (!latest || date > latest) return date;
+      return latest;
+    }, null);
+  }
+
+  private toMachineTypeSummary(
+    machineType: MachineTypeDocument | undefined,
+  ): MachineTimelineSummary['machine']['type'] {
+    if (!machineType?.name || !machineType._id) {
+      return null;
+    }
+
+    return { id: this.idString(machineType) ?? '', name: machineType.name };
+  }
+
+  private ageInDays(source: Date | undefined, now: Date): number | null {
+    if (!source) {
+      return null;
+    }
+
+    return Math.floor((now.getTime() - source.getTime()) / 86_400_000);
+  }
+
+  private roundNullableHours(value: number | null): number | null {
+    if (value === null) {
+      return null;
+    }
+
+    return Math.round(value * 100) / 100;
+  }
+
+  private workOrderEndDetails(cancelled: boolean): {
+    type: MachineTimelineEventType;
+    title: string;
+    verb: string;
+  } {
+    if (cancelled) {
+      return {
+        type: MachineTimelineEventType.WORK_ORDER_CANCELLED,
+        title: 'Work order cancelled',
+        verb: 'cancelled',
+      };
+    }
+
+    return {
+      type: MachineTimelineEventType.WORK_ORDER_COMPLETED,
+      title: 'Work order completed',
+      verb: 'completed',
+    };
+  }
+
+  private lubricationDescription(
+    lubrifiant: Lubrifiant | undefined,
+    quantity: number,
+  ): string {
+    if (lubrifiant?.nom) {
+      return `Applied ${lubrifiant.nom} (${quantity})`;
+    }
+
+    return `Lubrication logged (${quantity})`;
+  }
+
+  private stockMovementDescription(
+    part: Catalogue | undefined,
+    quantity: number,
+  ): string {
+    if (part?.nom_piece) {
+      return `${part.nom_piece} x${quantity}`;
+    }
+
+    return `${quantity} unit(s)`;
+  }
+
+  private toWorkOrderRelatedEntity(
+    workOrderId: Types.ObjectId | string | { _id?: unknown } | undefined,
+  ): TimelineRelatedEntity | undefined {
+    if (!workOrderId) {
+      return undefined;
+    }
+
+    return {
+      kind: 'work_order',
+      id: this.idString(workOrderId) ?? '',
+    };
   }
 
   private async resolveActors(events: MachineTimelineEvent[]): Promise<void> {
