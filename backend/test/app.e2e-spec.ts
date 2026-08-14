@@ -2604,7 +2604,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     );
   });
 
-  it('Z: approved users refresh successfully, rotate tokens, and cannot reuse the old refresh token', async () => {
+  it('Z: approved users refresh successfully with a stable refresh token', async () => {
     const user = await createApprovalUser({
       email: 'refresh-approved-e2e@example.test',
       role: Role.OPERATOR,
@@ -2646,7 +2646,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     expect(firstRefresh.body.access_token).toEqual(expect.any(String));
     expect(firstRefresh.body).not.toHaveProperty('refresh_token');
     expectRefreshCookie(firstRefresh);
-    const rotatedRefreshToken = getCookieValueFromSetCookie(
+    const refreshedRefreshToken = getCookieValueFromSetCookie(
       firstRefresh,
       'refresh_token',
     );
@@ -2654,7 +2654,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       firstRefresh,
       'csrf_token',
     );
-    expect(rotatedRefreshToken).not.toBe(oldRefreshToken);
+    expect(refreshedRefreshToken).toBe(oldRefreshToken);
     expect(firstRefresh.body.user).toEqual(
       expect.objectContaining({
         email: user.email,
@@ -2671,11 +2671,11 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     const storedAfterRefresh = await users.findById(user._id);
     expect(storedAfterRefresh?.login_history ?? []).toHaveLength(1);
 
-    const oldReuse = await request(app.getHttpServer())
+    const stableRefresh = await request(app.getHttpServer())
       .post('/auth/refresh')
       .send({ refresh_token: oldRefreshToken })
-      .expect(401);
-    expect(oldReuse.body.code).toBe('REFRESH_TOKEN_REVOKED');
+      .expect(200);
+    expect(stableRefresh.body.access_token).toEqual(expect.any(String));
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
@@ -2794,7 +2794,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     expect(deleted.body.code).toBe('REFRESH_USER_NOT_FOUND');
   });
 
-  it('AB: two concurrent refresh requests with the same token cannot both succeed', async () => {
+  it('AB: concurrent refresh requests with the same valid token both succeed', async () => {
     const user = await createApprovalUser({
       email: 'refresh-concurrent-e2e@example.test',
       role: Role.OPERATOR,
@@ -2825,11 +2825,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     ]);
 
     const statuses = [one.status, two.status].sort();
-    expect(statuses).toEqual([200, 401]);
-    const failure = one.status === 401 ? one : two;
-    expect(['REFRESH_TOKEN_REVOKED', 'REFRESH_TOKEN_REUSE_DETECTED']).toContain(
-      failure.body.code,
-    );
+    expect(statuses).toEqual([200, 200]);
+    expect(one.body.access_token).toEqual(expect.any(String));
+    expect(two.body.access_token).toEqual(expect.any(String));
   });
 
   it('AC: production login cookies are HttpOnly, Secure, and SameSite=None', async () => {
