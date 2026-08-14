@@ -304,10 +304,7 @@ export class EmailService {
         brevoConfigured,
       ),
       service: 'email',
-      mode: this.getVerifiedSmtpMode(
-        verifyResult.reachable,
-        brevoConfigured,
-      ),
+      mode: this.getVerifiedSmtpMode(verifyResult.reachable, brevoConfigured),
       smtp: {
         configured: true,
         reachable: verifyResult.reachable,

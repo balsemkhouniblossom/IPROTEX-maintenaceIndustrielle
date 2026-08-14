@@ -1,7 +1,7 @@
 require('../dist/load-env.js');
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const mongoose = require('mongoose');
 
 const MACHINE_TYPE_NAME = 'Braiding';
@@ -44,7 +44,8 @@ async function main() {
   for (const machine of machines) {
     const document_id = `DOC-BRAIDING-MANUAL-${machine.machine_id
       .replace(/[^A-Za-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '')
       .toUpperCase()}`;
 
     await db.collection('documententities').updateOne(
