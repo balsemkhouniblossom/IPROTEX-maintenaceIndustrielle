@@ -326,36 +326,13 @@ export class AuthService {
       );
     }
 
-    const { accessToken, refreshToken, refreshTokenHash } =
-      await this.issueTokenPair(user);
-
-    const rotatedUser = await this.userModel
-      .findOneAndUpdate(
-        {
-          _id: user._id,
-          refresh_token_hash: storedRefreshHash,
-        },
-        {
-          $set: {
-            refresh_token_hash: refreshTokenHash,
-          },
-        },
-        { new: true },
-      )
-      .exec();
-
-    if (!rotatedUser) {
-      throwRefreshTokenError(
-        RefreshTokenErrorCode.REFRESH_TOKEN_REUSE_DETECTED,
-        'The refresh token is no longer valid.',
-      );
-    }
+    const accessToken = this.issueAccessToken(user);
 
     return {
       access_token: accessToken,
       token: accessToken,
-      refresh_token: refreshToken,
-      user: await this.sanitizeRefreshUser(rotatedUser),
+      refresh_token: token,
+      user: await this.sanitizeRefreshUser(user),
     };
   }
 
@@ -1168,29 +1145,12 @@ export class AuthService {
     refreshToken: string;
     refreshTokenHash: string;
   }> {
-    const accessExpiresIn =
-      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
     const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
-    const userId = user._id.toString();
-
-    const accessToken = this.jwtService.sign(
-      {
-        email: user.email,
-        sub: userId,
-        role: user.role,
-        user_id: user.user_id,
-        type: 'access',
-        jti: crypto.randomUUID(),
-      },
-      {
-        secret: process.env.JWT_SECRET,
-        expiresIn: toJwtExpiresIn(accessExpiresIn),
-      },
-    );
+    const accessToken = this.issueAccessToken(user);
 
     const refreshToken = this.jwtService.sign(
       {
-        sub: userId,
+        sub: user._id.toString(),
         type: 'refresh',
         jti: crypto.randomUUID(),
       },
@@ -1208,6 +1168,26 @@ export class AuthService {
         10,
       ),
     };
+  }
+
+  private issueAccessToken(user: SanitizableUser): string {
+    const accessExpiresIn =
+      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
+
+    return this.jwtService.sign(
+      {
+        email: user.email,
+        sub: user._id.toString(),
+        role: user.role,
+        user_id: user.user_id,
+        type: 'access',
+        jti: crypto.randomUUID(),
+      },
+      {
+        secret: process.env.JWT_SECRET,
+        expiresIn: toJwtExpiresIn(accessExpiresIn),
+      },
+    );
   }
 
   private hashRefreshToken(token: string): string {

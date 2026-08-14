@@ -695,7 +695,11 @@ function renderWorkbookPdf(
   title: string,
 ): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
-    const pdf = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 32 });
+    const pdf = new PDFDocument({
+      size: 'A4',
+      layout: 'landscape',
+      margin: 32,
+    });
     const chunks: Buffer[] = [];
     pdf.on('data', (chunk: Buffer) => chunks.push(chunk));
     pdf.on('end', () => resolve(Buffer.concat(chunks)));
@@ -705,11 +709,14 @@ function renderWorkbookPdf(
       if (sheetIndex) pdf.addPage();
       pdf.font('Helvetica-Bold').fontSize(13).text(`${title} - ${sheetName}`);
       pdf.moveDown(0.5);
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], {
-        header: 1,
-        defval: '',
-        raw: false,
-      });
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(
+        workbook.Sheets[sheetName],
+        {
+          header: 1,
+          defval: '',
+          raw: false,
+        },
+      );
       const columnCount = Math.min(
         Math.max(...rows.map((row) => row.length), 1),
         12,
@@ -723,7 +730,7 @@ function renderWorkbookPdf(
           pdf
             .font(rowIndex === 0 ? 'Helvetica-Bold' : 'Helvetica')
             .fontSize(7)
-            .text(String(cell ?? ''), 32 + columnIndex * columnWidth, rowY, {
+            .text(cellToPdfText(cell), 32 + columnIndex * columnWidth, rowY, {
               width: columnWidth - 3,
               height: 12,
               ellipsis: true,
@@ -734,4 +741,12 @@ function renderWorkbookPdf(
     });
     pdf.end();
   });
+}
+
+function cellToPdfText(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value)
+    : value instanceof Date
+      ? value.toLocaleDateString('en-CA')
+      : '';
 }

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { cookies } from "next/headers";
 import { getLocale } from "next-intl/server";
-import { Montserrat, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import GlobalApiErrorBanner from "@/components/GlobalApiErrorBanner";
@@ -13,20 +12,6 @@ import {
   THEME_COOKIE_NAME,
   THEME_STORAGE_KEY,
 } from "@/components/theme/theme-config";
-
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
-
-const sourceSans = Source_Sans_3({
-  variable: "--font-source-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "IPROTEX - Gestion de machines Industrielles",
@@ -81,7 +66,7 @@ export default async function RootLayout({
       data-theme-preference={themePreference}
       style={initialTheme ? { colorScheme: initialTheme } : undefined}
     >
-      <body className={`${montserrat.variable} ${sourceSans.variable}`}>
+      <body>
         <Script id="theme-init" strategy="beforeInteractive">
           {buildThemeInitScript()}
         </Script>

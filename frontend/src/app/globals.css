@@ -150,8 +150,8 @@
   --font-family-inter: var(--font-inter);
   --font-family-roboto: var(--font-roboto);
   --font-family-open-sans: var(--font-open-sans);
-  --font-family-montserrat: var(--font-montserrat);
-  --font-family-source-sans: var(--font-source-sans);
+  --font-family-montserrat: 'Frutiger LT', sans-serif;
+  --font-family-source-sans: 'Frutiger LT', sans-serif;
   --font-family-frutiger: 'Frutiger LT', sans-serif;
 }
 

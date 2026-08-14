@@ -1600,16 +1600,12 @@ describe('AuthService', () => {
       .mockReturnValueOnce('new-access-token')
       .mockReturnValueOnce('new-refresh-token');
     userModel.findById.mockReturnValue(createQuery(incompleteGoogleUser));
-    userModel.findOneAndUpdate.mockReturnValue(
-      createQuery(incompleteGoogleUser),
-    );
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-    (bcrypt.hash as jest.Mock).mockResolvedValue('new-refresh-hash');
 
     const result = await service.refreshToken('old-refresh-token');
 
     expect(result.access_token).toBe('new-access-token');
-    expect(result.refresh_token).toBe('new-refresh-token');
+    expect(result.refresh_token).toBe('old-refresh-token');
     expect(result.user.profile_completed).toBe(false);
     expect(result.user.approval_status).toBe(ApprovalStatus.PENDING);
     expect(result.user.is_active).toBe(false);
@@ -1721,17 +1717,15 @@ describe('AuthService', () => {
       .mockReturnValueOnce('new-access-token')
       .mockReturnValueOnce('new-refresh-token');
     userModel.findById.mockReturnValueOnce(createQuery(user));
-    userModel.findOneAndUpdate.mockReturnValueOnce(createQuery(user));
     (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
-    (bcrypt.hash as jest.Mock).mockResolvedValueOnce('new-refresh-hash');
 
     const result = await service.refreshToken('old-refresh-token');
 
     expect(result.access_token).toBe('new-access-token');
-    expect(result.refresh_token).toBe('new-refresh-token');
+    expect(result.refresh_token).toBe('old-refresh-token');
   });
 
-  it('rotates refresh tokens atomically and uses the current database role', async () => {
+  it('issues a new access token without rotating the current refresh token', async () => {
     const user = createUserDocument({
       role: Role.TECHNICIAN,
       approval_status: ApprovalStatus.APPROVED,
@@ -1752,9 +1746,7 @@ describe('AuthService', () => {
       .mockReturnValueOnce('new-access-token')
       .mockReturnValueOnce('new-refresh-token');
     userModel.findById.mockReturnValue(createQuery(user));
-    userModel.findOneAndUpdate.mockReturnValue(createQuery(user));
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-    (bcrypt.hash as jest.Mock).mockResolvedValue('new-refresh-hash');
 
     const result = await service.refreshToken('old-refresh-token');
 
@@ -1770,32 +1762,11 @@ describe('AuthService', () => {
       }),
       expect.objectContaining({ secret: process.env.JWT_SECRET }),
     );
-    expect(jwtService.sign).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        sub: user._id.toString(),
-        type: 'refresh',
-      }),
-      expect.objectContaining({ secret: process.env.JWT_REFRESH_SECRET }),
-    );
-    expect(bcrypt.hash).toHaveBeenCalledWith(
-      expect.stringMatching(/^[a-f0-9]{64}$/),
-      10,
-    );
-    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
-      {
-        _id: user._id,
-        refresh_token_hash: 'stored-refresh-hash',
-      },
-      {
-        $set: {
-          refresh_token_hash: 'new-refresh-hash',
-        },
-      },
-      { new: true },
-    );
+    expect(jwtService.sign).toHaveBeenCalledTimes(1);
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
     expect(result.access_token).toBe('new-access-token');
-    expect(result.refresh_token).toBe('new-refresh-token');
+    expect(result.refresh_token).toBe('old-refresh-token');
     expect(result.user).not.toHaveProperty('password');
     expect(result.user).not.toHaveProperty('refresh_token_hash');
     expect(result.user).not.toHaveProperty('google_id');
@@ -1804,7 +1775,7 @@ describe('AuthService', () => {
     expect(usersService.recordSuccessfulLogin).not.toHaveBeenCalled();
   });
 
-  it('rejects a concurrent refresh when atomic hash replacement loses the race', async () => {
+  it('allows concurrent valid refreshes without replacing the stored hash', async () => {
     const user = createUserDocument({
       approval_status: ApprovalStatus.APPROVED,
       is_active: true,
@@ -1819,15 +1790,12 @@ describe('AuthService', () => {
       .mockReturnValueOnce('new-access-token')
       .mockReturnValueOnce('new-refresh-token');
     userModel.findById.mockReturnValue(createQuery(user));
-    userModel.findOneAndUpdate.mockReturnValue(createQuery(null));
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-    (bcrypt.hash as jest.Mock).mockResolvedValue('new-refresh-hash');
 
-    await expectRejectsWithCode(
-      service.refreshToken('old-refresh-token'),
-      UnauthorizedException,
-      'REFRESH_TOKEN_REUSE_DETECTED',
-    );
+    const result = await service.refreshToken('old-refresh-token');
+
+    expect(result.refresh_token).toBe('old-refresh-token');
+    expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
   it('revokes the current refresh session during cookie logout', async () => {
