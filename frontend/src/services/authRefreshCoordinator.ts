@@ -31,6 +31,7 @@ let resolveRemoteRefresh: ((session: LoginSession) => void) | null = null;
 let rejectRemoteRefresh: ((error: unknown) => void) | null = null;
 let remoteRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 let broadcastChannel: BroadcastChannel | null | undefined;
+let fallbackTabSequence = 0;
 
 const tabId = createTabId();
 
@@ -259,8 +260,17 @@ function getCookieValue(key: string): string | null {
 }
 
 function createTabId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
+  const browserCrypto =
+    typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+
+  if (browserCrypto?.randomUUID) {
+    return browserCrypto.randomUUID();
   }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (browserCrypto?.getRandomValues) {
+    const bytes = new Uint32Array(2);
+    browserCrypto.getRandomValues(bytes);
+    return `${Date.now()}-${bytes[0].toString(16)}${bytes[1].toString(16)}`;
+  }
+  fallbackTabSequence += 1;
+  return `${Date.now()}-${fallbackTabSequence.toString(16)}`;
 }

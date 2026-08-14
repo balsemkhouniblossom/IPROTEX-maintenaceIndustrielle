@@ -1,4 +1,5 @@
-import { performance } from 'perf_hooks';
+import { createHash } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Types, createConnection } from 'mongoose';
 import { WorkOrder, WorkOrderSchema } from '../src/schemas/work-order.schema';
@@ -258,7 +259,7 @@ async function main() {
         machineId: benchMachine._id,
         technicianId: benchTechnicianId,
         planId: plans[0]._id,
-        index: 999999,
+        index: 999_999,
       }),
     );
 
@@ -348,7 +349,7 @@ async function runOperation(
   operation: BenchmarkOperation,
 ): Promise<BenchmarkResult> {
   const timings: number[] = [];
-  const counts: number[] = [];
+  let observedMongoOps = 0;
   const methodTotals = new Map<string, number>();
 
   for (let index = 0; index < SAMPLES; index += 1) {
@@ -361,7 +362,7 @@ async function runOperation(
     await fn();
     timings.push(performance.now() - started);
     connection.set('debug', false);
-    counts.push(observed.length);
+    observedMongoOps = Math.max(observedMongoOps, observed.length);
     for (const op of observed) {
       const key = `${op.collectionName}.${op.method}`;
       methodTotals.set(key, (methodTotals.get(key) ?? 0) + 1);
@@ -373,7 +374,7 @@ async function runOperation(
     medianMs: round(percentile(timings, 50)),
     p95Ms: round(percentile(timings, 95)),
     maxMongoOps: operation.maxMongoOps,
-    observedMongoOps: Math.max(...counts),
+    observedMongoOps,
     methods: Object.fromEntries(methodTotals),
   };
 }
@@ -389,12 +390,16 @@ function machineRow(typeId: Types.ObjectId, index: number) {
 }
 
 function userRow(id: Types.ObjectId) {
+  const fixturePasswordHash = createHash('sha256')
+    .update(`benchmark-fixture-${id.toHexString()}`)
+    .digest('hex');
+
   return {
     _id: id,
     user_id: `U-${id.toHexString()}`,
     nom_complet: 'Bench Technician',
     email: `${id.toHexString()}@bench.test`,
-    password: 'not-a-real-hash',
+    password: fixturePasswordHash,
     role: 'technician',
   };
 }
@@ -427,7 +432,7 @@ function workOrderRow(input: {
   index: number;
 }) {
   const now = new Date();
-  const dueDate = new Date(now.getTime() + (input.index % 30) * 86400000);
+  const dueDate = new Date(now.getTime() + (input.index % 30) * 86_400_000);
   const isCorrective = input.index % 4 === 0;
   return {
     ot_id: `WO-${input.index}-${new Types.ObjectId().toHexString()}`,

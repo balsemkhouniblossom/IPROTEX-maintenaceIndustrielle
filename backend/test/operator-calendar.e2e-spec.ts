@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { randomUUID } from 'node:crypto';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model, Types } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -166,7 +167,7 @@ describe('Operator calendar (e2e)', () => {
     overrides: Record<string, unknown> = {},
   ) {
     return workOrders.create({
-      ot_id: `WO-CAL-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ot_id: `WO-CAL-${Date.now()}-${randomUUID()}`,
       machine_id: machine._id,
       module_id: moduleEntity._id,
       technician_id: new Types.ObjectId(ownerId),

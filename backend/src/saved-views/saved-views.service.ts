@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import { SavedView, SavedViewDocument } from '../schemas/saved-view.schema';
 import { CreateSavedViewDto } from './dto/create-saved-view.dto';
 import { UpdateSavedViewDto } from './dto/update-saved-view.dto';

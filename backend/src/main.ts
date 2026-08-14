@@ -4,7 +4,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as express from 'express';
-import { join } from 'path';
+import { join } from 'node:path';
 import mongoose from 'mongoose';
 import helmet from 'helmet';
 import hpp from 'hpp';

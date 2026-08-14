@@ -3,8 +3,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import * as fs from 'fs/promises';
-import { join } from 'path';
+import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs/promises';
+import { join } from 'node:path';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model, Types } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -236,8 +237,7 @@ describe('Document lifecycle — storage-backed (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .field(
         'document_id',
-        overrides.document_id ??
-          `DOC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        overrides.document_id ?? `DOC-${Date.now()}-${randomUUID()}`,
       )
       .field('machine_id', overrides.machine_id ?? machine._id.toString())
       .field('type_document', overrides.type_document ?? 'manual')

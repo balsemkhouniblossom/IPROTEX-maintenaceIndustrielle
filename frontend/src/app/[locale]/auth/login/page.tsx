@@ -16,6 +16,18 @@ import {
   isAccountAccessErrorCode,
 } from '@/services/authErrors';
 
+type AuthTranslator = (
+  key: string,
+  values?: Record<string, string>,
+) => string;
+
+type AuthNoticeParams = {
+  verificationState: string | null;
+  registrationState: string | null;
+  sessionState: string | null;
+  accountErrorState: string | null;
+};
+
 const GOOGLE_ICON = (
   <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
     <path
@@ -37,6 +49,102 @@ const GOOGLE_ICON = (
   </svg>
 );
 
+function getAuthNotice(
+  t: AuthTranslator,
+  {
+    verificationState,
+    registrationState,
+    sessionState,
+    accountErrorState,
+  }: AuthNoticeParams,
+): string | null {
+  if (registrationState === 'pending-approval') {
+    return t('registrationPendingApproval', {
+      default:
+        'Your account was created successfully. Please verify your email. After verification, an administrator must approve the account before you can sign in.',
+    });
+  }
+
+  if (registrationState === 'true') return t('registrationSuccess');
+
+  if (verificationState === 'pending-approval') {
+    return t('emailVerifiedPendingApproval', {
+      default:
+        'Your email has been verified. Your account is still waiting for administrator approval. You will be able to sign in after an administrator approves it.',
+    });
+  }
+
+  if (verificationState === 'already') {
+    return t('emailAlreadyVerified', {
+      default: 'Your email is already verified.',
+    });
+  }
+
+  if (verificationState === 'rejected') {
+    return t('emailVerifiedAccountRejected', {
+      default:
+        'Your email was verified, but the account request has been rejected.',
+    });
+  }
+
+  if (verificationState === 'verified' || verificationState === 'true') {
+    return t('emailVerified');
+  }
+
+  if (verificationState === 'failed' || verificationState === 'false') {
+    return t('emailVerificationFailed');
+  }
+
+  if (accountErrorState === 'pending-approval') {
+    return t('errors.accountPendingApproval');
+  }
+
+  if (accountErrorState === 'rejected') return t('errors.accountRejected');
+  if (accountErrorState === 'inactive') return t('errors.accountInactive');
+
+  if (accountErrorState === 'email-not-verified') {
+    return t('errors.emailNotVerified');
+  }
+
+  if (sessionState === 'revoked') return t('sessionRevoked');
+  if (sessionState === 'expired') return t('sessionExpired');
+
+  return null;
+}
+
+function isAuthNoticeError({
+  verificationState,
+  sessionState,
+  accountErrorState,
+}: AuthNoticeParams): boolean {
+  return (
+    verificationState === 'failed' ||
+    verificationState === 'false' ||
+    verificationState === 'rejected' ||
+    Boolean(accountErrorState) ||
+    Boolean(sessionState)
+  );
+}
+
+function getLoginErrorMessage(error: unknown, t: AuthTranslator): string {
+  if (!(error instanceof Error)) return t('networkError');
+  if (isAccountAccessErrorCode(error.message)) {
+    return t(getLoginErrorMessageKey(error.message));
+  }
+  if (error.message === 'AUTHENTICATION_FAILED') {
+    return t('errors.authenticationFailed');
+  }
+  return t('networkError');
+}
+
+function getGoogleLoginUrl(locale: string): string {
+  const query = new URLSearchParams({
+    locale,
+    frontendOrigin: window.location.origin,
+  });
+  return `${getApiBaseUrl()}/auth/google?${query.toString()}`;
+}
+
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: '',
@@ -57,53 +165,19 @@ export default function LoginPage() {
   const registrationState = searchParams.get('registered');
   const sessionState = searchParams.get('session');
   const accountErrorState = searchParams.get('error');
-  const authNotice = registrationState === 'pending-approval'
-    ? t('registrationPendingApproval', {
-      default:
-        'Your account was created successfully. Please verify your email. After verification, an administrator must approve the account before you can sign in.',
-    })
-    : registrationState === 'true'
-      ? t('registrationSuccess')
-      : verificationState === 'pending-approval'
-        ? t('emailVerifiedPendingApproval', {
-          default:
-            'Your email has been verified. Your account is still waiting for administrator approval. You will be able to sign in after an administrator approves it.',
-        })
-        : verificationState === 'already'
-          ? t('emailAlreadyVerified', { default: 'Your email is already verified.' })
-          : verificationState === 'rejected'
-            ? t('emailVerifiedAccountRejected', {
-              default:
-                'Your email was verified, but the account request has been rejected.',
-            })
-            : verificationState === 'verified' || verificationState === 'true'
-              ? t('emailVerified')
-              : verificationState === 'failed' || verificationState === 'false'
-                ? t('emailVerificationFailed')
-                : accountErrorState === 'pending-approval'
-                  ? t('errors.accountPendingApproval')
-                  : accountErrorState === 'rejected'
-                    ? t('errors.accountRejected')
-                    : accountErrorState === 'inactive'
-                      ? t('errors.accountInactive')
-                      : accountErrorState === 'email-not-verified'
-                        ? t('errors.emailNotVerified')
-                        : sessionState === 'revoked'
-                          ? t('sessionRevoked')
-                          : sessionState === 'expired'
-                            ? t('sessionExpired')
-                            : null;
-  const authNoticeIsError =
-    verificationState === 'failed' ||
-    verificationState === 'false' ||
-    verificationState === 'rejected' ||
-    Boolean(accountErrorState) ||
-    Boolean(sessionState);
+  const noticeParams = {
+    verificationState,
+    registrationState,
+    sessionState,
+    accountErrorState,
+  };
+  const authNotice = getAuthNotice(t, noticeParams);
+  const authNoticeIsError = isAuthNoticeError(noticeParams);
 
   const handleGoogleLogin = () => {
     setError('');
     setGoogleLoading(true);
-    window.location.href = `${getApiBaseUrl()}/auth/google?locale=${encodeURIComponent(locale)}&frontendOrigin=${encodeURIComponent(window.location.origin)}`;
+    window.location.href = getGoogleLoginUrl(locale);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,17 +197,7 @@ export default function LoginPage() {
       router.replace(dashboardPath);
 
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        if (isAccountAccessErrorCode(err.message)) {
-          setError(t(getLoginErrorMessageKey(err.message)));
-        } else if (err.message === 'AUTHENTICATION_FAILED') {
-          setError(t('errors.authenticationFailed'));
-        } else {
-          setError(t('networkError'));
-        }
-      } else {
-        setError(t('networkError'));
-      }
+      setError(getLoginErrorMessage(err, t));
     } finally {
       setLoading(false);
     }

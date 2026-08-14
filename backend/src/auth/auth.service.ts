@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import {
   ApprovalStatus,

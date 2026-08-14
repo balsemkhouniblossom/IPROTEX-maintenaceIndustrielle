@@ -1,4 +1,4 @@
-import { performance } from 'perf_hooks';
+import { performance } from 'node:perf_hooks';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Types, createConnection } from 'mongoose';
 import {

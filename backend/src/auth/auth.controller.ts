@@ -37,7 +37,7 @@ import type {
   Request as ExpressRequest,
   Response,
 } from 'express';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import type { UserDocument } from '../schemas/user.schema';
 import type { GoogleUserProfile } from './auth.service';
 import { Public } from './decorators/public.decorator';

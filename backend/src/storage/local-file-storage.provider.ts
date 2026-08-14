@@ -4,8 +4,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import * as fs from 'fs/promises';
-import { join } from 'path';
+import * as fs from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   MANAGED_AVATAR_DIRECTORY,
   MANAGED_AVATAR_FILE_PREFIX,

@@ -167,7 +167,7 @@ async function main() {
       if (!batch.length) break;
       batches += 1;
       scanned += batch.length;
-      lastId = batch[batch.length - 1]._id as Types.ObjectId;
+      lastId = batch.at(-1)!._id as Types.ObjectId;
       if (batch.length < BATCH_SIZE) break;
     }
     const newRuntimeMs = Date.now() - newStart;
@@ -194,7 +194,7 @@ async function main() {
       if (!plans.length) break;
       preventiveBatches += 1;
       preventivePlansScanned += plans.length;
-      preventiveLastId = plans[plans.length - 1]._id as Types.ObjectId;
+      preventiveLastId = plans.at(-1)!._id as Types.ObjectId;
       const latestRows = await WorkOrderModel.aggregate([
         {
           $match: {

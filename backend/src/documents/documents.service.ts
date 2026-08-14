@@ -6,11 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import * as fs from 'fs/promises';
+import * as fs from 'node:fs/promises';
 import { Model, Types } from 'mongoose';
 import PDFDocument from 'pdfkit';
 import * as XLSX from 'xlsx';
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 import {
   DocumentEntity,
   DocumentDocument,

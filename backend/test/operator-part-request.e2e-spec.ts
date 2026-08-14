@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { randomUUID } from 'node:crypto';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Connection, Model } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -181,7 +182,7 @@ describe('Operator parts request (e2e)', () => {
     overrides: Record<string, unknown> = {},
   ) {
     return workOrders.create({
-      ot_id: `WO-COR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ot_id: `WO-COR-${Date.now()}-${randomUUID()}`,
       machine_id: machine._id,
       module_id: moduleEntity._id,
       technician_id: operator._id,

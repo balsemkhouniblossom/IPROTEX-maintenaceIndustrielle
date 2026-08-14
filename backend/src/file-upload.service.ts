@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { memoryStorage } from 'multer';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { FileStorageService } from './storage/file-storage.service';
 import type { StoredFile } from './storage/file-storage.types';

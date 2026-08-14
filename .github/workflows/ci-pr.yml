@@ -43,7 +43,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
@@ -85,7 +85,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
@@ -168,7 +168,7 @@ jobs:
             ${{ runner.os }}-mongodb-memory-server-8.2.6-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: E2E tests
         run: npm run test:e2e -- --runInBand
@@ -187,7 +187,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Trivy diagnostic table scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # master on 2026-08-14
         with:
           scan-type: fs
           scan-ref: .
@@ -197,7 +197,7 @@ jobs:
           skip-dirs: node_modules,frontend/node_modules,backend/node_modules,.next,frontend/.next,dist,backend/dist,coverage,frontend/coverage,backend/coverage,backend/uploads,backend/quarantine,backups
 
       - name: Run Trivy SARIF scan (non-blocking)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # master on 2026-08-14
         with:
           scan-type: fs
           scan-ref: .

@@ -1,5 +1,5 @@
 import { BadRequestException, Logger } from '@nestjs/common';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 import {
   assignRequestId,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 
 import { AppConfigService } from '../config/app.config';
 

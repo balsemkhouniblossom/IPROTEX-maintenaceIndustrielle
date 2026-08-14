@@ -7,7 +7,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model, Types } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
 import { User, UserDocument } from '../src/schemas/user.schema';

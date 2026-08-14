@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { randomUUID } from 'node:crypto';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model, Types } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -184,7 +185,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
     overrides: Record<string, unknown> = {},
   ) {
     return workOrders.create({
-      ot_id: `WO-STOCK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ot_id: `WO-STOCK-${Date.now()}-${randomUUID()}`,
       machine_id: machine._id,
       module_id: moduleEntity._id,
       technician_id: operator._id,
@@ -206,7 +207,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
   // corrupt) each other's Stock document.
   async function createStockViaApi(quantity: number) {
     const freshPart = await catalogues.create({
-      part_id: `PART-STOCK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      part_id: `PART-STOCK-${Date.now()}-${randomUUID()}`,
       nom_piece: 'Drive belt',
       ref_constructeur: 'DB-100',
     });
@@ -214,7 +215,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       .post('/stocks')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        stock_id: `STOCK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        stock_id: `STOCK-${Date.now()}-${randomUUID()}`,
         part_id: freshPart._id.toString(),
         quantite_en_stock: quantity,
       })
@@ -372,7 +373,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const movements = await stockMovements
         .find({ stock_id: new Types.ObjectId(stock._id) })
         .sort({ createdAt: 1 });
-      const cancellation = movements[movements.length - 1];
+      const cancellation = movements.at(-1)!;
       expect(cancellation.type).toBe('cancellation');
       expect(cancellation.reserved_delta).toBe(-5);
       expect(cancellation.reason).toBe('No longer needed');
@@ -456,7 +457,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const movements = await stockMovements
         .find({ stock_id: new Types.ObjectId(stock._id) })
         .sort({ createdAt: 1 });
-      const consumption = movements[movements.length - 1];
+      const consumption = movements.at(-1)!;
       expect(consumption.type).toBe('consumption');
       expect(consumption.quantity_delta).toBe(-4);
       expect(consumption.reserved_delta).toBe(-4);
@@ -515,7 +516,7 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
       const movements = await stockMovements
         .find({ stock_id: new Types.ObjectId(stock._id) })
         .sort({ createdAt: 1 });
-      const returnMovement = movements[movements.length - 1];
+      const returnMovement = movements.at(-1)!;
       expect(returnMovement.type).toBe('return');
       expect(returnMovement.quantity_delta).toBe(4);
       expect(returnMovement.reserved_delta).toBe(0);

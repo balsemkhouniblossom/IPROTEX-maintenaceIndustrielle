@@ -2,6 +2,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
+import { randomUUID } from 'node:crypto';
 import { Model, Types } from 'mongoose';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
@@ -61,9 +62,7 @@ interface JobWorkResult {
 @Injectable()
 export class AutomationSchedulerService {
   private readonly logger = new Logger(AutomationSchedulerService.name);
-  private readonly schedulerInstanceId = `${process.pid}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  private readonly schedulerInstanceId = `${process.pid}-${randomUUID()}`;
 
   constructor(
     private readonly workOrdersService: WorkOrdersService,
@@ -246,13 +245,7 @@ export class AutomationSchedulerService {
       } finally {
         clearInterval(heartbeatTimer);
       }
-      finalStatus = context.shouldContinue()
-        ? result.failed && result.succeeded
-          ? 'partial'
-          : result.failed && !result.succeeded
-            ? 'failed'
-            : 'completed'
-        : 'timed_out';
+      finalStatus = this.resolveJobFinalStatus(result, context);
       const jobResult = buildSchedulerJobResult({
         jobName: name,
         runId,
@@ -346,7 +339,7 @@ export class AutomationSchedulerService {
         ? { jobName: name, ownerId: owner, runId, expiresAt }
         : null;
     } catch (error: unknown) {
-      if ((error as { code?: number })?.code === 11000) {
+      if ((error as { code?: number })?.code === 11_000) {
         return null;
       }
       throw error;
@@ -472,7 +465,7 @@ export class AutomationSchedulerService {
           if (!dueSource) return;
           const dueDate = this.startOfDay(new Date(dueSource));
           const days = Math.round(
-            (dueDate.getTime() - today.getTime()) / 86400000,
+            (dueDate.getTime() - today.getTime()) / 86_400_000,
           );
           if (![1, 3, 7].includes(days)) {
             return;
@@ -669,7 +662,7 @@ export class AutomationSchedulerService {
           if (!dueSource) return;
           const due = new Date(dueSource);
           const overdueDays = Math.floor(
-            (now.getTime() - due.getTime()) / 86400000,
+            (now.getTime() - due.getTime()) / 86_400_000,
           );
           const workOrderId = this.objectIdString(row._id);
 
@@ -857,7 +850,7 @@ export class AutomationSchedulerService {
             unit,
           );
           const dueDays = Math.floor(
-            (this.startOfDay(nextDue).getTime() - today.getTime()) / 86400000,
+            (this.startOfDay(nextDue).getTime() - today.getTime()) / 86_400_000,
           );
 
           if (![1, 3, 7].includes(dueDays) && dueDays >= 0) {
@@ -1061,7 +1054,7 @@ export class AutomationSchedulerService {
           }
         },
       );
-      lastId = machines[machines.length - 1]._id;
+      lastId = machines.at(-1)!._id;
       if (machines.length < settings.batchSize) break;
       if (context && !(await context.heartbeat())) break;
     }
@@ -1216,6 +1209,22 @@ export class AutomationSchedulerService {
       return { recipientUserId: candidateUserId };
     }
     return { recipientRole: Role.ADMIN };
+  }
+
+  private resolveJobFinalStatus(
+    result: JobWorkResult,
+    context: SchedulerJobContext,
+  ): SchedulerJobResult['status'] {
+    if (!context.shouldContinue()) {
+      return 'timed_out';
+    }
+    if (result.failed && result.succeeded) {
+      return 'partial';
+    }
+    if (result.failed && !result.succeeded) {
+      return 'failed';
+    }
+    return 'completed';
   }
 
   private startOfDay(value: Date) {

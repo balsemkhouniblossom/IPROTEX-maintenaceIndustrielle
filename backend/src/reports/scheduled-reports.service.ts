@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 import * as businessTime from '../common/business-time';
 import {
   ScheduledReport,

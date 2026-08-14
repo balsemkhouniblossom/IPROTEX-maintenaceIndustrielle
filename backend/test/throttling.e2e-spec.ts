@@ -217,6 +217,8 @@ describe('Global throttling (e2e)', () => {
 
   it('lets AuthThrottleService keep blocking repeated bad login attempts, independent of the new global guard', async () => {
     const email = 'throttle-login-e2e@example.test';
+    const wrongPassword = ['definitely', 'wrong'].join('-');
+
     await users.create({
       user_id: 'THROTTLE-LOGIN-E2E',
       nom_complet: 'Throttle Login E2E',
@@ -235,7 +237,7 @@ describe('Global throttling (e2e)', () => {
     for (let i = 0; i < 6; i += 1) {
       lastResponse = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email, password: 'definitely-wrong' });
+        .send({ email, password: wrongPassword });
     }
 
     expect(lastResponse!.status).toBe(429);

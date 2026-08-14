@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { randomUUID } from 'node:crypto';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, Model } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -72,10 +73,12 @@ describe('User bulk approve/reject — transactional (e2e)', () => {
   }
 
   async function pendingOperator(overrides: Record<string, unknown> = {}) {
+    const uniqueSuffix = randomUUID();
+
     return users.create({
-      user_id: `OP-${Math.random().toString(36).slice(2)}`,
+      user_id: `OP-${uniqueSuffix}`,
       nom_complet: 'Pending Operator',
-      email: `pending-${Math.random().toString(36).slice(2)}@example.test`,
+      email: `pending-${uniqueSuffix}@example.test`,
       password: 'x',
       role: Role.OPERATOR,
       is_active: false,

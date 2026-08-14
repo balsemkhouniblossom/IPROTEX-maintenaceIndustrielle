@@ -67,7 +67,7 @@ jobs:
           BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL || 'https://pfe-maintenaceindustrielle.onrender.com' }}
         run: |
           cd backend
-          npm ci
+          npm ci --ignore-scripts
           for attempt in $(seq 1 20); do
             if npm run smoke-test -- --url="$BACKEND_HEALTH_URL"; then
               echo "Backend healthy after $attempt attempt(s)." >> "$GITHUB_STEP_SUMMARY"

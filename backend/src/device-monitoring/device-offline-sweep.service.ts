@@ -173,7 +173,7 @@ export class DeviceOfflineSweepService {
           },
         );
 
-        lastId = candidates[candidates.length - 1]._id;
+        lastId = candidates.at(-1)!._id;
         if (candidates.length < settings.batchSize) break;
         if (lock) {
           const ownsLock = await this.schedulerLockService?.heartbeat(

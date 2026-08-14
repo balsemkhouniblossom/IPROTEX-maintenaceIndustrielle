@@ -134,7 +134,7 @@ export class PredictiveMaintenanceSchedulerService {
             }
           },
         );
-        lastId = machines[machines.length - 1]._id;
+        lastId = machines.at(-1)!._id;
         if (machines.length < settings.batchSize) break;
         if (lock) {
           const ownsLock = await this.schedulerLockService?.heartbeat(

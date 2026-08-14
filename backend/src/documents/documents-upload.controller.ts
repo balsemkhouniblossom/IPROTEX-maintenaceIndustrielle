@@ -17,10 +17,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
 import { DocumentsService } from './documents.service';
 import { Types } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';

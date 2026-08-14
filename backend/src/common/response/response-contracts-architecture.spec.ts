@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative } from 'path';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 function tsFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {

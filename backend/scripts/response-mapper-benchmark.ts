@@ -6,7 +6,7 @@
  *
  * Run with: npx ts-node scripts/response-mapper-benchmark.ts
  */
-import { performance } from 'perf_hooks';
+import { performance } from 'node:perf_hooks';
 import { Types } from 'mongoose';
 import { toWorkOrderResponse } from '../src/work-orders/contracts/work-order-response.mapper';
 import { toTechnicianPartResponse } from '../src/technician/contracts/technician-response.mapper';

@@ -441,7 +441,7 @@ export class WorkOrderPreventiveSchedulingService {
 
       summary.batches! += 1;
       summary.plansEvaluated += plans.length;
-      lastId = plans[plans.length - 1]._id;
+      lastId = plans.at(-1)!._id;
 
       const moduleIds = plans
         .map((plan) => this.objectIdString(plan.module_id))
