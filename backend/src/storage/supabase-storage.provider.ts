@@ -172,7 +172,7 @@ export class SupabaseStorageProvider implements FileStorageProvider {
   }
 
   private toStorageKey(relativePathOrKey: string): string | null {
-    const normalized = relativePathOrKey.trim().replace(/\\/g, '/');
+    const normalized = relativePathOrKey.trim().replaceAll('\\', '/');
     if (!normalized) return null;
 
     if (normalized.startsWith('uploads/')) return normalized;

@@ -194,7 +194,7 @@ export default function DevicesPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             className="ml-2 text-gray-500 hover:text-gray-700"
             title={tCommon("close")}
@@ -211,7 +211,7 @@ export default function DevicesPage() {
             <h2 className="text-xl font-bold">{t("heading")}</h2>
             <p className="text-gray-500 text-sm">{t("description")}</p>
           </div>
-          <button
+          <button type="button"
             onClick={() => setRegisterOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
@@ -260,7 +260,7 @@ export default function DevicesPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                <button
+                <button type="button"
                   onClick={() => handleToggleActive(device)}
                   className={device.is_active ? "text-gray-600" : "text-green-600"}
                   title={device.is_active ? t("actions.deactivate") : t("actions.activate")}
@@ -268,7 +268,7 @@ export default function DevicesPage() {
                 >
                   {device.is_active ? <ExclamationTriangleIcon className="w-5 h-5" /> : <CheckCircleIcon className="w-5 h-5" />}
                 </button>
-                <button
+                <button type="button"
                   onClick={() => handleRotateKey(device)}
                   className="text-indigo-600"
                   title={t("actions.rotateKey")}
@@ -276,7 +276,7 @@ export default function DevicesPage() {
                 >
                   <KeyIcon className="w-5 h-5" />
                 </button>
-                <button
+                <button type="button"
                   onClick={() => handleDelete(device)}
                   className="text-red-600"
                   title={t("actions.delete")}
@@ -372,10 +372,10 @@ export default function DevicesPage() {
           </div>
 
           <div className="flex justify-end gap-3">
-            <button className="btn-secondary" onClick={() => setRegisterOpen(false)}>
+            <button type="button" className="btn-secondary" onClick={() => setRegisterOpen(false)}>
               {tCommon("cancel")}
             </button>
-            <button className="btn-primary" onClick={handleRegister} disabled={submitting}>
+            <button type="button" className="btn-primary" onClick={handleRegister} disabled={submitting}>
               {submitting ? tCommon("saving") : t("buttons.register")}
             </button>
           </div>
@@ -402,7 +402,7 @@ export default function DevicesPage() {
               {revealedKey.apiKey}
             </div>
             <div className="flex justify-end">
-              <button className="btn-primary" onClick={() => setRevealedKey(null)}>
+              <button type="button" className="btn-primary" onClick={() => setRevealedKey(null)}>
                 {t("buttons.doneCopying")}
               </button>
             </div>

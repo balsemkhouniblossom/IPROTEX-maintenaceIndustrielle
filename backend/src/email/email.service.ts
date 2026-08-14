@@ -471,10 +471,9 @@ export class EmailService {
   private async sendViaBrevoApi(
     options: SendEmailOptions,
   ): Promise<string | undefined> {
-    const fromEmailMatch = /<([^>]+)>/.exec(this.fromAddress);
-    const fromEmail = fromEmailMatch ? fromEmailMatch[1] : this.fromAddress;
-    const fromName =
-      this.fromAddress.replace(/<[^>]+>/, '').trim() || 'Iprotex';
+    const fromAddressParts = parseAddressParts(this.fromAddress);
+    const fromEmail = fromAddressParts.email;
+    const fromName = fromAddressParts.name || 'Iprotex';
 
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -690,4 +689,18 @@ export class EmailService {
 
     return result;
   }
+}
+
+function parseAddressParts(value: string): { email: string; name: string } {
+  const start = value.indexOf('<');
+  const end = value.indexOf('>', start + 1);
+
+  if (start !== -1 && end !== -1) {
+    return {
+      email: value.slice(start + 1, end).trim(),
+      name: value.slice(0, start).trim(),
+    };
+  }
+
+  return { email: value.trim(), name: '' };
 }

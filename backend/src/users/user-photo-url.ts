@@ -17,7 +17,7 @@ export function toManagedUserPhotoPath(fileName: string): string {
 export function getManagedAvatarFileName(photo?: string | null): string | null {
   if (!photo) return null;
 
-  const normalized = photo.trim().replace(/\\/g, '/');
+  const normalized = photo.trim().replaceAll('\\', '/');
   const managedAvatarPrefix = `${MANAGED_AVATAR_ROUTE}/`;
   if (!normalized.startsWith(managedAvatarPrefix)) return null;
 

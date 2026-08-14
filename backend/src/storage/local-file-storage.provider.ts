@@ -57,7 +57,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   async delete(relativePath: string): Promise<void> {
-    const normalized = relativePath.trim().replace(/\\/g, '/');
+    const normalized = relativePath.trim().replaceAll('\\', '/');
     const fileName = normalized.split('/').pop();
     if (!fileName) return;
 
@@ -102,7 +102,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   ownsAvatar(reference: string): boolean {
-    const normalized = reference.trim().replace(/\\/g, '/');
+    const normalized = reference.trim().replaceAll('\\', '/');
     if (!normalized.startsWith(`${MANAGED_AVATAR_ROUTE}/`)) return false;
 
     const fileName = normalized.slice(`${MANAGED_AVATAR_ROUTE}/`.length);
@@ -117,7 +117,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   }
 
   private toManagedUploadFileName(reference: string): string | null {
-    const normalized = reference.trim().replace(/\\/g, '/');
+    const normalized = reference.trim().replaceAll('\\', '/');
     const value = normalized.startsWith('uploads/')
       ? `/${normalized}`
       : normalized;

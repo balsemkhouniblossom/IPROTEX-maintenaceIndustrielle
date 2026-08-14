@@ -31,7 +31,7 @@ const REDACTION_RULES: RedactionRule[] = [
     replacement: '[REDACTED_TOKEN]',
   },
   {
-    pattern: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i,
+    pattern: /\b[a-z0-9._%+-]{1,64}@[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})+\b/i,
     replacement: '[REDACTED_EMAIL]',
   },
   {

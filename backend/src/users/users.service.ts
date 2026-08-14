@@ -168,7 +168,7 @@ export class UsersService {
     if (lastUser?.user_id) {
       const match = lastUser.user_id.match(/USER-(\d+)/);
       if (match) {
-        nextId = parseInt(match[1]) + 1;
+        nextId = Number.parseInt(match[1], 10) + 1;
       }
     }
 

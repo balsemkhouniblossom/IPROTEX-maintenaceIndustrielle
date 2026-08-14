@@ -2824,7 +2824,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         .send({ refresh_token: refreshToken }),
     ]);
 
-    const statuses = [one.status, two.status].sort();
+    const statuses = [one.status, two.status].sort((a, b) => a - b);
     expect(statuses).toEqual([200, 200]);
     expect(one.body.access_token).toEqual(expect.any(String));
     expect(two.body.access_token).toEqual(expect.any(String));

@@ -690,7 +690,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
           .set('Authorization', `Bearer ${technicianToken}`),
       ]);
 
-      const statuses = [adminResult.status, technicianResult.status].sort();
+      const statuses = [adminResult.status, technicianResult.status].sort(
+        (a, b) => a - b,
+      );
       expect(statuses).toEqual([200, 409]);
 
       const stored = await faultEventModel.findById(fault._id).exec();

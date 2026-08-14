@@ -305,7 +305,7 @@ export default function CapteursPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
@@ -329,7 +329,7 @@ export default function CapteursPage() {
                   <div className="text-sm text-slate-500">{tCapteurs('totalSensors')}</div>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={openCreateModal}
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white font-medium shadow-md hover:bg-blue-700 transition-all duration-200"
                 >
@@ -354,7 +354,7 @@ export default function CapteursPage() {
         {/* Capteurs Table */}
         <div className="col-span-full bento-item panel">
           <div className="card-title">{tCapteurs('allSensors')}</div>
-          <div className="wide-table-scroll" tabIndex={0}>
+          <div className="wide-table-scroll">
             <table className="table wide-table">
               <colgroup>
                 <col className="capteurs-table__reference" />

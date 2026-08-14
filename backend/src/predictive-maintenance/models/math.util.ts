@@ -16,8 +16,8 @@ export function computeFeatureStats(
   samples: number[][],
   featureCount: number,
 ): FeatureStats {
-  const mean: number[] = Array<number>(featureCount).fill(0);
-  const std: number[] = Array<number>(featureCount).fill(0);
+  const mean: number[] = new Array<number>(featureCount).fill(0);
+  const std: number[] = new Array<number>(featureCount).fill(0);
   const n = samples.length;
 
   if (n === 0) {

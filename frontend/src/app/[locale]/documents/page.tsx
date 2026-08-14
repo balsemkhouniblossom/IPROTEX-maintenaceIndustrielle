@@ -463,7 +463,7 @@ export default function DocumentsPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             className="ml-2 text-gray-500 hover:text-gray-700"
             title={tCommon("close")}
@@ -480,7 +480,7 @@ export default function DocumentsPage() {
             <p className="text-gray-500 text-sm">{t("description")}</p>
           </div>
 
-          <button
+          <button type="button"
             onClick={() => setUploadOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
@@ -593,7 +593,7 @@ export default function DocumentsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setSelectedDoc(doc);
                       setViewerOpen(true);
@@ -603,7 +603,7 @@ export default function DocumentsPage() {
                   >
                     <EyeIcon className="w-5 h-5" />
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => openHistory(doc)}
                     className="text-slate-600"
                     title={t("actions.history", { default: "Version history" })}
@@ -611,7 +611,7 @@ export default function DocumentsPage() {
                     <ClockIcon className="w-5 h-5" />
                   </button>
                   {availableActions.includes("publish") && (
-                    <button
+                    <button type="button"
                       onClick={() => handlePublish(doc)}
                       className="text-green-600"
                       title={t("actions.publish", { default: "Publish" })}
@@ -620,7 +620,7 @@ export default function DocumentsPage() {
                     </button>
                   )}
                   {availableActions.includes("replace") && (
-                    <button
+                    <button type="button"
                       onClick={() => openReplace(doc)}
                       className="text-indigo-600"
                       title={t("actions.replace", { default: "Replace" })}
@@ -629,7 +629,7 @@ export default function DocumentsPage() {
                     </button>
                   )}
                   {availableActions.includes("archive") && (
-                    <button
+                    <button type="button"
                       onClick={() => handleArchive(doc)}
                       className="text-gray-600"
                       title={t("actions.archive", { default: "Archive" })}
@@ -637,7 +637,7 @@ export default function DocumentsPage() {
                       <ArchiveBoxIcon className="w-5 h-5" />
                     </button>
                   )}
-                  <button
+                  <button type="button"
                     onClick={() => openEdit(doc)}
                     className="text-amber-600"
                     title={t("actions.edit")}
@@ -645,7 +645,7 @@ export default function DocumentsPage() {
                     <PencilIcon className="w-5 h-5" />
                   </button>
                   {deletable && (
-                    <button
+                    <button type="button"
                       onClick={() => handleDelete(doc)}
                       className="text-red-600"
                       title={t("actions.delete")}
@@ -745,10 +745,10 @@ export default function DocumentsPage() {
           </div>
 
           <div className="flex justify-end gap-3">
-            <button className="btn-secondary" onClick={() => setUploadOpen(false)}>
+            <button type="button" className="btn-secondary" onClick={() => setUploadOpen(false)}>
               {tCommon("cancel")}
             </button>
-            <button className="btn-primary" onClick={handleUpload} disabled={submitting}>
+            <button type="button" className="btn-primary" onClick={handleUpload} disabled={submitting}>
               <CloudArrowUpIcon className="w-4 h-4 inline-block mr-2" />
               {submitting ? tCommon("saving") : t("buttons.upload")}
             </button>
@@ -831,10 +831,10 @@ export default function DocumentsPage() {
           </div>
 
           <div className="flex justify-end gap-3">
-            <button className="btn-secondary" onClick={() => setEditOpen(false)}>
+            <button type="button" className="btn-secondary" onClick={() => setEditOpen(false)}>
               {tCommon("cancel")}
             </button>
-            <button className="btn-primary" onClick={handleUpdate} disabled={submitting}>
+            <button type="button" className="btn-primary" onClick={handleUpdate} disabled={submitting}>
               {submitting ? tCommon("saving") : t("buttons.update")}
             </button>
           </div>

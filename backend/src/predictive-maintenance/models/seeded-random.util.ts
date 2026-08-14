@@ -9,12 +9,17 @@
 export function createSeededRandom(seed: number): () => number {
   let state = seed >>> 0;
   return function next(): number {
-    state |= 0;
-    state = (state + 0x6d2b79f5) | 0;
+    state = toSignedInt32(state);
+    state = toSignedInt32(state + 0x6d2b79f5);
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+function toSignedInt32(value: number): number {
+  const unsigned = Math.trunc(value) >>> 0;
+  return unsigned > 0x7fffffff ? unsigned - 0x100000000 : unsigned;
 }
 
 export function randomInt(rng: () => number, maxExclusive: number): number {
