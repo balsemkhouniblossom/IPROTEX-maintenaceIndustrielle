@@ -36,7 +36,7 @@ export function resolveManagedFileUrl(
 ): string {
   if (!pathOrUrl) return '';
 
-  const normalized = pathOrUrl.trim().replace(/\\/g, '/');
+  const normalized = pathOrUrl.trim().replaceAll('\\', '/');
   if (!normalized) return '';
 
   if (/^https?:\/\//i.test(normalized)) return normalized;

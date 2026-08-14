@@ -133,47 +133,70 @@ function classifyGeminiError(error: unknown): Error {
   }
 
   if (isAbortError(error)) {
-    return error instanceof Error
-      ? error
-      : new Error('AI provider request timed out');
+    return getAbortError(error);
   }
 
   if (error instanceof ApiError) {
-    if (
-      error.status === 404 &&
-      /model|not found|not available/i.test(error.message)
-    ) {
-      return new AiProviderError(
-        'missing_configuration',
-        'Gemini model is unavailable for the configured API key',
-      );
-    }
-
-    if (
-      error.status === 401 ||
-      error.status === 403 ||
-      (error.status === 400 &&
-        /api key|credential|permission/i.test(error.message))
-    ) {
-      return new AiProviderError(
-        'invalid_credentials',
-        'Gemini rejected the configured API key or permissions',
-      );
-    }
-    if (error.status === 429) {
-      return new AiProviderError(
-        'quota_limited',
-        'Gemini quota or rate limit was reached',
-      );
-    }
-    if (error.status >= 500 || error.status === 408) {
-      return new AiProviderError(
-        'temporary_failure',
-        'Gemini is temporarily unavailable',
-      );
-    }
+    return classifyGeminiApiError(error) ?? getFallbackGeminiError(error);
   }
 
+  return getFallbackGeminiError(error);
+}
+
+function getAbortError(error: unknown): Error {
+  return error instanceof Error
+    ? error
+    : new Error('AI provider request timed out');
+}
+
+function classifyGeminiApiError(error: ApiError): AiProviderError | undefined {
+  if (isUnavailableModelError(error)) {
+    return new AiProviderError(
+      'missing_configuration',
+      'Gemini model is unavailable for the configured API key',
+    );
+  }
+
+  if (isInvalidCredentialsError(error)) {
+    return new AiProviderError(
+      'invalid_credentials',
+      'Gemini rejected the configured API key or permissions',
+    );
+  }
+
+  if (error.status === 429) {
+    return new AiProviderError(
+      'quota_limited',
+      'Gemini quota or rate limit was reached',
+    );
+  }
+
+  if (error.status >= 500 || error.status === 408) {
+    return new AiProviderError(
+      'temporary_failure',
+      'Gemini is temporarily unavailable',
+    );
+  }
+
+  return undefined;
+}
+
+function isUnavailableModelError(error: ApiError): boolean {
+  return (
+    error.status === 404 && /model|not found|not available/i.test(error.message)
+  );
+}
+
+function isInvalidCredentialsError(error: ApiError): boolean {
+  return (
+    error.status === 401 ||
+    error.status === 403 ||
+    (error.status === 400 &&
+      /api key|credential|permission/i.test(error.message))
+  );
+}
+
+function getFallbackGeminiError(error: unknown): AiProviderError {
   return new AiProviderError(
     'temporary_failure',
     error instanceof Error ? error.message : 'Gemini request failed',
@@ -197,9 +220,9 @@ function extractJsonText(text: string | undefined): string | undefined {
     return trimmed;
   }
 
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]?.trim()) {
-    return fenced[1].trim();
+  const fenced = extractFencedJsonText(trimmed);
+  if (fenced) {
+    return fenced;
   }
 
   const firstBrace = trimmed.indexOf('{');
@@ -209,4 +232,28 @@ function extractJsonText(text: string | undefined): string | undefined {
   }
 
   return trimmed;
+}
+
+function extractFencedJsonText(text: string): string | undefined {
+  if (!text.startsWith('```')) {
+    return undefined;
+  }
+
+  const firstLineEnd = text.indexOf('\n');
+  if (firstLineEnd < 0) {
+    return undefined;
+  }
+
+  const fenceInfo = text.slice(3, firstLineEnd).trim();
+  if (fenceInfo && fenceInfo.toLowerCase() !== 'json') {
+    return undefined;
+  }
+
+  const closingFenceStart = text.lastIndexOf('```');
+  if (closingFenceStart <= firstLineEnd) {
+    return undefined;
+  }
+
+  const fenced = text.slice(firstLineEnd + 1, closingFenceStart).trim();
+  return fenced || undefined;
 }

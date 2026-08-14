@@ -29,7 +29,8 @@ export function getBusinessTimezone(): string {
 
 /** Throws if `timeZone` is not a timezone name the runtime's ICU data recognizes. */
 export function assertValidTimezone(timeZone: string): void {
-  new Intl.DateTimeFormat('en-US', { timeZone });
+  const formatter = new Intl.DateTimeFormat('en-US', { timeZone });
+  formatter.resolvedOptions();
 }
 
 function zonedParts(date: Date, timeZone: string): ZonedParts {
