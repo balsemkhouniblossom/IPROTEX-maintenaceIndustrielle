@@ -172,48 +172,6 @@ function reportStatusClasses(status: string): string {
   }
 }
 
-function buildBackendCorrectiveReports(
-  interventionReports: InterventionReport[],
-  workOrders: WorkOrder[],
-  reportPhotoDocuments: ReportPhotoDocument[],
-  notAvailable: string,
-): GeneratedReportRow[] {
-  return interventionReports
-    .map((report) => {
-      const workOrder = workOrders.find((item) => item._id === refId(report.ot_id));
-      if (!workOrder || !isCorrectiveMaintenanceType(workOrder.type_maintenance)) {
-        return null;
-      }
-
-      const machineId = refId(workOrder.machine_id);
-      const machine =
-        typeof workOrder.machine_id === "string"
-          ? workOrder.machine_id
-          : workOrder.machine_id?.machine_id || notAvailable;
-      const createdAt = report.date_fin || report.date_debut || workOrder.date_created || "";
-      const photoDocument = findReportPhotoDocument(
-        reportPhotoDocuments,
-        report,
-        workOrder,
-        machineId,
-        createdAt,
-      );
-
-      return {
-        id: `backend-${report._id}`,
-        type: "corrective" as const,
-        workOrderId: workOrder._id,
-        reportId: report._id,
-        machine,
-        summary: report.description_action || notAvailable,
-        createdAt,
-        status: workOrder.status || report.validation_responsable || "waiting_validation",
-        photoDocument,
-      };
-    })
-    .filter(Boolean) as GeneratedReportRow[];
-}
-
 function findReportPhotoDocument(
   reportPhotoDocuments: ReportPhotoDocument[],
   report: InterventionReport,
@@ -602,12 +560,40 @@ function OperatorCorrectivePageContent() {
     .join(", ");
   const selectedFaultLabel = selectedFault ? `${selectedFault.code_panne} - ${selectedFault.description}` : t("fault");
   const backendCorrectiveReports = useMemo(() => {
-    return buildBackendCorrectiveReports(
-      interventionReports,
-      workOrders,
-      reportPhotoDocuments,
-      tCommon("notAvailable"),
-    );
+    return interventionReports
+      .map((report) => {
+        const workOrder = workOrders.find((item) => item._id === refId(report.ot_id));
+        if (!workOrder || !isCorrectiveMaintenanceType(workOrder.type_maintenance)) {
+          return null;
+        }
+
+        const machineId = refId(workOrder.machine_id);
+        const machine =
+          typeof workOrder.machine_id === "string"
+            ? workOrder.machine_id
+            : workOrder.machine_id?.machine_id || tCommon("notAvailable");
+        const createdAt = report.date_fin || report.date_debut || workOrder.date_created || "";
+        const photoDocument = findReportPhotoDocument(
+          reportPhotoDocuments,
+          report,
+          workOrder,
+          machineId,
+          createdAt,
+        );
+
+        return {
+          id: `backend-${report._id}`,
+          type: "corrective" as const,
+          workOrderId: workOrder._id,
+          reportId: report._id,
+          machine,
+          summary: report.description_action || tCommon("notAvailable"),
+          createdAt,
+          status: workOrder.status || report.validation_responsable || "waiting_validation",
+          photoDocument,
+        };
+      })
+      .filter(Boolean) as GeneratedReportRow[];
   }, [interventionReports, reportPhotoDocuments, tCommon, workOrders]);
 
   const correctiveGeneratedReports = useMemo(() => {
