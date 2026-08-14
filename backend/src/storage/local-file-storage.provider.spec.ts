@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import { LocalFileStorageProvider } from './local-file-storage.provider';
 
-jest.mock('fs/promises', () => ({
+jest.mock('node:fs/promises', () => ({
   mkdir: jest.fn(),
   writeFile: jest.fn(),
   access: jest.fn(),
