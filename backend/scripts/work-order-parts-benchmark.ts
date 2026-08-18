@@ -164,9 +164,7 @@ async function main() {
           const order = await workOrderModel.create(
             correctiveOrder(technicianId),
           );
-          const stock = await stockModel.create(
-            stockRow(catalogue._id, { quantite_reservee: 2 }),
-          );
+          await stockModel.create(stockRow(catalogue._id, { quantite_reservee: 2 }));
           const request = await partRequestModel.create(
             pendingRequest(order._id, catalogue._id, technicianId, {
               status: 'reserved',

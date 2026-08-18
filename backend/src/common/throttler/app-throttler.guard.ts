@@ -1,4 +1,5 @@
 import {
+  Inject,
   ExecutionContext,
   HttpException,
   HttpStatus,
@@ -12,7 +13,6 @@ import {
   getOptionsToken,
   getStorageToken,
 } from '@nestjs/throttler';
-import { Inject } from '@nestjs/common';
 import type { Request } from 'express';
 
 /**

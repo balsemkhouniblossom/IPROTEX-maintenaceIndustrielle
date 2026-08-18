@@ -171,7 +171,7 @@ describe('schema-discovered indexes', () => {
         );
         expect(documentIdIndex?.key).toEqual({ document_id: 1 });
         expect(documentIdIndex?.options?.unique).toBe(true);
-        expect(discovered.length).toBe(DocumentSchema.indexes().length);
+        expect(discovered).toHaveLength(DocumentSchema.indexes().length);
       } finally {
         await connection.close();
       }

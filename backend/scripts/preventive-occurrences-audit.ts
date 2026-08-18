@@ -261,7 +261,7 @@ export async function runPreventiveOccurrenceAudit({
       potentialLegacyDuplicateGroups: classifiedGroups,
     };
 
-    logger.log(json ? JSON.stringify(result, null, 2) : String(result));
+    logger.log(JSON.stringify(result, null, json ? 2 : 0));
     return result;
   } finally {
     await connection.close();

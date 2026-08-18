@@ -10,7 +10,7 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 export class CataloguesService {
   constructor(
     @InjectModel(Catalogue.name)
-    private catalogueModel: Model<CatalogueDocument>,
+    private readonly catalogueModel: Model<CatalogueDocument>,
   ) {}
 
   async create(createCatalogueDto: CreateCatalogueDto): Promise<Catalogue> {

@@ -58,7 +58,7 @@ function parsePort(value: string | undefined): number {
   if (!value) return fallback;
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
-    throw new Error('PORT must be a valid TCP port between 1 and 65535');
+    throw new TypeError('PORT must be a valid TCP port between 1 and 65535');
   }
   return parsed;
 }
@@ -80,7 +80,7 @@ function parseFutureDeadline(value: string | undefined, key: string): Date {
 
   const deadline = new Date(value);
   if (Number.isNaN(deadline.getTime())) {
-    throw new Error(`${key} must be a valid ISO date`);
+    throw new TypeError(`${key} must be a valid ISO date`);
   }
 
   if (deadline.getTime() <= Date.now()) {
@@ -95,7 +95,7 @@ function parseUrl(value: string, key: string): string {
     const parsed = new URL(value);
     return parsed.toString().replace(/\/$/, '');
   } catch {
-    throw new Error(`${key} must be a valid URL`);
+    throw new TypeError(`${key} must be a valid URL`);
   }
 }
 
@@ -141,7 +141,7 @@ function validateBusinessTimezone(value: string | undefined): string {
     // Throws a RangeError for an unrecognized IANA zone name.
     new Intl.DateTimeFormat('en-US', { timeZone: timezone });
   } catch {
-    throw new Error(
+    throw new TypeError(
       `BUSINESS_TIMEZONE must be a valid IANA timezone name (got "${timezone}")`,
     );
   }
@@ -164,7 +164,7 @@ function validateMqttBrokerUrl(value: string | undefined): string | undefined {
   try {
     return new URL(trimmed).toString().replace(/\/$/, '');
   } catch {
-    throw new Error(
+    throw new TypeError(
       'MQTT_BROKER_URL must be a valid URL (e.g. mqtt://host:1883)',
     );
   }
@@ -356,7 +356,7 @@ function parseCorsOrigins(
   nodeEnv: RuntimeMode,
   frontendBaseUrl?: string,
 ): CorsOrigin[] {
-  if (!value || !value.trim()) {
+  if (!value?.trim()) {
     if (nodeEnv === 'production') {
       throw new Error(
         'CORS_ORIGINS must be set to a comma-separated list of trusted frontend origins in production',
@@ -387,25 +387,32 @@ function parseCorsOrigins(
   }
 
   const uniqueOrigins = Array.from(new Set(origins));
-
-  if (nodeEnv === 'production') {
-    if (uniqueOrigins.length !== 1) {
-      throw new Error(
-        'CORS_ORIGINS must contain exactly one Vercel production frontend origin in production',
-      );
-    }
-
-    const frontendOrigin = frontendBaseUrl
-      ? normalizeCorsOrigin(frontendBaseUrl, 'FRONTEND_BASE_URL')
-      : undefined;
-    if (frontendOrigin && uniqueOrigins[0] !== frontendOrigin) {
-      throw new Error(
-        'CORS_ORIGINS must exactly match FRONTEND_BASE_URL in production',
-      );
-    }
-  }
+  validateProductionCorsOrigins(uniqueOrigins, nodeEnv, frontendBaseUrl);
 
   return uniqueOrigins;
+}
+
+function validateProductionCorsOrigins(
+  origins: CorsOrigin[],
+  nodeEnv: RuntimeMode,
+  frontendBaseUrl?: string,
+): void {
+  if (nodeEnv !== 'production') return;
+
+  if (origins.length !== 1) {
+    throw new Error(
+      'CORS_ORIGINS must contain exactly one Vercel production frontend origin in production',
+    );
+  }
+
+  const frontendOrigin = frontendBaseUrl
+    ? normalizeCorsOrigin(frontendBaseUrl, 'FRONTEND_BASE_URL')
+    : undefined;
+  if (frontendOrigin && origins[0] !== frontendOrigin) {
+    throw new Error(
+      'CORS_ORIGINS must exactly match FRONTEND_BASE_URL in production',
+    );
+  }
 }
 
 /**
@@ -454,6 +461,103 @@ function validateProductionDeploymentUrls(
   }
 }
 
+function validateRequiredRuntimeEnv(
+  nodeEnv: RuntimeMode,
+  mongoUri: string,
+  mongoRequireAtlas: boolean,
+): void {
+  if (nodeEnv === 'test') return;
+
+  requireEnv('JWT_SECRET');
+  requireTokenExpiryEnv();
+  requireEnv('JWT_REFRESH_SECRET');
+  requireRefreshExpiryEnv();
+
+  if (mongoRequireAtlas && !isAtlasUri(mongoUri)) {
+    throw new Error(
+      'MONGODB_URI must point to MongoDB Atlas when MONGODB_REQUIRE_ATLAS=true',
+    );
+  }
+
+  requireEmailVerificationSecret();
+  requireGoogleOAuthEnv();
+
+  if (nodeEnv === 'production') {
+    requireExchangeEncryptionKey();
+  }
+}
+
+function requireTokenExpiryEnv(): void {
+  const jwtExpires =
+    process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN;
+  if (!jwtExpires?.trim()) {
+    throw new Error(
+      'Missing required environment variable: JWT_EXPIRES_IN (or JWT_ACCESS_EXPIRES_IN)',
+    );
+  }
+}
+
+function requireRefreshExpiryEnv(): void {
+  if (!process.env.JWT_REFRESH_EXPIRES_IN?.trim()) {
+    throw new Error(
+      'Missing required environment variable: JWT_REFRESH_EXPIRES_IN',
+    );
+  }
+}
+
+function requireEmailVerificationSecret(): void {
+  const hasEmailVerificationSecret = Boolean(
+    process.env.EMAIL_VERIFICATION_SECRET?.trim(),
+  );
+  const hasJwtSecret = Boolean(process.env.JWT_SECRET?.trim());
+
+  if (!hasEmailVerificationSecret && !hasJwtSecret) {
+    throw new Error(
+      'Missing required environment variable: EMAIL_VERIFICATION_SECRET (or JWT_SECRET)',
+    );
+  }
+}
+
+function requireGoogleOAuthEnv(): void {
+  const googleClientId = normalizeMaybeQuotedEnv(process.env.GOOGLE_CLIENT_ID);
+  const googleClientSecret = normalizeMaybeQuotedEnv(
+    process.env.GOOGLE_CLIENT_SECRET,
+  );
+
+  if (!googleClientId) {
+    throw new Error('Missing required environment variable: GOOGLE_CLIENT_ID');
+  }
+
+  if (!googleClientSecret) {
+    throw new Error(
+      'Missing required environment variable: GOOGLE_CLIENT_SECRET',
+    );
+  }
+
+  requireGoogleCallbackUrl();
+}
+
+function requireGoogleCallbackUrl(): void {
+  const googleCallbackUrl = normalizeMaybeQuotedEnv(
+    process.env.GOOGLE_CALLBACK_URL,
+  );
+  const backendUrl = normalizeMaybeQuotedEnv(process.env.BACKEND_URL);
+
+  if (googleCallbackUrl) {
+    parseUrl(googleCallbackUrl, 'GOOGLE_CALLBACK_URL');
+    return;
+  }
+
+  if (backendUrl) {
+    parseUrl(backendUrl, 'BACKEND_URL');
+    return;
+  }
+
+  throw new Error(
+    'Missing required environment variable: GOOGLE_CALLBACK_URL (or BACKEND_URL)',
+  );
+}
+
 export function validateEnvironment(): EnvValidationResult {
   const nodeEnv = parseNodeEnv(process.env.NODE_ENV);
   process.env.NODE_ENV = nodeEnv;
@@ -469,80 +573,7 @@ export function validateEnvironment(): EnvValidationResult {
     false,
   );
 
-  if (nodeEnv !== 'test') {
-    requireEnv('JWT_SECRET');
-
-    const jwtExpires =
-      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN;
-    if (!jwtExpires?.trim()) {
-      throw new Error(
-        'Missing required environment variable: JWT_EXPIRES_IN (or JWT_ACCESS_EXPIRES_IN)',
-      );
-    }
-
-    requireEnv('JWT_REFRESH_SECRET');
-    const refreshExpires = process.env.JWT_REFRESH_EXPIRES_IN;
-    if (!refreshExpires?.trim()) {
-      throw new Error(
-        'Missing required environment variable: JWT_REFRESH_EXPIRES_IN',
-      );
-    }
-
-    if (mongoRequireAtlas && !isAtlasUri(mongoUri)) {
-      throw new Error(
-        'MONGODB_URI must point to MongoDB Atlas when MONGODB_REQUIRE_ATLAS=true',
-      );
-    }
-
-    const hasEmailVerificationSecret = Boolean(
-      process.env.EMAIL_VERIFICATION_SECRET?.trim(),
-    );
-    const hasJwtSecret = Boolean(process.env.JWT_SECRET?.trim());
-
-    if (!hasEmailVerificationSecret && !hasJwtSecret) {
-      throw new Error(
-        'Missing required environment variable: EMAIL_VERIFICATION_SECRET (or JWT_SECRET)',
-      );
-    }
-
-    const googleClientId = normalizeMaybeQuotedEnv(
-      process.env.GOOGLE_CLIENT_ID,
-    );
-    const googleClientSecret = normalizeMaybeQuotedEnv(
-      process.env.GOOGLE_CLIENT_SECRET,
-    );
-
-    if (!googleClientId) {
-      throw new Error(
-        'Missing required environment variable: GOOGLE_CLIENT_ID',
-      );
-    }
-
-    if (!googleClientSecret) {
-      throw new Error(
-        'Missing required environment variable: GOOGLE_CLIENT_SECRET',
-      );
-    }
-
-    const googleCallbackUrl = normalizeMaybeQuotedEnv(
-      process.env.GOOGLE_CALLBACK_URL,
-    );
-    const backendUrl = normalizeMaybeQuotedEnv(process.env.BACKEND_URL);
-
-    if (googleCallbackUrl) {
-      parseUrl(googleCallbackUrl, 'GOOGLE_CALLBACK_URL');
-    } else if (backendUrl) {
-      parseUrl(backendUrl, 'BACKEND_URL');
-    } else {
-      throw new Error(
-        'Missing required environment variable: GOOGLE_CALLBACK_URL (or BACKEND_URL)',
-      );
-    }
-
-    if (nodeEnv === 'production') {
-      requireExchangeEncryptionKey();
-    }
-  }
+  validateRequiredRuntimeEnv(nodeEnv, mongoUri, mongoRequireAtlas);
 
   const rawFrontendBaseUrl =
     process.env.FRONTEND_BASE_URL?.trim() ||

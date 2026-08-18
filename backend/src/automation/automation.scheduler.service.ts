@@ -984,7 +984,7 @@ export class AutomationSchedulerService {
             await this.notificationCenterService.createIfNotExists({
               dedupeKey,
               type: NotificationType.SENSOR_ALERT,
-              title: `Sensor ${capteur.capteur_id} ${level} threshold exceeded (value=${value})`,
+              title: `Sensor ${capteur.capteur_id} ${level} threshold exceeded (value=${this.telemetryValueLabel(value)})`,
               referenceId: this.objectIdString(capteur.module_id) || undefined,
               recipientRole: Role.ADMIN,
             });
@@ -1231,6 +1231,14 @@ export class AutomationSchedulerService {
     const date = new Date(value);
     date.setHours(0, 0, 0, 0);
     return date;
+  }
+
+  private telemetryValueLabel(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return JSON.stringify(value);
   }
 
   private objectIdString(value: unknown): string {

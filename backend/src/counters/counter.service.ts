@@ -6,7 +6,8 @@ import { Counter, CounterDocument } from './counter.schema';
 @Injectable()
 export class CounterService {
   constructor(
-    @InjectModel(Counter.name) private counterModel: Model<CounterDocument>,
+    @InjectModel(Counter.name)
+    private readonly counterModel: Model<CounterDocument>,
   ) {}
 
   async getNextSequence(name: string): Promise<number> {

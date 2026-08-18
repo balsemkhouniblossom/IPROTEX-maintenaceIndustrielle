@@ -9,7 +9,7 @@
 
 /** Escapes regex metacharacters so user search input is always treated as a literal substring match, never as a regex. */
 export function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 export function buildCaseInsensitiveSearchFilter(search: string): RegExp {

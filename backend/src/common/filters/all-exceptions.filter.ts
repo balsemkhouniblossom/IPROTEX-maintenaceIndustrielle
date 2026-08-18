@@ -16,6 +16,54 @@ import {
   type RequestWithLogContext,
 } from '../log-sanitizer';
 
+function resolveStatus(
+  exception: unknown,
+  isMulterFileSizeError: boolean,
+): HttpStatus {
+  if (isMulterFileSizeError) return HttpStatus.PAYLOAD_TOO_LARGE;
+  if (exception instanceof HttpException) return exception.getStatus();
+  return HttpStatus.INTERNAL_SERVER_ERROR;
+}
+
+function resolveExceptionResponse(
+  exception: unknown,
+  isMulterFileSizeError: boolean,
+): string | object {
+  if (isMulterFileSizeError) {
+    return 'Uploaded file exceeds the maximum allowed size';
+  }
+  if (exception instanceof HttpException) return exception.getResponse();
+  return 'Internal server error';
+}
+
+function resolveExceptionCode(
+  exceptionResponse: string | object,
+): string | undefined {
+  if (
+    typeof exceptionResponse === 'object' &&
+    exceptionResponse !== null &&
+    typeof (exceptionResponse as { code?: unknown }).code === 'string'
+  ) {
+    return (exceptionResponse as { code: string }).code;
+  }
+
+  return undefined;
+}
+
+function resolveResponseMessage(exceptionResponse: string | object): unknown {
+  if (typeof exceptionResponse === 'string') return exceptionResponse;
+  return (
+    (exceptionResponse as { message?: unknown })?.message ??
+    'Internal server error'
+  );
+}
+
+function stringifyMessage(message: unknown): string {
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string') return message;
+  return JSON.stringify(message);
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -32,36 +80,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // file should see.
     const isMulterFileSizeError =
       exception instanceof MulterError && exception.code === 'LIMIT_FILE_SIZE';
-    const isHttpException = exception instanceof HttpException;
-    const status: HttpStatus = isMulterFileSizeError
-      ? HttpStatus.PAYLOAD_TOO_LARGE
-      : isHttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-
-    const exceptionResponse = isMulterFileSizeError
-      ? 'Uploaded file exceeds the maximum allowed size'
-      : isHttpException
-        ? exception.getResponse()
-        : 'Internal server error';
-    const exceptionCode =
-      typeof exceptionResponse === 'object' &&
-      exceptionResponse !== null &&
-      typeof (exceptionResponse as { code?: unknown }).code === 'string'
-        ? (exceptionResponse as { code: string }).code
-        : undefined;
-
-    const message =
-      typeof exceptionResponse === 'string'
-        ? exceptionResponse
-        : ((exceptionResponse as { message?: unknown })?.message ??
-          'Internal server error');
-
-    const messageText = Array.isArray(message)
-      ? message.join(', ')
-      : typeof message === 'string'
-        ? message
-        : JSON.stringify(message);
+    const status = resolveStatus(exception, isMulterFileSizeError);
+    const exceptionResponse = resolveExceptionResponse(
+      exception,
+      isMulterFileSizeError,
+    );
+    const exceptionCode = resolveExceptionCode(exceptionResponse);
+    const message = resolveResponseMessage(exceptionResponse);
+    const messageText = stringifyMessage(message);
 
     const requestId = getRequestId(request);
     const pathname = getRequestPathname(request);

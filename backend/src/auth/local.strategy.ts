@@ -9,7 +9,7 @@ import type { Request } from 'express';
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private authService: AuthService,
+    private readonly authService: AuthService,
     private readonly authThrottleService: AuthThrottleService,
   ) {
     super({

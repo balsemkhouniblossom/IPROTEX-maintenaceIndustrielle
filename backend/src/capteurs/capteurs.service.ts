@@ -11,8 +11,10 @@ import { assertNoDependencies } from '../common/dependency-protection';
 @Injectable()
 export class CapteursService {
   constructor(
-    @InjectModel(Capteur.name) private capteurModel: Model<CapteurDocument>,
-    @InjectModel(Mesure.name) private mesureModel: Model<MesureDocument>,
+    @InjectModel(Capteur.name)
+    private readonly capteurModel: Model<CapteurDocument>,
+    @InjectModel(Mesure.name)
+    private readonly mesureModel: Model<MesureDocument>,
   ) {}
 
   async findAll(

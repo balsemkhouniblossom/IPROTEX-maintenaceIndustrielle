@@ -8,6 +8,12 @@ import {
 } from '../log-sanitizer';
 import { MetricsRegistry } from '../metrics/metrics-registry';
 
+function logLevelForStatus(statusCode: number): 'error' | 'warn' | 'log' {
+  if (statusCode >= 500) return 'error';
+  if (statusCode >= 400) return 'warn';
+  return 'log';
+}
+
 @Injectable()
 export class RequestLoggingMiddleware implements NestMiddleware {
   private readonly logger = new Logger('HTTP');
@@ -26,12 +32,7 @@ export class RequestLoggingMiddleware implements NestMiddleware {
     res.on('finish', () => {
       const durationMs = Date.now() - startedAt;
       this.metrics.record(req.method, pathname, res.statusCode, durationMs);
-      const level =
-        res.statusCode >= 500
-          ? 'error'
-          : res.statusCode >= 400
-            ? 'warn'
-            : 'log';
+      const level = logLevelForStatus(res.statusCode);
       const message = buildRequestLogMessage({
         requestId,
         method: req.method,

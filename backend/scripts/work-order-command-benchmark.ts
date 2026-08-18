@@ -247,9 +247,9 @@ async function main() {
               workOrderRow(machine._id, technicianId, {
                 status: 'completed',
                 type_maintenance: index % 3 === 0 ? 'corrective' : 'preventive',
-                date_start: new Date(Date.now() - (index + 2) * 3600_000),
-                date_end: new Date(Date.now() - (index + 1) * 3600_000),
-                date_closed: new Date(Date.now() - (index + 1) * 3600_000),
+                date_start: new Date(Date.now() - (index + 2) * 3_600_000),
+                date_end: new Date(Date.now() - (index + 1) * 3_600_000),
+                date_closed: new Date(Date.now() - (index + 1) * 3_600_000),
               }),
             ),
           );

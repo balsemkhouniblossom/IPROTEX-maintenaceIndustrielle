@@ -41,20 +41,70 @@ export function buildSystemPrompt(locale: string): string {
   ].join('\n');
 }
 
+function formatMachineLine(context: AiAssistantRequest['context']): string {
+  const typeLabel = context.machineTypeName
+    ? ` (type: ${context.machineTypeName})`
+    : '';
+  return `Machine: ${context.machineName}${typeLabel}`;
+}
+
+function formatFaultLine(context: AiAssistantRequest['context']): string {
+  const description = context.faultDescription
+    ? ` - ${context.faultDescription}`
+    : '';
+  const severity = context.faultSeverity
+    ? ` [severity: ${context.faultSeverity}]`
+    : '';
+  return `Reported fault code: ${context.faultCode}${description}${severity}`;
+}
+
+function formatAlarmLine(
+  alarm: AiAssistantRequest['context']['activeAlarms'][number],
+): string {
+  const message = alarm.message ? ` - ${alarm.message}` : '';
+  return `- ${alarm.codePanne} [${alarm.severity}] raised ${alarm.raisedAt}${message}`;
+}
+
+function formatHistoryLine(
+  entry: AiAssistantRequest['context']['maintenanceHistory'][number],
+): string {
+  const type = entry.type ?? 'unspecified';
+  const code = entry.codePanne ? ` code ${entry.codePanne}` : '';
+  const description = entry.description ? ` - ${entry.description}` : '';
+  const rootCause = entry.rootCause ? ` | root cause: ${entry.rootCause}` : '';
+  const actionTaken = entry.actionTaken
+    ? ` | action taken: ${entry.actionTaken}`
+    : '';
+  return `- ${entry.date} [${type}/${entry.status}]${code}${description}${rootCause}${actionTaken}`;
+}
+
+function formatArticleLine(
+  article: AiAssistantRequest['context']['knowledgeArticles'][number],
+): string {
+  const summary = article.summary ? ` - ${article.summary}` : '';
+  return `- [${article.category}] ${article.title}${summary}`;
+}
+
+function formatListSection<T>(
+  items: T[],
+  heading: string,
+  emptyLine: string,
+  formatter: (item: T) => string,
+): string {
+  if (!items.length) return emptyLine;
+  return `${heading}:\n${items.map(formatter).join('\n')}`;
+}
+
 export function buildUserPrompt(request: AiAssistantRequest): string {
   const { context } = request;
   const lines: string[] = [];
 
   lines.push('<context>');
   if (context.machineName) {
-    lines.push(
-      `Machine: ${context.machineName}${context.machineTypeName ? ` (type: ${context.machineTypeName})` : ''}`,
-    );
+    lines.push(formatMachineLine(context));
   }
   if (context.faultCode) {
-    lines.push(
-      `Reported fault code: ${context.faultCode}${context.faultDescription ? ` - ${context.faultDescription}` : ''}${context.faultSeverity ? ` [severity: ${context.faultSeverity}]` : ''}`,
-    );
+    lines.push(formatFaultLine(context));
   }
   if (context.probableCause) {
     lines.push(`Catalog probable cause: ${context.probableCause}`);
@@ -64,42 +114,38 @@ export function buildUserPrompt(request: AiAssistantRequest): string {
   }
 
   lines.push(
-    context.activeAlarms.length
-      ? `Active alarms (unresolved):\n${context.activeAlarms
-          .map(
-            (alarm) =>
-              `- ${alarm.codePanne} [${alarm.severity}] raised ${alarm.raisedAt}${alarm.message ? ` - ${alarm.message}` : ''}`,
-          )
-          .join('\n')}`
-      : 'Active alarms: none currently active on this machine.',
+    formatListSection(
+      context.activeAlarms,
+      'Active alarms (unresolved)',
+      'Active alarms: none currently active on this machine.',
+      formatAlarmLine,
+    ),
   );
 
   lines.push(
-    context.maintenanceHistory.length
-      ? `Maintenance history (most recent first):\n${context.maintenanceHistory
-          .map(
-            (entry) =>
-              `- ${entry.date} [${entry.type ?? 'unspecified'}/${entry.status}]${entry.codePanne ? ` code ${entry.codePanne}` : ''}${entry.description ? ` - ${entry.description}` : ''}${entry.rootCause ? ` | root cause: ${entry.rootCause}` : ''}${entry.actionTaken ? ` | action taken: ${entry.actionTaken}` : ''}`,
-          )
-          .join('\n')}`
-      : 'Maintenance history: no prior work orders on record for this machine.',
+    formatListSection(
+      context.maintenanceHistory,
+      'Maintenance history (most recent first)',
+      'Maintenance history: no prior work orders on record for this machine.',
+      formatHistoryLine,
+    ),
   );
 
   lines.push(
-    context.knowledgeArticles.length
-      ? `Related knowledge base articles:\n${context.knowledgeArticles
-          .map(
-            (article) =>
-              `- [${article.category}] ${article.title}${article.summary ? ` - ${article.summary}` : ''}`,
-          )
-          .join('\n')}`
-      : 'Related knowledge base articles: none found.',
+    formatListSection(
+      context.knowledgeArticles,
+      'Related knowledge base articles',
+      'Related knowledge base articles: none found.',
+      formatArticleLine,
+    ),
   );
-  lines.push('</context>');
-  lines.push('');
-  lines.push('<question>');
-  lines.push(request.question || '(no additional description provided)');
-  lines.push('</question>');
+  lines.push(
+    '</context>',
+    '',
+    '<question>',
+    request.question || '(no additional description provided)',
+    '</question>',
+  );
 
   return lines.join('\n');
 }

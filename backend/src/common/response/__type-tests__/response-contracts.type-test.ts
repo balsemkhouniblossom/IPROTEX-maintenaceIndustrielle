@@ -26,7 +26,7 @@ import type { InterventionReportResponse } from '../intervention-report-response
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
 function assertNotAny<T>(_value: IsAny<T> extends false ? true : never): void {
-  void _value;
+  return;
 }
 
 function assertSameType<A, B>(
@@ -36,7 +36,11 @@ function assertSameType<A, B>(
       : never
     : never,
 ): void {
-  void _value;
+  return;
+}
+
+function consumeTypeFixtures(..._values: unknown[]): void {
+  return;
 }
 
 // --- Mapper output satisfies its declared response contract ---------------
@@ -44,25 +48,28 @@ declare const workOrderDoc: Parameters<typeof toWorkOrderResponse>[0];
 const _workOrderMapperOutput = toWorkOrderResponse(
   workOrderDoc,
 ) satisfies WorkOrderResponse;
-void _workOrderMapperOutput;
 
 declare const machineDoc: Parameters<typeof toMachineResponse>[0];
 const _machineMapperOutput = toMachineResponse(
   machineDoc,
 ) satisfies MachineResponse;
-void _machineMapperOutput;
 
 declare const machineTypeDoc: Parameters<typeof toMachineTypeSummary>[0];
 const _machineTypeMapperOutput = toMachineTypeSummary(
   machineTypeDoc,
 ) satisfies MachineTypeResponse;
-void _machineTypeMapperOutput;
 
 declare const reportDoc: Parameters<typeof toInterventionReportResponse>[0];
 const _reportMapperOutput = toInterventionReportResponse(
   reportDoc,
 ) satisfies InterventionReportResponse;
-void _reportMapperOutput;
+
+consumeTypeFixtures(
+  _workOrderMapperOutput,
+  _machineMapperOutput,
+  _machineTypeMapperOutput,
+  _reportMapperOutput,
+);
 
 // --- Controller return type matches its service's declared return type ----
 assertSameType<WorkOrdersController['create'], WorkOrdersService['create']>(

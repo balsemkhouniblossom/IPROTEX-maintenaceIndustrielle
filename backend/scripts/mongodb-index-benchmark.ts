@@ -28,18 +28,31 @@ function findPlanStage(
   if (typeof node.stage === 'string' && stages.includes(node.stage)) {
     return node;
   }
-  for (const value of Object.values(node)) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const found = findPlanStage(item, stages);
-        if (found) return found;
-      }
-    } else {
-      const found = findPlanStage(value, stages);
-      if (found) return found;
-    }
+
+  return findPlanStageInValues(Object.values(node), stages);
+}
+
+function findPlanStageInValues(
+  values: unknown[],
+  stages: string[],
+): Record<string, unknown> | null {
+  for (const value of values) {
+    const found = Array.isArray(value)
+      ? findPlanStageInValues(value, stages)
+      : findPlanStage(value, stages);
+    if (found) return found;
   }
+
   return null;
+}
+
+function getWinningStage(
+  ixscan: Record<string, unknown> | null,
+  collscan: Record<string, unknown> | null,
+): string {
+  if (ixscan) return 'IXSCAN';
+  if (collscan) return 'COLLSCAN';
+  return 'UNKNOWN';
 }
 
 function summarize(
@@ -53,7 +66,7 @@ function summarize(
   const sort = findPlanStage(plan, ['SORT']);
   return {
     label,
-    stage: ixscan ? 'IXSCAN' : collscan ? 'COLLSCAN' : 'UNKNOWN',
+    stage: getWinningStage(ixscan, collscan),
     indexName: ixscan?.indexName as string | undefined,
     totalKeysExamined: Number(executionStats.totalKeysExamined ?? 0),
     totalDocsExamined: Number(executionStats.totalDocsExamined ?? 0),
