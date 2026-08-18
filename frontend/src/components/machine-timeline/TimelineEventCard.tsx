@@ -21,6 +21,51 @@ interface TimelineEventCardProps {
   event: MachineTimelineEvent;
 }
 
+const PRIMARY_METADATA_KEYS = new Set([
+  'otId',
+  'reportId',
+  'faultCode',
+  'planId',
+  'documentId',
+  'taskId',
+  'typeMaintenance',
+  'quantity',
+  'partName',
+]);
+
+function visibleTimelineMetadata(event: MachineTimelineEvent) {
+  const metadataEntries = event.metadata
+    ? Object.entries(event.metadata).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    : [];
+  const primaryMetadata = metadataEntries.filter(([key]) =>
+    PRIMARY_METADATA_KEYS.has(key),
+  );
+  return {
+    metadataEntries,
+    visibleMetadata: (primaryMetadata.length ? primaryMetadata : metadataEntries).slice(0, 4),
+  };
+}
+
+function actorInitials(name?: string): string | undefined {
+  return name
+    ?.split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+}
+
+function technicianWorkOrderHref(
+  event: MachineTimelineEvent,
+  userRole: string | undefined,
+  locale: string,
+): string | null {
+  if (event.relatedEntity?.kind !== 'work_order' || userRole !== 'technician') {
+    return null;
+  }
+  return `/${locale}/technician/work-orders/${event.relatedEntity.id}`;
+}
+
 export default function TimelineEventCard({ event }: TimelineEventCardProps) {
   const t = useTranslations('machineTimeline');
   const locale = useLocale();
@@ -39,22 +84,9 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
     ? t(`filters.categories.${event.category}`)
     : event.category;
   const at = new Date(event.at);
-  const metadataEntries = event.metadata
-    ? Object.entries(event.metadata).filter(([, value]) => value !== undefined && value !== null && value !== '')
-    : [];
-  const primaryMetadata = metadataEntries.filter(([key]) =>
-    ['otId', 'reportId', 'faultCode', 'planId', 'documentId', 'taskId', 'typeMaintenance', 'quantity', 'partName'].includes(
-      key,
-    ),
-  );
-  const visibleMetadata = (primaryMetadata.length ? primaryMetadata : metadataEntries).slice(0, 4);
+  const { metadataEntries, visibleMetadata } = visibleTimelineMetadata(event);
   const canExpand = metadataEntries.length > visibleMetadata.length || metadataEntries.some(([key]) => key === 'notes');
-  const actorInitials = event.actor?.name
-    ?.split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
+  const initials = actorInitials(event.actor?.name);
 
   async function openDocumentPreview(documentId: string) {
     try {
@@ -79,10 +111,7 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
 
   const documentPreviewName =
     typeof documentPreview?.file_name === 'string' ? documentPreview.file_name : t('actions.viewDocument');
-  const workOrderHref =
-    event.relatedEntity?.kind === 'work_order' && user?.role === 'technician'
-      ? `/${locale}/technician/work-orders/${event.relatedEntity.id}`
-      : null;
+  const workOrderHref = technicianWorkOrderHref(event, user?.role, locale);
   const isDocumentEvent = event.relatedEntity?.kind === 'document';
 
   return (
@@ -151,7 +180,7 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
           {event.actor && (
             <div className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-(--border) bg-(--surface-secondary) px-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-(--primary) text-xs font-bold text-(--text-inverse)">
-                {actorInitials || <UserCircleIcon className="h-5 w-5" aria-hidden="true" />}
+                {initials || <UserCircleIcon className="h-5 w-5" aria-hidden="true" />}
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold leading-5 text-(--text-primary)">{event.actor.name}</span>

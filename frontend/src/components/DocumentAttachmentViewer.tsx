@@ -16,33 +16,41 @@ import { getApiBaseUrl } from "@/config/api-base-url";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
+type Props = {
+  readonly document: ViewableDocument;
+  readonly title?: string;
+  readonly onError?: () => void;
+};
+
 const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), {
   ssr: false,
-  loading: () => (
+  loading: PdfViewerLoading,
+});
+
+function PdfViewerLoading() {
+  return (
     <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
       <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
     </div>
-  ),
-});
+  );
+}
 
-type Props = {
-  document: ViewableDocument;
-  title?: string;
-  onError?: () => void;
-};
+function documentViewerFallback(_error: unknown, reset: () => void) {
+  return <WidgetErrorFallback onRetry={reset} bare />;
+}
 
-export default function DocumentAttachmentViewer(props: Props) {
+export default function DocumentAttachmentViewer(props: Readonly<Props>) {
   return (
     <ErrorBoundary
       boundaryName="document-attachment-viewer"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} bare />}
+      fallback={documentViewerFallback}
     >
       <DocumentAttachmentViewerInner {...props} />
     </ErrorBoundary>
   );
 }
 
-function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
+function DocumentAttachmentViewerInner({ document, title, onError }: Readonly<Props>) {
   const t = useTranslations("documents.viewer");
   const [fileLoading, setFileLoading] = useState(false);
   const [fileBroken, setFileBroken] = useState(false);

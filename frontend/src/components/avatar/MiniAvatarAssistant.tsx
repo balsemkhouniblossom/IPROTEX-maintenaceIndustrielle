@@ -18,6 +18,53 @@ import type { AvatarActionKey, MiniAvatarAssistantProps } from "./avatar-types";
 import { AvatarSpeechBubble } from "./AvatarSpeechBubble";
 import { AvatarVisual } from "./AvatarVisual";
 
+type MessageTone = "urgent" | "attention" | "active" | "neutral";
+
+function messageToneFor(messageKey: string): MessageTone {
+  if (messageKey === "overdue") return "urgent";
+  if (messageKey === "dueToday" || messageKey === "waitingValidation") {
+    return "attention";
+  }
+  if (messageKey === "inProgress" || messageKey === "assigned") return "active";
+  return "neutral";
+}
+
+function resolvedTimeOfDay(
+  enabled: boolean,
+  detectedTime: ReturnType<typeof useTimeOfDay>,
+) {
+  return enabled && detectedTime ? detectedTime : "afternoon";
+}
+
+function greetingKeyFor(detectedTime: ReturnType<typeof useTimeOfDay>, timeOfDay: string): string {
+  if (!detectedTime) return "greetings.hello";
+  return `greetings.${timeOfDay}`;
+}
+
+function roleLabelKeyFor(role: string): string {
+  if (role === "NEUTRAL") return "neutralAvatar";
+  return `${role.toLowerCase()}Avatar`;
+}
+
+function surfaceClassFor(variant: string): string {
+  if (variant === "embedded") {
+    return "mini-avatar-assistant--embedded border-transparent p-0";
+  }
+  return "border p-3 sm:p-4";
+}
+
+function openAvatarClassFor(variant: string): string {
+  if (variant === "embedded") {
+    return "h-20 w-20 rounded-[24px] sm:h-24 sm:w-24";
+  }
+  return "h-16 w-16 rounded-[20px] sm:h-20 sm:w-20";
+}
+
+function countLabel(count: number): string {
+  if (count > 99) return "99+";
+  return String(count);
+}
+
 export function MiniAvatarAssistant({
   userName,
   role,
@@ -40,27 +87,21 @@ export function MiniAvatarAssistant({
   }, []);
 
   const normalizedRole = normalizeAvatarRole(role);
-  const timeOfDay = config.enableTimeOfDayAppearance && detectedTime ? detectedTime : "afternoon";
+  const timeOfDay = resolvedTimeOfDay(config.enableTimeOfDayAppearance, detectedTime);
   const season = detectedSeason ?? "spring";
   const sleeves = getSleeveStyle(season, config.enableSeasonalClothing && config.clothingMode === "season");
   const animated = Boolean(getAssistantAnimationClass(config.enableAnimations, reducedMotion));
   const selection = useMemo(() => selectAvatarMessage(stats, status), [stats, status]);
-  const messageTone = selection.messageKey === "overdue"
-    ? "urgent"
-    : selection.messageKey === "dueToday" || selection.messageKey === "waitingValidation"
-      ? "attention"
-      : selection.messageKey === "inProgress" || selection.messageKey === "assigned"
-        ? "active"
-        : "neutral";
+  const messageTone = messageToneFor(selection.messageKey);
   const firstName = getAvatarFirstName(userName);
-  const greetingKey = detectedTime ? `greetings.${timeOfDay}` : "greetings.hello";
+  const greetingKey = greetingKeyFor(detectedTime, timeOfDay);
   const greeting = firstName
     ? t(`${greetingKey}Name`, { name: firstName })
     : t(greetingKey);
   const message = typeof selection.count === "number"
     ? t(`messages.${selection.messageKey}`, { count: selection.count })
     : t(`messages.${selection.messageKey}`);
-  const roleLabelKey = normalizedRole === "NEUTRAL" ? "neutralAvatar" : `${normalizedRole.toLowerCase()}Avatar`;
+  const roleLabelKey = roleLabelKeyFor(normalizedRole);
 
   const closeMessage = () => {
     setAvatarMessageDismissed(window.sessionStorage, true);
@@ -95,13 +136,8 @@ export function MiniAvatarAssistant({
       neutral={!detectedTime || status !== "ready"}
     />
   );
-  const isEmbedded = variant === "embedded";
-  const assistantSurfaceClass = isEmbedded
-    ? "mini-avatar-assistant--embedded border-transparent p-0"
-    : "border p-3 sm:p-4";
-  const openAvatarClass = isEmbedded
-    ? "h-20 w-20 rounded-[24px] sm:h-24 sm:w-24"
-    : "h-16 w-16 rounded-[20px] sm:h-20 sm:w-20";
+  const assistantSurfaceClass = surfaceClassFor(variant);
+  const openAvatarClass = openAvatarClassFor(variant);
 
   return (
     <section
@@ -117,7 +153,7 @@ export function MiniAvatarAssistant({
             </span>
             {typeof selection.count === "number" && selection.count > 0 ? (
               <span className={`avatar-count-badge avatar-count-badge--${messageTone} absolute end-1.5 top-1.5 inline-flex min-w-6 items-center justify-center rounded-lg px-1.5 py-1 text-[10px] font-bold text-white shadow-sm`} aria-hidden="true">
-                {selection.count > 99 ? "99+" : selection.count}
+                {countLabel(selection.count)}
               </span>
             ) : null}
           </div>

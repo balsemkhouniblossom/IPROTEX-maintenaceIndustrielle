@@ -95,6 +95,36 @@ const emptyMetadataForm = {
   emplacement: "",
 };
 
+type CreateStockForm = typeof emptyCreateForm;
+type MetadataStockForm = typeof emptyMetadataForm;
+
+function metadataPayload(form: MetadataStockForm) {
+  return {
+    seuil_alerte_stock: optionalNumber(form.seuil_alerte_stock),
+    quantite_minimale: optionalNumber(form.quantite_minimale),
+    emplacement: optionalText(form.emplacement),
+  };
+}
+
+function createStockPayload(form: CreateStockForm, initialQuantity: number) {
+  return {
+    stock_id: form.stock_id.trim(),
+    part_id: form.part_id,
+    quantite_en_stock: initialQuantity,
+    seuil_alerte_stock: optionalNumber(form.seuil_alerte_stock),
+    quantite_minimale: optionalNumber(form.quantite_minimale),
+    emplacement: optionalText(form.emplacement),
+  };
+}
+
+function optionalNumber(value: string): number | undefined {
+  return value ? Number(value) : undefined;
+}
+
+function optionalText(value: string): string | undefined {
+  return value.trim() || undefined;
+}
+
 export default function StocksPage() {
   const t = useTranslations("stocks");
   const tCommon = useTranslations("common");
@@ -179,9 +209,7 @@ export default function StocksPage() {
       setSubmitting(true);
       try {
         await apiService.updateStock(editingStock._id, {
-          seuil_alerte_stock: metadataForm.seuil_alerte_stock ? Number(metadataForm.seuil_alerte_stock) : undefined,
-          quantite_minimale: metadataForm.quantite_minimale ? Number(metadataForm.quantite_minimale) : undefined,
-          emplacement: metadataForm.emplacement.trim() || undefined,
+          ...metadataPayload(metadataForm),
         });
         showNotification("success", t("notifications.updateSuccess"));
         setShowFormModal(false);
@@ -211,14 +239,7 @@ export default function StocksPage() {
 
     setSubmitting(true);
     try {
-      await apiService.createStock({
-        stock_id: createForm.stock_id.trim(),
-        part_id: createForm.part_id,
-        quantite_en_stock: initialQuantity,
-        seuil_alerte_stock: createForm.seuil_alerte_stock ? Number(createForm.seuil_alerte_stock) : undefined,
-        quantite_minimale: createForm.quantite_minimale ? Number(createForm.quantite_minimale) : undefined,
-        emplacement: createForm.emplacement.trim() || undefined,
-      });
+      await apiService.createStock(createStockPayload(createForm, initialQuantity));
       showNotification("success", t("notifications.createSuccess"));
       setShowFormModal(false);
       await loadData();
@@ -324,6 +345,9 @@ export default function StocksPage() {
     () => searchableItems.filter((item) => matchesDynamicSearch(item, searchTerm, selectedSearchField)),
     [searchableItems, searchTerm, selectedSearchField],
   );
+  const submitLabel = editingStock
+    ? t("actions.update", { default: "Update" })
+    : t("actions.create", { default: "Create" });
 
   return (
     <DashboardLayout title={t("title", { default: "Stocks" })}>
@@ -564,7 +588,7 @@ export default function StocksPage() {
               {t("actions.cancel", { default: "Cancel" })}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? tCommon("saving") : editingStock ? t("actions.update", { default: "Update" }) : t("actions.create", { default: "Create" })}
+              {submitting ? tCommon("saving") : submitLabel}
             </button>
           </div>
         </form>

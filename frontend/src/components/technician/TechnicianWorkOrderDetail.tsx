@@ -34,6 +34,27 @@ type AvailablePart = {
     ref_constructeur?: string;
   };
 };
+
+function apiErrorMessage(error: unknown, fallback: string): string {
+  return (
+    (error as { response?: { data?: { message?: string } } })?.response?.data
+      ?.message || fallback
+  );
+}
+
+function formatMachineValue(
+  machine: Record<string, unknown>,
+  key: string,
+  locale: string,
+): string {
+  const value = machine[key];
+  if (!value) return "—";
+  if (key === "installation_date") {
+    return new Date(String(value)).toLocaleDateString(locale);
+  }
+  return String(value);
+}
+
 export default function TechnicianWorkOrderDetail(props: { id: string }) {
   return (
     <ErrorBoundary
@@ -77,8 +98,8 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
         description_action: d.data.report?.description_action || "",
         etat_final: d.data.report?.etat_final || "",
       });
-    } catch (e: any) {
-      setError(e?.response?.data?.message || t("errors.load"));
+    } catch (error: unknown) {
+      setError(apiErrorMessage(error, t("errors.load")));
     } finally {
       setLoading(false);
     }
@@ -97,8 +118,8 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
       // no other way to learn its snapshot is now stale.
       invalidateList(LIST_EVENTS.workOrders);
       await load();
-    } catch (e: any) {
-      setError(e?.response?.data?.message || t("errors.update"));
+    } catch (error: unknown) {
+      setError(apiErrorMessage(error, t("errors.update")));
     } finally {
       setSaving(false);
     }
@@ -125,7 +146,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
       </ProtectedRoute>
     );
   const wo = detail.workOrder;
-  const machine =
+  const machine: Record<string, any> =
     wo.machine_id && typeof wo.machine_id === "object" ? wo.machine_id : {};
   const status = wo.status;
   const statusKey = `status.${status}`;
@@ -236,18 +257,12 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                 "model",
                 "location",
                 "status",
-                "installation_date",
                 "poids_kg",
+                "installation_date",
               ].map((key) => (
                 <div key={key}>
                   <dt className="text-slate-500">{t(`machine.${key}`)}</dt>
-                  <dd>
-                    {machine[key]
-                      ? key === "installation_date"
-                        ? new Date(machine[key]).toLocaleDateString(locale)
-                        : String(machine[key])
-                      : "—"}
-                  </dd>
+                  <dd>{formatMachineValue(machine, key, locale)}</dd>
                 </div>
               ))}
               <div>

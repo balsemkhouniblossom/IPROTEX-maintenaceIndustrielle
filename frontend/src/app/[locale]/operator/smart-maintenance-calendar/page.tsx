@@ -162,6 +162,159 @@ function resetFilters(): FilterState {
   };
 }
 
+function buildMachineOptions(
+  machineFilterOptions: SelectOption[],
+  events: CalendarEvent[],
+  machineTypeId: string,
+): SelectOption[] {
+  const options =
+    machineFilterOptions.length > 0
+      ? machineFilterOptions
+      : machineOptionsFromEvents(events);
+
+  if (!machineTypeId) return options;
+  return options.filter((machine) => machine.machineTypeId === machineTypeId);
+}
+
+function machineOptionsFromEvents(events: CalendarEvent[]): SelectOption[] {
+  const map = new Map<string, SelectOption>();
+  events.forEach((event) => {
+    map.set(event.machine.id, {
+      id: event.machine.id,
+      label: event.machine.code || event.machine.id,
+      machineTypeId: event.machine.typeId,
+    });
+  });
+  return Array.from(map.values());
+}
+
+function buildMachineTypeOptions(
+  machineTypeFilterOptions: SelectOption[],
+  events: CalendarEvent[],
+): SelectOption[] {
+  if (machineTypeFilterOptions.length > 0) return machineTypeFilterOptions;
+
+  const map = new Map<string, string>();
+  events.forEach((event) => {
+    if (event.machine.typeId && event.machine.typeName) {
+      map.set(event.machine.typeId, event.machine.typeName);
+    }
+  });
+  return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
+}
+
+function isEventWaitingValidation(event: CalendarEvent): boolean {
+  return event.status === "waiting_validation";
+}
+
+function isEventCompleted(event: CalendarEvent): boolean {
+  return event.status === "completed" || event.status === "validated";
+}
+
+function eventDueTime(event: CalendarEvent): number | null {
+  const due = new Date(event.dueDate);
+  if (Number.isNaN(due.getTime())) return null;
+  return startOfDay(due).getTime();
+}
+
+function isEventOverdue(event: CalendarEvent): boolean {
+  if (isEventCompleted(event) || isEventWaitingValidation(event)) return false;
+  const dueTime = eventDueTime(event);
+  return dueTime !== null && dueTime < startOfDay(new Date()).getTime();
+}
+
+function isEventDueToday(event: CalendarEvent): boolean {
+  if (isEventCompleted(event) || isEventWaitingValidation(event)) return false;
+  const dueTime = eventDueTime(event);
+  return dueTime !== null && dueTime === startOfDay(new Date()).getTime();
+}
+
+function urgencyRank(event: CalendarEvent): number {
+  const priority = (event.priority || "").toLowerCase();
+  if (isEventOverdue(event)) return 0;
+  if (priority.includes("urgent") || priority.includes("high")) return 1;
+  if (isEventDueToday(event)) return 2;
+  if (event.status === "in_progress") return 3;
+  return 4;
+}
+
+function sortActionEvents(items: CalendarEvent[]): CalendarEvent[] {
+  return [...items].sort((a, b) => {
+    const urgencyDelta = urgencyRank(a) - urgencyRank(b);
+    if (urgencyDelta !== 0) return urgencyDelta;
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+  });
+}
+
+function eventStatusLabel(
+  event: CalendarEvent,
+  tCalendar: ReturnType<typeof useTranslations>,
+): string {
+  if (isEventOverdue(event)) return tCalendar("overdue");
+  if (isEventDueToday(event)) return tCalendar("todayLabel");
+  const statusLabels: Record<string, string> = {
+    in_progress: tCalendar("inProgress"),
+    validated: tCalendar("validated"),
+    completed: tCalendar("completed"),
+    waiting_validation: tCalendar("waitingValidation"),
+  };
+  return statusLabels[event.status] ?? event.status ?? tCalendar("scheduled");
+}
+
+function primaryActionLabel(
+  event: CalendarEvent,
+  tCalendar: ReturnType<typeof useTranslations>,
+): string {
+  if (event.status === "in_progress") return tCalendar("continueAction");
+  if (isEventWaitingValidation(event) || isEventCompleted(event)) {
+    return tCalendar("viewDetailsAction");
+  }
+  return tCalendar("startTaskAction");
+}
+
+function statusPillClass(event: CalendarEvent): string {
+  if (isEventOverdue(event)) return "border-red-200 bg-red-50 text-red-700";
+  if (isEventDueToday(event)) return "border-amber-200 bg-amber-50 text-amber-700";
+  const statusClasses: Record<string, string> = {
+    waiting_validation: "border-violet-200 bg-violet-50 text-violet-700",
+    completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    validated: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    in_progress: "border-blue-200 bg-blue-50 text-blue-700",
+  };
+  return statusClasses[event.status] ?? "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function buildActionSections(
+  events: CalendarEvent[],
+  tCalendar: ReturnType<typeof useTranslations>,
+) {
+  return [
+    {
+      key: "due-today",
+      title: tCalendar("dueTodaySection"),
+      events: sortActionEvents(events.filter((event) => isEventOverdue(event) || isEventDueToday(event))),
+    },
+    {
+      key: "upcoming",
+      title: tCalendar("upcomingSection"),
+      events: sortActionEvents(
+        events.filter(
+          (event) =>
+            !isEventOverdue(event) &&
+            !isEventDueToday(event) &&
+            !isEventWaitingValidation(event) &&
+            !isEventCompleted(event),
+        ),
+      ),
+    },
+    {
+      key: "waiting-validation",
+      title: tCalendar("waitingValidation"),
+      events: sortActionEvents(events.filter(isEventWaitingValidation)),
+    },
+  ];
+}
+
 export default function SmartMaintenanceCalendarPage() {
   const tCalendar = useTranslations("dashboard.operator.smartCalendar");
   const tCommon = useTranslations("common");
@@ -186,37 +339,15 @@ export default function SmartMaintenanceCalendarPage() {
   const [machineTypeFilterOptions, setMachineTypeFilterOptions] = useState<SelectOption[]>([]);
   const [filters, setFilters] = useState<FilterState>(resetFilters);
 
-  const machineOptions = useMemo(() => {
-    if (machineFilterOptions.length > 0) {
-      if (!filters.machineTypeId) return machineFilterOptions;
-      return machineFilterOptions.filter((machine) => machine.machineTypeId === filters.machineTypeId);
-    }
+  const machineOptions = useMemo(
+    () => buildMachineOptions(machineFilterOptions, events, filters.machineTypeId),
+    [events, filters.machineTypeId, machineFilterOptions],
+  );
 
-    const map = new Map<string, SelectOption>();
-    events.forEach((event) => {
-      map.set(event.machine.id, {
-        id: event.machine.id,
-        label: event.machine.code || event.machine.id,
-        machineTypeId: event.machine.typeId,
-      });
-    });
-
-    const eventMachines = Array.from(map.values());
-    if (!filters.machineTypeId) return eventMachines;
-    return eventMachines.filter((machine) => machine.machineTypeId === filters.machineTypeId);
-  }, [events, filters.machineTypeId, machineFilterOptions]);
-
-  const machineTypeOptions = useMemo(() => {
-    if (machineTypeFilterOptions.length > 0) return machineTypeFilterOptions;
-
-    const map = new Map<string, string>();
-    events.forEach((event) => {
-      if (event.machine.typeId && event.machine.typeName) {
-        map.set(event.machine.typeId, event.machine.typeName);
-      }
-    });
-    return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
-  }, [events, machineTypeFilterOptions]);
+  const machineTypeOptions = useMemo(
+    () => buildMachineTypeOptions(machineTypeFilterOptions, events),
+    [events, machineTypeFilterOptions],
+  );
 
   useEffect(() => {
     async function loadFilterOptions() {
@@ -381,70 +512,6 @@ export default function SmartMaintenanceCalendarPage() {
     window.open(firstManual.filePath, "_blank", "noopener,noreferrer");
   }
 
-  function isEventWaitingValidation(event: CalendarEvent): boolean {
-    return event.status === "waiting_validation";
-  }
-
-  function isEventCompleted(event: CalendarEvent): boolean {
-    return event.status === "completed" || event.status === "validated";
-  }
-
-  function isEventOverdue(event: CalendarEvent): boolean {
-    if (isEventCompleted(event) || isEventWaitingValidation(event)) return false;
-    const due = new Date(event.dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    return startOfDay(due).getTime() < startOfDay(new Date()).getTime();
-  }
-
-  function isEventDueToday(event: CalendarEvent): boolean {
-    if (isEventCompleted(event) || isEventWaitingValidation(event)) return false;
-    const due = new Date(event.dueDate);
-    if (Number.isNaN(due.getTime())) return false;
-    return startOfDay(due).getTime() === startOfDay(new Date()).getTime();
-  }
-
-  function urgencyRank(event: CalendarEvent): number {
-    const priority = (event.priority || "").toLowerCase();
-    if (isEventOverdue(event)) return 0;
-    if (priority.includes("urgent") || priority.includes("high")) return 1;
-    if (isEventDueToday(event)) return 2;
-    if (event.status === "in_progress") return 3;
-    return 4;
-  }
-
-  function sortActionEvents(items: CalendarEvent[]): CalendarEvent[] {
-    return [...items].sort((a, b) => {
-      const urgencyDelta = urgencyRank(a) - urgencyRank(b);
-      if (urgencyDelta !== 0) return urgencyDelta;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    });
-  }
-
-  function eventStatusLabel(event: CalendarEvent): string {
-    if (isEventOverdue(event)) return tCalendar("overdue");
-    if (isEventDueToday(event)) return tCalendar("todayLabel");
-    if (event.status === "in_progress") return tCalendar("inProgress");
-    if (event.status === "validated") return tCalendar("validated");
-    if (event.status === "completed") return tCalendar("completed");
-    if (event.status === "waiting_validation") return tCalendar("waitingValidation");
-    return event.status || tCalendar("scheduled");
-  }
-
-  function primaryActionLabel(event: CalendarEvent): string {
-    if (event.status === "in_progress") return tCalendar("continueAction");
-    if (isEventWaitingValidation(event) || isEventCompleted(event)) return tCalendar("viewDetailsAction");
-    return tCalendar("startTaskAction");
-  }
-
-  function statusPillClass(event: CalendarEvent): string {
-    if (isEventOverdue(event)) return "border-red-200 bg-red-50 text-red-700";
-    if (isEventDueToday(event)) return "border-amber-200 bg-amber-50 text-amber-700";
-    if (event.status === "waiting_validation") return "border-violet-200 bg-violet-50 text-violet-700";
-    if (event.status === "completed" || event.status === "validated") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    if (event.status === "in_progress") return "border-blue-200 bg-blue-50 text-blue-700";
-    return "border-slate-200 bg-slate-50 text-slate-700";
-  }
-
   function runPrimaryCardAction(event: CalendarEvent): void {
     if (event.status === "in_progress" || isEventWaitingValidation(event) || isEventCompleted(event)) {
       setSelectedEventId(event.workOrderId);
@@ -454,31 +521,7 @@ export default function SmartMaintenanceCalendarPage() {
     void quickStartEvent(event);
   }
 
-  const actionSections = [
-    {
-      key: "due-today",
-      title: tCalendar("dueTodaySection"),
-      events: sortActionEvents(events.filter((event) => isEventOverdue(event) || isEventDueToday(event))),
-    },
-    {
-      key: "upcoming",
-      title: tCalendar("upcomingSection"),
-      events: sortActionEvents(
-        events.filter(
-          (event) =>
-            !isEventOverdue(event) &&
-            !isEventDueToday(event) &&
-            !isEventWaitingValidation(event) &&
-            !isEventCompleted(event),
-        ),
-      ),
-    },
-    {
-      key: "waiting-validation",
-      title: tCalendar("waitingValidation"),
-      events: sortActionEvents(events.filter(isEventWaitingValidation)),
-    },
-  ];
+  const actionSections = buildActionSections(events, tCalendar);
 
   return (
     <ProtectedRoute requiredRole="operator">
@@ -658,7 +701,7 @@ export default function SmartMaintenanceCalendarPage() {
                               <div className="mt-1 text-lg font-bold leading-snug text-slate-900">{event.title}</div>
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusPillClass(event)}`}>
-                                  {eventStatusLabel(event)}
+                                  {eventStatusLabel(event, tCalendar)}
                                 </span>
                                 <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
                                   {event.priority || tCalendar("noPriority")}
@@ -675,7 +718,7 @@ export default function SmartMaintenanceCalendarPage() {
                               }}
                               className="shrink-0 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
                             >
-                              {primaryActionLabel(event)}
+                              {primaryActionLabel(event, tCalendar)}
                             </button>
                           </div>
                           <div className="mt-4 text-sm text-slate-600">

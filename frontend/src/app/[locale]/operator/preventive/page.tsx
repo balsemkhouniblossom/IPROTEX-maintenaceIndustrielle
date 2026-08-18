@@ -25,19 +25,16 @@ import { PreventiveSubmissionActions } from "./components/PreventiveSubmissionAc
 import { PreventiveExecutionForm } from "./components/PreventiveExecutionForm";
 import { PreventiveReportsSection } from "./components/PreventiveReportsSection";
 
+const PLAN_STATE_LABEL_KEYS: Record<string, string> = {
+  not_scheduled: "notScheduled",
+  due_today: "dueToday",
+  due_soon: "dueSoon",
+  waiting_validation: "waitingValidation",
+  in_progress: "inProgress",
+};
+
 function formatPlanStateLabel(state: string, t: ReturnType<typeof useTranslations>): string {
-  const key =
-    state === "not_scheduled"
-      ? "notScheduled"
-      : state === "due_today"
-        ? "dueToday"
-        : state === "due_soon"
-          ? "dueSoon"
-          : state === "waiting_validation"
-            ? "waitingValidation"
-            : state === "in_progress"
-              ? "inProgress"
-              : state;
+  const key = PLAN_STATE_LABEL_KEYS[state] ?? state;
   try {
     return t(`lifecycle.${key}`);
   } catch {

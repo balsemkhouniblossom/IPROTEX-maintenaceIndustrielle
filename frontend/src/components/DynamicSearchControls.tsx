@@ -38,7 +38,7 @@ function clearSearchHighlights(): void {
     const parent = highlight.parentNode;
     if (!parent) return;
 
-    parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight);
+    highlight.replaceWith(document.createTextNode(highlight.textContent || ''));
     parent.normalize();
   });
 }
@@ -88,7 +88,7 @@ function applyHighlightToTextNode(textNode: Text, expression: RegExp): void {
     return;
   }
 
-  parent.replaceChild(fragment, textNode);
+  textNode.replaceWith(fragment);
 }
 
 function highlightTableText(searchTerm: string): void {

@@ -103,6 +103,34 @@ function machineRefLabel(machine: MachineRef): string {
   return displayText(machine?.machine_id, "");
 }
 
+function responseItems<T>(
+  value: unknown,
+  keys: Array<"data" | "documents" | "items" | "machines">,
+): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (!value || typeof value !== "object") return [];
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const items = record[key];
+    if (Array.isArray(items)) return items as T[];
+  }
+
+  return [];
+}
+
+function parseTags(tagsText: string): string[] {
+  return tagsText
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function tagsToText(tags?: string[]): string {
+  if (!tags || tags.length === 0) return "";
+  return tags.join(", ");
+}
+
 export default function DocumentsPage() {
   const t = useTranslations("documents");
   const tCommon = useTranslations("common");
@@ -167,18 +195,6 @@ export default function DocumentsPage() {
     });
   }
 
-  function parseTags(tagsText: string): string[] {
-    return tagsText
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  function tagsToText(tags?: string[]): string {
-    if (!tags || tags.length === 0) return "";
-    return tags.join(", ");
-  }
-
   async function loadData() {
     try {
       setLoading(true);
@@ -188,27 +204,14 @@ export default function DocumentsPage() {
       ]);
 
       setDocuments(
-        Array.isArray(docsRes.data)
-          ? docsRes.data
-          : Array.isArray(docsRes.data?.data)
-            ? docsRes.data.data
-            : Array.isArray(docsRes.data?.documents)
-              ? docsRes.data.documents
-              : Array.isArray(docsRes.data?.items)
-                ? docsRes.data.items
-                : []
+        responseItems<DocumentType>(docsRes.data, [
+          "data",
+          "documents",
+          "items",
+        ]),
       );
-
       setMachines(
-        Array.isArray(machinesRes.data)
-          ? machinesRes.data
-          : Array.isArray(machinesRes.data?.data)
-            ? machinesRes.data.data
-            : Array.isArray(machinesRes.data?.machines)
-              ? machinesRes.data.machines
-              : Array.isArray(machinesRes.data?.items)
-                ? machinesRes.data.items
-                : []
+        responseItems<Machine>(machinesRes.data, ["data", "machines", "items"]),
       );
     } catch (error) {
       console.error("Error loading documents:", error);
