@@ -1,13 +1,51 @@
 import { useTranslations } from 'next-intl';
 import { ApprovalStatus } from '@/services/userApprovals';
 
+type UserTranslator = ReturnType<typeof useTranslations>;
+
+type RoleBadgeProps = Readonly<{
+  role?: string;
+  tUsers: UserTranslator;
+}>;
+
+type VerificationBadgeProps = Readonly<{
+  verified?: boolean;
+  tUsers: UserTranslator;
+}>;
+
+type ApprovalStatusBadgeProps = Readonly<{
+  status?: ApprovalStatus;
+  tUsers: UserTranslator;
+}>;
+
+function roleBadgeClassName(role: string) {
+  if (role === 'admin') {
+    return 'bg-violet-100 text-violet-800';
+  }
+
+  return role === 'technician'
+    ? 'bg-blue-100 text-blue-800'
+    : 'bg-slate-100 text-slate-800';
+}
+
+function approvalStatusClassName(status?: ApprovalStatus) {
+  if (status === 'approved') {
+    return 'bg-green-100 text-green-800';
+  }
+
+  if (status === 'rejected') {
+    return 'bg-red-100 text-red-800';
+  }
+
+  return status === 'pending'
+    ? 'bg-amber-100 text-amber-800'
+    : 'bg-slate-100 text-slate-700';
+}
+
 export function RoleBadge({
   role,
   tUsers,
-}: {
-  role?: string;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: RoleBadgeProps) {
   if (role !== 'operator' && role !== 'technician' && role !== 'admin') {
     return (
       <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
@@ -16,15 +54,8 @@ export function RoleBadge({
     );
   }
 
-  const className =
-    role === 'admin'
-      ? 'bg-violet-100 text-violet-800'
-      : role === 'technician'
-        ? 'bg-blue-100 text-blue-800'
-        : 'bg-slate-100 text-slate-800';
-
   return (
-    <span className={`rounded-full px-2 py-1 text-xs font-medium ${className}`}>
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${roleBadgeClassName(role)}`}>
       {tUsers(`roles.${role}`)}
     </span>
   );
@@ -33,10 +64,7 @@ export function RoleBadge({
 export function VerificationBadge({
   verified,
   tUsers,
-}: {
-  verified?: boolean;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: VerificationBadgeProps) {
   return (
     <span
       className={`rounded-full px-2 py-1 text-xs font-medium ${
@@ -55,24 +83,13 @@ export function VerificationBadge({
 export function ApprovalStatusBadge({
   status,
   tUsers,
-}: {
-  status?: ApprovalStatus;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
-  const className =
-    status === 'approved'
-      ? 'bg-green-100 text-green-800'
-      : status === 'rejected'
-        ? 'bg-red-100 text-red-800'
-        : status === 'pending'
-          ? 'bg-amber-100 text-amber-800'
-          : 'bg-slate-100 text-slate-700';
+}: ApprovalStatusBadgeProps) {
   const label = status
     ? tUsers(`approvals.status.${status}`)
     : tUsers('approvals.status.legacy');
 
   return (
-    <span className={`rounded-full px-2 py-1 text-xs font-medium ${className}`}>
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${approvalStatusClassName(status)}`}>
       {label}
     </span>
   );

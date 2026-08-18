@@ -1,6 +1,6 @@
 require('../dist/load-env.js');
 
-const mongoose = require('mongoose');
+const { runMaintenanceSync, syncBraidingMaintenancePlans } = require('./lib/maintenance-plan-sync');
 
 const MACHINE_TYPE_NAME = 'Braiding';
 const SOURCE_TITLE = 'Plan_maintenance_tresseuses_EN.xlsx';
@@ -305,141 +305,11 @@ const planTemplates = [
   },
 ];
 
-function slugify(value) {
-  let slug = '';
-  let pendingSeparator = false;
-
-  for (const character of String(value).normalize('NFD').toUpperCase()) {
-    const code = character.codePointAt(0);
-    if (code === undefined || (code >= 0x0300 && code <= 0x036f)) {
-      continue;
-    }
-
-    const isDigit = code >= 48 && code <= 57;
-    const isUppercaseLetter = code >= 65 && code <= 90;
-
-    if (isDigit || isUppercaseLetter) {
-      if (pendingSeparator && slug) {
-        slug += '-';
-      }
-      slug += character;
-      pendingSeparator = false;
-    } else if (slug) {
-      pendingSeparator = true;
-    }
-  }
-
-  return slug;
-}
-
-async function main() {
-  await mongoose.connect(process.env.MONGODB_URI);
-  const db = mongoose.connection.db;
-
-  const machineType = await db.collection('machinetypes').findOne({ name: MACHINE_TYPE_NAME });
-  if (!machineType) {
-    throw new Error(`Machine type not found: ${MACHINE_TYPE_NAME}`);
-  }
-
-  const machines = await db.collection('machines').find({ type_id: String(machineType._id) }).toArray();
-  if (machines.length === 0) {
-    throw new Error(`No machines found for machine type: ${MACHINE_TYPE_NAME}`);
-  }
-
-  const moduleTypeIds = new Map();
-  let moduleTypeUpdates = 0;
-  for (const moduleType of moduleTypes) {
-    const mod_type_id = `MT-BRAID-${moduleType.key}`;
-    await db.collection('moduletypes').updateOne(
-      { mod_type_id },
-      {
-        $set: {
-          mod_type_id,
-          type_id: String(machineType._id),
-          nom_module: moduleType.nom_module,
-          categorie_module: moduleType.categorie_module,
-        },
-      },
-      { upsert: true },
-    );
-
-    const saved = await db.collection('moduletypes').findOne({ mod_type_id }, { projection: { _id: 1 } });
-    moduleTypeIds.set(moduleType.key, saved._id);
-    moduleTypeUpdates += 1;
-  }
-
-  const moduleIds = new Map();
-  let moduleUpdates = 0;
-  for (const machine of machines) {
-    for (const moduleType of moduleTypes) {
-      const module_id = `MOD-BRAID-${slugify(machine.machine_id)}-${moduleType.key}`;
-      await db.collection('modules').updateOne(
-        { module_id },
-        {
-          $set: {
-            module_id,
-            machine_id: String(machine._id),
-            mod_type_id: String(moduleTypeIds.get(moduleType.key)),
-            localisation: moduleType.nom_module,
-          },
-        },
-        { upsert: true },
-      );
-      const saved = await db.collection('modules').findOne({ module_id }, { projection: { _id: 1 } });
-      moduleIds.set(`${machine._id}:${moduleType.key}`, String(saved._id));
-      moduleUpdates += 1;
-    }
-  }
-
-  let planUpdates = 0;
-  for (const machine of machines) {
-    for (const template of planTemplates) {
-      const module_id = moduleIds.get(`${machine._id}:${template.moduleKey}`);
-      const plan_id = `MP-BRAID-${slugify(machine.machine_id)}-${template.code}-${template.moduleKey}`;
-      await db.collection('maintenanceplans').updateOne(
-        { plan_id },
-        {
-          $set: {
-            plan_id,
-            module_id,
-            type_maintenance: 'preventive',
-            frequence: template.frequence,
-            unite_frequence: template.unite_frequence,
-            instruction: template.instruction,
-            maintenance_code: template.code,
-            responsable: template.responsable,
-            frequence_label: template.frequence_label,
-            huile_graisse: template.huile_graisse,
-            documentation: template.documentation,
-            source_title: SOURCE_TITLE,
-            valid_from: '08.08.2011',
-            created_by: 'G. Fleischmann',
-            approved_by: 'W. Rödel',
-          },
-        },
-        { upsert: true },
-      );
-      planUpdates += 1;
-    }
-  }
-
-  const totalEnglishPlans = await db.collection('maintenanceplans').countDocuments({ source_title: SOURCE_TITLE });
-  console.log(JSON.stringify({
-    machineType: machineType.name,
-    machineCount: machines.length,
-    moduleTypeUpdates,
-    moduleUpdates,
-    planUpdates,
-    totalEnglishPlans,
-  }, null, 2));
-
-  await mongoose.disconnect();
-}
-
-main().catch(async (error) => {
-  console.error(error);
-  try {
-    await mongoose.disconnect();
-  } catch {}
-  process.exit(1);
+runMaintenanceSync(syncBraidingMaintenancePlans, {
+  machineTypeName: MACHINE_TYPE_NAME,
+  sourceTitle: SOURCE_TITLE,
+  moduleTypes,
+  planTemplates,
+  validFrom: '08.08.2011',
+  approvedBy: 'W. R\u00f6del',
 });

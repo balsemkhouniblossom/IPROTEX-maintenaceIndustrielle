@@ -1,6 +1,6 @@
 require('../dist/load-env.js');
 
-const mongoose = require('mongoose');
+const { runMaintenanceSync, syncBraidingMaintenancePlans } = require('./lib/maintenance-plan-sync');
 
 const BRAIDING_MACHINE_TYPE_NAME = 'Braiding';
 const SOURCE_TITLE = 'FM 6-5e Stand: 02.11.2016 Wartungsplan Flechtmaschinen/Plan de maintenance tresseuse';
@@ -373,179 +373,24 @@ const planTemplates = [
   },
 ];
 
-function slugify(value) {
-  let slug = '';
-  let pendingSeparator = false;
-
-  for (const character of String(value).normalize('NFD').toUpperCase()) {
-    const code = character.codePointAt(0);
-    if (code === undefined || (code >= 0x0300 && code <= 0x036f)) {
-      continue;
-    }
-
-    const isDigit = code >= 48 && code <= 57;
-    const isUppercaseLetter = code >= 65 && code <= 90;
-
-    if (isDigit || isUppercaseLetter) {
-      if (pendingSeparator && slug) {
-        slug += '-';
-      }
-      slug += character;
-      pendingSeparator = false;
-    } else if (slug) {
-      pendingSeparator = true;
-    }
-  }
-
-  return slug;
-}
-
-async function main() {
-  await mongoose.connect(process.env.MONGODB_URI);
-  const db = mongoose.connection.db;
-
-  const machineType = await db.collection('machinetypes').findOne({ name: BRAIDING_MACHINE_TYPE_NAME });
-
-  if (!machineType) {
-    throw new Error(`Machine type not found: ${BRAIDING_MACHINE_TYPE_NAME}`);
-  }
-
-  const machines = await db.collection('machines').find({ type_id: String(machineType._id) }).toArray();
-
-  if (machines.length === 0) {
-    throw new Error(`No machines found for machine type: ${BRAIDING_MACHINE_TYPE_NAME}`);
-  }
-
-  let lubrifiantUpserts = 0;
-  for (const lubrifiant of lubrifiants) {
-    await db.collection('lubrifiants').updateOne(
-      { lubrifiant_id: lubrifiant.lubrifiant_id },
-      { $set: lubrifiant },
-      { upsert: true },
-    );
-    lubrifiantUpserts += 1;
-  }
-
-  const moduleTypeIds = new Map();
-  let moduleTypeUpserts = 0;
-  for (const moduleType of moduleTypes) {
-    const mod_type_id = `MT-BRAID-${moduleType.key}`;
-    await db.collection('moduletypes').updateOne(
-      { mod_type_id },
+runMaintenanceSync(syncBraidingMaintenancePlans, {
+  machineTypeName: BRAIDING_MACHINE_TYPE_NAME,
+  sourceTitle: SOURCE_TITLE,
+  lubrifiants,
+  moduleTypes,
+  planTemplates,
+  validFrom: '08.08.2011',
+  approvedBy: 'W.R\u00f6del',
+  setOnInsert: {
+    status: 'active',
+    version: 1,
+    lifecycle_history: [
       {
-        $set: {
-          mod_type_id,
-          type_id: String(machineType._id),
-          nom_module: moduleType.nom_module,
-          categorie_module: moduleType.categorie_module,
-        },
+        action: 'created',
+        to_status: 'active',
+        reason: 'Bulk-imported from historical maintenance plan data',
+        at: new Date(),
       },
-      { upsert: true },
-    );
-
-    const saved = await db.collection('moduletypes').findOne({ mod_type_id }, { projection: { _id: 1 } });
-    moduleTypeIds.set(moduleType.key, saved._id);
-    moduleTypeUpserts += 1;
-  }
-
-  const moduleIds = new Map();
-  let moduleUpserts = 0;
-  for (const machine of machines) {
-    for (const moduleType of moduleTypes) {
-      const module_id = `MOD-BRAID-${slugify(machine.machine_id)}-${moduleType.key}`;
-      await db.collection('modules').updateOne(
-        { module_id },
-        {
-          $set: {
-            module_id,
-            machine_id: String(machine._id),
-            mod_type_id: String(moduleTypeIds.get(moduleType.key)),
-            localisation: moduleType.nom_module,
-          },
-        },
-        { upsert: true },
-      );
-
-      const saved = await db.collection('modules').findOne({ module_id }, { projection: { _id: 1 } });
-      moduleIds.set(`${machine._id}:${moduleType.key}`, String(saved._id));
-      moduleUpserts += 1;
-    }
-  }
-
-  let planUpserts = 0;
-  for (const machine of machines) {
-    for (const planTemplate of planTemplates) {
-      const module_id = moduleIds.get(`${machine._id}:${planTemplate.moduleKey}`);
-      const plan_id = `MP-BRAID-${slugify(machine.machine_id)}-${planTemplate.code}-${planTemplate.moduleKey}`;
-
-      await db.collection('maintenanceplans').updateOne(
-        { plan_id },
-        {
-          $set: {
-            plan_id,
-            module_id,
-            type_maintenance: 'preventive',
-            frequence: planTemplate.frequence,
-            unite_frequence: planTemplate.unite_frequence,
-            instruction: planTemplate.instruction,
-            maintenance_code: planTemplate.code,
-            responsable: planTemplate.responsable,
-            frequence_label: planTemplate.frequence_label,
-            huile_graisse: planTemplate.huile_graisse,
-            documentation: planTemplate.documentation,
-            source_title: SOURCE_TITLE,
-            valid_from: '08.08.2011',
-            created_by: 'G. Fleischmann',
-            approved_by: 'W.Rödel',
-          },
-          // Only stamped on first insert: these plans represent equipment
-          // already in service, so they start life Active (not Draft) —
-          // but re-running this script must never clobber a lifecycle
-          // change (pause/archive/etc.) an admin made since the import.
-          $setOnInsert: {
-            status: 'active',
-            version: 1,
-            lifecycle_history: [
-              {
-                action: 'created',
-                to_status: 'active',
-                reason: 'Bulk-imported from historical maintenance plan data',
-                at: new Date(),
-              },
-            ],
-          },
-        },
-        { upsert: true },
-      );
-      planUpserts += 1;
-    }
-  }
-
-  const maintenancePlanCount = await db.collection('maintenanceplans').countDocuments({ source_title: SOURCE_TITLE });
-
-  console.log(
-    JSON.stringify(
-      {
-        machineType: machineType.name,
-        machineCount: machines.length,
-        lubrifiantUpserts,
-        moduleTypeUpserts,
-        moduleUpserts,
-        planUpserts,
-        maintenancePlanCount,
-      },
-      null,
-      2,
-    ),
-  );
-
-  await mongoose.disconnect();
-}
-
-main().catch(async (error) => {
-  console.error(error);
-  try {
-    await mongoose.disconnect();
-  } catch {}
-  process.exit(1);
+    ],
+  },
 });

@@ -8,7 +8,7 @@ import { User, UserFormData } from '../types';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
-type UserFormModalProps = {
+type UserFormModalProps = Readonly<{
   isOpen: boolean;
   editingUser: User | null;
   formData: UserFormData;
@@ -23,13 +23,30 @@ type UserFormModalProps = {
   onFormDataChange: (data: UserFormData) => void;
   tUsers: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-};
+}>;
+
+function renderUserFormFallback(_error: Error, reset: () => void) {
+  return <WidgetErrorFallback onRetry={reset} />;
+}
+
+function submitButtonLabel(
+  submitting: boolean,
+  editingUser: User | null,
+  tUsers: ReturnType<typeof useTranslations>,
+  tCommon: ReturnType<typeof useTranslations>,
+) {
+  if (submitting) {
+    return tCommon('actions.saving');
+  }
+
+  return editingUser ? tUsers('actions.updateUser') : tUsers('actions.createUser');
+}
 
 export function UserFormModal(props: UserFormModalProps) {
   return (
     <ErrorBoundary
       boundaryName="user-form-modal"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
+      fallback={renderUserFormFallback}
     >
       <UserFormModalInner {...props} />
     </ErrorBoundary>
@@ -208,11 +225,7 @@ function UserFormModalInner(props: UserFormModalProps) {
             {tCommon('actions.cancel')}
           </button>
           <button type="submit" className="btn-primary" disabled={submitting}>
-            {submitting
-              ? tCommon('actions.saving')
-              : editingUser
-                ? tUsers('actions.updateUser')
-                : tUsers('actions.createUser')}
+            {submitButtonLabel(submitting, editingUser, tUsers, tCommon)}
           </button>
         </div>
       </form>

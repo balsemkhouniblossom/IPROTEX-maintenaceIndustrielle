@@ -3,6 +3,32 @@ import { Modal } from '@/components/Modal';
 import { ActionTarget, MAX_REJECTION_REASON_LENGTH } from '../types';
 import { RoleBadge } from './Badges';
 
+type ApprovalDialogProps = Readonly<{
+  target: ActionTarget;
+  reason: string;
+  reasonError: string;
+  loading: boolean;
+  onReasonChange: (reason: string) => void;
+  onClose: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  tUsers: ReturnType<typeof useTranslations>;
+}>;
+
+function confirmButtonLabel(
+  loading: boolean,
+  isReject: boolean,
+  tUsers: ReturnType<typeof useTranslations>,
+) {
+  if (loading) {
+    return tUsers('approvals.actions.processing');
+  }
+
+  return isReject
+    ? tUsers('approvals.actions.confirmReject')
+    : tUsers('approvals.actions.confirmApprove');
+}
+
 export function ApprovalDialog({
   target,
   reason,
@@ -13,17 +39,7 @@ export function ApprovalDialog({
   onApprove,
   onReject,
   tUsers,
-}: {
-  target: ActionTarget;
-  reason: string;
-  reasonError: string;
-  loading: boolean;
-  onReasonChange: (reason: string) => void;
-  onClose: () => void;
-  onApprove: () => void;
-  onReject: () => void;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: ApprovalDialogProps) {
   if (!target) return null;
   const isReject = target.type === 'reject';
   const remaining = MAX_REJECTION_REASON_LENGTH - reason.length;
@@ -91,11 +107,7 @@ export function ApprovalDialog({
             onClick={isReject ? onReject : onApprove}
             disabled={loading || invalidReason}
           >
-            {loading
-              ? tUsers('approvals.actions.processing')
-              : isReject
-                ? tUsers('approvals.actions.confirmReject')
-                : tUsers('approvals.actions.confirmApprove')}
+            {confirmButtonLabel(loading, isReject, tUsers)}
           </button>
         </div>
       </div>

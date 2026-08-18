@@ -13,6 +13,23 @@ import { getActionId, dateValueForView, formatDate } from '../utils';
 import { RoleBadge, VerificationBadge, ApprovalStatusBadge } from './Badges';
 import { UserIdentity } from './UserIdentity';
 
+type UserRowProps = Readonly<{
+  user: User;
+  view: ApprovalView;
+  rowActionId: string | null;
+  dateFormatter: Intl.DateTimeFormat;
+  onApprove: (user: User) => void;
+  onReject: (user: User) => void;
+  onEdit: (user: User) => void;
+  onDelete: (id?: string) => void;
+  onHistory: (user: User) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+  tUsers: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
+}>;
+
 export function UserRow({
   user,
   view,
@@ -28,25 +45,89 @@ export function UserRow({
   onToggleSelect,
   tUsers,
   tCommon,
-}: {
-  user: User;
-  view: ApprovalView;
-  rowActionId: string | null;
-  dateFormatter: Intl.DateTimeFormat;
-  onApprove: (user: User) => void;
-  onReject: (user: User) => void;
-  onEdit: (user: User) => void;
-  onDelete: (id?: string) => void;
-  onHistory: (user: User) => void;
-  selectable?: boolean;
-  selected?: boolean;
-  onToggleSelect?: () => void;
-  tUsers: ReturnType<typeof useTranslations>;
-  tCommon: ReturnType<typeof useTranslations>;
-}) {
+}: UserRowProps) {
   const actionId = getActionId(user);
   const actionLoading = rowActionId === actionId;
   const approveDisabled = actionLoading || !user.is_verified;
+  let actionContent = (
+    <span className="text-sm text-slate-500">
+      {tCommon('notAvailable')}
+    </span>
+  );
+
+  if (view === 'pending') {
+    actionContent = (
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onApprove(user)}
+          disabled={approveDisabled}
+          title={
+            !user.is_verified
+              ? tUsers('approvals.mustVerifyBeforeApproval')
+              : tUsers('approvals.actions.approve')
+          }
+          className="btn-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <CheckIcon className="h-4 w-4 shrink-0" />
+          {actionLoading
+            ? tUsers('approvals.actions.processing')
+            : tUsers('approvals.actions.approve')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onReject(user)}
+          disabled={actionLoading}
+          className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <XMarkIcon className="h-4 w-4 shrink-0" />
+          {tUsers('approvals.actions.reject')}
+        </button>
+        {!user.is_verified && (
+          <span className="max-w-48 whitespace-normal text-xs leading-snug text-amber-700">
+            {tUsers('approvals.mustVerifyBeforeApproval')}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (view === 'all') {
+    actionContent = (
+      <div className="flex gap-2">
+        <button
+          type="button"
+          aria-label={tUsers('actions.viewDetails')}
+          title={tUsers('actions.viewDetails')}
+          className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+          onClick={() => onHistory(user)}
+        >
+          <EyeIcon className="h-4 w-4 shrink-0" />
+          <span>{tUsers('actions.viewDetails')}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={tUsers('actions.edit')}
+          title={tUsers('actions.edit')}
+          className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+          onClick={() => onEdit(user)}
+        >
+          <PencilIcon className="h-4 w-4 shrink-0" />
+          <span>{tUsers('actions.edit')}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={tUsers('actions.delete')}
+          title={tUsers('actions.delete')}
+          className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+          onClick={() => onDelete(getActionId(user))}
+        >
+          <TrashIcon className="h-4 w-4 shrink-0" />
+          <span>{tUsers('actions.delete')}</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <tr aria-selected={selectable ? selected : undefined}>
@@ -126,79 +207,7 @@ export function UserRow({
           </td>
         </>
       )}
-      <td>
-        {view === 'pending' ? (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => onApprove(user)}
-              disabled={approveDisabled}
-              title={
-                !user.is_verified
-                  ? tUsers('approvals.mustVerifyBeforeApproval')
-                  : tUsers('approvals.actions.approve')
-              }
-              className="btn-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <CheckIcon className="h-4 w-4 shrink-0" />
-              {actionLoading
-                ? tUsers('approvals.actions.processing')
-                : tUsers('approvals.actions.approve')}
-            </button>
-            <button
-              type="button"
-              onClick={() => onReject(user)}
-              disabled={actionLoading}
-              className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <XMarkIcon className="h-4 w-4 shrink-0" />
-              {tUsers('approvals.actions.reject')}
-            </button>
-            {!user.is_verified && (
-              <span className="max-w-48 whitespace-normal text-xs leading-snug text-amber-700">
-                {tUsers('approvals.mustVerifyBeforeApproval')}
-              </span>
-            )}
-          </div>
-        ) : view === 'all' ? (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              aria-label={tUsers('actions.viewDetails')}
-              title={tUsers('actions.viewDetails')}
-              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-              onClick={() => onHistory(user)}
-            >
-              <EyeIcon className="h-4 w-4 shrink-0" />
-              <span>{tUsers('actions.viewDetails')}</span>
-            </button>
-            <button
-              type="button"
-              aria-label={tUsers('actions.edit')}
-              title={tUsers('actions.edit')}
-              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-              onClick={() => onEdit(user)}
-            >
-              <PencilIcon className="h-4 w-4 shrink-0" />
-              <span>{tUsers('actions.edit')}</span>
-            </button>
-            <button
-              type="button"
-              aria-label={tUsers('actions.delete')}
-              title={tUsers('actions.delete')}
-              className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-              onClick={() => onDelete(getActionId(user))}
-            >
-              <TrashIcon className="h-4 w-4 shrink-0" />
-              <span>{tUsers('actions.delete')}</span>
-            </button>
-          </div>
-        ) : (
-          <span className="text-sm text-slate-500">
-            {tCommon('notAvailable')}
-          </span>
-        )}
-      </td>
+      <td>{actionContent}</td>
     </tr>
   );
 }

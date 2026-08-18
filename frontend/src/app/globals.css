@@ -1822,26 +1822,18 @@ select option {
 }
 
 /* Dashboard Grid */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 100vh;
-  min-width: 0;
-  /* background: var(--background); */
-  /* Removed to allow background image to show through */
-}
-
 .sidebar {
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
-  padding: 16px 0;
+  padding: 1.5rem;
+  overflow-y: auto;
 }
 
 .main-content {
-  /* background: var(--background); */
-  /* Removed to allow background image to show through */
   padding: 16px;
+  overflow-y: auto;
   min-width: 0;
+  width: 100%;
 }
 
 /* Status badges */
@@ -1857,19 +1849,22 @@ select option {
   color: var(--text);
 }
 
-.status-pending {
+.status-badge.status-pending {
   border-color: var(--labels);
-  color: var(--labels);
+  background: rgba(251, 191, 36, 0.1);
+  color: #d97706;
 }
 
-.status-active {
+.status-badge.status-active {
   border-color: var(--action);
-  color: var(--action);
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
 }
 
-.status-completed {
+.status-badge.status-completed {
   border-color: #28a745;
-  color: #28a745;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
 }
 
 a {
@@ -1893,14 +1888,6 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
-}
-
-/* Dashboard specific styles */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 100vh;
-  min-width: 0;
 }
 
 /* Responsive Dashboard */
@@ -1932,28 +1919,6 @@ a {
   }
 }
 
-.sidebar {
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
-  padding: 1.5rem;
-  overflow-y: auto;
-}
-
-.main-content {
-  /* background: var(--background); */
-  /* Removed to allow background image to show through */
-  overflow-y: auto;
-  min-width: 0;
-  width: 100%;
-}
-
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
 .btn-primary {
   background: var(--primary);
   color: white;
@@ -1969,66 +1934,6 @@ a {
   background: var(--primary-light);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 104, 180, 0.3);
-}
-
-.input-field {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: border-color 0.2s;
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0, 104, 180, 0.1);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.table th,
-.table td {
-  padding: 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-
-.table th {
-  background: var(--hover);
-  font-weight: 600;
-  color: var(--gray-dark);
-}
-
-.table tbody tr:hover {
-  background: var(--hover);
-}
-
-.status-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.status-active {
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
-}
-
-.status-pending {
-  background: rgba(251, 191, 36, 0.1);
-  color: #d97706;
-}
-
-.status-completed {
-  background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
 }
 
 .stats-card {
@@ -2352,20 +2257,13 @@ textarea,
   padding: 16px;
 }
 
-.table,
-.data-table,
-.responsive-table {
+:where(.table, .data-table, .responsive-table) {
   width: 100%;
   max-width: 100%;
   table-layout: fixed;
 }
 
-.table th,
-.table td,
-.data-table th,
-.data-table td,
-.responsive-table th,
-.responsive-table td {
+:where(.table, .data-table, .responsive-table) :where(th, td) {
   max-width: min(22rem, 42vw);
   min-width: 0;
   vertical-align: top;
@@ -2373,19 +2271,15 @@ textarea,
   word-break: break-word;
 }
 
-.table th,
-.data-table th,
-.responsive-table th {
+:where(.table, .data-table, .responsive-table) th {
   white-space: nowrap;
 }
 
-.table td,
-.data-table td,
-.responsive-table td {
+:where(.table, .data-table, .responsive-table) td {
   overflow: hidden;
 }
 
-.table tbody tr:hover {
+:where(.table) tbody tr:hover {
   transform: none;
 }
 
@@ -2628,7 +2522,7 @@ textarea,
   vertical-align: middle;
 }
 
-.status-badge {
+:where(.status-badge) {
   white-space: normal;
   line-height: 1.25;
   text-align: center;

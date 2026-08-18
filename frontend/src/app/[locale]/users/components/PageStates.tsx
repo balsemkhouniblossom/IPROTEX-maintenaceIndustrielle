@@ -1,11 +1,31 @@
 import { useTranslations } from 'next-intl';
 import { ApprovalView } from '@/services/userApprovals';
 
+type UserTranslator = ReturnType<typeof useTranslations>;
+
+type AccessDeniedProps = Readonly<{
+  tUsers: UserTranslator;
+}>;
+
+type ErrorStateProps = Readonly<{
+  message: string;
+  onRetry: () => void;
+  tUsers: UserTranslator;
+}>;
+
+type LoadingTableProps = Readonly<{
+  tUsers: UserTranslator;
+}>;
+
+type EmptyStateProps = Readonly<{
+  view: ApprovalView;
+  search: string;
+  tUsers: UserTranslator;
+}>;
+
 export function AccessDenied({
   tUsers,
-}: {
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: AccessDeniedProps) {
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-amber-900">
       <h2 className="text-lg font-semibold">{tUsers('approvals.accessDenied')}</h2>
@@ -18,11 +38,7 @@ export function ErrorState({
   message,
   onRetry,
   tUsers,
-}: {
-  message: string;
-  onRetry: () => void;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: ErrorStateProps) {
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-red-800">
       <p className="font-semibold">{message}</p>
@@ -33,14 +49,14 @@ export function ErrorState({
   );
 }
 
-export function LoadingTable({ tUsers }: { tUsers: ReturnType<typeof useTranslations> }) {
+export function LoadingTable({ tUsers }: LoadingTableProps) {
   return (
-    <div className="space-y-3" role="status">
+    <output className="block space-y-3">
       <span className="sr-only">{tUsers('approvals.loading')}</span>
       {[0, 1, 2].map((item) => (
         <div key={item} className="h-16 animate-pulse rounded-lg bg-slate-100" />
       ))}
-    </div>
+    </output>
   );
 }
 
@@ -48,11 +64,7 @@ export function EmptyState({
   view,
   search,
   tUsers,
-}: {
-  view: ApprovalView;
-  search: string;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: EmptyStateProps) {
   const key = search
     ? 'approvals.empty.search'
     : `approvals.empty.${view}`;

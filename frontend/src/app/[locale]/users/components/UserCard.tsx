@@ -12,7 +12,7 @@ import { getActionId, dateHeaderForView, dateValueForView, formatDate } from '..
 import { RoleBadge, VerificationBadge, ApprovalStatusBadge } from './Badges';
 import { UserIdentity } from './UserIdentity';
 
-export function UserCard(props: {
+type UserCardProps = Readonly<{
   user: User;
   view: ApprovalView;
   rowActionId: string | null;
@@ -26,7 +26,9 @@ export function UserCard(props: {
   selected?: boolean;
   onToggleSelect?: () => void;
   tUsers: ReturnType<typeof useTranslations>;
-}) {
+}>;
+
+export function UserCard(props: UserCardProps) {
   const {
     user,
     view,

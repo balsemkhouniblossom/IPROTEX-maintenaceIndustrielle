@@ -261,6 +261,19 @@ function eventStatusLabel(
   return statusLabels[event.status] ?? event.status ?? tCalendar("scheduled");
 }
 
+function calendarStatusLabel(
+  status: string,
+  tCalendar: ReturnType<typeof useTranslations>,
+): string {
+  const statusLabels: Record<string, string> = {
+    in_progress: tCalendar("inProgress"),
+    validated: tCalendar("validated"),
+    completed: tCalendar("completed"),
+    waiting_validation: tCalendar("waitingValidation"),
+  };
+  return statusLabels[status] ?? status;
+}
+
 function primaryActionLabel(
   event: CalendarEvent,
   tCalendar: ReturnType<typeof useTranslations>,
@@ -772,9 +785,9 @@ export default function SmartMaintenanceCalendarPage() {
           </div>
 
           {selectedEventId ? (
-            <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm" role="presentation">
-              <aside
-                role="dialog"
+            <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm">
+              <dialog
+                open
                 aria-modal="true"
                 aria-labelledby="smart-calendar-details-title"
                 className="operator-dashboard-theme ml-auto flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white p-5 shadow-2xl"
@@ -812,15 +825,7 @@ export default function SmartMaintenanceCalendarPage() {
                       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                         <div className="text-xs font-semibold uppercase text-slate-500">{tCalendar("currentStatus")}</div>
                         <div className="mt-1 text-sm font-semibold text-slate-900">
-                          {selectedEventDetails.currentStatus === "in_progress"
-                            ? tCalendar("inProgress")
-                            : selectedEventDetails.currentStatus === "validated"
-                              ? tCalendar("validated")
-                              : selectedEventDetails.currentStatus === "completed"
-                                ? tCalendar("completed")
-                                : selectedEventDetails.currentStatus === "waiting_validation"
-                                  ? tCalendar("waitingValidation")
-                                  : selectedEventDetails.currentStatus}
+                          {calendarStatusLabel(selectedEventDetails.currentStatus, tCalendar)}
                         </div>
                       </div>
                       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -920,7 +925,7 @@ export default function SmartMaintenanceCalendarPage() {
                     ) : null}
                   </div>
                 )}
-              </aside>
+              </dialog>
             </div>
           ) : null}
 

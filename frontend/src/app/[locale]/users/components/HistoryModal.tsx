@@ -3,19 +3,21 @@ import { Modal } from '@/components/Modal';
 import { User } from '../types';
 import { UserIdentity } from './UserIdentity';
 
+type HistoryModalProps = Readonly<{
+  isOpen: boolean;
+  user: User | null;
+  dateFormatter: Intl.DateTimeFormat;
+  onClose: () => void;
+  tUsers: ReturnType<typeof useTranslations>;
+}>;
+
 export function HistoryModal({
   isOpen,
   user,
   dateFormatter,
   onClose,
   tUsers,
-}: {
-  isOpen: boolean;
-  user: User | null;
-  dateFormatter: Intl.DateTimeFormat;
-  onClose: () => void;
-  tUsers: ReturnType<typeof useTranslations>;
-}) {
+}: HistoryModalProps) {
   return (
     <Modal
       isOpen={isOpen}
@@ -24,7 +26,7 @@ export function HistoryModal({
       size="md"
     >
       <div className="space-y-4">
-        <UserIdentity user={user || {}} tUsers={tUsers} />
+        <UserIdentity user={user ?? {}} tUsers={tUsers} />
         {Array.isArray(user?.login_history) && user.login_history.length > 0 ? (
           <ul className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
             {user.login_history.map((entry, index) => (

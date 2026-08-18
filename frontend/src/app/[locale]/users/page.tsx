@@ -123,13 +123,13 @@ function UsersPageContent() {
   return (
     <DashboardLayout title={tUsers('pageTitle')}>
       {notification && (
-        <div
+        <output
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg border p-4 shadow-lg ${
             notification.type === 'success'
               ? 'border-green-200 bg-green-100 text-green-800'
               : 'border-red-200 bg-red-100 text-red-800'
           }`}
-          role={notification.type === 'error' ? 'alert' : 'status'}
+          aria-live={notification.type === 'error' ? 'assertive' : 'polite'}
         >
           {notification.type === 'success' ? (
             <CheckCircleIcon className="h-5 w-5" />
@@ -137,7 +137,7 @@ function UsersPageContent() {
             <ExclamationTriangleIcon className="h-5 w-5" />
           )}
           <span>{notification.message}</span>
-        </div>
+        </output>
       )}
 
       <div className="bento-grid">
@@ -300,9 +300,9 @@ function UsersPageContent() {
               </p>
             </div>
             {loading && (
-              <span className="text-sm text-slate-500" role="status">
+              <output className="text-sm text-slate-500">
                 {tUsers('approvals.loading')}
-              </span>
+              </output>
             )}
           </div>
 
