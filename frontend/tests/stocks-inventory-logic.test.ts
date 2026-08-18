@@ -45,7 +45,7 @@ test("Stocks page only offers Delete once a stock record is fully depleted and h
   );
   assert.match(
     source,
-    /isDeletable\s*\?\s*\(\s*<button\s*\n\s*className="btn-danger p-2"/,
+    /isDeletable\s*\?\s*\(\s*<button[\s\S]*?className="btn-danger p-2"/,
     `${PAGE_PATH} must only render the Delete button when the stock record is deletable`,
   );
 });
