@@ -125,7 +125,7 @@ function ErrorBox({
   return (
     <div className="panel border border-red-200 bg-red-50 text-red-800">
       <p>{message}</p>
-      <button
+      <button type="button"
         className="mt-3 rounded-lg bg-red-700 px-4 py-2 text-white"
         onClick={retry}
       >

@@ -1,7 +1,18 @@
 import { resolveManagedFileUrl } from '@/services/managedFileUrls';
 
+function stripWrappingQuotes(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && (value[start] === '"' || value[start] === "'")) start += 1;
+  while (end > start && (value[end - 1] === '"' || value[end - 1] === "'")) end -= 1;
+
+  return value.slice(start, end);
+}
+
 export function resolveUserPhotoUrl(photoPath?: string | null): string {
-  const stripped = photoPath?.replace(/^['\"]+|['\"]+$/g, '');
+  const stripped = stripWrappingQuotes(photoPath);
   const resolved = resolveManagedFileUrl(stripped);
   return resolved ? encodeURI(resolved) : '';
 }

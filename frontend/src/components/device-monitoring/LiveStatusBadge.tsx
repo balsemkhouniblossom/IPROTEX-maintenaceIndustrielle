@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { SignalIcon, SignalSlashIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import type { LiveMachineStatus } from "@/hooks/useLiveMonitoring";
 
-function formatRelativeTime(iso: string | null, locale: string, neverLabel: string): string {
+function formatRelativeTime(iso: string | null, neverLabel: string): string {
   if (!iso) return neverLabel;
   const diffMs = Date.now() - new Date(iso).getTime();
   const diffSeconds = Math.max(0, Math.round(diffMs / 1000));
@@ -15,11 +15,10 @@ function formatRelativeTime(iso: string | null, locale: string, neverLabel: stri
   const diffHours = Math.round(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours}h`;
   const diffDays = Math.round(diffHours / 24);
-  return `${diffDays}d`;
   // Intentionally not using Intl.RelativeTimeFormat's locale-specific
-  // strings here — the badge needs to stay compact in a table cell, and a
+  // strings here: the badge needs to stay compact in a table cell, and a
   // short numeric+unit form ("3m", "2h") reads consistently at any width.
-  void locale;
+  return `${diffDays}d`;
 }
 
 /**
@@ -69,7 +68,7 @@ export default function LiveStatusBadge({
       </span>
       <span className="text-xs text-gray-500" title={t("lastSignal")}>
         {t("lastSignalValue", {
-          value: formatRelativeTime(status.lastSeenAt, "en", t("never")),
+          value: formatRelativeTime(status.lastSeenAt, t("never")),
         })}
       </span>
       {status.activeAlarmCount > 0 ? (

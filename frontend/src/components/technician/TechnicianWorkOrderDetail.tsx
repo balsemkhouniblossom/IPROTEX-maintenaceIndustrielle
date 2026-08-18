@@ -117,7 +117,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
         <DashboardLayout title={t("workOrders.detailTitle")}>
           <div className="panel border-red-200 bg-red-50 text-red-800">
             {error || t("errors.notFound")}
-            <button className="ml-3" onClick={() => void load()}>
+            <button type="button" className="ml-3" onClick={() => void load()}>
               {t("actions.retry")}
             </button>
           </div>
@@ -326,7 +326,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                     }
                   />
                 </label>
-                <button
+                <button type="button"
                   disabled={
                     saving ||
                     ["completed", "validated", "cancelled"].includes(status)
@@ -368,7 +368,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
               />
-              <button
+              <button type="button"
                 disabled={
                   saving ||
                   !partId ||
@@ -433,7 +433,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
             <h2 className="mb-3 text-lg font-semibold">{t("actions.title")}</h2>
             <div className="flex flex-wrap gap-2">
               {!hasAssignedTechnician && !isTerminal && (
-                <button
+                <button type="button"
                   disabled={saving}
                   className="rounded-lg bg-slate-800 px-4 py-2 text-white disabled:opacity-50"
                   onClick={() =>
@@ -452,7 +452,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                   <span className="rounded-lg bg-slate-100 px-4 py-2 italic text-slate-600">
                     {t("messages.awaitingValidation")}
                   </span>
-                  <button
+                  <button type="button"
                     disabled={saving}
                     className="rounded-lg bg-amber-700 px-4 py-2 text-white"
                     onClick={() =>
@@ -463,7 +463,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                   >
                     {t("actions.return")}
                   </button>
-                  <button
+                  <button type="button"
                     disabled={saving}
                     className="rounded-lg bg-blue-700 px-4 py-2 text-white"
                     onClick={() =>
@@ -477,7 +477,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                 </>
               )}
               {status === "assigned" && (
-                <button
+                <button type="button"
                   disabled={saving}
                   className="rounded-lg bg-blue-700 px-4 py-2 text-white"
                   onClick={() =>
@@ -489,7 +489,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
               )}
               {status === "in_progress" && (
                 <>
-                  <button
+                  <button type="button"
                     disabled={saving}
                     className="rounded-lg bg-amber-700 px-4 py-2 text-white"
                     onClick={() =>
@@ -498,7 +498,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                   >
                     {t("actions.waitingParts")}
                   </button>
-                  <button
+                  <button type="button"
                     disabled={
                       saving ||
                       !report.description_action.trim() ||
@@ -518,7 +518,7 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
                 </>
               )}
               {status === "waiting_parts" && (
-                <button
+                <button type="button"
                   disabled={saving}
                   className="rounded-lg bg-blue-700 px-4 py-2 text-white"
                   onClick={() =>

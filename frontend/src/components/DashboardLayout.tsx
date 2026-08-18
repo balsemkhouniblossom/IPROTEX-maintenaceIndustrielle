@@ -323,7 +323,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
               </div>
             </div>
 
-            <button
+            <button type="button"
               onClick={logout}
               className="toolbar-action w-full justify-center"
             >
@@ -338,7 +338,9 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label={tCommon('closeMenu')}
           className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -374,7 +376,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
                   </div>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={logout}
                   aria-label={tCommon('auth.logout')}
                   className="toolbar-action"
@@ -384,7 +386,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
                 </button>
               </div>
 
-              <button
+              <button type="button"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 aria-label={sidebarOpen ? tCommon('closeMenu') : tCommon('openMenu')}
                 aria-expanded={sidebarOpen}

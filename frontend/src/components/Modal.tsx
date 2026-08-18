@@ -86,7 +86,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   return createPortal(
     <div className="fixed inset-0 z-1000 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-3 text-center sm:p-4">
-        <div
+        <button
+          type="button"
+          aria-label="Close modal"
           className="fixed inset-0 bg-black/50 transition-opacity"
           onClick={onClose}
         />
@@ -105,7 +107,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             style={{ backgroundColor: 'var(--primary)' }}
           >
             <span id={titleId} className="min-w-0 truncate" title={title}>{title}</span>
-            <button
+            <button type="button"
               aria-label="Close modal"
               onClick={onClose}
               style={{ minWidth: 24, minHeight: 24 }}

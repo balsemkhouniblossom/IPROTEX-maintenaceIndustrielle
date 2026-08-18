@@ -218,7 +218,7 @@ function ResourceCrudPageInner({
                   <div className="text-sm text-slate-500">{totalLabel}</div>
                 </div>
               )}
-              <button className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
+              <button type="button" className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
                 <PlusIcon className="h-5 w-5 shrink-0" />
                 <span className="truncate" title={labels.add}>{labels.add}</span>
               </button>
@@ -242,7 +242,7 @@ function ResourceCrudPageInner({
             searchPlaceholder={labels.searchPlaceholder ?? labels.empty}
           />
         )}
-        {!heading && !description && !totalLabel && <button className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
+        {!heading && !description && !totalLabel && <button type="button" className="btn-primary inline-flex min-w-0 items-center gap-2" onClick={startCreate}>
           <PlusIcon className="h-5 w-5 shrink-0" />
           <span className="truncate" title={labels.add}>{labels.add}</span>
         </button>}
@@ -271,10 +271,10 @@ function ResourceCrudPageInner({
                 {visibleFields.map((field) => <td key={field.key}>{renderCellValue(field, item)}</td>)}
                 <td className="whitespace-nowrap">
                   <div className="flex gap-2">
-                    <button className="btn-secondary p-2" onClick={() => startEdit(item)} title={labels.edit} aria-label={labels.edit}>
+                    <button type="button" className="btn-secondary p-2" onClick={() => startEdit(item)} title={labels.edit} aria-label={labels.edit}>
                       <PencilIcon className="h-4 w-4 shrink-0" />
                     </button>
-                    <button className="btn-danger p-2" onClick={() => void remove(getItemId(item))} title={labels.delete} aria-label={labels.delete}>
+                    <button type="button" className="btn-danger p-2" onClick={() => void remove(getItemId(item))} title={labels.delete} aria-label={labels.delete}>
                       <TrashIcon className="h-4 w-4 shrink-0" />
                     </button>
                   </div>
@@ -337,7 +337,7 @@ function ResourceCrudPageInner({
           <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
             <span className="truncate" title={labels.cancel}>{labels.cancel}</span>
           </button>
-          <button className="btn-primary" disabled={submitting}>
+          <button type="submit" className="btn-primary" disabled={submitting}>
             <span className="truncate" title={submitting ? labels.loading : labels.save}>
               {submitting ? labels.loading : labels.save}
             </span>

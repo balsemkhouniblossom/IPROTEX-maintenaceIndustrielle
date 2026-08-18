@@ -297,7 +297,7 @@ export default function WorkOrdersPage() {
     try {
       const data = {
         ...formData,
-        estimated_duration: parseInt(formData.estimated_duration) || undefined,
+        estimated_duration: Number.parseInt(formData.estimated_duration) || undefined,
         machine_id: formData.machine_id || undefined,
         technician_id: formData.technician_id || undefined,
         date_start: formData.date_start || undefined,
@@ -515,7 +515,7 @@ export default function WorkOrdersPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             aria-label={tCommon('dismiss')}
             style={{ minWidth: 24, minHeight: 24 }}
@@ -540,7 +540,7 @@ export default function WorkOrdersPage() {
                   <div className="text-3xl font-bold text-blue-600">{table.totalItems}</div>
                   <div className="text-sm text-slate-500">{tWorkOrders("totalWorkOrders")}</div>
                 </div>
-                <button
+                <button type="button"
                   onClick={handleCreate}
                   className="btn-primary flex items-center space-x-2"
                 >

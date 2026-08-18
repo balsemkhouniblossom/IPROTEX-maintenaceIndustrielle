@@ -162,7 +162,7 @@ function UsersPageContent() {
                   </div>
                 </div>
                 {activeView === 'all' && (
-                  <button
+                  <button type="button"
                     onClick={userForm.handleAdd}
                     className="btn-primary flex items-center gap-2"
                   >
@@ -349,7 +349,12 @@ function UsersPageContent() {
                 </BulkActionToolbar>
               )}
 
-              <div className="users-table-scroll hidden lg:block" tabIndex={0}>
+              <div
+                className="users-table-scroll hidden lg:block"
+                role="region"
+                aria-label={tUsers('allUsers')}
+                tabIndex={0}
+              >
                 <table className="table users-table">
                   <colgroup>
                     {isPending && <col className="users-table__select" />}

@@ -336,7 +336,7 @@ export default function StocksPage() {
         >
           {notification.type === "success" ? <CheckCircleIcon className="w-5 h-5" /> : <ExclamationTriangleIcon className="w-5 h-5" />}
           <span>{notification.message}</span>
-          <button className="ml-2 text-gray-600 hover:text-gray-800" onClick={() => setNotification(null)}>
+          <button type="button" className="ml-2 text-gray-600 hover:text-gray-800" onClick={() => setNotification(null)}>
             ×
           </button>
         </div>
@@ -359,7 +359,7 @@ export default function StocksPage() {
                   <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
                   <div className="text-sm text-slate-500">{t("totalStocks", { default: "Total Stock Records" })}</div>
                 </div>
-                <button onClick={handleCreate} className="btn-primary flex items-center gap-2">
+                <button type="button" onClick={handleCreate} className="btn-primary flex items-center gap-2">
                   <PlusIcon className="w-4 h-4" />
                   <span>{t("addStock", { default: "Add Stock Record" })}</span>
                 </button>
@@ -417,21 +417,21 @@ export default function StocksPage() {
                       <td>{item.emplacement || tCommon("notAvailable")}</td>
                       <td>
                         <div className="flex flex-wrap gap-2">
-                          <button
+                          <button type="button"
                             className="btn-secondary p-2"
                             title={t("actions.adjust", { default: "Adjust" })}
                             onClick={() => handleOpenAdjust(item)}
                           >
                             <ScaleIcon className="w-4 h-4" />
                           </button>
-                          <button
+                          <button type="button"
                             className="btn-secondary p-2"
                             title={t("actions.history", { default: "History" })}
                             onClick={() => void handleOpenHistory(item)}
                           >
                             <ClockIcon className="w-4 h-4" />
                           </button>
-                          <button
+                          <button type="button"
                             className="btn-secondary p-2"
                             title={t("actions.edit", { default: "Edit" })}
                             onClick={() => handleEditMetadata(item)}
@@ -439,7 +439,7 @@ export default function StocksPage() {
                             <PencilIcon className="w-4 h-4" />
                           </button>
                           {isDeletable ? (
-                            <button
+                            <button type="button"
                               className="btn-danger p-2"
                               title={t("actions.delete", { default: "Delete" })}
                               onClick={() => handleDelete(item)}
