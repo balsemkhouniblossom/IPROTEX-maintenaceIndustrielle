@@ -162,13 +162,20 @@ export class SupabaseStorageProvider implements FileStorageProvider {
   }
 
   private createStorageKey(input: StoreFileInput): string {
-    const prefix =
-      input.folder === 'avatars'
-        ? `uploads/${MANAGED_AVATAR_DIRECTORY}`
-        : input.folder === 'quarantine'
-          ? MANAGED_QUARANTINE_DIRECTORY
-          : 'uploads';
+    const prefix = this.storageFolderPrefix(input.folder);
     return `${prefix}/${input.fileName}`;
+  }
+
+  private storageFolderPrefix(folder: StoreFileInput['folder']): string {
+    if (folder === 'avatars') {
+      return `uploads/${MANAGED_AVATAR_DIRECTORY}`;
+    }
+
+    if (folder === 'quarantine') {
+      return MANAGED_QUARANTINE_DIRECTORY;
+    }
+
+    return 'uploads';
   }
 
   private toStorageKey(relativePathOrKey: string): string | null {
@@ -181,7 +188,7 @@ export class SupabaseStorageProvider implements FileStorageProvider {
     if (keyFromUrl) return keyFromUrl;
 
     if (normalized.startsWith('/files/uploads/')) {
-      return normalized.replace(/^\/files\//, '');
+      return normalized.slice('/files/'.length);
     }
 
     if (normalized.startsWith('/uploads/')) {
