@@ -1,9 +1,9 @@
 import {
   MANAGED_AVATAR_FILE_PREFIX,
   MANAGED_AVATAR_ROUTE,
-  resolveManagedFileUrl,
   toManagedAvatarPath,
 } from '../common/managed-file-url';
+export { resolveManagedFileUrl as resolveUserPhotoUrl } from '../common/managed-file-url';
 import { ApprovalStatus } from '../schemas/user.schema';
 
 const MANAGED_AVATAR_FILE_PATTERN = new RegExp(
@@ -40,5 +40,3 @@ export function shouldExposeUserAvatar(
     user.approval_status === null
   );
 }
-
-export const resolveUserPhotoUrl = resolveManagedFileUrl;

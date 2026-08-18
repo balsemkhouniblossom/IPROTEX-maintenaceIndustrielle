@@ -24,7 +24,6 @@ import {
 } from './services/work-order-report.service';
 import {
   CalendarEventDetailsResponse,
-  CalendarEventRow,
   CalendarEventsResponse,
   CalendarFilters,
   CalendarTimelineResponse,
@@ -63,7 +62,7 @@ import {
   PreventiveSubmissionForOperatorResponse,
 } from './contracts/operator-workflow-response.types';
 
-export type { CalendarEventRow };
+export type { CalendarEventRow } from './services/work-order-calendar-query.service';
 export type { WorkOrderResponse, WorkOrderSchedulingResultResponse };
 
 /**

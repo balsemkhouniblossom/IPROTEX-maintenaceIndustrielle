@@ -36,7 +36,7 @@ function canonicalId(value: unknown, fallback: string): string {
 export function canonicalPreventiveOccurrenceTimestamp(value: Date): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    throw new Error('preventive occurrence due date must be a valid date');
+    throw new TypeError('preventive occurrence due date must be a valid date');
   }
   return date.toISOString();
 }

@@ -52,6 +52,21 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+type CalendarEventsQuery = {
+  view?: 'day' | 'week' | 'month' | 'year' | 'timeline';
+  date?: string;
+  machineId?: string;
+  machineTypeId?: string;
+  operatorId?: string;
+  technicianId?: string;
+  maintenanceType?: string;
+  status?: string;
+  priority?: string;
+  month?: string;
+  week?: string;
+  year?: string;
+};
+
 @Controller('work-orders')
 @AuthenticatedRoles()
 export class WorkOrdersController {
@@ -107,19 +122,22 @@ export class WorkOrdersController {
   @Get('calendar/events')
   @AdminOnly()
   getCalendarEvents(
-    @Query('view') view?: 'day' | 'week' | 'month' | 'year' | 'timeline',
-    @Query('date') date?: string,
-    @Query('machineId') machineId?: string,
-    @Query('machineTypeId') machineTypeId?: string,
-    @Query('operatorId') operatorId?: string,
-    @Query('technicianId') technicianId?: string,
-    @Query('maintenanceType') maintenanceType?: string,
-    @Query('status') status?: string,
-    @Query('priority') priority?: string,
-    @Query('month') month?: string,
-    @Query('week') week?: string,
-    @Query('year') year?: string,
+    @Query() query: CalendarEventsQuery,
   ): Promise<CalendarEventsResponse> {
+    const {
+      view,
+      date,
+      machineId,
+      machineTypeId,
+      operatorId,
+      technicianId,
+      maintenanceType,
+      status,
+      priority,
+      month,
+      week,
+      year,
+    } = query;
     return this.workOrdersService.getCalendarEvents(
       view || 'month',
       date ? new Date(date) : new Date(),

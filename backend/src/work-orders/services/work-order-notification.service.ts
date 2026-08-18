@@ -94,15 +94,22 @@ export class WorkOrderNotificationService {
     return this.notificationCenterService.createIfNotExists({
       dedupeKey: `part_request_decision:${input.requestId}:${input.decision}`,
       type: NotificationType.PART_REQUEST_DECISION,
-      title:
-        input.decision === 'approve'
-          ? 'Your part request was approved and reserved'
-          : input.decision === 'cancel'
-            ? 'Your reserved part request was cancelled'
-            : 'Your part request was rejected',
+      title: partRequestDecisionTitle(input.decision),
       recipientUserId: input.requesterUserId,
       workOrderId: input.workOrderId,
       referenceId: input.requestId,
     });
   }
+}
+
+function partRequestDecisionTitle(
+  decision: 'approve' | 'reject' | 'cancel',
+): string {
+  if (decision === 'approve') {
+    return 'Your part request was approved and reserved';
+  }
+  if (decision === 'cancel') {
+    return 'Your reserved part request was cancelled';
+  }
+  return 'Your part request was rejected';
 }

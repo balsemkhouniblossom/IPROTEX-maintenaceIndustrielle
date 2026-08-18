@@ -131,10 +131,7 @@ export class WorkOrderOperatorCommandService {
     if (!workOrder) {
       throw new NotFoundException('Work order not found');
     }
-    if (
-      !workOrder.technician_id ||
-      workOrder.technician_id.toString() !== scope.operatorId
-    ) {
+    if (workOrder.technician_id?.toString() !== scope.operatorId) {
       throw new ForbiddenException('This work order is not assigned to you');
     }
     return workOrder;

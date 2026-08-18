@@ -110,15 +110,10 @@ export class MaintenanceSchedulingService {
       timeZone,
     );
     if (Number.isNaN(base.getTime())) {
-      throw new Error('Invalid performedAt date');
+      throw new TypeError('Invalid performedAt date');
     }
 
-    const value =
-      input.intervalValue && input.intervalValue > 0
-        ? input.intervalValue
-        : input.frequency && input.frequency > 0
-          ? input.frequency
-          : 1;
+    const value = nextDueIntervalValue(input);
 
     const frequency = this.normalizeFrequency(input.intervalUnit);
 
@@ -258,4 +253,14 @@ export class MaintenanceSchedulingService {
     if (frequency === 'QUARTERLY' || frequency === 'SEMIANNUAL') return 14;
     return 7;
   }
+}
+
+function nextDueIntervalValue(input: NextDueInput): number {
+  if (input.intervalValue && input.intervalValue > 0) {
+    return input.intervalValue;
+  }
+  if (input.frequency && input.frequency > 0) {
+    return input.frequency;
+  }
+  return 1;
 }

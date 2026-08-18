@@ -473,10 +473,7 @@ export class WorkOrderCalendarQueryService {
     if (!workOrder) {
       throw new NotFoundException('Calendar event not found');
     }
-    if (
-      !workOrder.technician_id ||
-      workOrder.technician_id.toString() !== operatorId
-    ) {
+    if (workOrder.technician_id?.toString() !== operatorId) {
       throw new ForbiddenException('This work order is not assigned to you');
     }
 
@@ -1024,7 +1021,7 @@ export class WorkOrderCalendarQueryService {
     }
 
     if (value instanceof Types.ObjectId) {
-      return value.toString();
+      return value.toHexString();
     }
 
     if (typeof value === 'object' && value !== null && '_id' in value) {

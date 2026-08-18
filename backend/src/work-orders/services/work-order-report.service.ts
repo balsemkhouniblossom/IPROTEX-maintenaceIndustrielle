@@ -299,10 +299,7 @@ export class WorkOrderReportService {
         'Only preventive, lubrication, or inspection occurrences can be submitted through this endpoint',
       );
     }
-    if (
-      !existing.technician_id ||
-      existing.technician_id.toString() !== input.operatorId
-    ) {
+    if (existing.technician_id?.toString() !== input.operatorId) {
       throw new ForbiddenException(
         'This preventive occurrence is not assigned to you',
       );

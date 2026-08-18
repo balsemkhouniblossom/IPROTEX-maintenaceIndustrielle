@@ -2,7 +2,7 @@
  * Global setup for e2e tests.
  * Supplies stub values for required env vars so AppModule can boot without real secrets.
  */
-module.exports = async function () {
+module.exports = async function setupE2eEnvironment() {
   process.env.NODE_ENV = process.env.NODE_ENV || 'test';
   process.env.GOOGLE_CLIENT_ID =
     process.env.GOOGLE_CLIENT_ID ||

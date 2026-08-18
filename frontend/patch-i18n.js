@@ -1,5 +1,5 @@
  
-const fs = require('fs');
+const fs = require('node:fs');
 const files = ['en.json', 'fr.json', 'ar.json'];
 
 files.forEach(f => {

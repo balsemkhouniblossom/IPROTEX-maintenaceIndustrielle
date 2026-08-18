@@ -113,7 +113,6 @@ describe('Reports module — export generation (e2e)', () => {
   let admin: UserDocument;
   let technicianToken: string;
   let technician: UserDocument;
-  let operatorToken: string; // assigned to `assignedMachine`
   let otherOperatorToken: string; // assigned to `assignedMachine` only, excludes `otherMachine`
   let assignedMachineId: string;
   let otherMachineId: string;
@@ -281,7 +280,6 @@ describe('Reports module — export generation (e2e)', () => {
 
     adminToken = tokenFor(admin);
     technicianToken = tokenFor(technician);
-    operatorToken = tokenFor(operator);
     otherOperatorToken = tokenFor(otherOperator);
   }
 

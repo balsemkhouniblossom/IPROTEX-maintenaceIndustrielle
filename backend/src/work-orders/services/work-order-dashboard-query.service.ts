@@ -590,7 +590,7 @@ export class WorkOrderDashboardQueryService {
     }
 
     if (value instanceof Types.ObjectId) {
-      return value.toString();
+      return value.toHexString();
     }
 
     if (typeof value === 'object' && value !== null && '_id' in value) {

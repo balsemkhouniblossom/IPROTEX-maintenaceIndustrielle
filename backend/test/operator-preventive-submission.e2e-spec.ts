@@ -59,7 +59,6 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
   let lubrificationLogs: Model<LubrificationLogDocument>;
 
   let operatorToken: string;
-  let otherOperatorToken: string;
   let technicianToken: string;
   let adminToken: string;
   let operator: UserDocument;
@@ -204,7 +203,6 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
     });
 
     operatorToken = tokenFor(operator);
-    otherOperatorToken = tokenFor(otherOperator);
     technicianToken = tokenFor(technician);
     adminToken = tokenFor(admin);
   }

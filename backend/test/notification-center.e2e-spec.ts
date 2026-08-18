@@ -23,7 +23,6 @@ import {
   Module as ModuleEntity,
   ModuleDocument,
 } from '../src/schemas/module.schema';
-import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
 import { Catalogue, CatalogueDocument } from '../src/schemas/catalogue.schema';
 import {
   Notification,
@@ -47,7 +46,6 @@ describe('Notification center (e2e)', () => {
   let machines: Model<MachineDocument>;
   let moduleTypes: Model<ModuleTypeDocument>;
   let modules: Model<ModuleDocument>;
-  let workOrders: Model<WorkOrderDocument>;
   let catalogues: Model<CatalogueDocument>;
   let notifications: Model<NotificationDocument>;
   let partRequests: Model<PartRequestDocument>;
@@ -60,7 +58,6 @@ describe('Notification center (e2e)', () => {
   let operator: UserDocument;
   let technician: UserDocument;
   let machine: MachineDocument;
-  let moduleEntity: ModuleDocument;
   let part: CatalogueDocument;
 
   beforeAll(async () => {
@@ -94,7 +91,6 @@ describe('Notification center (e2e)', () => {
     machines = app.get(getModelToken(Machine.name));
     moduleTypes = app.get(getModelToken(ModuleType.name));
     modules = app.get(getModelToken(ModuleEntity.name));
-    workOrders = app.get(getModelToken(WorkOrder.name));
     catalogues = app.get(getModelToken(Catalogue.name));
     notifications = app.get(getModelToken(Notification.name));
     partRequests = app.get(getModelToken(PartRequest.name));
@@ -136,7 +132,7 @@ describe('Notification center (e2e)', () => {
       serial_no: 'NOTIF-001',
       status: 'active',
     });
-    moduleEntity = await modules.create({
+    await modules.create({
       module_id: 'MODULE-NOTIF',
       machine_id: machine._id,
       mod_type_id: moduleType._id,

@@ -33,7 +33,7 @@ export interface DecidePartRequestInput {
   reason?: string;
 }
 
-const PART_REQUEST_BLOCKED_STATUSES = [
+const PART_REQUEST_BLOCKED_STATUSES = new Set([
   'completed',
   'validated',
   'rejected',
@@ -41,7 +41,7 @@ const PART_REQUEST_BLOCKED_STATUSES = [
   'canceled',
   'CLOTURE',
   'ANNULE',
-];
+]);
 
 const PART_REQUEST_DECISION_RULES: Record<
   'approve' | 'reject' | 'cancel',
@@ -116,13 +116,10 @@ export class WorkOrderPartsService {
         'Only corrective work orders can receive part requests through this endpoint',
       );
     }
-    if (
-      !workOrder.technician_id ||
-      workOrder.technician_id.toString() !== input.operatorId
-    ) {
+    if (workOrder.technician_id?.toString() !== input.operatorId) {
       throw new ForbiddenException('This work order is not assigned to you');
     }
-    if (PART_REQUEST_BLOCKED_STATUSES.includes(workOrder.status)) {
+    if (PART_REQUEST_BLOCKED_STATUSES.has(workOrder.status)) {
       throw new ConflictException(
         'Parts cannot be requested for a work order in this status',
       );

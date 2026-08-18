@@ -52,7 +52,6 @@ describe('Operator parts request (e2e)', () => {
   let partRequests: Model<PartRequestDocument>;
 
   let operatorToken: string;
-  let otherOperatorToken: string;
   let technicianToken: string;
   let operator: UserDocument;
   let otherOperator: UserDocument;
@@ -174,7 +173,6 @@ describe('Operator parts request (e2e)', () => {
     });
 
     operatorToken = tokenFor(operator);
-    otherOperatorToken = tokenFor(otherOperator);
     technicianToken = tokenFor(technician);
   }
 

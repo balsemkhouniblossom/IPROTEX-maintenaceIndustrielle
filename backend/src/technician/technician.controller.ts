@@ -35,6 +35,18 @@ interface TechnicianRequest extends Request {
   user?: { userId?: string; role?: string };
 }
 
+interface TechnicianWorkOrdersQuery {
+  page?: string;
+  limit?: string;
+  status?: string;
+  maintenanceType?: string;
+  priority?: string;
+  machineId?: string;
+  machineTypeId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 @Controller('technician')
 @UseGuards(JwtAuthGuard)
 @TechnicianOnly()
@@ -58,16 +70,19 @@ export class TechnicianController {
   @Get('work-orders')
   workOrders(
     @Req() req: TechnicianRequest,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('status') status?: string,
-    @Query('maintenanceType') maintenanceType?: string,
-    @Query('priority') priority?: string,
-    @Query('machineId') machineId?: string,
-    @Query('machineTypeId') machineTypeId?: string,
-    @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Query() query: TechnicianWorkOrdersQuery,
   ): Promise<PaginatedResponse<TechnicianWorkOrderView>> {
+    const {
+      page,
+      limit,
+      status,
+      maintenanceType,
+      priority,
+      machineId,
+      machineTypeId,
+      dateFrom,
+      dateTo,
+    } = query;
     const pagination = normalizePagination(page, limit, 20);
     return this.technicianService.workOrders(
       this.technicianId(req),
