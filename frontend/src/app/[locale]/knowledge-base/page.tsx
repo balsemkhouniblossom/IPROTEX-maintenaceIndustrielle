@@ -617,7 +617,7 @@ export default function KnowledgeBasePage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             className="ml-2 text-gray-500 hover:text-gray-700"
             title={tCommon("close")}
@@ -634,7 +634,7 @@ export default function KnowledgeBasePage() {
             <p className="text-gray-500 text-sm">{t("description")}</p>
           </div>
 
-          <button
+          <button type="button"
             onClick={() => setCreateOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
@@ -747,7 +747,7 @@ export default function KnowledgeBasePage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setSelectedArticle(article);
                       setViewerOpen(true);
@@ -757,7 +757,7 @@ export default function KnowledgeBasePage() {
                   >
                     <EyeIcon className="w-5 h-5" />
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => openHistory(article)}
                     className="text-slate-600"
                     title={t("actions.history")}
@@ -765,7 +765,7 @@ export default function KnowledgeBasePage() {
                     <ClockIcon className="w-5 h-5" />
                   </button>
                   {availableActions.includes("edit") && (
-                    <button
+                    <button type="button"
                       onClick={() => openEdit(article)}
                       className="text-amber-600"
                       title={t("actions.edit")}
@@ -774,7 +774,7 @@ export default function KnowledgeBasePage() {
                     </button>
                   )}
                   {availableActions.includes("publish") && (
-                    <button
+                    <button type="button"
                       onClick={() => handlePublish(article)}
                       className="text-green-600"
                       title={t("actions.publish")}
@@ -783,7 +783,7 @@ export default function KnowledgeBasePage() {
                     </button>
                   )}
                   {availableActions.includes("revise") && (
-                    <button
+                    <button type="button"
                       onClick={() => openRevise(article)}
                       className="text-indigo-600"
                       title={t("actions.revise")}
@@ -792,7 +792,7 @@ export default function KnowledgeBasePage() {
                     </button>
                   )}
                   {availableActions.includes("archive") && (
-                    <button
+                    <button type="button"
                       onClick={() => handleArchive(article)}
                       className="text-gray-600"
                       title={t("actions.archive")}
@@ -801,7 +801,7 @@ export default function KnowledgeBasePage() {
                     </button>
                   )}
                   {deletable && (
-                    <button
+                    <button type="button"
                       onClick={() => handleDelete(article)}
                       className="text-red-600"
                       title={t("actions.delete")}
@@ -828,10 +828,10 @@ export default function KnowledgeBasePage() {
         <div className="space-y-4">
           {renderFormFields(form, setForm, false)}
           <div className="flex justify-end gap-3">
-            <button className="btn-secondary" onClick={() => setCreateOpen(false)}>
+            <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)}>
               {tCommon("cancel")}
             </button>
-            <button className="btn-primary" onClick={handleCreate} disabled={submitting}>
+            <button type="button" className="btn-primary" onClick={handleCreate} disabled={submitting}>
               {submitting ? tCommon("saving") : t("buttons.create")}
             </button>
           </div>
@@ -850,10 +850,10 @@ export default function KnowledgeBasePage() {
         <div className="space-y-4">
           {renderFormFields(form, setForm, true)}
           <div className="flex justify-end gap-3">
-            <button className="btn-secondary" onClick={() => setEditOpen(false)}>
+            <button type="button" className="btn-secondary" onClick={() => setEditOpen(false)}>
               {tCommon("cancel")}
             </button>
-            <button className="btn-primary" onClick={handleUpdate} disabled={submitting}>
+            <button type="button" className="btn-primary" onClick={handleUpdate} disabled={submitting}>
               {submitting ? tCommon("saving") : t("buttons.update")}
             </button>
           </div>
@@ -873,10 +873,10 @@ export default function KnowledgeBasePage() {
           <p className="text-sm text-slate-600">{t("modal.reviseHint")}</p>
           {renderFormFields(form, setForm, true)}
           <div className="flex justify-end gap-3">
-            <button className="btn-secondary" onClick={() => setReviseOpen(false)}>
+            <button type="button" className="btn-secondary" onClick={() => setReviseOpen(false)}>
               {tCommon("cancel")}
             </button>
-            <button className="btn-primary" onClick={handleReviseSubmit} disabled={submitting}>
+            <button type="button" className="btn-primary" onClick={handleReviseSubmit} disabled={submitting}>
               {submitting ? tCommon("saving") : t("buttons.revise")}
             </button>
           </div>

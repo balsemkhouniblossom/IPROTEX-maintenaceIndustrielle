@@ -146,12 +146,18 @@ export default function PanneSolutionsPage() {
   }, [solutions]);
 
   const causeOptions = useMemo(
-    () => Array.from(new Set(solutions.map((item) => item.cause_probable || '').filter(Boolean))).sort(),
+    () =>
+      Array.from(new Set(solutions.map((item) => item.cause_probable || '').filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
     [solutions],
   );
 
   const recommendationOptions = useMemo(
-    () => Array.from(new Set(solutions.map((item) => item.solution_recommandee || '').filter(Boolean))).sort(),
+    () =>
+      Array.from(new Set(solutions.map((item) => item.solution_recommandee || '').filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
     [solutions],
   );
 
@@ -331,7 +337,7 @@ export default function PanneSolutionsPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button onClick={() => setNotification(null)} className="ml-2 text-gray-500 hover:text-gray-700" title={tCommon('close')}>
+          <button type="button" onClick={() => setNotification(null)} className="ml-2 text-gray-500 hover:text-gray-700" title={tCommon('close')}>
             x
           </button>
         </div>
@@ -350,7 +356,7 @@ export default function PanneSolutionsPage() {
                   <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
                   <div className="text-sm text-slate-500">{t('totalSolutions')}</div>
                 </div>
-                <button onClick={openCreateModal} className="btn-primary flex items-center space-x-2">
+                <button type="button" onClick={openCreateModal} className="btn-primary flex items-center space-x-2">
                   <PlusIcon className="w-4 h-4" />
                   <span>{t('actions.add')}</span>
                 </button>
@@ -618,8 +624,9 @@ export default function PanneSolutionsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">Additional details (optional)</label>
+            <label htmlFor="panne-solution-details" className="block text-sm font-medium text-gray-dark mb-1">Additional details (optional)</label>
             <textarea
+              id="panne-solution-details"
               value={formData.details}
               onChange={(e) => setFormData({ ...formData, details: e.target.value })}
               className="input-field"

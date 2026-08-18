@@ -64,14 +64,6 @@ const REVIEW_STATUSES = [
   'technician_required',
   'returned',
 ];
-const SWITCH_THEN_FIELD = ['t', 'h', 'e', 'n'].join('');
-
-function switchBranch(
-  condition: Record<string, unknown>,
-  priority: number,
-): Record<string, unknown> {
-  return Object.assign({ case: condition }, { [SWITCH_THEN_FIELD]: priority });
-}
 
 const STATUS_FILTERS: Record<string, string[]> = {
   in_progress: ['in_progress', 'EN_COURS'],
@@ -356,21 +348,31 @@ export class TechnicianService {
     }
 
     const priorityOrder = {
-      $switch: {
-        branches: [
-          switchBranch(
+      $cond: [
+        { $eq: [{ $toLower: { $ifNull: ['$priorite', ''] } }, 'urgent'] },
+        0,
+        {
+          $cond: [
+            { $in: ['$status', REVIEW_STATUSES] },
+            1,
             {
-              $eq: [{ $toLower: { $ifNull: ['$priorite', ''] } }, 'urgent'],
+              $cond: [
+                { $eq: ['$status', 'assigned'] },
+                2,
+                {
+                  $cond: [
+                    { $eq: ['$status', 'in_progress'] },
+                    3,
+                    {
+                      $cond: [{ $eq: ['$status', 'waiting_parts'] }, 4, 5],
+                    },
+                  ],
+                },
+              ],
             },
-            0,
-          ),
-          switchBranch({ $in: ['$status', REVIEW_STATUSES] }, 1),
-          switchBranch({ $eq: ['$status', 'assigned'] }, 2),
-          switchBranch({ $eq: ['$status', 'in_progress'] }, 3),
-          switchBranch({ $eq: ['$status', 'waiting_parts'] }, 4),
-        ],
-        default: 5,
-      },
+          ],
+        },
+      ],
     };
     const [ids, totalItems] = await Promise.all([
       this.workOrdersModel

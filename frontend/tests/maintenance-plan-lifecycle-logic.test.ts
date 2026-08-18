@@ -85,12 +85,12 @@ test("Maintenance plans page hides Edit and Delete once a plan is Archived (read
   );
   assert.match(
     source,
-    /!isArchived \? \(\s*<button\s*\n?\s*className="btn-secondary p-2"\s*\n?\s*title=\{t\('actions\.edit'\)\}/,
+    /!isArchived \? \(\s*<button[\s\S]*?className="btn-secondary p-2"[\s\S]*?title=\{t\('actions\.edit'\)\}/,
     `${PAGE_PATH} must only render the Edit button when the plan is not archived`,
   );
   assert.match(
     source,
-    /!isArchived \? \(\s*<button\s*\n?\s*className="btn-danger p-2"\s*\n?\s*title=\{t\('actions\.delete'\)\}/,
+    /!isArchived \? \(\s*<button[\s\S]*?className="btn-danger p-2"[\s\S]*?title=\{t\('actions\.delete'\)\}/,
     `${PAGE_PATH} must only render the Delete button when the plan is not archived`,
   );
 });

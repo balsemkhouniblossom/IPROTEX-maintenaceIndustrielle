@@ -388,7 +388,7 @@ export default function MaintenancePlansPage() {
           return (
             <div className="flex flex-nowrap justify-end gap-2">
               {availableActions.map((action) => (
-                <button
+                <button type="button"
                   key={action}
                   className="btn-secondary whitespace-nowrap px-2 py-1 text-xs"
                   title={t(`actions.${action}`)}
@@ -398,7 +398,7 @@ export default function MaintenancePlansPage() {
                 </button>
               ))}
               {!isArchived ? (
-                <button
+                <button type="button"
                   className="btn-secondary p-2"
                   title={t('actions.edit')}
                   aria-label={`${t('actions.edit')} ${plan.plan_id}`}
@@ -408,7 +408,7 @@ export default function MaintenancePlansPage() {
                 </button>
               ) : null}
               {!isArchived ? (
-                <button
+                <button type="button"
                   className="btn-danger p-2"
                   title={t('actions.delete')}
                   aria-label={`${t('actions.delete')} ${plan.plan_id}`}
@@ -437,7 +437,7 @@ export default function MaintenancePlansPage() {
         >
           {notification.type === 'success' ? <CheckCircleIcon className="w-5 h-5" /> : <ExclamationTriangleIcon className="w-5 h-5" />}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             className="ml-2 flex items-center justify-center text-gray-600 hover:text-gray-800"
             style={{ minWidth: 24, minHeight: 24 }}
             aria-label={tCommon('dismiss')}
@@ -463,7 +463,7 @@ export default function MaintenancePlansPage() {
                   </div>
                   <div className="text-sm text-slate-500">{t('totalPlans')}</div>
                 </div>
-                <button onClick={handleCreate} className="btn-primary flex items-center gap-2">
+                <button type="button" onClick={handleCreate} className="btn-primary flex items-center gap-2">
                   <PlusIcon className="w-4 h-4" />
                   <span>{t('addPlan')}</span>
                 </button>

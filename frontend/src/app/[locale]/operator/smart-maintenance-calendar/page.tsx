@@ -650,16 +650,7 @@ export default function SmartMaintenanceCalendarPage() {
                         <article
                           key={event.id}
                           data-testid={`smart-calendar-task-card-${section.key}-${index}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedEventId(event.workOrderId)}
-                          onKeyDown={(keyboardEvent) => {
-                            if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
-                              keyboardEvent.preventDefault();
-                              setSelectedEventId(event.workOrderId);
-                            }
-                          }}
-                          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-slate-900"
+                          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
                         >
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">

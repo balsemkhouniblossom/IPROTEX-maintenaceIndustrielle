@@ -395,7 +395,7 @@ export default function PreventiveTaskChecklistPage() {
               <ExclamationTriangleIcon className="w-5 h-5" />
             )}
             <span>{notification.message}</span>
-            <button
+            <button type="button"
               onClick={() => setNotification(null)}
               className="ml-2 text-gray-500 hover:text-gray-700"
             >
@@ -417,7 +417,7 @@ export default function PreventiveTaskChecklistPage() {
                   <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
                   <div className="text-sm text-slate-500">{t("totalTasks")}</div>
                 </div>
-                <button
+                <button type="button"
                   onClick={openAddForm}
                   className="btn-primary flex items-center space-x-2"
                 >
@@ -456,7 +456,7 @@ export default function PreventiveTaskChecklistPage() {
                   <label className="block text-sm font-medium mb-2">{t("actions.filter")}</label>
                   <div className="flex gap-2 flex-wrap">
                     {(["all", "pending", "completed"] as const).map((filter) => (
-                      <button
+                      <button type="button"
                         key={filter}
                         onClick={() => setSelectedFilter(filter)}
                         className={`px-3 py-1 rounded-lg text-sm transition-colors ${

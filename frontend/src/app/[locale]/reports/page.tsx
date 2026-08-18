@@ -483,7 +483,7 @@ function ReportsPageContent() {
         render: (report) => (
           <div className="flex justify-end gap-2">
             {report.status === 'completed' && (
-              <button
+              <button type="button"
                 onClick={() => void handleDownload(report)}
                 title={t('history.download')}
                 aria-label={`${t('history.download')} ${report.report_id}`}
@@ -491,7 +491,7 @@ function ReportsPageContent() {
                 <ArrowDownTrayIcon className="w-4 h-4 text-blue-600" />
               </button>
             )}
-            <button
+            <button type="button"
               onClick={() => void handleDeleteReport(report)}
               title={tCommon('delete')}
               aria-label={`${tCommon('delete')} ${report.report_id}`}
@@ -522,7 +522,7 @@ function ReportsPageContent() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             aria-label={tCommon('dismiss')}
             style={{ minWidth: 24, minHeight: 24 }}
@@ -626,7 +626,7 @@ function ReportsPageContent() {
           </div>
         </div>
 
-        <button
+        <button type="button"
           onClick={() => void handleSubmitReport()}
           disabled={submitting}
           className="btn-primary flex items-center gap-2 mt-4"
@@ -687,7 +687,7 @@ function ReportsPageContent() {
                 </option>
               ))}
             </select>
-            <button
+            <button type="button"
               onClick={() => void reportsTable.reload()}
               className="btn-secondary flex items-center gap-2"
               title={t('history.refresh')}
@@ -830,7 +830,7 @@ function ReportsPageContent() {
           </div>
         </div>
 
-        <button
+        <button type="button"
           onClick={() => void handleCreateSchedule()}
           disabled={scheduleSubmitting}
           className="btn-primary flex items-center gap-2 mt-4"
@@ -872,7 +872,7 @@ function ReportsPageContent() {
                     <td>{t(`frequencies.${schedule.frequency}`)}</td>
                     <td>{schedule.next_run_at ? new Date(schedule.next_run_at).toLocaleString() : '-'}</td>
                     <td>
-                      <button
+                      <button type="button"
                         onClick={() => void handleToggleSchedule(schedule)}
                         className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${
                           schedule.active
@@ -884,7 +884,7 @@ function ReportsPageContent() {
                       </button>
                     </td>
                     <td>
-                      <button
+                      <button type="button"
                         onClick={() => void handleDeleteSchedule(schedule)}
                         title={tCommon('delete')}
                         aria-label={`${tCommon('delete')} ${schedule.schedule_id}`}

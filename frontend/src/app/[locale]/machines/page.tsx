@@ -374,7 +374,7 @@ export default function MachinesPage() {
       const data = {
         ...formData,
         type_id: formData.type_id || null,
-        poids_kg: formData.poids_kg ? parseFloat(formData.poids_kg) : 0,
+        poids_kg: formData.poids_kg ? Number.parseFloat(formData.poids_kg) : 0,
       };
 
       if (editingMachine) {
@@ -418,7 +418,7 @@ export default function MachinesPage() {
             <ExclamationTriangleIcon className="w-5 h-5" />
           )}
           <span>{notification.message}</span>
-          <button
+          <button type="button"
             onClick={() => setNotification(null)}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
@@ -441,7 +441,7 @@ export default function MachinesPage() {
                   <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
                   <div className="text-sm text-slate-500">{tMachines('totalMachines')}</div>
                 </div>
-                <button
+                <button type="button"
                   onClick={handleCreate}
                   className="btn-primary flex items-center space-x-2"
                 >
@@ -467,7 +467,7 @@ export default function MachinesPage() {
         {/* Machines Table */}
         <div className="col-span-full bento-item panel">
           <div className="card-title">{tMachines('allMachines')}</div>
-          <div className="wide-table-scroll" tabIndex={0}>
+          <div className="wide-table-scroll">
             <table className="table wide-table">
               <colgroup>
                 <col className="machines-table__code" />

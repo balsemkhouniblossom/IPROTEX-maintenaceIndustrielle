@@ -315,7 +315,7 @@ function OperatorMachinesPageContent() {
 
                             {/* FOOTER ACTIONS */}
                             <div className="mt-5 grid gap-2 md:grid-cols-4">
-                                <button
+                                <button type="button"
                                     onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
                                     className="flex-1 bg-slate-700 hover:bg-slate-800 text-white rounded-lg px-3 py-2 text-sm font-medium flex items-center justify-center gap-2"
                                 >
@@ -323,7 +323,7 @@ function OperatorMachinesPageContent() {
                                     {tMachines("timeline", { default: "Timeline" })}
                                 </button>
 
-                                <button
+                                <button type="button"
                                     onClick={() =>
                                         router.push(
                                             `/${locale}/operator/corrective?machine=${machine._id}&intent=report-issue`
@@ -334,7 +334,7 @@ function OperatorMachinesPageContent() {
                                     {tMachines("reportIssue")}
                                 </button>
 
-                                <button
+                                <button type="button"
                                     onClick={() =>
                                         router.push(`/${locale}/operator/corrective?machine=${machine._id}&view=history#machine-history`)
                                     }

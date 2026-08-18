@@ -66,7 +66,7 @@ export function PreventiveSubmissionActions({
         >
           {tCommon("next")}
         </button>
-        <button
+        <button type="button"
           disabled={!canSubmitFocusedTask || submitting || !isLastPlanStep}
           onClick={onSubmit}
           data-testid="preventive-submit-button"

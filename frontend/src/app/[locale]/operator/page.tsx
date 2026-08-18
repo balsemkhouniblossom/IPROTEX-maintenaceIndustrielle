@@ -639,7 +639,7 @@ export default function OperatorDashboard() {
               </div>
 
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 auto-rows-fr items-stretch">
-                <button
+                <button type="button"
                   onClick={() => router.push(`/${locale}/operator/preventive`)}
                   className={`group h-full rounded-3xl p-6 text-center transition hover:-translate-y-1 ${softCardClassName}`}
                 >
@@ -662,7 +662,7 @@ export default function OperatorDashboard() {
                   </div>
                 </button>
 
-                <button
+                <button type="button"
                   onClick={() => router.push(`/${locale}/operator/corrective`)}
                   className={`group h-full rounded-3xl p-6 text-center transition hover:-translate-y-1 ${softCardClassName}`}
                 >
