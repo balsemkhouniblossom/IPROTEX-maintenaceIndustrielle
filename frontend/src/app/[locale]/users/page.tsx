@@ -353,7 +353,6 @@ function UsersPageContent() {
                 className="users-table-scroll hidden lg:block"
                 role="region"
                 aria-label={tUsers('allUsers')}
-                tabIndex={0}
               >
                 <table className="table users-table">
                   <colgroup>

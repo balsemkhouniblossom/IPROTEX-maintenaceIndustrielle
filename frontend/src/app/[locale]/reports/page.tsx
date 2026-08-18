@@ -143,6 +143,18 @@ function machineLabel(machine: Machine): string {
   return machine.reference ? `${machine.machine_id} (${machine.reference})` : machine.machine_id;
 }
 
+function extractMachineList(data: unknown): Machine[] {
+  if (Array.isArray(data)) return data as Machine[];
+  if (!data || typeof data !== 'object') return [];
+
+  const payload = data as { data?: unknown; machines?: unknown; items?: unknown };
+  if (Array.isArray(payload.data)) return payload.data as Machine[];
+  if (Array.isArray(payload.machines)) return payload.machines as Machine[];
+  if (Array.isArray(payload.items)) return payload.items as Machine[];
+
+  return [];
+}
+
 export default function ReportsPage() {
   return (
     <ProtectedRoute requiredRole="admin">
@@ -188,17 +200,7 @@ function ReportsPageContent() {
   const loadMachines = useCallback(async () => {
     try {
       const response = await apiService.getMachines({ limit: 500 });
-      const data = response.data;
-      const list: Machine[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.machines)
-            ? data.machines
-            : Array.isArray(data?.items)
-              ? data.items
-              : [];
-      setMachines(list);
+      setMachines(extractMachineList(response.data));
     } catch {
       // Non-fatal — the machine picker just stays empty; the rest of the
       // page (types without a machine scope) remains fully usable.
@@ -505,6 +507,60 @@ function ReportsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, tCommon],
   );
+
+  function renderScheduleRows() {
+    if (schedulesLoading) {
+      return (
+        <tr>
+          <td colSpan={6} className="text-center py-6 text-gray-500">
+            {tCommon('loading')}
+          </td>
+        </tr>
+      );
+    }
+
+    if (schedules.length === 0) {
+      return (
+        <tr>
+          <td colSpan={6} className="text-center py-6 text-gray-500">
+            {t('schedules.empty')}
+          </td>
+        </tr>
+      );
+    }
+
+    return schedules.map((schedule) => (
+      <tr key={schedule._id}>
+        <td>{t(`types.${schedule.type}`)}</td>
+        <td>{t(`formats.${schedule.format}`)}</td>
+        <td>{t(`frequencies.${schedule.frequency}`)}</td>
+        <td>{schedule.next_run_at ? new Date(schedule.next_run_at).toLocaleString() : '-'}</td>
+        <td>
+          <button
+            type="button"
+            onClick={() => void handleToggleSchedule(schedule)}
+            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${
+              schedule.active
+                ? 'bg-green-100 text-green-800 border-green-200'
+                : 'bg-slate-100 text-slate-700 border-slate-200'
+            }`}
+          >
+            {schedule.active ? t('schedules.activeLabel') : t('schedules.pausedLabel')}
+          </button>
+        </td>
+        <td>
+          <button
+            type="button"
+            onClick={() => void handleDeleteSchedule(schedule)}
+            title={tCommon('delete')}
+            aria-label={`${tCommon('delete')} ${schedule.schedule_id}`}
+          >
+            <TrashIcon className="w-4 h-4 text-red-500" />
+          </button>
+        </td>
+      </tr>
+    ));
+  }
 
   return (
     <DashboardLayout title={t('pageTitle')}>
@@ -851,51 +907,7 @@ function ReportsPageContent() {
                 <th>{t('history.table.actions')}</th>
               </tr>
             </thead>
-            <tbody>
-              {schedulesLoading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500">
-                    {tCommon('loading')}
-                  </td>
-                </tr>
-              ) : schedules.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-6 text-gray-500">
-                    {t('schedules.empty')}
-                  </td>
-                </tr>
-              ) : (
-                schedules.map((schedule) => (
-                  <tr key={schedule._id}>
-                    <td>{t(`types.${schedule.type}`)}</td>
-                    <td>{t(`formats.${schedule.format}`)}</td>
-                    <td>{t(`frequencies.${schedule.frequency}`)}</td>
-                    <td>{schedule.next_run_at ? new Date(schedule.next_run_at).toLocaleString() : '-'}</td>
-                    <td>
-                      <button type="button"
-                        onClick={() => void handleToggleSchedule(schedule)}
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${
-                          schedule.active
-                            ? 'bg-green-100 text-green-800 border-green-200'
-                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        {schedule.active ? t('schedules.activeLabel') : t('schedules.pausedLabel')}
-                      </button>
-                    </td>
-                    <td>
-                      <button type="button"
-                        onClick={() => void handleDeleteSchedule(schedule)}
-                        title={tCommon('delete')}
-                        aria-label={`${tCommon('delete')} ${schedule.schedule_id}`}
-                      >
-                        <TrashIcon className="w-4 h-4 text-red-500" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
+            <tbody>{renderScheduleRows()}</tbody>
           </table>
         </div>
       </div>
