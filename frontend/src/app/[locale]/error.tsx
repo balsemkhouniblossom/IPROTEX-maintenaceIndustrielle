@@ -8,10 +8,10 @@ import { reportClientError } from '@/services/errorReporting';
 export default function LocaleRouteError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   const t = useTranslations('errors.route');
   const locale = useLocale();
 

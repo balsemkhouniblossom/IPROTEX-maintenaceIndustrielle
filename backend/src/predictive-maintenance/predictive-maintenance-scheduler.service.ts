@@ -15,6 +15,13 @@ import { createRunId, mapWithConcurrency } from '../scheduler/scheduler-utils';
 
 type JobResult = { processed: number; details?: Record<string, unknown> };
 
+interface PredictionSweepCounters {
+  scanned: number;
+  processed: number;
+  failed: number;
+  batches: number;
+}
+
 /**
  * Keeps the feature usable with zero manual setup: on every tick it first
  * bootstraps a model version for any registered model type that has never
@@ -87,10 +94,12 @@ export class PredictiveMaintenanceSchedulerService {
     const startedAt = Date.now();
     const deadline = startedAt + settings.jobTimeoutMs;
     let status = 'completed';
-    let scanned = 0;
-    let processed = 0;
-    let failed = 0;
-    let batches = 0;
+    const counters: PredictionSweepCounters = {
+      scanned: 0,
+      processed: 0,
+      failed: 0,
+      batches: 0,
+    };
 
     try {
       const bootstrapped = await this.trainingService.trainAllMissing();
@@ -101,32 +110,19 @@ export class PredictiveMaintenanceSchedulerService {
       }
 
       let lastId: Types.ObjectId | undefined;
-      while (Date.now() < deadline && scanned < settings.maxItemsPerRun) {
-        const remaining = settings.maxItemsPerRun - scanned;
-        const filter = lastId ? { _id: { $gt: lastId } } : {};
-        const machines = await this.machineModel
-          .find(filter)
-          .select({ _id: 1 })
-          .sort({ _id: 1 })
-          .limit(Math.min(settings.batchSize, remaining))
-          .exec();
+      while (this.shouldContinueSweep(deadline, counters.scanned, settings)) {
+        const machines = await this.findPredictionCandidates(
+          lastId,
+          counters.scanned,
+          settings,
+        );
 
         if (!machines.length) break;
-        batches += 1;
-        scanned += machines.length;
-        await mapWithConcurrency(
+        await this.processPredictionBatch(
           machines,
-          settings.concurrency,
-          async (machine) => {
-            const succeeded = await this.runPredictionCandidate(
-              machine,
-              deadline,
-            );
-            if (succeeded === true) processed += 1;
-            if (succeeded === false) {
-              failed += 1;
-            }
-          },
+          deadline,
+          counters,
+          settings,
         );
         lastId = machines.at(-1)!._id;
         if (machines.length < settings.batchSize) break;
@@ -151,16 +147,27 @@ export class PredictiveMaintenanceSchedulerService {
             this.schedulerLockService?.getInstanceId() ?? 'local-test',
           status,
           lockAcquired: Boolean(lock),
-          scanned,
-          processed,
-          succeeded: processed,
-          failed,
-          skipped: Math.max(0, scanned - processed - failed),
-          batches,
+          scanned: counters.scanned,
+          processed: counters.processed,
+          succeeded: counters.processed,
+          failed: counters.failed,
+          skipped: Math.max(
+            0,
+            counters.scanned - counters.processed - counters.failed,
+          ),
+          batches: counters.batches,
           durationMs: Date.now() - startedAt,
         }),
       );
-      return { processed, details: { scanned, failed, batches, status } };
+      return {
+        processed: counters.processed,
+        details: {
+          scanned: counters.scanned,
+          failed: counters.failed,
+          batches: counters.batches,
+          status,
+        },
+      };
     } finally {
       if (lock) {
         await this.schedulerLockService?.release(lock, status);
@@ -174,6 +181,48 @@ export class PredictiveMaintenanceSchedulerService {
     );
     if (value === undefined) return true;
     return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+  }
+
+  private shouldContinueSweep(
+    deadline: number,
+    scanned: number,
+    settings: ReturnType<SchedulerConfigService['getSettings']>,
+  ): boolean {
+    return Date.now() < deadline && scanned < settings.maxItemsPerRun;
+  }
+
+  private findPredictionCandidates(
+    lastId: Types.ObjectId | undefined,
+    scanned: number,
+    settings: ReturnType<SchedulerConfigService['getSettings']>,
+  ): Promise<MachineDocument[]> {
+    const remaining = settings.maxItemsPerRun - scanned;
+    return this.machineModel
+      .find(lastId ? { _id: { $gt: lastId } } : {})
+      .select({ _id: 1 })
+      .sort({ _id: 1 })
+      .limit(Math.min(settings.batchSize, remaining))
+      .exec();
+  }
+
+  private async processPredictionBatch(
+    machines: MachineDocument[],
+    deadline: number,
+    counters: PredictionSweepCounters,
+    settings: ReturnType<SchedulerConfigService['getSettings']>,
+  ): Promise<void> {
+    counters.batches += 1;
+    counters.scanned += machines.length;
+
+    await mapWithConcurrency(
+      machines,
+      settings.concurrency,
+      async (machine) => {
+        const succeeded = await this.runPredictionCandidate(machine, deadline);
+        if (succeeded === true) counters.processed += 1;
+        if (succeeded === false) counters.failed += 1;
+      },
+    );
   }
 
   private async runPredictionCandidate(

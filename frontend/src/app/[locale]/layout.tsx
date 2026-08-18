@@ -3,9 +3,8 @@ import "../globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { locales } from "@/i18n/config";
+import { isRtlLocale, locales } from "@/i18n/config";
 import React from "react";
-import { isRtlLocale } from "@/i18n/config";
 import LocaleDocumentAttributes from "./LocaleDocumentAttributes";
 
 export function generateStaticParams() {
@@ -17,12 +16,12 @@ export const metadata: Metadata = {
   description: "IPROTEX - Gestion de machines Industrielles",
 };
 
-type Props = {
+type Props = Readonly<{
   children: React.ReactNode;
   params: Promise<{
     locale: string;
   }>;
-};
+}>;
 
 
 export default async function LocaleLayout({

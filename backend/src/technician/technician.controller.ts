@@ -13,15 +13,15 @@ import {
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { normalizePagination, PaginatedResponse } from '../common/pagination';
-import { TechnicianService } from './technician.service';
+import {
+  TechnicianDashboardResponse,
+  TechnicianService,
+  TechnicianWorkOrderView,
+} from './technician.service';
 import { TechnicianOnly } from '../auth/decorators/roles.decorator';
 import { ReviewWorkOrderDto } from './dto/review-work-order.dto';
 import { UpdateTechnicianReportDto } from './dto/update-technician-report.dto';
 import { SetPartQuantityDto } from './dto/set-part-quantity.dto';
-import {
-  TechnicianDashboardResponse,
-  TechnicianWorkOrderView,
-} from './technician.service';
 import {
   TechnicianPartResponse,
   TechnicianWorkOrderDetailResponse,

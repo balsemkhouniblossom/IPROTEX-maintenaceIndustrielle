@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -55,10 +55,27 @@ interface DocumentEntity {
     date_ajout?: string;
 }
 
-const normalizeMachineTypeId = (machine: { type_id?: unknown }) =>
-    typeof machine.type_id === "object" && machine.type_id !== null && "_id" in machine.type_id
-        ? String((machine.type_id as { _id?: unknown })._id ?? "")
-        : String(machine.type_id ?? "");
+function stringId(value: unknown): string {
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    if (value && typeof value === "object" && "_id" in value) {
+        return stringId((value as { _id?: unknown })._id);
+    }
+    return "";
+}
+
+const normalizeMachineTypeId = (machine: { type_id?: unknown }) => stringId(machine.type_id);
+
+function isNotFoundError(error: unknown): boolean {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response !== null &&
+        "status" in error.response &&
+        error.response.status === 404
+    );
+}
 
 function OperatorMachinesPageContent() {
     const router = useRouter();
@@ -76,7 +93,7 @@ function OperatorMachinesPageContent() {
     const [manualsByMachine, setManualsByMachine] = useState<Record<string, DocumentEntity[]>>({});
     const [loadingManualMachineId, setLoadingManualMachineId] = useState<string | null>(null);
     const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(null);
-    const [, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
+    const previewManualQueueRef = useRef<DocumentEntity[]>([]);
     const [notification, setNotification] = useState<{ type: "error"; message: string } | null>(null);
     const locale = params?.locale ?? "en";
 
@@ -101,7 +118,7 @@ function OperatorMachinesPageContent() {
 
             const filteredMachines = typeId
                 ? normalizedMachines.filter(
-                    (m: any) => String(m.type_id ?? "") === String(typeId ?? "")
+                    (m: any) => m.type_id === typeId
                 )
                 : normalizedMachines;
 
@@ -127,35 +144,22 @@ function OperatorMachinesPageContent() {
         window.setTimeout(() => setNotification(null), 5000);
     }
 
-    function isNotFoundError(error: unknown): boolean {
-        return (
-            typeof error === "object" &&
-            error !== null &&
-            "response" in error &&
-            typeof error.response === "object" &&
-            error.response !== null &&
-            "status" in error.response &&
-            error.response.status === 404
-        );
-    }
-
     function openManualQueue(manuals: DocumentEntity[]) {
-        setPreviewManualQueue(manuals);
+        previewManualQueueRef.current = manuals;
         setPreviewManual(manuals[0] ?? null);
     }
 
     function handleManualLoadError() {
-        setPreviewManualQueue((queue) => {
-            const currentIndex = previewManual ? queue.findIndex((doc) => doc._id === previewManual._id) : -1;
-            const next = queue[currentIndex + 1];
-            if (next) {
-                setPreviewManual(next);
-            } else {
-                setPreviewManual(null);
-                showError("No available document for this machine.");
-            }
-            return queue;
-        });
+        const queue = previewManualQueueRef.current;
+        const currentIndex = previewManual ? queue.findIndex((doc) => doc._id === previewManual._id) : -1;
+        const next = queue[currentIndex + 1];
+        if (next) {
+            setPreviewManual(next);
+        } else {
+            previewManualQueueRef.current = [];
+            setPreviewManual(null);
+            showError("No available document for this machine.");
+        }
     }
 
     async function handleOpenManual(machine: Machine) {
@@ -360,8 +364,8 @@ function OperatorMachinesPageContent() {
                 <Modal
                     isOpen={Boolean(previewManual)}
                     onClose={() => {
+                        previewManualQueueRef.current = [];
                         setPreviewManual(null);
-                        setPreviewManualQueue([]);
                     }}
                     title={previewManual?.file_name || tOperator("openManual")}
                     size="xl"

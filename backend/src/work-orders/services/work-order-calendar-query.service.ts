@@ -93,6 +93,11 @@ export interface CalendarEventRow {
   reminderStage: string;
 }
 
+interface CalendarEventBuildCaches {
+  machineTypes: Map<string, MachineType | null>;
+  users: Map<string, User | null>;
+}
+
 export interface CalendarEventsResponse {
   view: CalendarView;
   date: string;
@@ -601,130 +606,129 @@ export class WorkOrderCalendarQueryService {
   private async toCalendarEvents(
     workOrders: WorkOrderDocument[],
   ): Promise<CalendarEventRow[]> {
-    const machineTypeCache = new Map<string, MachineType | null>();
-    const userCache = new Map<string, User | null>();
-
-    const rows: CalendarEventRow[] = [];
-    for (const workOrder of workOrders) {
-      const now = new Date();
-      const dueDate = this.getWorkOrderDueDate(workOrder) || now;
-      const plan = await this.resolvePlan(workOrder.plan_id, workOrder.plan_id);
-      const machine = await this.resolveMachine(
-        workOrder.machine_id,
-        workOrder.machine_id,
-      );
-      const moduleEntity = await this.resolveModule(
-        workOrder.module_id,
-        workOrder.module_id,
-      );
-
-      const machineTypeId = machine ? this.objectIdString(machine.type_id) : '';
-      let machineType: MachineType | null = null;
-      if (machineTypeId) {
-        if (!machineTypeCache.has(machineTypeId)) {
-          const fetched = await this.machineTypeModel
-            .findById(machineTypeId)
-            .exec();
-          machineTypeCache.set(machineTypeId, fetched);
-        }
-        machineType = machineTypeCache.get(machineTypeId) || null;
-      }
-
-      const technicianId = this.objectIdString(workOrder.technician_id);
-      let technician: User | null = null;
-      if (technicianId) {
-        const hydratedTechnician = this.extractHydratedEntity<User>(
-          workOrder.technician_id,
-          ['nom_complet'],
-        );
-        if (hydratedTechnician) {
-          technician = hydratedTechnician;
-          userCache.set(technicianId, hydratedTechnician);
-        } else if (!userCache.has(technicianId)) {
-          const fetchedUser = await this.userModel
-            .findById(technicianId)
-            .select(SAFE_USER_PROJECTION)
-            .exec();
-          userCache.set(technicianId, fetchedUser);
-        }
-        technician = technician || userCache.get(technicianId) || null;
-      }
-
-      rows.push({
-        id: workOrder._id.toString(),
-        workOrderId: workOrder._id.toString(),
-        title:
-          workOrder.description ||
-          plan?.instruction ||
-          `${(workOrder.type_maintenance || 'maintenance').toUpperCase()} task`,
-        type: workOrder.type_maintenance || 'preventive',
-        status: this.schedulingService.calculateOperationalStatus({
-          status: workOrder.status,
-          dueDate,
-          intervalUnit: plan?.unite_frequence,
-        }),
-        priority: workOrder.priorite || 'medium',
-        dueDate: dueDate.toISOString(),
-        startDate: new Date(
-          workOrder.execution_date ||
-            workOrder.scheduled_date ||
-            workOrder.due_date ||
-            workOrder.date_start ||
-            now,
-        ).toISOString(),
-        endDate: workOrder.date_end
-          ? new Date(workOrder.date_end).toISOString()
-          : undefined,
-        color: this.computeEventColor(workOrder.status, dueDate, now),
-        machine: {
-          id:
-            this.objectIdString(machine) ||
-            this.objectIdString(workOrder.machine_id),
-          code:
-            machine?.machine_id ||
-            asPopulatedDoc<{ machine_id?: string }>(workOrder.machine_id)
-              ?.machine_id ||
-            '',
-          model: machine?.model,
-          typeId: this.objectIdString(machineType) || machineTypeId,
-          typeName: machineType?.name,
-        },
-        module: moduleEntity
-          ? {
-              id: this.objectIdString(moduleEntity),
-              code: moduleEntity.module_id,
-              location: moduleEntity.localisation,
-            }
-          : undefined,
-        frequency: {
-          value: plan?.frequence,
-          unit: plan?.unite_frequence,
-          normalizedUnit: this.normalizeFrequencyUnit(plan?.unite_frequence),
-          label: this.formatFrequency(plan?.frequence, plan?.unite_frequence),
-        },
-        assignedOperator: technician
-          ? {
-              id: this.objectIdString(technician),
-              name: technician.nom_complet,
-            }
-          : undefined,
-        assignedTechnician: technician
-          ? {
-              id: this.objectIdString(technician),
-              name: technician.nom_complet,
-            }
-          : undefined,
-        reminderStage: this.computeReminderStage(
-          workOrder.status,
-          dueDate,
-          now,
-        ),
-      });
-    }
+    const caches: CalendarEventBuildCaches = {
+      machineTypes: new Map<string, MachineType | null>(),
+      users: new Map<string, User | null>(),
+    };
+    const rows = await Promise.all(
+      workOrders.map((workOrder) => this.toCalendarEventRow(workOrder, caches)),
+    );
 
     return rows.sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
     );
+  }
+
+  private async toCalendarEventRow(
+    workOrder: WorkOrderDocument,
+    caches: CalendarEventBuildCaches,
+  ): Promise<CalendarEventRow> {
+    const now = new Date();
+    const dueDate = this.getWorkOrderDueDate(workOrder) || now;
+    const plan = await this.resolvePlan(workOrder.plan_id, workOrder.plan_id);
+    const machine = await this.resolveMachine(
+      workOrder.machine_id,
+      workOrder.machine_id,
+    );
+    const moduleEntity = await this.resolveModule(
+      workOrder.module_id,
+      workOrder.module_id,
+    );
+    const machineTypeId = machine ? this.objectIdString(machine.type_id) : '';
+    const machineType = await this.resolveMachineType(machineTypeId, caches);
+    const technician = await this.resolveCalendarTechnician(workOrder, caches);
+
+    return {
+      id: workOrder._id.toString(),
+      workOrderId: workOrder._id.toString(),
+      title: calendarEventTitle(workOrder, plan),
+      type: workOrder.type_maintenance || 'preventive',
+      status: this.schedulingService.calculateOperationalStatus({
+        status: workOrder.status,
+        dueDate,
+        intervalUnit: plan?.unite_frequence,
+      }),
+      priority: workOrder.priorite || 'medium',
+      dueDate: dueDate.toISOString(),
+      startDate: calendarEventStartDate(workOrder, now).toISOString(),
+      endDate: workOrder.date_end
+        ? new Date(workOrder.date_end).toISOString()
+        : undefined,
+      color: this.computeEventColor(workOrder.status, dueDate, now),
+      machine: {
+        id:
+          this.objectIdString(machine) ||
+          this.objectIdString(workOrder.machine_id),
+        code:
+          machine?.machine_id ||
+          asPopulatedDoc<{ machine_id?: string }>(workOrder.machine_id)
+            ?.machine_id ||
+          '',
+        model: machine?.model,
+        typeId: this.objectIdString(machineType) || machineTypeId,
+        typeName: machineType?.name,
+      },
+      module: moduleEntity
+        ? {
+            id: this.objectIdString(moduleEntity),
+            code: moduleEntity.module_id,
+            location: moduleEntity.localisation,
+          }
+        : undefined,
+      frequency: {
+        value: plan?.frequence,
+        unit: plan?.unite_frequence,
+        normalizedUnit: this.normalizeFrequencyUnit(plan?.unite_frequence),
+        label: this.formatFrequency(plan?.frequence, plan?.unite_frequence),
+      },
+      assignedOperator: calendarEventAssignee(technician, (value) =>
+        this.objectIdString(value),
+      ),
+      assignedTechnician: calendarEventAssignee(technician, (value) =>
+        this.objectIdString(value),
+      ),
+      reminderStage: this.computeReminderStage(workOrder.status, dueDate, now),
+    };
+  }
+
+  private async resolveMachineType(
+    machineTypeId: string,
+    caches: CalendarEventBuildCaches,
+  ): Promise<MachineType | null> {
+    if (!machineTypeId) return null;
+    if (!caches.machineTypes.has(machineTypeId)) {
+      const fetched = await this.machineTypeModel
+        .findById(machineTypeId)
+        .exec();
+      caches.machineTypes.set(machineTypeId, fetched);
+    }
+    return caches.machineTypes.get(machineTypeId) || null;
+  }
+
+  private async resolveCalendarTechnician(
+    workOrder: WorkOrderDocument,
+    caches: CalendarEventBuildCaches,
+  ): Promise<User | null> {
+    const technicianId = this.objectIdString(workOrder.technician_id);
+    if (!technicianId) return null;
+
+    const hydratedTechnician = this.extractHydratedEntity<User>(
+      workOrder.technician_id,
+      ['nom_complet'],
+    );
+    if (hydratedTechnician) {
+      caches.users.set(technicianId, hydratedTechnician);
+      return hydratedTechnician;
+    }
+
+    if (!caches.users.has(technicianId)) {
+      const fetchedUser = await this.userModel
+        .findById(technicianId)
+        .select(SAFE_USER_PROJECTION)
+        .exec();
+      caches.users.set(technicianId, fetchedUser);
+    }
+    return caches.users.get(technicianId) || null;
   }
 
   private getViewDateRange(view: CalendarView, date: Date, timeZone?: string) {
@@ -1031,4 +1035,39 @@ export class WorkOrderCalendarQueryService {
 
     return '';
   }
+}
+
+function calendarEventTitle(
+  workOrder: WorkOrderDocument,
+  plan: MaintenancePlan | null,
+): string {
+  return (
+    workOrder.description ||
+    plan?.instruction ||
+    `${(workOrder.type_maintenance || 'maintenance').toUpperCase()} task`
+  );
+}
+
+function calendarEventStartDate(
+  workOrder: WorkOrderDocument,
+  fallback: Date,
+): Date {
+  return new Date(
+    workOrder.execution_date ||
+      workOrder.scheduled_date ||
+      workOrder.due_date ||
+      workOrder.date_start ||
+      fallback,
+  );
+}
+
+function calendarEventAssignee(
+  technician: User | null,
+  idString: (value: unknown) => string,
+): { id: string; name: string } | undefined {
+  if (!technician) return undefined;
+  return {
+    id: idString(technician),
+    name: technician.nom_complet,
+  };
 }

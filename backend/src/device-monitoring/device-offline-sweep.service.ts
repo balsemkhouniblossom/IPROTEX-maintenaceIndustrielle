@@ -26,6 +26,13 @@ interface JobResult {
 
 type OfflineCandidateResult = 'transitioned' | 'skipped' | 'failed';
 
+interface SweepCounters {
+  transitioned: number;
+  scanned: number;
+  failed: number;
+  batches: number;
+}
+
 /**
  * Kept as its own small service rather than folded into
  * `AutomationSchedulerService` — that class already carries a large,
@@ -92,43 +99,30 @@ export class DeviceOfflineSweepService {
     const startedAt = Date.now();
     const deadline = startedAt + settings.jobTimeoutMs;
 
-    let transitioned = 0;
-    let scanned = 0;
-    let failed = 0;
-    let batches = 0;
+    const counters: SweepCounters = {
+      transitioned: 0,
+      scanned: 0,
+      failed: 0,
+      batches: 0,
+    };
     let lastId: Types.ObjectId | undefined;
     let status = 'completed';
 
     try {
-      while (Date.now() < deadline && scanned < settings.maxItemsPerRun) {
-        const remaining = settings.maxItemsPerRun - scanned;
-        const filter = {
-          is_active: true,
-          last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
-          ...(lastId ? { _id: { $gt: lastId } } : {}),
-        };
-        const candidates = await this.deviceModel
-          .find(filter)
-          .sort({ _id: 1 })
-          .limit(Math.min(settings.batchSize, remaining))
-          .exec();
-
-        if (!candidates.length) break;
-        batches += 1;
-        scanned += candidates.length;
-
-        await mapWithConcurrency(
-          candidates,
-          settings.externalConcurrency,
-          async (device) => {
-            const result = await this.processOfflineCandidate(device, deadline);
-            if (result === 'transitioned') transitioned += 1;
-            if (result === 'failed') {
-              failed += 1;
-            }
-          },
+      while (this.shouldContinueSweep(deadline, counters.scanned, settings)) {
+        const candidates = await this.findOfflineCandidates(
+          lastId,
+          counters.scanned,
+          settings,
         );
 
+        if (!candidates.length) break;
+        await this.processOfflineBatch(
+          candidates,
+          deadline,
+          counters,
+          settings,
+        );
         lastId = candidates.at(-1)!._id;
         if (candidates.length < settings.batchSize) break;
         if (lock) {
@@ -152,22 +146,77 @@ export class DeviceOfflineSweepService {
             this.schedulerLockService?.getInstanceId() ?? 'local-test',
           status,
           lockAcquired: Boolean(lock),
-          scanned,
-          processed: transitioned,
-          succeeded: transitioned,
-          failed,
-          skipped: Math.max(0, scanned - transitioned - failed),
-          batches,
+          scanned: counters.scanned,
+          processed: counters.transitioned,
+          succeeded: counters.transitioned,
+          failed: counters.failed,
+          skipped: Math.max(
+            0,
+            counters.scanned - counters.transitioned - counters.failed,
+          ),
+          batches: counters.batches,
           durationMs: Date.now() - startedAt,
         }),
       );
 
-      return { processed: transitioned, details: { scanned, failed, batches } };
+      return {
+        processed: counters.transitioned,
+        details: {
+          scanned: counters.scanned,
+          failed: counters.failed,
+          batches: counters.batches,
+        },
+      };
     } finally {
       if (lock) {
         await this.schedulerLockService?.release(lock, status);
       }
     }
+  }
+
+  private shouldContinueSweep(
+    deadline: number,
+    scanned: number,
+    settings: ReturnType<SchedulerConfigService['getSettings']>,
+  ): boolean {
+    return Date.now() < deadline && scanned < settings.maxItemsPerRun;
+  }
+
+  private findOfflineCandidates(
+    lastId: Types.ObjectId | undefined,
+    scanned: number,
+    settings: ReturnType<SchedulerConfigService['getSettings']>,
+  ): Promise<DeviceDocument[]> {
+    const remaining = settings.maxItemsPerRun - scanned;
+    return this.deviceModel
+      .find({
+        is_active: true,
+        last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
+        ...(lastId ? { _id: { $gt: lastId } } : {}),
+      })
+      .sort({ _id: 1 })
+      .limit(Math.min(settings.batchSize, remaining))
+      .exec();
+  }
+
+  private async processOfflineBatch(
+    candidates: DeviceDocument[],
+    deadline: number,
+    counters: SweepCounters,
+    settings: ReturnType<SchedulerConfigService['getSettings']>,
+  ): Promise<void> {
+    counters.batches += 1;
+    counters.scanned += candidates.length;
+
+    await mapWithConcurrency(
+      candidates,
+      settings.externalConcurrency,
+      async (device) => {
+        const result = await this.processOfflineCandidate(device, deadline);
+        if (result === 'transitioned') counters.transitioned += 1;
+        if (result === 'failed') counters.failed += 1;
+      },
+    );
   }
 
   private async processOfflineCandidate(

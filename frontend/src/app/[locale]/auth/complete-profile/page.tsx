@@ -29,7 +29,11 @@ const LANGUAGE_OPTIONS = [
   { value: 'it', label: 'Italian' },
 ];
 
-function CompleteProfileShell({ children }: { children: ReactNode }) {
+type CompleteProfileShellProps = Readonly<{
+  children: ReactNode;
+}>;
+
+function CompleteProfileShell({ children }: CompleteProfileShellProps) {
   const t = useTranslations('auth');
 
   return (

@@ -81,7 +81,7 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(null);
-  const [previewManualQueue, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
+  const [, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
   const [manualsByMachine, setManualsByMachine] = useState<Record<string, DocumentEntity[]>>({});
   const [loadingManualMachineId, setLoadingManualMachineId] = useState<string | null>(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);

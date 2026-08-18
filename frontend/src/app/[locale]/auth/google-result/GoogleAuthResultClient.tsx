@@ -19,6 +19,11 @@ type ResultView = {
   tone: 'success' | 'warning' | 'danger';
 };
 
+type GoogleResultShellProps = Readonly<{
+  children: React.ReactNode;
+  tone: ResultView['tone'];
+}>;
+
 const RESULT_VIEWS: Record<GoogleResultStatus, ResultView> = {
   'created-pending': {
     titleKey: 'googleAccountCreatedTitle',
@@ -146,10 +151,7 @@ export default function GoogleAuthResultClient() {
 function GoogleResultShell({
   children,
   tone,
-}: {
-  children: React.ReactNode;
-  tone: ResultView['tone'];
-}) {
+}: GoogleResultShellProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">

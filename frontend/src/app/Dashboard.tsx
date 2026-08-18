@@ -43,7 +43,11 @@ function normalizeArray<T>(value: unknown): T[] {
   return Array.isArray(items) ? (items as T[]) : [];
 }
 
-export default function Dashboard({ locale: propLocale }: { locale?: string }) {
+type DashboardProps = Readonly<{
+  locale?: string;
+}>;
+
+export default function Dashboard({ locale: propLocale }: DashboardProps) {
   const tAdmin = useTranslations("dashboard.admin");
 
   const { user, isLoading: authLoading } = useAuth();
@@ -58,7 +62,7 @@ export default function Dashboard({ locale: propLocale }: { locale?: string }) {
   const [activeUsersPreview, setActiveUsersPreview] = useState<MinimalUser[]>([]);
 
   useEffect(() => {
-    if (authLoading || !user || user.role !== 'admin') return;
+    if (authLoading || user?.role !== 'admin') return;
 
     (async () => {
       try {

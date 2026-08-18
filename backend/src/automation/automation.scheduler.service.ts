@@ -1243,7 +1243,7 @@ export class AutomationSchedulerService {
   private objectIdString(value: unknown): string {
     if (!value) return '';
     if (typeof value === 'string') return value;
-    if (value instanceof Types.ObjectId) return value.toString();
+    if (value instanceof Types.ObjectId) return value.toHexString();
     if (typeof value === 'object' && value !== null && '_id' in value) {
       return this.objectIdString((value as { _id?: unknown })._id);
     }
