@@ -454,7 +454,7 @@ describe('DocumentsService lifecycle transitions', () => {
       expect(result.status).toBe('draft');
       expect(result.version).toBe(1);
       expect(result.revision).toBe(1);
-      expect((result.lifecycle_history as unknown[]).length).toBe(1);
+      expect(result.lifecycle_history as unknown[]).toHaveLength(1);
     });
   });
 

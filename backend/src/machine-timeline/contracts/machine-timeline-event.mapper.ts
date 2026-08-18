@@ -16,8 +16,8 @@ import {
   PreventiveTaskTimelineMetadata,
   SystemTimelineMetadata,
   WorkOrderTimelineMetadata,
-  assertNever,
 } from './machine-timeline-event-response.types';
+export { assertNever } from './machine-timeline-event-response.types';
 
 /**
  * Reads a single field off the internal event's loose `metadata` bag. The
@@ -279,5 +279,3 @@ export function toMachineTimelineEventResponse(
       };
   }
 }
-
-export { assertNever };

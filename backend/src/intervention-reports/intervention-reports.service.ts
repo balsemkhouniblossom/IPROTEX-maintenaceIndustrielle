@@ -14,7 +14,7 @@ import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
 export class InterventionReportsService {
   constructor(
     @InjectModel(InterventionReport.name)
-    private interventionReportModel: Model<InterventionReportDocument>,
+    private readonly interventionReportModel: Model<InterventionReportDocument>,
   ) {}
 
   async create(

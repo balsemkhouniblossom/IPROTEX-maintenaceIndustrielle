@@ -19,11 +19,11 @@ import { assertNoDependencies } from '../common/dependency-protection';
 export class ModuleTypesService {
   constructor(
     @InjectModel(ModuleType.name)
-    private moduleTypeModel: Model<ModuleTypeDocument>,
+    private readonly moduleTypeModel: Model<ModuleTypeDocument>,
     @InjectModel(ModuleEntity.name)
-    private moduleModel: Model<ModuleDocument>,
+    private readonly moduleModel: Model<ModuleDocument>,
     @InjectModel(ModulePieces.name)
-    private modulePiecesModel: Model<ModulePiecesDocument>,
+    private readonly modulePiecesModel: Model<ModulePiecesDocument>,
   ) {}
 
   async create(createModuleTypeDto: CreateModuleTypeDto): Promise<ModuleType> {

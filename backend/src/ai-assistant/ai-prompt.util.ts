@@ -97,57 +97,44 @@ function formatListSection<T>(
 
 export function buildUserPrompt(request: AiAssistantRequest): string {
   const { context } = request;
-  const lines: string[] = [];
+  const machineLines = [
+    ...(context.machineName ? [formatMachineLine(context)] : []),
+    ...(context.faultCode ? [formatFaultLine(context)] : []),
+    ...(context.probableCause
+      ? [`Catalog probable cause: ${context.probableCause}`]
+      : []),
+    ...(context.approvedSolution
+      ? [`Catalog approved solution: ${context.approvedSolution}`]
+      : []),
+  ];
 
-  lines.push('<context>');
-  if (context.machineName) {
-    lines.push(formatMachineLine(context));
-  }
-  if (context.faultCode) {
-    lines.push(formatFaultLine(context));
-  }
-  if (context.probableCause) {
-    lines.push(`Catalog probable cause: ${context.probableCause}`);
-  }
-  if (context.approvedSolution) {
-    lines.push(`Catalog approved solution: ${context.approvedSolution}`);
-  }
-
-  lines.push(
+  return [
+    '<context>',
+    ...machineLines,
     formatListSection(
       context.activeAlarms,
       'Active alarms (unresolved)',
       'Active alarms: none currently active on this machine.',
       formatAlarmLine,
     ),
-  );
-
-  lines.push(
     formatListSection(
       context.maintenanceHistory,
       'Maintenance history (most recent first)',
       'Maintenance history: no prior work orders on record for this machine.',
       formatHistoryLine,
     ),
-  );
-
-  lines.push(
     formatListSection(
       context.knowledgeArticles,
       'Related knowledge base articles',
       'Related knowledge base articles: none found.',
       formatArticleLine,
     ),
-  );
-  lines.push(
     '</context>',
     '',
     '<question>',
     request.question || '(no additional description provided)',
     '</question>',
-  );
-
-  return lines.join('\n');
+  ].join('\n');
 }
 
 /**

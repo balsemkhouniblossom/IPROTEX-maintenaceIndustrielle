@@ -24,6 +24,19 @@ import { Role } from '../schemas/user.schema';
 import { AuthenticatedRoles } from '../auth/decorators/roles.decorator';
 import { KnowledgeArticleStatus } from '../schemas/knowledge-article.schema';
 
+interface KnowledgeArticleQuery {
+  page?: string;
+  limit?: string;
+  status?: string;
+  category?: string;
+  machineId?: string;
+  machineTypeId?: string;
+  maintenancePlanId?: string;
+  faultCode?: string;
+  errorCode?: string;
+  search?: string;
+}
+
 @Controller('knowledge-base/articles')
 @UseGuards(JwtAuthGuard)
 @AuthenticatedRoles()
@@ -65,17 +78,20 @@ export class KnowledgeBaseController {
   @Get()
   findAll(
     @Req() req: AuthenticatedRequest,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('status') status?: string,
-    @Query('category') category?: string,
-    @Query('machineId') machineId?: string,
-    @Query('machineTypeId') machineTypeId?: string,
-    @Query('maintenancePlanId') maintenancePlanId?: string,
-    @Query('faultCode') faultCode?: string,
-    @Query('errorCode') errorCode?: string,
-    @Query('search') search?: string,
+    @Query() query: KnowledgeArticleQuery,
   ) {
+    const {
+      page,
+      limit,
+      status,
+      category,
+      machineId,
+      machineTypeId,
+      maintenancePlanId,
+      faultCode,
+      errorCode,
+      search,
+    } = query;
     this.ensureReader(req);
     const pagination = normalizePagination(page, limit);
     const isAdmin = this.isAdmin(req);

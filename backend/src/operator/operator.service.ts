@@ -44,7 +44,10 @@ import {
   CalendarTimelineResponse,
 } from '../work-orders/services/work-order-calendar-query.service';
 import { toWorkOrderResponse } from '../work-orders/contracts/work-order-response.mapper';
-import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
+import {
+  WorkOrderResponse,
+  WorkOrderSchedulingResultResponse,
+} from '../work-orders/contracts/work-order-response.types';
 import {
   InterventionReportResponse,
   toInterventionReportResponse,
@@ -97,7 +100,6 @@ import {
   CorrectiveReportForOperatorResponse,
   PreventiveSubmissionForOperatorResponse,
 } from '../work-orders/contracts/operator-workflow-response.types';
-import { WorkOrderSchedulingResultResponse } from '../work-orders/contracts/work-order-response.types';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 

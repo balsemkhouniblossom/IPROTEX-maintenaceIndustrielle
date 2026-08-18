@@ -64,7 +64,7 @@ interface TransitionRule {
   verb: string;
 }
 
-const REVISABLE_FROM = [KnowledgeArticleStatus.PUBLISHED];
+const REVISABLE_FROM = new Set([KnowledgeArticleStatus.PUBLISHED]);
 
 @Injectable()
 export class KnowledgeBaseService {
@@ -409,7 +409,7 @@ export class KnowledgeBaseService {
     if (!existing) throw new NotFoundException('Knowledge article not found');
 
     const currentStatus = existing.status ?? KnowledgeArticleStatus.DRAFT;
-    if (!REVISABLE_FROM.includes(currentStatus)) {
+    if (!REVISABLE_FROM.has(currentStatus)) {
       throw new ConflictException(
         `Cannot revise a knowledge article in "${currentStatus}" status`,
       );

@@ -13,7 +13,7 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 export class PanneSolutionsService {
   constructor(
     @InjectModel(PanneSolution.name)
-    private panneSolutionModel: Model<PanneSolutionDocument>,
+    private readonly panneSolutionModel: Model<PanneSolutionDocument>,
   ) {}
 
   async create(

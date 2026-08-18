@@ -287,18 +287,20 @@ export class KpiService {
       const partIsPopulated = Boolean(
         part && typeof part === 'object' && 'nom_piece' in part,
       );
+      const populatedPart = partIsPopulated
+        ? (part as {
+            _id?: Types.ObjectId;
+            nom_piece?: string;
+            part_id?: string;
+          })
+        : null;
 
       items.push({
         stockId: String(stock._id),
         stockCode: stock.stock_id,
-        partId: partIsPopulated
-          ? (part as { _id?: Types.ObjectId })._id?.toHexString()
-          : part instanceof Types.ObjectId
-            ? part.toHexString()
-            : undefined,
-        partLabel: partIsPopulated
-          ? ((part as { nom_piece?: string; part_id?: string }).nom_piece ??
-            (part as { nom_piece?: string; part_id?: string }).part_id)
+        partId: stockPartId(part, populatedPart),
+        partLabel: populatedPart
+          ? (populatedPart.nom_piece ?? populatedPart.part_id)
           : undefined,
         quantiteEnStock: stock.quantite_en_stock ?? 0,
         quantiteReservee,
@@ -681,4 +683,16 @@ export class KpiService {
       generatedAt: new Date().toISOString(),
     };
   }
+}
+
+function stockPartId(
+  part:
+    | { _id?: Types.ObjectId; nom_piece?: string; part_id?: string }
+    | Types.ObjectId
+    | undefined,
+  populatedPart: { _id?: Types.ObjectId } | null,
+): string | undefined {
+  if (populatedPart) return populatedPart._id?.toHexString();
+  if (part instanceof Types.ObjectId) return part.toHexString();
+  return undefined;
 }

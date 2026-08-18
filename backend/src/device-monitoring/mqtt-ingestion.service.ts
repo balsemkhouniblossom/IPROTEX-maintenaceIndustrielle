@@ -9,11 +9,20 @@ import * as mqtt from 'mqtt';
 import { DeviceAuthService } from './device-auth.service';
 import { TelemetryIngestionService } from './telemetry-ingestion.service';
 import { LiveMonitoringGateway } from './live-monitoring.gateway';
-import { DeviceConnectionStatus } from '../schemas/device.schema';
+import {
+  DeviceConnectionStatus,
+  DeviceDocument,
+} from '../schemas/device.schema';
 
 const TELEMETRY_TOPIC = 'devices/+/telemetry';
 const HEARTBEAT_TOPIC = 'devices/+/heartbeat';
 const FAULT_TOPIC = 'devices/+/fault';
+
+interface ParsedMqttMessage {
+  deviceId: string;
+  kind: string;
+  body: Record<string, unknown>;
+}
 
 /**
  * Bridges an external MQTT broker (a real broker an OpenPLC gateway or
@@ -93,10 +102,23 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
    * network connection either way.
    */
   async handleMessage(topic: string, payloadBuffer: Buffer): Promise<void> {
+    const parsed = this.parseMessage(topic, payloadBuffer);
+    if (!parsed) return;
+
+    const device = await this.authenticateDevice(parsed);
+    if (!device) return;
+
+    await this.dispatchMessage(parsed.kind, parsed.body, device, topic);
+  }
+
+  private parseMessage(
+    topic: string,
+    payloadBuffer: Buffer,
+  ): ParsedMqttMessage | null {
     const segments = topic.split('/');
     if (segments.length !== 3 || segments[0] !== 'devices') {
       this.logger.warn(`Ignoring message on unrecognized topic: ${topic}`);
-      return;
+      return null;
     }
     const [, deviceId, kind] = segments;
 
@@ -108,94 +130,124 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
       >;
     } catch {
       this.logger.warn(`Malformed JSON payload on topic ${topic}`);
-      return;
+      return null;
     }
 
-    const apiKey = typeof body.api_key === 'string' ? body.api_key : undefined;
+    return { deviceId, kind, body };
+  }
+
+  private async authenticateDevice(
+    message: ParsedMqttMessage,
+  ): Promise<DeviceDocument | null> {
+    const apiKey =
+      typeof message.body.api_key === 'string'
+        ? message.body.api_key
+        : undefined;
     if (!apiKey) {
-      this.logger.warn(`Message on topic ${topic} is missing api_key`);
-      return;
+      this.logger.warn(
+        `Message from device "${message.deviceId}" is missing api_key`,
+      );
+      return null;
     }
 
     const device = await this.deviceAuthService
-      .verifyCredentials(deviceId, apiKey)
+      .verifyCredentials(message.deviceId, apiKey)
       .catch(() => null);
     if (!device) {
       this.logger.warn(
-        `Rejected MQTT message from unauthenticated device "${deviceId}"`,
+        `Rejected MQTT message from unauthenticated device "${message.deviceId}"`,
       );
-      return;
+      return null;
     }
 
-    const machineId = String(device.machine_id);
+    return device;
+  }
 
+  private async dispatchMessage(
+    kind: string,
+    body: Record<string, unknown>,
+    device: DeviceDocument,
+    topic: string,
+  ): Promise<void> {
     if (kind === 'heartbeat') {
-      const { cameOnline } =
-        await this.telemetryIngestionService.recordHeartbeat(device);
-      if (cameOnline) {
-        this.liveMonitoringGateway.emitStatusChange(machineId, {
-          deviceId: device.device_id,
-          status: DeviceConnectionStatus.ONLINE,
-          lastSeenAt: new Date().toISOString(),
-        });
-      }
+      await this.handleHeartbeat(device);
       return;
     }
-
     if (kind === 'telemetry') {
-      const metrics = (body.metrics ?? {}) as Record<string, number>;
-      const { record, cameOnline } =
-        await this.telemetryIngestionService.recordTelemetry(device, {
-          metrics,
-          recordedAt:
-            typeof body.recorded_at === 'string'
-              ? new Date(body.recorded_at)
-              : undefined,
-        });
-      this.liveMonitoringGateway.emitTelemetry(machineId, {
-        deviceId: device.device_id,
-        metrics: record.metrics,
-        recordedAt: record.recorded_at.toISOString(),
-      });
-      if (cameOnline) {
-        this.liveMonitoringGateway.emitStatusChange(machineId, {
-          deviceId: device.device_id,
-          status: DeviceConnectionStatus.ONLINE,
-          lastSeenAt: new Date().toISOString(),
-        });
-      }
+      await this.handleTelemetry(device, body);
       return;
     }
-
     if (kind === 'fault') {
-      const { record, cameOnline } =
-        await this.telemetryIngestionService.recordFault(device, {
-          codePanne: typeof body.code_panne === 'string' ? body.code_panne : '',
-          severity: body.severity as never,
-          message: typeof body.message === 'string' ? body.message : undefined,
-          raisedAt:
-            typeof body.raised_at === 'string'
-              ? new Date(body.raised_at)
-              : undefined,
-        });
-      this.liveMonitoringGateway.emitFault(machineId, {
-        id: String(record._id),
-        deviceId: device.device_id,
-        codePanne: record.code_panne,
-        severity: record.severity,
-        message: record.message,
-        raisedAt: record.raised_at.toISOString(),
-      });
-      if (cameOnline) {
-        this.liveMonitoringGateway.emitStatusChange(machineId, {
-          deviceId: device.device_id,
-          status: DeviceConnectionStatus.ONLINE,
-          lastSeenAt: new Date().toISOString(),
-        });
-      }
+      await this.handleFault(device, body);
       return;
     }
 
     this.logger.warn(`Unrecognized topic kind "${kind}" on topic ${topic}`);
   }
+
+  private async handleHeartbeat(device: DeviceDocument): Promise<void> {
+    const { cameOnline } =
+      await this.telemetryIngestionService.recordHeartbeat(device);
+    this.emitOnlineStatusIfNeeded(device, cameOnline);
+  }
+
+  private async handleTelemetry(
+    device: DeviceDocument,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const metrics = (body.metrics ?? {}) as Record<string, number>;
+    const { record, cameOnline } =
+      await this.telemetryIngestionService.recordTelemetry(device, {
+        metrics,
+        recordedAt: optionalDate(body.recorded_at),
+      });
+    const machineId = String(device.machine_id);
+    this.liveMonitoringGateway.emitTelemetry(machineId, {
+      deviceId: device.device_id,
+      metrics: record.metrics,
+      recordedAt: record.recorded_at.toISOString(),
+    });
+    this.emitOnlineStatusIfNeeded(device, cameOnline);
+  }
+
+  private async handleFault(
+    device: DeviceDocument,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const { record, cameOnline } =
+      await this.telemetryIngestionService.recordFault(device, {
+        codePanne: typeof body.code_panne === 'string' ? body.code_panne : '',
+        severity: body.severity as never,
+        message: typeof body.message === 'string' ? body.message : undefined,
+        raisedAt: optionalDate(body.raised_at),
+      });
+    const machineId = String(device.machine_id);
+    this.liveMonitoringGateway.emitFault(machineId, {
+      id: String(record._id),
+      deviceId: device.device_id,
+      codePanne: record.code_panne,
+      severity: record.severity,
+      message: record.message,
+      raisedAt: record.raised_at.toISOString(),
+    });
+    this.emitOnlineStatusIfNeeded(device, cameOnline);
+  }
+
+  private emitOnlineStatusIfNeeded(
+    device: DeviceDocument,
+    cameOnline: boolean,
+  ): void {
+    if (!cameOnline) return;
+
+    this.liveMonitoringGateway.emitStatusChange(String(device.machine_id), {
+      deviceId: device.device_id,
+      status: DeviceConnectionStatus.ONLINE,
+      lastSeenAt: new Date().toISOString(),
+    });
+  }
+}
+
+function optionalDate(value: unknown): Date | undefined {
+  if (typeof value !== 'string') return undefined;
+  return new Date(value);
 }

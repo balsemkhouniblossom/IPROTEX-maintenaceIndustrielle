@@ -37,25 +37,28 @@ import { MachineResponse } from './contracts/machine-response.types';
 @Injectable()
 export class MachinesService {
   constructor(
-    @InjectModel(Machine.name) private machineModel: Model<MachineDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     @InjectModel(ModuleEntity.name)
-    private moduleModel: Model<ModuleDocument>,
+    private readonly moduleModel: Model<ModuleDocument>,
     @InjectModel(WorkOrder.name)
-    private workOrderModel: Model<WorkOrderDocument>,
+    private readonly workOrderModel: Model<WorkOrderDocument>,
     @InjectModel(DocumentEntity.name)
-    private documentModel: Model<DocumentDocument>,
-    @InjectModel(Device.name) private deviceModel: Model<DeviceDocument>,
+    private readonly documentModel: Model<DocumentDocument>,
+    @InjectModel(Device.name)
+    private readonly deviceModel: Model<DeviceDocument>,
     @InjectModel(FaultEvent.name)
-    private faultEventModel: Model<FaultEventDocument>,
+    private readonly faultEventModel: Model<FaultEventDocument>,
     @InjectModel(Telemetry.name)
-    private telemetryModel: Model<TelemetryDocument>,
+    private readonly telemetryModel: Model<TelemetryDocument>,
     @InjectModel(MachineHealthPrediction.name)
-    private machineHealthPredictionModel: Model<MachineHealthPredictionDocument>,
-    @InjectModel(KPI.name) private kpiModel: Model<KPIDocument>,
+    private readonly machineHealthPredictionModel: Model<MachineHealthPredictionDocument>,
+    @InjectModel(KPI.name)
+    private readonly kpiModel: Model<KPIDocument>,
     @InjectModel(KnowledgeArticle.name)
-    private knowledgeArticleModel: Model<KnowledgeArticleDocument>,
+    private readonly knowledgeArticleModel: Model<KnowledgeArticleDocument>,
     @InjectModel(AiInteraction.name)
-    private aiInteractionModel: Model<AiInteractionDocument>,
+    private readonly aiInteractionModel: Model<AiInteractionDocument>,
   ) {}
 
   async create(createMachineDto: CreateMachineDto): Promise<MachineResponse> {

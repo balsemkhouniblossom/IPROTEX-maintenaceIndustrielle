@@ -22,7 +22,7 @@ describe('IsolationForestModel', () => {
     );
     const artifact = model.train(samples, 42);
 
-    expect(artifact.trees.length).toBe(100);
+    expect(artifact.trees).toHaveLength(100);
     expect(artifact.subsampleSize).toBeGreaterThan(0);
     expect(artifact.trainingSampleCount).toBe(50);
     expect(artifact.randomSeed).toBe(42);

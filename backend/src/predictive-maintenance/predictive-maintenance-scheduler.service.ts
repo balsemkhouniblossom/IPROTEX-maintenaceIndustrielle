@@ -118,19 +118,13 @@ export class PredictiveMaintenanceSchedulerService {
           machines,
           settings.concurrency,
           async (machine) => {
-            if (Date.now() >= deadline) return;
-            try {
-              await this.predictiveMaintenanceService.runPredictionForMachine(
-                machine._id.toString(),
-              );
-              processed += 1;
-            } catch (error) {
+            const succeeded = await this.runPredictionCandidate(
+              machine,
+              deadline,
+            );
+            if (succeeded === true) processed += 1;
+            if (succeeded === false) {
               failed += 1;
-              this.logger.warn(
-                `Failed to run predictions for machine ${machine._id.toString()}: ${String(
-                  error,
-                )}`,
-              );
             }
           },
         );
@@ -180,5 +174,26 @@ export class PredictiveMaintenanceSchedulerService {
     );
     if (value === undefined) return true;
     return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+  }
+
+  private async runPredictionCandidate(
+    machine: MachineDocument,
+    deadline: number,
+  ): Promise<boolean | null> {
+    if (Date.now() >= deadline) return null;
+
+    try {
+      await this.predictiveMaintenanceService.runPredictionForMachine(
+        machine._id.toString(),
+      );
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to run predictions for machine ${machine._id.toString()}: ${String(
+          error,
+        )}`,
+      );
+      return false;
+    }
   }
 }

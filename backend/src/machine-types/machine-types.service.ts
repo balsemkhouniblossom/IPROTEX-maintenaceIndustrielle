@@ -23,13 +23,14 @@ import { MachineTypeResponse } from './contracts/machine-type-response.types';
 export class MachineTypesService {
   constructor(
     @InjectModel(MachineType.name)
-    private machineTypeModel: Model<MachineTypeDocument>,
-    @InjectModel(Machine.name) private machineModel: Model<MachineDocument>,
+    private readonly machineTypeModel: Model<MachineTypeDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
     @InjectModel(ModuleType.name)
-    private moduleTypeModel: Model<ModuleTypeDocument>,
+    private readonly moduleTypeModel: Model<ModuleTypeDocument>,
     @InjectModel(KnowledgeArticle.name)
-    private knowledgeArticleModel: Model<KnowledgeArticleDocument>,
-    private counterService: CounterService,
+    private readonly knowledgeArticleModel: Model<KnowledgeArticleDocument>,
+    private readonly counterService: CounterService,
   ) {}
 
   async create(dto: CreateMachineTypeDto): Promise<MachineTypeResponse> {

@@ -27,12 +27,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
   readonly driver = 'local' as const;
 
   async save(input: StoreFileInput): Promise<StoredFile> {
-    const directory =
-      input.folder === 'avatars'
-        ? join(process.cwd(), 'uploads', MANAGED_AVATAR_DIRECTORY)
-        : input.folder === 'quarantine'
-          ? join(process.cwd(), MANAGED_QUARANTINE_DIRECTORY)
-          : join(process.cwd(), 'uploads');
+    const directory = resolveStorageDirectory(input.folder);
     const path = join(directory, input.fileName);
 
     try {
@@ -45,12 +40,7 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 
     return {
       fileName: input.fileName,
-      relativePath:
-        input.folder === 'avatars'
-          ? toManagedAvatarPath(input.fileName)
-          : input.folder === 'quarantine'
-            ? toManagedQuarantinePath(input.fileName)
-            : toManagedUploadPath(input.fileName),
+      relativePath: resolveStoredFilePath(input.folder, input.fileName),
       shouldPersistUrl: false,
       size: input.buffer.length,
     };
@@ -129,6 +119,29 @@ export class LocalFileStorageProvider implements FileStorageProvider {
 
     return fileName;
   }
+}
+
+function resolveStorageDirectory(folder: StoreFileInput['folder']): string {
+  if (folder === 'avatars') {
+    return join(process.cwd(), 'uploads', MANAGED_AVATAR_DIRECTORY);
+  }
+  if (folder === 'quarantine') {
+    return join(process.cwd(), MANAGED_QUARANTINE_DIRECTORY);
+  }
+  return join(process.cwd(), 'uploads');
+}
+
+function resolveStoredFilePath(
+  folder: StoreFileInput['folder'],
+  fileName: string,
+): string {
+  if (folder === 'avatars') {
+    return toManagedAvatarPath(fileName);
+  }
+  if (folder === 'quarantine') {
+    return toManagedQuarantinePath(fileName);
+  }
+  return toManagedUploadPath(fileName);
 }
 
 function getContentType(fileName: string): string {

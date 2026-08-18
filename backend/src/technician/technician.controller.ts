@@ -12,13 +12,12 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { normalizePagination } from '../common/pagination';
+import { normalizePagination, PaginatedResponse } from '../common/pagination';
 import { TechnicianService } from './technician.service';
 import { TechnicianOnly } from '../auth/decorators/roles.decorator';
 import { ReviewWorkOrderDto } from './dto/review-work-order.dto';
 import { UpdateTechnicianReportDto } from './dto/update-technician-report.dto';
 import { SetPartQuantityDto } from './dto/set-part-quantity.dto';
-import { PaginatedResponse } from '../common/pagination';
 import {
   TechnicianDashboardResponse,
   TechnicianWorkOrderView,

@@ -75,7 +75,7 @@ export class DocumentsService {
 
   constructor(
     @InjectModel(DocumentEntity.name)
-    private documentModel: Model<DocumentDocument>,
+    private readonly documentModel: Model<DocumentDocument>,
     @InjectModel(Machine.name)
     private readonly machineModel: Model<MachineDocument>,
     @InjectModel(MaintenancePlan.name)
@@ -621,12 +621,7 @@ export class DocumentsService {
     doc: DocumentDocument,
   ): Promise<Record<string, unknown>> {
     const plain = doc.toObject() as Record<string, unknown>;
-    const id =
-      plain._id instanceof Types.ObjectId
-        ? plain._id.toHexString()
-        : typeof plain._id === 'string'
-          ? plain._id
-          : '';
+    const id = documentIdString(plain._id);
     const stablePath =
       (plain.storage_path as string | undefined) ??
       (plain.file_path as string | undefined);
@@ -667,7 +662,7 @@ export class DocumentsService {
 
     if (
       !fileName ||
-      !/^[A-Za-z0-9._ -]+\.xlsx$/i.test(fileName) ||
+      !isSafeSeededManualFileName(fileName) ||
       (!typeDocument.includes('manual') && !tags.includes('manual'))
     ) {
       return null;
@@ -744,9 +739,19 @@ function renderWorkbookPdf(
 }
 
 function cellToPdfText(value: unknown): string {
-  return typeof value === 'string' || typeof value === 'number'
-    ? String(value)
-    : value instanceof Date
-      ? value.toLocaleDateString('en-CA')
-      : '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return value.toString();
+  if (value instanceof Date) return value.toLocaleDateString('en-CA');
+  return '';
+}
+
+function documentIdString(id: unknown): string {
+  if (id instanceof Types.ObjectId) return id.toHexString();
+  if (typeof id === 'string') return id;
+  return '';
+}
+
+function isSafeSeededManualFileName(fileName: string): boolean {
+  if (!fileName.toLowerCase().endsWith('.xlsx')) return false;
+  return /^[A-Za-z0-9._ -]+$/.test(fileName);
 }

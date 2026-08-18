@@ -40,7 +40,7 @@ describe('MttrMtbfTrendsReportProvider', () => {
       actor,
     );
 
-    expect(kpiService.computeMttrMtbf.mock.calls.length).toBe(
+    expect(kpiService.computeMttrMtbf.mock.calls).toHaveLength(
       dataset.rows.length,
     );
     expect(dataset.rows.length).toBeGreaterThanOrEqual(3);

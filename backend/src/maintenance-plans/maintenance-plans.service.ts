@@ -212,10 +212,10 @@ export class MaintenancePlansService {
 
     const { expected_version: _expectedVersion, ...fields } = dto;
     const updates: Record<string, unknown> = { ...fields };
-    if (Object.prototype.hasOwnProperty.call(fields, 'instruction')) {
+    if (Object.hasOwn(fields, 'instruction')) {
       updates.instruction = cleanInstruction(fields.instruction);
     }
-    if (Object.prototype.hasOwnProperty.call(fields, 'responsable')) {
+    if (Object.hasOwn(fields, 'responsable')) {
       updates.responsable = cleanResponsable(fields.responsable);
     }
 

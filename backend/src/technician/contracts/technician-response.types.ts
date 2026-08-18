@@ -1,8 +1,10 @@
 import { InterventionReportResponse } from '../../common/response/intervention-report-response';
-import { StockResponse } from '../../common/response/catalogue-response';
+import {
+  CatalogueSummaryResponse,
+  StockResponse,
+} from '../../common/response/catalogue-response';
 import { DocumentSummaryResponse } from '../../common/response/document-response';
 import { WorkOrderResponse } from '../../work-orders/contracts/work-order-response.types';
-import { CatalogueSummaryResponse } from '../../common/response/catalogue-response';
 
 /** The actual serialized shape of an OTPieces row — `part_id` is a plain ObjectId string on endpoints that don't populate it and a `CatalogueSummaryResponse` on endpoints that do. */
 export interface TechnicianPartResponse {

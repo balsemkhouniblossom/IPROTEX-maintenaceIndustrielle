@@ -147,9 +147,13 @@ export class ReportsController {
 
     res.setHeader('Content-Type', file.contentType);
     res.setHeader('Content-Length', String(file.size));
+    const fileExtension = file.fileName.split('.').pop();
+    const downloadFileName = sanitizeDownloadFileName(
+      `${report.report_id}.${fileExtension}`,
+    );
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${sanitizeDownloadFileName(`${report.report_id}.${file.fileName.split('.').pop()}`)}"`,
+      `attachment; filename="${downloadFileName}"`,
     );
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(file.buffer);

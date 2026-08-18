@@ -514,7 +514,7 @@ describe('KpiService', () => {
       const second = await service.getAdminDashboard();
 
       expect(second).toBe(first);
-      expect(workOrderModel.countDocuments.mock.calls.length).toBe(
+      expect(workOrderModel.countDocuments.mock.calls).toHaveLength(
         callsAfterFirst,
       );
     });

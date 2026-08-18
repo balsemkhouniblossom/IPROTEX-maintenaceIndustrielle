@@ -96,7 +96,7 @@ describe('KnowledgeBaseService', () => {
       expect(result.status).toBe(KnowledgeArticleStatus.DRAFT);
       expect(result.version).toBe(1);
       expect(result.revision).toBe(1);
-      expect((result.lifecycle_history as unknown[]).length).toBe(1);
+      expect(result.lifecycle_history as unknown[]).toHaveLength(1);
       expect((result.lifecycle_history as { action: string }[])[0].action).toBe(
         'created',
       );
@@ -525,7 +525,7 @@ describe('KnowledgeBaseService', () => {
       });
 
       const result = await service.computeSuggestions({ machineId, limit: 3 });
-      expect(result.length).toBe(3);
+      expect(result).toHaveLength(3);
     });
   });
 });

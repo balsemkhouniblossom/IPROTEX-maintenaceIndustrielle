@@ -47,7 +47,7 @@ export class DeviceAuthService {
     deviceId: string,
     rawKey: string,
   ): Promise<DeviceDocument> {
-    if (!deviceId || !rawKey || !rawKey.includes('.')) {
+    if (!deviceId || !rawKey?.includes('.')) {
       throw new UnauthorizedException('Invalid device credentials');
     }
     const keyPrefix = rawKey.split('.')[0];
@@ -55,7 +55,7 @@ export class DeviceAuthService {
     const device = await this.deviceModel
       .findOne({ device_id: deviceId, key_prefix: keyPrefix })
       .exec();
-    if (!device || !device.is_active) {
+    if (!device?.is_active) {
       throw new UnauthorizedException('Invalid device credentials');
     }
 
@@ -79,7 +79,7 @@ export class DeviceAuthService {
       throw new UnauthorizedException('Invalid device credentials');
     }
     const device = await this.deviceModel.findById(deviceMongoId).exec();
-    if (!device || !device.is_active) {
+    if (!device?.is_active) {
       throw new UnauthorizedException('Invalid device credentials');
     }
     return device;

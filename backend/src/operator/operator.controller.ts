@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { normalizePagination } from '../common/pagination';
+import { normalizePagination, PaginatedResponse } from '../common/pagination';
 import { OperatorService } from './operator.service';
 import { OperatorOnly } from '../auth/decorators/roles.decorator';
 import { CreateCorrectiveReportDto } from './dto/create-corrective-report.dto';
@@ -21,12 +21,24 @@ import { CreatePartRequestDto } from './dto/create-part-request.dto';
 import { RescheduleCalendarEventDto } from './dto/reschedule-calendar-event.dto';
 import { SchedulePreventiveDto } from './dto/schedule-preventive.dto';
 import { UpdatePreventiveTaskChecklistDto } from './dto/update-preventive-task-checklist.dto';
-import { PaginatedResponse } from '../common/pagination';
 import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
 import { CalendarEventsResponse } from '../work-orders/services/work-order-calendar-query.service';
 import { InterventionReportResponse } from '../common/response/intervention-report-response';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
+
+interface OperatorCalendarQuery {
+  view?: CalendarView;
+  date?: string;
+  machineId?: string;
+  machineTypeId?: string;
+  maintenanceType?: string;
+  status?: string;
+  priority?: string;
+  month?: string;
+  week?: string;
+  year?: string;
+}
 
 interface AuthenticatedUser {
   userId?: string;
@@ -257,17 +269,20 @@ export class OperatorController {
   @Get('calendar/my')
   getMyCalendar(
     @Req() req: AuthenticatedRequest,
-    @Query('view') view?: CalendarView,
-    @Query('date') date?: string,
-    @Query('machineId') machineId?: string,
-    @Query('machineTypeId') machineTypeId?: string,
-    @Query('maintenanceType') maintenanceType?: string,
-    @Query('status') status?: string,
-    @Query('priority') priority?: string,
-    @Query('month') month?: string,
-    @Query('week') week?: string,
-    @Query('year') year?: string,
+    @Query() query: OperatorCalendarQuery,
   ): Promise<CalendarEventsResponse> {
+    const {
+      view,
+      date,
+      machineId,
+      machineTypeId,
+      maintenanceType,
+      status,
+      priority,
+      month,
+      week,
+      year,
+    } = query;
     const userId = this.ensureOperator(req);
     return this.operatorService.getMyCalendar(userId, {
       view: view || 'month',

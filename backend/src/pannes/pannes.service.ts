@@ -10,7 +10,7 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 export class PannesService {
   constructor(
     @InjectModel(Panne.name)
-    private panneModel: Model<PanneDocument>,
+    private readonly panneModel: Model<PanneDocument>,
   ) {}
 
   async create(createPanneDto: CreatePanneDto): Promise<Panne> {

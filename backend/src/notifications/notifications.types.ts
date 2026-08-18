@@ -1,15 +1,13 @@
-export type NotificationLocale = string;
-
 export interface VerificationEmailIntent {
   to: string;
   token: string;
-  locale?: NotificationLocale;
+  locale?: string;
   frontendOrigin?: string;
 }
 
 export interface ResetPasswordEmailIntent {
   to: string;
   resetToken: string;
-  locale?: NotificationLocale;
+  locale?: string;
   frontendOrigin?: string;
 }

@@ -46,6 +46,12 @@ interface UploadDocumentBody {
   uploaded_by?: string;
 }
 
+type ValidUploadDocumentBody = UploadDocumentBody & {
+  document_id: string;
+  machine_id: string;
+  type_document: string;
+};
+
 interface ReplaceDocumentBody {
   document_id?: string;
   reason?: string;
@@ -57,6 +63,19 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 type SupportedPhotoType = {
   extension: '.jpg' | '.png' | '.webp';
 };
+
+interface PreparedUploadFile {
+  buffer: Buffer;
+  extension: string;
+  contentType: string;
+  isPhoto: boolean;
+}
+
+interface SavedUploadFile {
+  path: string;
+  storagePath: string;
+  deleteRef: string;
+}
 
 export async function normalizeOperatorPhoto(buffer: Buffer): Promise<Buffer> {
   return sharp(buffer)
@@ -147,7 +166,7 @@ export class DocumentsUploadController {
 
   private parseTags(input: unknown): string[] {
     if (Array.isArray(input)) {
-      return input.map((tag) => String(tag)).filter(Boolean);
+      return input.map(String).filter(Boolean);
     }
 
     if (input == null || input === '') {
@@ -176,7 +195,7 @@ export class DocumentsUploadController {
     try {
       const parsed: unknown = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed.map((tag) => String(tag)).filter(Boolean);
+        return parsed.map(String).filter(Boolean);
       }
 
       if (typeof parsed === 'string' && parsed.trim()) {
@@ -253,6 +272,104 @@ export class DocumentsUploadController {
     throw toRejectionException(result.reason);
   }
 
+  private assertUploadFile(
+    file: Express.Multer.File | undefined,
+  ): asserts file {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    if (!file.buffer?.length) {
+      throw new BadRequestException('Uploaded file is empty');
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES || file.buffer.length > MAX_UPLOAD_BYTES) {
+      throw new PayloadTooLargeException('Uploaded file exceeds 10 MB');
+    }
+  }
+
+  private assertUploadBody(
+    body: UploadDocumentBody,
+  ): asserts body is ValidUploadDocumentBody {
+    if (!Types.ObjectId.isValid(body.machine_id)) {
+      throw new BadRequestException('Invalid machine_id');
+    }
+
+    for (const [field, value] of [
+      ['maintenance_plan_id', body.maintenance_plan_id],
+      ['work_order_id', body.work_order_id],
+      ['intervention_report_id', body.intervention_report_id],
+    ] as const) {
+      if (value !== undefined && !Types.ObjectId.isValid(value)) {
+        throw new BadRequestException(`Invalid ${field}`);
+      }
+    }
+
+    if (!body.document_id?.trim()) {
+      throw new BadRequestException('document_id is required');
+    }
+
+    if (!body.type_document?.trim()) {
+      throw new BadRequestException('type_document is required');
+    }
+  }
+
+  private async prepareUploadFile(
+    file: Express.Multer.File,
+    typeDocument: string,
+  ): Promise<PreparedUploadFile> {
+    const isPhoto = this.isOperatorPhotoType(typeDocument);
+    if (!isPhoto) {
+      return {
+        buffer: file.buffer,
+        extension: extname(file.originalname || '').toLowerCase(),
+        contentType: file.mimetype,
+        isPhoto: false,
+      };
+    }
+
+    const detectedPhotoType = this.detectSupportedPhotoType(file.buffer);
+    if (!detectedPhotoType) {
+      throw new UnsupportedMediaTypeException(
+        'Unsupported photo content. Only JPEG, PNG, and WebP images are allowed.',
+      );
+    }
+
+    try {
+      return {
+        buffer: await normalizeOperatorPhoto(file.buffer),
+        extension: '.webp',
+        contentType: 'image/webp',
+        isPhoto: true,
+      };
+    } catch {
+      throw new BadRequestException('Uploaded photo could not be processed');
+    }
+  }
+
+  private async saveUploadFile(
+    preparedFile: PreparedUploadFile,
+  ): Promise<SavedUploadFile> {
+    const storedFileName = `${Date.now()}-${randomUUID()}${preparedFile.extension}`;
+
+    try {
+      const storedFile = await this.fileStorageService.save({
+        buffer: preparedFile.buffer,
+        fileName: storedFileName,
+        folder: 'uploads',
+        contentType: preparedFile.contentType,
+      });
+      const storagePath = storedFile.storageKey ?? storedFile.relativePath;
+      return {
+        path: storedFile.relativePath,
+        storagePath,
+        deleteRef: storagePath,
+      };
+    } catch {
+      throw new InternalServerErrorException('Failed to store uploaded file');
+    }
+  }
+
   @Post('upload')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
@@ -269,93 +386,20 @@ export class DocumentsUploadController {
     @Req() req: AuthenticatedRequest,
   ) {
     const uploaderId = this.ensureDocumentUploader(req);
-
-    if (!file) {
-      throw new BadRequestException('File is required');
-    }
-
-    if (!file.buffer?.length) {
-      throw new BadRequestException('Uploaded file is empty');
-    }
-
-    if (file.size > MAX_UPLOAD_BYTES || file.buffer.length > MAX_UPLOAD_BYTES) {
-      throw new PayloadTooLargeException('Uploaded file exceeds 10 MB');
-    }
-
-    if (!Types.ObjectId.isValid(body.machine_id)) {
-      throw new BadRequestException('Invalid machine_id');
-    }
-
-    for (const [field, value] of [
-      ['maintenance_plan_id', body.maintenance_plan_id],
-      ['work_order_id', body.work_order_id],
-      ['intervention_report_id', body.intervention_report_id],
-    ] as const) {
-      if (value !== undefined && !Types.ObjectId.isValid(value)) {
-        throw new BadRequestException(`Invalid ${field}`);
-      }
-    }
+    this.assertUploadFile(file);
+    this.assertUploadBody(body);
 
     await this.documentAccessService.assertCanAccessMachine(
       req.user ?? {},
       body.machine_id,
     );
 
-    if (!body.document_id?.trim()) {
-      throw new BadRequestException('document_id is required');
-    }
-
-    if (!body.type_document?.trim()) {
-      throw new BadRequestException('type_document is required');
-    }
-
-    const isPhoto = this.isOperatorPhotoType(body.type_document);
-    const detectedPhotoType = isPhoto
-      ? this.detectSupportedPhotoType(file.buffer)
-      : null;
-
-    if (isPhoto && !detectedPhotoType) {
-      throw new UnsupportedMediaTypeException(
-        'Unsupported photo content. Only JPEG, PNG, and WebP images are allowed.',
-      );
-    }
-
-    if (!isPhoto) {
+    const preparedFile = await this.prepareUploadFile(file, body.type_document);
+    if (!preparedFile.isPhoto) {
       await this.validateOrQuarantine(file, body.machine_id, uploaderId);
     }
 
-    let storedBuffer = file.buffer;
-    let fileExtension =
-      detectedPhotoType?.extension ||
-      extname(file.originalname || '').toLowerCase();
-
-    if (detectedPhotoType) {
-      try {
-        storedBuffer = await normalizeOperatorPhoto(file.buffer);
-        fileExtension = '.webp';
-      } catch {
-        throw new BadRequestException('Uploaded photo could not be processed');
-      }
-    }
-
-    const storedFileName = `${Date.now()}-${randomUUID()}${fileExtension}`;
-    let storedFilePath: string;
-    let storedFileStoragePath: string;
-    let storedFileDeleteRef: string;
-
-    try {
-      const storedFile = await this.fileStorageService.save({
-        buffer: storedBuffer,
-        fileName: storedFileName,
-        folder: 'uploads',
-        contentType: detectedPhotoType ? 'image/webp' : file.mimetype,
-      });
-      storedFilePath = storedFile.relativePath;
-      storedFileStoragePath = storedFile.storageKey ?? storedFile.relativePath;
-      storedFileDeleteRef = storedFileStoragePath;
-    } catch {
-      throw new InternalServerErrorException('Failed to store uploaded file');
-    }
+    const storedFile = await this.saveUploadFile(preparedFile);
 
     try {
       return await this.documentsService.create(
@@ -366,8 +410,8 @@ export class DocumentsUploadController {
           work_order_id: body.work_order_id,
           intervention_report_id: body.intervention_report_id,
           type_document: body.type_document,
-          file_path: storedFilePath,
-          storage_path: storedFileStoragePath,
+          file_path: storedFile.path,
+          storage_path: storedFile.storagePath,
           file_url: undefined,
           file_name: file.originalname,
           description: body.description,
@@ -378,7 +422,7 @@ export class DocumentsUploadController {
       );
     } catch (error) {
       try {
-        await this.fileStorageService.delete(storedFileDeleteRef);
+        await this.fileStorageService.delete(storedFile.deleteRef);
       } catch (rollbackError) {
         this.logger.error(
           'Failed to roll back uploaded document file after database error',

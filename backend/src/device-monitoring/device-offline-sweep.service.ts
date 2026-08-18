@@ -24,6 +24,8 @@ interface JobResult {
   details?: Record<string, unknown>;
 }
 
+type OfflineCandidateResult = 'transitioned' | 'skipped' | 'failed';
+
 /**
  * Kept as its own small service rather than folded into
  * `AutomationSchedulerService` — that class already carries a large,
@@ -119,56 +121,10 @@ export class DeviceOfflineSweepService {
           candidates,
           settings.externalConcurrency,
           async (device) => {
-            if (Date.now() >= deadline) return;
-            try {
-              if (this.liveStatusService.isOnline(device)) return;
-
-              const flipped = await this.deviceModel
-                .findOneAndUpdate(
-                  {
-                    _id: device._id,
-                    last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
-                  },
-                  {
-                    $set: { last_known_status: DeviceConnectionStatus.OFFLINE },
-                  },
-                  { new: true },
-                )
-                .exec();
-              if (!flipped) return;
-
-              transitioned += 1;
-              const machineId = String(flipped.machine_id);
-
-              this.liveMonitoringGateway.emitStatusChange(machineId, {
-                deviceId: flipped.device_id,
-                status: DeviceConnectionStatus.OFFLINE,
-                lastSeenAt: flipped.last_seen_at?.toISOString() ?? null,
-              });
-
-              await this.notificationCenterService
-                .createIfNotExists({
-                  dedupeKey: `device_offline:${flipped._id.toString()}:${
-                    flipped.last_seen_at?.getTime() ?? 0
-                  }`,
-                  type: NotificationType.DEVICE_OFFLINE,
-                  title: `Device ${flipped.device_id} went offline`,
-                  machineId,
-                  referenceId: String(flipped._id),
-                  recipientRole: Role.ADMIN,
-                })
-                .catch((error) => {
-                  this.logger.warn(
-                    `Failed to create device-offline notification: ${String(error)}`,
-                  );
-                });
-            } catch (error) {
+            const result = await this.processOfflineCandidate(device, deadline);
+            if (result === 'transitioned') transitioned += 1;
+            if (result === 'failed') {
               failed += 1;
-              this.logger.warn(
-                `Failed to process device offline candidate ${String(
-                  device._id,
-                )}: ${String(error)}`,
-              );
             }
           },
         );
@@ -212,5 +168,75 @@ export class DeviceOfflineSweepService {
         await this.schedulerLockService?.release(lock, status);
       }
     }
+  }
+
+  private async processOfflineCandidate(
+    device: DeviceDocument,
+    deadline: number,
+  ): Promise<OfflineCandidateResult> {
+    if (Date.now() >= deadline) return 'skipped';
+
+    try {
+      if (this.liveStatusService.isOnline(device)) return 'skipped';
+
+      const flipped = await this.markDeviceOffline(device);
+      if (!flipped) return 'skipped';
+
+      this.emitOfflineTransition(flipped);
+      await this.createOfflineNotification(flipped);
+      return 'transitioned';
+    } catch (error) {
+      this.logger.warn(
+        `Failed to process device offline candidate ${String(
+          device._id,
+        )}: ${String(error)}`,
+      );
+      return 'failed';
+    }
+  }
+
+  private markDeviceOffline(device: DeviceDocument) {
+    return this.deviceModel
+      .findOneAndUpdate(
+        {
+          _id: device._id,
+          last_known_status: { $ne: DeviceConnectionStatus.OFFLINE },
+        },
+        {
+          $set: { last_known_status: DeviceConnectionStatus.OFFLINE },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  private emitOfflineTransition(device: DeviceDocument): void {
+    this.liveMonitoringGateway.emitStatusChange(String(device.machine_id), {
+      deviceId: device.device_id,
+      status: DeviceConnectionStatus.OFFLINE,
+      lastSeenAt: device.last_seen_at?.toISOString() ?? null,
+    });
+  }
+
+  private async createOfflineNotification(
+    device: DeviceDocument,
+  ): Promise<void> {
+    const machineId = String(device.machine_id);
+    await this.notificationCenterService
+      .createIfNotExists({
+        dedupeKey: `device_offline:${device._id.toString()}:${
+          device.last_seen_at?.getTime() ?? 0
+        }`,
+        type: NotificationType.DEVICE_OFFLINE,
+        title: `Device ${device.device_id} went offline`,
+        machineId,
+        referenceId: String(device._id),
+        recipientRole: Role.ADMIN,
+      })
+      .catch((error) => {
+        this.logger.warn(
+          `Failed to create device-offline notification: ${String(error)}`,
+        );
+      });
   }
 }
