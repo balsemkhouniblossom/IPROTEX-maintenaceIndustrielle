@@ -35,6 +35,21 @@ type AvailablePart = {
   };
 };
 
+type TechnicianActionButtonsProps = {
+  readonly id: string;
+  readonly status: string;
+  readonly saving: boolean;
+  readonly hasAssignedTechnician: boolean;
+  readonly isTerminal: boolean;
+  readonly report: {
+    cause_racine: string;
+    description_action: string;
+    etat_final: string;
+  };
+  readonly t: ReturnType<typeof useTranslations>;
+  readonly act: (action: () => Promise<unknown>) => Promise<void>;
+};
+
 function apiErrorMessage(error: unknown, fallback: string): string {
   return (
     (error as { response?: { data?: { message?: string } } })?.response?.data
@@ -53,6 +68,111 @@ function formatMachineValue(
     return new Date(String(value)).toLocaleDateString(locale);
   }
   return String(value);
+}
+
+function TechnicianActionButtons({
+  id,
+  status,
+  saving,
+  hasAssignedTechnician,
+  isTerminal,
+  report,
+  t,
+  act,
+}: TechnicianActionButtonsProps) {
+  const waitingForValidation = [
+    "waiting_validation",
+    "technician_required",
+    "returned",
+  ].includes(status);
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {!hasAssignedTechnician && !isTerminal && (
+        <button type="button"
+          disabled={saving}
+          className="rounded-lg bg-slate-800 px-4 py-2 text-white disabled:opacity-50"
+          onClick={() => void act(() => apiService.claimTechnicianWorkOrder(id))}
+        >
+          {t("claim")}
+        </button>
+      )}
+      {waitingForValidation && (
+        <>
+          <span className="rounded-lg bg-slate-100 px-4 py-2 italic text-slate-600">
+            {t("messages.awaitingValidation")}
+          </span>
+          <button type="button"
+            disabled={saving}
+            className="rounded-lg bg-amber-700 px-4 py-2 text-white"
+            onClick={() =>
+              void act(() => apiService.reviewTechnicianWorkOrder(id, "return"))
+            }
+          >
+            {t("actions.return")}
+          </button>
+          <button type="button"
+            disabled={saving}
+            className="rounded-lg bg-blue-700 px-4 py-2 text-white"
+            onClick={() =>
+              void act(() => apiService.reviewTechnicianWorkOrder(id, "intervene"))
+            }
+          >
+            {t("actions.intervene")}
+          </button>
+        </>
+      )}
+      {status === "assigned" && (
+        <button type="button"
+          disabled={saving}
+          className="rounded-lg bg-blue-700 px-4 py-2 text-white"
+          onClick={() => void act(() => apiService.startTechnicianWorkOrder(id))}
+        >
+          {t("actions.start")}
+        </button>
+      )}
+      {status === "in_progress" && (
+        <>
+          <button type="button"
+            disabled={saving}
+            className="rounded-lg bg-amber-700 px-4 py-2 text-white"
+            onClick={() => void act(() => apiService.waitForTechnicianParts(id))}
+          >
+            {t("actions.waitingParts")}
+          </button>
+          <button type="button"
+            disabled={
+              saving ||
+              !report.description_action.trim() ||
+              !report.etat_final.trim()
+            }
+            className="rounded-lg bg-emerald-700 px-4 py-2 text-white disabled:opacity-50"
+            onClick={() =>
+              window.confirm(t("messages.confirmClose")) &&
+              void act(async () => {
+                await apiService.updateTechnicianReport(id, report);
+                return apiService.closeTechnicianWorkOrder(id);
+              })
+            }
+          >
+            {t("actions.close")}
+          </button>
+        </>
+      )}
+      {status === "waiting_parts" && (
+        <button type="button"
+          disabled={saving}
+          className="rounded-lg bg-blue-700 px-4 py-2 text-white"
+          onClick={() => void act(() => apiService.resumeTechnicianWorkOrder(id))}
+        >
+          {t("actions.resume")}
+        </button>
+      )}
+      {["completed", "validated"].includes(status) && (
+        <span className="text-emerald-700">{t("messages.completed")}</span>
+      )}
+    </div>
+  );
 }
 
 export default function TechnicianWorkOrderDetail(props: { id: string }) {
@@ -446,109 +566,16 @@ function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
           </Modal>
           <section className="panel">
             <h2 className="mb-3 text-lg font-semibold">{t("actions.title")}</h2>
-            <div className="flex flex-wrap gap-2">
-              {!hasAssignedTechnician && !isTerminal && (
-                <button type="button"
-                  disabled={saving}
-                  className="rounded-lg bg-slate-800 px-4 py-2 text-white disabled:opacity-50"
-                  onClick={() =>
-                    void act(() => apiService.claimTechnicianWorkOrder(id))
-                  }
-                >
-                  {t("claim")}
-                </button>
-              )}
-              {[
-                "waiting_validation",
-                "technician_required",
-                "returned",
-              ].includes(status) && (
-                <>
-                  <span className="rounded-lg bg-slate-100 px-4 py-2 italic text-slate-600">
-                    {t("messages.awaitingValidation")}
-                  </span>
-                  <button type="button"
-                    disabled={saving}
-                    className="rounded-lg bg-amber-700 px-4 py-2 text-white"
-                    onClick={() =>
-                      void act(() =>
-                        apiService.reviewTechnicianWorkOrder(id, "return"),
-                      )
-                    }
-                  >
-                    {t("actions.return")}
-                  </button>
-                  <button type="button"
-                    disabled={saving}
-                    className="rounded-lg bg-blue-700 px-4 py-2 text-white"
-                    onClick={() =>
-                      void act(() =>
-                        apiService.reviewTechnicianWorkOrder(id, "intervene"),
-                      )
-                    }
-                  >
-                    {t("actions.intervene")}
-                  </button>
-                </>
-              )}
-              {status === "assigned" && (
-                <button type="button"
-                  disabled={saving}
-                  className="rounded-lg bg-blue-700 px-4 py-2 text-white"
-                  onClick={() =>
-                    void act(() => apiService.startTechnicianWorkOrder(id))
-                  }
-                >
-                  {t("actions.start")}
-                </button>
-              )}
-              {status === "in_progress" && (
-                <>
-                  <button type="button"
-                    disabled={saving}
-                    className="rounded-lg bg-amber-700 px-4 py-2 text-white"
-                    onClick={() =>
-                      void act(() => apiService.waitForTechnicianParts(id))
-                    }
-                  >
-                    {t("actions.waitingParts")}
-                  </button>
-                  <button type="button"
-                    disabled={
-                      saving ||
-                      !report.description_action.trim() ||
-                      !report.etat_final.trim()
-                    }
-                    className="rounded-lg bg-emerald-700 px-4 py-2 text-white disabled:opacity-50"
-                    onClick={() =>
-                      window.confirm(t("messages.confirmClose")) &&
-                      void act(async () => {
-                        await apiService.updateTechnicianReport(id, report);
-                        return apiService.closeTechnicianWorkOrder(id);
-                      })
-                    }
-                  >
-                    {t("actions.close")}
-                  </button>
-                </>
-              )}
-              {status === "waiting_parts" && (
-                <button type="button"
-                  disabled={saving}
-                  className="rounded-lg bg-blue-700 px-4 py-2 text-white"
-                  onClick={() =>
-                    void act(() => apiService.resumeTechnicianWorkOrder(id))
-                  }
-                >
-                  {t("actions.resume")}
-                </button>
-              )}
-              {["completed", "validated"].includes(status) && (
-                <span className="text-emerald-700">
-                  {t("messages.completed")}
-                </span>
-              )}
-            </div>
+            <TechnicianActionButtons
+              id={id}
+              status={status}
+              saving={saving}
+              hasAssignedTechnician={hasAssignedTechnician}
+              isTerminal={isTerminal}
+              report={report}
+              t={t}
+              act={act}
+            />
           </section>
         </div>
       </DashboardLayout>

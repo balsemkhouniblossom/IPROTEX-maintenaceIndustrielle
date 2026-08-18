@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   CalendarDaysIcon,
@@ -315,6 +315,110 @@ function buildActionSections(
   ];
 }
 
+function machineTypeIdFromValue(value: string | { _id?: string; id?: string } | undefined): string {
+  if (typeof value === "string") return value;
+  return value?._id || value?.id || "";
+}
+
+function machineFilterOption(machine: {
+  _id?: string;
+  id?: string;
+  machine_id?: string;
+  machine_code?: string;
+  model?: string;
+  type_id?: string | { _id?: string; id?: string };
+}): SelectOption[] {
+  const id = machine._id || machine.id || "";
+  if (!id) return [];
+
+  return [{
+    id,
+    label: machine.machine_id || machine.machine_code || machine.model || id,
+    machineTypeId: machineTypeIdFromValue(machine.type_id),
+  }];
+}
+
+function machineTypeFilterOption(machineType: {
+  _id?: string;
+  id?: string;
+  name?: string;
+  machine_type?: string;
+  code?: string;
+}): SelectOption[] {
+  const id = machineType._id || machineType.id || "";
+  if (!id) return [];
+  return [{ id, label: machineType.name || machineType.machine_type || machineType.code || id }];
+}
+
+function useSmartCalendarFilterOptions(
+  setMachineFilterOptions: (options: SelectOption[]) => void,
+  setMachineTypeFilterOptions: (options: SelectOption[]) => void,
+) {
+  useEffect(() => {
+    async function loadFilterOptions() {
+      try {
+        const [machines, machineTypes] = await Promise.all([
+          fetchAllPaginated<{
+            _id?: string;
+            id?: string;
+            machine_id?: string;
+            machine_code?: string;
+            model?: string;
+            type_id?: string | { _id?: string; id?: string };
+          }>((pagination) => apiService.getMyMachines(pagination)),
+          fetchAllPaginated<{
+            _id?: string;
+            id?: string;
+            name?: string;
+            machine_type?: string;
+            code?: string;
+          }>((pagination) => apiService.getOperatorMachineTypes(pagination)),
+        ]);
+
+        setMachineFilterOptions(machines.flatMap(machineFilterOption));
+        setMachineTypeFilterOptions(machineTypes.flatMap(machineTypeFilterOption));
+      } catch (error) {
+        console.error("Failed to load smart calendar filter options", error);
+      }
+    }
+
+    void loadFilterOptions();
+  }, [setMachineFilterOptions, setMachineTypeFilterOptions]);
+}
+
+function useResetInvalidMachineFilter(
+  machineId: string,
+  machineOptions: SelectOption[],
+  setFilters: Dispatch<SetStateAction<FilterState>>,
+) {
+  useEffect(() => {
+    if (!machineId) return;
+    const hasSelectedMachine = machineOptions.some((machine) => machine.id === machineId);
+    if (!hasSelectedMachine) {
+      setFilters((prev) => ({ ...prev, machineId: "" }));
+    }
+  }, [machineId, machineOptions, setFilters]);
+}
+
+function SmartCalendarNotification({
+  notification,
+}: {
+  readonly notification: { type: "success" | "error"; message: string } | null;
+}) {
+  if (!notification) return null;
+
+  const toneClass =
+    notification.type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-red-200 bg-red-50 text-red-800";
+
+  return (
+    <div className={`col-span-full panel border ${toneClass}`}>
+      {notification.message}
+    </div>
+  );
+}
+
 export default function SmartMaintenanceCalendarPage() {
   const tCalendar = useTranslations("dashboard.operator.smartCalendar");
   const tCommon = useTranslations("common");
@@ -349,65 +453,8 @@ export default function SmartMaintenanceCalendarPage() {
     [events, machineTypeFilterOptions],
   );
 
-  useEffect(() => {
-    async function loadFilterOptions() {
-      try {
-        const [machines, machineTypes] = await Promise.all([
-          fetchAllPaginated<{
-            _id?: string;
-            id?: string;
-            machine_id?: string;
-            machine_code?: string;
-            model?: string;
-            type_id?: string | { _id?: string; id?: string };
-          }>((pagination) => apiService.getMyMachines(pagination)),
-          fetchAllPaginated<{
-            _id?: string;
-            id?: string;
-            name?: string;
-            machine_type?: string;
-            code?: string;
-          }>((pagination) => apiService.getOperatorMachineTypes(pagination)),
-        ]);
-
-        setMachineFilterOptions(
-          machines.flatMap((machine) => {
-            const id = machine._id || machine.id || "";
-            if (!id) return [];
-            const machineTypeId =
-              typeof machine.type_id === "string"
-                ? machine.type_id
-                : machine.type_id?._id || machine.type_id?.id || "";
-            return [{
-              id,
-              label: machine.machine_id || machine.machine_code || machine.model || id,
-              machineTypeId,
-            } satisfies SelectOption];
-          }),
-        );
-
-        setMachineTypeFilterOptions(
-          machineTypes.flatMap((machineType) => {
-            const id = machineType._id || machineType.id || "";
-            if (!id) return [];
-            return [{ id, label: machineType.name || machineType.machine_type || machineType.code || id }];
-          }),
-        );
-      } catch (error) {
-        console.error("Failed to load smart calendar filter options", error);
-      }
-    }
-
-    void loadFilterOptions();
-  }, []);
-
-  useEffect(() => {
-    if (!filters.machineId) return;
-    const hasSelectedMachine = machineOptions.some((machine) => machine.id === filters.machineId);
-    if (!hasSelectedMachine) {
-      setFilters((prev) => ({ ...prev, machineId: "" }));
-    }
-  }, [filters.machineId, machineOptions]);
+  useSmartCalendarFilterOptions(setMachineFilterOptions, setMachineTypeFilterOptions);
+  useResetInvalidMachineFilter(filters.machineId, machineOptions, setFilters);
 
   function showNotification(type: "success" | "error", message: string): void {
     setNotification({ type, message });
@@ -527,17 +574,7 @@ export default function SmartMaintenanceCalendarPage() {
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={tCalendar("title")}>
         <div className="operator-dashboard-theme bento-grid">
-          {notification ? (
-            <div
-              className={`col-span-full panel border ${
-                notification.type === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-red-200 bg-red-50 text-red-800"
-              }`}
-            >
-              {notification.message}
-            </div>
-          ) : null}
+          <SmartCalendarNotification notification={notification} />
 
           <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">

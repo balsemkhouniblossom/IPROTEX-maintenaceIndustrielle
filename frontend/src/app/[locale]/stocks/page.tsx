@@ -39,6 +39,7 @@ interface StockItem {
 }
 
 type MovementType = "reservation" | "consumption" | "return" | "adjustment" | "cancellation";
+type StockTableItem = StockItem & { available: number };
 
 interface StockMovement {
   _id: string;
@@ -123,6 +124,114 @@ function optionalNumber(value: string): number | undefined {
 
 function optionalText(value: string): string | undefined {
   return value.trim() || undefined;
+}
+
+type StocksTableContentProps = {
+  readonly loading: boolean;
+  readonly items: StockTableItem[];
+  readonly searchTerm: string;
+  readonly t: ReturnType<typeof useTranslations>;
+  readonly tCommon: ReturnType<typeof useTranslations>;
+  readonly onAdjust: (item: StockTableItem) => void;
+  readonly onHistory: (item: StockTableItem) => void;
+  readonly onEdit: (item: StockTableItem) => void;
+  readonly onDelete: (item: StockTableItem) => void;
+};
+
+function StocksTableContent({
+  loading,
+  items,
+  searchTerm,
+  t,
+  tCommon,
+  onAdjust,
+  onHistory,
+  onEdit,
+  onDelete,
+}: StocksTableContentProps) {
+  if (loading) {
+    return <div className="text-sm text-slate-500">{tCommon("loading")}</div>;
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-sm text-slate-500">
+        {searchTerm ? t("empty.search", { default: "No stock records match your search." }) : t("empty.default", { default: "No stock records available." })}
+      </div>
+    );
+  }
+
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>{t("table.part", { default: "Part" })}</th>
+          <th>{t("table.quantity", { default: "In Stock" })}</th>
+          <th>{t("table.reserved", { default: "Reserved" })}</th>
+          <th>{t("table.available", { default: "Available" })}</th>
+          <th>{t("table.threshold", { default: "Alert Threshold" })}</th>
+          <th>{t("table.location", { default: "Location" })}</th>
+          <th>{tCommon("table.actions")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => (
+          <StockTableRow
+            key={item._id}
+            item={item}
+            t={t}
+            tCommon={tCommon}
+            onAdjust={onAdjust}
+            onHistory={onHistory}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function StockTableRow({
+  item,
+  t,
+  tCommon,
+  onAdjust,
+  onHistory,
+  onEdit,
+  onDelete,
+}: Omit<StocksTableContentProps, "loading" | "items" | "searchTerm"> & {
+  readonly item: StockTableItem;
+}) {
+  const isDeletable = canDelete(item);
+  return (
+    <tr>
+      <td>{partLabel(item.part_id)}</td>
+      <td>{item.quantite_en_stock ?? 0}</td>
+      <td>{item.quantite_reservee ?? 0}</td>
+      <td className={item.available <= 0 ? "text-red-600 font-semibold" : ""}>{item.available}</td>
+      <td>{item.seuil_alerte_stock ?? tCommon("notAvailable")}</td>
+      <td>{item.emplacement || tCommon("notAvailable")}</td>
+      <td>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary p-2" title={t("actions.adjust", { default: "Adjust" })} onClick={() => onAdjust(item)}>
+            <ScaleIcon className="w-4 h-4" />
+          </button>
+          <button type="button" className="btn-secondary p-2" title={t("actions.history", { default: "History" })} onClick={() => onHistory(item)}>
+            <ClockIcon className="w-4 h-4" />
+          </button>
+          <button type="button" className="btn-secondary p-2" title={t("actions.edit", { default: "Edit" })} onClick={() => onEdit(item)}>
+            <PencilIcon className="w-4 h-4" />
+          </button>
+          {isDeletable ? (
+            <button type="button" className="btn-danger p-2" title={t("actions.delete", { default: "Delete" })} onClick={() => onDelete(item)}>
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
 }
 
 export default function StocksPage() {
@@ -409,76 +518,17 @@ export default function StocksPage() {
             />
           </div>
 
-          {loading ? (
-            <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-          ) : filteredItems.length === 0 ? (
-            <div className="text-sm text-slate-500">
-              {searchTerm ? t("empty.search", { default: "No stock records match your search." }) : t("empty.default", { default: "No stock records available." })}
-            </div>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t("table.part", { default: "Part" })}</th>
-                  <th>{t("table.quantity", { default: "In Stock" })}</th>
-                  <th>{t("table.reserved", { default: "Reserved" })}</th>
-                  <th>{t("table.available", { default: "Available" })}</th>
-                  <th>{t("table.threshold", { default: "Alert Threshold" })}</th>
-                  <th>{t("table.location", { default: "Location" })}</th>
-                  <th>{tCommon("table.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => {
-                  const isDeletable = canDelete(item);
-                  return (
-                    <tr key={item._id}>
-                      <td>{partLabel(item.part_id)}</td>
-                      <td>{item.quantite_en_stock ?? 0}</td>
-                      <td>{item.quantite_reservee ?? 0}</td>
-                      <td className={item.available <= 0 ? "text-red-600 font-semibold" : ""}>{item.available}</td>
-                      <td>{item.seuil_alerte_stock ?? tCommon("notAvailable")}</td>
-                      <td>{item.emplacement || tCommon("notAvailable")}</td>
-                      <td>
-                        <div className="flex flex-wrap gap-2">
-                          <button type="button"
-                            className="btn-secondary p-2"
-                            title={t("actions.adjust", { default: "Adjust" })}
-                            onClick={() => handleOpenAdjust(item)}
-                          >
-                            <ScaleIcon className="w-4 h-4" />
-                          </button>
-                          <button type="button"
-                            className="btn-secondary p-2"
-                            title={t("actions.history", { default: "History" })}
-                            onClick={() => void handleOpenHistory(item)}
-                          >
-                            <ClockIcon className="w-4 h-4" />
-                          </button>
-                          <button type="button"
-                            className="btn-secondary p-2"
-                            title={t("actions.edit", { default: "Edit" })}
-                            onClick={() => handleEditMetadata(item)}
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          {isDeletable ? (
-                            <button type="button"
-                              className="btn-danger p-2"
-                              title={t("actions.delete", { default: "Delete" })}
-                              onClick={() => handleDelete(item)}
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+          <StocksTableContent
+            loading={loading}
+            items={filteredItems}
+            searchTerm={searchTerm}
+            t={t}
+            tCommon={tCommon}
+            onAdjust={handleOpenAdjust}
+            onHistory={(item) => void handleOpenHistory(item)}
+            onEdit={handleEditMetadata}
+            onDelete={(item) => void handleDelete(item)}
+          />
           <div className="col-span-full">
             <Pagination page={page} totalPages={totalPages} totalItems={totalItems} limit={limit} onPageChange={setPage} />
           </div>
