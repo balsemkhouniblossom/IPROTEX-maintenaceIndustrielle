@@ -10,7 +10,7 @@ export function PreventiveStepHeader({
   t,
   tCommon,
   tChecklist,
-}: {
+}: Readonly<{
   selectedPlanState: PreventivePlanState | null;
   selectedPlanLabel: string;
   selectedPlanStateLabel: string;
@@ -19,7 +19,7 @@ export function PreventiveStepHeader({
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
   tChecklist: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>

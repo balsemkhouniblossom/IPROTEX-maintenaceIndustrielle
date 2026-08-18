@@ -41,6 +41,21 @@ function refId(value: EntityRef | undefined): string {
   return typeof value === "string" ? value : value._id ?? "";
 }
 
+function statusClasses(status?: string): string {
+  switch (status) {
+    case "completed":
+    case "validated":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "returned":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "technician_required":
+      return "border-blue-200 bg-blue-50 text-blue-800";
+    case "waiting_validation":
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
 export default function OperatorMyReportsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
@@ -153,21 +168,6 @@ export default function OperatorMyReportsPage() {
         return t("technicianRequired");
       default:
         return status || tCommon("notAvailable");
-    }
-  }
-
-  function statusClasses(status?: string): string {
-    switch (status) {
-      case "completed":
-      case "validated":
-        return "border-emerald-200 bg-emerald-50 text-emerald-800";
-      case "returned":
-        return "border-amber-200 bg-amber-50 text-amber-800";
-      case "technician_required":
-        return "border-blue-200 bg-blue-50 text-blue-800";
-      case "waiting_validation":
-      default:
-        return "border-slate-200 bg-slate-50 text-slate-700";
     }
   }
 

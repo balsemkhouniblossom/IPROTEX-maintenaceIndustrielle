@@ -1,2 +1,1 @@
-import { TechnicianManuals } from "@/components/technician/TechnicianWorkspace";
-export default TechnicianManuals;
+export { TechnicianManuals as default } from "@/components/technician/TechnicianWorkspace";

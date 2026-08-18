@@ -263,6 +263,43 @@ async function ensureChecklistModule(db, machine, moduleTypeId, config) {
   return saved._id;
 }
 
+function buildChecklistPlanFields(machine, moduleId, template, existing, config) {
+  const plan_id =
+    existing?.plan_id ||
+    `MP-${config.machineSlug}-${slugify(machine.machine_id)}-${template.code}`;
+  const planFields = {
+    plan_id,
+    module_id: config.storePlanModuleIdAsString ? String(moduleId) : moduleId,
+    type_maintenance: 'preventive',
+    frequence: template.frequence,
+    unite_frequence: template.unite_frequence,
+    instruction: template.instruction,
+    maintenance_code: template.code,
+    responsable: template.responsable,
+    frequence_label: template.frequence_label,
+    huile_graisse: template.huile_graisse,
+    documentation: template.documentation,
+    source_title: config.sourceTitle,
+    valid_from: config.validFrom,
+    created_by: 'G. Fleischmann',
+    approved_by: config.approvedBy ?? 'W. R\u00f6del',
+  };
+
+  if (config.includePlanTitle) {
+    planFields.title = `${template.code} - ${config.moduleLocalisation}`;
+  }
+
+  if (config.includePlanDescription) {
+    planFields.description = template.instruction;
+  }
+
+  if (config.includePlanLocalisation) {
+    planFields.localisation = config.moduleLocalisation;
+  }
+
+  return planFields;
+}
+
 async function syncChecklistPlansForMachine(db, machine, moduleId, config) {
   const existingPlans = await db.collection('maintenanceplans').find({
     module_id: String(moduleId),
@@ -281,41 +318,16 @@ async function syncChecklistPlansForMachine(db, machine, moduleId, config) {
 
   for (const template of config.planTemplates) {
     const existing = existingByCode.get(template.code);
-    const plan_id =
-      existing?.plan_id ||
-      `MP-${config.machineSlug}-${slugify(machine.machine_id)}-${template.code}`;
-    const planFields = {
-      plan_id,
-      module_id: config.storePlanModuleIdAsString ? String(moduleId) : moduleId,
-      type_maintenance: 'preventive',
-      frequence: template.frequence,
-      unite_frequence: template.unite_frequence,
-      instruction: template.instruction,
-      maintenance_code: template.code,
-      responsable: template.responsable,
-      frequence_label: template.frequence_label,
-      huile_graisse: template.huile_graisse,
-      documentation: template.documentation,
-      source_title: config.sourceTitle,
-      valid_from: config.validFrom,
-      created_by: 'G. Fleischmann',
-          approved_by: config.approvedBy ?? 'W. R\u00f6del',
-    };
-
-    if (config.includePlanTitle) {
-      planFields.title = `${template.code} - ${config.moduleLocalisation}`;
-    }
-
-    if (config.includePlanDescription) {
-      planFields.description = template.instruction;
-    }
-
-    if (config.includePlanLocalisation) {
-      planFields.localisation = config.moduleLocalisation;
-    }
+    const planFields = buildChecklistPlanFields(
+      machine,
+      moduleId,
+      template,
+      existing,
+      config,
+    );
 
     const result = await db.collection('maintenanceplans').updateOne(
-      existing ? { _id: existing._id } : { plan_id },
+      existing ? { _id: existing._id } : { plan_id: planFields.plan_id },
       { $set: planFields },
       { upsert: true },
     );

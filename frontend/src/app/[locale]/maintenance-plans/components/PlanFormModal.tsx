@@ -33,7 +33,7 @@ export type PlanFormData = {
   documentation: string;
 };
 
-type PlanFormModalProps = {
+type PlanFormModalProps = Readonly<{
   isOpen: boolean;
   editingPlan: MaintenancePlan | null;
   formData: PlanFormData;
@@ -47,7 +47,7 @@ type PlanFormModalProps = {
   onSubmit: (event: React.FormEvent) => void;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-};
+}>;
 
 export function PlanFormModal(props: PlanFormModalProps) {
   return (

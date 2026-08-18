@@ -36,12 +36,12 @@ export function validatePreventiveSubmission({
     return "no-tasks-selected";
   }
 
-  const missingOccurrence = selectedPlanIds.find((planId) => {
+  const hasMissingOccurrence = selectedPlanIds.some((planId) => {
     const stateOccurrence = selectedPlanGroup?.states.find((state) => state.plan._id === planId)?.currentOccurrence?._id;
     return !selectedOccurrenceIdsByPlan[planId] && !stateOccurrence;
   });
 
-  if (missingOccurrence) {
+  if (hasMissingOccurrence) {
     return "no-occurrence-scheduled";
   }
 

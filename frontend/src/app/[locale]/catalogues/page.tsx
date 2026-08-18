@@ -26,6 +26,17 @@ interface Catalogue {
   categorie_piece?: string;
 }
 
+function getCatalogueSubmitLabel(
+  submitting: boolean,
+  editing: boolean,
+  savingLabel: string,
+  updateLabel: string,
+  createLabel: string,
+): string {
+  if (submitting) return savingLabel;
+  return editing ? updateLabel : createLabel;
+}
+
 export default function CataloguesPage() {
   const t = useTranslations('catalogues');
   const common = useTranslations('common');
@@ -467,7 +478,13 @@ export default function CataloguesPage() {
               {t('actions.cancel')}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? t('actions.saving') : editingCatalogue ? t('actions.updatePart') : t('actions.createPart')}
+              {getCatalogueSubmitLabel(
+                submitting,
+                Boolean(editingCatalogue),
+                t('actions.saving'),
+                t('actions.updatePart'),
+                t('actions.createPart'),
+              )}
             </button>
           </div>
         </form>

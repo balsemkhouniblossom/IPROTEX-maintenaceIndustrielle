@@ -7,7 +7,7 @@ import { PhoneInputValue } from '@/services/phoneNumber';
 
 export type User = Omit<ApprovalUser, 'role'> & {
   _id?: string;
-  role: 'admin' | ApprovalRole | string;
+  role: string;
   last_login?: string;
   login_history?: string[];
 };

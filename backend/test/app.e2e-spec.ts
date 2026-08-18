@@ -88,6 +88,30 @@ function getAuthCookieHeader(response: request.Response): string {
   return `refresh_token=${encodeURIComponent(refreshToken)}; csrf_token=${encodeURIComponent(csrfToken)}`;
 }
 
+function expectRefreshCookie(response: request.Response) {
+  const cookies = getSetCookies(response);
+  expect(cookies.some((cookie) => cookie.startsWith('refresh_token='))).toBe(
+    true,
+  );
+  expect(
+    cookies.some(
+      (cookie) =>
+        cookie.startsWith('refresh_token=') && /HttpOnly/i.test(cookie),
+    ),
+  ).toBe(true);
+  expect(
+    cookies.some((cookie) =>
+      cookie.startsWith('refresh_token=') && /Path=\//i.test(cookie),
+    ),
+  ).toBe(true);
+  expect(cookies.some((cookie) => cookie.startsWith('csrf_token='))).toBe(true);
+  expect(
+    cookies.some(
+      (cookie) => cookie.startsWith('csrf_token=') && /HttpOnly/i.test(cookie),
+    ),
+  ).toBe(false);
+}
+
 function createGoogleRedirectResponse() {
   return {
     redirect: jest.fn(),
@@ -1691,34 +1715,6 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       role: payloadRole ?? user.role,
       user_id: user.user_id,
     });
-  }
-
-  function expectRefreshCookie(response: request.Response) {
-    const cookies = getSetCookies(response);
-    expect(cookies.some((cookie) => cookie.startsWith('refresh_token='))).toBe(
-      true,
-    );
-    expect(
-      cookies.some(
-        (cookie) =>
-          cookie.startsWith('refresh_token=') && /HttpOnly/i.test(cookie),
-      ),
-    ).toBe(true);
-    expect(
-      cookies.some(
-        (cookie) =>
-          cookie.startsWith('refresh_token=') && /Path=\//i.test(cookie),
-      ),
-    ).toBe(true);
-    expect(cookies.some((cookie) => cookie.startsWith('csrf_token='))).toBe(
-      true,
-    );
-    expect(
-      cookies.some(
-        (cookie) =>
-          cookie.startsWith('csrf_token=') && /HttpOnly/i.test(cookie),
-      ),
-    ).toBe(false);
   }
 
   async function createApprovedAdmin(

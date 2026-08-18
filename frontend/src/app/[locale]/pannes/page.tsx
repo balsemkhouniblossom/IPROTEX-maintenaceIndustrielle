@@ -26,6 +26,17 @@ interface Panne {
   gravite?: string;
 }
 
+function getPanneSubmitLabel(
+  submitting: boolean,
+  editing: boolean,
+  savingLabel: string,
+  updateLabel: string,
+  createLabel: string,
+): string {
+  if (submitting) return savingLabel;
+  return editing ? updateLabel : createLabel;
+}
+
 const CUSTOM_OPTION = '__custom__';
 
 export default function PannesPage() {
@@ -611,11 +622,13 @@ export default function PannesPage() {
               {tCommon('cancel')}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting
-                ? tCommon('saving')
-                : editingPanne
-                  ? tCommon('actions.update')
-                  : tCommon('actions.create')}
+              {getPanneSubmitLabel(
+                submitting,
+                Boolean(editingPanne),
+                tCommon('saving'),
+                tCommon('actions.update'),
+                tCommon('actions.create'),
+              )}
             </button>
           </div>
         </form>

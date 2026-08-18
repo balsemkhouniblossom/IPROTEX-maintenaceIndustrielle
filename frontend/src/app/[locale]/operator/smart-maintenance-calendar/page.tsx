@@ -285,16 +285,17 @@ function primaryActionLabel(
   return tCalendar("startTaskAction");
 }
 
+const STATUS_PILL_CLASSES: Record<string, string> = {
+  waiting_validation: "border-violet-200 bg-violet-50 text-violet-700",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  validated: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  in_progress: "border-blue-200 bg-blue-50 text-blue-700",
+};
+
 function statusPillClass(event: CalendarEvent): string {
   if (isEventOverdue(event)) return "border-red-200 bg-red-50 text-red-700";
   if (isEventDueToday(event)) return "border-amber-200 bg-amber-50 text-amber-700";
-  const statusClasses: Record<string, string> = {
-    waiting_validation: "border-violet-200 bg-violet-50 text-violet-700",
-    completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    validated: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    in_progress: "border-blue-200 bg-blue-50 text-blue-700",
-  };
-  return statusClasses[event.status] ?? "border-slate-200 bg-slate-50 text-slate-700";
+  return STATUS_PILL_CLASSES[event.status] ?? "border-slate-200 bg-slate-50 text-slate-700";
 }
 
 function buildActionSections(

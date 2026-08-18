@@ -10,7 +10,7 @@ export function PreventiveMachineSelector({
   onSelectMachine,
   t,
   tCommon,
-}: {
+}: Readonly<{
   visibleMachineTypes: MachineType[];
   selectedCategory: string;
   onSelectCategory: (machineTypeId: string) => void;
@@ -19,7 +19,7 @@ export function PreventiveMachineSelector({
   onSelectMachine: (machineId: string) => void;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <>
       <div className="mb-6">

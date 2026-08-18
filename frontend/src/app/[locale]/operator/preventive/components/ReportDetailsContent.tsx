@@ -9,7 +9,7 @@ export function ReportDetailsContent({
   reportStatusClasses,
   t,
   tCommon,
-}: {
+}: Readonly<{
   report: GeneratedReportRow;
   onClose: () => void;
   formatReportDate: (value?: string) => string;
@@ -17,7 +17,7 @@ export function ReportDetailsContent({
   reportStatusClasses: (status: string) => string;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <div className="operator-dashboard-theme space-y-5">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

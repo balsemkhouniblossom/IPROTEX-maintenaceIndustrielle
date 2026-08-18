@@ -28,6 +28,17 @@ interface Capteur {
   firmware_version?: string;
 }
 
+function getCapteurSubmitLabel(
+  submitting: boolean,
+  editing: boolean,
+  savingLabel: string,
+  updateLabel: string,
+  createLabel: string,
+): string {
+  if (submitting) return savingLabel;
+  return editing ? updateLabel : createLabel;
+}
+
 interface ModuleOption {
   _id: string;
   module_id?: string;
@@ -639,11 +650,13 @@ export default function CapteursPage() {
               className="btn-primary px-4 py-2"
               disabled={submitting}
             >
-              {submitting
-                ? tCommon('saving')
-                : editingCapteur
-                  ? tCapteurs('button.update')
-                  : tCapteurs('button.create')}
+              {getCapteurSubmitLabel(
+                submitting,
+                Boolean(editingCapteur),
+                tCommon('saving'),
+                tCapteurs('button.update'),
+                tCapteurs('button.create'),
+              )}
             </button>
           </div>
         </form>

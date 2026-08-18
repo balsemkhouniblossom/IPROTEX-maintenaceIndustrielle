@@ -9,7 +9,7 @@ export function PreventiveReportsSection({
   reportStatusClasses,
   t,
   tCommon,
-}: {
+}: Readonly<{
   reports: GeneratedReportRow[];
   onSelectReport: (report: GeneratedReportRow) => void;
   formatReportDate: (value?: string) => string;
@@ -17,7 +17,7 @@ export function PreventiveReportsSection({
   reportStatusClasses: (status: string) => string;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <div className="col-span-full panel">
       <div className="card-title mb-3">{t("myReports")}</div>

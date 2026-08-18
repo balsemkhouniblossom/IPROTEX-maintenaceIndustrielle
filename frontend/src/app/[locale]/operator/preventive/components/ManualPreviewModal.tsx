@@ -7,11 +7,11 @@ export function ManualPreviewModal({
   document,
   onClose,
   t,
-}: {
+}: Readonly<{
   document: DocumentEntity | null;
   onClose: () => void;
   t: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <Modal
       isOpen={Boolean(document)}

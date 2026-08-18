@@ -5,7 +5,13 @@ import { apiService } from '@/services/api';
 
 const fields: CrudField[] = [
   { key: 'name', label: 'Name', required: true },
-  { key: 'description', label: 'Description', type: 'textarea', render: (value) => String(value || 'N/A') },
+  {
+    key: 'description',
+    label: 'Description',
+    type: 'textarea',
+    render: (value) =>
+      typeof value === 'string' || typeof value === 'number' ? String(value) : 'N/A',
+  },
 ];
 
 export default function MachineTypesPage() {

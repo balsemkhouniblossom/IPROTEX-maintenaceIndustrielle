@@ -19,7 +19,7 @@ export function PreventiveSubmissionActions({
   onSubmit,
   t,
   tCommon,
-}: {
+}: Readonly<{
   selectedPlanState: PreventivePlanState | null;
   actionSaving: boolean;
   taskStarted: boolean;
@@ -37,7 +37,7 @@ export function PreventiveSubmissionActions({
   onSubmit: () => void;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <>
       <div className="mt-4 grid gap-2 md:grid-cols-4">

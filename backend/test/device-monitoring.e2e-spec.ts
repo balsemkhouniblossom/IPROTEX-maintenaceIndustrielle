@@ -16,7 +16,6 @@ import {
   MachineTypeDocument,
 } from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
-import { Device, DeviceDocument } from '../src/schemas/device.schema';
 import { Telemetry, TelemetryDocument } from '../src/schemas/telemetry.schema';
 import {
   FaultEvent,
@@ -67,7 +66,6 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
   let users: Model<UserDocument>;
   let machineTypes: Model<MachineTypeDocument>;
   let machines: Model<MachineDocument>;
-  let devices: Model<DeviceDocument>;
   let telemetryModel: Model<TelemetryDocument>;
   let faultEventModel: Model<FaultEventDocument>;
   let workOrders: Model<WorkOrderDocument>;
@@ -119,7 +117,6 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
     users = app.get(getModelToken(User.name));
     machineTypes = app.get(getModelToken(MachineType.name));
     machines = app.get(getModelToken(Machine.name));
-    devices = app.get(getModelToken(Device.name));
     telemetryModel = app.get(getModelToken(Telemetry.name));
     faultEventModel = app.get(getModelToken(FaultEvent.name));
     workOrders = app.get(getModelToken(WorkOrder.name));

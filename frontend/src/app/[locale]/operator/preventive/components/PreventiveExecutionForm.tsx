@@ -3,7 +3,7 @@ import { CUSTOM_OPTION, Kpi, Lubrifiant, LUBRIFICATION_QTY_OPTIONS, MachineCondi
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
-type PreventiveExecutionFormProps = {
+type PreventiveExecutionFormProps = Readonly<{
   condition: MachineCondition;
   onConditionChange: (value: MachineCondition) => void;
   customCondition: string;
@@ -21,7 +21,7 @@ type PreventiveExecutionFormProps = {
   selectedMachineKpi: Kpi | null;
   t: ReturnType<typeof useTranslations>;
   tCommon: ReturnType<typeof useTranslations>;
-};
+}>;
 
 export function PreventiveExecutionForm(props: PreventiveExecutionFormProps) {
   return (

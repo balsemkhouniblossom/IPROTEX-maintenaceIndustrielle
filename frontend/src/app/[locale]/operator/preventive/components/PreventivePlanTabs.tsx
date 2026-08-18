@@ -5,12 +5,12 @@ export function PreventivePlanTabs({
   selectedPlanIdsSet,
   onSelectGroup,
   formatPlanStateLabel,
-}: {
+}: Readonly<{
   groups: PreventivePlanGroup[];
   selectedPlanIdsSet: Set<string>;
   onSelectGroup: (planIds: string[]) => void;
   formatPlanStateLabel: (state: string) => string;
-}) {
+}>) {
   return (
     <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
       {groups.map((group) => (

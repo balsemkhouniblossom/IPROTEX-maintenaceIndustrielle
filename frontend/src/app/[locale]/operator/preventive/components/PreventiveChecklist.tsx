@@ -14,7 +14,7 @@ export function PreventiveChecklist({
   onNoteBlur,
   tCommon,
   tChecklist,
-}: {
+}: Readonly<{
   checklistLoading: boolean;
   stateLoading: boolean;
   checklistError: string;
@@ -27,7 +27,7 @@ export function PreventiveChecklist({
   onNoteBlur: (item: PreventiveTaskChecklistItem) => void;
   tCommon: ReturnType<typeof useTranslations>;
   tChecklist: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   return (
     <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
       {checklistLoading || stateLoading ? (
