@@ -24,6 +24,7 @@ import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { extractApiErrorDetails as extractApiErrorMessage } from "@/services/apiErrors";
+import { normalizeApiItems } from "@/services/pagination";
 import { StatusBadge } from "@/components/StatusBadge";
 
 type MachineRef = string | { _id: string; machine_id?: string };
@@ -101,22 +102,6 @@ function machineRefId(machine: MachineRef): string {
 function machineRefLabel(machine: MachineRef): string {
   if (typeof machine === "string") return displayText(machine, "");
   return displayText(machine?.machine_id, "");
-}
-
-function responseItems<T>(
-  value: unknown,
-  keys: Array<"data" | "documents" | "items" | "machines">,
-): T[] {
-  if (Array.isArray(value)) return value as T[];
-  if (!value || typeof value !== "object") return [];
-
-  const record = value as Record<string, unknown>;
-  for (const key of keys) {
-    const items = record[key];
-    if (Array.isArray(items)) return items as T[];
-  }
-
-  return [];
 }
 
 function parseTags(tagsText: string): string[] {
@@ -203,16 +188,8 @@ export default function DocumentsPage() {
         apiService.getMachines(),
       ]);
 
-      setDocuments(
-        responseItems<DocumentType>(docsRes.data, [
-          "data",
-          "documents",
-          "items",
-        ]),
-      );
-      setMachines(
-        responseItems<Machine>(machinesRes.data, ["data", "machines", "items"]),
-      );
+      setDocuments(normalizeApiItems<DocumentType>(docsRes.data));
+      setMachines(normalizeApiItems<Machine>(machinesRes.data));
     } catch (error) {
       console.error("Error loading documents:", error);
       showNotification("error", t("notifications.saveFailed"));

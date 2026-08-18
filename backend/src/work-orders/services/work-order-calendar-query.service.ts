@@ -37,6 +37,10 @@ import {
   asPopulatedDoc,
   serializeDate,
 } from '../../common/response/serialization.util';
+import {
+  isMaintenanceDocumentType,
+  populatedObjectIdString,
+} from '../maintenance-document.util';
 
 export type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -431,7 +435,7 @@ export class WorkOrderCalendarQueryService {
           'Unknown',
       })),
       manuals: documentation
-        .filter((doc) => this.isMaintenanceDocumentType(doc.type_document))
+        .filter((doc) => isMaintenanceDocumentType(doc.type_document))
         .map((doc) => ({
           id: doc._id.toString(),
           type: doc.type_document,
@@ -1003,37 +1007,8 @@ export class WorkOrderCalendarQueryService {
     return status === 'completed' || status === 'validated';
   }
 
-  private isMaintenanceDocumentType(type?: string) {
-    const value = (type || '').toLowerCase();
-    if (!value) return false;
-    return (
-      value.includes('manual') ||
-      value.includes('maintenance') ||
-      value.includes('electrical') ||
-      value.includes('pneumatic') ||
-      value.includes('safety') ||
-      value.includes('spare') ||
-      value.includes('catalogue')
-    );
-  }
-
   private objectIdString(value: unknown): string {
-    if (!value) return '';
-
-    if (typeof value === 'string') {
-      return value;
-    }
-
-    if (value instanceof Types.ObjectId) {
-      return value.toHexString();
-    }
-
-    if (typeof value === 'object' && value !== null && '_id' in value) {
-      const maybeId = (value as { _id?: unknown })._id;
-      return this.objectIdString(maybeId);
-    }
-
-    return '';
+    return populatedObjectIdString(value);
   }
 }
 

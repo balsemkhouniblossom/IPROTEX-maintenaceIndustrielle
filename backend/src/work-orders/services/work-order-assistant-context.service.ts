@@ -11,6 +11,10 @@ import {
   DocumentDocument,
 } from '../../schemas/document.schema';
 import { CorrectiveAssistantResponse } from '../contracts/work-order-assistant-response.types';
+import {
+  isMaintenanceDocumentType,
+  populatedObjectIdString,
+} from '../maintenance-document.util';
 
 /**
  * Owns the "corrective assistant" context projection: known faults and
@@ -57,7 +61,7 @@ export class WorkOrderAssistantContextService {
       pannes: pannes.map((panne) => {
         const relatedSolutions = solutions.filter(
           (solution) =>
-            this.objectIdString(solution.panne_id) === panne._id.toString(),
+            populatedObjectIdString(solution.panne_id) === panne._id.toString(),
         );
         return {
           id: panne._id.toString(),
@@ -72,7 +76,7 @@ export class WorkOrderAssistantContextService {
         };
       }),
       documents: machineDocuments
-        .filter((doc) => this.isMaintenanceDocumentType(doc.type_document))
+        .filter((doc) => isMaintenanceDocumentType(doc.type_document))
         .map((doc) => ({
           id: doc._id.toString(),
           type: doc.type_document,
@@ -82,36 +86,4 @@ export class WorkOrderAssistantContextService {
     };
   }
 
-  private isMaintenanceDocumentType(type?: string) {
-    const value = (type || '').toLowerCase();
-    if (!value) return false;
-    return (
-      value.includes('manual') ||
-      value.includes('maintenance') ||
-      value.includes('electrical') ||
-      value.includes('pneumatic') ||
-      value.includes('safety') ||
-      value.includes('spare') ||
-      value.includes('catalogue')
-    );
-  }
-
-  private objectIdString(value: unknown): string {
-    if (!value) return '';
-
-    if (typeof value === 'string') {
-      return value;
-    }
-
-    if (value instanceof Types.ObjectId) {
-      return value.toHexString();
-    }
-
-    if (typeof value === 'object' && value !== null && '_id' in value) {
-      const maybeId = (value as { _id?: unknown })._id;
-      return this.objectIdString(maybeId);
-    }
-
-    return '';
-  }
 }

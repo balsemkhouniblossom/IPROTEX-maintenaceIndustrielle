@@ -17,6 +17,7 @@ import Pagination from '@/components/Pagination';
 import { apiService } from '@/services/api';
 import { displayText } from '@/services/displayValues';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
+import { normalizeApiItems } from '@/services/pagination';
 
 interface WorkOrderRef {
   _id: string;
@@ -66,22 +67,6 @@ function getRefId(ref: string | { _id: string }): string {
   return typeof ref === 'string' ? ref : ref?._id || '';
 }
 
-function responseItems<T>(
-  value: unknown,
-  keys: Array<'items' | 'data' | 'users'>,
-): T[] {
-  if (Array.isArray(value)) return value as T[];
-  if (!value || typeof value !== 'object') return [];
-
-  const record = value as Record<string, unknown>;
-  for (const key of keys) {
-    const items = record[key];
-    if (Array.isArray(items)) return items as T[];
-  }
-
-  return [];
-}
-
 export default function InterventionReportsPage() {
   const t = useTranslations('interventionReports');
   const tCommon = useTranslations('common');
@@ -124,15 +109,10 @@ export default function InterventionReportsPage() {
       setReports(reportsRes.data.items || []);
       setTotalItems(reportsRes.data.totalItems || 0);
       setTotalPages(reportsRes.data.totalPages || 1);
-      const workOrdersData = responseItems<WorkOrderItem>(workOrdersRes.data, [
-        'items',
-        'data',
-      ]);
-      const usersData = responseItems<UserItem>(usersRes.data, [
-        'items',
-        'data',
-        'users',
-      ]);
+      const workOrdersData = normalizeApiItems<WorkOrderItem>(
+        workOrdersRes.data,
+      );
+      const usersData = normalizeApiItems<UserItem>(usersRes.data);
 
       setWorkOrders(workOrdersData);
 

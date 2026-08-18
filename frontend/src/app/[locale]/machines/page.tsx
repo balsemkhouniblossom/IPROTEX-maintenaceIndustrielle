@@ -11,6 +11,7 @@ import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import { apiService } from '@/services/api';
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
 import { sortMachineDocumentsForMachine } from '@/services/machineManuals';
+import { normalizeApiItems } from '@/services/pagination';
 import { PencilIcon, TrashIcon, PlusIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -80,19 +81,6 @@ function machineTypeId(value: unknown): string {
   return '';
 }
 
-function apiItems<T>(value: unknown): T[] {
-  if (Array.isArray(value)) return value as T[];
-  if (value && typeof value === 'object' && 'items' in value) {
-    const items = (value as { items?: unknown }).items;
-    if (Array.isArray(items)) return items as T[];
-  }
-  if (value && typeof value === 'object' && 'data' in value) {
-    const data = (value as { data?: unknown }).data;
-    if (Array.isArray(data)) return data as T[];
-  }
-  return [];
-}
-
 function isNotFoundError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -150,7 +138,7 @@ export default function MachinesPage() {
         apiService.getMachineTypes(),
       ]);
 
-      const items = apiItems<Record<string, unknown>>(machinesRes.data);
+      const items = normalizeApiItems<Record<string, unknown>>(machinesRes.data);
 
       const normalized = items.map((m: any) => ({
         ...m,
@@ -176,7 +164,7 @@ export default function MachinesPage() {
 
       setManualsByMachine(Object.fromEntries(manualEntries));
 
-      const types = apiItems<MachineType>(typesRes.data);
+      const types = normalizeApiItems<MachineType>(typesRes.data);
 
       setMachineTypes(types);
 

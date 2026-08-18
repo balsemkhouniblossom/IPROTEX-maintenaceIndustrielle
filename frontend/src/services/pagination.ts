@@ -33,6 +33,9 @@ export function normalizeApiItems<T>(payload: unknown): T[] {
     objectPayload.results,
     objectPayload.docs,
     objectPayload.rows,
+    objectPayload.users,
+    objectPayload.documents,
+    objectPayload.machines,
   ];
 
   for (const candidate of candidates) {
