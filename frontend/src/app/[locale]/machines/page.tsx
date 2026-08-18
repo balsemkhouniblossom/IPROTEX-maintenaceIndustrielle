@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import DynamicSearchControls from '@/components/DynamicSearchControls';
 import DocumentAttachmentViewer from '@/components/DocumentAttachmentViewer';
@@ -65,6 +65,48 @@ function machineStatusTranslationKey(status?: string): string {
   }
 }
 
+function machineStatusClassName(status?: string): string {
+  if (status === 'operational') return 'bg-green-100 text-green-800';
+  if (status === 'maintenance') return 'bg-yellow-100 text-yellow-800';
+  if (status === 'out_of_service') return 'bg-red-100 text-red-800';
+  return 'bg-gray-100 text-gray-600';
+}
+
+function machineTypeId(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (value && typeof value === 'object' && '_id' in value) {
+    return machineTypeId((value as { _id?: unknown })._id);
+  }
+  return '';
+}
+
+function apiItems<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object' && 'items' in value) {
+    const items = (value as { items?: unknown }).items;
+    if (Array.isArray(items)) return items as T[];
+  }
+  if (value && typeof value === 'object' && 'data' in value) {
+    const data = (value as { data?: unknown }).data;
+    if (Array.isArray(data)) return data as T[];
+  }
+  return [];
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'status' in error.response &&
+    error.response.status === 404
+  );
+}
+
+const PAGE_LIMIT = 10;
+
 export default function MachinesPage() {
   const tMachines = useTranslations('machines');
   const tCommon = useTranslations('common');
@@ -75,13 +117,13 @@ export default function MachinesPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const limit = PAGE_LIMIT;
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(null);
-  const [, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
+  const previewManualQueueRef = useRef<DocumentEntity[]>([]);
   const [manualsByMachine, setManualsByMachine] = useState<Record<string, DocumentEntity[]>>({});
   const [loadingManualMachineId, setLoadingManualMachineId] = useState<string | null>(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
@@ -108,16 +150,11 @@ export default function MachinesPage() {
         apiService.getMachineTypes(),
       ]);
 
-      const items = Array.isArray(machinesRes.data?.items)
-        ? machinesRes.data.items
-        : [];
+      const items = apiItems<Record<string, unknown>>(machinesRes.data);
 
       const normalized = items.map((m: any) => ({
         ...m,
-        type_id:
-          typeof m.type_id === 'object'
-            ? m.type_id?._id
-            : String(m.type_id),
+        type_id: machineTypeId(m.type_id),
       }));
 
       setMachines(normalized);
@@ -139,13 +176,7 @@ export default function MachinesPage() {
 
       setManualsByMachine(Object.fromEntries(manualEntries));
 
-      const types = Array.isArray(typesRes.data)
-        ? typesRes.data
-        : Array.isArray(typesRes.data?.items)
-          ? typesRes.data.items
-          : Array.isArray(typesRes.data?.data)
-            ? typesRes.data.data
-            : [];
+      const types = apiItems<MachineType>(typesRes.data);
 
       setMachineTypes(types);
 
@@ -285,7 +316,7 @@ export default function MachinesPage() {
   };
 
   const openManualQueue = (manuals: DocumentEntity[]) => {
-    setPreviewManualQueue(manuals);
+    previewManualQueueRef.current = manuals;
     setPreviewManual(manuals[0] ?? null);
   };
 
@@ -294,17 +325,17 @@ export default function MachinesPage() {
   // If the one we're showing fails to load, fall through to the next one
   // instead of leaving the user stuck on a broken preview.
   const handleManualLoadError = () => {
-    setPreviewManualQueue((queue) => {
-      const currentIndex = previewManual ? queue.findIndex((doc) => doc._id === previewManual._id) : -1;
-      const next = queue[currentIndex + 1];
-      if (next) {
-        setPreviewManual(next);
-      } else {
-        setPreviewManual(null);
-        showNotification('error', tMachines('notifications.manualOpenFailed', { default: 'Could not open the machine manual' }));
-      }
-      return queue;
-    });
+    const queue = previewManualQueueRef.current;
+    const currentIndex = previewManual ? queue.findIndex((doc) => doc._id === previewManual._id) : -1;
+    const next = queue[currentIndex + 1];
+    if (next) {
+      setPreviewManual(next);
+      return;
+    }
+
+    previewManualQueueRef.current = [];
+    setPreviewManual(null);
+    showNotification('error', tMachines('notifications.manualOpenFailed', { default: 'Could not open the machine manual' }));
   };
 
   const handleOpenManual = async (machine: Machine) => {
@@ -340,18 +371,6 @@ export default function MachinesPage() {
       setLoadingManualMachineId(null);
     }
   };
-
-  function isNotFoundError(error: unknown): boolean {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'response' in error &&
-      typeof error.response === 'object' &&
-      error.response !== null &&
-      'status' in error.response &&
-      error.response.status === 404
-    );
-  }
 
   const handleDelete = async (machineId: string) => {
     if (confirm(tMachines('notifications.confirmDelete'))) {
@@ -528,11 +547,7 @@ export default function MachinesPage() {
                         <td>{machine.model || tCommon('notAvailable')}</td>
                         <td>{machineType?.name || tCommon('notAvailable')}</td>
                         <td>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${machine.status === 'operational' ? 'bg-green-100 text-green-800' :
-                            machine.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                              machine.status === 'out_of_service' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-600'
-                            }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${machineStatusClassName(machine.status)}`}>
                             {statusTranslationKey
                               ? tMachines(statusTranslationKey)
                               : tCommon('notAvailable')}
@@ -776,7 +791,7 @@ export default function MachinesPage() {
                   <span>{tCommon('saving')}</span>
                 </div>
               ) : (
-                `${editingMachine ? tMachines('button.update') : tMachines('button.create')}`
+                editingMachine ? tMachines('button.update') : tMachines('button.create')
               )}
             </button>
           </div>
@@ -785,8 +800,8 @@ export default function MachinesPage() {
       <Modal
         isOpen={Boolean(previewManual)}
         onClose={() => {
+          previewManualQueueRef.current = [];
           setPreviewManual(null);
-          setPreviewManualQueue([]);
         }}
         title={previewManual?.file_name || tMachines('actions.openManual', { default: 'Open manual' })}
         size="xl"
