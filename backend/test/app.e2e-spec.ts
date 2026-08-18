@@ -100,8 +100,9 @@ function expectRefreshCookie(response: request.Response) {
     ),
   ).toBe(true);
   expect(
-    cookies.some((cookie) =>
-      cookie.startsWith('refresh_token=') && /Path=\//i.test(cookie),
+    cookies.some(
+      (cookie) =>
+        cookie.startsWith('refresh_token=') && /Path=\//i.test(cookie),
     ),
   ).toBe(true);
   expect(cookies.some((cookie) => cookie.startsWith('csrf_token='))).toBe(true);
