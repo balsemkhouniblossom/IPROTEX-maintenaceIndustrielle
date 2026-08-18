@@ -565,7 +565,7 @@ function SmartCalendarFilters({
 
 function SmartCalendarTaskCard({
   event,
-  sectionKey,
+  section,
   index,
   tCalendar,
   tCommon,
@@ -574,7 +574,7 @@ function SmartCalendarTaskCard({
   onPrimaryAction,
 }: {
   readonly event: CalendarEvent;
-  readonly sectionKey: string;
+  readonly section: { key: string };
   readonly index: number;
   readonly tCalendar: ReturnType<typeof useTranslations>;
   readonly tCommon: ReturnType<typeof useTranslations>;
@@ -584,7 +584,7 @@ function SmartCalendarTaskCard({
 }) {
   return (
     <article
-      data-testid={`smart-calendar-task-card-${sectionKey}-${index}`}
+      data-testid={`smart-calendar-task-card-${section.key}-${index}`}
       className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -602,7 +602,7 @@ function SmartCalendarTaskCard({
         </div>
         <button
           type="button"
-          data-testid={`smart-calendar-primary-action-${sectionKey}-${index}`}
+          data-testid={`smart-calendar-primary-action-${section.key}-${index}`}
           disabled={actionLoading}
           onClick={(clickEvent) => {
             clickEvent.stopPropagation();
@@ -662,7 +662,7 @@ function SmartCalendarActionSections({
                 <SmartCalendarTaskCard
                   key={event.id}
                   event={event}
-                  sectionKey={section.key}
+                  section={section}
                   index={index}
                   tCalendar={tCalendar}
                   tCommon={tCommon}
