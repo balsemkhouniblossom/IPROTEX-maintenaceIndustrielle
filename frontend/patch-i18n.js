@@ -14,7 +14,7 @@ files.forEach(f => {
   if (!data.dashboard.technician && data.technicianDashboard) data.dashboard.technician = data.technicianDashboard;
 
   // Fix health namespace
-  if (!data.health && data.dashboardHome && data.dashboardHome.health) data.health = data.dashboardHome.health;
+  if (!data.health && data.dashboardHome?.health) data.health = data.dashboardHome.health;
 
   fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
 });

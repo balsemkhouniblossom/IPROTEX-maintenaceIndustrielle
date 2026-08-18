@@ -1,6 +1,6 @@
  
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 function readJSON(p){ return JSON.parse(fs.readFileSync(p,'utf8')); }
 
@@ -29,7 +29,7 @@ const usedKeys = {}; // namespace -> Set(keys)
 files.forEach(file=>{
   const content = fs.readFileSync(file,'utf8');
   // find all const <var> = useTranslations("ns") occurrences
-  const varMatches = [...content.matchAll(/const\s+(\w+)\s*=\s*useTranslations\(\s*['\"]([^'\"]+)['\"]\s*\)/g)];
+  const varMatches = [...content.matchAll(/const\s+(\w+)\s*=\s*useTranslations\(\s*['"]([^'"]+)['"]\s*\)/g)];
   varMatches.forEach(m=>{
     const v = m[1]; const ns = m[2];
     nsVars[v]=ns;
@@ -37,7 +37,7 @@ files.forEach(file=>{
   });
   // find calls like tSomething("key.path") where tSomething is a var mapped above
   Object.keys(nsVars).forEach(v=>{
-    const regex = new RegExp(v+"\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)", 'g');
+    const regex = new RegExp(String.raw`${v}\(\s*['"]([^'"]+)['"]\s*\)`, 'g');
     const matches = [...content.matchAll(regex)];
     matches.forEach(mm=>{
       const key = mm[1];
@@ -47,11 +47,11 @@ files.forEach(file=>{
   });
   // Also capture default `t(` variable if present
   if(content.includes('const t = useTranslations(')){
-    const m = content.match(/const\s+t\s*=\s*useTranslations\(\s*['\"]([^'\"]+)['\"]\s*\)/);
+    const m = content.match(/const\s+t\s*=\s*useTranslations\(\s*['"]([^'"]+)['"]\s*\)/);
     if(m){
       const ns = m[1];
       if(!usedKeys[ns]) usedKeys[ns]=new Set();
-      const regex = /\bt\(\s*['\"]([^'\"]+)['\"]\s*\)/g;
+      const regex = /\bt\(\s*['"]([^'"]+)['"]\s*\)/g;
       const matches = [...content.matchAll(regex)];
       matches.forEach(mm=> usedKeys[ns].add(mm[1]));
     }
@@ -62,7 +62,7 @@ function existsIn(obj, path){
   const parts = path.split('.');
   let cur = obj;
   for(const p of parts){
-    if(cur && Object.prototype.hasOwnProperty.call(cur,p)) cur = cur[p];
+    if(cur && Object.hasOwn(cur,p)) cur = cur[p];
     else return false;
   }
   return true;

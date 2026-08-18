@@ -215,7 +215,7 @@ describe('Reports module — export generation (e2e)', () => {
       is_verified: true,
       assigned_machine_ids: [assignedMachine._id],
     });
-    const operator = await users.create({
+    await users.create({
       user_id: 'OP-RPT-E2E',
       nom_complet: 'Reports Operator',
       email: 'reports-operator-e2e@example.test',

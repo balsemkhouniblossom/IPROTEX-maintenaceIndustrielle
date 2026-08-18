@@ -22,25 +22,40 @@ export function getStoredAuthSession() {
 
 export function saveAuthSession(
   token: string,
-  _refreshToken: string | undefined,
+  refreshToken: string | undefined,
   user: unknown,
-  _persistent: boolean,
+  persistent: boolean,
+): void;
+export function saveAuthSession(
+  token: string,
+  refreshToken?: string,
+  user?: unknown,
+  persistent?: boolean,
 ) {
-  void _refreshToken;
-  void user;
-  void _persistent;
+  if (refreshToken || user || persistent) {
+    clearLegacyBrowserAuthStorage();
+  }
   setAuthToken(token);
   clearLegacyBrowserAuthStorage();
 }
 
-export function updateStoredTokens(token: string, _refreshToken?: string) {
-  void _refreshToken;
+export function updateStoredTokens(token: string, refreshToken?: string): void;
+export function updateStoredTokens(
+  token: string,
+  refreshToken?: string,
+) {
+  if (refreshToken) {
+    clearLegacyBrowserAuthStorage();
+  }
   setAuthToken(token);
   clearLegacyBrowserAuthStorage();
 }
 
-export function updateStoredUser(user: unknown) {
-  void user;
+export function updateStoredUser(user: unknown): void;
+export function updateStoredUser(user?: unknown) {
+  if (user) {
+    clearLegacyBrowserAuthStorage();
+  }
   clearLegacyBrowserAuthStorage();
 }
 

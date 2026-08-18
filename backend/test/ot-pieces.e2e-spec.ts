@@ -25,6 +25,15 @@ import {
 } from '../src/schemas/stock-movement.schema';
 import { OTPieces, OTPiecesDocument } from '../src/schemas/ot-pieces.schema';
 
+// The API always returns Mongo ids as plain strings; Mongoose's automatic
+// string-to-ObjectId cast on query filters isn't reliable for every model
+// in this test harness, so every filter built from an HTTP response id
+// goes through this explicit cast rather than risking a silent
+// false-empty result.
+function oid(value: string | Types.ObjectId): Types.ObjectId {
+  return value instanceof Types.ObjectId ? value : new Types.ObjectId(value);
+}
+
 /**
  * `OtPiecesService` used to mutate `OTPieces` directly with zero stock
  * adjustment and zero audit trail (see `DUPLICATE_MODELS_MIGRATION_PLAN.md`
@@ -103,15 +112,6 @@ describe('OT Pieces — transactional stock integration (e2e)', () => {
       role: user.role,
       user_id: user.user_id,
     });
-  }
-
-  // The API always returns Mongo ids as plain strings; Mongoose's automatic
-  // string-to-ObjectId cast on query filters isn't reliable for every model
-  // in this test harness, so every filter built from an HTTP response id
-  // goes through this explicit cast rather than risking a silent
-  // false-empty result.
-  function oid(value: string | Types.ObjectId): Types.ObjectId {
-    return value instanceof Types.ObjectId ? value : new Types.ObjectId(value);
   }
 
   async function seedBaseData() {

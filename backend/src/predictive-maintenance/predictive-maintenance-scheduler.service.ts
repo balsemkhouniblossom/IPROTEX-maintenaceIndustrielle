@@ -11,9 +11,11 @@ import {
   defaultSchedulerSettings,
 } from '../scheduler/scheduler.config';
 import { SchedulerLockService } from '../scheduler/scheduler-lock.service';
+import { SchedulerLockHandle } from '../scheduler/scheduler.types';
 import { createRunId, mapWithConcurrency } from '../scheduler/scheduler-utils';
 
 type JobResult = { processed: number; details?: Record<string, unknown> };
+type SchedulerSettings = ReturnType<SchedulerConfigService['getSettings']>;
 
 interface PredictionSweepCounters {
   scanned: number;
@@ -58,19 +60,8 @@ export class PredictiveMaintenanceSchedulerService {
   async runSweep(): Promise<JobResult> {
     const settings =
       this.schedulerConfigService?.getSettings() ?? defaultSchedulerSettings();
-    if (!settings.enabled) {
-      this.logger.log(
-        'Predictive maintenance sweep skipped scheduler disabled.',
-      );
-      return { processed: 0 };
-    }
-
-    if (!this.isEnabled()) {
-      this.logger.log(
-        'Predictive maintenance sweep skipped (PREDICTIVE_MAINTENANCE_ENABLED=false).',
-      );
-      return { processed: 0 };
-    }
+    const skipped = this.skippedSweepResult(settings);
+    if (skipped) return skipped;
 
     const runId = createRunId();
     const lock = await this.schedulerLockService?.acquire(
@@ -93,6 +84,7 @@ export class PredictiveMaintenanceSchedulerService {
 
     const startedAt = Date.now();
     const deadline = startedAt + settings.jobTimeoutMs;
+    const lockHandle = lock ?? undefined;
     let status = 'completed';
     const counters: PredictionSweepCounters = {
       scanned: 0,
@@ -102,63 +94,19 @@ export class PredictiveMaintenanceSchedulerService {
     };
 
     try {
-      const bootstrapped = await this.trainingService.trainAllMissing();
-      if (bootstrapped.length > 0) {
-        this.logger.log(
-          `Bootstrapped model version(s) for: ${bootstrapped.join(', ')}`,
-        );
-      }
-
-      let lastId: Types.ObjectId | undefined;
-      while (this.shouldContinueSweep(deadline, counters.scanned, settings)) {
-        const machines = await this.findPredictionCandidates(
-          lastId,
-          counters.scanned,
-          settings,
-        );
-
-        if (!machines.length) break;
-        await this.processPredictionBatch(
-          machines,
-          deadline,
-          counters,
-          settings,
-        );
-        lastId = machines.at(-1)!._id;
-        if (machines.length < settings.batchSize) break;
-        if (lock) {
-          const ownsLock = await this.schedulerLockService?.heartbeat(
-            lock,
-            settings.lockTtlMs,
-          );
-          if (!ownsLock) break;
-        }
-      }
+      await this.bootstrapMissingModels();
+      await this.processPredictionCandidates(
+        deadline,
+        counters,
+        settings,
+        lockHandle,
+      );
 
       if (Date.now() >= deadline) {
         status = 'timed_out';
       }
 
-      this.logger.log(
-        JSON.stringify({
-          jobName: 'predictive-maintenance-sweep',
-          runId,
-          instanceId:
-            this.schedulerLockService?.getInstanceId() ?? 'local-test',
-          status,
-          lockAcquired: Boolean(lock),
-          scanned: counters.scanned,
-          processed: counters.processed,
-          succeeded: counters.processed,
-          failed: counters.failed,
-          skipped: Math.max(
-            0,
-            counters.scanned - counters.processed - counters.failed,
-          ),
-          batches: counters.batches,
-          durationMs: Date.now() - startedAt,
-        }),
-      );
+      this.logSweepResult(runId, lockHandle, status, counters, startedAt);
       return {
         processed: counters.processed,
         details: {
@@ -183,18 +131,106 @@ export class PredictiveMaintenanceSchedulerService {
     return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
   }
 
+  private skippedSweepResult(settings: SchedulerSettings): JobResult | null {
+    if (!settings.enabled) {
+      this.logger.log(
+        'Predictive maintenance sweep skipped scheduler disabled.',
+      );
+      return { processed: 0 };
+    }
+
+    if (!this.isEnabled()) {
+      this.logger.log(
+        'Predictive maintenance sweep skipped (PREDICTIVE_MAINTENANCE_ENABLED=false).',
+      );
+      return { processed: 0 };
+    }
+
+    return null;
+  }
+
   private shouldContinueSweep(
     deadline: number,
     scanned: number,
-    settings: ReturnType<SchedulerConfigService['getSettings']>,
+    settings: SchedulerSettings,
   ): boolean {
     return Date.now() < deadline && scanned < settings.maxItemsPerRun;
+  }
+
+  private async bootstrapMissingModels(): Promise<void> {
+    const bootstrapped = await this.trainingService.trainAllMissing();
+    if (bootstrapped.length === 0) return;
+
+    this.logger.log(
+      `Bootstrapped model version(s) for: ${bootstrapped.join(', ')}`,
+    );
+  }
+
+  private async processPredictionCandidates(
+    deadline: number,
+    counters: PredictionSweepCounters,
+    settings: SchedulerSettings,
+    lock?: SchedulerLockHandle,
+  ): Promise<void> {
+    let lastId: Types.ObjectId | undefined;
+    while (this.shouldContinueSweep(deadline, counters.scanned, settings)) {
+      const machines = await this.findPredictionCandidates(
+        lastId,
+        counters.scanned,
+        settings,
+      );
+
+      if (!machines.length) return;
+      await this.processPredictionBatch(machines, deadline, counters, settings);
+      lastId = machines.at(-1)!._id;
+      if (machines.length < settings.batchSize) return;
+      if (!(await this.keepSweepLockAlive(lock, settings))) return;
+    }
+  }
+
+  private async keepSweepLockAlive(
+    lock: SchedulerLockHandle | undefined,
+    settings: SchedulerSettings,
+  ): Promise<boolean> {
+    if (!lock) return true;
+
+    return Boolean(
+      await this.schedulerLockService?.heartbeat(lock, settings.lockTtlMs),
+    );
+  }
+
+  private logSweepResult(
+    runId: string,
+    lock: SchedulerLockHandle | undefined,
+    status: string,
+    counters: PredictionSweepCounters,
+    startedAt: number,
+  ): void {
+    this.logger.log(
+      JSON.stringify({
+        jobName: 'predictive-maintenance-sweep',
+        runId,
+        instanceId: this.schedulerLockService?.getInstanceId() ?? 'local-test',
+        status,
+        lockAcquired: Boolean(lock),
+        scanned: counters.scanned,
+        processed: counters.processed,
+        succeeded: counters.processed,
+        failed: counters.failed,
+        skipped: Math.max(
+          0,
+          counters.scanned - counters.processed - counters.failed,
+        ),
+        batches: counters.batches,
+        durationMs: Date.now() - startedAt,
+      }),
+    );
   }
 
   private findPredictionCandidates(
     lastId: Types.ObjectId | undefined,
     scanned: number,
-    settings: ReturnType<SchedulerConfigService['getSettings']>,
+    settings: SchedulerSettings,
   ): Promise<MachineDocument[]> {
     const remaining = settings.maxItemsPerRun - scanned;
     return this.machineModel
@@ -209,7 +245,7 @@ export class PredictiveMaintenanceSchedulerService {
     machines: MachineDocument[],
     deadline: number,
     counters: PredictionSweepCounters,
-    settings: ReturnType<SchedulerConfigService['getSettings']>,
+    settings: SchedulerSettings,
   ): Promise<void> {
     counters.batches += 1;
     counters.scanned += machines.length;

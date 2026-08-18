@@ -91,6 +91,29 @@ type WorkOrderPayload = {
   status?: string;
 };
 
+type PreventivePlanSeedPayload = Pick<
+  MaintenancePlanDocument,
+  | '_id'
+  | 'plan_id'
+  | 'module_id'
+  | 'type_maintenance'
+  | 'frequence'
+  | 'unite_frequence'
+  | 'frequence_label'
+  | 'instruction'
+  | 'status'
+>;
+
+type SeedLookupMaps = {
+  moduleById: Map<string, any>;
+  machineById: Map<string, any>;
+};
+
+type DuePreventivePlan = {
+  plan: PreventivePlanSeedPayload;
+  latest: WorkOrderPayload;
+};
+
 @Injectable()
 export class WorkOrderPreventiveSchedulingService {
   private readonly logger = new Logger(
@@ -443,114 +466,28 @@ export class WorkOrderPreventiveSchedulingService {
       summary.plansEvaluated += plans.length;
       lastId = plans.at(-1)!._id;
 
-      const moduleIds = plans
-        .map((plan) => this.objectIdString(plan.module_id))
-        .filter((id) => Types.ObjectId.isValid(id))
-        .map((id) => new Types.ObjectId(id));
-
-      const modules = moduleIds.length
-        ? await this.moduleModel
-            .find(
-              { _id: { $in: moduleIds } },
-              { _id: 1, machine_id: 1, module_id: 1 },
-            )
-            .lean()
-            .exec()
-        : [];
-      const moduleById = new Map<string, any>();
-      for (const moduleEntity of modules) {
-        moduleById.set(this.objectIdString(moduleEntity._id), moduleEntity);
-      }
-
-      const machineIds = modules
-        .map((moduleEntity) => this.objectIdString(moduleEntity.machine_id))
-        .filter((id) => Types.ObjectId.isValid(id))
-        .map((id) => new Types.ObjectId(id));
-      const machines = machineIds.length
-        ? await this.machineModel
-            .find(
-              { _id: { $in: machineIds } },
-              { _id: 1, machine_id: 1, installation_date: 1 },
-            )
-            .lean()
-            .exec()
-        : [];
-      const machineById = new Map<string, any>();
-      for (const machine of machines) {
-        machineById.set(this.objectIdString(machine._id), machine);
-      }
+      const lookups = await this.loadSeedLookupMaps(plans);
 
       const latestOrderByPlanKey =
         await this.findLatestPreventiveOrdersForPlans(
           plans.map((plan) => plan._id),
         );
 
-      const duePlans: Array<{
-        plan: any;
-        latest: WorkOrderPayload;
-      }> = [];
-
-      for (const plan of plans) {
-        if (!this.isPlanSchedulable(plan)) {
-          continue;
-        }
-        const moduleEntity = moduleById.get(
-          this.objectIdString(plan.module_id),
-        );
-        if (!moduleEntity) {
-          summary.skippedDuplicates += 1;
-          continue;
-        }
-        const machine = machineById.get(
-          this.objectIdString(moduleEntity.machine_id),
-        );
-        if (!machine) {
-          summary.skippedDuplicates += 1;
-          continue;
-        }
-        summary.targetsScanned! += 1;
-
-        const key = this.buildPlanKey(machine, moduleEntity, plan);
-        const latest = latestOrderByPlanKey.get(key);
-        if (!latest) {
-          summary.skippedDuplicates += 1;
-          continue;
-        }
-        if (!this.isCompletedStatus(latest.status)) {
-          summary.alreadyExisting! += 1;
-          summary.skippedDuplicates += 1;
-          continue;
-        }
-        duePlans.push({ plan, latest });
-      }
+      const duePlans = this.collectDuePlans(
+        plans,
+        lookups,
+        latestOrderByPlanKey,
+        summary,
+      );
 
       summary.plansDue! += duePlans.length;
-      await mapWithConcurrency(
+      await this.createDuePreventivePlans(
         duePlans,
-        settings.concurrency,
-        async ({ plan, latest }) => {
-          if (context && !context.shouldContinue()) return;
-          summary.occurrencesEvaluated! += 1;
-          try {
-            const created = await this.createNextPreventiveWorkOrderAtomically(
-              latest,
-              plan,
-              dueKeySet,
-              latestOrderByPlanKey,
-            );
-            if (created) {
-              summary.createdNextExecution += 1;
-            } else {
-              summary.alreadyExisting! += 1;
-              summary.skippedDuplicates += 1;
-            }
-          } catch (error) {
-            summary.failed! += 1;
-            this.logger.warn(
-              `[job_generate_preventive_maintenance] item failed: ${this.sanitizedError(error)}`,
-            );
-          }
-        },
+        dueKeySet,
+        latestOrderByPlanKey,
+        settings,
+        summary,
+        context,
       );
 
       if (plans.length < settings.batchSize) {
@@ -564,6 +501,162 @@ export class WorkOrderPreventiveSchedulingService {
     summary.timedOut = Boolean(context && !context.shouldContinue());
 
     return summary;
+  }
+
+  private async loadSeedLookupMaps(
+    plans: PreventivePlanSeedPayload[],
+  ): Promise<SeedLookupMaps> {
+    const moduleIds = plans
+      .map((plan) => this.objectIdString(plan.module_id))
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+
+    const modules = moduleIds.length
+      ? await this.moduleModel
+          .find(
+            { _id: { $in: moduleIds } },
+            { _id: 1, machine_id: 1, module_id: 1 },
+          )
+          .lean()
+          .exec()
+      : [];
+    const moduleById = new Map<string, any>();
+    for (const moduleEntity of modules) {
+      moduleById.set(this.objectIdString(moduleEntity._id), moduleEntity);
+    }
+
+    const machineIds = modules
+      .map((moduleEntity) => this.objectIdString(moduleEntity.machine_id))
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    const machines = machineIds.length
+      ? await this.machineModel
+          .find(
+            { _id: { $in: machineIds } },
+            { _id: 1, machine_id: 1, installation_date: 1 },
+          )
+          .lean()
+          .exec()
+      : [];
+    const machineById = new Map<string, any>();
+    for (const machine of machines) {
+      machineById.set(this.objectIdString(machine._id), machine);
+    }
+
+    return { moduleById, machineById };
+  }
+
+  private collectDuePlans(
+    plans: PreventivePlanSeedPayload[],
+    lookups: SeedLookupMaps,
+    latestOrderByPlanKey: Map<string, WorkOrderPayload>,
+    summary: SchedulerRunSummary,
+  ): DuePreventivePlan[] {
+    const duePlans: DuePreventivePlan[] = [];
+    for (const plan of plans) {
+      const duePlan = this.toDuePreventivePlan(
+        plan,
+        lookups,
+        latestOrderByPlanKey,
+        summary,
+      );
+      if (duePlan) duePlans.push(duePlan);
+    }
+    return duePlans;
+  }
+
+  private toDuePreventivePlan(
+    plan: PreventivePlanSeedPayload,
+    lookups: SeedLookupMaps,
+    latestOrderByPlanKey: Map<string, WorkOrderPayload>,
+    summary: SchedulerRunSummary,
+  ): DuePreventivePlan | null {
+    if (!this.isPlanSchedulable(plan)) return null;
+
+    const moduleEntity = lookups.moduleById.get(
+      this.objectIdString(plan.module_id),
+    );
+    if (!moduleEntity) {
+      summary.skippedDuplicates += 1;
+      return null;
+    }
+
+    const machine = lookups.machineById.get(
+      this.objectIdString(moduleEntity.machine_id),
+    );
+    if (!machine) {
+      summary.skippedDuplicates += 1;
+      return null;
+    }
+
+    summary.targetsScanned! += 1;
+    const key = this.buildPlanKey(machine, moduleEntity, plan);
+    const latest = latestOrderByPlanKey.get(key);
+    if (!latest) {
+      summary.skippedDuplicates += 1;
+      return null;
+    }
+
+    if (!this.isCompletedStatus(latest.status)) {
+      summary.alreadyExisting! += 1;
+      summary.skippedDuplicates += 1;
+      return null;
+    }
+
+    return { plan, latest };
+  }
+
+  private async createDuePreventivePlans(
+    duePlans: DuePreventivePlan[],
+    dueKeySet: Set<string>,
+    latestOrderByPlanKey: Map<string, WorkOrderPayload>,
+    settings: SchedulerRuntimeSettings,
+    summary: SchedulerRunSummary,
+    context?: SchedulerJobContext,
+  ): Promise<void> {
+    await mapWithConcurrency(
+      duePlans,
+      settings.concurrency,
+      async ({ plan, latest }) => {
+        if (context && !context.shouldContinue()) return;
+        await this.createDuePreventivePlan(
+          plan,
+          latest,
+          dueKeySet,
+          latestOrderByPlanKey,
+          summary,
+        );
+      },
+    );
+  }
+
+  private async createDuePreventivePlan(
+    plan: PreventivePlanSeedPayload,
+    latest: WorkOrderPayload,
+    dueKeySet: Set<string>,
+    latestOrderByPlanKey: Map<string, WorkOrderPayload>,
+    summary: SchedulerRunSummary,
+  ): Promise<void> {
+    summary.occurrencesEvaluated! += 1;
+    try {
+      const created = await this.createNextPreventiveWorkOrderAtomically(
+        latest,
+        plan,
+        dueKeySet,
+        latestOrderByPlanKey,
+      );
+      if (created) {
+        summary.createdNextExecution += 1;
+        return;
+      }
+      summary.alreadyExisting! += 1;
+      summary.skippedDuplicates += 1;
+    } catch (error) {
+      summary.failed! += 1;
+      this.logger.warn(
+        `[job_generate_preventive_maintenance] item failed: ${this.sanitizedError(error)}`,
+      );
+    }
   }
 
   private async runManualPreventiveScheduler(): Promise<SchedulerRunSummary> {
@@ -848,7 +941,7 @@ export class WorkOrderPreventiveSchedulingService {
     }
 
     if (value instanceof Types.ObjectId) {
-      return value.toString();
+      return value.toHexString();
     }
 
     if (typeof value === 'object' && value !== null && '_id' in value) {

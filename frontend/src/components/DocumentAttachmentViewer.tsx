@@ -94,7 +94,7 @@ function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
       active = false;
       if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
     };
-  }, [shouldFetchWithAuth, viewerKind, viewerUrl]);
+  }, [onError, shouldFetchWithAuth, viewerKind, viewerUrl]);
 
   if (viewerKind === "image" && viewerUrl && !fileBroken) {
     return (
@@ -146,12 +146,7 @@ function DocumentAttachmentViewerInner({ document, title, onError }: Props) {
     );
   }
 
-  if (
-    (viewerKind === "download" ||
-      viewerKind === "spreadsheet" ||
-      viewerKind === "text") &&
-    viewerUrl
-  ) {
+  if (isDownloadOnlyViewerKind(viewerKind) && viewerUrl) {
     const actionUrl = objectUrl || viewerUrl || fileUrl;
     return (
       <div className="flex min-h-[32vh] flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-6 text-center">
@@ -198,4 +193,8 @@ function isBackendDocumentFileUrl(url: string): boolean {
 
 function isProtectedDocumentUrl(url: string): boolean {
   return /\/documents\/[^/]+\/(?:file|preview)$/.test(url);
+}
+
+function isDownloadOnlyViewerKind(viewerKind: string): boolean {
+  return ["download", "spreadsheet", "text"].includes(viewerKind);
 }

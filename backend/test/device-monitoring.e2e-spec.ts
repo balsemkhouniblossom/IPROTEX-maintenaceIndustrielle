@@ -27,6 +27,38 @@ import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
 import { SecureSocketIoAdapter } from '../src/config/secure-socket-io.adapter';
 import { LiveMonitoringGateway } from '../src/device-monitoring/live-monitoring.gateway';
 
+function subscribeMachine(
+  socket: Socket,
+  id: string,
+): Promise<{ ok: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    socket
+      .timeout(1000)
+      .emit(
+        'subscribe:machine',
+        { machineId: id },
+        (error: Error | null, response?: { ok: boolean; error?: string }) => {
+          if (error) resolve({ ok: false, error: 'timeout' });
+          else resolve(response ?? { ok: false });
+        },
+      );
+  });
+}
+
+function waitForNoEvent(socket: Socket, eventName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off(eventName, onEvent);
+      resolve();
+    }, 150);
+    const onEvent = () => {
+      clearTimeout(timer);
+      reject(new Error(`unexpected ${eventName} event`));
+    };
+    socket.once(eventName, onEvent);
+  });
+}
+
 describe('Device registration, REST device-gateway ingestion, and role-scoped live status (e2e)', () => {
   let mongo: MongoMemoryReplSet;
   let app: INestApplication<App>;
@@ -224,38 +256,6 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         socket.once('disconnect', () => finish());
       });
       socket.once('connect_error', () => finish());
-    });
-  }
-
-  function subscribeMachine(
-    socket: Socket,
-    id: string,
-  ): Promise<{ ok: boolean; error?: string }> {
-    return new Promise((resolve) => {
-      socket
-        .timeout(1000)
-        .emit(
-          'subscribe:machine',
-          { machineId: id },
-          (error: Error | null, response?: { ok: boolean; error?: string }) => {
-            if (error) resolve({ ok: false, error: 'timeout' });
-            else resolve(response ?? { ok: false });
-          },
-        );
-    });
-  }
-
-  function waitForNoEvent(socket: Socket, eventName: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        socket.off(eventName, onEvent);
-        resolve();
-      }, 150);
-      const onEvent = () => {
-        clearTimeout(timer);
-        reject(new Error(`unexpected ${eventName} event`));
-      };
-      socket.once(eventName, onEvent);
     });
   }
 
@@ -480,9 +480,6 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ is_active: false })
         .expect(200);
-
-      const rotateResponse = await devices.findById(deviceMongoId).exec();
-      void rotateResponse;
 
       await request(app.getHttpServer())
         .post('/device-gateway/heartbeat')

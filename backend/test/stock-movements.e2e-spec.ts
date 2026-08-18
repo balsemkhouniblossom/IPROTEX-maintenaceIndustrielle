@@ -37,6 +37,63 @@ import {
 } from '../src/schemas/part-request.schema';
 import { OTPieces, OTPiecesDocument } from '../src/schemas/ot-pieces.schema';
 
+type TechnicianReservationContext = {
+  app: INestApplication<App>;
+  operatorToken: string;
+  technicianToken: string;
+  technician: UserDocument;
+  workOrders: Model<WorkOrderDocument>;
+  createStockViaApi: (
+    quantity: number,
+  ) => Promise<{ stock: any; part: CatalogueDocument }>;
+  createCorrectiveWorkOrder: () => Promise<WorkOrderDocument>;
+};
+
+async function reserveForTechnicianConsumption(
+  context: TechnicianReservationContext,
+  stockQuantity: number,
+  reserveQuantity: number,
+) {
+  const {
+    app,
+    operatorToken,
+    technicianToken,
+    technician,
+    workOrders,
+    createStockViaApi,
+    createCorrectiveWorkOrder,
+  } = context;
+  const { stock, part } = await createStockViaApi(stockQuantity);
+  const workOrder = await createCorrectiveWorkOrder();
+
+  const partRequestResponse = await request(app.getHttpServer())
+    .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
+    .set('Authorization', `Bearer ${operatorToken}`)
+    .send({ part_id: part._id.toString(), quantity: reserveQuantity })
+    .expect(201);
+
+  await request(app.getHttpServer())
+    .patch(
+      `/work-orders/part-requests/${partRequestResponse.body._id}/decision`,
+    )
+    .set('Authorization', `Bearer ${technicianToken}`)
+    .send({ action: 'approve' })
+    .expect(200);
+
+  // Test scaffolding only: hand the work order over to the Technician
+  // so the Technician-scoped parts endpoint can act on it.
+  await workOrders.findByIdAndUpdate(workOrder._id, {
+    $set: { technician_id: technician._id, status: 'in_progress' },
+  });
+
+  return {
+    stock,
+    part,
+    workOrder,
+    partRequestId: partRequestResponse.body._id,
+  };
+}
+
 describe('Stock movements — transactional, traceable inventory (e2e)', () => {
   // A replica set is required: every stock-affecting operation here
   // (create, reserve, cancel, consume, return, adjust) runs inside a real
@@ -399,47 +456,21 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
   });
 
   describe('consumption and return, via the Technician parts endpoint', () => {
-    async function reserveForTechnicianConsumption(
-      stockQuantity: number,
-      reserveQuantity: number,
-    ) {
-      const { stock, part } = await createStockViaApi(stockQuantity);
-      const workOrder = await createCorrectiveWorkOrder();
-
-      const partRequestResponse = await request(app.getHttpServer())
-        .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-        .set('Authorization', `Bearer ${operatorToken}`)
-        .send({ part_id: part._id.toString(), quantity: reserveQuantity })
-        .expect(201);
-
-      await request(app.getHttpServer())
-        .patch(
-          `/work-orders/part-requests/${partRequestResponse.body._id}/decision`,
-        )
-        .set('Authorization', `Bearer ${technicianToken}`)
-        .send({ action: 'approve' })
-        .expect(200);
-
-      // Test scaffolding only: hand the work order over to the Technician
-      // (as the dedicated claim/start endpoints would) so the Technician's
-      // own parts endpoint — which is scoped to work orders it owns — can
-      // act on it. The claim/start state machine itself is covered by its
-      // own tests elsewhere; this file is only about the stock ledger.
-      await workOrders.findByIdAndUpdate(workOrder._id, {
-        $set: { technician_id: technician._id, status: 'in_progress' },
-      });
-
-      return {
-        stock,
-        part,
-        workOrder,
-        partRequestId: partRequestResponse.body._id,
-      };
-    }
-
     it('drains the reservation and stock together, and marks the request Fulfilled, when consumption matches the reserved amount exactly', async () => {
       const { stock, part, workOrder, partRequestId } =
-        await reserveForTechnicianConsumption(10, 4);
+        await reserveForTechnicianConsumption(
+          {
+            app,
+            operatorToken,
+            technicianToken,
+            technician,
+            workOrders,
+            createStockViaApi,
+            createCorrectiveWorkOrder,
+          },
+          10,
+          4,
+        );
 
       await request(app.getHttpServer())
         .post(`/technician/work-orders/${workOrder._id.toString()}/parts`)
@@ -469,7 +500,19 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
 
     it('draws down the reservation first and only pulls the overflow from the general pool, leaving the request Fulfilled', async () => {
       const { stock, part, workOrder, partRequestId } =
-        await reserveForTechnicianConsumption(10, 3);
+        await reserveForTechnicianConsumption(
+          {
+            app,
+            operatorToken,
+            technicianToken,
+            technician,
+            workOrders,
+            createStockViaApi,
+            createCorrectiveWorkOrder,
+          },
+          10,
+          3,
+        );
 
       // Consume 5: reservation only covers 3, so 2 must come from the
       // general (unreserved) pool — proving the guard math and the
@@ -490,6 +533,15 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
 
     it('records a Return and increases stock when the corrected quantity is lower than before, without ever going negative', async () => {
       const { stock, part, workOrder } = await reserveForTechnicianConsumption(
+        {
+          app,
+          operatorToken,
+          technicianToken,
+          technician,
+          workOrders,
+          createStockViaApi,
+          createCorrectiveWorkOrder,
+        },
         10,
         6,
       );
@@ -524,6 +576,15 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
 
     it('rejects consumption that would exceed what is actually available, leaving Stock unchanged', async () => {
       const { stock, part, workOrder } = await reserveForTechnicianConsumption(
+        {
+          app,
+          operatorToken,
+          technicianToken,
+          technician,
+          workOrders,
+          createStockViaApi,
+          createCorrectiveWorkOrder,
+        },
         5,
         2,
       );

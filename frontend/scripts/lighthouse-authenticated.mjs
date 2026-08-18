@@ -7,7 +7,7 @@
  * instead:
  *   1. Launches one real Chrome instance (via puppeteer-core) with a fixed
  *      CDP debugging port.
- *   2. For each role, drives the actual login form (same as a real user —
+ *   2. For each role, drives the actual login form (same as a real user -
  *      no token-seeding shortcuts) and waits for the post-login redirect.
  *   3. Runs Lighthouse's Node API against that same Chrome instance (same
  *      `port`), so every audited tab shares the browser profile's
@@ -16,7 +16,7 @@
  *      never leak a previous role's session.
  *
  * Requires the backend + frontend dev servers already running (see
- * BASE_URL/API_BASE_URL below), and the seeded Lighthouse test accounts —
+ * BASE_URL/API_BASE_URL below), and the seeded Lighthouse test accounts -
  * run `npm run seed:lighthouse-users` in backend/ first.
  *
  * Usage: node scripts/lighthouse-authenticated.mjs [--threshold=0.9]
@@ -33,12 +33,14 @@ const REPORTS_DIR = path.join(__dirname, '..', 'lighthouse-reports');
 const BASE_URL = process.env.LIGHTHOUSE_BASE_URL || 'http://localhost:3000';
 const LOCALE = process.env.LIGHTHOUSE_LOCALE || 'en';
 const CHROME_PATH =
-  process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  process.env.CHROME_PATH || String.raw`C:\Program Files\Google\Chrome\Application\chrome.exe`;
 const DEBUG_PORT = Number(process.env.LIGHTHOUSE_CDP_PORT || 9222);
 const PASSWORD = 'LighthouseTest123!';
 
 const thresholdArg = process.argv.find((arg) => arg.startsWith('--threshold='));
-const ACCESSIBILITY_THRESHOLD = thresholdArg ? Number(thresholdArg.split('=')[1]) : 0.9;
+const ACCESSIBILITY_THRESHOLD = thresholdArg
+  ? Number(thresholdArg.split('=')[1])
+  : 0.9;
 
 /** One entry per role: login credentials, expected post-login path, and
  * the authenticated routes worth auditing for that role. */
@@ -79,9 +81,11 @@ const ROLE_CONFIGS = [
 
 async function login(page, email) {
   // Next.js dev mode compiles each route on its first hit, which can take
-  // well over 15s cold — generous timeouts here avoid flaking on that,
-  // not on anything the app itself is slow at.
-  await page.goto(`${BASE_URL}/${LOCALE}/auth/login`, { waitUntil: 'networkidle2', timeout: 45000 });
+  // well over 15s cold. Generous timeouts avoid flaking on that startup cost.
+  await page.goto(`${BASE_URL}/${LOCALE}/auth/login`, {
+    waitUntil: 'networkidle2',
+    timeout: 45000,
+  });
   await page.waitForSelector('#email', { timeout: 45000 });
   await page.type('#email', email);
   await page.type('#password', PASSWORD);
@@ -100,7 +104,7 @@ async function clearSession(page) {
       sessionStorage.clear();
     });
   } catch {
-    // No document context yet (e.g. first run before any navigation) — nothing to clear.
+    // No document context yet, so there is nothing to clear.
   }
 }
 
@@ -123,10 +127,7 @@ async function runLighthouse(port, url) {
 async function auditRoute(port, role, route) {
   const url = `${BASE_URL}${route.path}`;
 
-  // A first-load NO_FCP (occluded tab, or a slow Next.js dev-mode cold
-  // compile racing Lighthouse's own load timeout) is transient — one
-  // retry clears it without masking a real accessibility regression,
-  // since a genuine failure reproduces on the retry too.
+  // A first-load NO_FCP can be transient during cold dev-mode compilation.
   let result = await runLighthouse(port, url);
   if (result.lhr.runtimeError) {
     console.log(`\n    (retrying after ${result.lhr.runtimeError.code}) `);
@@ -138,10 +139,16 @@ async function auditRoute(port, role, route) {
   const bestPracticesScore = categories['best-practices'].score;
 
   const failingAudits = Object.values(audits).filter(
-    (audit) => audit.score !== null && audit.score < 1 && audit.scoreDisplayMode === 'binary',
+    (audit) =>
+      audit.score !== null &&
+      audit.score < 1 &&
+      audit.scoreDisplayMode === 'binary',
   );
 
-  const reportPath = path.join(REPORTS_DIR, `${role}-${slugify(route.name)}.json`);
+  const reportPath = path.join(
+    REPORTS_DIR,
+    `${role}-${slugify(route.name)}.json`,
+  );
   fs.mkdirSync(REPORTS_DIR, { recursive: true });
   fs.writeFileSync(reportPath, result.report);
 
@@ -152,7 +159,10 @@ async function auditRoute(port, role, route) {
     accessibilityScore,
     bestPracticesScore,
     runtimeError: result.lhr.runtimeError?.code ?? null,
-    failingAudits: failingAudits.map((audit) => ({ id: audit.id, title: audit.title })),
+    failingAudits: failingAudits.map((audit) => ({
+      id: audit.id,
+      title: audit.title,
+    })),
     reportPath,
   };
 }
@@ -164,10 +174,8 @@ async function main() {
     args: [
       `--remote-debugging-port=${DEBUG_PORT}`,
       '--window-size=1440,900',
-      // Lighthouse opens each audited route in its own new tab on this
-      // same profile; without these, Chrome treats that tab as
-      // "occluded" behind our login tab and throttles/never paints it,
-      // which Lighthouse reports as a NO_FCP runtime error.
+      // Lighthouse opens audited routes in new tabs on this same profile.
+      // These flags keep Chrome from throttling those background tabs.
       '--disable-backgrounding-occluded-windows',
       '--disable-renderer-backgrounding',
       '--disable-background-timer-throttling',
@@ -189,7 +197,7 @@ async function main() {
       const landedOn = new URL(page.url()).pathname;
       if (!landedOn.startsWith(config.dashboardPath)) {
         throw new Error(
-          `Login for ${config.role} did not land on ${config.dashboardPath} (got ${landedOn}) — aborting this role's audit.`,
+          `Login for ${config.role} did not land on ${config.dashboardPath} (got ${landedOn}) - aborting this role's audit.`,
         );
       }
       console.log(`Logged in as ${config.email}, landed on ${landedOn}`);
@@ -207,25 +215,7 @@ async function main() {
     await browser.close();
   }
 
-  console.log('\n=== Summary ===');
-  let anyBelowThreshold = false;
-  for (const result of results) {
-    if (result.runtimeError) {
-      console.log(`[ERROR] ${result.role}/${result.route}: ${result.runtimeError} (page never painted — see report for detail)`);
-      anyBelowThreshold = true;
-      continue;
-    }
-    const status = result.accessibilityScore >= ACCESSIBILITY_THRESHOLD ? 'PASS' : 'FAIL';
-    if (status === 'FAIL') anyBelowThreshold = true;
-    console.log(
-      `[${status}] ${result.role}/${result.route}: accessibility=${result.accessibilityScore} (threshold ${ACCESSIBILITY_THRESHOLD})`,
-    );
-    if (status === 'FAIL') {
-      for (const audit of result.failingAudits) {
-        console.log(`    - ${audit.id}: ${audit.title}`);
-      }
-    }
-  }
+  const anyBelowThreshold = printSummary(results);
   console.log(`\nReports written to ${REPORTS_DIR}`);
 
   if (anyBelowThreshold) {
@@ -233,7 +223,51 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+function printSummary(results) {
+  console.log('\n=== Summary ===');
+  let anyBelowThreshold = false;
+
+  for (const result of results) {
+    if (printRuntimeError(result)) {
+      anyBelowThreshold = true;
+      continue;
+    }
+
+    if (printAuditStatus(result)) {
+      anyBelowThreshold = true;
+    }
+  }
+
+  return anyBelowThreshold;
+}
+
+function printRuntimeError(result) {
+  if (!result.runtimeError) return false;
+  console.log(
+    `[ERROR] ${result.role}/${result.route}: ${result.runtimeError} (page never painted - see report for detail)`,
+  );
+  return true;
+}
+
+function printAuditStatus(result) {
+  const failed = result.accessibilityScore < ACCESSIBILITY_THRESHOLD;
+  const status = failed ? 'FAIL' : 'PASS';
+  console.log(
+    `[${status}] ${result.role}/${result.route}: accessibility=${result.accessibilityScore} (threshold ${ACCESSIBILITY_THRESHOLD})`,
+  );
+
+  if (failed) {
+    for (const audit of result.failingAudits) {
+      console.log(`    - ${audit.id}: ${audit.title}`);
+    }
+  }
+
+  return failed;
+}
+
+try {
+  await main();
+} catch (error) {
   console.error(error);
   process.exitCode = 1;
-});
+}

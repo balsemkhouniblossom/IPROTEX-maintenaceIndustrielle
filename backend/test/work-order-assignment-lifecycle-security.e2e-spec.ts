@@ -482,12 +482,7 @@ describe('Work Order assignment/lifecycle security (e2e)', () => {
     kind: MutationKind,
     stateCase: AccountStateCase,
   ): Promise<UserDocument> {
-    const role =
-      kind === 'admin_validation'
-        ? Role.ADMIN
-        : kind === 'operator_start'
-          ? Role.OPERATOR
-          : Role.TECHNICIAN;
+    const role = roleForMutationKind(kind);
     const user = await createUser({
       user_id: `SEC-${kind}-${new Types.ObjectId().toHexString()}`,
       email: `${kind}-${new Types.ObjectId().toHexString()}@example.test`,
@@ -697,9 +692,18 @@ describe('Work Order assignment/lifecycle security (e2e)', () => {
     if (!value) return undefined;
     if (value instanceof Date) return value.toISOString();
     if (value instanceof Types.ObjectId) return value.toHexString();
-    if (typeof value === 'object' && value !== null && 'toString' in value) {
+    if (typeof value === 'string' || typeof value === 'number') {
       return String(value);
     }
-    return String(value);
+    if (typeof value === 'object' && value !== null && '_id' in value) {
+      return valueToString((value as { _id?: unknown })._id);
+    }
+    return undefined;
   }
 });
+
+function roleForMutationKind(kind: MutationKind): Role {
+  if (kind === 'admin_validation') return Role.ADMIN;
+  if (kind === 'operator_start') return Role.OPERATOR;
+  return Role.TECHNICIAN;
+}

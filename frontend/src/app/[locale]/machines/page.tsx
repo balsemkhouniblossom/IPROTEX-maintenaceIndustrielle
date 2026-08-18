@@ -425,6 +425,10 @@ export default function MachinesPage() {
     );
   }
 
+  const submitButtonLabel = editingMachine
+    ? tMachines('button.update')
+    : tMachines('button.create');
+
   return (
     <DashboardLayout title={tMachines('pageTitle')}>
       {/* Notification */}
@@ -791,7 +795,7 @@ export default function MachinesPage() {
                   <span>{tCommon('saving')}</span>
                 </div>
               ) : (
-                editingMachine ? tMachines('button.update') : tMachines('button.create')
+                submitButtonLabel
               )}
             </button>
           </div>

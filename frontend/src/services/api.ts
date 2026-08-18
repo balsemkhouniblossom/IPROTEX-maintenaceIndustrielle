@@ -16,14 +16,6 @@ import {
 
 const API_BASE_URL = getApiBaseUrl();
 
-if (typeof window === 'undefined') {
-  // Server-side startup log (visible in Vercel Function logs)
-  void API_BASE_URL;
-} else if (process.env.NODE_ENV !== 'production') {
-  // Client-side dev log only — avoids leaking config in production browser console
-  void API_BASE_URL;
-}
-
 // Axios has no default timeout (0 = never times out). A hung backend
 // request previously left the UI spinning forever with no recovery path.
 // File upload/download endpoints override this with a longer budget below.
@@ -61,7 +53,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    throw error;
   }
 );
 
@@ -100,7 +92,7 @@ api.interceptors.response.use(
       // request when filters/pagination change before it resolves. Not a
       // network failure, so don't scare the console or fire the
       // network-error UI event for it.
-      return Promise.reject(error);
+      throw error;
     }
 
     const retryConfig = error.config as
@@ -152,7 +144,7 @@ api.interceptors.response.use(
 
       return requestAuthRefresh().then((session) => {
         if (originalRequest.signal?.aborted) {
-          return Promise.reject(new axios.CanceledError('Request was canceled'));
+          throw new axios.CanceledError('Request was canceled');
         }
 
         const headers = AxiosHeaders.from(originalRequest.headers);
@@ -163,7 +155,7 @@ api.interceptors.response.use(
         if (isConfirmedRefreshAuthFailure(refreshError)) {
           redirectToLoginOnce(refreshError);
         }
-        return Promise.reject(refreshError);
+        throw refreshError;
       });
     }
 
@@ -177,7 +169,7 @@ api.interceptors.response.use(
     if (!isExpectedAuthFailure && !suppressErrorLog) {
       console.error('API Error:', error);
     }
-    return Promise.reject(error);
+    throw error;
   }
 );
 

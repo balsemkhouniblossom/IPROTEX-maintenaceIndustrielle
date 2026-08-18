@@ -223,11 +223,13 @@ describe('Operator calendar (e2e)', () => {
       const ownWorkOrderIds = widgetResponse.body.today.map(
         (row: { workOrderId: string }) => row.workOrderId,
       );
-      const otherWorkOrderIds = otherWidgetResponse.body.today.map(
-        (row: { workOrderId: string }) => row.workOrderId,
+      const otherWorkOrderIds = new Set(
+        otherWidgetResponse.body.today.map(
+          (row: { workOrderId: string }) => row.workOrderId,
+        ),
       );
       expect(
-        ownWorkOrderIds.some((id: string) => otherWorkOrderIds.includes(id)),
+        ownWorkOrderIds.some((id: string) => otherWorkOrderIds.has(id)),
       ).toBe(false);
     });
 

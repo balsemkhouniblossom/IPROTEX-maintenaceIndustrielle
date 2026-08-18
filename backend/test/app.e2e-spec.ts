@@ -60,6 +60,41 @@ import {
   PanneSolutionDocument,
 } from '../src/schemas/panne-solution.schema';
 
+function getSetCookies(response: request.Response): string[] {
+  const cookies = response.headers['set-cookie'];
+  if (Array.isArray(cookies)) return cookies;
+  if (cookies) return [cookies];
+  return [];
+}
+
+function getCookieValueFromSetCookie(
+  response: request.Response,
+  name: string,
+): string {
+  const cookie = getSetCookies(response).find((entry) =>
+    entry.startsWith(`${name}=`),
+  );
+  expect(cookie).toBeTruthy();
+  return decodeURIComponent(
+    String(cookie)
+      .split(';')[0]
+      .slice(name.length + 1),
+  );
+}
+
+function getAuthCookieHeader(response: request.Response): string {
+  const refreshToken = getCookieValueFromSetCookie(response, 'refresh_token');
+  const csrfToken = getCookieValueFromSetCookie(response, 'csrf_token');
+  return `refresh_token=${encodeURIComponent(refreshToken)}; csrf_token=${encodeURIComponent(csrfToken)}`;
+}
+
+function createGoogleRedirectResponse() {
+  return {
+    redirect: jest.fn(),
+    clearCookie: jest.fn(),
+  };
+}
+
 describe('Preventive scheduling lifecycle (e2e)', () => {
   let mongo: MongoMemoryReplSet;
   let app: INestApplication<App>;
@@ -1658,49 +1693,30 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
     });
   }
 
-  function getSetCookies(response: request.Response): string[] {
-    const cookies = response.headers['set-cookie'];
-    return Array.isArray(cookies) ? cookies : cookies ? [cookies] : [];
-  }
-
-  function getCookieValueFromSetCookie(
-    response: request.Response,
-    name: string,
-  ): string {
-    const cookie = getSetCookies(response).find((entry) =>
-      entry.startsWith(`${name}=`),
-    );
-    expect(cookie).toBeTruthy();
-    return decodeURIComponent(
-      String(cookie)
-        .split(';')[0]
-        .slice(name.length + 1),
-    );
-  }
-
-  function getAuthCookieHeader(response: request.Response): string {
-    const refreshToken = getCookieValueFromSetCookie(response, 'refresh_token');
-    const csrfToken = getCookieValueFromSetCookie(response, 'csrf_token');
-    return `refresh_token=${encodeURIComponent(refreshToken)}; csrf_token=${encodeURIComponent(csrfToken)}`;
-  }
-
   function expectRefreshCookie(response: request.Response) {
     const cookies = getSetCookies(response);
-    expect(cookies.some((cookie) => /^refresh_token=/.test(cookie))).toBe(true);
+    expect(cookies.some((cookie) => cookie.startsWith('refresh_token='))).toBe(
+      true,
+    );
     expect(
       cookies.some(
-        (cookie) => /^refresh_token=/.test(cookie) && /HttpOnly/i.test(cookie),
+        (cookie) =>
+          cookie.startsWith('refresh_token=') && /HttpOnly/i.test(cookie),
       ),
     ).toBe(true);
     expect(
       cookies.some(
-        (cookie) => /^refresh_token=/.test(cookie) && /Path=\//i.test(cookie),
+        (cookie) =>
+          cookie.startsWith('refresh_token=') && /Path=\//i.test(cookie),
       ),
     ).toBe(true);
-    expect(cookies.some((cookie) => /^csrf_token=/.test(cookie))).toBe(true);
+    expect(cookies.some((cookie) => cookie.startsWith('csrf_token='))).toBe(
+      true,
+    );
     expect(
       cookies.some(
-        (cookie) => /^csrf_token=/.test(cookie) && /HttpOnly/i.test(cookie),
+        (cookie) =>
+          cookie.startsWith('csrf_token=') && /HttpOnly/i.test(cookie),
       ),
     ).toBe(false);
   }
@@ -2017,13 +2033,6 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
 
     expect(invalid.body.code).toBe('INVALID_APPROVAL_STATUS_FILTER');
   });
-
-  function createGoogleRedirectResponse() {
-    return {
-      redirect: jest.fn(),
-      clearCookie: jest.fn(),
-    };
-  }
 
   it('T: Google account completes profile, stays pending, is approved, and can sign in again without duplicates', async () => {
     const res = createGoogleRedirectResponse();
@@ -2690,7 +2699,9 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       .set('X-CSRF-Token', rotatedCsrfToken)
       .expect(200);
     expect(
-      getSetCookies(logout).some((cookie) => /^refresh_token=;/.test(cookie)),
+      getSetCookies(logout).some((cookie) =>
+        cookie.startsWith('refresh_token=;'),
+      ),
     ).toBe(true);
   });
 

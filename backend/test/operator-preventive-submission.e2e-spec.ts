@@ -173,7 +173,7 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
       is_verified: true,
       assigned_machine_ids: [machine._id],
     });
-    const otherOperator = await users.create({
+    await users.create({
       user_id: 'OP-PREV-OTHER-E2E',
       nom_complet: 'Other Preventive Operator',
       email: 'preventive-other-operator-e2e@example.test',
