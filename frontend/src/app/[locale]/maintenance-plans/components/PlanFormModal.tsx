@@ -17,7 +17,7 @@ import {
   getSelectValue,
 } from '../utils';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export type PlanFormData = {
   plan_id: string;
@@ -51,10 +51,7 @@ type PlanFormModalProps = Readonly<{
 
 export function PlanFormModal(props: PlanFormModalProps) {
   return (
-    <ErrorBoundary
-      boundaryName="plan-form-modal"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="plan-form-modal" fallback={renderWidgetErrorFallback}>
       <PlanFormModalInner {...props} />
     </ErrorBoundary>
   );

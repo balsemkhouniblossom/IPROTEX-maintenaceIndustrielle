@@ -5,7 +5,7 @@ import { SparklesIcon, ShieldExclamationIcon } from "@heroicons/react/24/outline
 import { useLocale, useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
+import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type AiAssistantAnswer = {
   knownFacts: string[];
@@ -58,10 +58,7 @@ type AiAssistantPanelProps = {
 
 export default function AiAssistantPanel(props: AiAssistantPanelProps) {
   return (
-    <ErrorBoundary
-      boundaryName="ai-assistant-panel"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="ai-assistant-panel" fallback={renderWidgetErrorFallback}>
       <AiAssistantPanelInner {...props} />
     </ErrorBoundary>
   );

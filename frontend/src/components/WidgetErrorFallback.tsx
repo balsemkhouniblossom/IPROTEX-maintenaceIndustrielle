@@ -40,4 +40,8 @@ export function WidgetErrorFallback({ onRetry, bare = false }: WidgetErrorFallba
   return <div className="panel">{content}</div>;
 }
 
+export function renderWidgetErrorFallback(_error: Error, reset: () => void) {
+  return <WidgetErrorFallback onRetry={reset} />;
+}
+
 export default WidgetErrorFallback;

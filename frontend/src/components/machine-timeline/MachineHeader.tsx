@@ -21,7 +21,7 @@ import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
 import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
 import type { MachineTimelineSummary } from './types';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   operational: 'bg-green-100 text-green-800 border-green-200',
@@ -40,10 +40,7 @@ interface MachineHeaderProps {
 
 export default function MachineHeader(props: MachineHeaderProps) {
   return (
-    <ErrorBoundary
-      boundaryName="machine-header"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="machine-header" fallback={renderWidgetErrorFallback}>
       <MachineHeaderInner {...props} />
     </ErrorBoundary>
   );

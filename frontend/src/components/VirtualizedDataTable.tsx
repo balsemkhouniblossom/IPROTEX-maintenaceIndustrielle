@@ -12,7 +12,7 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -80,10 +80,7 @@ type GridTemplateStyle = CSSProperties & { [GRID_TEMPLATE_VAR]?: string };
  */
 export function VirtualizedDataTable<T>(props: VirtualizedDataTableProps<T>) {
   return (
-    <ErrorBoundary
-      boundaryName="virtualized-data-table"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="virtualized-data-table" fallback={renderWidgetErrorFallback}>
       <VirtualizedDataTableInner {...props} />
     </ErrorBoundary>
   );

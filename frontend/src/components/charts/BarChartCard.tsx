@@ -10,7 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export interface ChartDatum {
   label: string;
@@ -33,10 +33,7 @@ interface BarChartCardProps {
  */
 export function BarChartCard(props: BarChartCardProps) {
   return (
-    <ErrorBoundary
-      boundaryName="bar-chart-card"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="bar-chart-card" fallback={renderWidgetErrorFallback}>
       <BarChartCardInner {...props} />
     </ErrorBoundary>
   );

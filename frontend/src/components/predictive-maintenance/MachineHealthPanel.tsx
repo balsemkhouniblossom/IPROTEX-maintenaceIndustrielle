@@ -6,7 +6,7 @@ import { ChartBarIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
 import type { RiskLevel } from "@/hooks/usePredictiveHealth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
+import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type PredictionExplanation = {
   measuredFacts: string[];
@@ -46,10 +46,7 @@ const RISK_TEXT_COLOR: Record<RiskLevel, string> = {
  */
 export default function MachineHealthPanel(props: { machineId?: string }) {
   return (
-    <ErrorBoundary
-      boundaryName="machine-health-panel"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="machine-health-panel" fallback={renderWidgetErrorFallback}>
       <MachineHealthPanelInner {...props} />
     </ErrorBoundary>
   );

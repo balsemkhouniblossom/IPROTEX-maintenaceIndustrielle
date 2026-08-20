@@ -30,19 +30,22 @@ export function PreventiveChecklist({
 }>) {
   return (
     <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
-      {checklistLoading || stateLoading ? (
+      {(checklistLoading || stateLoading) && (
         <div data-testid="preventive-checklist-loading" className="text-sm text-slate-500">
           {tCommon("loading")}
         </div>
-      ) : checklistError ? (
+      )}
+      {!checklistLoading && !stateLoading && checklistError && (
         <div data-testid="preventive-checklist-error" className="text-sm text-red-600">
           {checklistError}
         </div>
-      ) : items.length === 0 ? (
+      )}
+      {!checklistLoading && !stateLoading && !checklistError && items.length === 0 && (
         <div data-testid="preventive-checklist-empty" className="text-sm text-slate-500">
           {tChecklist("empty.default")}
         </div>
-      ) : (
+      )}
+      {!checklistLoading && !stateLoading && !checklistError && items.length > 0 &&
         items.map((item, index) => (
           <div
             key={item._id}
@@ -74,8 +77,7 @@ export function PreventiveChecklist({
               placeholder={tChecklist("placeholders.notes")}
             />
           </div>
-        ))
-      )}
+        ))}
     </div>
   );
 }

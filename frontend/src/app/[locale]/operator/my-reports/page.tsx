@@ -56,6 +56,16 @@ function statusClasses(status?: string): string {
   }
 }
 
+function notificationClasses(type: "success" | "error" | "info"): string {
+  if (type === "success") {
+    return "bg-green-100 text-green-800 border border-green-200";
+  }
+  if (type === "error") {
+    return "bg-red-100 text-red-800 border border-red-200";
+  }
+  return "bg-blue-100 text-blue-800 border border-blue-200";
+}
+
 export default function OperatorMyReportsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
@@ -178,13 +188,7 @@ export default function OperatorMyReportsPage() {
           {notification ? (
             <div
               data-testid="my-reports-notification"
-              className={`mb-4 rounded-2xl px-4 py-3 text-sm ${
-                notification.type === "success"
-                  ? "bg-green-100 text-green-800 border border-green-200"
-                  : notification.type === "error"
-                    ? "bg-red-100 text-red-800 border border-red-200"
-                    : "bg-blue-100 text-blue-800 border border-blue-200"
-              }`}
+              className={`mb-4 rounded-2xl px-4 py-3 text-sm ${notificationClasses(notification.type)}`}
             >
               {notification.message}
             </div>
@@ -235,11 +239,11 @@ export default function OperatorMyReportsPage() {
               <DocumentTextIcon className="h-5 w-5" />
               {t("report")}
             </div>
-            {loading ? (
-              <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-            ) : myReports.length === 0 ? (
+            {loading && <div className="text-sm text-slate-500">{tCommon("loading")}</div>}
+            {!loading && myReports.length === 0 && (
               <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            ) : (
+            )}
+            {!loading && myReports.length > 0 && (
               <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                 {myReports.map(({ report, workOrder }, index) => (
                   <article

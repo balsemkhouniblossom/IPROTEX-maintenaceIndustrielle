@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { CUSTOM_OPTION, Kpi, Lubrifiant, LUBRIFICATION_QTY_OPTIONS, MachineCondition } from "../types.ts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
+import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type PreventiveExecutionFormProps = Readonly<{
   condition: MachineCondition;
@@ -25,10 +25,7 @@ type PreventiveExecutionFormProps = Readonly<{
 
 export function PreventiveExecutionForm(props: PreventiveExecutionFormProps) {
   return (
-    <ErrorBoundary
-      boundaryName="preventive-execution-form"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="preventive-execution-form" fallback={renderWidgetErrorFallback}>
       <PreventiveExecutionFormInner {...props} />
     </ErrorBoundary>
   );

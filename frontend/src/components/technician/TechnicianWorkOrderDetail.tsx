@@ -15,7 +15,7 @@ import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
 import { apiService } from "@/services/api";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
+import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type Detail = {
   workOrder: any;
@@ -177,10 +177,7 @@ function TechnicianActionButtons({
 
 export default function TechnicianWorkOrderDetail(props: { id: string }) {
   return (
-    <ErrorBoundary
-      boundaryName="technician-work-order-detail"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="technician-work-order-detail" fallback={renderWidgetErrorFallback}>
       <TechnicianWorkOrderDetailInner {...props} />
     </ErrorBoundary>
   );

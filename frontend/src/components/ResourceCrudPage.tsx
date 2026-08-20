@@ -11,7 +11,7 @@ import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/s
 import { displayText } from '@/services/displayValues';
 import { normalizeApiItems, readPaginationMeta } from '@/services/pagination';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export interface SelectOption { value: string; label: string }
 export interface CrudField {
@@ -71,10 +71,7 @@ function referenceLabel(value: unknown): string {
 
 export default function ResourceCrudPage(props: Props) {
   return (
-    <ErrorBoundary
-      boundaryName="resource-crud-page"
-      fallback={(_error, reset) => <WidgetErrorFallback onRetry={reset} />}
-    >
+    <ErrorBoundary boundaryName="resource-crud-page" fallback={renderWidgetErrorFallback}>
       <ResourceCrudPageInner {...props} />
     </ErrorBoundary>
   );
