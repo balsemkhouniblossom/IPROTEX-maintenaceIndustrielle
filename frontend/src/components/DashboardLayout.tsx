@@ -26,7 +26,7 @@ import {
   CpuChipIcon,
   ExclamationTriangleIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon,
+  ArrowRightStartOnRectangleIcon,
   SignalIcon,
   BuildingStorefrontIcon,
   CubeIcon,
@@ -129,6 +129,29 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     items: NavItem[];
   }
 
+  const navItemsForRole = (
+    adminNav: NavItem[],
+    technicianNav: NavItem[],
+    operatorNav: NavItem[],
+  ) => {
+    if (role === 'admin') return adminNav;
+    if (role === 'technician') return technicianNav;
+    return operatorNav;
+  };
+
+  const pendingMaintenanceLabel = () => {
+    if (!statistics) return t('systemStatus.loading');
+    return `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}`;
+  };
+
+  const percentageChangeLabel = () => {
+    if (!statistics) return t('systemStatus.loading');
+    if (statistics.percentageChange >= 0) {
+      return t('systemStatus.percentageChange.positive', { value: statistics.percentageChange });
+    }
+    return t('systemStatus.percentageChange.negative', { value: statistics.percentageChange });
+  };
+
   const getNavigation = (): NavSection[] => {
     const adminNav: NavItem[] = [
       { name: t('navigation.dashboard'), href: '/', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
@@ -177,7 +200,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.myReports'), href: '/operator/my-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
     ];
 
-    const navItems = role === 'admin' ? adminNav : role === 'technician' ? technicianNav : operatorNav;
+    const navItems = navItemsForRole(adminNav, technicianNav, operatorNav);
 
     // Group by domain
     const domainMap: Record<string, NavItem[]> = {};
@@ -201,6 +224,8 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
   };
 
   const navigation = getNavigation();
+  const maintenanceStatusLabel = pendingMaintenanceLabel();
+  const percentageStatusLabel = percentageChangeLabel();
 
   // Get translated navigation items based on role
 
@@ -252,18 +277,12 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
             <>
               <div className="status-item-modern warning">
                 <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-amber-500" />
-                <span title={statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}>{statistics ? `${statistics.pendingMaintenance} ${t('systemStatus.maintenanceDue')}` : t('systemStatus.loading')}</span>
+                <span title={maintenanceStatusLabel}>{maintenanceStatusLabel}</span>
               </div>
               <div className="status-item-modern success">
                 <ChartBarIcon className="h-4 w-4 shrink-0 text-green-500" />
                 <span title={statistics ? String(statistics.percentageChange) : t('systemStatus.loading')}>
-                  {statistics ? (
-                    statistics.percentageChange >= 0
-                      ? t('systemStatus.percentageChange.positive', { value: statistics.percentageChange })
-                      : t('systemStatus.percentageChange.negative', { value: statistics.percentageChange })
-                  ) : (
-                    t('systemStatus.loading')
-                  )}
+                  {percentageStatusLabel}
                 </span>
               </div>
             </>
@@ -326,7 +345,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
               onClick={logout}
               className="toolbar-action w-full justify-center"
             >
-              <ArrowRightOnRectangleIcon className="w-5 h-5" />
+              <ArrowRightStartOnRectangleIcon className="w-5 h-5" />
               {tCommon('auth.logout')}
             </button>
           </div>
@@ -380,7 +399,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
                   aria-label={tCommon('auth.logout')}
                   className="toolbar-action"
                 >
-                  <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                  <ArrowRightStartOnRectangleIcon className="w-5 h-5" />
                   <span className="hidden lg:inline">{tCommon('auth.logout')}</span>
                 </button>
               </div>
