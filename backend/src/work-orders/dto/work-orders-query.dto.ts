@@ -1,9 +1,4 @@
-import {
-  IsDateString,
-  IsMongoId,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsMongoId, IsOptional, IsString } from 'class-validator';
 import { SortablePaginatedSearchQueryDto } from '../../common/dto/paginated-query.dto';
 
 export class WorkOrdersQueryDto extends SortablePaginatedSearchQueryDto {

@@ -1,8 +1,4 @@
-import {
-  IsDateString,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsOptional, IsString } from 'class-validator';
 import { PaginatedSearchQueryDto } from '../../common/dto/paginated-query.dto';
 
 /** Mirrors work-orders/dto/work-orders-query.dto.ts's shape/decorator conventions. No `sort` param — the timeline is always newest-first. */
