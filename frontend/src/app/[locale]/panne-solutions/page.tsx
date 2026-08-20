@@ -8,8 +8,12 @@ import {
   CrudListHeader,
   CrudLoadingState,
   CrudTablePanel,
+  FormFieldShell,
+  InlineTextArea,
+  InlineTextInput,
   ModalFormActions,
   RowActions,
+  SelectField,
 } from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal } from "@/components/Modal";
@@ -391,54 +395,53 @@ export default function PanneSolutionsPage() {
           paginationClassName="mt-0"
         >
           <table className="table">
-              <thead>
+            <thead>
+              <tr>
+                <th>
+                  {t("table.solutionReference", {
+                    default: "Solution Reference",
+                  })}
+                </th>
+                <th>{t("table.panne")}</th>
+                <th>{t("table.cause")}</th>
+                <th>{t("table.solution")}</th>
+                <th>{tCommon("table.actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredSolutions.length === 0 ? (
                 <tr>
-                  <th>
-                    {t("table.solutionReference", {
-                      default: "Solution Reference",
-                    })}
-                  </th>
-                  <th>{t("table.panne")}</th>
-                  <th>{t("table.cause")}</th>
-                  <th>{t("table.solution")}</th>
-                  <th>{tCommon("table.actions")}</th>
+                  <td colSpan={5} className="text-center py-8 text-gray-500">
+                    {searchTerm ? t("empty.search") : t("empty.default")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredSolutions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-500">
-                      {searchTerm ? t("empty.search") : t("empty.default")}
+              ) : (
+                filteredSolutions.map((solution) => (
+                  <tr key={solution._id}>
+                    <td className="font-medium">{solution.solution_id}</td>
+                    <td>
+                      {getPanneLabel(solution.panne_id) ||
+                        tCommon("notAvailable")}
+                    </td>
+                    <td>
+                      {solution.cause_probable || tCommon("notAvailable")}
+                    </td>
+                    <td>
+                      {solution.solution_recommandee || tCommon("notAvailable")}
+                    </td>
+                    <td>
+                      <RowActions
+                        editLabel={t("actions.edit")}
+                        deleteLabel={t("actions.delete")}
+                        itemLabel={solution.solution_id}
+                        onEdit={() => openEditModal(solution)}
+                        onDelete={() => handleDelete(solution._id)}
+                      />
                     </td>
                   </tr>
-                ) : (
-                  filteredSolutions.map((solution) => (
-                    <tr key={solution._id}>
-                      <td className="font-medium">{solution.solution_id}</td>
-                      <td>
-                        {getPanneLabel(solution.panne_id) ||
-                          tCommon("notAvailable")}
-                      </td>
-                      <td>
-                        {solution.cause_probable || tCommon("notAvailable")}
-                      </td>
-                      <td>
-                        {solution.solution_recommandee ||
-                          tCommon("notAvailable")}
-                      </td>
-                      <td>
-                        <RowActions
-                          editLabel={t("actions.edit")}
-                          deleteLabel={t("actions.delete")}
-                          itemLabel={solution.solution_id}
-                          onEdit={() => openEditModal(solution)}
-                          onDelete={() => handleDelete(solution._id)}
-                        />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+                ))
+              )}
+            </tbody>
           </table>
         </CrudTablePanel>
       </div>
@@ -454,10 +457,11 @@ export default function PanneSolutionsPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.solutionReference", { default: "Solution Reference" })}
-              </label>
+            <FormFieldShell
+              label={t("form.solutionReference", {
+                default: "Solution Reference",
+              })}
+            >
               {isOperator ? (
                 <select
                   value={formData.solution_id}
@@ -502,13 +506,11 @@ export default function PanneSolutionsPage() {
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
+                <InlineTextInput
                   value={formData.solution_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, solution_id: e.target.value })
+                  onChange={(solution_id) =>
+                    setFormData({ ...formData, solution_id })
                   }
-                  className="input-field"
                   title={t("form.solutionReference", {
                     default: "Solution Reference",
                   })}
@@ -516,11 +518,10 @@ export default function PanneSolutionsPage() {
                 />
               )}
               {isOperator && customMode.solution_id && (
-                <input
-                  type="text"
+                <InlineTextInput
                   value={formData.solution_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, solution_id: e.target.value })
+                  onChange={(solution_id) =>
+                    setFormData({ ...formData, solution_id })
                   }
                   className="input-field mt-2"
                   title={t("form.solutionReference", {
@@ -530,38 +531,30 @@ export default function PanneSolutionsPage() {
                   required
                 />
               )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.panne")}
-              </label>
-              <select
-                value={formData.panne_id}
-                onChange={(e) => {
-                  if (isOperator) {
-                    applyTemplateFromPanneId(e.target.value);
-                    return;
-                  }
-                  setFormData({ ...formData, panne_id: e.target.value });
-                }}
-                className="input-field"
-                title={t("form.panne")}
-                required
-              >
-                <option value="">{t("form.selectPanne")}</option>
-                {pannes.map((panne) => (
-                  <option key={panne._id} value={panne._id}>
-                    {panne.panne_id} ({panne.code_panne})
-                  </option>
-                ))}
-              </select>
-            </div>
+            </FormFieldShell>
+            <SelectField
+              label={t("form.panne")}
+              value={formData.panne_id}
+              onChange={(value) => {
+                if (isOperator) {
+                  applyTemplateFromPanneId(value);
+                  return;
+                }
+                setFormData({ ...formData, panne_id: value });
+              }}
+              title={t("form.panne")}
+              required
+            >
+              <option value="">{t("form.selectPanne")}</option>
+              {pannes.map((panne) => (
+                <option key={panne._id} value={panne._id}>
+                  {panne.panne_id} ({panne.code_panne})
+                </option>
+              ))}
+            </SelectField>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.cause")}
-            </label>
+          <FormFieldShell label={t("form.cause")}>
             {isOperator ? (
               <select
                 value={formData.cause_probable}
@@ -589,21 +582,20 @@ export default function PanneSolutionsPage() {
                 ))}
               </select>
             ) : (
-              <textarea
+              <InlineTextArea
                 value={formData.cause_probable}
-                onChange={(e) =>
-                  setFormData({ ...formData, cause_probable: e.target.value })
+                onChange={(cause_probable) =>
+                  setFormData({ ...formData, cause_probable })
                 }
-                className="input-field"
                 title={t("form.cause")}
                 rows={3}
               />
             )}
             {isOperator && customMode.cause_probable && (
-              <textarea
+              <InlineTextArea
                 value={formData.cause_probable}
-                onChange={(e) =>
-                  setFormData({ ...formData, cause_probable: e.target.value })
+                onChange={(cause_probable) =>
+                  setFormData({ ...formData, cause_probable })
                 }
                 className="input-field mt-2"
                 title={t("form.cause")}
@@ -611,12 +603,9 @@ export default function PanneSolutionsPage() {
                 placeholder="Custom probable cause"
               />
             )}
-          </div>
+          </FormFieldShell>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.solution")}
-            </label>
+          <FormFieldShell label={t("form.solution")}>
             {isOperator ? (
               <select
                 value={formData.solution_recommandee}
@@ -653,26 +642,25 @@ export default function PanneSolutionsPage() {
                 ))}
               </select>
             ) : (
-              <textarea
+              <InlineTextArea
                 value={formData.solution_recommandee}
-                onChange={(e) =>
+                onChange={(solution_recommandee) =>
                   setFormData({
                     ...formData,
-                    solution_recommandee: e.target.value,
+                    solution_recommandee,
                   })
                 }
-                className="input-field"
                 title={t("form.solution")}
                 rows={3}
               />
             )}
             {isOperator && customMode.solution_recommandee && (
-              <textarea
+              <InlineTextArea
                 value={formData.solution_recommandee}
-                onChange={(e) =>
+                onChange={(solution_recommandee) =>
                   setFormData({
                     ...formData,
-                    solution_recommandee: e.target.value,
+                    solution_recommandee,
                   })
                 }
                 className="input-field mt-2"
@@ -681,7 +669,7 @@ export default function PanneSolutionsPage() {
                 placeholder="Custom recommendation"
               />
             )}
-          </div>
+          </FormFieldShell>
 
           <AdditionalDetailsField
             id="panne-solution-details"

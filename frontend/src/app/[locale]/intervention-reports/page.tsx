@@ -9,6 +9,9 @@ import {
   CrudTablePanel,
   ModalFormActions,
   RowActions,
+  SelectField,
+  TextAreaField,
+  TextInputField,
 } from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal } from "@/components/Modal";
@@ -354,64 +357,64 @@ export default function InterventionReportsPage() {
           paginationClassName="mt-6"
         >
           <table className="table">
-              <thead>
+            <thead>
+              <tr>
+                <th>
+                  {t("table.reportReference", {
+                    default: "Report Reference",
+                  })}
+                </th>
+                <th>{t("table.workOrder")}</th>
+                <th>{t("table.technician")}</th>
+                <th>{t("table.startDate")}</th>
+                <th>{t("table.endDate")}</th>
+                <th>{t("table.finalState")}</th>
+                <th>{tCommon("table.actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredReports.length === 0 ? (
                 <tr>
-                  <th>
-                    {t("table.reportReference", {
-                      default: "Report Reference",
-                    })}
-                  </th>
-                  <th>{t("table.workOrder")}</th>
-                  <th>{t("table.technician")}</th>
-                  <th>{t("table.startDate")}</th>
-                  <th>{t("table.endDate")}</th>
-                  <th>{t("table.finalState")}</th>
-                  <th>{tCommon("table.actions")}</th>
+                  <td colSpan={7} className="text-center py-8 text-gray-500">
+                    {searchTerm ? t("empty.search") : t("empty.default")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredReports.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-500">
-                      {searchTerm ? t("empty.search") : t("empty.default")}
+              ) : (
+                filteredReports.map((report) => (
+                  <tr key={report._id}>
+                    <td className="font-medium">{report.report_id}</td>
+                    <td>
+                      {getWorkOrderLabel(report.ot_id) ||
+                        tCommon("notAvailable")}
+                    </td>
+                    <td>
+                      {getTechnicianLabel(report.technician_id) ||
+                        tCommon("notAvailable")}
+                    </td>
+                    <td>
+                      {report.date_debut
+                        ? new Date(report.date_debut).toLocaleString()
+                        : tCommon("notAvailable")}
+                    </td>
+                    <td>
+                      {report.date_fin
+                        ? new Date(report.date_fin).toLocaleString()
+                        : tCommon("notAvailable")}
+                    </td>
+                    <td>{report.etat_final || tCommon("notAvailable")}</td>
+                    <td>
+                      <RowActions
+                        editLabel={t("actions.edit")}
+                        deleteLabel={t("actions.delete")}
+                        itemLabel={report.report_id}
+                        onEdit={() => openEditModal(report)}
+                        onDelete={() => handleDelete(report._id)}
+                      />
                     </td>
                   </tr>
-                ) : (
-                  filteredReports.map((report) => (
-                    <tr key={report._id}>
-                      <td className="font-medium">{report.report_id}</td>
-                      <td>
-                        {getWorkOrderLabel(report.ot_id) ||
-                          tCommon("notAvailable")}
-                      </td>
-                      <td>
-                        {getTechnicianLabel(report.technician_id) ||
-                          tCommon("notAvailable")}
-                      </td>
-                      <td>
-                        {report.date_debut
-                          ? new Date(report.date_debut).toLocaleString()
-                          : tCommon("notAvailable")}
-                      </td>
-                      <td>
-                        {report.date_fin
-                          ? new Date(report.date_fin).toLocaleString()
-                          : tCommon("notAvailable")}
-                      </td>
-                      <td>{report.etat_final || tCommon("notAvailable")}</td>
-                      <td>
-                        <RowActions
-                          editLabel={t("actions.edit")}
-                          deleteLabel={t("actions.delete")}
-                          itemLabel={report.report_id}
-                          onEdit={() => openEditModal(report)}
-                          onDelete={() => handleDelete(report._id)}
-                        />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+                ))
+              )}
+            </tbody>
           </table>
         </CrudTablePanel>
       </div>
@@ -427,158 +430,103 @@ export default function InterventionReportsPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.reportReference", { default: "Report Reference" })}
-              </label>
-              <input
-                type="text"
-                value={formData.report_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, report_id: e.target.value })
-                }
-                className="input-field"
-                title={t("form.reportReference", {
-                  default: "Report Reference",
-                })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.workOrder")}
-              </label>
-              <select
-                value={formData.ot_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, ot_id: e.target.value })
-                }
-                className="input-field"
-                title={t("form.workOrder")}
-                required
-              >
-                <option value="">{t("placeholders.selectWorkOrder")}</option>
-                {workOrders.map((wo) => (
-                  <option key={wo._id} value={wo._id}>
-                    {wo.ot_id}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.technician")}
-              </label>
-              <select
-                value={formData.technician_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, technician_id: e.target.value })
-                }
-                className="input-field"
-                title={t("form.technician")}
-                required
-              >
-                <option value="">{t("placeholders.selectTechnician")}</option>
-                {technicians.map((tech) => (
-                  <option key={tech._id} value={tech._id}>
-                    {tech.nom_complet}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.startDate")}
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.date_debut}
-                onChange={(e) =>
-                  setFormData({ ...formData, date_debut: e.target.value })
-                }
-                className="input-field"
-                title={t("form.startDate")}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.endDate")}
-              </label>
-              <input
-                type="datetime-local"
-                value={formData.date_fin}
-                onChange={(e) =>
-                  setFormData({ ...formData, date_fin: e.target.value })
-                }
-                className="input-field"
-                title={t("form.endDate")}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.finalState")}
-              </label>
-              <input
-                type="text"
-                value={formData.etat_final}
-                onChange={(e) =>
-                  setFormData({ ...formData, etat_final: e.target.value })
-                }
-                className="input-field"
-                title={t("form.finalState")}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.rootCause")}
-            </label>
-            <textarea
-              value={formData.cause_racine}
-              onChange={(e) =>
-                setFormData({ ...formData, cause_racine: e.target.value })
+            <TextInputField
+              label={t("form.reportReference", {
+                default: "Report Reference",
+              })}
+              value={formData.report_id}
+              onChange={(report_id) => setFormData({ ...formData, report_id })}
+              title={t("form.reportReference", {
+                default: "Report Reference",
+              })}
+              required
+            />
+            <SelectField
+              label={t("form.workOrder")}
+              value={formData.ot_id}
+              onChange={(ot_id) => setFormData({ ...formData, ot_id })}
+              title={t("form.workOrder")}
+              required
+            >
+              <option value="">{t("placeholders.selectWorkOrder")}</option>
+              {workOrders.map((wo) => (
+                <option key={wo._id} value={wo._id}>
+                  {wo.ot_id}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              label={t("form.technician")}
+              value={formData.technician_id}
+              onChange={(technician_id) =>
+                setFormData({ ...formData, technician_id })
               }
-              className="input-field"
-              title={t("form.rootCause")}
-              rows={2}
+              title={t("form.technician")}
+              required
+            >
+              <option value="">{t("placeholders.selectTechnician")}</option>
+              {technicians.map((tech) => (
+                <option key={tech._id} value={tech._id}>
+                  {tech.nom_complet}
+                </option>
+              ))}
+            </SelectField>
+            <TextInputField
+              label={t("form.startDate")}
+              value={formData.date_debut}
+              onChange={(date_debut) =>
+                setFormData({ ...formData, date_debut })
+              }
+              title={t("form.startDate")}
+              type="datetime-local"
+              required
+            />
+            <TextInputField
+              label={t("form.endDate")}
+              value={formData.date_fin}
+              onChange={(date_fin) => setFormData({ ...formData, date_fin })}
+              title={t("form.endDate")}
+              type="datetime-local"
+              required
+            />
+            <TextInputField
+              label={t("form.finalState")}
+              value={formData.etat_final}
+              onChange={(etat_final) =>
+                setFormData({ ...formData, etat_final })
+              }
+              title={t("form.finalState")}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.actionDescription")}
-            </label>
-            <textarea
-              value={formData.description_action}
-              onChange={(e) =>
-                setFormData({ ...formData, description_action: e.target.value })
-              }
-              className="input-field"
-              title={t("form.actionDescription")}
-              rows={3}
-            />
-          </div>
+          <TextAreaField
+            label={t("form.rootCause")}
+            value={formData.cause_racine}
+            onChange={(cause_racine) =>
+              setFormData({ ...formData, cause_racine })
+            }
+            title={t("form.rootCause")}
+            rows={2}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.responsibleValidation")}
-            </label>
-            <input
-              type="text"
-              value={formData.validation_responsable}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  validation_responsable: e.target.value,
-                })
-              }
-              className="input-field"
-              title={t("form.responsibleValidation")}
-            />
-          </div>
+          <TextAreaField
+            label={t("form.actionDescription")}
+            value={formData.description_action}
+            onChange={(description_action) =>
+              setFormData({ ...formData, description_action })
+            }
+            title={t("form.actionDescription")}
+            rows={3}
+          />
+
+          <TextInputField
+            label={t("form.responsibleValidation")}
+            value={formData.validation_responsable}
+            onChange={(validation_responsable) =>
+              setFormData({ ...formData, validation_responsable })
+            }
+            title={t("form.responsibleValidation")}
+          />
 
           <ModalFormActions
             cancelLabel={tCommon("cancel")}

@@ -1,6 +1,6 @@
-require('../dist/load-env.js');
+require('../dist/load-env');
 
-const { runMaintenanceSync, syncBraidingMaintenancePlans } = require('./lib/maintenance-plan-sync');
+const maintenancePlanSync = require('./lib/maintenance-plan-sync');
 
 const MACHINE_TYPE_NAME = 'Braiding';
 const SOURCE_TITLE = 'Plan_maintenance_tresseuses_EN.xlsx';
@@ -305,7 +305,7 @@ const planTemplates = [
   },
 ];
 
-runMaintenanceSync(syncBraidingMaintenancePlans, {
+maintenancePlanSync.runMaintenanceSync(maintenancePlanSync.syncBraidingMaintenancePlans, {
   machineTypeName: MACHINE_TYPE_NAME,
   sourceTitle: SOURCE_TITLE,
   moduleTypes,

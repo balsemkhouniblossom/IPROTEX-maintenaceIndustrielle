@@ -8,8 +8,12 @@ import {
   CrudListHeader,
   CrudLoadingState,
   CrudTablePanel,
+  FormFieldShell,
+  InlineTextArea,
+  InlineTextInput,
   ModalFormActions,
   RowActions,
+  SelectField,
 } from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Modal } from "@/components/Modal";
@@ -329,44 +333,44 @@ export default function PannesPage() {
           onPageChange={handlePageChange}
         >
           <table className="table">
-              <thead>
+            <thead>
+              <tr>
+                <th>
+                  {t("table.faultReference", { default: "Fault Reference" })}
+                </th>
+                <th>{t("table.code")}</th>
+                <th>{t("table.description")}</th>
+                <th>{t("table.severity")}</th>
+                <th>{tCommon("table.actions")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPannes.length === 0 ? (
                 <tr>
-                  <th>
-                    {t("table.faultReference", { default: "Fault Reference" })}
-                  </th>
-                  <th>{t("table.code")}</th>
-                  <th>{t("table.description")}</th>
-                  <th>{t("table.severity")}</th>
-                  <th>{tCommon("table.actions")}</th>
+                  <td colSpan={5} className="text-center py-8 text-gray-500">
+                    {searchTerm ? t("empty.search") : t("empty.default")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredPannes.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-gray-500">
-                      {searchTerm ? t("empty.search") : t("empty.default")}
+              ) : (
+                filteredPannes.map((panne) => (
+                  <tr key={panne._id}>
+                    <td className="font-medium">{panne.panne_id}</td>
+                    <td>{panne.code_panne}</td>
+                    <td>{panne.description}</td>
+                    <td>{panne.gravite || tCommon("notAvailable")}</td>
+                    <td>
+                      <RowActions
+                        editLabel={t("actions.edit")}
+                        deleteLabel={t("actions.delete")}
+                        itemLabel={panne.panne_id}
+                        onEdit={() => openEditModal(panne)}
+                        onDelete={() => handleDelete(panne._id)}
+                      />
                     </td>
                   </tr>
-                ) : (
-                  filteredPannes.map((panne) => (
-                    <tr key={panne._id}>
-                      <td className="font-medium">{panne.panne_id}</td>
-                      <td>{panne.code_panne}</td>
-                      <td>{panne.description}</td>
-                      <td>{panne.gravite || tCommon("notAvailable")}</td>
-                      <td>
-                        <RowActions
-                          editLabel={t("actions.edit")}
-                          deleteLabel={t("actions.delete")}
-                          itemLabel={panne.panne_id}
-                          onEdit={() => openEditModal(panne)}
-                          onDelete={() => handleDelete(panne._id)}
-                        />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+                ))
+              )}
+            </tbody>
           </table>
         </CrudTablePanel>
       </div>
@@ -382,10 +386,9 @@ export default function PannesPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.faultReference", { default: "Fault Reference" })}
-              </label>
+            <FormFieldShell
+              label={t("form.faultReference", { default: "Fault Reference" })}
+            >
               {isOperator ? (
                 <select
                   value={formData.panne_id}
@@ -416,13 +419,11 @@ export default function PannesPage() {
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
+                <InlineTextInput
                   value={formData.panne_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, panne_id: e.target.value })
+                  onChange={(panne_id) =>
+                    setFormData({ ...formData, panne_id })
                   }
-                  className="input-field"
                   title={t("form.faultReference", {
                     default: "Fault Reference",
                   })}
@@ -430,11 +431,10 @@ export default function PannesPage() {
                 />
               )}
               {isOperator && customMode.panne_id && (
-                <input
-                  type="text"
+                <InlineTextInput
                   value={formData.panne_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, panne_id: e.target.value })
+                  onChange={(panne_id) =>
+                    setFormData({ ...formData, panne_id })
                   }
                   className="input-field mt-2"
                   title={t("form.faultReference", {
@@ -444,11 +444,8 @@ export default function PannesPage() {
                   required
                 />
               )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.code")}
-              </label>
+            </FormFieldShell>
+            <FormFieldShell label={t("form.code")}>
               {isOperator ? (
                 <select
                   value={formData.code_panne}
@@ -477,23 +474,20 @@ export default function PannesPage() {
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
+                <InlineTextInput
                   value={formData.code_panne}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code_panne: e.target.value })
+                  onChange={(code_panne) =>
+                    setFormData({ ...formData, code_panne })
                   }
-                  className="input-field"
                   title={t("form.code")}
                   required
                 />
               )}
               {isOperator && customMode.code_panne && (
-                <input
-                  type="text"
+                <InlineTextInput
                   value={formData.code_panne}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code_panne: e.target.value })
+                  onChange={(code_panne) =>
+                    setFormData({ ...formData, code_panne })
                   }
                   className="input-field mt-2"
                   title={t("form.code")}
@@ -501,13 +495,10 @@ export default function PannesPage() {
                   required
                 />
               )}
-            </div>
+            </FormFieldShell>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.description")}
-            </label>
+          <FormFieldShell label={t("form.description")}>
             {isOperator ? (
               <select
                 value={formData.description}
@@ -539,22 +530,21 @@ export default function PannesPage() {
                 ))}
               </select>
             ) : (
-              <textarea
+              <InlineTextArea
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                onChange={(description) =>
+                  setFormData({ ...formData, description })
                 }
-                className="input-field"
                 title={t("form.description")}
                 rows={3}
                 required
               />
             )}
             {isOperator && customMode.description && (
-              <textarea
+              <InlineTextArea
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                onChange={(description) =>
+                  setFormData({ ...formData, description })
                 }
                 className="input-field mt-2"
                 title={t("form.description")}
@@ -563,47 +553,39 @@ export default function PannesPage() {
                 required
               />
             )}
-          </div>
+          </FormFieldShell>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
-              {t("form.severity")}
-            </label>
-            <select
+          <SelectField
+            label={t("form.severity")}
+            value={formData.gravite}
+            onChange={(value) => {
+              if (value === CUSTOM_OPTION) {
+                setCustomMode((prev) => ({ ...prev, gravite: true }));
+                setFormData((prev) => ({ ...prev, gravite: "" }));
+                return;
+              }
+              setCustomMode((prev) => ({ ...prev, gravite: false }));
+              setFormData({ ...formData, gravite: value });
+            }}
+            title={t("form.severity")}
+          >
+            <option value="">{t("form.severity")}</option>
+            <option value={CUSTOM_OPTION}>Custom value...</option>
+            {gravityOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </SelectField>
+          {customMode.gravite && (
+            <InlineTextInput
               value={formData.gravite}
-              onChange={(e) => {
-                if (e.target.value === CUSTOM_OPTION) {
-                  setCustomMode((prev) => ({ ...prev, gravite: true }));
-                  setFormData((prev) => ({ ...prev, gravite: "" }));
-                  return;
-                }
-                setCustomMode((prev) => ({ ...prev, gravite: false }));
-                setFormData({ ...formData, gravite: e.target.value });
-              }}
-              className="input-field"
+              onChange={(gravite) => setFormData({ ...formData, gravite })}
+              className="input-field mt-2"
               title={t("form.severity")}
-            >
-              <option value="">{t("form.severity")}</option>
-              <option value={CUSTOM_OPTION}>Custom value...</option>
-              {gravityOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            {customMode.gravite && (
-              <input
-                type="text"
-                value={formData.gravite}
-                onChange={(e) =>
-                  setFormData({ ...formData, gravite: e.target.value })
-                }
-                className="input-field mt-2"
-                title={t("form.severity")}
-                placeholder="Custom severity"
-              />
-            )}
-          </div>
+              placeholder="Custom severity"
+            />
+          )}
 
           <AdditionalDetailsField
             id="panne-details"

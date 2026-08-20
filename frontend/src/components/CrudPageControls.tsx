@@ -170,6 +170,181 @@ export function AdditionalDetailsField(props: AdditionalDetailsFieldProps) {
   );
 }
 
+type FormFieldShellProps = Readonly<{
+  label: string;
+  children: ReactNode;
+}>;
+
+export function FormFieldShell(props: FormFieldShellProps) {
+  const { label, children } = props;
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-dark mb-1">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+type TextInputFieldProps = Readonly<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  type?: "text" | "datetime-local";
+  required?: boolean;
+}>;
+
+export function TextInputField(props: TextInputFieldProps) {
+  const { label, value, onChange, title, type = "text", required } = props;
+
+  return (
+    <FormFieldShell label={label}>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="input-field"
+        title={title}
+        required={required}
+      />
+    </FormFieldShell>
+  );
+}
+
+type InlineTextInputProps = Readonly<{
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  className?: string;
+  placeholder?: string;
+  required?: boolean;
+}>;
+
+export function InlineTextInput(props: InlineTextInputProps) {
+  const {
+    value,
+    onChange,
+    title,
+    className = "input-field",
+    placeholder,
+    required,
+  } = props;
+
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={className}
+      title={title}
+      placeholder={placeholder}
+      required={required}
+    />
+  );
+}
+
+type TextAreaFieldProps = Readonly<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  rows: number;
+  required?: boolean;
+  className?: string;
+  placeholder?: string;
+}>;
+
+export function TextAreaField(props: TextAreaFieldProps) {
+  const {
+    label,
+    value,
+    onChange,
+    title,
+    rows,
+    required,
+    className = "input-field",
+    placeholder,
+  } = props;
+
+  return (
+    <FormFieldShell label={label}>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={className}
+        title={title}
+        rows={rows}
+        required={required}
+        placeholder={placeholder}
+      />
+    </FormFieldShell>
+  );
+}
+
+type InlineTextAreaProps = Readonly<{
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  rows: number;
+  className?: string;
+  placeholder?: string;
+  required?: boolean;
+}>;
+
+export function InlineTextArea(props: InlineTextAreaProps) {
+  const {
+    value,
+    onChange,
+    title,
+    rows,
+    className = "input-field",
+    placeholder,
+    required,
+  } = props;
+
+  return (
+    <textarea
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={className}
+      title={title}
+      rows={rows}
+      placeholder={placeholder}
+      required={required}
+    />
+  );
+}
+
+type SelectFieldProps = Readonly<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  children: ReactNode;
+  required?: boolean;
+}>;
+
+export function SelectField(props: SelectFieldProps) {
+  const { label, value, onChange, title, children, required } = props;
+
+  return (
+    <FormFieldShell label={label}>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="input-field"
+        title={title}
+        required={required}
+      >
+        {children}
+      </select>
+    </FormFieldShell>
+  );
+}
+
 type RowActionsProps = Readonly<{
   editLabel: string;
   deleteLabel: string;
