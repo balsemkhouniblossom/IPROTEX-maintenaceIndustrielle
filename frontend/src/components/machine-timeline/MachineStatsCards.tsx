@@ -12,10 +12,10 @@ import type { ComponentType, SVGProps } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MachineTimelineSummary } from './types';
 
-interface MachineStatsCardsProps {
+type MachineStatsCardsProps = Readonly<{
   stats: MachineTimelineSummary['stats'] | undefined;
   loading: boolean;
-}
+}>;
 
 export default function MachineStatsCards({ stats, loading }: MachineStatsCardsProps) {
   const t = useTranslations('machineTimeline');

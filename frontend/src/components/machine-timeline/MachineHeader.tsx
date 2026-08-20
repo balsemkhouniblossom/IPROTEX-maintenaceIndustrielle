@@ -31,12 +31,12 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
 };
 const DEFAULT_STATUS_BADGE_CLASS = 'bg-gray-100 text-gray-600 border-gray-200';
 
-interface MachineHeaderProps {
+type MachineHeaderProps = Readonly<{
   machineId: string;
   machine: MachineTimelineSummary['machine'] | undefined;
   stats: MachineTimelineSummary['stats'] | undefined;
   loading: boolean;
-}
+}>;
 
 export default function MachineHeader(props: MachineHeaderProps) {
   return (
@@ -199,11 +199,11 @@ function HeaderFact({
   label,
   value,
   icon: Icon,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-}) {
+}>) {
   return (
     <div className="rounded-xl border border-(--border) bg-(--surface-secondary) p-3">
       <dt className="flex items-center gap-2 text-sm font-medium text-(--text-secondary)">

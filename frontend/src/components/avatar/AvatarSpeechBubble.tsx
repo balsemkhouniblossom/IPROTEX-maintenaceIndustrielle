@@ -3,7 +3,7 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import type { ReactNode } from "react";
 
-interface AvatarSpeechBubbleProps {
+type AvatarSpeechBubbleProps = Readonly<{
   eyebrow: string;
   tone: "urgent" | "attention" | "active" | "neutral";
   title: string;
@@ -11,7 +11,7 @@ interface AvatarSpeechBubbleProps {
   closeLabel: string;
   action?: ReactNode;
   onClose: () => void;
-}
+}>;
 
 export function AvatarSpeechBubble({ eyebrow, tone, title, message, closeLabel, action, onClose }: AvatarSpeechBubbleProps) {
   return (

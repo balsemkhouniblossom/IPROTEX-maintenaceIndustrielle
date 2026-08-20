@@ -130,7 +130,6 @@ export function MiniAvatarAssistant({
     <AvatarVisual
       role={normalizedRole}
       timeOfDay={timeOfDay}
-      season={season}
       sleeves={sleeves}
       label={t(`accessibility.${roleLabelKey}`)}
       animated={animated}

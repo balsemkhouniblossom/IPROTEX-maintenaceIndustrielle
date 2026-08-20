@@ -2,17 +2,16 @@
 
 import { useId } from "react";
 import { ROLE_CONFIG } from "./avatar-config";
-import type { AvatarRole, Season, SleeveStyle, TimeOfDay } from "./avatar-types";
+import type { AvatarRole, SleeveStyle, TimeOfDay } from "./avatar-types";
 
-interface AvatarVisualProps {
+type AvatarVisualProps = Readonly<{
   role: AvatarRole | "NEUTRAL";
   timeOfDay: TimeOfDay;
-  season: Season;
   sleeves: SleeveStyle;
   label: string;
   animated: boolean;
   neutral?: boolean;
-}
+}>;
 
 const TIME_COLORS: Record<TimeOfDay, { background: string; accent: string }> = {
   morning: { background: "#dff4ff", accent: "#fbbf24" },
@@ -93,11 +92,11 @@ function TimeDecoration({
   timeOfDay,
   neutral,
   colors,
-}: {
+}: Readonly<{
   timeOfDay: TimeOfDay;
   neutral: boolean;
   colors: TimeColors;
-}) {
+}>) {
   if (timeOfDay === "night" && !neutral) {
     return (
       <g aria-hidden="true">
@@ -121,11 +120,11 @@ function Sleeves({
   hasLongSleeves,
   hasJacket,
   roleConfig,
-}: {
+}: Readonly<{
   hasLongSleeves: boolean;
   hasJacket: boolean;
   roleConfig: RoleVisualConfig;
-}) {
+}>) {
   if (hasLongSleeves) {
     return (
       <path d="M22 112c1-18 7-29 19-34l8 9-8 25H22Zm76 0c-1-18-7-29-19-34l-8 9 8 25h19Z" fill={hasJacket ? roleConfig.uniformDark : roleConfig.uniform} />
@@ -135,7 +134,7 @@ function Sleeves({
   return <path d="M23 112c1-15 6-25 16-31l9 10-5 21H23Zm74 0c-1-15-6-25-16-31L72 91l5 21h20Z" fill={roleConfig.uniform} />;
 }
 
-function Headwear({ helmet }: { helmet: boolean }) {
+function Headwear({ helmet }: Readonly<{ helmet: boolean }>) {
   if (!helmet) {
     return <path d="M37 42c2-18 10-28 23-28 14 0 23 10 24 29-7-8-15-12-24-12-8 0-16 4-23 11Z" fill="#26384b" />;
   }
@@ -150,7 +149,7 @@ function Headwear({ helmet }: { helmet: boolean }) {
   );
 }
 
-function RoleTool({ role, uniform }: { role: AvatarRole | "NEUTRAL"; uniform: string }) {
+function RoleTool({ role, uniform }: Readonly<{ role: AvatarRole | "NEUTRAL"; uniform: string }>) {
   if (role === "TECHNICIAN") {
     return <path d="M73 83l10 10M80 82a4 4 0 0 0 4 5l-5-5a4 4 0 0 0-5 4l5 5" fill="none" stroke="#c2410c" strokeWidth="1.8" strokeLinecap="round" />;
   }

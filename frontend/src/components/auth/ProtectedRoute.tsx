@@ -6,11 +6,11 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { evaluateProtectedRouteAccess } from '@/services/sessionGuard';
 
-interface ProtectedRouteProps {
+type ProtectedRouteProps = Readonly<{
   children: React.ReactNode;
   requiredRole?: string;
   allowedRoles?: string[];
-}
+}>;
 
 export default function ProtectedRoute({
   children,

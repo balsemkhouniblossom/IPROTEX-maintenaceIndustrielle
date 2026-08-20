@@ -10,7 +10,7 @@ import MachineStatsCards from './MachineStatsCards';
 import MachineTimelineFeed from './MachineTimelineFeed';
 import type { MachineTimelineSummary } from './types';
 
-export default function MachineDetailPage({ machineId }: { machineId: string }) {
+export default function MachineDetailPage({ machineId }: Readonly<{ machineId: string }>) {
   const t = useTranslations('machineTimeline');
   const [summary, setSummary] = useState<MachineTimelineSummary | null>(null);
   const [loading, setLoading] = useState(true);
