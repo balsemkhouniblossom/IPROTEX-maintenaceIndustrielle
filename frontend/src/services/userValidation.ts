@@ -25,7 +25,7 @@ export function validatePasswordPolicy(password: string): boolean {
 }
 
 export function validateInternationalPhone(phone?: string): boolean {
-  if (!phone || !phone.trim()) {
+  if (!phone?.trim()) {
     return true;
   }
 

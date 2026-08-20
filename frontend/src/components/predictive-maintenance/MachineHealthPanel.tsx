@@ -44,7 +44,9 @@ const RISK_TEXT_COLOR: Record<RiskLevel, string> = {
  * there is no machine or no stored prediction yet, so it can be dropped
  * into any page without touching that page's own logic.
  */
-export default function MachineHealthPanel(props: { machineId?: string }) {
+type MachineHealthPanelProps = Readonly<{ machineId?: string }>;
+
+export default function MachineHealthPanel(props: MachineHealthPanelProps) {
   return (
     <ErrorBoundary boundaryName="machine-health-panel" fallback={renderWidgetErrorFallback}>
       <MachineHealthPanelInner {...props} />
@@ -52,7 +54,7 @@ export default function MachineHealthPanel(props: { machineId?: string }) {
   );
 }
 
-function MachineHealthPanelInner({ machineId }: { machineId?: string }) {
+function MachineHealthPanelInner({ machineId }: MachineHealthPanelProps) {
   const t = useTranslations("predictiveMaintenance");
   const [predictions, setPredictions] = useState<MachineHealthPrediction[]>([]);
 
@@ -136,12 +138,12 @@ function ExplanationSection({
   label,
   items,
   italic,
-}: {
+}: Readonly<{
   testId: string;
   label: string;
   items: string[];
   italic?: boolean;
-}) {
+}>) {
   if (items.length === 0) return null;
 
   return (

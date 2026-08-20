@@ -61,7 +61,7 @@ export function buildInternationalPhone(country: PhoneCountryCode, nationalNumbe
 }
 
 export function parseInternationalPhoneValue(phone?: string | null): PhoneInputValue {
-  if (!phone || !phone.trim()) {
+  if (!phone?.trim()) {
     return {
       country: DEFAULT_PHONE_COUNTRY,
       nationalNumber: '',

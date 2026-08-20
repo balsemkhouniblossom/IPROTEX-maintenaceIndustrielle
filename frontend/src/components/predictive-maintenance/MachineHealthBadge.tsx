@@ -24,9 +24,9 @@ const RISK_STYLES: Record<RiskLevel, string> = {
  */
 export default function MachineHealthBadge({
   status,
-}: {
+}: Readonly<{
   status: MachineHealthSummary | undefined;
-}) {
+}>) {
   const t = useTranslations("predictiveMaintenance");
 
   if (!status) return null;

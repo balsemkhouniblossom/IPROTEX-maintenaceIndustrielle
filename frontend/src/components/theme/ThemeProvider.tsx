@@ -66,7 +66,7 @@ function applyTheme(theme: ThemePreference): ResolvedTheme {
   return resolvedTheme;
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [theme, setTheme] = useState<ThemePreference>(() => readThemePreferenceFromDom());
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => readResolvedThemeFromDom());
 
@@ -86,13 +86,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setResolvedTheme(applyTheme('system'));
     };
 
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
   const value = useMemo<ThemeContextValue>(
@@ -116,7 +111,7 @@ export function useTheme() {
   const context = useContext(ThemeContext);
 
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    throw new TypeError('useTheme must be used within ThemeProvider');
   }
 
   return context;

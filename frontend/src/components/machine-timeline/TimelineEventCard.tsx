@@ -17,9 +17,9 @@ import { apiService } from '@/services/api';
 import { CATEGORY_COLOR_CLASSES, EVENT_COLOR_CLASSES, EVENT_ICONS } from './eventMeta';
 import type { MachineTimelineEvent } from './types';
 
-interface TimelineEventCardProps {
+type TimelineEventCardProps = Readonly<{
   event: MachineTimelineEvent;
-}
+}>;
 
 const PRIMARY_METADATA_KEYS = new Set([
   'otId',
@@ -44,6 +44,22 @@ function visibleTimelineMetadata(event: MachineTimelineEvent) {
     metadataEntries,
     visibleMetadata: (primaryMetadata.length ? primaryMetadata : metadataEntries).slice(0, 4),
   };
+}
+
+function timelineMetadataValue(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return value.toString();
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) {
+    return value.map(timelineMetadataValue).filter(Boolean).join(', ');
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return '';
 }
 
 function actorInitials(name?: string): string | undefined {
@@ -172,7 +188,7 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
                 <span className="font-medium text-(--text-primary)">
                   {t.has(`metadataLabels.${key}`) ? t(`metadataLabels.${key}`) : key}
                 </span>
-                <span>{String(value)}</span>
+                <span>{timelineMetadataValue(value)}</span>
               </span>
             ))}
           </div>
@@ -201,7 +217,9 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
                 <dt className="font-medium text-(--text-secondary)">
                   {t.has(`metadataLabels.${key}`) ? t(`metadataLabels.${key}`) : key}
                 </dt>
-                <dd className="mt-0.5 break-words font-semibold text-(--text-primary)">{String(value)}</dd>
+                <dd className="mt-0.5 break-words font-semibold text-(--text-primary)">
+                  {timelineMetadataValue(value)}
+                </dd>
               </div>
             ))}
           </dl>

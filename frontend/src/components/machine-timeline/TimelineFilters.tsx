@@ -9,13 +9,13 @@ import { useTranslations } from 'next-intl';
 import { CATEGORY_COLOR_CLASSES, CATEGORY_ICONS, TIMELINE_CATEGORIES } from './eventMeta';
 import type { MachineTimelineCategory } from './types';
 
-interface TimelineFiltersProps {
+type TimelineFiltersProps = Readonly<{
   activeCategory: MachineTimelineCategory | 'all';
   onCategoryChange: (category: MachineTimelineCategory | 'all') => void;
   searchInput: string;
   onSearchInputChange: (value: string) => void;
   onReset: () => void;
-}
+}>;
 
 export default function TimelineFilters({
   activeCategory,
@@ -93,13 +93,13 @@ function FilterChip({
   onClick,
   icon,
   className,
-}: {
+}: Readonly<{
   label: string;
   active: boolean;
   onClick: () => void;
   icon?: ReactNode;
   className?: string;
-}) {
+}>) {
   return (
     <button
       type="button"

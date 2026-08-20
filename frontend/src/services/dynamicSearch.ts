@@ -42,7 +42,7 @@ function getByPath(value: unknown, path: string): unknown {
 
 function stringifyValue(value: unknown, depth = 0, maxDepth = DEFAULT_MAX_DEPTH): string {
   if (value == null) return '';
-  if (isPrimitive(value)) return normalizeSearchText(String(value));
+  if (isPrimitive(value)) return normalizeSearchText(value.toString());
 
   if (Array.isArray(value)) {
     return value
@@ -64,7 +64,7 @@ function stringifyValue(value: unknown, depth = 0, maxDepth = DEFAULT_MAX_DEPTH)
       .join(' ');
   }
 
-  return normalizeSearchText(String(value));
+  return '';
 }
 
 function isSearchableFieldPath(path: string, exclude: Set<string>, include: Set<string>): boolean {
@@ -174,7 +174,7 @@ function hasDataField<T>(obj: unknown): obj is { data: T[] } {
 }
 
 export function getSearchableFields<T>(
-  items: T[] | unknown,
+  items: unknown,
   options?: { maxDepth?: number; sampleSize?: number; maxFields?: number; exclude?: string[]; include?: string[] },
 ): string[] {
   const safeItems: T[] =

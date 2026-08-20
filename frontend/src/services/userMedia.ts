@@ -34,6 +34,6 @@ export function getAvatarInitial(name?: string | null): string | null {
     return first;
   }
 
-  const last = parts[parts.length - 1]?.charAt(0)?.toUpperCase();
+  const last = parts.at(-1)?.charAt(0)?.toUpperCase();
   return last || null;
 }

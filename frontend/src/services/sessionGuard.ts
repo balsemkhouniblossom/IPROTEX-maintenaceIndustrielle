@@ -9,7 +9,7 @@ export type SessionUser = {
   is_active?: boolean;
   is_verified?: boolean;
   profile_completed?: boolean;
-  approval_status?: ApprovalStatus | string;
+  approval_status?: string;
 };
 
 export type ProtectedRouteDecision =

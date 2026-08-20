@@ -47,10 +47,10 @@ export function isSafeManagedPreviewPath(pathOrUrl?: string | null): boolean {
   const normalized = normalizeManagedPath(pathOrUrl);
   if (!isManagedRelativeUploadPath(normalized)) return false;
 
-  const uploadRoutePattern = MANAGED_UPLOAD_ROUTE.replace('/', '\\/');
-  const fileUploadRoutePattern = MANAGED_FILE_UPLOAD_ROUTE.replace(/\//g, '\\/');
+  const uploadRoutePattern = MANAGED_UPLOAD_ROUTE.replace('/', String.raw`\/`);
+  const fileUploadRoutePattern = MANAGED_FILE_UPLOAD_ROUTE.replace(/\//g, String.raw`\/`);
   const safePattern = new RegExp(
-    `^(?:${uploadRoutePattern}|${fileUploadRoutePattern})/[A-Za-z0-9._-]+\\.(?:pdf|png|jpe?g|gif|webp|txt)$`,
+    String.raw`^(?:${uploadRoutePattern}|${fileUploadRoutePattern})/[A-Za-z0-9._-]+\.(?:pdf|png|jpe?g|gif|webp|txt)$`,
     'i',
   );
 

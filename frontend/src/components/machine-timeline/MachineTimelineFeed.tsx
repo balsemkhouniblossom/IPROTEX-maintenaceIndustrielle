@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { apiService } from '@/services/api';
 import TimelineEventCard from './TimelineEventCard';
 import TimelineFilters from './TimelineFilters';
-import { groupKeyForDate, isTranslatableGroupKey } from './groupByDate';
+import { dateGroupLabel, groupKeyForDate, isTranslatableGroupKey } from './groupByDate';
 import type { MachineTimelineCategory, MachineTimelineEvent, MachineTimelinePage } from './types';
 
 const PAGE_SIZE = 20;
@@ -24,7 +24,7 @@ type TimelineRow =
  * `VirtualizedDataTable` already uses elsewhere) so the DOM stays bounded
  * no matter how many pages have been appended.
  */
-export default function MachineTimelineFeed({ machineId }: { machineId: string }) {
+export default function MachineTimelineFeed({ machineId }: Readonly<{ machineId: string }>) {
   const t = useTranslations('machineTimeline');
   const locale = useLocale();
 
@@ -108,13 +108,14 @@ export default function MachineTimelineFeed({ machineId }: { machineId: string }
     let lastGroupKey: string | null = null;
     for (const event of items) {
       const groupKey = groupKeyForDate(new Date(event.at), now, locale);
-      if (groupKey !== lastGroupKey) {
+      const groupLabel = dateGroupLabel(groupKey);
+      if (groupLabel !== lastGroupKey) {
         built.push({
           kind: 'header',
-          key: `header-${groupKey}-${built.length}`,
-          label: isTranslatableGroupKey(groupKey) ? t(`groups.${groupKey}`) : groupKey,
+          key: `header-${groupLabel}-${built.length}`,
+          label: isTranslatableGroupKey(groupKey) ? t(`groups.${groupKey}`) : groupLabel,
         });
-        lastGroupKey = groupKey;
+        lastGroupKey = groupLabel;
       }
       built.push({ kind: 'event', key: event.id, event });
     }

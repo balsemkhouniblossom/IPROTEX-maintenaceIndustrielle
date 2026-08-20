@@ -35,6 +35,8 @@ type AvailablePart = {
   };
 };
 
+type TechnicianWorkOrderDetailProps = Readonly<{ id: string }>;
+
 type TechnicianActionButtonsProps = {
   readonly id: string;
   readonly status: string;
@@ -64,10 +66,27 @@ function formatMachineValue(
 ): string {
   const value = machine[key];
   if (!value) return "—";
-  if (key === "installation_date") {
-    return new Date(String(value)).toLocaleDateString(locale);
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    if (key === "installation_date") {
+      return new Date(value.toString()).toLocaleDateString(locale);
+    }
+    return value.toString();
   }
-  return String(value);
+  if (value instanceof Date) {
+    return value.toLocaleDateString(locale);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => formatMachineValue({ item }, "item", locale))
+      .filter((item) => item !== "â€”")
+      .join(", ");
+  }
+  if (typeof value === "object") {
+    const item = value as Record<string, unknown>;
+    const label = item.name ?? item.machine_id ?? item.nom_complet ?? item.email ?? item._id ?? item.id;
+    return label ? formatMachineValue({ label }, "label", locale) : "â€”";
+  }
+  return "â€”";
 }
 
 function TechnicianActionButtons({
@@ -175,7 +194,7 @@ function TechnicianActionButtons({
   );
 }
 
-export default function TechnicianWorkOrderDetail(props: { id: string }) {
+export default function TechnicianWorkOrderDetail(props: TechnicianWorkOrderDetailProps) {
   return (
     <ErrorBoundary boundaryName="technician-work-order-detail" fallback={renderWidgetErrorFallback}>
       <TechnicianWorkOrderDetailInner {...props} />
@@ -183,7 +202,7 @@ export default function TechnicianWorkOrderDetail(props: { id: string }) {
   );
 }
 
-function TechnicianWorkOrderDetailInner({ id }: { id: string }) {
+function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
   const locale = useLocale();
   const [detail, setDetail] = useState<Detail>();

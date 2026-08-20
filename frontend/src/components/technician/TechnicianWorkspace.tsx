@@ -80,11 +80,11 @@ function ManualPreviewModal({
   manual,
   onClose,
   title,
-}: {
+}: Readonly<{
   manual?: Manual;
   onClose: () => void;
   title: string;
-}) {
+}>) {
   return (
     <Modal
       isOpen={Boolean(manual)}
@@ -117,11 +117,11 @@ function ErrorBox({
   message,
   retry,
   label,
-}: {
+}: Readonly<{
   message: string;
   retry: () => void;
   label: string;
-}) {
+}>) {
   return (
     <div className="panel border border-red-200 bg-red-50 text-red-800">
       <p>{message}</p>
@@ -139,11 +139,11 @@ function OrderCard({
   order,
   locale,
   viewLabel,
-}: {
+}: Readonly<{
   order: WorkOrder;
   locale: string;
   viewLabel: string;
-}) {
+}>) {
   const t = useTranslations("technician");
   const statusKey = `status.${order.status}`;
   const dateRows = [
@@ -357,7 +357,7 @@ export function TechnicianDashboard() {
   );
 }
 
-export function TechnicianOrders({ fixedStatus }: { fixedStatus?: string }) {
+export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: string }>) {
   const t = useTranslations("technician");
   const locale = useLocale();
   const [data, setData] = useState<PageData<WorkOrder>>();

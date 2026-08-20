@@ -3,8 +3,8 @@ import {
   buildPendingApprovalsParams,
   buildRejectAccountPayload,
   buildUsersListParams,
-  getApprovalErrorCode,
 } from './userApprovalLogic';
+export { getApprovalErrorCode } from './userApprovalLogic';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type ApprovalRole = 'operator' | 'technician';
@@ -65,7 +65,6 @@ export {
   buildPendingApprovalsParams,
   buildRejectAccountPayload,
   buildUsersListParams,
-  getApprovalErrorCode,
 };
 
 function readPaginatedUsers(data: unknown): PaginatedApprovalUsers {

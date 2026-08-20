@@ -7,7 +7,10 @@ export function isRawTechnicalId(value: unknown): boolean {
 
 export function displayText(value: unknown, fallback = "-"): string {
   if (value == null) return fallback;
-  const text = String(value).trim();
+  if (typeof value === "object") {
+    return referenceDisplay(value, ["name", "label", "nom_complet", "machine_id", "_id", "id"], fallback);
+  }
+  const text = value.toString().trim();
   if (!text || isRawTechnicalId(text)) return fallback;
   return text;
 }

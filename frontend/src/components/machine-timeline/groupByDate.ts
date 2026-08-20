@@ -4,7 +4,8 @@ function startOfDay(date: Date): number {
   return d.getTime();
 }
 
-export type DateGroupKey = 'today' | 'yesterday' | 'last7Days' | 'last30Days' | string;
+export type TranslatableDateGroupKey = 'today' | 'yesterday' | 'last7Days' | 'last30Days';
+export type DateGroupKey = TranslatableDateGroupKey | { monthLabel: string };
 
 /**
  * `today`/`yesterday`/`last7Days`/`last30Days` are translation keys the
@@ -20,11 +21,16 @@ export function groupKeyForDate(at: Date, now: Date, locale: string): DateGroupK
   if (diffDays === 1) return 'yesterday';
   if (diffDays <= 7) return 'last7Days';
   if (diffDays <= 30) return 'last30Days';
-  return at.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  return { monthLabel: at.toLocaleDateString(locale, { month: 'long', year: 'numeric' }) };
 }
 
-const TRANSLATABLE_KEYS = new Set(['today', 'yesterday', 'last7Days', 'last30Days']);
+const TRANSLATABLE_KEYS = new Set<TranslatableDateGroupKey>(['today', 'yesterday', 'last7Days', 'last30Days']);
 
-export function isTranslatableGroupKey(key: DateGroupKey): boolean {
+export function isTranslatableGroupKey(key: DateGroupKey): key is TranslatableDateGroupKey {
+  if (typeof key !== 'string') return false;
   return TRANSLATABLE_KEYS.has(key);
+}
+
+export function dateGroupLabel(key: DateGroupKey): string {
+  return typeof key === 'string' ? key : key.monthLabel;
 }
