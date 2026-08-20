@@ -23,7 +23,9 @@ function stripRelativePrefix(value) {
 }
 
 function hasWindowsDrivePrefix(value) {
-  const driveLetter = value.charCodeAt(0);
+  const driveLetter = value.codePointAt(0);
+  if (driveLetter === undefined) return false;
+
   const isUppercaseDrive = driveLetter >= 65 && driveLetter <= 90;
   const isLowercaseDrive = driveLetter >= 97 && driveLetter <= 122;
 
