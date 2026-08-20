@@ -170,6 +170,497 @@ const EMPTY_FORM: ArticleFormState = {
   error_codes_text: "",
 };
 
+type KnowledgeBaseT = ReturnType<typeof useTranslations>;
+type ArticleFormChange = (next: ArticleFormState) => void;
+
+function KnowledgeNotification({
+  notification,
+  onClose,
+  tCommon,
+}: Readonly<{
+  notification: { type: "success" | "error"; message: string } | null;
+  onClose: () => void;
+  tCommon: KnowledgeBaseT;
+}>) {
+  if (!notification) return null;
+
+  const notificationClasses = notification.type === "success"
+    ? "bg-green-100 text-green-800 border border-green-200"
+    : "bg-red-100 text-red-800 border border-red-200";
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${notificationClasses}`}>
+      {notification.type === "success" ? (
+        <CheckCircleIcon className="w-5 h-5" />
+      ) : (
+        <ExclamationTriangleIcon className="w-5 h-5" />
+      )}
+      <span>{notification.message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        className="ml-2 text-gray-500 hover:text-gray-700"
+        title={tCommon("close")}
+      >
+        x
+      </button>
+    </div>
+  );
+}
+
+function KnowledgeToolbar({
+  search,
+  selectedCategory,
+  selectedStatus,
+  onSearchChange,
+  onCategoryChange,
+  onStatusChange,
+  onCreate,
+  t,
+}: Readonly<{
+  search: string;
+  selectedCategory: string;
+  selectedStatus: string;
+  onSearchChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
+  onCreate: () => void;
+  t: KnowledgeBaseT;
+}>) {
+  return (
+    <div className="panel mb-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold">{t("heading")}</h2>
+          <p className="text-gray-500 text-sm">{t("description")}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCreate}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
+          <PlusIcon className="w-4 h-4" />
+          {t("actions.add")}
+        </button>
+      </div>
+
+      <div className="mt-4 flex gap-3">
+        <div className="relative flex-1">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+          <input
+            className="input-field pl-9"
+            placeholder={t("searchPlaceholder")}
+            title={t("searchPlaceholder")}
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
+
+        <select
+          className="input-field"
+          value={selectedCategory}
+          onChange={(event) => onCategoryChange(event.target.value)}
+          title={t("form.category")}
+        >
+          <option value="">{t("filterAllCategories")}</option>
+          {CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {t(`categories.${category}`, { default: category })}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="input-field"
+          value={selectedStatus}
+          onChange={(event) => onStatusChange(event.target.value)}
+          title={t("filterAllStatuses")}
+        >
+          <option value="">{t("filterAllStatuses")}</option>
+          {(["draft", "published", "archived"] as KnowledgeArticleStatus[]).map((status) => (
+            <option key={status} value={status}>
+              {t(`status.${status}`, { default: status })}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeArticleFormFields({
+  state,
+  onChange,
+  disableArticleId,
+  machines,
+  machineTypes,
+  maintenancePlans,
+  t,
+}: Readonly<{
+  state: ArticleFormState;
+  onChange: ArticleFormChange;
+  disableArticleId: boolean;
+  machines: Machine[];
+  machineTypes: MachineType[];
+  maintenancePlans: MaintenancePlan[];
+  t: KnowledgeBaseT;
+}>) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.articleId")}</label>
+          <input
+            className="input-field"
+            value={state.article_id}
+            disabled={disableArticleId}
+            onChange={(event) => onChange({ ...state, article_id: event.target.value })}
+            placeholder={t("placeholders.articleId")}
+            title={t("form.articleId")}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.category")}</label>
+          <select
+            className="input-field"
+            value={state.category}
+            onChange={(event) => onChange({ ...state, category: event.target.value as KnowledgeArticleCategory })}
+            title={t("form.category")}
+          >
+            {CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {t(`categories.${category}`, { default: category })}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.title")}</label>
+        <input
+          className="input-field"
+          value={state.title}
+          onChange={(event) => onChange({ ...state, title: event.target.value })}
+          placeholder={t("placeholders.title")}
+          title={t("form.title")}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.summary")}</label>
+        <input
+          className="input-field"
+          value={state.summary}
+          onChange={(event) => onChange({ ...state, summary: event.target.value })}
+          placeholder={t("placeholders.summary")}
+          title={t("form.summary")}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.content")}</label>
+        <textarea
+          className="input-field"
+          rows={6}
+          value={state.content}
+          onChange={(event) => onChange({ ...state, content: event.target.value })}
+          placeholder={t("placeholders.content")}
+          title={t("form.content")}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.machineType")}</label>
+          <select
+            className="input-field"
+            value={state.machine_type_id}
+            onChange={(event) => onChange({ ...state, machine_type_id: event.target.value })}
+            title={t("form.machineType")}
+          >
+            <option value="">{t("placeholders.none")}</option>
+            {machineTypes.map((type) => (
+              <option key={type._id} value={type._id}>
+                {type.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.machine")}</label>
+          <select
+            className="input-field"
+            value={state.machine_id}
+            onChange={(event) => onChange({ ...state, machine_id: event.target.value })}
+            title={t("form.machine")}
+          >
+            <option value="">{t("placeholders.none")}</option>
+            {machines.map((machine) => (
+              <option key={machine._id} value={machine._id}>
+                {machine.machine_id}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.maintenancePlan")}</label>
+          <select
+            className="input-field"
+            value={state.maintenance_plan_id}
+            onChange={(event) => onChange({ ...state, maintenance_plan_id: event.target.value })}
+            title={t("form.maintenancePlan")}
+          >
+            <option value="">{t("placeholders.none")}</option>
+            {maintenancePlans.map((plan) => (
+              <option key={plan._id} value={plan._id}>
+                {plan.maintenance_code || plan.plan_id}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.tags")}</label>
+          <input
+            className="input-field"
+            value={state.tags_text}
+            onChange={(event) => onChange({ ...state, tags_text: event.target.value })}
+            placeholder={t("placeholders.tags")}
+            title={t("form.tags")}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.faultCodes")}</label>
+          <input
+            className="input-field"
+            value={state.fault_codes_text}
+            onChange={(event) => onChange({ ...state, fault_codes_text: event.target.value })}
+            placeholder={t("placeholders.faultCodes")}
+            title={t("form.faultCodes")}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.errorCodes")}</label>
+          <input
+            className="input-field"
+            value={state.error_codes_text}
+            onChange={(event) => onChange({ ...state, error_codes_text: event.target.value })}
+            placeholder={t("placeholders.errorCodes")}
+            title={t("form.errorCodes")}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ArticleActions = Readonly<{
+  onView: (article: KnowledgeArticle) => void;
+  onHistory: (article: KnowledgeArticle) => void;
+  onEdit: (article: KnowledgeArticle) => void;
+  onRevise: (article: KnowledgeArticle) => void;
+  onPublish: (article: KnowledgeArticle) => void;
+  onArchive: (article: KnowledgeArticle) => void;
+  onDelete: (article: KnowledgeArticle) => void;
+}>;
+
+function KnowledgeArticleGrid({
+  articles,
+  search,
+  t,
+  tCommon,
+  actions,
+}: Readonly<{
+  articles: KnowledgeArticle[];
+  search: string;
+  t: KnowledgeBaseT;
+  tCommon: KnowledgeBaseT;
+  actions: ArticleActions;
+}>) {
+  if (articles.length === 0) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="panel col-span-full text-center py-8 text-gray-500">
+          {search ? t("empty.search") : t("empty.default")}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {articles.map((article) => (
+        <KnowledgeArticleCard
+          key={article._id}
+          article={article}
+          t={t}
+          tCommon={tCommon}
+          actions={actions}
+        />
+      ))}
+    </div>
+  );
+}
+
+function KnowledgeArticleCard({
+  article,
+  t,
+  tCommon,
+  actions,
+}: Readonly<{
+  article: KnowledgeArticle;
+  t: KnowledgeBaseT;
+  tCommon: KnowledgeBaseT;
+  actions: ArticleActions;
+}>) {
+  const status = article.status ?? "draft";
+  const availableActions = getAvailableActions(status);
+  const deletable = canDelete(article);
+
+  return (
+    <div className="panel hover:shadow-lg transition">
+      <div className="flex justify-between items-start">
+        <BookOpenIcon className="w-8 h-8 text-blue-600" />
+        <StatusBadge
+          label={t(`status.${status}`, { default: status })}
+          colorClassName={STATUS_BADGE_CLASSES[status]}
+        />
+      </div>
+
+      <h3 className="font-bold mt-2">{article.title}</h3>
+      {article.revision ? (
+        <div className="text-xs text-gray-400">
+          {t("table.revision")} {article.revision}
+        </div>
+      ) : null}
+
+      <div className="text-sm text-gray-500 mt-1">
+        <div>
+          <span className="font-medium">{t("table.category")}: </span>
+          {t(`categories.${article.category}`, { default: article.category })}
+        </div>
+        {article.machine_id ? (
+          <div>
+            <span className="font-medium">{t("table.machine")}: </span>
+            {refLabel(article.machine_id) || tCommon("notAvailable")}
+          </div>
+        ) : null}
+        {article.fault_codes && article.fault_codes.length > 0 ? (
+          <div>
+            <span className="font-medium">{t("table.faultCodes")}: </span>
+            {article.fault_codes.join(", ")}
+          </div>
+        ) : null}
+      </div>
+
+      <p className="text-sm text-gray-600 mt-2">{article.summary || tCommon("notAvailable")}</p>
+
+      <div className="flex flex-wrap gap-1 mt-2">
+        {(article.tags || []).map((tag) => (
+          <span
+            key={`${article._id}-${tag}`}
+            className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1"
+          >
+            <TagIcon className="w-3 h-3" />
+            {tag}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+        <button type="button" onClick={() => actions.onView(article)} className="text-blue-600" title={t("actions.view")}>
+          <EyeIcon className="w-5 h-5" />
+        </button>
+        <button type="button" onClick={() => actions.onHistory(article)} className="text-slate-600" title={t("actions.history")}>
+          <ClockIcon className="w-5 h-5" />
+        </button>
+        {availableActions.includes("edit") ? (
+          <button type="button" onClick={() => actions.onEdit(article)} className="text-amber-600" title={t("actions.edit")}>
+            <PencilIcon className="w-5 h-5" />
+          </button>
+        ) : null}
+        {availableActions.includes("publish") ? (
+          <button type="button" onClick={() => actions.onPublish(article)} className="text-green-600" title={t("actions.publish")}>
+            <CheckIcon className="w-5 h-5" />
+          </button>
+        ) : null}
+        {availableActions.includes("revise") ? (
+          <button type="button" onClick={() => actions.onRevise(article)} className="text-indigo-600" title={t("actions.revise")}>
+            <DocumentDuplicateIcon className="w-5 h-5" />
+          </button>
+        ) : null}
+        {availableActions.includes("archive") ? (
+          <button type="button" onClick={() => actions.onArchive(article)} className="text-gray-600" title={t("actions.archive")}>
+            <ArchiveBoxIcon className="w-5 h-5" />
+          </button>
+        ) : null}
+        {deletable ? (
+          <button type="button" onClick={() => actions.onDelete(article)} className="text-red-600" title={t("actions.delete")}>
+            <TrashIcon className="w-5 h-5" />
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeHistoryContent({
+  article,
+  versions,
+  loading,
+  t,
+  tCommon,
+}: Readonly<{
+  article: KnowledgeArticle | null;
+  versions: KnowledgeArticle[];
+  loading: boolean;
+  t: KnowledgeBaseT;
+  tCommon: KnowledgeBaseT;
+}>) {
+  return (
+    <>
+      {article ? (
+        <div className="mb-3 text-sm font-medium text-slate-800">{article.title}</div>
+      ) : null}
+      {loading ? (
+        <div className="text-sm text-slate-500">{tCommon("loading")}</div>
+      ) : null}
+      {!loading && versions.length === 0 ? (
+        <div className="text-sm text-slate-500">{t("history.empty")}</div>
+      ) : null}
+      {!loading && versions.length > 0 ? (
+        <div className="space-y-2">
+          {versions.map((version) => {
+            const status = version.status ?? "draft";
+            return (
+              <div
+                key={version._id}
+                className="flex items-center justify-between rounded-lg border border-gray-100 p-3"
+              >
+                <div>
+                  <div className="font-medium text-slate-800">
+                    {t("table.revision")} {version.revision ?? 1}
+                    {version._id === article?._id ? ` (${t("history.current")})` : ""}
+                  </div>
+                  <div className="text-xs text-slate-500">{version.title}</div>
+                </div>
+                <StatusBadge
+                  label={t(`status.${status}`, { default: status })}
+                  colorClassName={STATUS_BADGE_CLASSES[status]}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export default function KnowledgeBasePage() {
   const t = useTranslations("knowledgeBase");
   const tCommon = useTranslations("common");
@@ -436,159 +927,6 @@ export default function KnowledgeBasePage() {
     }
   }
 
-  function renderFormFields(state: ArticleFormState, onChange: (next: ArticleFormState) => void, disableArticleId: boolean) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.articleId")}</label>
-            <input
-              className="input-field"
-              value={state.article_id}
-              disabled={disableArticleId}
-              onChange={(e) => onChange({ ...state, article_id: e.target.value })}
-              placeholder={t("placeholders.articleId")}
-              title={t("form.articleId")}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.category")}</label>
-            <select
-              className="input-field"
-              value={state.category}
-              onChange={(e) => onChange({ ...state, category: e.target.value as KnowledgeArticleCategory })}
-              title={t("form.category")}
-            >
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {t(`categories.${category}`, { default: category })}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.title")}</label>
-          <input
-            className="input-field"
-            value={state.title}
-            onChange={(e) => onChange({ ...state, title: e.target.value })}
-            placeholder={t("placeholders.title")}
-            title={t("form.title")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.summary")}</label>
-          <input
-            className="input-field"
-            value={state.summary}
-            onChange={(e) => onChange({ ...state, summary: e.target.value })}
-            placeholder={t("placeholders.summary")}
-            title={t("form.summary")}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.content")}</label>
-          <textarea
-            className="input-field"
-            rows={6}
-            value={state.content}
-            onChange={(e) => onChange({ ...state, content: e.target.value })}
-            placeholder={t("placeholders.content")}
-            title={t("form.content")}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.machineType")}</label>
-            <select
-              className="input-field"
-              value={state.machine_type_id}
-              onChange={(e) => onChange({ ...state, machine_type_id: e.target.value })}
-              title={t("form.machineType")}
-            >
-              <option value="">{t("placeholders.none")}</option>
-              {machineTypes.map((type) => (
-                <option key={type._id} value={type._id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.machine")}</label>
-            <select
-              className="input-field"
-              value={state.machine_id}
-              onChange={(e) => onChange({ ...state, machine_id: e.target.value })}
-              title={t("form.machine")}
-            >
-              <option value="">{t("placeholders.none")}</option>
-              {machines.map((machine) => (
-                <option key={machine._id} value={machine._id}>
-                  {machine.machine_id}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.maintenancePlan")}</label>
-            <select
-              className="input-field"
-              value={state.maintenance_plan_id}
-              onChange={(e) => onChange({ ...state, maintenance_plan_id: e.target.value })}
-              title={t("form.maintenancePlan")}
-            >
-              <option value="">{t("placeholders.none")}</option>
-              {maintenancePlans.map((plan) => (
-                <option key={plan._id} value={plan._id}>
-                  {plan.maintenance_code || plan.plan_id}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.tags")}</label>
-            <input
-              className="input-field"
-              value={state.tags_text}
-              onChange={(e) => onChange({ ...state, tags_text: e.target.value })}
-              placeholder={t("placeholders.tags")}
-              title={t("form.tags")}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.faultCodes")}</label>
-            <input
-              className="input-field"
-              value={state.fault_codes_text}
-              onChange={(e) => onChange({ ...state, fault_codes_text: e.target.value })}
-              placeholder={t("placeholders.faultCodes")}
-              title={t("form.faultCodes")}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t("form.errorCodes")}</label>
-            <input
-              className="input-field"
-              value={state.error_codes_text}
-              onChange={(e) => onChange({ ...state, error_codes_text: e.target.value })}
-              placeholder={t("placeholders.errorCodes")}
-              title={t("form.errorCodes")}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <DashboardLayout title={t("title")}>
@@ -601,218 +939,41 @@ export default function KnowledgeBasePage() {
 
   return (
     <DashboardLayout title={t("title")}>
-      {notification && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${
-            notification.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : "bg-red-100 text-red-800 border border-red-200"
-          }`}
-        >
-          {notification.type === "success" ? (
-            <CheckCircleIcon className="w-5 h-5" />
-          ) : (
-            <ExclamationTriangleIcon className="w-5 h-5" />
-          )}
-          <span>{notification.message}</span>
-          <button type="button"
-            onClick={() => setNotification(null)}
-            className="ml-2 text-gray-500 hover:text-gray-700"
-            title={tCommon("close")}
-          >
-            x
-          </button>
-        </div>
-      )}
+      <KnowledgeNotification
+        notification={notification}
+        onClose={() => setNotification(null)}
+        tCommon={tCommon}
+      />
 
-      <div className="panel mb-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold">{t("heading")}</h2>
-            <p className="text-gray-500 text-sm">{t("description")}</p>
-          </div>
+      <KnowledgeToolbar
+        search={search}
+        selectedCategory={selectedCategory}
+        selectedStatus={selectedStatus}
+        onSearchChange={setSearch}
+        onCategoryChange={setSelectedCategory}
+        onStatusChange={setSelectedStatus}
+        onCreate={() => setCreateOpen(true)}
+        t={t}
+      />
 
-          <button type="button"
-            onClick={() => setCreateOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-          >
-            <PlusIcon className="w-4 h-4" />
-            {t("actions.add")}
-          </button>
-        </div>
-
-        <div className="mt-4 flex gap-3">
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-            <input
-              className="input-field pl-9"
-              placeholder={t("searchPlaceholder")}
-              title={t("searchPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <select
-            className="input-field"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            title={t("form.category")}
-          >
-            <option value="">{t("filterAllCategories")}</option>
-            {CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {t(`categories.${category}`, { default: category })}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="input-field"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            title={t("filterAllStatuses")}
-          >
-            <option value="">{t("filterAllStatuses")}</option>
-            {(["draft", "published", "archived"] as KnowledgeArticleStatus[]).map((status) => (
-              <option key={status} value={status}>
-                {t(`status.${status}`, { default: status })}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredArticles.length === 0 ? (
-          <div className="panel col-span-full text-center py-8 text-gray-500">
-            {search ? t("empty.search") : t("empty.default")}
-          </div>
-        ) : (
-          filteredArticles.map((article) => {
-            const status = article.status ?? "draft";
-            const availableActions = getAvailableActions(status);
-            const deletable = canDelete(article);
-
-            return (
-              <div key={article._id} className="panel hover:shadow-lg transition">
-                <div className="flex justify-between items-start">
-                  <BookOpenIcon className="w-8 h-8 text-blue-600" />
-                  <StatusBadge
-                    label={t(`status.${status}`, { default: status })}
-                    colorClassName={STATUS_BADGE_CLASSES[status]}
-                  />
-                </div>
-
-                <h3 className="font-bold mt-2">{article.title}</h3>
-                {article.revision ? (
-                  <div className="text-xs text-gray-400">
-                    {t("table.revision")} {article.revision}
-                  </div>
-                ) : null}
-
-                <div className="text-sm text-gray-500 mt-1">
-                  <div>
-                    <span className="font-medium">{t("table.category")}: </span>
-                    {t(`categories.${article.category}`, { default: article.category })}
-                  </div>
-                  {article.machine_id ? (
-                    <div>
-                      <span className="font-medium">{t("table.machine")}: </span>
-                      {refLabel(article.machine_id) || tCommon("notAvailable")}
-                    </div>
-                  ) : null}
-                  {article.fault_codes && article.fault_codes.length > 0 ? (
-                    <div>
-                      <span className="font-medium">{t("table.faultCodes")}: </span>
-                      {article.fault_codes.join(", ")}
-                    </div>
-                  ) : null}
-                </div>
-
-                <p className="text-sm text-gray-600 mt-2">{article.summary || tCommon("notAvailable")}</p>
-
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {(article.tags || []).map((tag) => (
-                    <span
-                      key={`${article._id}-${tag}`}
-                      className="text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1"
-                    >
-                      <TagIcon className="w-3 h-3" />
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-                  <button type="button"
-                    onClick={() => {
-                      setSelectedArticle(article);
-                      setViewerOpen(true);
-                    }}
-                    className="text-blue-600"
-                    title={t("actions.view")}
-                  >
-                    <EyeIcon className="w-5 h-5" />
-                  </button>
-                  <button type="button"
-                    onClick={() => openHistory(article)}
-                    className="text-slate-600"
-                    title={t("actions.history")}
-                  >
-                    <ClockIcon className="w-5 h-5" />
-                  </button>
-                  {availableActions.includes("edit") && (
-                    <button type="button"
-                      onClick={() => openEdit(article)}
-                      className="text-amber-600"
-                      title={t("actions.edit")}
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                  {availableActions.includes("publish") && (
-                    <button type="button"
-                      onClick={() => handlePublish(article)}
-                      className="text-green-600"
-                      title={t("actions.publish")}
-                    >
-                      <CheckIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                  {availableActions.includes("revise") && (
-                    <button type="button"
-                      onClick={() => openRevise(article)}
-                      className="text-indigo-600"
-                      title={t("actions.revise")}
-                    >
-                      <DocumentDuplicateIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                  {availableActions.includes("archive") && (
-                    <button type="button"
-                      onClick={() => handleArchive(article)}
-                      className="text-gray-600"
-                      title={t("actions.archive")}
-                    >
-                      <ArchiveBoxIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                  {deletable && (
-                    <button type="button"
-                      onClick={() => handleDelete(article)}
-                      className="text-red-600"
-                      title={t("actions.delete")}
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+      <KnowledgeArticleGrid
+        articles={filteredArticles}
+        search={search}
+        t={t}
+        tCommon={tCommon}
+        actions={{
+          onView: (article) => {
+            setSelectedArticle(article);
+            setViewerOpen(true);
+          },
+          onHistory: openHistory,
+          onEdit: openEdit,
+          onRevise: openRevise,
+          onPublish: handlePublish,
+          onArchive: handleArchive,
+          onDelete: handleDelete,
+        }}
+      />
 
       <Modal
         isOpen={createOpen}
@@ -824,7 +985,15 @@ export default function KnowledgeBasePage() {
         size="lg"
       >
         <div className="space-y-4">
-          {renderFormFields(form, setForm, false)}
+          <KnowledgeArticleFormFields
+            state={form}
+            onChange={setForm}
+            disableArticleId={false}
+            machines={machines}
+            machineTypes={machineTypes}
+            maintenancePlans={maintenancePlans}
+            t={t}
+          />
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)}>
               {tCommon("cancel")}
@@ -846,7 +1015,15 @@ export default function KnowledgeBasePage() {
         size="lg"
       >
         <div className="space-y-4">
-          {renderFormFields(form, setForm, true)}
+          <KnowledgeArticleFormFields
+            state={form}
+            onChange={setForm}
+            disableArticleId={true}
+            machines={machines}
+            machineTypes={machineTypes}
+            maintenancePlans={maintenancePlans}
+            t={t}
+          />
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setEditOpen(false)}>
               {tCommon("cancel")}
@@ -869,7 +1046,15 @@ export default function KnowledgeBasePage() {
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-600">{t("modal.reviseHint")}</p>
-          {renderFormFields(form, setForm, true)}
+          <KnowledgeArticleFormFields
+            state={form}
+            onChange={setForm}
+            disableArticleId={true}
+            machines={machines}
+            machineTypes={machineTypes}
+            maintenancePlans={maintenancePlans}
+            t={t}
+          />
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setReviseOpen(false)}>
               {tCommon("cancel")}
@@ -887,40 +1072,13 @@ export default function KnowledgeBasePage() {
         title={t("modal.historyTitle")}
         size="lg"
       >
-        {historyArticle && (
-          <div className="mb-3 text-sm font-medium text-slate-800">{historyArticle.title}</div>
-        )}
-        {historyLoading ? (
-          <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-        ) : null}
-        {!historyLoading && historyVersions.length === 0 ? (
-          <div className="text-sm text-slate-500">{t("history.empty")}</div>
-        ) : null}
-        {!historyLoading && historyVersions.length > 0 ? (
-          <div className="space-y-2">
-            {historyVersions.map((version) => {
-              const status = version.status ?? "draft";
-              return (
-                <div
-                  key={version._id}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 p-3"
-                >
-                  <div>
-                    <div className="font-medium text-slate-800">
-                      {t("table.revision")} {version.revision ?? 1}
-                      {version._id === historyArticle?._id ? ` (${t("history.current")})` : ""}
-                    </div>
-                    <div className="text-xs text-slate-500">{version.title}</div>
-                  </div>
-                  <StatusBadge
-                    label={t(`status.${status}`, { default: status })}
-                    colorClassName={STATUS_BADGE_CLASSES[status]}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
+        <KnowledgeHistoryContent
+          article={historyArticle}
+          versions={historyVersions}
+          loading={historyLoading}
+          t={t}
+          tCommon={tCommon}
+        />
       </Modal>
 
       <Modal
