@@ -37,6 +37,13 @@ for attempt in $(seq 1 "$max_attempts"); do
   fi
 
   body="$(head -c 500 "$response_file" | tr '\n' ' ')"
+  if [ "$status" = "503" ] && [[ "$body" == *"deploys is currently unavailable"* ]]; then
+    echo "::warning::$name Render API reports deploys are currently unavailable."
+    echo "Response body: $body"
+    echo "- $name Render API deploy deferred: deploys are currently unavailable" >> "$summary_file"
+    exit 75
+  fi
+
   if [ "$status" = "429" ] || [ "$status" -ge 500 ]; then
     if [ "$attempt" -lt "$max_attempts" ]; then
       echo "Attempt $attempt/$max_attempts: $name Render API returned HTTP $status. Retrying in $((attempt * 10))s..."

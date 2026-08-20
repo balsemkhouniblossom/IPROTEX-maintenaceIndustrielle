@@ -57,6 +57,7 @@ jobs:
           fi
 
       - name: Trigger backend deployment
+        id: backend_deploy
         if: steps.hooks.outputs.backend_configured == 'true'
         env:
           BACKEND_DEPLOY_HOOK_URL: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
@@ -65,6 +66,8 @@ jobs:
           BACKEND_HOOK_CONFIGURED: ${{ steps.hooks.outputs.backend_hook_configured }}
           BACKEND_RENDER_API_CONFIGURED: ${{ steps.hooks.outputs.backend_render_api_configured }}
         run: |
+          echo "deferred=false" >> "$GITHUB_OUTPUT"
+
           if [ "$BACKEND_HOOK_CONFIGURED" = "true" ]; then
             if [ "$BACKEND_RENDER_API_CONFIGURED" = "true" ]; then
               export DEPLOY_HOOK_MAX_ATTEMPTS=2
@@ -85,7 +88,18 @@ jobs:
           fi
 
           if [ "$BACKEND_RENDER_API_CONFIGURED" = "true" ]; then
+            set +e
             bash .github/scripts/trigger-render-deploy-api.sh "Backend" "$BACKEND_RENDER_SERVICE_ID" "$RENDER_API_KEY"
+            status=$?
+            set -e
+
+            if [ "$status" = "75" ]; then
+              echo "deferred=true" >> "$GITHUB_OUTPUT"
+              echo "::warning::Backend deployment deferred because Render deploys are currently unavailable."
+              exit 0
+            fi
+
+            exit "$status"
           else
             echo "::error::No backend deployment method is configured."
             exit 1
@@ -104,7 +118,7 @@ jobs:
       # healthy (bad build, crashed boot, wrong env var), instead of
       # finding out from a user report.
       - name: Wait for backend to report healthy
-        if: steps.hooks.outputs.backend_configured == 'true'
+        if: steps.hooks.outputs.backend_configured == 'true' && steps.backend_deploy.outputs.deferred != 'true'
         env:
           BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL || 'https://pfe-maintenaceindustrielle.onrender.com' }}
         run: |
