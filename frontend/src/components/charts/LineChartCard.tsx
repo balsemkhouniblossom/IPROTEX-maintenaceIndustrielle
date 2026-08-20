@@ -17,13 +17,13 @@ export type ChartDatum = Readonly<{
   value: number;
 }>;
 
-interface LineChartCardProps extends Readonly<{
+type LineChartCardProps = Readonly<{
   title: string;
   data: ChartDatum[];
   emptyLabel: string;
   color?: string;
   valueFormatter?: (value: number) => string;
-}> {}
+}>;
 
 /**
  * Generic single-series trend chart card, styled through this app's theme

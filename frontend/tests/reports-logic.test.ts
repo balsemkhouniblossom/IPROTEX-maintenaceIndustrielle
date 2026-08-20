@@ -124,7 +124,7 @@ test("BarChartCard and LineChartCard are generic reusable components, not report
       /report|Report/,
       `${file} must stay generic — no report-specific naming, so other features can reuse it`,
     );
-    assert.match(source, /interface \w+CardProps/, `${file} must expose a typed props interface`);
+    assert.match(source, /(interface|type) \w+CardProps/, `${file} must expose a typed props contract`);
     assert.match(source, /emptyLabel/, `${file} must support an empty state`);
   }
 });

@@ -17,13 +17,13 @@ export type ChartDatum = Readonly<{
   value: number;
 }>;
 
-interface BarChartCardProps extends Readonly<{
+type BarChartCardProps = Readonly<{
   title: string;
   data: ChartDatum[];
   emptyLabel: string;
   color?: string;
   valueFormatter?: (value: number) => string;
-}> {}
+}>;
 
 /**
  * Generic labeled-bar chart card, styled through this app's theme CSS

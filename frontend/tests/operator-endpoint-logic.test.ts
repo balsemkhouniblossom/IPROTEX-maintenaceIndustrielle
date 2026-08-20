@@ -248,7 +248,8 @@ test("Smart maintenance calendar is organized around the operator's next task ac
   assert.match(source, /key: "waiting-validation"/);
   assert.match(source, /data-testid=\{`smart-calendar-primary-action-\$\{section\.key\}-\$\{index\}`\}/);
   assert.match(source, /void quickStartEvent\(event\)/);
-  assert.match(source, /role="dialog"/);
+  assert.match(source, /<dialog\s/);
+  assert.match(source, /aria-labelledby="smart-calendar-details-title"/);
   assert.match(source, /data-testid="smart-calendar-advanced-filters-toggle"/);
   assert.match(source, /data-testid="smart-calendar-advanced-filters"/);
 

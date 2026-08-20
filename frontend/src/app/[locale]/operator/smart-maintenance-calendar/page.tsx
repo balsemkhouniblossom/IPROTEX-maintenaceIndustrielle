@@ -709,10 +709,8 @@ function SmartCalendarDetailsDrawer({
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm">
-      {/* eslint-disable-next-line jsx-a11y/no-redundant-roles -- explicit role="dialog" is asserted by operator-endpoint-logic tests */}
       <dialog
         open
-        role="dialog"
         aria-modal="true"
         aria-labelledby="smart-calendar-details-title"
         className="operator-dashboard-theme ml-auto flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white p-5 shadow-2xl"
