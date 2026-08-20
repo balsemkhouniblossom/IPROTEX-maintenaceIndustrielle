@@ -47,14 +47,14 @@ jobs:
         env:
           BACKEND_DEPLOY_HOOK_URL: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
         run: |
-          curl --fail --silent --show-error --request POST "$BACKEND_DEPLOY_HOOK_URL"
+          bash .github/scripts/trigger-deploy-hook.sh "Backend" "$BACKEND_DEPLOY_HOOK_URL"
 
       - name: Trigger frontend deployment
         if: steps.hooks.outputs.frontend_configured == 'true'
         env:
           FRONTEND_DEPLOY_HOOK_URL: ${{ secrets.FRONTEND_DEPLOY_HOOK_URL }}
         run: |
-          curl --fail --silent --show-error --request POST "$FRONTEND_DEPLOY_HOOK_URL"
+          bash .github/scripts/trigger-deploy-hook.sh "Frontend" "$FRONTEND_DEPLOY_HOOK_URL"
 
       # Deploy hooks return as soon as Render/Vercel *accept* the trigger,
       # not once the new build is actually live — polling here is what
