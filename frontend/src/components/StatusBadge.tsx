@@ -1,8 +1,8 @@
-interface StatusBadgeProps {
+type StatusBadgeProps = Readonly<{
   label: string;
   colorClassName: string;
   title?: string;
-}
+}>;
 
 /**
  * The rounded-pill status badge shell used across Documents, Knowledge

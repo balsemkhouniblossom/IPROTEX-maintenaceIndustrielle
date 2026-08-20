@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   AVATAR_SESSION_DISMISSAL_KEY,
+  dismissAvatarMessage,
   getAssistantAnimationClass,
   getAvatarFirstName,
   getSeason,
@@ -11,9 +12,9 @@ import {
   getTimeOfDay,
   isAvatarMessageDismissed,
   normalizeAvatarRole,
+  resetAvatarMessageDismissal,
   ROLE_CONFIG,
   selectAvatarMessage,
-  setAvatarMessageDismissed,
 } from "../src/components/avatar/avatar-config.ts";
 
 test("time-of-day boundaries use browser-local hours", () => {
@@ -75,10 +76,10 @@ test("speech-bubble dismissal uses the supplied session storage", () => {
     removeItem: (key: string) => { values.delete(key); },
   };
   assert.equal(isAvatarMessageDismissed(sessionStorage), false);
-  setAvatarMessageDismissed(sessionStorage, true);
+  dismissAvatarMessage(sessionStorage);
   assert.equal(values.get(AVATAR_SESSION_DISMISSAL_KEY), "true");
   assert.equal(isAvatarMessageDismissed(sessionStorage), true);
-  setAvatarMessageDismissed(sessionStorage, false);
+  resetAvatarMessageDismissal(sessionStorage);
   assert.equal(isAvatarMessageDismissed(sessionStorage), false);
 });
 

@@ -41,9 +41,9 @@ const CATEGORIES: KnowledgeArticleCategory[] = [
  */
 export default function KnowledgeBaseBrowser({
   machineId,
-}: {
+}: Readonly<{
   machineId?: string;
-}) {
+}>) {
   const t = useTranslations("knowledgeBase");
   const tCommon = useTranslations("common");
 
@@ -130,11 +130,14 @@ export default function KnowledgeBaseBrowser({
       <section className="col-span-full">
         {loading ? (
           <div className="panel text-sm text-slate-500">{tCommon("loading")}</div>
-        ) : loadError ? (
+        ) : null}
+        {!loading && loadError ? (
           <div className="panel text-center py-8 text-red-700">{t("notifications.loadFailed")}</div>
-        ) : visibleArticles.length === 0 ? (
+        ) : null}
+        {!loading && !loadError && visibleArticles.length === 0 ? (
           <div className="panel text-center py-8 text-gray-500">{emptyMessage}</div>
-        ) : (
+        ) : null}
+        {!loading && !loadError && visibleArticles.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {visibleArticles.map((article) => (
               <button
@@ -168,7 +171,7 @@ export default function KnowledgeBaseBrowser({
               </button>
             ))}
           </div>
-        )}
+        ) : null}
       </section>
 
       <Modal

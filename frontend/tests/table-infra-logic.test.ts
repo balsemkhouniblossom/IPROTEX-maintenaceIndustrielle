@@ -107,7 +107,7 @@ test("the root <html> gets a real lang/dir attribute, and the public auth pages 
 
 test("Modal traps focus, exposes dialog ARIA semantics, and restores focus to the trigger on close", () => {
   const source = readSource(MODAL);
-  assert.match(source, /role="dialog"/);
+  assert.match(source, /<dialog\s/);
   assert.match(source, /aria-modal="true"/);
   assert.match(source, /aria-labelledby=\{titleId\}/);
   assert.match(source, /previouslyFocused\.current = document\.activeElement/);

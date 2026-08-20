@@ -79,11 +79,13 @@ export default function LubrifiantsPage() {
         </div>
 
         <div className="col-span-full panel overflow-x-auto">
-          {loading ? (
+          {loading && (
             <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-          ) : filteredItems.length === 0 ? (
+          )}
+          {!loading && filteredItems.length === 0 && (
             <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-          ) : (
+          )}
+          {!loading && filteredItems.length > 0 && (
             <table className="table">
               <thead>
                 <tr>

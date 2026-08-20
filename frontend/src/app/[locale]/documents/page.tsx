@@ -879,13 +879,15 @@ export default function DocumentsPage() {
         {historyDoc && (
           <div className="mb-3 text-sm font-medium text-slate-800">{historyDoc.file_name}</div>
         )}
-        {historyLoading ? (
+        {historyLoading && (
           <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-        ) : historyVersions.length === 0 ? (
+        )}
+        {!historyLoading && historyVersions.length === 0 && (
           <div className="text-sm text-slate-500">
             {t("history.empty", { default: "No version history available." })}
           </div>
-        ) : (
+        )}
+        {!historyLoading && historyVersions.length > 0 && (
           <div className="space-y-2">
             {historyVersions.map((version) => {
               const status = version.status ?? "draft";

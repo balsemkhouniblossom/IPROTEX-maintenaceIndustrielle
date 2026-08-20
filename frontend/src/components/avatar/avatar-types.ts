@@ -52,9 +52,9 @@ export interface AvatarMessageSelection {
   count?: number;
 }
 
-export interface MiniAvatarAssistantProps {
+export type MiniAvatarAssistantProps = Readonly<{
   userName?: string;
-  role?: AvatarRole | string;
+  role?: string;
   stats?: AvatarStats;
   status?: AvatarDataStatus;
   currentShift?: "morning" | "afternoon" | "night" | null;
@@ -62,4 +62,4 @@ export interface MiniAvatarAssistantProps {
   onAction?: (action: AvatarActionKey) => void;
   variant?: "card" | "embedded";
   className?: string;
-}
+}>;

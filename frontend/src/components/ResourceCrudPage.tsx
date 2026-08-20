@@ -24,7 +24,7 @@ export interface CrudField {
   toFormValue?: (value: unknown, item: Record<string, unknown>) => unknown;
 }
 
-interface Props {
+type Props = Readonly<{
   title: string;
   heading?: string;
   description?: string;
@@ -59,7 +59,7 @@ interface Props {
   normalize?: (form: Record<string, unknown>) => Record<string, unknown>;
   searchable?: boolean;
   getItemId?: (item: Record<string, unknown>) => string;
-}
+}>;
 
 function referenceLabel(value: unknown): string {
   if (value && typeof value === 'object') {
@@ -67,6 +67,14 @@ function referenceLabel(value: unknown): string {
     return displayText(item.capteur_id ?? item.mod_type_id ?? item.part_id ?? item.nom_module ?? item.nom_piece);
   }
   return displayText(value);
+}
+
+function formFieldValue(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value instanceof Date) return value.toISOString();
+  return '';
 }
 
 export default function ResourceCrudPage(props: Props) {
@@ -147,7 +155,7 @@ function ResourceCrudPageInner({
     fields.forEach((field) => {
       let value = field.toFormValue ? field.toFormValue(item[field.key], item) : item[field.key];
       if (value && typeof value === 'object') value = (value as Record<string, unknown>)._id;
-      if (field.type === 'datetime-local' && value) value = new Date(String(value)).toISOString().slice(0, 16);
+      if (field.type === 'datetime-local' && value) value = new Date(formFieldValue(value)).toISOString().slice(0, 16);
       values[field.key] = value ?? '';
     });
     setEditing(item);
@@ -190,6 +198,7 @@ function ResourceCrudPageInner({
     const value = field.render ? field.render(item[field.key], item) : referenceLabel(item[field.key]);
     return <span className="block max-w-[18rem] truncate" title={value}>{value}</span>;
   };
+  const submitLabel = submitting ? labels.loading : labels.save;
 
   return <ProtectedRoute allowedRoles={['admin']}><DashboardLayout title={title}>
     {notification && (
@@ -259,11 +268,13 @@ function ResourceCrudPageInner({
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {loading && (
               <tr><td colSpan={fields.length + 1}>{labels.loading}</td></tr>
-            ) : visibleItems.length === 0 ? (
+            )}
+            {!loading && visibleItems.length === 0 && (
               <tr><td colSpan={fields.length + 1}>{searchTerm ? (labels.filteredEmpty ?? labels.empty) : labels.empty}</td></tr>
-            ) : visibleItems.map((item) => (
+            )}
+            {!loading && visibleItems.length > 0 && visibleItems.map((item) => (
               <tr key={getItemId(item)}>
                 {visibleFields.map((field) => <td key={field.key}>{renderCellValue(field, item)}</td>)}
                 <td className="whitespace-nowrap">
@@ -292,12 +303,12 @@ function ResourceCrudPageInner({
             <label htmlFor={fieldId} className="mb-1 block min-w-0 truncate text-sm font-medium" title={field.label}>
               {field.label}
             </label>
-            {field.type === 'select' ? (
+            {field.type === 'select' && (
               <select
                 id={fieldId}
                 className="input-field w-full"
                 required={field.required}
-                value={String(form[field.key] ?? '')}
+                value={formFieldValue(form[field.key])}
                 onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
               >
                 <option value="">---</option>
@@ -307,21 +318,23 @@ function ResourceCrudPageInner({
                   </option>
                 ))}
               </select>
-            ) : field.type === 'textarea' ? (
+            )}
+            {field.type === 'textarea' && (
               <textarea
                 id={fieldId}
                 className="input-field min-h-24 w-full"
                 required={field.required}
-                value={String(form[field.key] ?? '')}
+                value={formFieldValue(form[field.key])}
                 onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
               />
-            ) : (
+            )}
+            {field.type !== 'select' && field.type !== 'textarea' && (
               <input
                 id={fieldId}
                 className="input-field w-full"
                 type={field.type ?? 'text'}
                 required={field.required}
-                value={String(form[field.key] ?? '')}
+                value={formFieldValue(form[field.key])}
                 onChange={(e) =>
                   setForm({ ...form, [field.key]: field.type === 'number' ? Number(e.target.value) : e.target.value })
                 }
@@ -335,8 +348,8 @@ function ResourceCrudPageInner({
             <span className="truncate" title={labels.cancel}>{labels.cancel}</span>
           </button>
           <button type="submit" className="btn-primary" disabled={submitting}>
-            <span className="truncate" title={submitting ? labels.loading : labels.save}>
-              {submitting ? labels.loading : labels.save}
+            <span className="truncate" title={submitLabel}>
+              {submitLabel}
             </span>
           </button>
         </div>

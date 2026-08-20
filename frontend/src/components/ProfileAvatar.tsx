@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { UserIcon } from '@heroicons/react/24/solid';
 import { getAvatarInitial, resolveUserPhotoUrl } from '@/services/userMedia';
 
-interface ProfileAvatarProps {
+type ProfileAvatarProps = Readonly<{
   name?: string;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   photo?: string | null;
   alt?: string;
-}
+}>;
 
 const FALLBACK_BRAND_CLASSES = [
   'avatar-fallback-blue',
@@ -23,12 +23,12 @@ export default function ProfileAvatar({
   photo,
   alt,
 }: ProfileAvatarProps) {
-  const sizeClasses =
-    size === 'sm'
-      ? 'w-8 h-8 text-sm'
-      : size === 'lg'
-        ? 'w-16 h-16 text-2xl'
-        : 'w-12 h-12 text-base';
+  let sizeClasses = 'w-12 h-12 text-base';
+  if (size === 'sm') {
+    sizeClasses = 'w-8 h-8 text-sm';
+  } else if (size === 'lg') {
+    sizeClasses = 'w-16 h-16 text-2xl';
+  }
 
   const resolvedPhotoUrl = resolveUserPhotoUrl(photo);
   const initial = getAvatarInitial(name);

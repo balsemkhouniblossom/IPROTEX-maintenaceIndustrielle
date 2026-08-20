@@ -10,7 +10,7 @@ export interface SavedView {
   is_default: boolean;
 }
 
-interface SavedViewsBarProps {
+type SavedViewsBarProps = Readonly<{
   views: SavedView[];
   activeViewId: string | null;
   onApply: (view: SavedView) => void;
@@ -20,7 +20,7 @@ interface SavedViewsBarProps {
   namePlaceholder: string;
   emptyLabel: string;
   deleteLabel: string;
-}
+}>;
 
 /**
  * A row of saved-search chips for a list page, backed by `/saved-views`.
@@ -50,7 +50,7 @@ export function SavedViewsBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2" role="group" aria-label={saveLabel}>
+    <fieldset className="flex flex-wrap items-center gap-2" aria-label={saveLabel}>
       {views.length === 0 && !creating && (
         <span className="text-xs text-[var(--text-secondary)]">{emptyLabel}</span>
       )}
@@ -107,6 +107,6 @@ export function SavedViewsBar({
           {saveLabel}
         </button>
       )}
-    </div>
+    </fieldset>
   );
 }

@@ -3,11 +3,11 @@
 import { useTranslations } from 'next-intl';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
-interface WidgetErrorFallbackProps {
+type WidgetErrorFallbackProps = Readonly<{
   onRetry: () => void;
   /** Use when the widget already renders its own outer card/panel chrome. */
   bare?: boolean;
-}
+}>;
 
 /**
  * Shared fallback UI for `ErrorBoundary`-wrapped widgets (charts, PDF

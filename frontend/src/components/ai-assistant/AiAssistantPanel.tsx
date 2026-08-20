@@ -50,11 +50,11 @@ type AiRecommendationResponse = {
  * is always shown regardless of outcome. Additive to whichever page embeds
  * it: it never reads from or writes into that page's own form state.
  */
-type AiAssistantPanelProps = {
+type AiAssistantPanelProps = Readonly<{
   machineId?: string;
   workOrderId?: string;
   faultCode?: string;
-};
+}>;
 
 export default function AiAssistantPanel(props: AiAssistantPanelProps) {
   return (
@@ -150,10 +150,10 @@ function AiAssistantPanelInner({
 function AiAssistantResult({
   result,
   t,
-}: {
+}: Readonly<{
   result: AiRecommendationResponse;
   t: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   if (result.status === "disabled") {
     return (
       <StatusMessage
@@ -226,8 +226,8 @@ function AiAssistantResult({
         >
           <p className="mb-1 font-semibold text-red-800">{t("safetyWarnings")}</p>
           <ul className="list-disc space-y-1 pl-5 text-red-800">
-            {answer.safetyWarnings.map((item, index) => (
-              <li key={index}>{item}</li>
+            {answer.safetyWarnings.map((item) => (
+              <li key={item}>{item}</li>
             ))}
           </ul>
         </div>
@@ -248,13 +248,13 @@ function StatusMessage({
   message,
   result,
   t,
-}: {
+}: Readonly<{
   className: string;
   testId: string;
   message: string;
   result: AiRecommendationResponse;
   t: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   const diagnostic = result.diagnostic;
 
   return (
@@ -280,19 +280,19 @@ function AnswerSection({
   testId,
   label,
   items,
-}: {
+}: Readonly<{
   testId: string;
   label: string;
   items: string[];
-}) {
+}>) {
   if (items.length === 0) return null;
 
   return (
     <div data-testid={testId}>
       <p className="mb-1 font-semibold text-slate-800">{label}</p>
       <ul className="list-disc space-y-1 pl-5 text-slate-700">
-        {items.map((item, index) => (
-          <li key={index}>{item}</li>
+        {items.map((item) => (
+          <li key={`${testId}-${item}`}>{item}</li>
         ))}
       </ul>
     </div>

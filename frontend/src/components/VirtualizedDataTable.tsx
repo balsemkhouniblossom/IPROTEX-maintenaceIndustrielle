@@ -14,7 +14,7 @@ import { ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, ExclamationTriangleIcon 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
-export interface DataTableColumn<T> {
+export type DataTableColumn<T> = Readonly<{
   key: string;
   header: string;
   render: (row: T) => ReactNode;
@@ -22,11 +22,11 @@ export interface DataTableColumn<T> {
   /** CSS width (e.g. "12rem"), applied to both the header and body cells so virtualized rows line up with the header. */
   width?: string;
   align?: 'start' | 'end';
-}
+}>;
 
 export type SortDirection = 'asc' | 'desc';
 
-interface VirtualizedDataTableProps<T> {
+type VirtualizedDataTableProps<T> = Readonly<{
   columns: DataTableColumn<T>[];
   rows: T[];
   rowKey: (row: T) => string;
@@ -49,7 +49,7 @@ interface VirtualizedDataTableProps<T> {
   selectAllLabel?: string;
   selectRowLabel?: (row: T) => string;
   ariaLabel: string;
-}
+}>;
 
 // The grid column widths are written to this CSS custom property exactly
 // once (on the single scrolling element) and every other row — header
@@ -60,6 +60,13 @@ interface VirtualizedDataTableProps<T> {
 const GRID_TEMPLATE_VAR = '--dt-grid-template-columns';
 
 type GridTemplateStyle = CSSProperties & { [GRID_TEMPLATE_VAR]?: string };
+
+function ariaSortForColumn(isActive: boolean, sortDirection?: SortDirection) {
+  if (!isActive) {
+    return 'none';
+  }
+  return sortDirection === 'desc' ? 'descending' : 'ascending';
+}
 
 /**
  * Windowed table shell shared by every large list page: server-paginated
@@ -211,9 +218,7 @@ function VirtualizedDataTableInner<T>({
             <span
               key={column.key}
               role="columnheader"
-              aria-sort={
-                sortField === column.key ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'
-              }
+              aria-sort={ariaSortForColumn(sortField === column.key, sortDirection)}
               className={column.align === 'end' ? 'text-end' : undefined}
             >
               {column.sortable && onSortChange ? (
@@ -237,7 +242,7 @@ function VirtualizedDataTableInner<T>({
           ))}
         </div>
 
-        {loading ? (
+        {loading && (
           // role="table" only permits row/rowgroup children — wrap the
           // status message in a single row/cell so it stays valid ARIA
           // table structure instead of a bare role="status" div.
@@ -249,7 +254,8 @@ function VirtualizedDataTableInner<T>({
               ))}
             </div>
           </div>
-        ) : error ? (
+        )}
+        {!loading && error && (
           <div role="row">
             <div role="cell" className="flex flex-col items-center gap-3 py-10 text-center" aria-live="assertive">
               <ExclamationTriangleIcon className="h-8 w-8 text-red-500" aria-hidden="true" />
@@ -262,13 +268,15 @@ function VirtualizedDataTableInner<T>({
               )}
             </div>
           </div>
-        ) : rows.length === 0 ? (
+        )}
+        {!loading && !error && rows.length === 0 && (
           <div role="row">
             <p role="cell" className="py-10 text-center text-sm text-text-secondary">
               {emptyMessage}
             </p>
           </div>
-        ) : (
+        )}
+        {!loading && !error && rows.length > 0 && (
           <div role="rowgroup" style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const row = rows[virtualRow.index];

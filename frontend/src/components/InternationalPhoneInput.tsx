@@ -36,7 +36,7 @@ const FLAG_COMPONENT_BY_COUNTRY = {
   CH: CHFlag,
 } satisfies Record<PhoneCountryCode, typeof TNFlag>;
 
-interface InternationalPhoneInputProps {
+type InternationalPhoneInputProps = Readonly<{
   value: PhoneInputValue;
   onChange: (value: PhoneInputValue) => void;
   placeholder?: string;
@@ -46,7 +46,7 @@ interface InternationalPhoneInputProps {
   selectClassName?: string;
   name?: string;
   autoComplete?: string;
-}
+}>;
 
 export default function InternationalPhoneInput({
   value,

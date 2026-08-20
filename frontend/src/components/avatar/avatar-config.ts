@@ -56,7 +56,11 @@ export function getTimeOfDay(dateOrHour: Date | number): TimeOfDay {
 
 export function getMillisecondsUntilNextTimePeriod(date: Date): number {
   const hour = date.getHours();
-  const nextBoundaryHour = hour < 5 ? 5 : hour < 12 ? 12 : hour < 18 ? 18 : hour < 22 ? 22 : 29;
+  let nextBoundaryHour = 29;
+  if (hour < 5) nextBoundaryHour = 5;
+  else if (hour < 12) nextBoundaryHour = 12;
+  else if (hour < 18) nextBoundaryHour = 18;
+  else if (hour < 22) nextBoundaryHour = 22;
   const nextBoundary = new Date(date);
   nextBoundary.setHours(nextBoundaryHour, 0, 0, 0);
   return Math.max(1_000, nextBoundary.getTime() - date.getTime());
@@ -64,13 +68,14 @@ export function getMillisecondsUntilNextTimePeriod(date: Date): number {
 
 export function getSeason(dateOrMonth: Date | number, hemisphere: "northern" | "southern" = "northern"): Season {
   const month = typeof dateOrMonth === "number" ? dateOrMonth : dateOrMonth.getMonth();
-  const northernSeason: Season = month >= 2 && month <= 4
-    ? "spring"
-    : month >= 5 && month <= 7
-      ? "summer"
-      : month >= 8 && month <= 10
-        ? "autumn"
-        : "winter";
+  let northernSeason: Season = "winter";
+  if (month >= 2 && month <= 4) {
+    northernSeason = "spring";
+  } else if (month >= 5 && month <= 7) {
+    northernSeason = "summer";
+  } else if (month >= 8 && month <= 10) {
+    northernSeason = "autumn";
+  }
 
   if (hemisphere === "northern") return northernSeason;
   return ({ spring: "autumn", summer: "winter", autumn: "spring", winter: "summer" } as const)[northernSeason];
@@ -96,9 +101,12 @@ export function isAvatarMessageDismissed(storage: SessionStorageLike): boolean {
   return storage.getItem(AVATAR_SESSION_DISMISSAL_KEY) === "true";
 }
 
-export function setAvatarMessageDismissed(storage: SessionStorageLike, dismissed: boolean): void {
-  if (dismissed) storage.setItem(AVATAR_SESSION_DISMISSAL_KEY, "true");
-  else storage.removeItem(AVATAR_SESSION_DISMISSAL_KEY);
+export function dismissAvatarMessage(storage: SessionStorageLike): void {
+  storage.setItem(AVATAR_SESSION_DISMISSAL_KEY, "true");
+}
+
+export function resetAvatarMessageDismissal(storage: SessionStorageLike): void {
+  storage.removeItem(AVATAR_SESSION_DISMISSAL_KEY);
 }
 
 export function selectAvatarMessage(

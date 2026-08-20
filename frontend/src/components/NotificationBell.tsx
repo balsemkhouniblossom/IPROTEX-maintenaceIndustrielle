@@ -182,15 +182,17 @@ export default function NotificationBell() {
           </div>
 
           <div className="max-h-96 space-y-2 overflow-y-auto">
-            {loading ? (
+            {loading && (
               <div className="rounded-2xl border border-border bg-(--surface-secondary) px-4 py-4 text-center text-sm text-text-secondary">
                 {t("loading")}
               </div>
-            ) : items.length === 0 ? (
+            )}
+            {!loading && items.length === 0 && (
               <div className="rounded-2xl border border-border bg-(--surface-secondary) px-4 py-4 text-center text-sm text-text-secondary">
                 {t("empty")}
               </div>
-            ) : (
+            )}
+            {!loading && items.length > 0 && (
               items.map((item) => (
                 <div
                   key={item._id}

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { ClockIcon } from '@heroicons/react/24/outline';
 
-interface LiveClockProps {
+type LiveClockProps = Readonly<{
   locale?: string;
-}
+}>;
 
 function formatClock(locale: string, now: Date) {
   const time = new Intl.DateTimeFormat(locale, {
@@ -41,7 +41,8 @@ export default function LiveClock({ locale = 'en' }: LiveClockProps) {
     return () => window.clearInterval(timer);
   }, []);
 
-  const { time, date } = now ? formatClock(locale, now) : { time: '--:--:--', date: '' };
+  const fallbackClock = { time: '--:--:--', date: '' };
+  const { time, date } = now ? formatClock(locale, now) : fallbackClock;
 
   return (
     <div className="flex min-w-48 items-center gap-3 rounded-2xl border border-border bg-surface-secondary px-4 py-2 text-sm text-text-secondary shadow-sm transition-colors duration-200 hover:bg-surface">

@@ -12,18 +12,18 @@ import {
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
-export interface ChartDatum {
+export type ChartDatum = Readonly<{
   label: string;
   value: number;
-}
+}>;
 
-interface LineChartCardProps {
+interface LineChartCardProps extends Readonly<{
   title: string;
   data: ChartDatum[];
   emptyLabel: string;
   color?: string;
   valueFormatter?: (value: number) => string;
-}
+}> {}
 
 /**
  * Generic single-series trend chart card, styled through this app's theme

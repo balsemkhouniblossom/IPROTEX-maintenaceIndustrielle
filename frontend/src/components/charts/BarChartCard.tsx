@@ -12,18 +12,18 @@ import {
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
-export interface ChartDatum {
+export type ChartDatum = Readonly<{
   label: string;
   value: number;
-}
+}>;
 
-interface BarChartCardProps {
+interface BarChartCardProps extends Readonly<{
   title: string;
   data: ChartDatum[];
   emptyLabel: string;
   color?: string;
   valueFormatter?: (value: number) => string;
-}
+}> {}
 
 /**
  * Generic labeled-bar chart card, styled through this app's theme CSS

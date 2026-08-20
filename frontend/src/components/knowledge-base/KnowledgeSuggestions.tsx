@@ -24,11 +24,11 @@ export default function KnowledgeSuggestions({
   machineId,
   faultCode,
   maintenancePlanId,
-}: {
+}: Readonly<{
   machineId?: string;
   faultCode?: string;
   maintenancePlanId?: string;
-}) {
+}>) {
   const t = useTranslations("knowledgeBase");
   const [articles, setArticles] = useState<SuggestedArticle[]>([]);
   const [openArticle, setOpenArticle] = useState<SuggestedArticle | null>(null);

@@ -4,7 +4,7 @@
  * that was duplicated ad hoc across list pages (machines, devices, ...) with
  * one reusable, theme-aware set of building blocks.
  */
-export function Skeleton({ className = '' }: { className?: string }) {
+export function Skeleton({ className = '' }: Readonly<{ className?: string }>) {
   return (
     <div
       className={`animate-pulse rounded-md ${className}`}
@@ -14,7 +14,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
   );
 }
 
-export function SkeletonText({ lines = 1, className = '' }: { lines?: number; className?: string }) {
+export function SkeletonText({ lines = 1, className = '' }: Readonly<{ lines?: number; className?: string }>) {
   return (
     <div className={`space-y-2 ${className}`} aria-hidden="true">
       {Array.from({ length: lines }, (_, index) => (
@@ -24,9 +24,9 @@ export function SkeletonText({ lines = 1, className = '' }: { lines?: number; cl
   );
 }
 
-export function SkeletonTable({ rows = 6, columns = 4 }: { rows?: number; columns?: number }) {
+export function SkeletonTable({ rows = 6, columns = 4 }: Readonly<{ rows?: number; columns?: number }>) {
   return (
-    <div className="w-full space-y-3" role="status" aria-label="Loading">
+    <output className="block w-full space-y-3" aria-label="Loading">
       <Skeleton className="h-8 w-full max-w-sm" />
       <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>
         <Skeleton className="h-10 w-full rounded-none" />
@@ -42,7 +42,7 @@ export function SkeletonTable({ rows = 6, columns = 4 }: { rows?: number; column
           </div>
         ))}
       </div>
-    </div>
+    </output>
   );
 }
 

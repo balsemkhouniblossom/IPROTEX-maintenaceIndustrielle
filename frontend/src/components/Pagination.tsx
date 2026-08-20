@@ -2,14 +2,14 @@
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
-interface PaginationProps {
+type PaginationProps = Readonly<{
   page: number;
   totalPages: number;
   totalItems: number;
   limit: number;
   onPageChange: (page: number) => void;
   className?: string;
-}
+}>;
 
 export default function Pagination({
   page,
@@ -92,9 +92,9 @@ export default function Pagination({
             </button>
           ))}
 
-          {pages[pages.length - 1] < safeTotalPages && (
+          {pages.at(-1)! < safeTotalPages && (
             <>
-              {pages[pages.length - 1] < safeTotalPages - 1 && <span className="px-1 text-text-muted">...</span>}
+              {pages.at(-1)! < safeTotalPages - 1 && <span className="px-1 text-text-muted">...</span>}
               <button
                 type="button"
                 onClick={() => onPageChange(safeTotalPages)}

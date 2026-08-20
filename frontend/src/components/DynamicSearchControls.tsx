@@ -5,7 +5,7 @@ import { ALL_FIELDS_TOKEN } from '@/services/dynamicSearch';
 const SEARCH_HIGHLIGHT_ATTR = 'data-search-highlight';
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function buildSearchExpression(searchTerm: string): RegExp | null {
@@ -134,7 +134,7 @@ function highlightTableText(searchTerm: string): void {
   });
 }
 
-interface DynamicSearchControlsProps {
+type DynamicSearchControlsProps = Readonly<{
   selectedField: string;
   onSelectedFieldChange: (value: string) => void;
   searchableFields: string[];
@@ -145,7 +145,7 @@ interface DynamicSearchControlsProps {
   className?: string;
   selectClassName?: string;
   inputClassName?: string;
-}
+}>;
 
 function toDisplayLabel(field: string): string {
   return field

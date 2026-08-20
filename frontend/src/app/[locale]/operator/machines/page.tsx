@@ -65,6 +65,16 @@ function stringId(value: unknown): string {
 
 const normalizeMachineTypeId = (machine: { type_id?: unknown }) => stringId(machine.type_id);
 
+function machineStatusClassName(status: string): string {
+    if (status === "operational") {
+        return "bg-green-100 text-green-700";
+    }
+    if (status === "maintenance") {
+        return "bg-yellow-100 text-yellow-700";
+    }
+    return "bg-red-100 text-red-700";
+}
+
 function isNotFoundError(error: unknown): boolean {
     return (
         typeof error === "object" &&
@@ -270,14 +280,7 @@ function OperatorMachinesPageContent() {
                                 <div className="flex flex-col items-end gap-2">
                                     <CogIcon className="w-7 h-7 text-blue-600" />
 
-                                    <span
-                                        className={`text-xs px-3 py-1 rounded-full font-medium ${machine.status === "operational"
-                                            ? "bg-green-100 text-green-700"
-                                            : machine.status === "maintenance"
-                                                ? "bg-yellow-100 text-yellow-700"
-                                                : "bg-red-100 text-red-700"
-                                            }`}
-                                    >
+                                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${machineStatusClassName(machine.status)}`}>
                                         {tMachines(`status.${machine.status}`)}
                                     </span>
                                 </div>

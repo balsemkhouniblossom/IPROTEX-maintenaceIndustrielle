@@ -4,20 +4,20 @@ import { ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
-interface ModalProps {
+type ModalProps = Readonly<{
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-}
+}>;
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
   const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDialogElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
   // Focus management: move focus into the dialog on open (WCAG 2.1
@@ -53,7 +53,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       if (focusable.length === 0) return;
 
       const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const last = focusable.at(-1);
+      if (!last) return;
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
@@ -93,9 +94,9 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           onClick={onClose}
         />
 
-        <div
+        <dialog
           ref={panelRef}
-          role="dialog"
+          open
           aria-modal="true"
           aria-labelledby={titleId}
           tabIndex={-1}
@@ -119,7 +120,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           <div className="panel-content modal-body max-h-[calc(100vh-5.5rem)] min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:max-h-[calc(100vh-7rem)] sm:p-4">
             {children}
           </div>
-        </div>
+        </dialog>
       </div>
     </div>,
     document.body,

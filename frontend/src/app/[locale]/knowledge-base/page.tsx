@@ -133,7 +133,13 @@ function parseCsv(text: string): string[] {
 }
 
 function csvToText(values?: string[]): string {
-  return values && values.length ? values.join(", ") : "";
+  return values?.length ? values.join(", ") : "";
+}
+
+function apiItems<T>(payload: T[] | { items?: T[] } | undefined): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
 }
 
 interface ArticleFormState {
@@ -210,18 +216,10 @@ export default function KnowledgeBasePage() {
         apiService.getMaintenancePlans(),
       ]);
 
-      setArticles(
-        Array.isArray(articlesRes.data?.items) ? articlesRes.data.items : [],
-      );
-      setMachines(
-        Array.isArray(machinesRes.data) ? machinesRes.data : machinesRes.data?.items || [],
-      );
-      setMachineTypes(
-        Array.isArray(typesRes.data) ? typesRes.data : typesRes.data?.items || [],
-      );
-      setMaintenancePlans(
-        Array.isArray(plansRes.data) ? plansRes.data : plansRes.data?.items || [],
-      );
+      setArticles(apiItems<KnowledgeArticle>(articlesRes.data));
+      setMachines(apiItems<Machine>(machinesRes.data));
+      setMachineTypes(apiItems<MachineType>(typesRes.data));
+      setMaintenancePlans(apiItems<MaintenancePlan>(plansRes.data));
     } catch (error) {
       console.error("Error loading knowledge base articles:", error);
       showNotification("error", t("notifications.loadFailed"));
@@ -894,9 +892,11 @@ export default function KnowledgeBasePage() {
         )}
         {historyLoading ? (
           <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-        ) : historyVersions.length === 0 ? (
+        ) : null}
+        {!historyLoading && historyVersions.length === 0 ? (
           <div className="text-sm text-slate-500">{t("history.empty")}</div>
-        ) : (
+        ) : null}
+        {!historyLoading && historyVersions.length > 0 ? (
           <div className="space-y-2">
             {historyVersions.map((version) => {
               const status = version.status ?? "draft";
@@ -920,7 +920,7 @@ export default function KnowledgeBasePage() {
               );
             })}
           </div>
-        )}
+        ) : null}
       </Modal>
 
       <Modal

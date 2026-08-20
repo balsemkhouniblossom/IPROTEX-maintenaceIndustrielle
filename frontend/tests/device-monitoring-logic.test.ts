@@ -136,7 +136,7 @@ test("LiveStatusBadge renders nothing for a machine with no registered device, p
 
   assert.match(
     source,
-    /if \(!status \|\| !status\.hasDevice\) return null;/,
+    /if \(!status\?\.hasDevice\) return null;/,
     "the badge must render nothing when the machine has no device, not a placeholder or a disabled state",
   );
 });
@@ -221,10 +221,16 @@ test("all supported locales define the deviceMonitoring translation namespace wi
     const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
     assert.ok(messages.deviceMonitoring, `${locale}.json must have a deviceMonitoring namespace`);
-    assert.ok(
-      typeof messages.sidebar?.navigation?.devices === "string" &&
-        messages.sidebar.navigation.devices.length > 0,
-      `${locale}.json sidebar.navigation.devices must be a non-empty string`,
+    const devicesSidebarLabel = messages.sidebar?.navigation?.devices;
+    assert.equal(
+      typeof devicesSidebarLabel,
+      "string",
+      `${locale}.json sidebar.navigation.devices must be a string`,
+    );
+    assert.notEqual(
+      devicesSidebarLabel.length,
+      0,
+      `${locale}.json sidebar.navigation.devices must not be empty`,
     );
     keysByLocale[locale] = new Set(flatten(messages.deviceMonitoring));
   }

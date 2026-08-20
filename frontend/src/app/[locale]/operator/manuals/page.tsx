@@ -166,11 +166,13 @@ export default function OperatorManualsPage() {
           <section className="col-span-full panel">
             <div className="card-title mb-4">{t("openManual")}</div>
 
-            {loading ? (
+            {loading && (
               <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-            ) : visibleDocuments.length === 0 ? (
+            )}
+            {!loading && visibleDocuments.length === 0 && (
               <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            ) : (
+            )}
+            {!loading && visibleDocuments.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {visibleDocuments.map((doc) => (
                   <div key={doc._id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">

@@ -36,18 +36,18 @@ export default function LiveStatusBadge({
   machineId,
   status,
   onSubscribe,
-}: {
+}: Readonly<{
   machineId: string;
   status: LiveMachineStatus | undefined;
   onSubscribe: (machineId: string) => void;
-}) {
+}>) {
   const t = useTranslations("deviceMonitoring");
 
   useEffect(() => {
     onSubscribe(machineId);
   }, [machineId, onSubscribe]);
 
-  if (!status || !status.hasDevice) return null;
+  if (!status?.hasDevice) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid={`live-status-badge-${machineId}`}>

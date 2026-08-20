@@ -24,7 +24,8 @@ export default function LanguageSwitcher() {
     }
 
     const queryString = typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : '';
-    const nextPath = `/${nextSegments.join('/')}${queryString ? `?${queryString}` : ''}`;
+    const querySuffix = queryString ? `?${queryString}` : '';
+    const nextPath = `/${nextSegments.join('/')}${querySuffix}`;
 
     document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
     router.replace(nextPath);

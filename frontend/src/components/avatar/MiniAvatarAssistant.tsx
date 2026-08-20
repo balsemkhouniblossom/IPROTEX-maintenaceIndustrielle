@@ -6,13 +6,14 @@ import { ArrowRightIcon, CheckBadgeIcon } from "@heroicons/react/24/outline";
 import { usePrefersReducedMotion, useSeason, useTimeOfDay } from "@/hooks/useTimeOfDay";
 import {
   DEFAULT_AVATAR_ENVIRONMENT,
+  dismissAvatarMessage,
   getAvatarFirstName,
   getAssistantAnimationClass,
   getSleeveStyle,
   isAvatarMessageDismissed,
   normalizeAvatarRole,
+  resetAvatarMessageDismissal,
   selectAvatarMessage,
-  setAvatarMessageDismissed,
 } from "./avatar-config";
 import type { AvatarActionKey, MiniAvatarAssistantProps } from "./avatar-types";
 import { AvatarSpeechBubble } from "./AvatarSpeechBubble";
@@ -104,12 +105,12 @@ export function MiniAvatarAssistant({
   const roleLabelKey = roleLabelKeyFor(normalizedRole);
 
   const closeMessage = () => {
-    setAvatarMessageDismissed(window.sessionStorage, true);
+    dismissAvatarMessage(window.sessionStorage);
     setMessageOpen(false);
   };
 
   const openMessage = () => {
-    setAvatarMessageDismissed(window.sessionStorage, false);
+    resetAvatarMessageDismissal(window.sessionStorage);
     setMessageOpen(true);
   };
 
