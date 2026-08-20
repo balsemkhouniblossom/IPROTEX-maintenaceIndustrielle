@@ -138,10 +138,33 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage
 
+      - name: Verify coverage reports for SonarCloud
+        run: |
+          set -euo pipefail
+
+          for report in backend/coverage/lcov.info frontend/coverage/lcov.info; do
+            if [ ! -s "$report" ]; then
+              echo "::error::Coverage report is missing or empty: $report"
+              exit 1
+            fi
+
+            if ! grep -q '^SF:' "$report"; then
+              echo "::error::Coverage report has no source-file entries: $report"
+              exit 1
+            fi
+
+            echo "Coverage report ready: $report"
+            grep -m 3 '^SF:' "$report"
+          done
+
       - uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
+        with:
+          args: >
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_HOST_URL: https://sonarcloud.io
 
   backend-e2e:
     name: Backend E2E
