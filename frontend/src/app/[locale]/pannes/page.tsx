@@ -1,22 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import DashboardLayout from "@/components/DashboardLayout";
+import DynamicSearchControls from "@/components/DynamicSearchControls";
+import { Modal } from "@/components/Modal";
 import {
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  PencilIcon,
-  PlusIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
-import DashboardLayout from '@/components/DashboardLayout';
-import DynamicSearchControls from '@/components/DynamicSearchControls';
-import { Modal } from '@/components/Modal';
-import { apiService } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
-import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
-import Pagination from '@/components/Pagination';
+  ToastNotification,
+  type ToastNotificationState,
+} from "@/components/ToastNotification";
+import { apiService } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  ALL_FIELDS_TOKEN,
+  getSearchableFields,
+  matchesDynamicSearch,
+} from "@/services/dynamicSearch";
+import Pagination from "@/components/Pagination";
 
 interface Panne {
   _id: string;
@@ -37,14 +39,14 @@ function getPanneSubmitLabel(
   return editing ? updateLabel : createLabel;
 }
 
-const CUSTOM_OPTION = '__custom__';
+const CUSTOM_OPTION = "__custom__";
 
 export default function PannesPage() {
-  const t = useTranslations('pannes');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("pannes");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const { user } = useAuth();
-  const isOperator = user?.role === 'operator';
+  const isOperator = user?.role === "operator";
 
   const [pannes, setPannes] = useState<Panne[]>([]);
   const [page, setPage] = useState(1);
@@ -52,18 +54,20 @@ export default function PannesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSearchField, setSelectedSearchField] =
+    useState(ALL_FIELDS_TOKEN);
   const [showModal, setShowModal] = useState(false);
   const [editingPanne, setEditingPanne] = useState<Panne | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [notification, setNotification] =
+    useState<ToastNotificationState | null>(null);
   const [formData, setFormData] = useState({
-    panne_id: '',
-    code_panne: '',
-    description: '',
-    gravite: '',
-    details: '',
+    panne_id: "",
+    code_panne: "",
+    description: "",
+    gravite: "",
+    details: "",
   });
   const [customMode, setCustomMode] = useState({
     panne_id: false,
@@ -86,7 +90,7 @@ export default function PannesPage() {
       setTotalPages(data?.totalPages || 1);
       setTotalItems(data?.totalItems || 0);
     } catch (error) {
-      console.error('Error loading pannes:', error);
+      console.error("Error loading pannes:", error);
       setPannes([]);
     } finally {
       setLoading(false);
@@ -98,10 +102,10 @@ export default function PannesPage() {
   async function refreshPannes() {
     await loadData(page);
     router.refresh();
-    window.dispatchEvent(new Event('pannes:changed'));
+    window.dispatchEvent(new Event("pannes:changed"));
   }
 
-  function showNotification(type: 'success' | 'error', message: string) {
+  function showNotification(type: "success" | "error", message: string) {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
   }
@@ -109,7 +113,10 @@ export default function PannesPage() {
   const searchableFields = useMemo(() => getSearchableFields(pannes), [pannes]);
 
   const filteredPannes = useMemo(
-    () => pannes.filter((panne) => matchesDynamicSearch(panne, searchTerm, selectedSearchField)),
+    () =>
+      pannes.filter((panne) =>
+        matchesDynamicSearch(panne, searchTerm, selectedSearchField),
+      ),
     [pannes, searchTerm, selectedSearchField],
   );
 
@@ -118,34 +125,38 @@ export default function PannesPage() {
     pannes.forEach((panne) => {
       if (panne?.panne_id) byId.set(panne.panne_id, panne);
     });
-    return Array.from(byId.values()).sort((a, b) => a.panne_id.localeCompare(b.panne_id));
+    return Array.from(byId.values()).sort((a, b) =>
+      a.panne_id.localeCompare(b.panne_id),
+    );
   }, [pannes]);
 
-  const gravityOptions = ['Trouble (Probleme)', 'Warning (Avertissement)'];
+  const gravityOptions = ["Trouble (Probleme)", "Warning (Avertissement)"];
 
   function applyPanneTemplate(selectedPanneId: string) {
-    const template = panneTemplates.find((item) => item.panne_id === selectedPanneId);
+    const template = panneTemplates.find(
+      (item) => item.panne_id === selectedPanneId,
+    );
     if (!template) {
       setFormData((prev) => ({ ...prev, panne_id: selectedPanneId }));
       return;
     }
 
     setFormData({
-      panne_id: template.panne_id ?? '',
-      code_panne: template.code_panne ?? '',
-      description: template.description ?? '',
-      gravite: template.gravite ?? '',
-      details: '',
+      panne_id: template.panne_id ?? "",
+      code_panne: template.code_panne ?? "",
+      description: template.description ?? "",
+      gravite: template.gravite ?? "",
+      details: "",
     });
   }
 
   function resetForm() {
     setFormData({
-      panne_id: '',
-      code_panne: '',
-      description: '',
-      gravite: '',
-      details: '',
+      panne_id: "",
+      code_panne: "",
+      description: "",
+      gravite: "",
+      details: "",
     });
     setCustomMode({
       panne_id: false,
@@ -158,15 +169,20 @@ export default function PannesPage() {
 
   function validateForm(): boolean {
     if (!formData.panne_id.trim()) {
-      showNotification('error', t('notifications.faultReferenceRequired', { default: 'Fault reference is required' }));
+      showNotification(
+        "error",
+        t("notifications.faultReferenceRequired", {
+          default: "Fault reference is required",
+        }),
+      );
       return false;
     }
     if (!formData.code_panne.trim()) {
-      showNotification('error', t('notifications.codeRequired'));
+      showNotification("error", t("notifications.codeRequired"));
       return false;
     }
     if (!formData.description.trim()) {
-      showNotification('error', t('notifications.descriptionRequired'));
+      showNotification("error", t("notifications.descriptionRequired"));
       return false;
     }
     return true;
@@ -180,11 +196,11 @@ export default function PannesPage() {
   function openEditModal(panne: Panne) {
     setEditingPanne(panne);
     setFormData({
-      panne_id: panne.panne_id ?? '',
-      code_panne: panne.code_panne ?? '',
-      description: panne.description ?? '',
-      gravite: panne.gravite ?? '',
-      details: '',
+      panne_id: panne.panne_id ?? "",
+      code_panne: panne.code_panne ?? "",
+      description: panne.description ?? "",
+      gravite: panne.gravite ?? "",
+      details: "",
     });
     setCustomMode({
       panne_id: false,
@@ -196,15 +212,15 @@ export default function PannesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t('notifications.confirmDelete'))) return;
+    if (!confirm(t("notifications.confirmDelete"))) return;
 
     try {
       await apiService.deletePanne(id);
       await refreshPannes();
-      showNotification('success', t('notifications.deleted'));
+      showNotification("success", t("notifications.deleted"));
     } catch (error) {
-      console.error('Error deleting panne:', error);
-      showNotification('error', t('notifications.deleteFailed'));
+      console.error("Error deleting panne:", error);
+      showNotification("error", t("notifications.deleteFailed"));
     }
   }
 
@@ -229,18 +245,18 @@ export default function PannesPage() {
 
       if (editingPanne) {
         await apiService.updatePanne(editingPanne._id, payload);
-        showNotification('success', t('notifications.updated'));
+        showNotification("success", t("notifications.updated"));
       } else {
         await apiService.createPanne(payload);
-        showNotification('success', t('notifications.created'));
+        showNotification("success", t("notifications.created"));
       }
 
       setShowModal(false);
       resetForm();
       await refreshPannes();
     } catch (error) {
-      console.error('Error saving panne:', error);
-      showNotification('error', t('notifications.saveFailed'));
+      console.error("Error saving panne:", error);
+      showNotification("error", t("notifications.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -257,12 +273,12 @@ export default function PannesPage() {
       loadData();
     };
 
-    window.addEventListener('pannes:changed', handleChanged);
-    window.addEventListener('focus', handleChanged);
+    window.addEventListener("pannes:changed", handleChanged);
+    window.addEventListener("focus", handleChanged);
 
     return () => {
-      window.removeEventListener('pannes:changed', handleChanged);
-      window.removeEventListener('focus', handleChanged);
+      window.removeEventListener("pannes:changed", handleChanged);
+      window.removeEventListener("focus", handleChanged);
     };
     // keep the existing event listener lifecycle stable; loadData reads current state when the event fires.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -270,7 +286,7 @@ export default function PannesPage() {
 
   if (loading) {
     return (
-      <DashboardLayout title={t('title')}>
+      <DashboardLayout title={t("title")}>
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
         </div>
@@ -279,42 +295,39 @@ export default function PannesPage() {
   }
 
   return (
-    <DashboardLayout title={t('title')}>
-      {notification && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${notification.type === 'success'
-            ? 'bg-green-100 text-green-800 border border-green-200'
-            : 'bg-red-100 text-red-800 border border-red-200'
-            }`}
-        >
-          {notification.type === 'success' ? (
-            <CheckCircleIcon className="w-5 h-5" />
-          ) : (
-            <ExclamationTriangleIcon className="w-5 h-5" />
-          )}
-          <span>{notification.message}</span>
-          <button type="button" onClick={() => setNotification(null)} className="ml-2 text-gray-500 hover:text-gray-700" title={tCommon('close')}>
-            x
-          </button>
-        </div>
-      )}
+    <DashboardLayout title={t("title")}>
+      <ToastNotification
+        notification={notification}
+        onClose={() => setNotification(null)}
+        closeLabel={tCommon("close")}
+      />
 
       <div className="bento-grid">
         <div className="col-span-full mb-6 bento-item">
           <div className="panel">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">{t('heading')}</h1>
-                <p className="text-slate-600 mt-1">{t('description')}</p>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  {t("heading")}
+                </h1>
+                <p className="text-slate-600 mt-1">{t("description")}</p>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-end">
-                  <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
-                  <div className="text-sm text-slate-500">{t('totalPannes')}</div>
+                  <div className="text-3xl font-bold text-blue-600">
+                    {totalItems}
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {t("totalPannes")}
+                  </div>
                 </div>
-                <button type="button" onClick={openCreateModal} className="btn-primary flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="btn-primary flex items-center space-x-2"
+                >
                   <PlusIcon className="w-4 h-4" />
-                  <span>{t('actions.add')}</span>
+                  <span>{t("actions.add")}</span>
                 </button>
               </div>
             </div>
@@ -323,32 +336,36 @@ export default function PannesPage() {
               selectedField={selectedSearchField}
               onSelectedFieldChange={setSelectedSearchField}
               searchableFields={searchableFields}
-              allFieldsLabel={tCommon('table.allFields', { default: 'All fields' })}
+              allFieldsLabel={tCommon("table.allFields", {
+                default: "All fields",
+              })}
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
-              searchPlaceholder={t('searchPlaceholder')}
+              searchPlaceholder={t("searchPlaceholder")}
             />
           </div>
         </div>
 
         <div className="col-span-full bento-item panel">
-          <div className="card-title">{t('allPannes')}</div>
+          <div className="card-title">{t("allPannes")}</div>
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('table.faultReference', { default: 'Fault Reference' })}</th>
-                  <th>{t('table.code')}</th>
-                  <th>{t('table.description')}</th>
-                  <th>{t('table.severity')}</th>
-                  <th>{tCommon('table.actions')}</th>
+                  <th>
+                    {t("table.faultReference", { default: "Fault Reference" })}
+                  </th>
+                  <th>{t("table.code")}</th>
+                  <th>{t("table.description")}</th>
+                  <th>{t("table.severity")}</th>
+                  <th>{tCommon("table.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPannes.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-gray-500">
-                      {searchTerm ? t('empty.search') : t('empty.default')}
+                      {searchTerm ? t("empty.search") : t("empty.default")}
                     </td>
                   </tr>
                 ) : (
@@ -357,28 +374,28 @@ export default function PannesPage() {
                       <td className="font-medium">{panne.panne_id}</td>
                       <td>{panne.code_panne}</td>
                       <td>{panne.description}</td>
-                      <td>{panne.gravite || tCommon('notAvailable')}</td>
+                      <td>{panne.gravite || tCommon("notAvailable")}</td>
                       <td>
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => openEditModal(panne)}
-                            aria-label={`${t('actions.edit')} ${panne.panne_id}`}
-                            title={t('actions.edit')}
+                            aria-label={`${t("actions.edit")} ${panne.panne_id}`}
+                            title={t("actions.edit")}
                             className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
                             <PencilIcon className="h-4 w-4 shrink-0" />
-                            <span>{t('actions.edit')}</span>
+                            <span>{t("actions.edit")}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(panne._id)}
-                            aria-label={`${t('actions.delete')} ${panne.panne_id}`}
-                            title={t('actions.delete')}
+                            aria-label={`${t("actions.delete")} ${panne.panne_id}`}
+                            title={t("actions.delete")}
                             className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
                             <TrashIcon className="h-4 w-4 shrink-0" />
-                            <span>{t('actions.delete')}</span>
+                            <span>{t("actions.delete")}</span>
                           </button>
                         </div>
                       </td>
@@ -406,13 +423,15 @@ export default function PannesPage() {
           setShowModal(false);
           resetForm();
         }}
-        title={editingPanne ? t('modal.edit') : t('modal.add')}
+        title={editingPanne ? t("modal.edit") : t("modal.add")}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.faultReference', { default: 'Fault Reference' })}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.faultReference", { default: "Fault Reference" })}
+              </label>
               {isOperator ? (
                 <select
                   value={formData.panne_id}
@@ -420,17 +439,21 @@ export default function PannesPage() {
                     const selectedValue = e.target.value;
                     if (selectedValue === CUSTOM_OPTION) {
                       setCustomMode((prev) => ({ ...prev, panne_id: true }));
-                      setFormData((prev) => ({ ...prev, panne_id: '' }));
+                      setFormData((prev) => ({ ...prev, panne_id: "" }));
                       return;
                     }
                     setCustomMode((prev) => ({ ...prev, panne_id: false }));
                     applyPanneTemplate(selectedValue);
                   }}
                   className="input-field"
-                  title={t('form.faultReference', { default: 'Fault Reference' })}
+                  title={t("form.faultReference", {
+                    default: "Fault Reference",
+                  })}
                   required
                 >
-                  <option value="">{t('form.faultReference', { default: 'Fault Reference' })}</option>
+                  <option value="">
+                    {t("form.faultReference", { default: "Fault Reference" })}
+                  </option>
                   <option value={CUSTOM_OPTION}>Custom value...</option>
                   {panneTemplates.map((panne) => (
                     <option key={panne._id} value={panne.panne_id}>
@@ -442,9 +465,13 @@ export default function PannesPage() {
                 <input
                   type="text"
                   value={formData.panne_id}
-                  onChange={(e) => setFormData({ ...formData, panne_id: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, panne_id: e.target.value })
+                  }
                   className="input-field"
-                  title={t('form.faultReference', { default: 'Fault Reference' })}
+                  title={t("form.faultReference", {
+                    default: "Fault Reference",
+                  })}
                   required
                 />
               )}
@@ -452,34 +479,42 @@ export default function PannesPage() {
                 <input
                   type="text"
                   value={formData.panne_id}
-                  onChange={(e) => setFormData({ ...formData, panne_id: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, panne_id: e.target.value })
+                  }
                   className="input-field mt-2"
-                  title={t('form.faultReference', { default: 'Fault Reference' })}
+                  title={t("form.faultReference", {
+                    default: "Fault Reference",
+                  })}
                   placeholder="Custom fault reference"
                   required
                 />
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.code')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.code")}
+              </label>
               {isOperator ? (
                 <select
                   value={formData.code_panne}
                   onChange={(e) => {
                     if (e.target.value === CUSTOM_OPTION) {
                       setCustomMode((prev) => ({ ...prev, code_panne: true }));
-                      setFormData((prev) => ({ ...prev, code_panne: '' }));
+                      setFormData((prev) => ({ ...prev, code_panne: "" }));
                       return;
                     }
                     setCustomMode((prev) => ({ ...prev, code_panne: false }));
-                    const template = panneTemplates.find((item) => item.code_panne === e.target.value);
+                    const template = panneTemplates.find(
+                      (item) => item.code_panne === e.target.value,
+                    );
                     if (template) applyPanneTemplate(template.panne_id);
                   }}
                   className="input-field"
-                  title={t('form.code')}
+                  title={t("form.code")}
                   required
                 >
-                  <option value="">{t('form.code')}</option>
+                  <option value="">{t("form.code")}</option>
                   <option value={CUSTOM_OPTION}>Custom value...</option>
                   {panneTemplates.map((panne) => (
                     <option key={`${panne._id}-code`} value={panne.code_panne}>
@@ -491,9 +526,11 @@ export default function PannesPage() {
                 <input
                   type="text"
                   value={formData.code_panne}
-                  onChange={(e) => setFormData({ ...formData, code_panne: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code_panne: e.target.value })
+                  }
                   className="input-field"
-                  title={t('form.code')}
+                  title={t("form.code")}
                   required
                 />
               )}
@@ -501,9 +538,11 @@ export default function PannesPage() {
                 <input
                   type="text"
                   value={formData.code_panne}
-                  onChange={(e) => setFormData({ ...formData, code_panne: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code_panne: e.target.value })
+                  }
                   className="input-field mt-2"
-                  title={t('form.code')}
+                  title={t("form.code")}
                   placeholder="Custom code"
                   required
                 />
@@ -512,28 +551,35 @@ export default function PannesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.description')}</label>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.description")}
+            </label>
             {isOperator ? (
               <select
                 value={formData.description}
                 onChange={(e) => {
                   if (e.target.value === CUSTOM_OPTION) {
                     setCustomMode((prev) => ({ ...prev, description: true }));
-                    setFormData((prev) => ({ ...prev, description: '' }));
+                    setFormData((prev) => ({ ...prev, description: "" }));
                     return;
                   }
                   setCustomMode((prev) => ({ ...prev, description: false }));
-                  const template = panneTemplates.find((item) => item.description === e.target.value);
+                  const template = panneTemplates.find(
+                    (item) => item.description === e.target.value,
+                  );
                   if (template) applyPanneTemplate(template.panne_id);
                 }}
                 className="input-field"
-                title={t('form.description')}
+                title={t("form.description")}
                 required
               >
-                <option value="">{t('form.description')}</option>
+                <option value="">{t("form.description")}</option>
                 <option value={CUSTOM_OPTION}>Custom value...</option>
                 {panneTemplates.map((panne) => (
-                  <option key={`${panne._id}-description`} value={panne.description}>
+                  <option
+                    key={`${panne._id}-description`}
+                    value={panne.description}
+                  >
                     {panne.description}
                   </option>
                 ))}
@@ -541,9 +587,11 @@ export default function PannesPage() {
             ) : (
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 className="input-field"
-                title={t('form.description')}
+                title={t("form.description")}
                 rows={3}
                 required
               />
@@ -551,9 +599,11 @@ export default function PannesPage() {
             {isOperator && customMode.description && (
               <textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 className="input-field mt-2"
-                title={t('form.description')}
+                title={t("form.description")}
                 rows={3}
                 placeholder="Custom description"
                 required
@@ -562,22 +612,24 @@ export default function PannesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.severity')}</label>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.severity")}
+            </label>
             <select
               value={formData.gravite}
               onChange={(e) => {
                 if (e.target.value === CUSTOM_OPTION) {
                   setCustomMode((prev) => ({ ...prev, gravite: true }));
-                  setFormData((prev) => ({ ...prev, gravite: '' }));
+                  setFormData((prev) => ({ ...prev, gravite: "" }));
                   return;
                 }
                 setCustomMode((prev) => ({ ...prev, gravite: false }));
                 setFormData({ ...formData, gravite: e.target.value });
               }}
               className="input-field"
-              title={t('form.severity')}
+              title={t("form.severity")}
             >
-              <option value="">{t('form.severity')}</option>
+              <option value="">{t("form.severity")}</option>
               <option value={CUSTOM_OPTION}>Custom value...</option>
               {gravityOptions.map((option) => (
                 <option key={option} value={option}>
@@ -589,20 +641,29 @@ export default function PannesPage() {
               <input
                 type="text"
                 value={formData.gravite}
-                onChange={(e) => setFormData({ ...formData, gravite: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, gravite: e.target.value })
+                }
                 className="input-field mt-2"
-                title={t('form.severity')}
+                title={t("form.severity")}
                 placeholder="Custom severity"
               />
             )}
           </div>
 
           <div>
-            <label htmlFor="panne-details" className="block text-sm font-medium text-gray-dark mb-1">Additional details (optional)</label>
+            <label
+              htmlFor="panne-details"
+              className="block text-sm font-medium text-gray-dark mb-1"
+            >
+              Additional details (optional)
+            </label>
             <textarea
               id="panne-details"
               value={formData.details}
-              onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, details: e.target.value })
+              }
               className="input-field"
               rows={3}
               title="Additional details"
@@ -619,15 +680,15 @@ export default function PannesPage() {
               }}
               className="btn-secondary"
             >
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
               {getPanneSubmitLabel(
                 submitting,
                 Boolean(editingPanne),
-                tCommon('saving'),
-                tCommon('actions.update'),
-                tCommon('actions.create'),
+                tCommon("saving"),
+                tCommon("actions.update"),
+                tCommon("actions.create"),
               )}
             </button>
           </div>

@@ -1,23 +1,25 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import DashboardLayout from "@/components/DashboardLayout";
+import DynamicSearchControls from "@/components/DynamicSearchControls";
+import { Modal } from "@/components/Modal";
+import Pagination from "@/components/Pagination";
 import {
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  PencilIcon,
-  PlusIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
-import DashboardLayout from '@/components/DashboardLayout';
-import DynamicSearchControls from '@/components/DynamicSearchControls';
-import { Modal } from '@/components/Modal';
-import Pagination from '@/components/Pagination';
-import { apiService } from '@/services/api';
-import { displayText } from '@/services/displayValues';
-import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from '@/services/dynamicSearch';
-import { normalizeApiItems } from '@/services/pagination';
+  ToastNotification,
+  type ToastNotificationState,
+} from "@/components/ToastNotification";
+import { apiService } from "@/services/api";
+import { displayText } from "@/services/displayValues";
+import {
+  ALL_FIELDS_TOKEN,
+  getSearchableFields,
+  matchesDynamicSearch,
+} from "@/services/dynamicSearch";
+import { normalizeApiItems } from "@/services/pagination";
 
 interface WorkOrderRef {
   _id: string;
@@ -54,22 +56,22 @@ interface UserItem {
 }
 
 function getWorkOrderLabel(ot: string | WorkOrderRef): string {
-  if (typeof ot === 'string') return displayText(ot, '');
-  return displayText(ot?.ot_id, '');
+  if (typeof ot === "string") return displayText(ot, "");
+  return displayText(ot?.ot_id, "");
 }
 
 function getTechnicianLabel(user: string | TechnicianRef): string {
-  if (typeof user === 'string') return displayText(user, '');
-  return displayText(user?.nom_complet, '');
+  if (typeof user === "string") return displayText(user, "");
+  return displayText(user?.nom_complet, "");
 }
 
 function getRefId(ref: string | { _id: string }): string {
-  return typeof ref === 'string' ? ref : ref?._id || '';
+  return typeof ref === "string" ? ref : ref?._id || "";
 }
 
 export default function InterventionReportsPage() {
-  const t = useTranslations('interventionReports');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("interventionReports");
+  const tCommon = useTranslations("common");
   const router = useRouter();
 
   const [reports, setReports] = useState<InterventionReport[]>([]);
@@ -80,22 +82,26 @@ export default function InterventionReportsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSearchField, setSelectedSearchField] =
+    useState(ALL_FIELDS_TOKEN);
   const [showModal, setShowModal] = useState(false);
-  const [editingReport, setEditingReport] = useState<InterventionReport | null>(null);
+  const [editingReport, setEditingReport] = useState<InterventionReport | null>(
+    null,
+  );
   const [submitting, setSubmitting] = useState(false);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [notification, setNotification] =
+    useState<ToastNotificationState | null>(null);
   const [formData, setFormData] = useState({
-    report_id: '',
-    ot_id: '',
-    technician_id: '',
-    date_debut: '',
-    date_fin: '',
-    cause_racine: '',
-    description_action: '',
-    etat_final: '',
-    validation_responsable: '',
+    report_id: "",
+    ot_id: "",
+    technician_id: "",
+    date_debut: "",
+    date_fin: "",
+    cause_racine: "",
+    description_action: "",
+    etat_final: "",
+    validation_responsable: "",
   });
 
   const loadData = useCallback(async () => {
@@ -117,10 +123,10 @@ export default function InterventionReportsPage() {
       setWorkOrders(workOrdersData);
 
       setTechnicians(
-        usersData.filter((user: UserItem) => user.role === 'technician')
+        usersData.filter((user: UserItem) => user.role === "technician"),
       );
     } catch (error) {
-      console.error('Error loading intervention reports:', error);
+      console.error("Error loading intervention reports:", error);
     } finally {
       setLoading(false);
     }
@@ -129,10 +135,10 @@ export default function InterventionReportsPage() {
   async function refreshReports() {
     await loadData();
     router.refresh();
-    window.dispatchEvent(new Event('intervention-reports:changed'));
+    window.dispatchEvent(new Event("intervention-reports:changed"));
   }
 
-  function showNotification(type: 'success' | 'error', message: string) {
+  function showNotification(type: "success" | "error", message: string) {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
   }
@@ -147,47 +153,58 @@ export default function InterventionReportsPage() {
     [reports],
   );
 
-  const searchableFields = useMemo(() => getSearchableFields(searchableReports), [searchableReports]);
+  const searchableFields = useMemo(
+    () => getSearchableFields(searchableReports),
+    [searchableReports],
+  );
 
   const filteredReports = useMemo(
-    () => searchableReports.filter((report) => matchesDynamicSearch(report, searchTerm, selectedSearchField)),
+    () =>
+      searchableReports.filter((report) =>
+        matchesDynamicSearch(report, searchTerm, selectedSearchField),
+      ),
     [searchableReports, searchTerm, selectedSearchField],
   );
 
   function resetForm() {
     setFormData({
-      report_id: '',
-      ot_id: '',
-      technician_id: '',
-      date_debut: '',
-      date_fin: '',
-      cause_racine: '',
-      description_action: '',
-      etat_final: '',
-      validation_responsable: '',
+      report_id: "",
+      ot_id: "",
+      technician_id: "",
+      date_debut: "",
+      date_fin: "",
+      cause_racine: "",
+      description_action: "",
+      etat_final: "",
+      validation_responsable: "",
     });
     setEditingReport(null);
   }
 
   function validateForm(): boolean {
     if (!formData.report_id.trim()) {
-      showNotification('error', t('notifications.reportReferenceRequired', { default: 'Report reference is required' }));
+      showNotification(
+        "error",
+        t("notifications.reportReferenceRequired", {
+          default: "Report reference is required",
+        }),
+      );
       return false;
     }
     if (!formData.ot_id) {
-      showNotification('error', t('notifications.workOrderRequired'));
+      showNotification("error", t("notifications.workOrderRequired"));
       return false;
     }
     if (!formData.technician_id) {
-      showNotification('error', t('notifications.technicianRequired'));
+      showNotification("error", t("notifications.technicianRequired"));
       return false;
     }
     if (!formData.date_debut) {
-      showNotification('error', t('notifications.startDateRequired'));
+      showNotification("error", t("notifications.startDateRequired"));
       return false;
     }
     if (!formData.date_fin) {
-      showNotification('error', t('notifications.endDateRequired'));
+      showNotification("error", t("notifications.endDateRequired"));
       return false;
     }
     return true;
@@ -201,29 +218,29 @@ export default function InterventionReportsPage() {
   function openEditModal(report: InterventionReport) {
     setEditingReport(report);
     setFormData({
-      report_id: report.report_id ?? '',
+      report_id: report.report_id ?? "",
       ot_id: getRefId(report.ot_id),
       technician_id: getRefId(report.technician_id),
-      date_debut: report.date_debut ? report.date_debut.slice(0, 16) : '',
-      date_fin: report.date_fin ? report.date_fin.slice(0, 16) : '',
-      cause_racine: report.cause_racine ?? '',
-      description_action: report.description_action ?? '',
-      etat_final: report.etat_final ?? '',
-      validation_responsable: report.validation_responsable ?? '',
+      date_debut: report.date_debut ? report.date_debut.slice(0, 16) : "",
+      date_fin: report.date_fin ? report.date_fin.slice(0, 16) : "",
+      cause_racine: report.cause_racine ?? "",
+      description_action: report.description_action ?? "",
+      etat_final: report.etat_final ?? "",
+      validation_responsable: report.validation_responsable ?? "",
     });
     setShowModal(true);
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(t('notifications.confirmDelete'))) return;
+    if (!confirm(t("notifications.confirmDelete"))) return;
 
     try {
       await apiService.deleteInterventionReport(id);
       await refreshReports();
-      showNotification('success', t('notifications.deleted'));
+      showNotification("success", t("notifications.deleted"));
     } catch (error) {
-      console.error('Error deleting intervention report:', error);
-      showNotification('error', t('notifications.deleteFailed'));
+      console.error("Error deleting intervention report:", error);
+      showNotification("error", t("notifications.deleteFailed"));
     }
   }
 
@@ -242,25 +259,29 @@ export default function InterventionReportsPage() {
         date_fin: formData.date_fin,
       };
 
-      if (formData.cause_racine.trim()) payload.cause_racine = formData.cause_racine.trim();
-      if (formData.description_action.trim()) payload.description_action = formData.description_action.trim();
-      if (formData.etat_final.trim()) payload.etat_final = formData.etat_final.trim();
-      if (formData.validation_responsable.trim()) payload.validation_responsable = formData.validation_responsable.trim();
+      if (formData.cause_racine.trim())
+        payload.cause_racine = formData.cause_racine.trim();
+      if (formData.description_action.trim())
+        payload.description_action = formData.description_action.trim();
+      if (formData.etat_final.trim())
+        payload.etat_final = formData.etat_final.trim();
+      if (formData.validation_responsable.trim())
+        payload.validation_responsable = formData.validation_responsable.trim();
 
       if (editingReport) {
         await apiService.updateInterventionReport(editingReport._id, payload);
-        showNotification('success', t('notifications.updated'));
+        showNotification("success", t("notifications.updated"));
       } else {
         await apiService.createInterventionReport(payload);
-        showNotification('success', t('notifications.created'));
+        showNotification("success", t("notifications.created"));
       }
 
       setShowModal(false);
       resetForm();
       await refreshReports();
     } catch (error) {
-      console.error('Error saving intervention report:', error);
-      showNotification('error', t('notifications.saveFailed'));
+      console.error("Error saving intervention report:", error);
+      showNotification("error", t("notifications.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -275,12 +296,12 @@ export default function InterventionReportsPage() {
       loadData();
     };
 
-    window.addEventListener('intervention-reports:changed', handleChanged);
-    window.addEventListener('focus', handleChanged);
+    window.addEventListener("intervention-reports:changed", handleChanged);
+    window.addEventListener("focus", handleChanged);
 
     return () => {
-      window.removeEventListener('intervention-reports:changed', handleChanged);
-      window.removeEventListener('focus', handleChanged);
+      window.removeEventListener("intervention-reports:changed", handleChanged);
+      window.removeEventListener("focus", handleChanged);
     };
     // keep the existing event listener lifecycle stable; loadData reads current state when the event fires.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,7 +309,7 @@ export default function InterventionReportsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout title={t('title')}>
+      <DashboardLayout title={t("title")}>
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
         </div>
@@ -296,45 +317,42 @@ export default function InterventionReportsPage() {
     );
   }
 
-  const submitLabel = editingReport ? t('actions.update') : t('actions.create');
+  const submitLabel = editingReport ? t("actions.update") : t("actions.create");
 
   return (
-    <DashboardLayout title={t('title')}>
-      {notification && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${notification.type === 'success'
-            ? 'bg-green-100 text-green-800 border border-green-200'
-            : 'bg-red-100 text-red-800 border border-red-200'
-            }`}
-        >
-          {notification.type === 'success' ? (
-            <CheckCircleIcon className="w-5 h-5" />
-          ) : (
-            <ExclamationTriangleIcon className="w-5 h-5" />
-          )}
-          <span>{notification.message}</span>
-          <button type="button" onClick={() => setNotification(null)} className="ml-2 text-gray-500 hover:text-gray-700" title={tCommon('close')}>
-            x
-          </button>
-        </div>
-      )}
+    <DashboardLayout title={t("title")}>
+      <ToastNotification
+        notification={notification}
+        onClose={() => setNotification(null)}
+        closeLabel={tCommon("close")}
+      />
 
       <div className="bento-grid">
         <div className="col-span-full mb-6 bento-item">
           <div className="panel">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">{t('heading')}</h1>
-                <p className="text-slate-600 mt-1">{t('description')}</p>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  {t("heading")}
+                </h1>
+                <p className="text-slate-600 mt-1">{t("description")}</p>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-end">
-                  <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
-                  <div className="text-sm text-slate-500">{t('totalReports')}</div>
+                  <div className="text-3xl font-bold text-blue-600">
+                    {totalItems}
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {t("totalReports")}
+                  </div>
                 </div>
-                <button type="button" onClick={openCreateModal} className="btn-primary flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="btn-primary flex items-center space-x-2"
+                >
                   <PlusIcon className="w-4 h-4" />
-                  <span>{t('actions.add')}</span>
+                  <span>{t("actions.add")}</span>
                 </button>
               </div>
             </div>
@@ -343,66 +361,86 @@ export default function InterventionReportsPage() {
               selectedField={selectedSearchField}
               onSelectedFieldChange={setSelectedSearchField}
               searchableFields={searchableFields}
-              allFieldsLabel={tCommon('table.allFields', { default: 'All fields' })}
+              allFieldsLabel={tCommon("table.allFields", {
+                default: "All fields",
+              })}
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
-              searchPlaceholder={t('searchPlaceholder')}
+              searchPlaceholder={t("searchPlaceholder")}
             />
           </div>
         </div>
 
         <div className="col-span-full bento-item panel">
-          <div className="card-title">{t('allReports')}</div>
+          <div className="card-title">{t("allReports")}</div>
           <div className="overflow-x-auto">
             <table className="table">
               <thead>
                 <tr>
-                  <th>{t('table.reportReference', { default: 'Report Reference' })}</th>
-                  <th>{t('table.workOrder')}</th>
-                  <th>{t('table.technician')}</th>
-                  <th>{t('table.startDate')}</th>
-                  <th>{t('table.endDate')}</th>
-                  <th>{t('table.finalState')}</th>
-                  <th>{tCommon('table.actions')}</th>
+                  <th>
+                    {t("table.reportReference", {
+                      default: "Report Reference",
+                    })}
+                  </th>
+                  <th>{t("table.workOrder")}</th>
+                  <th>{t("table.technician")}</th>
+                  <th>{t("table.startDate")}</th>
+                  <th>{t("table.endDate")}</th>
+                  <th>{t("table.finalState")}</th>
+                  <th>{tCommon("table.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredReports.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-gray-500">
-                      {searchTerm ? t('empty.search') : t('empty.default')}
+                      {searchTerm ? t("empty.search") : t("empty.default")}
                     </td>
                   </tr>
                 ) : (
                   filteredReports.map((report) => (
                     <tr key={report._id}>
                       <td className="font-medium">{report.report_id}</td>
-                      <td>{getWorkOrderLabel(report.ot_id) || tCommon('notAvailable')}</td>
-                      <td>{getTechnicianLabel(report.technician_id) || tCommon('notAvailable')}</td>
-                      <td>{report.date_debut ? new Date(report.date_debut).toLocaleString() : tCommon('notAvailable')}</td>
-                      <td>{report.date_fin ? new Date(report.date_fin).toLocaleString() : tCommon('notAvailable')}</td>
-                      <td>{report.etat_final || tCommon('notAvailable')}</td>
+                      <td>
+                        {getWorkOrderLabel(report.ot_id) ||
+                          tCommon("notAvailable")}
+                      </td>
+                      <td>
+                        {getTechnicianLabel(report.technician_id) ||
+                          tCommon("notAvailable")}
+                      </td>
+                      <td>
+                        {report.date_debut
+                          ? new Date(report.date_debut).toLocaleString()
+                          : tCommon("notAvailable")}
+                      </td>
+                      <td>
+                        {report.date_fin
+                          ? new Date(report.date_fin).toLocaleString()
+                          : tCommon("notAvailable")}
+                      </td>
+                      <td>{report.etat_final || tCommon("notAvailable")}</td>
                       <td>
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => openEditModal(report)}
-                            aria-label={`${t('actions.edit')} ${report.report_id}`}
-                            title={t('actions.edit')}
+                            aria-label={`${t("actions.edit")} ${report.report_id}`}
+                            title={t("actions.edit")}
                             className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
                             <PencilIcon className="h-4 w-4 shrink-0" />
-                            <span>{t('actions.edit')}</span>
+                            <span>{t("actions.edit")}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDelete(report._id)}
-                            aria-label={`${t('actions.delete')} ${report.report_id}`}
-                            title={t('actions.delete')}
+                            aria-label={`${t("actions.delete")} ${report.report_id}`}
+                            title={t("actions.delete")}
                             className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
                           >
                             <TrashIcon className="h-4 w-4 shrink-0" />
-                            <span>{t('actions.delete')}</span>
+                            <span>{t("actions.delete")}</span>
                           </button>
                         </div>
                       </td>
@@ -430,32 +468,42 @@ export default function InterventionReportsPage() {
           setShowModal(false);
           resetForm();
         }}
-        title={editingReport ? t('modal.edit') : t('modal.add')}
+        title={editingReport ? t("modal.edit") : t("modal.add")}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.reportReference', { default: 'Report Reference' })}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.reportReference", { default: "Report Reference" })}
+              </label>
               <input
                 type="text"
                 value={formData.report_id}
-                onChange={(e) => setFormData({ ...formData, report_id: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, report_id: e.target.value })
+                }
                 className="input-field"
-                title={t('form.reportReference', { default: 'Report Reference' })}
+                title={t("form.reportReference", {
+                  default: "Report Reference",
+                })}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.workOrder')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.workOrder")}
+              </label>
               <select
                 value={formData.ot_id}
-                onChange={(e) => setFormData({ ...formData, ot_id: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, ot_id: e.target.value })
+                }
                 className="input-field"
-                title={t('form.workOrder')}
+                title={t("form.workOrder")}
                 required
               >
-                <option value="">{t('placeholders.selectWorkOrder')}</option>
+                <option value="">{t("placeholders.selectWorkOrder")}</option>
                 {workOrders.map((wo) => (
                   <option key={wo._id} value={wo._id}>
                     {wo.ot_id}
@@ -464,15 +512,19 @@ export default function InterventionReportsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.technician')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.technician")}
+              </label>
               <select
                 value={formData.technician_id}
-                onChange={(e) => setFormData({ ...formData, technician_id: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, technician_id: e.target.value })
+                }
                 className="input-field"
-                title={t('form.technician')}
+                title={t("form.technician")}
                 required
               >
-                <option value="">{t('placeholders.selectTechnician')}</option>
+                <option value="">{t("placeholders.selectTechnician")}</option>
                 {technicians.map((tech) => (
                   <option key={tech._id} value={tech._id}>
                     {tech.nom_complet}
@@ -481,78 +533,109 @@ export default function InterventionReportsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.startDate')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.startDate")}
+              </label>
               <input
                 type="datetime-local"
                 value={formData.date_debut}
-                onChange={(e) => setFormData({ ...formData, date_debut: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, date_debut: e.target.value })
+                }
                 className="input-field"
-                title={t('form.startDate')}
+                title={t("form.startDate")}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.endDate')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.endDate")}
+              </label>
               <input
                 type="datetime-local"
                 value={formData.date_fin}
-                onChange={(e) => setFormData({ ...formData, date_fin: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, date_fin: e.target.value })
+                }
                 className="input-field"
-                title={t('form.endDate')}
+                title={t("form.endDate")}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.finalState')}</label>
+              <label className="block text-sm font-medium text-gray-dark mb-1">
+                {t("form.finalState")}
+              </label>
               <input
                 type="text"
                 value={formData.etat_final}
-                onChange={(e) => setFormData({ ...formData, etat_final: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, etat_final: e.target.value })
+                }
                 className="input-field"
-                title={t('form.finalState')}
+                title={t("form.finalState")}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.rootCause')}</label>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.rootCause")}
+            </label>
             <textarea
               value={formData.cause_racine}
-              onChange={(e) => setFormData({ ...formData, cause_racine: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, cause_racine: e.target.value })
+              }
               className="input-field"
-              title={t('form.rootCause')}
+              title={t("form.rootCause")}
               rows={2}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.actionDescription')}</label>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.actionDescription")}
+            </label>
             <textarea
               value={formData.description_action}
-              onChange={(e) => setFormData({ ...formData, description_action: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description_action: e.target.value })
+              }
               className="input-field"
-              title={t('form.actionDescription')}
+              title={t("form.actionDescription")}
               rows={3}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">{t('form.responsibleValidation')}</label>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.responsibleValidation")}
+            </label>
             <input
               type="text"
               value={formData.validation_responsable}
-              onChange={(e) => setFormData({ ...formData, validation_responsable: e.target.value })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  validation_responsable: e.target.value,
+                })
+              }
               className="input-field"
-              title={t('form.responsibleValidation')}
+              title={t("form.responsibleValidation")}
             />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">
-              {tCommon('cancel')}
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="btn-secondary"
+            >
+              {tCommon("cancel")}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? tCommon('saving') : submitLabel}
+              {submitting ? tCommon("saving") : submitLabel}
             </button>
           </div>
         </form>
