@@ -2228,7 +2228,6 @@ html[data-theme='dark'] .operator-context-card {
 textarea,
 [contenteditable="true"] {
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .modal-header {
@@ -2268,7 +2267,6 @@ textarea,
   min-width: 0;
   vertical-align: top;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 :where(.table, .data-table, .responsive-table) th {

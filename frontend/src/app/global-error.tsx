@@ -13,10 +13,10 @@ import { reportClientError } from '@/services/errorReporting';
 export default function GlobalError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   useEffect(() => {
     reportClientError(error, { boundary: 'global-root', digest: error.digest });
   }, [error]);

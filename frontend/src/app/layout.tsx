@@ -46,9 +46,9 @@ function buildThemeInitScript() {
 
 export default async function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const cookieStore = await cookies();
   const cookieTheme = cookieStore.get(THEME_COOKIE_NAME)?.value;
   const themePreference = isThemePreference(cookieTheme) ? cookieTheme : 'system';

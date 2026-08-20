@@ -3,14 +3,13 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStatistics } from '@/hooks/useDashboardStatistics';
 import { useTranslations } from 'next-intl';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ProfileAvatar from '@/components/ProfileAvatar';
 import ThemeToggle from '@/components/theme/ThemeToggle';
-import { useParams } from 'next/navigation';
 import LiveClock from '@/components/LiveClock';
 import NotificationBell from '@/components/NotificationBell';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -35,11 +34,11 @@ import {
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
 
-interface DashboardLayoutProps {
+type DashboardLayoutProps = Readonly<{
   children: React.ReactNode;
   title: string;
   headerActions?: React.ReactNode;
-}
+}>;
 
 
 

@@ -3,13 +3,13 @@
 import { ReactNode } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
-interface BulkActionToolbarProps {
+type BulkActionToolbarProps = Readonly<{
   selectedCount: number;
   onClearSelection: () => void;
   clearLabel: string;
   countLabel: (count: number) => string;
   children: ReactNode;
-}
+}>;
 
 /**
  * The sticky "N selected — [actions]" bar that appears above a table once
