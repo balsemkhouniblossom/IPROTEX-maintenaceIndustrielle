@@ -137,9 +137,29 @@ function maintenancePlanId(workOrder: Record<string, any>): string | undefined {
   return plan;
 }
 
+function dateInputValue(value: unknown): string | number | Date | undefined {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") return value;
+
+  if (value && typeof value === "object") {
+    const item = value as Record<string, unknown>;
+    return (
+      dateInputValue(item.date_created) ??
+      dateInputValue(item.date_debut) ??
+      dateInputValue(item.created_at) ??
+      dateInputValue(item.updated_at)
+    );
+  }
+
+  return undefined;
+}
+
 function formatOptionalDate(value: unknown, locale: string, fallback: string): string {
-  if (!value) return fallback;
-  return new Date(String(value)).toLocaleString(locale);
+  const input = dateInputValue(value);
+  if (input === undefined || input === "") return fallback;
+
+  const date = new Date(input);
+  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString(locale);
 }
 
 function TechnicianActionButtons({
