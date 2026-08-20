@@ -1,8 +1,7 @@
 type PlanRef =
   | string
   | { _id?: string; maintenance_code?: string; plan_id?: string }
-  | null
-  | undefined;
+  | null;
 
 export interface PreventiveChecklistSearchable {
   instruction?: string;
@@ -11,7 +10,7 @@ export interface PreventiveChecklistSearchable {
   plan_id?: PlanRef;
 }
 
-function planLabel(plan: PlanRef): string {
+function planLabel(plan: PlanRef | undefined): string {
   if (!plan || typeof plan === "string") return "";
   return plan.maintenance_code || plan.plan_id || "";
 }

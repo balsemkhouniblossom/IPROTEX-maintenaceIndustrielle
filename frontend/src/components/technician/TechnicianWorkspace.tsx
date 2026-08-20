@@ -249,15 +249,17 @@ export function TechnicianDashboard() {
   return (
     <ProtectedRoute requiredRole="technician">
       <DashboardLayout title={t("dashboard.title")}>
-        {loading ? (
+        {loading && (
           <div className="panel">{t("loading")}</div>
-        ) : error ? (
+        )}
+        {!loading && error && (
           <ErrorBox
             message={error}
             retry={() => void load()}
             label={t("actions.retry")}
           />
-        ) : (
+        )}
+        {!loading && !error && (
           data && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -466,15 +468,17 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
               />
             </div>
           )}
-          {loading ? (
+          {loading && (
             <div className="panel">{t("loading")}</div>
-          ) : error ? (
+          )}
+          {!loading && error && (
             <ErrorBox
               message={error}
               retry={() => void load()}
               label={t("actions.retry")}
             />
-          ) : data?.items.length ? (
+          )}
+          {!loading && !error && data?.items.length ? (
             <>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.items.map((item) => (
@@ -494,7 +498,8 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
                 onPageChange={setPage}
               />
             </>
-          ) : (
+          ) : null}
+          {!loading && !error && !data?.items.length && (
             <div className="panel text-slate-500">{t("empty.workOrders")}</div>
           )}
         </div>
@@ -528,15 +533,17 @@ export function TechnicianManuals() {
   return (
     <ProtectedRoute requiredRole="technician">
       <DashboardLayout title={t("manuals.title")}>
-        {loading ? (
+        {loading && (
           <div className="panel">{t("loading")}</div>
-        ) : error ? (
+        )}
+        {!loading && error && (
           <ErrorBox
             message={error}
             retry={() => void load()}
             label={t("actions.retry")}
           />
-        ) : data?.items.length ? (
+        )}
+        {!loading && !error && data?.items.length ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.items.map((doc) => (
               <article className="panel" key={doc._id}>
@@ -558,7 +565,8 @@ export function TechnicianManuals() {
               </article>
             ))}
           </div>
-        ) : (
+        ) : null}
+        {!loading && !error && !data?.items.length && (
           <div className="panel">{t("empty.manuals")}</div>
         )}
         <ManualPreviewModal

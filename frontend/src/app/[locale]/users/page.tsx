@@ -120,6 +120,17 @@ function UsersPageContent() {
   const activeTitle = tUsers(`approvals.tabs.${activeView}`);
   const isPending = activeView === 'pending';
 
+  let listStateContent = null;
+  if (accessDenied) {
+    listStateContent = <AccessDenied tUsers={tUsers} />;
+  } else if (errorState) {
+    listStateContent = <ErrorState message={errorState} onRetry={() => void loadCurrentView()} tUsers={tUsers} />;
+  } else if (loading) {
+    listStateContent = <LoadingTable tUsers={tUsers} />;
+  } else if (items.length === 0) {
+    listStateContent = <EmptyState view={activeView} search={debouncedSearch} tUsers={tUsers} />;
+  }
+
   return (
     <DashboardLayout title={tUsers('pageTitle')}>
       {notification && (
@@ -306,15 +317,7 @@ function UsersPageContent() {
             )}
           </div>
 
-          {accessDenied ? (
-            <AccessDenied tUsers={tUsers} />
-          ) : errorState ? (
-            <ErrorState message={errorState} onRetry={() => void loadCurrentView()} tUsers={tUsers} />
-          ) : loading ? (
-            <LoadingTable tUsers={tUsers} />
-          ) : items.length === 0 ? (
-            <EmptyState view={activeView} search={debouncedSearch} tUsers={tUsers} />
-          ) : (
+          {listStateContent ?? (
             <>
               {isPending && (
                 <BulkActionToolbar
@@ -349,9 +352,8 @@ function UsersPageContent() {
                 </BulkActionToolbar>
               )}
 
-              <div
+              <section
                 className="users-table-scroll hidden lg:block"
-                role="region"
                 aria-label={tUsers('allUsers')}
               >
                 <table className="table users-table">
@@ -437,7 +439,7 @@ function UsersPageContent() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </section>
 
               <div className="grid gap-3 lg:hidden">
                 {items.map((user) => (

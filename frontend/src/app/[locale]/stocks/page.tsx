@@ -192,6 +192,65 @@ function StocksTableContent({
   );
 }
 
+function StockHistoryContent({
+  loading,
+  movements,
+  t,
+  tCommon,
+}: Readonly<{
+  loading: boolean;
+  movements: StockMovement[];
+  t: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
+}>) {
+  if (loading) {
+    return <div className="text-sm text-slate-500">{tCommon("loading")}</div>;
+  }
+
+  if (movements.length === 0) {
+    return (
+      <div className="text-sm text-slate-500">
+        {t("history.empty", { default: "No movements recorded for this stock yet." })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>{t("history.type", { default: "Type" })}</th>
+            <th>{t("history.quantityChange", { default: "Quantity Change" })}</th>
+            <th>{t("history.reservedChange", { default: "Reserved Change" })}</th>
+            <th>{t("history.stockAfter", { default: "Stock After" })}</th>
+            <th>{t("history.reservedAfter", { default: "Reserved After" })}</th>
+            <th>{t("history.reason", { default: "Reason" })}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {movements.map((movement) => (
+            <tr key={movement._id}>
+              <td>
+                <span
+                  className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${MOVEMENT_BADGE_CLASSES[movement.type]}`}
+                >
+                  {t(`movementTypes.${movement.type}`, { default: movement.type })}
+                </span>
+              </td>
+              <td>{formatDelta(movement.quantity_delta)}</td>
+              <td>{formatDelta(movement.reserved_delta)}</td>
+              <td>{movement.quantite_en_stock_after}</td>
+              <td>{movement.quantite_reservee_after}</td>
+              <td>{movement.reason || tCommon("notAvailable")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function StockTableRow({
   item,
   t,
@@ -696,44 +755,12 @@ export default function StocksPage() {
         {historyStock && (
           <div className="mb-3 text-sm font-medium text-slate-800">{partLabel(historyStock.part_id)}</div>
         )}
-        {historyLoading ? (
-          <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-        ) : historyMovements.length === 0 ? (
-          <div className="text-sm text-slate-500">{t("history.empty", { default: "No movements recorded for this stock yet." })}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t("history.type", { default: "Type" })}</th>
-                  <th>{t("history.quantityChange", { default: "Quantity Change" })}</th>
-                  <th>{t("history.reservedChange", { default: "Reserved Change" })}</th>
-                  <th>{t("history.stockAfter", { default: "Stock After" })}</th>
-                  <th>{t("history.reservedAfter", { default: "Reserved After" })}</th>
-                  <th>{t("history.reason", { default: "Reason" })}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyMovements.map((movement) => (
-                  <tr key={movement._id}>
-                    <td>
-                      <span
-                        className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${MOVEMENT_BADGE_CLASSES[movement.type]}`}
-                      >
-                        {t(`movementTypes.${movement.type}`, { default: movement.type })}
-                      </span>
-                    </td>
-                    <td>{formatDelta(movement.quantity_delta)}</td>
-                    <td>{formatDelta(movement.reserved_delta)}</td>
-                    <td>{movement.quantite_en_stock_after}</td>
-                    <td>{movement.quantite_reservee_after}</td>
-                    <td>{movement.reason || tCommon("notAvailable")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <StockHistoryContent
+          loading={historyLoading}
+          movements={historyMovements}
+          t={t}
+          tCommon={tCommon}
+        />
       </Modal>
     </DashboardLayout>
   );

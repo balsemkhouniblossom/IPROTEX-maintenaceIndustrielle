@@ -107,9 +107,9 @@ function scoreSearchableField(path: string, include: Set<string>): number {
 
 function collectFieldPaths(
   value: unknown,
-  prefix = '',
-  depth = 0,
-  maxDepth = DEFAULT_MAX_DEPTH,
+  prefix: string,
+  depth: number,
+  maxDepth: number,
   collector: Set<string>,
 ): void {
   if (value == null) return;
@@ -173,18 +173,27 @@ function hasDataField<T>(obj: unknown): obj is { data: T[] } {
   );
 }
 
+function normalizeSearchItems<T>(items: unknown): T[] {
+  if (Array.isArray(items)) {
+    return items;
+  }
+
+  if (hasItemsField<T>(items)) {
+    return items.items;
+  }
+
+  if (hasDataField<T>(items)) {
+    return items.data;
+  }
+
+  return [];
+}
+
 export function getSearchableFields<T>(
   items: unknown,
   options?: { maxDepth?: number; sampleSize?: number; maxFields?: number; exclude?: string[]; include?: string[] },
 ): string[] {
-  const safeItems: T[] =
-    Array.isArray(items)
-      ? items
-      : hasItemsField<T>(items)
-        ? items.items
-        : hasDataField<T>(items)
-          ? items.data
-          : [];
+  const safeItems = normalizeSearchItems<T>(items);
   if (safeItems.length === 0) {
     // Empty arrays are perfectly valid while data is loading.
     if (!Array.isArray(items)) {
@@ -230,28 +239,30 @@ export function getSearchableFields<T>(
 export function matchesDynamicSearch<T>(
   item: T,
   searchTerm: string,
-  selectedField = ALL_FIELDS_TOKEN,
-  maxDepth = DEFAULT_MAX_DEPTH,
+  selectedField?: string,
+  maxDepth?: number,
   options?: { include?: string[] },
 ): boolean {
+  const effectiveSelectedField = selectedField ?? ALL_FIELDS_TOKEN;
+  const effectiveMaxDepth = maxDepth ?? DEFAULT_MAX_DEPTH;
   const normalizedTerm = normalizeSearchText(searchTerm.trim());
   if (!normalizedTerm) return true;
 
-  if (selectedField === ALL_FIELDS_TOKEN) {
+  if (effectiveSelectedField === ALL_FIELDS_TOKEN) {
     const scopedFields = getSearchableFields([item], {
-      maxDepth,
+      maxDepth: effectiveMaxDepth,
       sampleSize: 1,
       maxFields: DEFAULT_MAX_FIELDS,
       include: options?.include,
     });
 
     if (scopedFields.length === 0) {
-      return stringifyValue(item, 0, maxDepth).includes(normalizedTerm);
+      return stringifyValue(item, 0, effectiveMaxDepth).includes(normalizedTerm);
     }
 
-    return scopedFields.some((field) => stringifyValue(getByPath(item, field), 0, maxDepth).includes(normalizedTerm));
+    return scopedFields.some((field) => stringifyValue(getByPath(item, field), 0, effectiveMaxDepth).includes(normalizedTerm));
   }
 
-  const value = getByPath(item, selectedField);
-  return stringifyValue(value, 0, maxDepth).includes(normalizedTerm);
+  const value = getByPath(item, effectiveSelectedField);
+  return stringifyValue(value, 0, effectiveMaxDepth).includes(normalizedTerm);
 }

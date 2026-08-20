@@ -64,6 +64,34 @@ export default function OtPiecesPage() {
     [searchableItems, searchTerm, selectedSearchField],
   );
 
+  let tableContent;
+  if (loading) {
+    tableContent = <div className="text-sm text-slate-500">{tCommon("loading")}</div>;
+  } else if (filteredItems.length === 0) {
+    tableContent = <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>;
+  } else {
+    tableContent = (
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Work Order</th>
+            <th>Part</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredItems.map((item) => (
+            <tr key={item._id}>
+              <td>{workOrderLabel(item.ot_id)}</td>
+              <td>{partLabel(item.part_id)}</td>
+              <td>{item.quantite ?? 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
   return (
     <DashboardLayout title="OT Pieces">
       <div className="bento-grid">
@@ -86,30 +114,7 @@ export default function OtPiecesPage() {
         </div>
 
         <div className="col-span-full panel overflow-x-auto">
-          {loading ? (
-            <div className="text-sm text-slate-500">{tCommon("loading")}</div>
-          ) : filteredItems.length === 0 ? (
-            <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Work Order</th>
-                  <th>Part</th>
-                  <th>Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => (
-                  <tr key={item._id}>
-                    <td>{workOrderLabel(item.ot_id)}</td>
-                    <td>{partLabel(item.part_id)}</td>
-                    <td>{item.quantite ?? 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          {tableContent}
         </div>
       </div>
     </DashboardLayout>

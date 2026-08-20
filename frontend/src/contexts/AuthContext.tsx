@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
 import api, { getCsrfHeaders, resetAuthRefreshState } from '../services/api';
 import {
   AUTH_SESSION_REFRESHED_EVENT,
@@ -71,22 +71,22 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<AuthStatus>('initializing');
 
-  const establishSession = (authToken: string, authUser: User, refreshToken?: string, persistent = true) => {
+  const establishSession = useCallback((authToken: string, authUser: User, refreshToken?: string, persistent = true) => {
     setToken(authToken);
     setUser(authUser);
     saveAuthSession(authToken, refreshToken, authUser, persistent);
     setStatus(getAuthStatusForUser(authUser));
 
     return authUser.role;
-  };
+  }, []);
 
-  const clearLocalSession = () => {
+  const clearLocalSession = useCallback(() => {
     setToken(null);
     setUser(null);
     setStatus('unauthenticated');
     clearAuthSession();
     resetAuthRefreshState();
-  };
+  }, []);
 
   // Browser storage is only a credential cache; the backend is the session authority.
   useEffect(() => {
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [clearLocalSession, establishSession]);
 
   useEffect(() => {
     const handleSessionExpired = () => {
@@ -178,9 +178,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [token]);
+  }, [clearLocalSession, token]);
 
-  const login = async (email: string, password: string, keepLoggedIn = true) => {
+  const login = useCallback(async (email: string, password: string, keepLoggedIn = true) => {
     try {
       const response = await api.post(
         '/auth/login',
@@ -206,18 +206,18 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       const responseMessage = responseData?.message;
 
       if (Array.isArray(responseMessage)) {
-        throw new Error(responseMessage.join(', '));
+        throw new TypeError(responseMessage.join(', '));
       }
 
       if (typeof responseMessage === 'string' && responseMessage.trim()) {
-        throw new Error(responseMessage);
+        throw new TypeError(responseMessage);
       }
 
       throw new Error(error?.message || 'Login failed');
     }
-  };
+  }, [clearLocalSession, establishSession]);
 
-  const register = async (
+  const register = useCallback(async (
     userData: Record<string, unknown>,
     options?: { locale?: string },
   ) => {
@@ -234,9 +234,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       const code = getRegistrationErrorCode(error);
       throw new Error(code || msg || 'Registration failed');
     }
-  };
+  }, []);
 
-  const completeSocialLogin = (
+  const completeSocialLogin = useCallback((
     authToken: string,
     authUser: User,
     refreshToken?: string,
@@ -247,13 +247,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       user: authUser,
     });
     return establishSession(authToken, authUser, refreshToken);
-  };
+  }, [establishSession]);
 
-  const clearSession = () => {
+  const clearSession = useCallback(() => {
     clearLocalSession();
-  };
+  }, [clearLocalSession]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     void api
       .post('/auth/logout', {}, { withCredentials: true, headers: getCsrfHeaders() })
       .catch(() => undefined);
@@ -262,9 +262,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const path = typeof window !== 'undefined' ? window.location.pathname : '';
     const locale = path.split('/')[1] || 'en';
     window.location.href = `/${locale}/auth/login`;
-  };
+  }, [clearSession]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     token,
     status,
@@ -275,7 +275,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     logout,
     isLoading,
     isAuthenticated: !!token && !!user,
-  };
+  }), [clearSession, completeSocialLogin, isLoading, login, logout, register, status, token, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

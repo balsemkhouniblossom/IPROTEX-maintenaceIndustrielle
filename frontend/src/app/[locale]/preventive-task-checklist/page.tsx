@@ -376,18 +376,26 @@ export default function PreventiveTaskChecklistPage() {
     );
   }
 
+  let notificationClass = "bg-blue-100 text-blue-800 border border-blue-200";
+  if (notification?.type === "success") {
+    notificationClass = "bg-green-100 text-green-800 border border-green-200";
+  } else if (notification?.type === "error") {
+    notificationClass = "bg-red-100 text-red-800 border border-red-200";
+  }
+
+  let submitLabel = tCommon("actions.create", { default: "Create" });
+  if (submitting) {
+    submitLabel = tCommon("actions.saving");
+  } else if (editingTask) {
+    submitLabel = tCommon("edit");
+  }
+
   return (
     <ProtectedRoute allowedRoles={["admin", "technician"]}>
       <DashboardLayout title={t("title")}>
         {notification && (
           <div
-            className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${
-              notification.type === "success"
-                ? "bg-green-100 text-green-800 border border-green-200"
-                : notification.type === "error"
-                  ? "bg-red-100 text-red-800 border border-red-200"
-                  : "bg-blue-100 text-blue-800 border border-blue-200"
-            }`}
+            className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center space-x-2 ${notificationClass}`}
           >
             {notification.type === "success" ? (
               <CheckCircleIcon className="w-5 h-5" />
@@ -704,11 +712,7 @@ export default function PreventiveTaskChecklistPage() {
                 {tCommon("actions.cancel")}
               </button>
               <button type="submit" className="btn-primary" disabled={submitting}>
-                {submitting
-                  ? tCommon("actions.saving")
-                  : editingTask
-                    ? tCommon("edit")
-                    : tCommon("actions.create", { default: "Create" })}
+                {submitLabel}
               </button>
             </div>
           </form>

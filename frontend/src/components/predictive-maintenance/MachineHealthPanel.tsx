@@ -46,6 +46,18 @@ const RISK_TEXT_COLOR: Record<RiskLevel, string> = {
  */
 type MachineHealthPanelProps = Readonly<{ machineId?: string }>;
 
+function predictionRiskSummary(
+  prediction: MachineHealthPrediction,
+  t: ReturnType<typeof useTranslations>,
+): string {
+  const riskLabel = t(`riskLevels.${prediction.risk_level}`);
+  if (prediction.risk_level === "insufficient_data") {
+    return riskLabel;
+  }
+
+  return `${t("healthScoreValue", { value: Math.round(prediction.health_score) })} Â· ${riskLabel}`;
+}
+
 export default function MachineHealthPanel(props: MachineHealthPanelProps) {
   return (
     <ErrorBoundary boundaryName="machine-health-panel" fallback={renderWidgetErrorFallback}>
@@ -104,9 +116,7 @@ function MachineHealthPanelInner({ machineId }: MachineHealthPanelProps) {
                 {t(`modelTypes.${prediction.model_type}`)}
               </span>
               <span className={`text-xs font-semibold ${RISK_TEXT_COLOR[prediction.risk_level]}`}>
-                {prediction.risk_level === "insufficient_data"
-                  ? t(`riskLevels.${prediction.risk_level}`)
-                  : `${t("healthScoreValue", { value: Math.round(prediction.health_score) })} · ${t(`riskLevels.${prediction.risk_level}`)}`}
+                {predictionRiskSummary(prediction, t)}
               </span>
             </div>
 
@@ -150,8 +160,8 @@ function ExplanationSection({
     <div className="mt-2" data-testid={testId}>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <ul className={`list-disc space-y-0.5 pl-5 text-slate-700 ${italic ? "italic" : ""}`}>
-        {items.map((item, index) => (
-          <li key={index}>{item}</li>
+        {items.map((item) => (
+          <li key={`${testId}-${item}`}>{item}</li>
         ))}
       </ul>
     </div>

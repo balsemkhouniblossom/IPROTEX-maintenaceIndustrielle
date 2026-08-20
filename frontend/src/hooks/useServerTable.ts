@@ -26,6 +26,18 @@ interface UseServerTableOptions<T, F> {
   searchDebounceMs?: number;
 }
 
+function getSortDirection(sort: string | undefined): 'asc' | 'desc' | undefined {
+  if (sort?.startsWith('-')) {
+    return 'desc';
+  }
+
+  if (sort) {
+    return 'asc';
+  }
+
+  return undefined;
+}
+
 /**
  * Shared server-driven list state for large-scale pages: page/limit/search
  * (debounced)/sort/filters live here, every change fires exactly one
@@ -108,7 +120,7 @@ export function useServerTable<T, F extends Record<string, unknown>>({
   }, []);
 
   const sortField = sort?.replace(/^-/, '');
-  const sortDirection: 'asc' | 'desc' | undefined = sort?.startsWith('-') ? 'desc' : sort ? 'asc' : undefined;
+  const sortDirection: 'asc' | 'desc' | undefined = getSortDirection(sort);
 
   /** Applies a local mutation to `items` immediately (before the server confirms), returning a rollback to call on failure. */
   const applyOptimistic = useCallback((updater: (items: T[]) => T[]) => {

@@ -63,7 +63,8 @@ export default function TimelineFilters({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label={t('filters.title')}>
+      <fieldset className="flex flex-wrap gap-2">
+        <legend className="sr-only">{t('filters.title')}</legend>
         <FilterChip
           label={t('filters.all')}
           active={activeCategory === 'all'}
@@ -82,7 +83,7 @@ export default function TimelineFilters({
             />
           );
         })}
-      </div>
+      </fieldset>
     </div>
   );
 }

@@ -32,7 +32,7 @@ export function normalizeLocale(locale?: string | null): string {
 }
 
 export function getLocaleFromPath(pathname?: string | null): string {
-  const firstSegment = pathname?.split('/').filter(Boolean)[0];
+  const firstSegment = pathname?.split('/').find(Boolean);
   return normalizeLocale(firstSegment);
 }
 

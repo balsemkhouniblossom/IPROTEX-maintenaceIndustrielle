@@ -127,6 +127,17 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
 
   const documentPreviewName =
     typeof documentPreview?.file_name === 'string' ? documentPreview.file_name : t('actions.viewDocument');
+  let documentPreviewContent = null;
+  if (documentLoading) {
+    documentPreviewContent = <p className="text-sm text-(--text-secondary)">{t('loading')}</p>;
+  } else if (documentError) {
+    documentPreviewContent = <p className="text-sm text-red-700">{documentError}</p>;
+  } else if (documentPreview) {
+    documentPreviewContent = (
+      <DocumentAttachmentViewer document={documentPreview as never} title={documentPreviewName} />
+    );
+  }
+
   const workOrderHref = technicianWorkOrderHref(event, user?.role, locale);
   const isDocumentEvent = event.relatedEntity?.kind === 'document';
 
@@ -270,13 +281,7 @@ export default function TimelineEventCard({ event }: TimelineEventCardProps) {
         title={documentPreviewName}
         size="xl"
       >
-        {documentLoading ? (
-          <p className="text-sm text-(--text-secondary)">{t('loading')}</p>
-        ) : documentError ? (
-          <p className="text-sm text-red-700">{documentError}</p>
-        ) : documentPreview ? (
-          <DocumentAttachmentViewer document={documentPreview as never} title={documentPreviewName} />
-        ) : null}
+        {documentPreviewContent}
       </Modal>
     </article>
   );

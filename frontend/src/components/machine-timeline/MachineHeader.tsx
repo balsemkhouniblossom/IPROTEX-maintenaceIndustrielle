@@ -30,6 +30,11 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   retired: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 const DEFAULT_STATUS_BADGE_CLASS = 'bg-gray-100 text-gray-600 border-gray-200';
+type QuickAction = {
+  href: string;
+  label: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
 
 type MachineHeaderProps = Readonly<{
   machineId: string;
@@ -37,6 +42,34 @@ type MachineHeaderProps = Readonly<{
   stats: MachineTimelineSummary['stats'] | undefined;
   loading: boolean;
 }>;
+
+function quickActionsForRole(
+  role: string | undefined,
+  locale: string,
+  label: (key: string, fallback: string) => string,
+): QuickAction[] {
+  if (role === 'technician') {
+    return [
+      { href: `/${locale}/technician/work-orders`, label: label('actions.workOrders', 'Work orders'), icon: ClipboardDocumentListIcon },
+    ];
+  }
+
+  if (role === 'operator') {
+    return [
+      { href: `/${locale}/operator/preventive`, label: label('filters.categories.preventive', 'Preventive'), icon: WrenchScrewdriverIcon },
+      { href: `/${locale}/operator/corrective`, label: label('filters.categories.corrective', 'Corrective'), icon: ClipboardDocumentListIcon },
+    ];
+  }
+
+  if (role === 'admin') {
+    return [
+      { href: `/${locale}/work-orders`, label: label('actions.workOrders', 'Work orders'), icon: ClipboardDocumentListIcon },
+      { href: `/${locale}/maintenance-plans`, label: label('filters.categories.plans', 'Plans'), icon: CalendarDaysIcon },
+    ];
+  }
+
+  return [];
+}
 
 export default function MachineHeader(props: MachineHeaderProps) {
   return (
@@ -66,20 +99,7 @@ function MachineHeaderInner({ machineId, machine, stats, loading }: MachineHeade
   const statusClass = STATUS_BADGE_CLASSES[machine.status] ?? DEFAULT_STATUS_BADGE_CLASS;
   const label = (key: string, fallback: string) => (t.has(key) ? t(key) : fallback);
   const machineDetails = [machine.type?.name, machine.fabricant, machine.model].filter(Boolean).join(' / ');
-  const quickActions =
-    user?.role === 'technician'
-      ? [{ href: `/${locale}/technician/work-orders`, label: label('actions.workOrders', 'Work orders'), icon: ClipboardDocumentListIcon }]
-      : user?.role === 'operator'
-        ? [
-            { href: `/${locale}/operator/preventive`, label: label('filters.categories.preventive', 'Preventive'), icon: WrenchScrewdriverIcon },
-            { href: `/${locale}/operator/corrective`, label: label('filters.categories.corrective', 'Corrective'), icon: ClipboardDocumentListIcon },
-          ]
-        : user?.role === 'admin'
-          ? [
-              { href: `/${locale}/work-orders`, label: label('actions.workOrders', 'Work orders'), icon: ClipboardDocumentListIcon },
-              { href: `/${locale}/maintenance-plans`, label: label('filters.categories.plans', 'Plans'), icon: CalendarDaysIcon },
-            ]
-          : [];
+  const quickActions = quickActionsForRole(user?.role, locale, label);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-(--border) bg-(--surface) shadow-(--shadow-sm)">

@@ -322,6 +322,13 @@ export default function PanneSolutionsPage() {
     );
   }
 
+  let submitLabel = tCommon('actions.create');
+  if (submitting) {
+    submitLabel = tCommon('saving');
+  } else if (editingSolution) {
+    submitLabel = tCommon('actions.update');
+  }
+
   return (
     <DashboardLayout title={t('title')}>
       {notification && (
@@ -648,11 +655,7 @@ export default function PanneSolutionsPage() {
               {tCommon('cancel')}
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting
-                ? tCommon('saving')
-                : editingSolution
-                  ? tCommon('actions.update')
-                  : tCommon('actions.create')}
+              {submitLabel}
             </button>
           </div>
         </form>

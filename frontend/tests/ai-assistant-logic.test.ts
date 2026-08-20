@@ -62,8 +62,10 @@ test("AiAssistantPanel always renders a visible advisory-only disclaimer regardl
 
   const disclaimerIndex = source.indexOf('data-testid="ai-assistant-disclaimer"');
   const resultComponentIndex = source.indexOf("function AiAssistantResult");
+  assert.ok(disclaimerIndex > -1, "the disclaimer element must exist");
+  assert.ok(resultComponentIndex > -1, "the result component must exist");
   assert.ok(
-    disclaimerIndex > -1 && disclaimerIndex < resultComponentIndex,
+    disclaimerIndex < resultComponentIndex,
     "the disclaimer must live in the always-rendered main component body, not inside the status-conditional AiAssistantResult sub-component",
   );
 });

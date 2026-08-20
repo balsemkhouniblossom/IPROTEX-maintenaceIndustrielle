@@ -185,23 +185,16 @@ test("all supported locales contain the new document lifecycle translation keys"
     assert.ok(documents, `${locale}.json must have a documents namespace`);
 
     for (const key of requiredStatusKeys) {
-      assert.ok(
-        typeof documents.status?.[key] === "string" && documents.status[key].length > 0,
-        `${locale}.json documents.status.${key} must be a non-empty string`,
-      );
+      assert.equal(typeof documents.status?.[key], "string", `${locale}.json documents.status.${key} must be a string`);
+      assert.ok(documents.status[key].length > 0, `${locale}.json documents.status.${key} must be non-empty`);
     }
     for (const key of requiredActionKeys) {
-      assert.ok(
-        typeof documents.actions?.[key] === "string" && documents.actions[key].length > 0,
-        `${locale}.json documents.actions.${key} must be a non-empty string`,
-      );
+      assert.equal(typeof documents.actions?.[key], "string", `${locale}.json documents.actions.${key} must be a string`);
+      assert.ok(documents.actions[key].length > 0, `${locale}.json documents.actions.${key} must be non-empty`);
     }
     for (const key of requiredNotificationKeys) {
-      assert.ok(
-        typeof documents.notifications?.[key] === "string" &&
-          documents.notifications[key].length > 0,
-        `${locale}.json documents.notifications.${key} must be a non-empty string`,
-      );
+      assert.equal(typeof documents.notifications?.[key], "string", `${locale}.json documents.notifications.${key} must be a string`);
+      assert.ok(documents.notifications[key].length > 0, `${locale}.json documents.notifications.${key} must be non-empty`);
     }
     assert.match(
       documents.notifications.confirmReplace,

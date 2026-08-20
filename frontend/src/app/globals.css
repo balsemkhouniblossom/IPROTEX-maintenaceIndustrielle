@@ -523,6 +523,10 @@ html[data-theme='dark'] .operator-frost-card {
   color: #ffffff;
 }
 
+html[data-theme='dark'] .work-orders-theme .btn-primary {
+  color: var(--text-inverse);
+}
+
 .work-orders-theme .btn-primary:hover {
   background: var(--primary-hover);
 }
@@ -622,13 +626,13 @@ html[data-theme='dark'] .technician-order-description {
 }
 
 html[data-theme='dark'] .technician-order-muted {
-  color: #bae6fd;
+  color: #e0f2fe;
 }
 
 html[data-theme='dark'] .technician-order-status {
-  background: rgba(251, 191, 36, 0.20);
-  border-color: rgba(251, 191, 36, 0.48);
-  color: #fef3c7;
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #78350f;
 }
 
 html[data-theme='dark'] .technician-order-date {
@@ -637,12 +641,12 @@ html[data-theme='dark'] .technician-order-date {
 }
 
 html[data-theme='dark'] .technician-order-link {
-  background: linear-gradient(135deg, #0284c7, #0891b2);
+  background: linear-gradient(135deg, #075985, #0f766e);
   color: #ffffff;
 }
 
 html[data-theme='dark'] .technician-order-link:hover {
-  background: linear-gradient(135deg, #0369a1, #0f766e);
+  background: linear-gradient(135deg, #0c4a6e, #134e4a);
 }
 
 .work-orders-theme .hover\:text-slate-900:hover,
@@ -1429,8 +1433,8 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
 }
 
 .status-item-modern.warning {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
+  background: #fef3c7;
+  color: #78350f;
 }
 
 .nav-modern {
@@ -1846,21 +1850,21 @@ select option {
 }
 
 .status-badge.status-pending {
-  border-color: var(--labels);
-  background: rgba(251, 191, 36, 0.1);
-  color: #92400e;
+  border-color: #d97706;
+  background: #fffbeb;
+  color: #78350f;
 }
 
 .status-badge.status-active {
-  border-color: var(--action);
-  background: rgba(34, 197, 94, 0.1);
-  color: #065f46;
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #064e3b;
 }
 
 .status-badge.status-completed {
-  border-color: #28a745;
-  background: rgba(59, 130, 246, 0.1);
-  color: #1e40af;
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1e3a8a;
 }
 
 a {
@@ -1924,6 +1928,10 @@ a {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+html[data-theme='dark'] .btn-primary {
+  color: var(--text-inverse);
 }
 
 .btn-primary:hover {

@@ -59,7 +59,7 @@ interface WorkOrdersFilters {
 // Statuses where an independent validator (never the technician who
 // performed the work — enforced server-side by applyValidationAction) can
 // still decide the outcome of a corrective/preventive intervention.
-const VALIDATABLE_STATUSES = ['waiting_validation', 'technician_required', 'returned'];
+const VALIDATABLE_STATUSES = new Set(['waiting_validation', 'technician_required', 'returned']);
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -441,7 +441,7 @@ export default function WorkOrdersPage() {
         width: 'minmax(18rem, 36rem)',
         render: (wo) => (
           <div className="flex justify-end gap-2">
-            {VALIDATABLE_STATUSES.includes(wo.status) && (
+            {VALIDATABLE_STATUSES.has(wo.status) && (
               <>
                 <button
                   type="button"
@@ -502,6 +502,10 @@ export default function WorkOrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tWorkOrders, tCommon, users, machines],
   );
+
+  const workOrderSubmitLabel = editingWorkOrder
+    ? tWorkOrders("actions.update")
+    : tWorkOrders("actions.create");
 
   return (
     <DashboardLayout title={tWorkOrders("title")}>
@@ -822,7 +826,7 @@ export default function WorkOrdersPage() {
                   <span>{tCommon("saving")}</span>
                 </div>
               ) : (
-                editingWorkOrder ? tWorkOrders("actions.update") : tWorkOrders("actions.create")
+                workOrderSubmitLabel
               )}
             </button>
           </div>
