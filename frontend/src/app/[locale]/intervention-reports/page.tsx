@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { ModalFormActions, RowActions } from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { Modal } from "@/components/Modal";
@@ -421,28 +422,13 @@ export default function InterventionReportsPage() {
                       </td>
                       <td>{report.etat_final || tCommon("notAvailable")}</td>
                       <td>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(report)}
-                            aria-label={`${t("actions.edit")} ${report.report_id}`}
-                            title={t("actions.edit")}
-                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                          >
-                            <PencilIcon className="h-4 w-4 shrink-0" />
-                            <span>{t("actions.edit")}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(report._id)}
-                            aria-label={`${t("actions.delete")} ${report.report_id}`}
-                            title={t("actions.delete")}
-                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                          >
-                            <TrashIcon className="h-4 w-4 shrink-0" />
-                            <span>{t("actions.delete")}</span>
-                          </button>
-                        </div>
+                        <RowActions
+                          editLabel={t("actions.edit")}
+                          deleteLabel={t("actions.delete")}
+                          itemLabel={report.report_id}
+                          onEdit={() => openEditModal(report)}
+                          onDelete={() => handleDelete(report._id)}
+                        />
                       </td>
                     </tr>
                   ))
@@ -626,18 +612,12 @@ export default function InterventionReportsPage() {
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="btn-secondary"
-            >
-              {tCommon("cancel")}
-            </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? tCommon("saving") : submitLabel}
-            </button>
-          </div>
+          <ModalFormActions
+            cancelLabel={tCommon("cancel")}
+            submitLabel={submitting ? tCommon("saving") : submitLabel}
+            submitting={submitting}
+            onCancel={() => setShowModal(false)}
+          />
         </form>
       </Modal>
     </DashboardLayout>

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { ModalFormActions, RowActions } from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { Modal } from "@/components/Modal";
@@ -447,28 +448,13 @@ export default function PanneSolutionsPage() {
                           tCommon("notAvailable")}
                       </td>
                       <td>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(solution)}
-                            aria-label={`${t("actions.edit")} ${solution.solution_id}`}
-                            title={t("actions.edit")}
-                            className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                          >
-                            <PencilIcon className="h-4 w-4 shrink-0" />
-                            <span>{t("actions.edit")}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(solution._id)}
-                            aria-label={`${t("actions.delete")} ${solution.solution_id}`}
-                            title={t("actions.delete")}
-                            className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                          >
-                            <TrashIcon className="h-4 w-4 shrink-0" />
-                            <span>{t("actions.delete")}</span>
-                          </button>
-                        </div>
+                        <RowActions
+                          editLabel={t("actions.edit")}
+                          deleteLabel={t("actions.delete")}
+                          itemLabel={solution.solution_id}
+                          onEdit={() => openEditModal(solution)}
+                          onDelete={() => handleDelete(solution._id)}
+                        />
                       </td>
                     </tr>
                   ))
@@ -746,21 +732,16 @@ export default function PanneSolutionsPage() {
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => {
-                setShowModal(false);
-                resetForm();
-              }}
-              className="btn-secondary"
-            >
-              {tCommon("cancel")}
-            </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitLabel}
-            </button>
-          </div>
+          <ModalFormActions
+            cancelLabel={tCommon("cancel")}
+            submitLabel={submitLabel}
+            submitting={submitting}
+            onCancel={() => {
+              setShowModal(false);
+              resetForm();
+            }}
+            withTopBorder
+          />
         </form>
       </Modal>
     </DashboardLayout>

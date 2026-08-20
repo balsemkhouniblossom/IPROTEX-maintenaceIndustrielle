@@ -11,16 +11,14 @@ export type ToastNotificationState = {
 };
 
 type ToastNotificationProps = {
-  notification: ToastNotificationState | null;
-  onClose: () => void;
-  closeLabel?: string;
+  readonly notification: ToastNotificationState | null;
+  readonly onClose: () => void;
+  readonly closeLabel?: string;
 };
 
-export function ToastNotification({
-  notification,
-  onClose,
-  closeLabel = "Close",
-}: ToastNotificationProps) {
+export function ToastNotification(props: Readonly<ToastNotificationProps>) {
+  const { notification, onClose, closeLabel = "Close" } = props;
+
   if (!notification) return null;
 
   const colorClassName =
