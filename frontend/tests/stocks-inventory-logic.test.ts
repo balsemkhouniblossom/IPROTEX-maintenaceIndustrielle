@@ -150,28 +150,24 @@ test("all supported locales contain the new stocks translation keys", () => {
     assert.ok(stocks, `${locale}.json must have a stocks namespace`);
 
     for (const key of requiredTableKeys) {
-      assert.ok(
-        typeof stocks.table?.[key] === "string" && stocks.table[key].length > 0,
-        `${locale}.json stocks.table.${key} must be a non-empty string`,
-      );
+      const tableLabel = stocks.table?.[key];
+      assert.equal(typeof tableLabel, "string", `${locale}.json stocks.table.${key} must be a string`);
+      assert.ok(tableLabel.length > 0, `${locale}.json stocks.table.${key} must be non-empty`);
     }
     for (const key of requiredActionKeys) {
-      assert.ok(
-        typeof stocks.actions?.[key] === "string" && stocks.actions[key].length > 0,
-        `${locale}.json stocks.actions.${key} must be a non-empty string`,
-      );
+      const actionLabel = stocks.actions?.[key];
+      assert.equal(typeof actionLabel, "string", `${locale}.json stocks.actions.${key} must be a string`);
+      assert.ok(actionLabel.length > 0, `${locale}.json stocks.actions.${key} must be non-empty`);
     }
     for (const key of requiredNotificationKeys) {
-      assert.ok(
-        typeof stocks.notifications?.[key] === "string" && stocks.notifications[key].length > 0,
-        `${locale}.json stocks.notifications.${key} must be a non-empty string`,
-      );
+      const notificationLabel = stocks.notifications?.[key];
+      assert.equal(typeof notificationLabel, "string", `${locale}.json stocks.notifications.${key} must be a string`);
+      assert.ok(notificationLabel.length > 0, `${locale}.json stocks.notifications.${key} must be non-empty`);
     }
     for (const key of requiredMovementTypeKeys) {
-      assert.ok(
-        typeof stocks.movementTypes?.[key] === "string" && stocks.movementTypes[key].length > 0,
-        `${locale}.json stocks.movementTypes.${key} must be a non-empty string`,
-      );
+      const movementTypeLabel = stocks.movementTypes?.[key];
+      assert.equal(typeof movementTypeLabel, "string", `${locale}.json stocks.movementTypes.${key} must be a string`);
+      assert.ok(movementTypeLabel.length > 0, `${locale}.json stocks.movementTypes.${key} must be non-empty`);
     }
     assert.match(
       stocks.notifications.confirmAdjust,

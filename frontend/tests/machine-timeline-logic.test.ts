@@ -140,17 +140,20 @@ test("machine timeline translation keys exist for every supported locale", () =>
   for (const locale of locales) {
     const messages = JSON.parse(readSource(`messages/${locale}.json`));
     assert.ok(messages.machineTimeline, `messages/${locale}.json must define a "machineTimeline" namespace`);
+    const eventTypes = messages.machineTimeline.eventTypes;
+    assert.ok(eventTypes, `messages/${locale}.json machineTimeline.eventTypes must be defined`);
     assert.ok(
-      messages.machineTimeline.eventTypes && Object.keys(messages.machineTimeline.eventTypes).length > 25,
+      Object.keys(eventTypes).length > 25,
       `messages/${locale}.json machineTimeline.eventTypes must translate the full event vocabulary`,
     );
     assert.ok(
       messages.machineTimeline.filters?.categories,
       `messages/${locale}.json must translate the timeline filter categories`,
     );
+    assert.ok(messages.machineTimeline.groups?.today, `messages/${locale}.json must translate groups.today`);
     assert.ok(
-      messages.machineTimeline.groups?.today && messages.machineTimeline.groups?.last30Days,
-      `messages/${locale}.json must translate the date-group headings`,
+      messages.machineTimeline.groups?.last30Days,
+      `messages/${locale}.json must translate groups.last30Days`,
     );
   }
 });

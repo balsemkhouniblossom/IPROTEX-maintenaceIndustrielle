@@ -246,8 +246,13 @@ test("all supported locales define the new common accessibility keys and users.s
     const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
 
-    assert.ok(typeof messages.common?.skipToContent === "string" && messages.common.skipToContent.length > 0);
-    assert.ok(typeof messages.common?.offlineBanner === "string" && messages.common.offlineBanner.length > 0);
+    const skipToContent = messages.common?.skipToContent;
+    assert.equal(typeof skipToContent, "string", `${locale}.json common.skipToContent must be a string`);
+    assert.ok(skipToContent.length > 0, `${locale}.json common.skipToContent must be non-empty`);
+
+    const offlineBanner = messages.common?.offlineBanner;
+    assert.equal(typeof offlineBanner, "string", `${locale}.json common.offlineBanner must be a string`);
+    assert.ok(offlineBanner.length > 0, `${locale}.json common.offlineBanner must be non-empty`);
     assert.ok(messages.users?.savedViews, `${locale}.json must have a users.savedViews namespace`);
     assert.ok(messages.users?.bulk, `${locale}.json must have a users.bulk namespace`);
 

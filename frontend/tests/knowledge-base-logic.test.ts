@@ -262,11 +262,9 @@ test("all supported locales define the knowledgeBase translation namespace with 
     const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
     assert.ok(messages.knowledgeBase, `${locale}.json must have a knowledgeBase namespace`);
-    assert.ok(
-      typeof messages.sidebar?.navigation?.knowledgeBase === "string" &&
-        messages.sidebar.navigation.knowledgeBase.length > 0,
-      `${locale}.json sidebar.navigation.knowledgeBase must be a non-empty string`,
-    );
+    const sidebarLabel = messages.sidebar?.navigation?.knowledgeBase;
+    assert.equal(typeof sidebarLabel, "string", `${locale}.json sidebar.navigation.knowledgeBase must be a string`);
+    assert.ok(sidebarLabel.length > 0, `${locale}.json sidebar.navigation.knowledgeBase must be non-empty`);
     keysByLocale[locale] = new Set(flatten(messages.knowledgeBase));
   }
 

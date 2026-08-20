@@ -188,10 +188,15 @@ test("all supported locales define the predictiveMaintenance translation namespa
     const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
     assert.ok(messages.predictiveMaintenance, `${locale}.json must have a predictiveMaintenance namespace`);
+    const machineHealthLabel = messages.maintenancePlans?.table?.machineHealth;
+    assert.equal(
+      typeof machineHealthLabel,
+      "string",
+      `${locale}.json maintenancePlans.table.machineHealth must be a string`,
+    );
     assert.ok(
-      typeof messages.maintenancePlans?.table?.machineHealth === "string" &&
-        messages.maintenancePlans.table.machineHealth.length > 0,
-      `${locale}.json maintenancePlans.table.machineHealth must be a non-empty string`,
+      machineHealthLabel.length > 0,
+      `${locale}.json maintenancePlans.table.machineHealth must be non-empty`,
     );
     keysByLocale[locale] = new Set(flatten(messages.predictiveMaintenance));
   }

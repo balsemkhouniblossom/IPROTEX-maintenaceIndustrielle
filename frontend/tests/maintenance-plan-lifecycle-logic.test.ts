@@ -116,30 +116,33 @@ test("all supported locales contain the new maintenance plan lifecycle translati
     assert.ok(plans, `${locale}.json must have a maintenancePlans namespace`);
 
     for (const key of requiredStatusKeys) {
-      assert.ok(
-        typeof plans.status?.[key] === "string" && plans.status[key].length > 0,
-        `${locale}.json maintenancePlans.status.${key} must be a non-empty string`,
-      );
+      const statusLabel = plans.status?.[key];
+      assert.equal(typeof statusLabel, "string", `${locale}.json maintenancePlans.status.${key} must be a string`);
+      assert.ok(statusLabel.length > 0, `${locale}.json maintenancePlans.status.${key} must be non-empty`);
     }
     for (const key of requiredActionKeys) {
-      assert.ok(
-        typeof plans.actions?.[key] === "string" && plans.actions[key].length > 0,
-        `${locale}.json maintenancePlans.actions.${key} must be a non-empty string`,
-      );
+      const actionLabel = plans.actions?.[key];
+      assert.equal(typeof actionLabel, "string", `${locale}.json maintenancePlans.actions.${key} must be a string`);
+      assert.ok(actionLabel.length > 0, `${locale}.json maintenancePlans.actions.${key} must be non-empty`);
     }
     for (const key of requiredNotificationKeys) {
+      const notificationLabel = plans.notifications?.[key];
+      assert.equal(
+        typeof notificationLabel,
+        "string",
+        `${locale}.json maintenancePlans.notifications.${key} must be a string`,
+      );
       assert.ok(
-        typeof plans.notifications?.[key] === "string" && plans.notifications[key].length > 0,
-        `${locale}.json maintenancePlans.notifications.${key} must be a non-empty string`,
+        notificationLabel.length > 0,
+        `${locale}.json maintenancePlans.notifications.${key} must be non-empty`,
       );
     }
     // Regression guard: t('table.status', { default: 'Status' }) still
     // throws MISSING_MESSAGE when the key is absent - next-intl's `t()` has
     // no such fallback option, so the real key must actually exist.
-    assert.ok(
-      typeof plans.table?.status === "string" && plans.table.status.length > 0,
-      `${locale}.json maintenancePlans.table.status must be a non-empty string`,
-    );
+    const tableStatusLabel = plans.table?.status;
+    assert.equal(typeof tableStatusLabel, "string", `${locale}.json maintenancePlans.table.status must be a string`);
+    assert.ok(tableStatusLabel.length > 0, `${locale}.json maintenancePlans.table.status must be non-empty`);
   }
 });
 

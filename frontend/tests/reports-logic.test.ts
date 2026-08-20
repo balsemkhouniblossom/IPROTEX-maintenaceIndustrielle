@@ -157,11 +157,9 @@ test("all supported locales define the reports translation namespace with matchi
     const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
     assert.ok(messages.reports, `${locale}.json must have a reports namespace`);
-    assert.ok(
-      typeof messages.sidebar?.navigation?.reports === "string" &&
-        messages.sidebar.navigation.reports.length > 0,
-      `${locale}.json sidebar.navigation.reports must be a non-empty string`,
-    );
+    const sidebarLabel = messages.sidebar?.navigation?.reports;
+    assert.equal(typeof sidebarLabel, "string", `${locale}.json sidebar.navigation.reports must be a string`);
+    assert.ok(sidebarLabel.length > 0, `${locale}.json sidebar.navigation.reports must be non-empty`);
     keysByLocale[locale] = new Set(flatten(messages.reports));
   }
 
