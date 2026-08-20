@@ -3,10 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PlusIcon } from "@heroicons/react/24/outline";
-import { ModalFormActions, RowActions } from "@/components/CrudPageControls";
+import {
+  AdditionalDetailsField,
+  CrudListHeader,
+  CrudLoadingState,
+  CrudTablePanel,
+  ModalFormActions,
+  RowActions,
+} from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
-import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { Modal } from "@/components/Modal";
 import {
   ToastNotification,
@@ -20,7 +25,6 @@ import {
   getSearchableFields,
   matchesDynamicSearch,
 } from "@/services/dynamicSearch";
-import Pagination from "@/components/Pagination";
 
 interface PanneItem {
   _id: string;
@@ -340,13 +344,7 @@ export default function PanneSolutionsPage() {
   }, []);
 
   if (loading) {
-    return (
-      <DashboardLayout title={t("title")}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-        </div>
-      </DashboardLayout>
-    );
+    return <CrudLoadingState title={t("title")} />;
   }
 
   let submitLabel = tCommon("actions.create");
@@ -365,53 +363,34 @@ export default function PanneSolutionsPage() {
       />
 
       <div className="bento-grid">
-        <div className="col-span-full mb-6 bento-item">
-          <div className="panel">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">
-                  {t("heading")}
-                </h1>
-                <p className="text-slate-600 mt-1">{t("description")}</p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-end">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {totalItems}
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    {t("totalSolutions")}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={openCreateModal}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  <span>{t("actions.add")}</span>
-                </button>
-              </div>
-            </div>
+        <CrudListHeader
+          heading={t("heading")}
+          description={t("description")}
+          totalItems={totalItems}
+          totalLabel={t("totalSolutions")}
+          addLabel={t("actions.add")}
+          onAdd={openCreateModal}
+          selectedField={selectedSearchField}
+          onSelectedFieldChange={setSelectedSearchField}
+          searchableFields={searchableFields}
+          allFieldsLabel={tCommon("table.allFields", {
+            default: "All fields",
+          })}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          searchPlaceholder={t("searchPlaceholder")}
+        />
 
-            <DynamicSearchControls
-              selectedField={selectedSearchField}
-              onSelectedFieldChange={setSelectedSearchField}
-              searchableFields={searchableFields}
-              allFieldsLabel={tCommon("table.allFields", {
-                default: "All fields",
-              })}
-              searchTerm={searchTerm}
-              onSearchTermChange={setSearchTerm}
-              searchPlaceholder={t("searchPlaceholder")}
-            />
-          </div>
-        </div>
-
-        <div className="col-span-full bento-item panel">
-          <div className="card-title">{t("allSolutions")}</div>
-          <div className="overflow-x-auto">
-            <table className="table">
+        <CrudTablePanel
+          title={t("allSolutions")}
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={setPage}
+          paginationClassName="mt-0"
+        >
+          <table className="table">
               <thead>
                 <tr>
                   <th>
@@ -460,16 +439,8 @@ export default function PanneSolutionsPage() {
                   ))
                 )}
               </tbody>
-            </table>
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              limit={limit}
-              onPageChange={(newPage) => setPage(newPage)}
-            />
-          </div>
-        </div>
+          </table>
+        </CrudTablePanel>
       </div>
 
       <Modal
@@ -712,25 +683,14 @@ export default function PanneSolutionsPage() {
             )}
           </div>
 
-          <div>
-            <label
-              htmlFor="panne-solution-details"
-              className="block text-sm font-medium text-gray-dark mb-1"
-            >
-              Additional details (optional)
-            </label>
-            <textarea
-              id="panne-solution-details"
-              value={formData.details}
-              onChange={(e) =>
-                setFormData({ ...formData, details: e.target.value })
-              }
-              className="input-field"
-              rows={3}
-              title="Additional details"
-              placeholder="Add any extra context you want to keep with this record"
-            />
-          </div>
+          <AdditionalDetailsField
+            id="panne-solution-details"
+            label="Additional details (optional)"
+            value={formData.details}
+            onChange={(details) => setFormData({ ...formData, details })}
+            title="Additional details"
+            placeholder="Add any extra context you want to keep with this record"
+          />
 
           <ModalFormActions
             cancelLabel={tCommon("cancel")}

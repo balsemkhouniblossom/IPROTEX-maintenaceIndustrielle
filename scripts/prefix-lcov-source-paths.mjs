@@ -8,21 +8,57 @@ if (!reportPath || !sourceRoot) {
   );
 }
 
-const normalizedSourceRoot = sourceRoot.replaceAll("\\", "/").replace(/\/+$/, "");
+function trimTrailingSlashes(value) {
+  let endIndex = value.length;
+  while (endIndex > 0 && value[endIndex - 1] === "/") {
+    endIndex -= 1;
+  }
+  return value.slice(0, endIndex);
+}
+
+function stripRelativePrefix(value) {
+  if (value.startsWith("./")) return value.slice(2);
+  if (value.startsWith("/")) return value.slice(1);
+  return value;
+}
+
+function hasWindowsDrivePrefix(value) {
+  const driveLetter = value.charCodeAt(0);
+  const isUppercaseDrive = driveLetter >= 65 && driveLetter <= 90;
+  const isLowercaseDrive = driveLetter >= 97 && driveLetter <= 122;
+
+  return (
+    value.length > 2 &&
+    (isUppercaseDrive || isLowercaseDrive) &&
+    value[1] === ":" &&
+    value[2] === "/"
+  );
+}
+
+const normalizedSourceRoot = trimTrailingSlashes(
+  sourceRoot.replaceAll("\\", "/"),
+);
 const report = readFileSync(reportPath, "utf8");
 
-const normalizedReport = report.replace(/^SF:(.+)$/gm, (_line, rawPath) => {
-  const normalizedPath = String(rawPath).replaceAll("\\", "/");
+function normalizeSourceFileLine(line) {
+  if (!line.startsWith("SF:")) return line;
+
+  const normalizedPath = line.slice(3).replaceAll("\\", "/");
 
   if (
     normalizedPath.startsWith("/") ||
-    /^[A-Za-z]:\//.test(normalizedPath) ||
+    hasWindowsDrivePrefix(normalizedPath) ||
     normalizedPath.startsWith(`${normalizedSourceRoot}/`)
   ) {
     return `SF:${normalizedPath}`;
   }
 
-  return `SF:${normalizedSourceRoot}/${normalizedPath.replace(/^\.?\//, "")}`;
-});
+  return `SF:${normalizedSourceRoot}/${stripRelativePrefix(normalizedPath)}`;
+}
+
+const normalizedReport = report
+  .split("\n")
+  .map((line) => normalizeSourceFileLine(line))
+  .join("\n");
 
 writeFileSync(reportPath, normalizedReport);

@@ -1,6 +1,174 @@
 "use client";
 
-import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import type { ReactNode } from "react";
+import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import DashboardLayout from "@/components/DashboardLayout";
+import DynamicSearchControls from "@/components/DynamicSearchControls";
+import Pagination from "@/components/Pagination";
+
+type CrudLoadingStateProps = Readonly<{
+  title: string;
+}>;
+
+export function CrudLoadingState(props: CrudLoadingStateProps) {
+  const { title } = props;
+
+  return (
+    <DashboardLayout title={title}>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+type CrudListHeaderProps = Readonly<{
+  heading: string;
+  description: string;
+  totalItems: number;
+  totalLabel: string;
+  addLabel: string;
+  onAdd: () => void;
+  selectedField: string;
+  onSelectedFieldChange: (field: string) => void;
+  searchableFields: string[];
+  allFieldsLabel: string;
+  searchTerm: string;
+  onSearchTermChange: (term: string) => void;
+  searchPlaceholder: string;
+}>;
+
+export function CrudListHeader(props: CrudListHeaderProps) {
+  const {
+    heading,
+    description,
+    totalItems,
+    totalLabel,
+    addLabel,
+    onAdd,
+    selectedField,
+    onSelectedFieldChange,
+    searchableFields,
+    allFieldsLabel,
+    searchTerm,
+    onSearchTermChange,
+    searchPlaceholder,
+  } = props;
+
+  return (
+    <div className="col-span-full mb-6 bento-item">
+      <div className="panel">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">{heading}</h1>
+            <p className="text-slate-600 mt-1">{description}</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="text-end">
+              <div className="text-3xl font-bold text-blue-600">
+                {totalItems}
+              </div>
+              <div className="text-sm text-slate-500">{totalLabel}</div>
+            </div>
+            <button
+              type="button"
+              onClick={onAdd}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <PlusIcon className="w-4 h-4" />
+              <span>{addLabel}</span>
+            </button>
+          </div>
+        </div>
+
+        <DynamicSearchControls
+          selectedField={selectedField}
+          onSelectedFieldChange={onSelectedFieldChange}
+          searchableFields={searchableFields}
+          allFieldsLabel={allFieldsLabel}
+          searchTerm={searchTerm}
+          onSearchTermChange={onSearchTermChange}
+          searchPlaceholder={searchPlaceholder}
+        />
+      </div>
+    </div>
+  );
+}
+
+type CrudTablePanelProps = Readonly<{
+  title: string;
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  limit: number;
+  onPageChange: (page: number) => void;
+  paginationClassName?: string;
+  children: ReactNode;
+}>;
+
+export function CrudTablePanel(props: CrudTablePanelProps) {
+  const {
+    title,
+    page,
+    totalPages,
+    totalItems,
+    limit,
+    onPageChange,
+    paginationClassName = "mt-4",
+    children,
+  } = props;
+
+  return (
+    <div className="col-span-full bento-item panel">
+      <div className="card-title">{title}</div>
+      <div className="overflow-x-auto">
+        {children}
+        <div className={paginationClassName}>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            limit={limit}
+            onPageChange={onPageChange}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type AdditionalDetailsFieldProps = Readonly<{
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  placeholder: string;
+}>;
+
+export function AdditionalDetailsField(props: AdditionalDetailsFieldProps) {
+  const { id, label, value, onChange, title, placeholder } = props;
+
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-gray-dark mb-1"
+      >
+        {label}
+      </label>
+      <textarea
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="input-field"
+        rows={3}
+        title={title}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
 
 type RowActionsProps = Readonly<{
   editLabel: string;
@@ -10,13 +178,9 @@ type RowActionsProps = Readonly<{
   onDelete: () => void;
 }>;
 
-export function RowActions({
-  editLabel,
-  deleteLabel,
-  itemLabel,
-  onEdit,
-  onDelete,
-}: RowActionsProps) {
+export function RowActions(props: RowActionsProps) {
+  const { editLabel, deleteLabel, itemLabel, onEdit, onDelete } = props;
+
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -51,13 +215,15 @@ type ModalFormActionsProps = Readonly<{
   withTopBorder?: boolean;
 }>;
 
-export function ModalFormActions({
-  cancelLabel,
-  submitLabel,
-  submitting,
-  onCancel,
-  withTopBorder = false,
-}: ModalFormActionsProps) {
+export function ModalFormActions(props: ModalFormActionsProps) {
+  const {
+    cancelLabel,
+    submitLabel,
+    submitting,
+    onCancel,
+    withTopBorder = false,
+  } = props;
+
   const borderClassName = withTopBorder ? " border-t border-gray-200" : "";
 
   return (

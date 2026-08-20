@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PlusIcon } from "@heroicons/react/24/outline";
-import { ModalFormActions, RowActions } from "@/components/CrudPageControls";
+import {
+  CrudListHeader,
+  CrudLoadingState,
+  CrudTablePanel,
+  ModalFormActions,
+  RowActions,
+} from "@/components/CrudPageControls";
 import DashboardLayout from "@/components/DashboardLayout";
-import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { Modal } from "@/components/Modal";
-import Pagination from "@/components/Pagination";
 import {
   ToastNotification,
   type ToastNotificationState,
@@ -309,13 +312,7 @@ export default function InterventionReportsPage() {
   }, []);
 
   if (loading) {
-    return (
-      <DashboardLayout title={t("title")}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-        </div>
-      </DashboardLayout>
-    );
+    return <CrudLoadingState title={t("title")} />;
   }
 
   const submitLabel = editingReport ? t("actions.update") : t("actions.create");
@@ -329,53 +326,34 @@ export default function InterventionReportsPage() {
       />
 
       <div className="bento-grid">
-        <div className="col-span-full mb-6 bento-item">
-          <div className="panel">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">
-                  {t("heading")}
-                </h1>
-                <p className="text-slate-600 mt-1">{t("description")}</p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-end">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {totalItems}
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    {t("totalReports")}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={openCreateModal}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  <span>{t("actions.add")}</span>
-                </button>
-              </div>
-            </div>
+        <CrudListHeader
+          heading={t("heading")}
+          description={t("description")}
+          totalItems={totalItems}
+          totalLabel={t("totalReports")}
+          addLabel={t("actions.add")}
+          onAdd={openCreateModal}
+          selectedField={selectedSearchField}
+          onSelectedFieldChange={setSelectedSearchField}
+          searchableFields={searchableFields}
+          allFieldsLabel={tCommon("table.allFields", {
+            default: "All fields",
+          })}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          searchPlaceholder={t("searchPlaceholder")}
+        />
 
-            <DynamicSearchControls
-              selectedField={selectedSearchField}
-              onSelectedFieldChange={setSelectedSearchField}
-              searchableFields={searchableFields}
-              allFieldsLabel={tCommon("table.allFields", {
-                default: "All fields",
-              })}
-              searchTerm={searchTerm}
-              onSearchTermChange={setSearchTerm}
-              searchPlaceholder={t("searchPlaceholder")}
-            />
-          </div>
-        </div>
-
-        <div className="col-span-full bento-item panel">
-          <div className="card-title">{t("allReports")}</div>
-          <div className="overflow-x-auto">
-            <table className="table">
+        <CrudTablePanel
+          title={t("allReports")}
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={setPage}
+          paginationClassName="mt-6"
+        >
+          <table className="table">
               <thead>
                 <tr>
                   <th>
@@ -434,18 +412,8 @@ export default function InterventionReportsPage() {
                   ))
                 )}
               </tbody>
-            </table>
-          </div>
-          <div className="mt-6">
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              limit={limit}
-              onPageChange={setPage}
-            />
-          </div>
-        </div>
+          </table>
+        </CrudTablePanel>
       </div>
 
       <Modal
