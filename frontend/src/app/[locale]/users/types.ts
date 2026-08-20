@@ -1,5 +1,4 @@
 import {
-  ApprovalRole,
   ApprovalUser,
   ApprovalView,
 } from '@/services/userApprovals';

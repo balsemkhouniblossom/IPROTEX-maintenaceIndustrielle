@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems, readPaginationMeta } from "@/services/pagination";
 
 type EntityRef = string | { _id?: string };
+type NotificationType = "success" | "error" | "info";
 
 interface WorkOrder {
   _id: string;
@@ -56,7 +57,7 @@ function statusClasses(status?: string): string {
   }
 }
 
-function notificationClasses(type: "success" | "error" | "info"): string {
+function notificationClasses(type: NotificationType): string {
   if (type === "success") {
     return "bg-green-100 text-green-800 border border-green-200";
   }
@@ -71,7 +72,7 @@ export default function OperatorMyReportsPage() {
   const tCommon = useTranslations("common");
 
   const [notification, setNotification] = useState<{
-    type: "success" | "error" | "info";
+    type: NotificationType;
     message: string;
   } | null>(null);
 
@@ -91,7 +92,7 @@ export default function OperatorMyReportsPage() {
     [reports, selectedReportId],
   );
 
-  function showNotification(type: "success" | "error" | "info", message: string): void {
+  function showNotification(type: NotificationType, message: string): void {
     setNotification({ type, message });
     window.setTimeout(() => setNotification(null), 4000);
   }

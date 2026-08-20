@@ -72,6 +72,13 @@ function PlanFormModalInner({
   t,
   tCommon,
 }: PlanFormModalProps) {
+  let submitLabel = t('actions.create');
+  if (submitting) {
+    submitLabel = tCommon('saving');
+  } else if (editingPlan) {
+    submitLabel = t('actions.update');
+  }
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={editingPlan ? t('modal.edit') : t('modal.add')}>
       <form onSubmit={onSubmit} className="space-y-4">
@@ -437,7 +444,7 @@ function PlanFormModalInner({
             {t('actions.cancel')}
           </button>
           <button type="submit" className="btn-primary" disabled={submitting}>
-            {submitting ? tCommon('saving') : editingPlan ? t('actions.update') : t('actions.create')}
+            {submitLabel}
           </button>
         </div>
       </form>
