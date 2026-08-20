@@ -3,6 +3,7 @@ set -euo pipefail
 
 name="${1:?deployment name is required}"
 url="${2:?deployment hook URL is required}"
+summary_file="${GITHUB_STEP_SUMMARY:-/dev/null}"
 response_file="$(mktemp)"
 
 cleanup() {
@@ -24,7 +25,7 @@ for attempt in $(seq 1 5); do
 
   if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
     echo "$name deployment hook accepted with HTTP $status."
-    echo "- $name deployment hook accepted with HTTP $status" >> "$GITHUB_STEP_SUMMARY"
+    echo "- $name deployment hook accepted with HTTP $status" >> "$summary_file"
     exit 0
   fi
 
@@ -39,12 +40,12 @@ for attempt in $(seq 1 5); do
 
     echo "::error::$name deployment hook kept returning HTTP $status after 5 attempts."
     [ -n "$body" ] && echo "Response body: $body"
-    echo "- $name deployment hook FAILED after retries (last HTTP $status)" >> "$GITHUB_STEP_SUMMARY"
+    echo "- $name deployment hook FAILED after retries (last HTTP $status)" >> "$summary_file"
     exit 1
   fi
 
   echo "::error::$name deployment hook returned non-retryable HTTP $status."
   [ -n "$body" ] && echo "Response body: $body"
-  echo "- $name deployment hook FAILED with HTTP $status" >> "$GITHUB_STEP_SUMMARY"
+  echo "- $name deployment hook FAILED with HTTP $status" >> "$summary_file"
   exit 1
 done
