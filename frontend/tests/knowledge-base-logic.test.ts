@@ -92,7 +92,7 @@ test("Admin Knowledge Base page only allows deleting an untouched Draft with no 
   );
   assert.match(
     source,
-    /\{deletable && \(/,
+    /\{deletable \? \(/,
     "the Delete button must only render when canDelete() is true",
   );
 });
@@ -147,7 +147,7 @@ test("Admin Knowledge Base page offers a version history view backed by getKnowl
   );
   assert.match(
     source,
-    /historyVersions\.map/,
+    /versions\.map/,
     "must render every entry returned by the version history endpoint",
   );
 });
