@@ -20,18 +20,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect configured deployment hooks
+      - name: Detect configured deployment targets
         id: hooks
         env:
           BACKEND_DEPLOY_HOOK_URL: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
+          BACKEND_RENDER_SERVICE_ID: ${{ secrets.BACKEND_RENDER_SERVICE_ID }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           FRONTEND_DEPLOY_HOOK_URL: ${{ secrets.FRONTEND_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "$BACKEND_DEPLOY_HOOK_URL" ]; then
-            echo "backend_configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Backend deployment skipped because secrets.BACKEND_DEPLOY_HOOK_URL is not configured."
-            echo "- Backend deployment skipped: missing secrets.BACKEND_DEPLOY_HOOK_URL" >> "$GITHUB_STEP_SUMMARY"
-          else
+          if [ -n "$BACKEND_DEPLOY_HOOK_URL" ] || { [ -n "$BACKEND_RENDER_SERVICE_ID" ] && [ -n "$RENDER_API_KEY" ]; }; then
             echo "backend_configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend_configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Backend deployment skipped because neither BACKEND_DEPLOY_HOOK_URL nor BACKEND_RENDER_SERVICE_ID + RENDER_API_KEY is configured."
+            echo "- Backend deployment skipped: missing deployment target secrets" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -n "$BACKEND_DEPLOY_HOOK_URL" ]; then
+            echo "backend_hook_configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend_hook_configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$BACKEND_RENDER_SERVICE_ID" ] && [ -n "$RENDER_API_KEY" ]; then
+            echo "backend_render_api_configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend_render_api_configured=false" >> "$GITHUB_OUTPUT"
           fi
 
           if [ -z "$FRONTEND_DEPLOY_HOOK_URL" ]; then
@@ -46,8 +60,36 @@ jobs:
         if: steps.hooks.outputs.backend_configured == 'true'
         env:
           BACKEND_DEPLOY_HOOK_URL: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
+          BACKEND_RENDER_SERVICE_ID: ${{ secrets.BACKEND_RENDER_SERVICE_ID }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          BACKEND_HOOK_CONFIGURED: ${{ steps.hooks.outputs.backend_hook_configured }}
+          BACKEND_RENDER_API_CONFIGURED: ${{ steps.hooks.outputs.backend_render_api_configured }}
         run: |
-          bash .github/scripts/trigger-deploy-hook.sh "Backend" "$BACKEND_DEPLOY_HOOK_URL"
+          if [ "$BACKEND_HOOK_CONFIGURED" = "true" ]; then
+            if [ "$BACKEND_RENDER_API_CONFIGURED" = "true" ]; then
+              export DEPLOY_HOOK_MAX_ATTEMPTS=2
+            fi
+
+            if bash .github/scripts/trigger-deploy-hook.sh "Backend" "$BACKEND_DEPLOY_HOOK_URL"; then
+              exit 0
+            fi
+
+            if [ "$BACKEND_RENDER_API_CONFIGURED" != "true" ]; then
+              echo "::error::Backend deploy hook failed and Render API fallback secrets are not configured."
+              echo "- Backend deploy hook failed; no Render API fallback configured" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+
+            echo "::warning::Backend deploy hook failed; falling back to Render API deploy."
+            echo "- Backend deploy hook failed; trying Render API fallback" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$BACKEND_RENDER_API_CONFIGURED" = "true" ]; then
+            bash .github/scripts/trigger-render-deploy-api.sh "Backend" "$BACKEND_RENDER_SERVICE_ID" "$RENDER_API_KEY"
+          else
+            echo "::error::No backend deployment method is configured."
+            exit 1
+          fi
 
       - name: Trigger frontend deployment
         if: steps.hooks.outputs.frontend_configured == 'true'
