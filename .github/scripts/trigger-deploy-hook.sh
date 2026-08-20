@@ -5,15 +5,18 @@ name="${1:?deployment name is required}"
 url="${2:?deployment hook URL is required}"
 summary_file="${GITHUB_STEP_SUMMARY:-/dev/null}"
 response_file="$(mktemp)"
+max_attempts=8
 
 cleanup() {
   rm -f "$response_file"
 }
 trap cleanup EXIT
 
-for attempt in $(seq 1 5); do
+for attempt in $(seq 1 "$max_attempts"); do
   status=$(
     curl \
+      --connect-timeout 10 \
+      --max-time 30 \
       --silent \
       --show-error \
       --request POST \
@@ -31,14 +34,14 @@ for attempt in $(seq 1 5); do
 
   body="$(head -c 500 "$response_file" | tr '\n' ' ')"
   if [ "$status" = "429" ] || [ "$status" -ge 500 ]; then
-    if [ "$attempt" -lt 5 ]; then
-      echo "Attempt $attempt/5: $name deploy hook returned HTTP $status. Retrying in $((attempt * 10))s..."
+    if [ "$attempt" -lt "$max_attempts" ]; then
+      echo "Attempt $attempt/$max_attempts: $name deploy hook returned HTTP $status. Retrying in $((attempt * 10))s..."
       [ -n "$body" ] && echo "Response body: $body"
       sleep $((attempt * 10))
       continue
     fi
 
-    echo "::error::$name deployment hook kept returning HTTP $status after 5 attempts."
+    echo "::error::$name deployment hook kept returning HTTP $status after $max_attempts attempts."
     [ -n "$body" ] && echo "Response body: $body"
     echo "- $name deployment hook FAILED after retries (last HTTP $status)" >> "$summary_file"
     exit 1
