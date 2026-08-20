@@ -1,8 +1,14 @@
 require('../dist/load-env.js');
 
 const mongoose = require('mongoose');
-
-const NA_VALUE = 'N/A';
+const {
+  ensureNamedModule,
+  loadMachineType,
+  loadReferenceMachine,
+  normalizeText,
+  parseMaintenanceFrequency,
+  slugify,
+} = require('./lib/maintenance-plan-sync');
 
 const ADMIN_HISTORY_ROWS = [
   {
@@ -418,120 +424,12 @@ const ADMIN_HISTORY_ROWS = [
   },
 ];
 
-function normalizeText(value) {
-  const text = typeof value === 'string' ? value.trim() : '';
-  return text || NA_VALUE;
-}
-
-function slugify(value) {
-  let slug = '';
-  let pendingSeparator = false;
-
-  for (const character of String(value).normalize('NFD').toUpperCase()) {
-    const code = character.codePointAt(0);
-    if (code === undefined || (code >= 0x0300 && code <= 0x036f)) {
-      continue;
-    }
-
-    const isDigit = code >= 48 && code <= 57;
-    const isUppercaseLetter = code >= 65 && code <= 90;
-
-    if (isDigit || isUppercaseLetter) {
-      if (pendingSeparator && slug) {
-        slug += '-';
-      }
-      slug += character;
-      pendingSeparator = false;
-    } else if (slug) {
-      pendingSeparator = true;
-    }
-  }
-
-  return slug;
-}
-
-function parseFrequency(rawFrequency) {
-  const value = normalizeText(rawFrequency);
-
-  let match = /^(\d+)\s*x\s*per\s*(day|week|month|year)s?$/i.exec(value);
-  if (match) {
-    return { frequence: Number(match[1]), unite_frequence: match[2].toLowerCase() };
-  }
-
-  match = /^Every\s+(\d+)\s+(day|week|month|year)s?$/i.exec(value);
-  if (match) {
-    return { frequence: Number(match[1]), unite_frequence: match[2].toLowerCase() };
-  }
-
-  if (value.toLowerCase() === 'at each loading') {
-    return { frequence: 1, unite_frequence: 'loading' };
-  }
-
-  return { frequence: 1, unite_frequence: NA_VALUE };
-}
-
 function buildInstruction(row) {
   return [
     `Operation: ${normalizeText(row.operation)}`,
     `Mode: ${normalizeText(row.mode)}`,
     `Photo: ${normalizeText(row.photo)}`,
   ].join('\n');
-}
-
-async function getMachineType(db, categoryName) {
-  const machineType = await db.collection('machinetypes').findOne({ name: categoryName });
-  if (!machineType) {
-    throw new Error(`Machine type not found: ${categoryName}`);
-  }
-  return machineType;
-}
-
-async function getReferenceMachine(db, machineTypeId, categoryName) {
-  const machine = await db.collection('machines').findOne({ type_id: String(machineTypeId) });
-  if (!machine) {
-    throw new Error(`No machine found for machine type: ${categoryName}`);
-  }
-  return machine;
-}
-
-async function ensureModule(db, categoryName, machineTypeId, machineId, moduleLabel) {
-  const moduleTypeCode = `MT-ADMIN-${slugify(categoryName)}-${slugify(moduleLabel)}`;
-
-  await db.collection('moduletypes').updateOne(
-    { mod_type_id: moduleTypeCode },
-    {
-      $set: {
-        mod_type_id: moduleTypeCode,
-        type_id: String(machineTypeId),
-        nom_module: moduleLabel,
-        categorie_module: categoryName,
-      },
-    },
-    { upsert: true },
-  );
-
-  const moduleType = await db.collection('moduletypes').findOne(
-    { mod_type_id: moduleTypeCode },
-    { projection: { _id: 1 } },
-  );
-
-  const moduleCode = `MOD-ADMIN-${slugify(categoryName)}-${slugify(moduleLabel)}`;
-
-  await db.collection('modules').updateOne(
-    { module_id: moduleCode },
-    {
-      $set: {
-        module_id: moduleCode,
-        machine_id: machineId,
-        mod_type_id: String(moduleType._id),
-        localisation: moduleLabel,
-      },
-    },
-    { upsert: true },
-  );
-
-  const module = await db.collection('modules').findOne({ module_id: moduleCode }, { projection: { _id: 1 } });
-  return module._id;
 }
 
 async function main() {
@@ -553,16 +451,23 @@ async function main() {
 
   for (const categoryGroup of ADMIN_HISTORY_ROWS) {
     const categoryName = categoryGroup.category;
-    const machineType = await getMachineType(db, categoryName);
-    const machine = await getReferenceMachine(db, machineType._id, categoryName);
+    const machineType = await loadMachineType(db, categoryName);
+    const machine = await loadReferenceMachine(db, machineType._id, categoryName);
 
     let importedRows = 0;
 
     for (let i = 0; i < categoryGroup.rows.length; i += 1) {
       const row = categoryGroup.rows[i];
       const moduleLabel = normalizeText(row.module || `${categoryName} Machine`);
-      const moduleId = await ensureModule(db, categoryName, machineType._id, machine._id, moduleLabel);
-      const parsedFrequency = parseFrequency(row.frequency);
+      const moduleId = await ensureNamedModule(db, {
+        moduleTypePrefix: 'MT-ADMIN',
+        modulePrefix: 'MOD-ADMIN',
+        machineTypeName: categoryName,
+        machineTypeId: machineType._id,
+        machineId: machine._id,
+        moduleLabel,
+      });
+      const parsedFrequency = parseMaintenanceFrequency(row.frequency);
 
       const planId = `MP-ADMIN-${slugify(categoryName)}-${slugify(row.maintenance)}-${String(i + 1).padStart(2, '0')}`;
 

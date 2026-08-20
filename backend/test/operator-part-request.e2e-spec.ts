@@ -195,6 +195,17 @@ describe('Operator parts request (e2e)', () => {
     });
   }
 
+  function postPartsRequest(
+    workOrderId: string,
+    token: string,
+    payload: Record<string, unknown>,
+  ) {
+    return request(app.getHttpServer())
+      .post(`/operator/work-orders/${workOrderId}/parts-request`)
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+  }
+
   it('rejects an anonymous request', async () => {
     const workOrder = await createCorrectiveWorkOrder();
 
@@ -207,29 +218,24 @@ describe('Operator parts request (e2e)', () => {
   it('rejects a technician (Operator-only endpoint)', async () => {
     const workOrder = await createCorrectiveWorkOrder();
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${technicianToken}`)
-      .send({ part_id: part._id.toString(), quantity: 2 })
-      .expect(403);
+    await postPartsRequest(workOrder._id.toString(), technicianToken, {
+      part_id: part._id.toString(),
+      quantity: 2,
+    }).expect(403);
   });
 
   it('rejects a request that tries to smuggle a client-supplied requester, status, stock, or approval field', async () => {
     const workOrder = await createCorrectiveWorkOrder();
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({
-        part_id: part._id.toString(),
-        quantity: 2,
-        requested_by: '000000000000000000000000',
-        status: 'approved',
-        quantite_en_stock: 999,
-        approved_by: '000000000000000000000000',
-        approved_at: '2026-01-01T00:00:00.000Z',
-      })
-      .expect(400);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 2,
+      requested_by: '000000000000000000000000',
+      status: 'approved',
+      quantite_en_stock: 999,
+      approved_by: '000000000000000000000000',
+      approved_at: '2026-01-01T00:00:00.000Z',
+    }).expect(400);
 
     expect(await partRequests.countDocuments({ ot_id: workOrder._id })).toBe(0);
   });
@@ -252,11 +258,10 @@ describe('Operator parts request (e2e)', () => {
       technician_id: otherOperator._id,
     });
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 2 })
-      .expect(403);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 2,
+    }).expect(403);
   });
 
   it('rejects a work order assigned to a different operator on the same machine (ownership, not just machine assignment)', async () => {
@@ -264,11 +269,10 @@ describe('Operator parts request (e2e)', () => {
       technician_id: otherOperator._id,
     });
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 2 })
-      .expect(403);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 2,
+    }).expect(403);
   });
 
   it('rejects a non-corrective work order', async () => {
@@ -276,48 +280,43 @@ describe('Operator parts request (e2e)', () => {
       type_maintenance: 'preventive',
     });
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 2 })
-      .expect(400);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 2,
+    }).expect(400);
   });
 
   it('rejects a request against a closed corrective work order', async () => {
     const workOrder = await createCorrectiveWorkOrder({ status: 'completed' });
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 2 })
-      .expect(409);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 2,
+    }).expect(409);
   });
 
   it('rejects a request for a part that does not exist', async () => {
     const workOrder = await createCorrectiveWorkOrder();
     const bogusPartId = machine._id.toString();
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: bogusPartId, quantity: 2 })
-      .expect(404);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: bogusPartId,
+      quantity: 2,
+    }).expect(404);
   });
 
   it('rejects an invalid quantity', async () => {
     const workOrder = await createCorrectiveWorkOrder();
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 0 })
-      .expect(400);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 0,
+    }).expect(400);
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: -1 })
-      .expect(400);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: -1,
+    }).expect(400);
   });
 
   it('stores a pending request without mutating Stock in any way', async () => {
@@ -328,11 +327,14 @@ describe('Operator parts request (e2e)', () => {
       quantite_en_stock: 25,
     });
 
-    const response = await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 4 })
-      .expect(201);
+    const response = await postPartsRequest(
+      workOrder._id.toString(),
+      operatorToken,
+      {
+        part_id: part._id.toString(),
+        quantity: 4,
+      },
+    ).expect(201);
 
     expect(response.body.status).toBe('pending');
     expect(response.body.ot_id).toBe(workOrder._id.toString());
@@ -355,17 +357,15 @@ describe('Operator parts request (e2e)', () => {
   it('rejects a duplicate active request for the same work order and part, and creates no second record', async () => {
     const workOrder = await createCorrectiveWorkOrder();
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 3 })
-      .expect(201);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 3,
+    }).expect(201);
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 5 })
-      .expect(409);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 5,
+    }).expect(409);
 
     expect(
       await partRequests.countDocuments({
@@ -383,17 +383,15 @@ describe('Operator parts request (e2e)', () => {
       ref_constructeur: 'F-200',
     });
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: part._id.toString(), quantity: 1 })
-      .expect(201);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: part._id.toString(),
+      quantity: 1,
+    }).expect(201);
 
-    await request(app.getHttpServer())
-      .post(`/operator/work-orders/${workOrder._id.toString()}/parts-request`)
-      .set('Authorization', `Bearer ${operatorToken}`)
-      .send({ part_id: otherPart._id.toString(), quantity: 1 })
-      .expect(201);
+    await postPartsRequest(workOrder._id.toString(), operatorToken, {
+      part_id: otherPart._id.toString(),
+      quantity: 1,
+    }).expect(201);
 
     expect(await partRequests.countDocuments({ ot_id: workOrder._id })).toBe(2);
   });

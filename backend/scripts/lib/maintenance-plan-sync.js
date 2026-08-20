@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+const DEFAULT_TEXT = 'N/A';
+
+function normalizeText(value, fallback = DEFAULT_TEXT) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return text || fallback;
+}
+
 function slugify(value) {
   let slug = '';
   let pendingSeparator = false;
@@ -27,11 +34,28 @@ function slugify(value) {
   return slug;
 }
 
-async function loadMachines(db, machineTypeName) {
-  const machineType = await db.collection('machinetypes').findOne({ name: machineTypeName });
-  if (!machineType) {
-    throw new Error(`Machine type not found: ${machineTypeName}`);
+function parseMaintenanceFrequency(rawFrequency) {
+  const value = normalizeText(rawFrequency);
+
+  let match = /^(\d+)\s*x\s*per\s*(day|week|month|year)s?$/i.exec(value);
+  if (match) {
+    return { frequence: Number(match[1]), unite_frequence: match[2].toLowerCase() };
   }
+
+  match = /^Every\s+(\d+)\s+(day|week|month|year)s?$/i.exec(value);
+  if (match) {
+    return { frequence: Number(match[1]), unite_frequence: match[2].toLowerCase() };
+  }
+
+  if (value.toLowerCase() === 'at each loading') {
+    return { frequence: 1, unite_frequence: 'loading' };
+  }
+
+  return { frequence: 1, unite_frequence: DEFAULT_TEXT };
+}
+
+async function loadMachines(db, machineTypeName) {
+  const machineType = await loadMachineType(db, machineTypeName);
 
   const machines = await db
     .collection('machines')
@@ -44,6 +68,24 @@ async function loadMachines(db, machineTypeName) {
   }
 
   return { machineType, machines };
+}
+
+async function loadMachineType(db, machineTypeName) {
+  const machineType = await db.collection('machinetypes').findOne({ name: machineTypeName });
+  if (!machineType) {
+    throw new Error(`Machine type not found: ${machineTypeName}`);
+  }
+
+  return machineType;
+}
+
+async function loadReferenceMachine(db, machineTypeId, machineTypeName) {
+  const machine = await db.collection('machines').findOne({ type_id: String(machineTypeId) });
+  if (!machine) {
+    throw new Error(`No machine found for machine type: ${machineTypeName}`);
+  }
+
+  return machine;
 }
 
 async function upsertLubrifiants(db, lubrifiants) {
@@ -117,6 +159,47 @@ async function upsertBraidingModules(db, machines, moduleTypes, moduleTypeIds) {
   }
 
   return { count, ids };
+}
+
+async function ensureNamedModule(db, config) {
+  const moduleTypeCode = `${config.moduleTypePrefix}-${slugify(config.machineTypeName)}-${slugify(config.moduleLabel)}`;
+  await db.collection('moduletypes').updateOne(
+    { mod_type_id: moduleTypeCode },
+    {
+      $set: {
+        mod_type_id: moduleTypeCode,
+        type_id: String(config.machineTypeId),
+        nom_module: config.moduleLabel,
+        categorie_module: config.machineTypeName,
+      },
+    },
+    { upsert: true },
+  );
+
+  const moduleType = await db.collection('moduletypes').findOne(
+    { mod_type_id: moduleTypeCode },
+    { projection: { _id: 1 } },
+  );
+  const moduleCode = `${config.modulePrefix}-${slugify(config.machineTypeName)}-${slugify(config.moduleLabel)}`;
+
+  await db.collection('modules').updateOne(
+    { module_id: moduleCode },
+    {
+      $set: {
+        module_id: moduleCode,
+        machine_id: config.machineId,
+        mod_type_id: String(moduleType._id),
+        localisation: config.moduleLabel,
+      },
+    },
+    { upsert: true },
+  );
+
+  const module = await db.collection('modules').findOne(
+    { module_id: moduleCode },
+    { projection: { _id: 1 } },
+  );
+  return module._id;
 }
 
 async function upsertBraidingPlans(db, machines, templates, moduleIds, config) {
@@ -393,7 +476,13 @@ function runMaintenanceSync(sync, config) {
 }
 
 module.exports = {
+  ensureNamedModule,
+  loadMachineType,
+  loadReferenceMachine,
+  normalizeText,
+  parseMaintenanceFrequency,
   runMaintenanceSync,
+  slugify,
   syncBraidingMaintenancePlans,
   syncChecklistMaintenancePlans,
 };
