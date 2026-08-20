@@ -79,9 +79,7 @@ const STATUS_BADGE_CLASSES: Record<DocumentStatus, string> = {
 
 // Mirrors the backend's own transition table exactly, so the UI never
 // offers an action the server would reject.
-function getAvailableActions(
-  status: DocumentStatus,
-): Array<"publish" | "archive" | "replace"> {
+function getAvailableActions(status: DocumentStatus): Array<"publish" | "archive" | "replace"> {
   if (status === "draft") return ["publish", "archive", "replace"];
   if (status === "published") return ["archive", "replace"];
   return [];
@@ -348,9 +346,7 @@ export default function DocumentsPage() {
     if (!confirm(t("notifications.confirmPublish"))) return;
 
     try {
-      await apiService.publishDocument(doc._id, {
-        expected_version: doc.version,
-      });
+      await apiService.publishDocument(doc._id, { expected_version: doc.version });
       showNotification("success", t("notifications.publishSuccess"));
       await loadData();
     } catch (error) {
@@ -366,9 +362,7 @@ export default function DocumentsPage() {
     if (!confirm(t("notifications.confirmArchive"))) return;
 
     try {
-      await apiService.archiveDocument(doc._id, {
-        expected_version: doc.version,
-      });
+      await apiService.archiveDocument(doc._id, { expected_version: doc.version });
       showNotification("success", t("notifications.archiveSuccess"));
       await loadData();
     } catch (error) {

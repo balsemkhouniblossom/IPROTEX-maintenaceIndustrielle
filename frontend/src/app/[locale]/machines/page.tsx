@@ -178,10 +178,9 @@ export default function MachinesPage() {
             const response = await apiService.getDocumentsByMachine(
               machine._id,
             );
-            const documents = Array.isArray(response.data) ? response.data : [];
             return [
               machine._id,
-              sortMachineDocumentsForMachine(machine._id, documents),
+              sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []),
             ] as const;
           } catch (error) {
             if (!isNotFoundError(error)) {
@@ -399,10 +398,7 @@ export default function MachinesPage() {
     setLoadingManualMachineId(machine._id);
     try {
       const response = await apiService.getDocumentsByMachine(machine._id);
-      const manuals = sortMachineDocumentsForMachine(
-        machine._id,
-        Array.isArray(response.data) ? response.data : [],
-      );
+      const manuals = sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []);
       setManualsByMachine((current) => ({
         ...current,
         [machine._id]: manuals,
@@ -641,9 +637,7 @@ export default function MachinesPage() {
                           </span>
                         </td>
                         <td>
-                          <MachineHealthBadge
-                            status={healthByMachine[machine._id]}
-                          />
+                          <MachineHealthBadge status={healthByMachine[machine._id]} />
                         </td>
                         <td>
                           {machine.installation_date
@@ -662,11 +656,7 @@ export default function MachinesPage() {
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() =>
-                                router.push(
-                                  `/${locale}/machines/${machine._id}`,
-                                )
-                              }
+                              onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
                               aria-label={tMachines("actions.viewTimeline", {
                                 default: "View timeline",
                               })}
