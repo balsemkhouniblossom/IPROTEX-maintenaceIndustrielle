@@ -51,8 +51,15 @@ jobs:
       - name: Type check
         run: npm run type-check
 
-      - name: Test
-        run: npm test
+      - name: Test with coverage
+        run: npm run test:cov
+
+      - name: Upload coverage for SonarQube
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+          if-no-files-found: error
 
       - name: Build
         run: npm run build
@@ -91,7 +98,7 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm run test:cov -- --runInBand
+        run: npm run test:cov
         env:
           NODE_ENV: test
           MONGODB_URI: mongodb://127.0.0.1:27017/GMAO_IPROTEX_TEST
@@ -125,6 +132,11 @@ jobs:
         with:
           name: backend-coverage
           path: backend/coverage
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
 
       - uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
         env:

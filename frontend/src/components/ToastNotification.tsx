@@ -5,18 +5,18 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
-export type ToastNotificationState = {
+export type ToastNotificationState = Readonly<{
   type: "success" | "error";
   message: string;
-};
+}>;
 
-type ToastNotificationProps = {
-  readonly notification: ToastNotificationState | null;
-  readonly onClose: () => void;
-  readonly closeLabel?: string;
-};
+export type ToastNotificationProps = Readonly<{
+  notification: ToastNotificationState | null;
+  onClose: () => void;
+  closeLabel?: string;
+}>;
 
-export function ToastNotification(props: Readonly<ToastNotificationProps>) {
+export function ToastNotification(props: ToastNotificationProps) {
   const { notification, onClose, closeLabel = "Close" } = props;
 
   if (!notification) return null;
