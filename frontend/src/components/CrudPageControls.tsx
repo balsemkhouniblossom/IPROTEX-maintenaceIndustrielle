@@ -137,6 +137,113 @@ export function CrudTablePanel(props: CrudTablePanelProps) {
   );
 }
 
+type CrudDataTableColumn<TItem> = Readonly<{
+  header: ReactNode;
+  render: (item: TItem) => ReactNode;
+  className?: string;
+}>;
+
+type CrudDataTableProps<TItem> = Readonly<{
+  columns: ReadonlyArray<CrudDataTableColumn<TItem>>;
+  items: ReadonlyArray<TItem>;
+  getRowKey: (item: TItem) => string;
+  emptyMessage: string;
+  actionsHeader: ReactNode;
+  renderActions: (item: TItem) => ReactNode;
+}>;
+
+export function CrudDataTable<TItem>(props: CrudDataTableProps<TItem>) {
+  const {
+    columns,
+    items,
+    getRowKey,
+    emptyMessage,
+    actionsHeader,
+    renderActions,
+  } = props;
+
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          {columns.map((column, index) => (
+            <th key={index}>{column.header}</th>
+          ))}
+          <th>{actionsHeader}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.length === 0 ? (
+          <tr>
+            <td
+              colSpan={columns.length + 1}
+              className="text-center py-8 text-gray-500"
+            >
+              {emptyMessage}
+            </td>
+          </tr>
+        ) : (
+          items.map((item) => (
+            <tr key={getRowKey(item)}>
+              {columns.map((column, index) => (
+                <td key={index} className={column.className}>
+                  {column.render(item)}
+                </td>
+              ))}
+              <td>{renderActions(item)}</td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+type CrudDataTablePanelProps<TItem> = Readonly<
+  Omit<CrudTablePanelProps, "children"> & CrudDataTableProps<TItem>
+>;
+
+export function CrudDataTablePanel<TItem>(
+  props: CrudDataTablePanelProps<TItem>,
+) {
+  const {
+    title,
+    page,
+    totalPages,
+    totalItems,
+    limit,
+    onPageChange,
+    paginationClassName,
+    columns,
+    items,
+    getRowKey,
+    emptyMessage,
+    actionsHeader,
+    renderActions,
+  } = props;
+
+  return (
+    <CrudTablePanel
+      title={title}
+      page={page}
+      totalPages={totalPages}
+      totalItems={totalItems}
+      limit={limit}
+      onPageChange={onPageChange}
+      paginationClassName={paginationClassName}
+    >
+      <CrudDataTable
+        columns={columns}
+        items={items}
+        getRowKey={getRowKey}
+        emptyMessage={emptyMessage}
+        actionsHeader={actionsHeader}
+        renderActions={renderActions}
+      />
+    </CrudTablePanel>
+  );
+}
+
 type AdditionalDetailsFieldProps = Readonly<{
   id: string;
   label: string;

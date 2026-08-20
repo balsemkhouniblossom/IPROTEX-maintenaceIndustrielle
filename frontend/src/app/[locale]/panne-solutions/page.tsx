@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AdditionalDetailsField,
+  CrudDataTablePanel,
   CrudListHeader,
   CrudLoadingState,
-  CrudTablePanel,
   FormFieldShell,
   InlineTextArea,
   InlineTextInput,
@@ -385,7 +385,7 @@ export default function PanneSolutionsPage() {
           searchPlaceholder={t("searchPlaceholder")}
         />
 
-        <CrudTablePanel
+        <CrudDataTablePanel
           title={t("allSolutions")}
           page={page}
           totalPages={totalPages}
@@ -393,57 +393,44 @@ export default function PanneSolutionsPage() {
           limit={limit}
           onPageChange={setPage}
           paginationClassName="mt-0"
-        >
-          <table className="table">
-            <thead>
-              <tr>
-                <th>
-                  {t("table.solutionReference", {
-                    default: "Solution Reference",
-                  })}
-                </th>
-                <th>{t("table.panne")}</th>
-                <th>{t("table.cause")}</th>
-                <th>{t("table.solution")}</th>
-                <th>{tCommon("table.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSolutions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500">
-                    {searchTerm ? t("empty.search") : t("empty.default")}
-                  </td>
-                </tr>
-              ) : (
-                filteredSolutions.map((solution) => (
-                  <tr key={solution._id}>
-                    <td className="font-medium">{solution.solution_id}</td>
-                    <td>
-                      {getPanneLabel(solution.panne_id) ||
-                        tCommon("notAvailable")}
-                    </td>
-                    <td>
-                      {solution.cause_probable || tCommon("notAvailable")}
-                    </td>
-                    <td>
-                      {solution.solution_recommandee || tCommon("notAvailable")}
-                    </td>
-                    <td>
-                      <RowActions
-                        editLabel={t("actions.edit")}
-                        deleteLabel={t("actions.delete")}
-                        itemLabel={solution.solution_id}
-                        onEdit={() => openEditModal(solution)}
-                        onDelete={() => handleDelete(solution._id)}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </CrudTablePanel>
+          items={filteredSolutions}
+          getRowKey={(solution) => solution._id}
+          emptyMessage={searchTerm ? t("empty.search") : t("empty.default")}
+          actionsHeader={tCommon("table.actions")}
+          columns={[
+            {
+              header: t("table.solutionReference", {
+                default: "Solution Reference",
+              }),
+              className: "font-medium",
+              render: (solution) => solution.solution_id,
+            },
+            {
+              header: t("table.panne"),
+              render: (solution) =>
+                getPanneLabel(solution.panne_id) || tCommon("notAvailable"),
+            },
+            {
+              header: t("table.cause"),
+              render: (solution) =>
+                solution.cause_probable || tCommon("notAvailable"),
+            },
+            {
+              header: t("table.solution"),
+              render: (solution) =>
+                solution.solution_recommandee || tCommon("notAvailable"),
+            },
+          ]}
+          renderActions={(solution) => (
+            <RowActions
+              editLabel={t("actions.edit")}
+              deleteLabel={t("actions.delete")}
+              itemLabel={solution.solution_id}
+              onEdit={() => openEditModal(solution)}
+              onDelete={() => handleDelete(solution._id)}
+            />
+          )}
+        />
       </div>
 
       <Modal

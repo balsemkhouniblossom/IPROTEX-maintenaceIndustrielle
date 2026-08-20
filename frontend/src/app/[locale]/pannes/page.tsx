@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AdditionalDetailsField,
+  CrudDataTablePanel,
   CrudListHeader,
   CrudLoadingState,
-  CrudTablePanel,
   FormFieldShell,
   InlineTextArea,
   InlineTextInput,
@@ -324,55 +324,45 @@ export default function PannesPage() {
           searchPlaceholder={t("searchPlaceholder")}
         />
 
-        <CrudTablePanel
+        <CrudDataTablePanel
           title={t("allPannes")}
           page={page}
           totalPages={totalPages}
           totalItems={totalItems}
           limit={limit}
           onPageChange={handlePageChange}
-        >
-          <table className="table">
-            <thead>
-              <tr>
-                <th>
-                  {t("table.faultReference", { default: "Fault Reference" })}
-                </th>
-                <th>{t("table.code")}</th>
-                <th>{t("table.description")}</th>
-                <th>{t("table.severity")}</th>
-                <th>{tCommon("table.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPannes.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500">
-                    {searchTerm ? t("empty.search") : t("empty.default")}
-                  </td>
-                </tr>
-              ) : (
-                filteredPannes.map((panne) => (
-                  <tr key={panne._id}>
-                    <td className="font-medium">{panne.panne_id}</td>
-                    <td>{panne.code_panne}</td>
-                    <td>{panne.description}</td>
-                    <td>{panne.gravite || tCommon("notAvailable")}</td>
-                    <td>
-                      <RowActions
-                        editLabel={t("actions.edit")}
-                        deleteLabel={t("actions.delete")}
-                        itemLabel={panne.panne_id}
-                        onEdit={() => openEditModal(panne)}
-                        onDelete={() => handleDelete(panne._id)}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </CrudTablePanel>
+          items={filteredPannes}
+          getRowKey={(panne) => panne._id}
+          emptyMessage={searchTerm ? t("empty.search") : t("empty.default")}
+          actionsHeader={tCommon("table.actions")}
+          columns={[
+            {
+              header: t("table.faultReference", {
+                default: "Fault Reference",
+              }),
+              className: "font-medium",
+              render: (panne) => panne.panne_id,
+            },
+            { header: t("table.code"), render: (panne) => panne.code_panne },
+            {
+              header: t("table.description"),
+              render: (panne) => panne.description,
+            },
+            {
+              header: t("table.severity"),
+              render: (panne) => panne.gravite || tCommon("notAvailable"),
+            },
+          ]}
+          renderActions={(panne) => (
+            <RowActions
+              editLabel={t("actions.edit")}
+              deleteLabel={t("actions.delete")}
+              itemLabel={panne.panne_id}
+              onEdit={() => openEditModal(panne)}
+              onDelete={() => handleDelete(panne._id)}
+            />
+          )}
+        />
       </div>
 
       <Modal
