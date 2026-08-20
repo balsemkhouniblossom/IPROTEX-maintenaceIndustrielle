@@ -1,23 +1,12 @@
-import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
+import { PaginatedQueryDto } from '../../common/dto/paginated-query.dto';
 import {
   ReportFormat,
   ReportStatus,
   ReportType,
 } from '../../schemas/generated-report.schema';
 
-export class ReportsQueryDto {
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @Max(100)
+export class ReportsQueryDto extends PaginatedQueryDto {
   limit?: number = 20;
 
   @IsOptional()

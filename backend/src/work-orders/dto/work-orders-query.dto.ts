@@ -1,35 +1,12 @@
-import { Transform } from 'class-transformer';
 import {
   IsDateString,
-  IsInt,
   IsMongoId,
   IsOptional,
   IsString,
-  Max,
-  Min,
 } from 'class-validator';
+import { SortablePaginatedSearchQueryDto } from '../../common/dto/paginated-query.dto';
 
-export class WorkOrdersQueryDto {
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 10;
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  search?: string;
-
+export class WorkOrdersQueryDto extends SortablePaginatedSearchQueryDto {
   /** Comma-separated `status` values, e.g. `open,in_progress`. */
   @IsOptional()
   @IsString()
@@ -55,9 +32,4 @@ export class WorkOrdersQueryDto {
   @IsOptional()
   @IsDateString()
   dateTo?: string;
-
-  /** `field` for ascending, `-field` for descending; restricted server-side to an allow-list. */
-  @IsOptional()
-  @IsString()
-  sort?: string;
 }

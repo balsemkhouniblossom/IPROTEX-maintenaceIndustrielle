@@ -9,20 +9,23 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
-
-export type ChartDatum = Readonly<{
-  label: string;
-  value: number;
-}>;
+import {
+  CHART_AXIS_LINE,
+  CHART_AXIS_TICK,
+  CHART_CARD_MARGIN,
+  CHART_TOOLTIP_STYLE,
+  ChartCardShell,
+  formatChartTooltipValue,
+  type ChartDatum,
+  type ChartValueFormatter,
+} from './ChartCardShell';
 
 type LineChartCardProps = Readonly<{
   title: string;
   data: ChartDatum[];
   emptyLabel: string;
   color?: string;
-  valueFormatter?: (value: number) => string;
+  valueFormatter?: ChartValueFormatter;
 }>;
 
 /**
@@ -32,66 +35,45 @@ type LineChartCardProps = Readonly<{
  * here is tied to any particular feature.
  */
 export function LineChartCard(props: LineChartCardProps) {
-  return (
-    <ErrorBoundary boundaryName="line-chart-card" fallback={renderWidgetErrorFallback}>
-      <LineChartCardInner {...props} />
-    </ErrorBoundary>
-  );
-}
+  const { title, data, emptyLabel, color = 'var(--primary)', valueFormatter } = props;
 
-function LineChartCardInner({
-  title,
-  data,
-  emptyLabel,
-  color = 'var(--primary)',
-  valueFormatter,
-}: LineChartCardProps) {
   return (
-    <div className="panel">
-      <h3 className="card-title mb-3">{title}</h3>
-      {data.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {emptyLabel}
-        </p>
-      ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--border)' }}
-              tickLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--border)' }}
-              tickLine={false}
-              width={32}
-            />
-            <Tooltip
-              formatter={(value) =>
-                valueFormatter && typeof value === 'number' ? valueFormatter(value) : value
-              }
-              contentStyle={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                color: 'var(--text-primary)',
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={color}
-              strokeWidth={2}
-              dot={{ r: 3, fill: color }}
-              activeDot={{ r: 5 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      )}
-    </div>
+    <ChartCardShell
+      boundaryName="line-chart-card"
+      title={title}
+      data={data}
+      emptyLabel={emptyLabel}
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <LineChart data={data} margin={CHART_CARD_MARGIN}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis
+            dataKey="label"
+            tick={CHART_AXIS_TICK}
+            axisLine={CHART_AXIS_LINE}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={CHART_AXIS_TICK}
+            axisLine={CHART_AXIS_LINE}
+            tickLine={false}
+            width={32}
+          />
+          <Tooltip
+            formatter={(value) => formatChartTooltipValue(value, valueFormatter)}
+            contentStyle={CHART_TOOLTIP_STYLE}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={2}
+            dot={{ r: 3, fill: color }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCardShell>
   );
 }

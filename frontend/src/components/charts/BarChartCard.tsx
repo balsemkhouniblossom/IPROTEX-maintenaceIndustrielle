@@ -9,20 +9,25 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import {
+  CHART_AXIS_LINE,
+  CHART_AXIS_TICK,
+  CHART_CARD_MARGIN,
+  CHART_TOOLTIP_STYLE,
+  ChartCardShell,
+  formatChartTooltipValue,
+  type ChartDatum,
+  type ChartValueFormatter,
+} from './ChartCardShell';
 
-export type ChartDatum = Readonly<{
-  label: string;
-  value: number;
-}>;
+export type { ChartDatum } from './ChartCardShell';
 
 type BarChartCardProps = Readonly<{
   title: string;
   data: ChartDatum[];
   emptyLabel: string;
   color?: string;
-  valueFormatter?: (value: number) => string;
+  valueFormatter?: ChartValueFormatter;
 }>;
 
 /**
@@ -32,59 +37,38 @@ type BarChartCardProps = Readonly<{
  * `{label, value}[]` — nothing here is tied to any particular feature.
  */
 export function BarChartCard(props: BarChartCardProps) {
-  return (
-    <ErrorBoundary boundaryName="bar-chart-card" fallback={renderWidgetErrorFallback}>
-      <BarChartCardInner {...props} />
-    </ErrorBoundary>
-  );
-}
+  const { title, data, emptyLabel, color = 'var(--primary)', valueFormatter } = props;
 
-function BarChartCardInner({
-  title,
-  data,
-  emptyLabel,
-  color = 'var(--primary)',
-  valueFormatter,
-}: BarChartCardProps) {
   return (
-    <div className="panel">
-      <h3 className="card-title mb-3">{title}</h3>
-      {data.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {emptyLabel}
-        </p>
-      ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis
-              dataKey="label"
-              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--border)' }}
-              tickLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--border)' }}
-              tickLine={false}
-              width={32}
-            />
-            <Tooltip
-              formatter={(value) =>
-                valueFormatter && typeof value === 'number' ? valueFormatter(value) : value
-              }
-              contentStyle={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                color: 'var(--text-primary)',
-              }}
-            />
-            <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
-          </BarChart>
-        </ResponsiveContainer>
-      )}
-    </div>
+    <ChartCardShell
+      boundaryName="bar-chart-card"
+      title={title}
+      data={data}
+      emptyLabel={emptyLabel}
+    >
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={data} margin={CHART_CARD_MARGIN}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis
+            dataKey="label"
+            tick={CHART_AXIS_TICK}
+            axisLine={CHART_AXIS_LINE}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={CHART_AXIS_TICK}
+            axisLine={CHART_AXIS_LINE}
+            tickLine={false}
+            width={32}
+          />
+          <Tooltip
+            formatter={(value) => formatChartTooltipValue(value, valueFormatter)}
+            contentStyle={CHART_TOOLTIP_STYLE}
+          />
+          <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCardShell>
   );
 }

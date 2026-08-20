@@ -1,27 +1,7 @@
-import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
+import { SortablePaginatedSearchQueryDto } from '../../common/dto/paginated-query.dto';
 
-export class MaintenancePlansQueryDto {
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 10;
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  search?: string;
-
+export class MaintenancePlansQueryDto extends SortablePaginatedSearchQueryDto {
   /** Comma-separated `status` values, e.g. `active,paused`. */
   @IsOptional()
   @IsString()
@@ -31,9 +11,4 @@ export class MaintenancePlansQueryDto {
   @IsOptional()
   @IsString()
   typeMaintenance?: string;
-
-  /** `field` for ascending, `-field` for descending; restricted server-side to an allow-list. */
-  @IsOptional()
-  @IsString()
-  sort?: string;
 }

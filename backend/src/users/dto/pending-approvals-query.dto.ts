@@ -1,27 +1,9 @@
-import { Transform } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
+import { PaginatedSearchQueryDto } from '../../common/dto/paginated-query.dto';
 import { Role } from '../../schemas/user.schema';
 
-export class PendingApprovalsQueryDto {
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @Max(100)
+export class PendingApprovalsQueryDto extends PaginatedSearchQueryDto {
   limit?: number = 20;
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim() : value,
-  )
-  search?: string;
 
   @IsOptional()
   @IsIn([Role.OPERATOR, Role.TECHNICIAN])
