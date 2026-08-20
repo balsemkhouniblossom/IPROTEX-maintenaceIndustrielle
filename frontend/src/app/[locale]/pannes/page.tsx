@@ -6,21 +6,18 @@ import { useTranslations } from "next-intl";
 import {
   AdditionalDetailsField,
   CrudDataTablePanel,
-  CrudListHeader,
   CrudLoadingState,
+  CrudPageScaffold,
   FormFieldShell,
+  InlineSelectInput,
   InlineTextArea,
   InlineTextInput,
   ModalFormActions,
   RowActions,
   SelectField,
 } from "@/components/CrudPageControls";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Modal } from "@/components/Modal";
-import {
-  ToastNotification,
-  type ToastNotificationState,
-} from "@/components/ToastNotification";
+import type { ToastNotificationState } from "@/components/ToastNotification";
 import { apiService } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -298,72 +295,73 @@ export default function PannesPage() {
   }
 
   return (
-    <DashboardLayout title={t("title")}>
-      <ToastNotification
-        notification={notification}
-        onClose={() => setNotification(null)}
-        closeLabel={tCommon("close")}
+    <CrudPageScaffold
+      title={t("title")}
+      heading={t("heading")}
+      description={t("description")}
+      totalItems={totalItems}
+      totalLabel={t("totalPannes")}
+      addLabel={t("actions.add")}
+      onAdd={openCreateModal}
+      selectedField={selectedSearchField}
+      onSelectedFieldChange={setSelectedSearchField}
+      searchableFields={searchableFields}
+      allFieldsLabel={tCommon("table.allFields", {
+        default: "All fields",
+      })}
+      searchTerm={searchTerm}
+      onSearchTermChange={setSearchTerm}
+      searchPlaceholder={t("searchPlaceholder")}
+      notification={notification}
+      onNotificationClose={() => setNotification(null)}
+      closeLabel={tCommon("close")}
+    >
+      <CrudDataTablePanel
+        title={t("allPannes")}
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        limit={limit}
+        onPageChange={handlePageChange}
+        items={filteredPannes}
+        getRowKey={(panne) => panne._id}
+        emptyMessage={searchTerm ? t("empty.search") : t("empty.default")}
+        actionsHeader={tCommon("table.actions")}
+        columns={[
+          {
+            id: "fault-reference",
+            header: t("table.faultReference", {
+              default: "Fault Reference",
+            }),
+            className: "font-medium",
+            render: (panne) => panne.panne_id,
+          },
+          {
+            id: "code",
+            header: t("table.code"),
+            render: (panne) => panne.code_panne,
+          },
+          {
+            id: "description",
+            header: t("table.description"),
+            render: (panne) => panne.description,
+          },
+          {
+            id: "severity",
+            header: t("table.severity"),
+            render: (panne) => panne.gravite || tCommon("notAvailable"),
+          },
+        ]}
+        renderActions={(panne) => (
+          <RowActions
+            editLabel={t("actions.edit")}
+            deleteLabel={t("actions.delete")}
+            itemLabel={panne.panne_id}
+            onEdit={() => openEditModal(panne)}
+            onDelete={() => handleDelete(panne._id)}
+          />
+        )}
       />
-
-      <div className="bento-grid">
-        <CrudListHeader
-          heading={t("heading")}
-          description={t("description")}
-          totalItems={totalItems}
-          totalLabel={t("totalPannes")}
-          addLabel={t("actions.add")}
-          onAdd={openCreateModal}
-          selectedField={selectedSearchField}
-          onSelectedFieldChange={setSelectedSearchField}
-          searchableFields={searchableFields}
-          allFieldsLabel={tCommon("table.allFields", {
-            default: "All fields",
-          })}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          searchPlaceholder={t("searchPlaceholder")}
-        />
-
-        <CrudDataTablePanel
-          title={t("allPannes")}
-          page={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={handlePageChange}
-          items={filteredPannes}
-          getRowKey={(panne) => panne._id}
-          emptyMessage={searchTerm ? t("empty.search") : t("empty.default")}
-          actionsHeader={tCommon("table.actions")}
-          columns={[
-            {
-              header: t("table.faultReference", {
-                default: "Fault Reference",
-              }),
-              className: "font-medium",
-              render: (panne) => panne.panne_id,
-            },
-            { header: t("table.code"), render: (panne) => panne.code_panne },
-            {
-              header: t("table.description"),
-              render: (panne) => panne.description,
-            },
-            {
-              header: t("table.severity"),
-              render: (panne) => panne.gravite || tCommon("notAvailable"),
-            },
-          ]}
-          renderActions={(panne) => (
-            <RowActions
-              editLabel={t("actions.edit")}
-              deleteLabel={t("actions.delete")}
-              itemLabel={panne.panne_id}
-              onEdit={() => openEditModal(panne)}
-              onDelete={() => handleDelete(panne._id)}
-            />
-          )}
-        />
-      </div>
 
       <Modal
         isOpen={showModal}
@@ -380,10 +378,9 @@ export default function PannesPage() {
               label={t("form.faultReference", { default: "Fault Reference" })}
             >
               {isOperator ? (
-                <select
+                <InlineSelectInput
                   value={formData.panne_id}
-                  onChange={(e) => {
-                    const selectedValue = e.target.value;
+                  onChange={(selectedValue) => {
                     if (selectedValue === CUSTOM_OPTION) {
                       setCustomMode((prev) => ({ ...prev, panne_id: true }));
                       setFormData((prev) => ({ ...prev, panne_id: "" }));
@@ -392,22 +389,21 @@ export default function PannesPage() {
                     setCustomMode((prev) => ({ ...prev, panne_id: false }));
                     applyPanneTemplate(selectedValue);
                   }}
-                  className="input-field"
                   title={t("form.faultReference", {
                     default: "Fault Reference",
                   })}
+                  placeholder={t("form.faultReference", {
+                    default: "Fault Reference",
+                  })}
+                  customOptionValue={CUSTOM_OPTION}
+                  customOptionLabel="Custom value..."
+                  options={panneTemplates.map((panne) => ({
+                    key: panne._id,
+                    value: panne.panne_id,
+                    label: panne.panne_id,
+                  }))}
                   required
-                >
-                  <option value="">
-                    {t("form.faultReference", { default: "Fault Reference" })}
-                  </option>
-                  <option value={CUSTOM_OPTION}>Custom value...</option>
-                  {panneTemplates.map((panne) => (
-                    <option key={panne._id} value={panne.panne_id}>
-                      {panne.panne_id}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : (
                 <InlineTextInput
                   value={formData.panne_id}
@@ -437,32 +433,31 @@ export default function PannesPage() {
             </FormFieldShell>
             <FormFieldShell label={t("form.code")}>
               {isOperator ? (
-                <select
+                <InlineSelectInput
                   value={formData.code_panne}
-                  onChange={(e) => {
-                    if (e.target.value === CUSTOM_OPTION) {
+                  onChange={(value) => {
+                    if (value === CUSTOM_OPTION) {
                       setCustomMode((prev) => ({ ...prev, code_panne: true }));
                       setFormData((prev) => ({ ...prev, code_panne: "" }));
                       return;
                     }
                     setCustomMode((prev) => ({ ...prev, code_panne: false }));
                     const template = panneTemplates.find(
-                      (item) => item.code_panne === e.target.value,
+                      (item) => item.code_panne === value,
                     );
                     if (template) applyPanneTemplate(template.panne_id);
                   }}
-                  className="input-field"
                   title={t("form.code")}
+                  placeholder={t("form.code")}
+                  customOptionValue={CUSTOM_OPTION}
+                  customOptionLabel="Custom value..."
+                  options={panneTemplates.map((panne) => ({
+                    key: `${panne._id}-code`,
+                    value: panne.code_panne,
+                    label: panne.code_panne,
+                  }))}
                   required
-                >
-                  <option value="">{t("form.code")}</option>
-                  <option value={CUSTOM_OPTION}>Custom value...</option>
-                  {panneTemplates.map((panne) => (
-                    <option key={`${panne._id}-code`} value={panne.code_panne}>
-                      {panne.code_panne}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : (
                 <InlineTextInput
                   value={formData.code_panne}
@@ -490,35 +485,31 @@ export default function PannesPage() {
 
           <FormFieldShell label={t("form.description")}>
             {isOperator ? (
-              <select
+              <InlineSelectInput
                 value={formData.description}
-                onChange={(e) => {
-                  if (e.target.value === CUSTOM_OPTION) {
+                onChange={(value) => {
+                  if (value === CUSTOM_OPTION) {
                     setCustomMode((prev) => ({ ...prev, description: true }));
                     setFormData((prev) => ({ ...prev, description: "" }));
                     return;
                   }
                   setCustomMode((prev) => ({ ...prev, description: false }));
                   const template = panneTemplates.find(
-                    (item) => item.description === e.target.value,
+                    (item) => item.description === value,
                   );
                   if (template) applyPanneTemplate(template.panne_id);
                 }}
-                className="input-field"
                 title={t("form.description")}
+                placeholder={t("form.description")}
+                customOptionValue={CUSTOM_OPTION}
+                customOptionLabel="Custom value..."
+                options={panneTemplates.map((panne) => ({
+                  key: `${panne._id}-description`,
+                  value: panne.description,
+                  label: panne.description,
+                }))}
                 required
-              >
-                <option value="">{t("form.description")}</option>
-                <option value={CUSTOM_OPTION}>Custom value...</option>
-                {panneTemplates.map((panne) => (
-                  <option
-                    key={`${panne._id}-description`}
-                    value={panne.description}
-                  >
-                    {panne.description}
-                  </option>
-                ))}
-              </select>
+              />
             ) : (
               <InlineTextArea
                 value={formData.description}
@@ -604,6 +595,6 @@ export default function PannesPage() {
           />
         </form>
       </Modal>
-    </DashboardLayout>
+    </CrudPageScaffold>
   );
 }

@@ -5,6 +5,10 @@ import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import Pagination from "@/components/Pagination";
+import {
+  ToastNotification,
+  type ToastNotificationState,
+} from "@/components/ToastNotification";
 
 type CrudLoadingStateProps = Readonly<{
   title: string;
@@ -95,6 +99,42 @@ export function CrudListHeader(props: CrudListHeaderProps) {
   );
 }
 
+type CrudPageScaffoldProps = Readonly<
+  CrudListHeaderProps & {
+    title: string;
+    notification: ToastNotificationState | null;
+    onNotificationClose: () => void;
+    closeLabel: string;
+    children: ReactNode;
+  }
+>;
+
+export function CrudPageScaffold(props: CrudPageScaffoldProps) {
+  const {
+    title,
+    notification,
+    onNotificationClose,
+    closeLabel,
+    children,
+    ...headerProps
+  } = props;
+
+  return (
+    <DashboardLayout title={title}>
+      <ToastNotification
+        notification={notification}
+        onClose={onNotificationClose}
+        closeLabel={closeLabel}
+      />
+
+      <div className="bento-grid">
+        <CrudListHeader {...headerProps} />
+        {children}
+      </div>
+    </DashboardLayout>
+  );
+}
+
 type CrudTablePanelProps = Readonly<{
   title: string;
   page: number;
@@ -138,6 +178,7 @@ export function CrudTablePanel(props: CrudTablePanelProps) {
 }
 
 type CrudDataTableColumn<TItem> = Readonly<{
+  id: string;
   header: ReactNode;
   render: (item: TItem) => ReactNode;
   className?: string;
@@ -166,8 +207,8 @@ export function CrudDataTable<TItem>(props: CrudDataTableProps<TItem>) {
     <table className="table">
       <thead>
         <tr>
-          {columns.map((column, index) => (
-            <th key={index}>{column.header}</th>
+          {columns.map((column) => (
+            <th key={column.id}>{column.header}</th>
           ))}
           <th>{actionsHeader}</th>
         </tr>
@@ -185,8 +226,8 @@ export function CrudDataTable<TItem>(props: CrudDataTableProps<TItem>) {
         ) : (
           items.map((item) => (
             <tr key={getRowKey(item)}>
-              {columns.map((column, index) => (
-                <td key={index} className={column.className}>
+              {columns.map((column) => (
+                <td key={column.id} className={column.className}>
                   {column.render(item)}
                 </td>
               ))}
@@ -422,6 +463,56 @@ export function InlineTextArea(props: InlineTextAreaProps) {
       placeholder={placeholder}
       required={required}
     />
+  );
+}
+
+type InlineSelectOption = Readonly<{
+  key: string;
+  value: string;
+  label: ReactNode;
+}>;
+
+type InlineSelectInputProps = Readonly<{
+  value: string;
+  onChange: (value: string) => void;
+  title: string;
+  options: ReadonlyArray<InlineSelectOption>;
+  placeholder: ReactNode;
+  customOptionValue?: string;
+  customOptionLabel?: ReactNode;
+  required?: boolean;
+}>;
+
+export function InlineSelectInput(props: InlineSelectInputProps) {
+  const {
+    value,
+    onChange,
+    title,
+    options,
+    placeholder,
+    customOptionValue,
+    customOptionLabel,
+    required,
+  } = props;
+
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="input-field"
+      title={title}
+      required={required}
+    >
+      <option value="">{placeholder}</option>
+      {customOptionValue && (
+        <option value={customOptionValue}>{customOptionLabel}</option>
+      )}
+      {options.map((option) => (
+        <option key={option.key} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 

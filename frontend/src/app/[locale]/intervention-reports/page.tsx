@@ -5,20 +5,16 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   CrudDataTablePanel,
-  CrudListHeader,
   CrudLoadingState,
+  CrudPageScaffold,
   ModalFormActions,
   RowActions,
   SelectField,
   TextAreaField,
   TextInputField,
 } from "@/components/CrudPageControls";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Modal } from "@/components/Modal";
-import {
-  ToastNotification,
-  type ToastNotificationState,
-} from "@/components/ToastNotification";
+import type { ToastNotificationState } from "@/components/ToastNotification";
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import {
@@ -321,94 +317,93 @@ export default function InterventionReportsPage() {
   const submitLabel = editingReport ? t("actions.update") : t("actions.create");
 
   return (
-    <DashboardLayout title={t("title")}>
-      <ToastNotification
-        notification={notification}
-        onClose={() => setNotification(null)}
-        closeLabel={tCommon("close")}
+    <CrudPageScaffold
+      title={t("title")}
+      heading={t("heading")}
+      description={t("description")}
+      totalItems={totalItems}
+      totalLabel={t("totalReports")}
+      addLabel={t("actions.add")}
+      onAdd={openCreateModal}
+      selectedField={selectedSearchField}
+      onSelectedFieldChange={setSelectedSearchField}
+      searchableFields={searchableFields}
+      allFieldsLabel={tCommon("table.allFields", {
+        default: "All fields",
+      })}
+      searchTerm={searchTerm}
+      onSearchTermChange={setSearchTerm}
+      searchPlaceholder={t("searchPlaceholder")}
+      notification={notification}
+      onNotificationClose={() => setNotification(null)}
+      closeLabel={tCommon("close")}
+    >
+      <CrudDataTablePanel
+        title={t("allReports")}
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        limit={limit}
+        onPageChange={setPage}
+        paginationClassName="mt-6"
+        items={filteredReports}
+        getRowKey={(report) => report._id}
+        emptyMessage={searchTerm ? t("empty.search") : t("empty.default")}
+        actionsHeader={tCommon("table.actions")}
+        columns={[
+          {
+            id: "report-reference",
+            header: t("table.reportReference", {
+              default: "Report Reference",
+            }),
+            className: "font-medium",
+            render: (report) => report.report_id,
+          },
+          {
+            id: "work-order",
+            header: t("table.workOrder"),
+            render: (report) =>
+              getWorkOrderLabel(report.ot_id) || tCommon("notAvailable"),
+          },
+          {
+            id: "technician",
+            header: t("table.technician"),
+            render: (report) =>
+              getTechnicianLabel(report.technician_id) ||
+              tCommon("notAvailable"),
+          },
+          {
+            id: "start-date",
+            header: t("table.startDate"),
+            render: (report) =>
+              report.date_debut
+                ? new Date(report.date_debut).toLocaleString()
+                : tCommon("notAvailable"),
+          },
+          {
+            id: "end-date",
+            header: t("table.endDate"),
+            render: (report) =>
+              report.date_fin
+                ? new Date(report.date_fin).toLocaleString()
+                : tCommon("notAvailable"),
+          },
+          {
+            id: "final-state",
+            header: t("table.finalState"),
+            render: (report) => report.etat_final || tCommon("notAvailable"),
+          },
+        ]}
+        renderActions={(report) => (
+          <RowActions
+            editLabel={t("actions.edit")}
+            deleteLabel={t("actions.delete")}
+            itemLabel={report.report_id}
+            onEdit={() => openEditModal(report)}
+            onDelete={() => handleDelete(report._id)}
+          />
+        )}
       />
-
-      <div className="bento-grid">
-        <CrudListHeader
-          heading={t("heading")}
-          description={t("description")}
-          totalItems={totalItems}
-          totalLabel={t("totalReports")}
-          addLabel={t("actions.add")}
-          onAdd={openCreateModal}
-          selectedField={selectedSearchField}
-          onSelectedFieldChange={setSelectedSearchField}
-          searchableFields={searchableFields}
-          allFieldsLabel={tCommon("table.allFields", {
-            default: "All fields",
-          })}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          searchPlaceholder={t("searchPlaceholder")}
-        />
-
-        <CrudDataTablePanel
-          title={t("allReports")}
-          page={page}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          limit={limit}
-          onPageChange={setPage}
-          paginationClassName="mt-6"
-          items={filteredReports}
-          getRowKey={(report) => report._id}
-          emptyMessage={searchTerm ? t("empty.search") : t("empty.default")}
-          actionsHeader={tCommon("table.actions")}
-          columns={[
-            {
-              header: t("table.reportReference", {
-                default: "Report Reference",
-              }),
-              className: "font-medium",
-              render: (report) => report.report_id,
-            },
-            {
-              header: t("table.workOrder"),
-              render: (report) =>
-                getWorkOrderLabel(report.ot_id) || tCommon("notAvailable"),
-            },
-            {
-              header: t("table.technician"),
-              render: (report) =>
-                getTechnicianLabel(report.technician_id) ||
-                tCommon("notAvailable"),
-            },
-            {
-              header: t("table.startDate"),
-              render: (report) =>
-                report.date_debut
-                  ? new Date(report.date_debut).toLocaleString()
-                  : tCommon("notAvailable"),
-            },
-            {
-              header: t("table.endDate"),
-              render: (report) =>
-                report.date_fin
-                  ? new Date(report.date_fin).toLocaleString()
-                  : tCommon("notAvailable"),
-            },
-            {
-              header: t("table.finalState"),
-              render: (report) => report.etat_final || tCommon("notAvailable"),
-            },
-          ]}
-          renderActions={(report) => (
-            <RowActions
-              editLabel={t("actions.edit")}
-              deleteLabel={t("actions.delete")}
-              itemLabel={report.report_id}
-              onEdit={() => openEditModal(report)}
-              onDelete={() => handleDelete(report._id)}
-            />
-          )}
-        />
-      </div>
-
       <Modal
         isOpen={showModal}
         onClose={() => {
@@ -526,6 +521,6 @@ export default function InterventionReportsPage() {
           />
         </form>
       </Modal>
-    </DashboardLayout>
+    </CrudPageScaffold>
   );
 }
