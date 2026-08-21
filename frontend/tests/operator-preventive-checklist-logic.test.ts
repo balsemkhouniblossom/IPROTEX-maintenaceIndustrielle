@@ -4,14 +4,24 @@ import fs from "node:fs";
 import path from "node:path";
 import { matchesPreventiveChecklistSearch } from "../src/services/preventiveChecklistSearch.ts";
 import {
+  buildModuleIdSet,
   buildPreventivePlanGroups,
+  buildPreventivePlanStates,
   checklistPlanId,
+  computeProgressPercent,
   extractCompletedLabels,
+  filterPreventivePlans,
   filterGroupedChecklistItems,
+  findSelectedPlanGroup,
+  findSelectedPlanState,
   filterSelectedChecklistItems,
   computeStepEligibility,
 } from "../src/app/[locale]/operator/preventive/utils/preventive-plan-groups.ts";
-import { buildPlanSubmissionPayload } from "../src/app/[locale]/operator/preventive/utils/preventive-validation.ts";
+import {
+  buildLubricationPayload,
+  buildPlanSubmissionPayload,
+  validatePreventiveSubmission,
+} from "../src/app/[locale]/operator/preventive/utils/preventive-validation.ts";
 
 const FEATURE_DIR = "src/app/[locale]/operator/preventive";
 const PAGE = `${FEATURE_DIR}/page.tsx`;
@@ -118,6 +128,81 @@ test("buildPreventivePlanGroups: groups plan states by maintenance_code, trimmed
   );
 });
 
+test("buildModuleIdSet / filterPreventivePlans: keeps plans for machine modules and drops corrective work", () => {
+  const modules = [{ _id: "m1" }, { _id: "m2" }];
+  const moduleIdSet = buildModuleIdSet(modules as never);
+  assert.deepEqual(Array.from(moduleIdSet), ["m1", "m2"]);
+
+  const plans = [
+    { _id: "p1", module_id: "m1", type_maintenance: "preventive" },
+    { _id: "p2", module_id: { _id: "m2" }, type_maintenance: "Corrective repair" },
+    { _id: "p3", module_id: "other", type_maintenance: "lubrication" },
+  ];
+
+  assert.deepEqual(
+    // @ts-expect-error - partial MaintenancePlan fixtures are enough for this filtering branch
+    filterPreventivePlans(plans, moduleIdSet).map((plan) => plan._id),
+    ["p1"],
+  );
+});
+
+test("buildPreventivePlanStates: returns supplied states or builds not_scheduled defaults with matching modules", () => {
+  const suppliedStates = [{ plan: { _id: "already" }, currentState: "due_today" }];
+  assert.equal(
+    // @ts-expect-error - identity branch does not need complete state fixtures
+    buildPreventivePlanStates([], [], suppliedStates),
+    suppliedStates,
+  );
+
+  const plans = [
+    {
+      _id: "p1",
+      plan_id: "PLAN-1",
+      module_id: "m1",
+      frequence: 2,
+      unite_frequence: "weeks",
+    },
+    {
+      _id: "p2",
+      plan_id: "PLAN-2",
+      module_id: { _id: "missing" },
+      frequence: 1,
+      unite_frequence: "months",
+    },
+  ];
+  const modules = [{ _id: "m1", code: "MOD-1" }];
+
+  // @ts-expect-error - partial fixtures keep the test focused on derived state defaults
+  const states = buildPreventivePlanStates(plans, modules, undefined);
+
+  assert.equal(states[0].module, modules[0]);
+  assert.equal(states[0].currentState, "not_scheduled");
+  assert.deepEqual(states[0].frequency, { value: 2, unit: "weeks", normalized: "weeks" });
+  assert.equal(states[1].module, null);
+});
+
+test("selected plan helpers and progress math cover empty and matched states", () => {
+  const states = [
+    { plan: { _id: "p1" } },
+    { plan: { _id: "p2" } },
+  ];
+  const groups = [
+    { key: "A", label: "A", planIds: ["p1"], states: [states[0]] },
+    { key: "B", label: "B", planIds: ["p2"], states: [states[1]] },
+  ];
+
+  // @ts-expect-error - partial state fixtures are sufficient for lookup helpers
+  assert.equal(findSelectedPlanState(states, "p2"), states[1]);
+  // @ts-expect-error - partial state fixtures are sufficient for lookup helpers
+  assert.equal(findSelectedPlanState(states, "missing"), null);
+  // @ts-expect-error - partial group fixtures are sufficient for lookup helpers
+  assert.equal(findSelectedPlanGroup(groups, new Set(["p2"])), groups[1]);
+  // @ts-expect-error - partial group fixtures are sufficient for lookup helpers
+  assert.equal(findSelectedPlanGroup(groups, new Set(["missing"])), null);
+  assert.equal(computeProgressPercent(2, 3), 67);
+  assert.equal(computeProgressPercent(2, 0), 0);
+});
+
 test("filterGroupedChecklistItems / filterSelectedChecklistItems: scope checklist items to the active group vs. the single focused plan", () => {
   const items = [
     { _id: "i1", plan_id: "planA", status: "completed" as const, instruction: "A", task_id: "t1" },
@@ -204,6 +289,55 @@ test("buildPlanSubmissionPayload: only returns a payload when the plan's group i
   assert.equal(buildPlanSubmissionPayload("planA", incompleteItems, { planA: "occ1" }, null), null);
 
   assert.equal(buildPlanSubmissionPayload("planA", items, {}, null), null, "no occurrence id anywhere means no payload");
+});
+
+test("validatePreventiveSubmission: reports each pre-flight failure before network submission", () => {
+  const completeGroup = {
+    states: [{ plan: { _id: "planA" }, currentOccurrence: { _id: "occ-from-state" } }],
+  };
+  const base = {
+    userId: "user1",
+    selectedMachine: "machine1",
+    completedChecklistLabelsCount: 1,
+    selectedPlanIds: ["planA"],
+    selectedOccurrenceIdsByPlan: {},
+    // @ts-expect-error - only states are needed by the validation helper
+    selectedPlanGroup: completeGroup,
+  };
+
+  assert.equal(validatePreventiveSubmission({ ...base, userId: undefined }), "missing-user-or-machine");
+  assert.equal(validatePreventiveSubmission({ ...base, selectedMachine: "" }), "missing-user-or-machine");
+  assert.equal(validatePreventiveSubmission({ ...base, completedChecklistLabelsCount: 0 }), "no-tasks-selected");
+  assert.equal(
+    validatePreventiveSubmission({ ...base, selectedPlanGroup: null }),
+    "no-occurrence-scheduled",
+  );
+  assert.equal(validatePreventiveSubmission(base), null);
+});
+
+test("buildPlanSubmissionPayload: can resolve the occurrence from the selected plan group", () => {
+  const items = [
+    { _id: "i1", plan_id: "planA", status: "completed" as const, instruction: "Inspect", task_id: "t1" },
+    { _id: "i2", plan_id: "planB", status: "completed" as const, instruction: "Ignore other plan", task_id: "t2" },
+  ];
+  const group = {
+    states: [{ plan: { _id: "planA" }, currentOccurrence: { _id: "occ-from-state" } }],
+  };
+
+  assert.deepEqual(
+    // @ts-expect-error - only states are needed by the payload helper
+    buildPlanSubmissionPayload("planA", items, {}, group),
+    { occurrenceId: "occ-from-state", taskLabels: ["Inspect"] },
+  );
+  assert.equal(buildPlanSubmissionPayload("missing", items, { missing: "occ" }, null), null);
+});
+
+test("buildLubricationPayload: returns a numeric payload only for a selected lubricant and positive quantity", () => {
+  assert.deepEqual(buildLubricationPayload("lub1", "2.5"), { lubrifiant_id: "lub1", quantity: 2.5 });
+  assert.equal(buildLubricationPayload("", "2.5"), undefined);
+  assert.equal(buildLubricationPayload("lub1", "  "), undefined);
+  assert.equal(buildLubricationPayload("lub1", "0"), undefined);
+  assert.equal(buildLubricationPayload("lub1", "-1"), undefined);
 });
 
 // --- Structural regression: exactly one "Preventive Maintenance Tasks" section ---
