@@ -356,7 +356,7 @@ describe('Knowledge Base — lifecycle, version history, scoping, suggestions (e
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body.length).toBe(2);
+      expect(response.body).toHaveLength(2);
       expect(response.body[0].revision).toBe(1);
       expect(response.body[0].status).toBe('archived');
       expect(response.body[1].revision).toBe(2);
