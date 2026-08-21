@@ -293,7 +293,16 @@ test("buildPlanSubmissionPayload: only returns a payload when the plan's group i
 
 test("validatePreventiveSubmission: reports each pre-flight failure before network submission", () => {
   const completeGroup = {
-    states: [{ plan: { _id: "planA" }, currentOccurrence: { _id: "occ-from-state" } }],
+    key: "PLAN-A",
+    label: "PLAN-A",
+    planIds: ["planA"],
+    states: [
+      {
+        plan: { _id: "planA", plan_id: "PLAN-A", module_id: "moduleA" },
+        currentState: "scheduled",
+        currentOccurrence: { _id: "occ-from-state" },
+      },
+    ],
   };
   const base = {
     userId: "user1",
@@ -301,7 +310,6 @@ test("validatePreventiveSubmission: reports each pre-flight failure before netwo
     completedChecklistLabelsCount: 1,
     selectedPlanIds: ["planA"],
     selectedOccurrenceIdsByPlan: {},
-    // @ts-expect-error - only states are needed by the validation helper
     selectedPlanGroup: completeGroup,
   };
 
@@ -321,11 +329,19 @@ test("buildPlanSubmissionPayload: can resolve the occurrence from the selected p
     { _id: "i2", plan_id: "planB", status: "completed" as const, instruction: "Ignore other plan", task_id: "t2" },
   ];
   const group = {
-    states: [{ plan: { _id: "planA" }, currentOccurrence: { _id: "occ-from-state" } }],
+    key: "PLAN-A",
+    label: "PLAN-A",
+    planIds: ["planA"],
+    states: [
+      {
+        plan: { _id: "planA", plan_id: "PLAN-A", module_id: "moduleA" },
+        currentState: "scheduled",
+        currentOccurrence: { _id: "occ-from-state" },
+      },
+    ],
   };
 
   assert.deepEqual(
-    // @ts-expect-error - only states are needed by the payload helper
     buildPlanSubmissionPayload("planA", items, {}, group),
     { occurrenceId: "occ-from-state", taskLabels: ["Inspect"] },
   );
