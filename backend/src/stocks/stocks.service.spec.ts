@@ -21,7 +21,9 @@ function queryResult<T>(value: T) {
 
 function createSession() {
   return {
-    withTransaction: jest.fn(async (callback: () => Promise<unknown>) => callback()),
+    withTransaction: jest.fn(async (callback: () => Promise<unknown>) =>
+      callback(),
+    ),
     endSession: jest.fn().mockResolvedValue(undefined),
   };
 }
@@ -66,7 +68,9 @@ describe('StocksService', () => {
       find: jest.fn().mockReturnValue(queryResult([stockRecord])),
       countDocuments: jest.fn().mockReturnValue(execResult(1)),
       findById: jest.fn().mockReturnValue(queryResult(stockRecord)),
-      findByIdAndUpdate: jest.fn().mockReturnValue(execResult({ ...stockRecord, emplacement: 'A1' })),
+      findByIdAndUpdate: jest
+        .fn()
+        .mockReturnValue(execResult({ ...stockRecord, emplacement: 'A1' })),
       findByIdAndDelete: jest.fn().mockReturnValue(execResult(stockRecord)),
     };
     catalogueModel = {
@@ -78,7 +82,9 @@ describe('StocksService', () => {
     stockMovementsService = {
       recordCreation: jest.fn().mockResolvedValue(null),
       listForStock: jest.fn().mockResolvedValue({ items: [], totalItems: 0 }),
-      adjust: jest.fn().mockResolvedValue({ ...stockRecord, quantite_en_stock: 5 }),
+      adjust: jest
+        .fn()
+        .mockResolvedValue({ ...stockRecord, quantite_en_stock: 5 }),
     };
 
     service = new StocksService(
@@ -99,7 +105,9 @@ describe('StocksService', () => {
       emplacement: 'A1',
     };
 
-    await expect(service.create(dto as never, actorId)).resolves.toBe(stockRecord);
+    await expect(service.create(dto as never, actorId)).resolves.toBe(
+      stockRecord,
+    );
 
     expect(catalogueModel.findById).toHaveBeenCalledWith(partId.toHexString());
     expect(stockModel.create).toHaveBeenCalledWith(
@@ -142,16 +150,25 @@ describe('StocksService', () => {
     const findQuery = stockModel.find.mock.results[0].value;
     expect(findQuery.populate).toHaveBeenCalledWith('part_id');
 
-    await expect(service.findOne(stockId.toHexString())).resolves.toBe(stockRecord);
+    await expect(service.findOne(stockId.toHexString())).resolves.toBe(
+      stockRecord,
+    );
     const findByIdQuery = stockModel.findById.mock.results[0].value;
     expect(findByIdQuery.populate).toHaveBeenCalledWith('part_id');
   });
 
   it('delegates movement listing, updates, and adjustment transactions', async () => {
     await service.getMovements(stockId.toHexString(), 1, 20, 0);
-    expect(stockMovementsService.listForStock).toHaveBeenCalledWith(stockId.toHexString(), 1, 20, 0);
+    expect(stockMovementsService.listForStock).toHaveBeenCalledWith(
+      stockId.toHexString(),
+      1,
+      20,
+      0,
+    );
 
-    await expect(service.update(stockId.toHexString(), { emplacement: 'A1' } as never)).resolves.toMatchObject({
+    await expect(
+      service.update(stockId.toHexString(), { emplacement: 'A1' }),
+    ).resolves.toMatchObject({
       emplacement: 'A1',
     });
     expect(stockModel.findByIdAndUpdate).toHaveBeenCalledWith(
@@ -161,7 +178,11 @@ describe('StocksService', () => {
     );
 
     await expect(
-      service.adjust(stockId.toHexString(), { delta: 5, reason: 'Stocktake', expected_version: 1 } as never, actorId),
+      service.adjust(
+        stockId.toHexString(),
+        { delta: 5, reason: 'Stocktake', expected_version: 1 },
+        actorId,
+      ),
     ).resolves.toMatchObject({ quantite_en_stock: 5 });
     expect(stockMovementsService.adjust).toHaveBeenCalledWith(session, {
       stockId: stockId.toHexString(),
@@ -174,25 +195,44 @@ describe('StocksService', () => {
   });
 
   it('deletes only empty stock records with no movement history', async () => {
-    await expect(service.remove(stockId.toHexString())).resolves.toBe(stockRecord);
-    expect(stockMovementModel.exists).toHaveBeenCalledWith({ stock_id: stockId });
-    expect(stockModel.findByIdAndDelete).toHaveBeenCalledWith(stockId.toHexString());
+    await expect(service.remove(stockId.toHexString())).resolves.toBe(
+      stockRecord,
+    );
+    expect(stockMovementModel.exists).toHaveBeenCalledWith({
+      stock_id: stockId,
+    });
+    expect(stockModel.findByIdAndDelete).toHaveBeenCalledWith(
+      stockId.toHexString(),
+    );
   });
 
   it('rejects deleting missing, non-empty, reserved, or historized stock records', async () => {
     stockModel.findById.mockReturnValueOnce(execResult(null));
-    await expect(service.remove('missing')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove('missing')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
 
-    stockModel.findById.mockReturnValueOnce(execResult({ ...stockRecord, quantite_en_stock: 1 }));
-    await expect(service.remove(stockId.toHexString())).rejects.toBeInstanceOf(ConflictException);
+    stockModel.findById.mockReturnValueOnce(
+      execResult({ ...stockRecord, quantite_en_stock: 1 }),
+    );
+    await expect(service.remove(stockId.toHexString())).rejects.toBeInstanceOf(
+      ConflictException,
+    );
 
-    stockModel.findById.mockReturnValueOnce(execResult({ ...stockRecord, quantite_reservee: 1 }));
-    await expect(service.remove(stockId.toHexString())).rejects.toBeInstanceOf(ConflictException);
+    stockModel.findById.mockReturnValueOnce(
+      execResult({ ...stockRecord, quantite_reservee: 1 }),
+    );
+    await expect(service.remove(stockId.toHexString())).rejects.toBeInstanceOf(
+      ConflictException,
+    );
 
     stockModel.findById.mockReturnValueOnce(execResult(stockRecord));
-    stockMovementModel.exists.mockReturnValueOnce(execResult({ _id: new Types.ObjectId() }));
-    await expect(service.remove(stockId.toHexString())).rejects.toBeInstanceOf(ConflictException);
+    stockMovementModel.exists.mockReturnValueOnce(
+      execResult({ _id: new Types.ObjectId() }),
+    );
+    await expect(service.remove(stockId.toHexString())).rejects.toBeInstanceOf(
+      ConflictException,
+    );
     expect(stockModel.findByIdAndDelete).not.toHaveBeenCalled();
   });
 });
-
