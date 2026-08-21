@@ -121,12 +121,16 @@ jobs:
   sonarqube:
     name: SonarQube Analysis
     needs: [frontend, backend]
-    if: ${{ vars.SONAR_ENABLED == 'true' }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
 
       - uses: actions/download-artifact@v4
         with:
@@ -156,6 +160,20 @@ jobs:
             echo "Coverage report ready: $report"
             grep -m 3 '^SF:' "$report"
           done
+
+          node scripts/verify-lcov-source-paths.mjs \
+            backend/coverage/lcov.info \
+            frontend/coverage/lcov.info
+
+      - name: Verify SonarCloud token is configured
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::error::SONAR_TOKEN is not configured, so CI cannot publish LCOV coverage to SonarCloud."
+            echo "::error::Add the SONAR_TOKEN repository secret and disable SonarCloud Automatic Analysis for this project."
+            exit 1
+          fi
 
       - uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
         with:
