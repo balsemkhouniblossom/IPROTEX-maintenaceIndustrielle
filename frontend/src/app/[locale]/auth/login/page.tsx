@@ -150,6 +150,7 @@ export default function LoginPage() {
     email: '',
     password: ''
   });
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -186,7 +187,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const userRole = await login(formData.email, formData.password);
+      const userRole = await login(formData.email, formData.password, keepLoggedIn);
       const dashboardPath = getDashboardPath(locale, userRole);
 
       if (!dashboardPath) {
@@ -300,6 +301,16 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              <label className="auth-label flex items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={keepLoggedIn}
+                  onChange={(e) => setKeepLoggedIn(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <span>{t('keepLoggedIn')}</span>
+              </label>
 
               <div>
                 <button

@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   getAuthErrorCode,
   getLoginErrorMessageKey,
@@ -107,4 +109,17 @@ test("successful login payload is validated before storage can occur", () => {
       }),
     /AUTHENTICATION_FAILED/,
   );
+});
+
+test("login page lets users choose whether to stay logged in", () => {
+  const source = readFileSync(
+    join(process.cwd(), "src", "app", "[locale]", "auth", "login", "page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /const \[keepLoggedIn,\s*setKeepLoggedIn\] = useState\(true\)/);
+  assert.match(source, /type="checkbox"[\s\S]*checked=\{keepLoggedIn\}/);
+  assert.match(source, /onChange=\{\(e\) => setKeepLoggedIn\(e\.target\.checked\)\}/);
+  assert.match(source, /login\(formData\.email,\s*formData\.password,\s*keepLoggedIn\)/);
+  assert.match(source, /t\('keepLoggedIn'\)/);
 });
