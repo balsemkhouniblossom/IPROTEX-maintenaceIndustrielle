@@ -63,7 +63,7 @@ function resolveJwtSecret(configService: ConfigService): string {
         signOptions: {
           expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ??
             configService.get<string>('JWT_ACCESS_EXPIRES_IN') ??
-            '15m') as JwtSignOptions['expiresIn'],
+            '1d') as JwtSignOptions['expiresIn'],
         },
       }),
     }),

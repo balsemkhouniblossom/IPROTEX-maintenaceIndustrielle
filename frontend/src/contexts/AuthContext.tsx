@@ -165,7 +165,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
     };
 
-    const interval = window.setInterval(refreshSession, 10 * 60 * 1000);
+    const interval = window.setInterval(refreshSession, 12 * 60 * 60 * 1000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void refreshSession();

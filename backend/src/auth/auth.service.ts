@@ -1189,7 +1189,7 @@ export class AuthService {
 
   private issueAccessToken(user: SanitizableUser): string {
     const accessExpiresIn =
-      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
+      process.env.JWT_EXPIRES_IN ?? process.env.JWT_ACCESS_EXPIRES_IN ?? '1d';
 
     return this.jwtService.sign(
       {

@@ -135,7 +135,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
-    process.env.JWT_EXPIRES_IN = '15m';
+    process.env.JWT_EXPIRES_IN = '1d';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
     delete process.env.JWT_PERSISTENT_REFRESH_EXPIRES_IN;
     delete process.env.JWT_SESSION_REFRESH_EXPIRES_IN;
