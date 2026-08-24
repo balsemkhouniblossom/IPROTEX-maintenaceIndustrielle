@@ -1561,6 +1561,72 @@ describe('AuthService', () => {
     expect(result.refresh_persistent).toBe(false);
   });
 
+  it('uses the configured persistent refresh expiry when keepLoggedIn is true', async () => {
+    process.env.JWT_PERSISTENT_REFRESH_EXPIRES_IN = '30d';
+    const plainUser = {
+      _id: new Types.ObjectId(),
+      email: 'plain@example.com',
+      user_id: 'USER-010',
+      role: 'operator',
+      is_active: true,
+      nom_complet: 'Plain User',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
+    jwtService.sign
+      .mockReturnValueOnce('access-token')
+      .mockReturnValueOnce('refresh-token');
+    (bcrypt.hash as jest.Mock).mockResolvedValue('refresh-token-hash');
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
+
+    await service.login(plainUser as never, true);
+
+    expect(jwtService.sign).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ persistent: true }),
+      expect.objectContaining({ expiresIn: '30d' }),
+    );
+  });
+
+  it('uses hard default refresh expiries when no refresh expiry env is configured', async () => {
+    delete process.env.JWT_REFRESH_EXPIRES_IN;
+    const plainUser = {
+      _id: new Types.ObjectId(),
+      email: 'plain@example.com',
+      user_id: 'USER-010',
+      role: 'operator',
+      is_active: true,
+      nom_complet: 'Plain User',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
+    jwtService.sign
+      .mockReturnValueOnce('persistent-access-token')
+      .mockReturnValueOnce('persistent-refresh-token')
+      .mockReturnValueOnce('session-access-token')
+      .mockReturnValueOnce('session-refresh-token');
+    (bcrypt.hash as jest.Mock).mockResolvedValue('refresh-token-hash');
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
+
+    await service.login(plainUser as never, true);
+    await service.login(plainUser as never, false);
+
+    expect(jwtService.sign).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ persistent: true }),
+      expect.objectContaining({ expiresIn: '30d' }),
+    );
+    expect(jwtService.sign).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({ persistent: false }),
+      expect.objectContaining({ expiresIn: '1d' }),
+    );
+  });
+
   it('rejects missing, malformed, wrong-type, and bad-subject refresh tokens with stable codes', async () => {
     await expectRejectsWithCode(
       service.refreshToken(''),
@@ -1844,6 +1910,28 @@ describe('AuthService', () => {
 
     expect(result.refresh_token).toBe('old-refresh-token');
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('preserves session-only refresh persistence while restoring a session', async () => {
+    const user = createUserDocument({
+      approval_status: ApprovalStatus.APPROVED,
+      is_active: true,
+      is_verified: true,
+      refresh_token_hash: 'stored-refresh-hash',
+    });
+    jwtService.verify.mockReturnValue({
+      sub: user._id.toString(),
+      type: 'refresh',
+      persistent: false,
+    });
+    jwtService.sign.mockReturnValueOnce('new-access-token');
+    userModel.findById.mockReturnValue(createQuery(user));
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+    const result = await service.refreshToken('old-refresh-token');
+
+    expect(result.refresh_persistent).toBe(false);
+    expect(result.refresh_token).toBe('old-refresh-token');
   });
 
   it('revokes the current refresh session during cookie logout', async () => {
