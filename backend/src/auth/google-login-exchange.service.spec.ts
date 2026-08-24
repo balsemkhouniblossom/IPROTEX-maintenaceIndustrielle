@@ -78,6 +78,7 @@ describe('GoogleLoginExchangeService', () => {
       access_token: 'access-token',
       token: 'access-token',
       refresh_token: 'refresh-token',
+      refresh_persistent: true,
       user: {
         _id: new Types.ObjectId(),
         user_id: 'USER-001',
@@ -111,6 +112,7 @@ describe('GoogleLoginExchangeService', () => {
       access_token: 'access-token',
       token: 'access-token',
       refresh_token: 'refresh-token',
+      refresh_persistent: true,
       user: {
         _id: new Types.ObjectId(),
         nom_complet: 'Google User',
