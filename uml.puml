@@ -1,5 +1,5 @@
 @startuml
-title GMAO Industrielle - Diagramme de classes global (implémentation réelle)
+title GMAO Industrielle - Diagramme de classes detaille (implementation reelle)
 
 hide empty members
 hide circle
@@ -13,545 +13,1011 @@ skinparam linetype ortho
 ' ENUMERATIONS
 ' =============================
 enum Role {
-    ADMIN
-    TECHNICIAN
-    OPERATOR
+  admin
+  technician
+  operator
 }
 
 enum ApprovalStatus {
-    PENDING
-    APPROVED
-    REJECTED
+  pending
+  approved
+  rejected
 }
 
 enum MaintenancePlanStatus {
-    DRAFT
-    ACTIVE
-    PAUSED
-    ARCHIVED
-    COMPLETED
+  draft
+  active
+  paused
+  archived
+  completed
 }
 
 enum PartRequestStatus {
-    PENDING
-    RESERVED
-    FULFILLED
-    CANCELLED
+  pending
+  reserved
+  fulfilled
+  cancelled
 }
 
 enum StockMovementType {
-    RESERVATION
-    CONSUMPTION
-    RETURN
-    ADJUSTMENT
-    CANCELLATION
+  reservation
+  consumption
+  return
+  adjustment
+  cancellation
 }
 
 enum NotificationType {
-    WORK_ORDER_CREATED
-    PREVENTIVE_DUE
-    PREVENTIVE_OVERDUE
-    OVERDUE_ESCALATION
-    CORRECTIVE_AWAITING_VALIDATION
-    VALIDATION_APPROVED
-    VALIDATION_REJECTED
-    INTERVENTION_COMPLETED
-    PART_REQUEST_CREATED
-    PART_REQUEST_DECISION
-    STOCK_ALERT
-    LUBRICATION_DUE
-    SENSOR_ALERT
-    DUPLICATE_WORK_ORDER
+  work_order_created
+  preventive_due
+  preventive_overdue
+  overdue_escalation
+  corrective_awaiting_validation
+  validation_approved
+  validation_rejected
+  intervention_completed
+  part_request_created
+  part_request_decision
+  stock_alert
+  lubrication_due
+  sensor_alert
+  duplicate_work_order
+  device_fault
+  device_offline
+  report_ready
+}
+
+enum DocumentStatus {
+  draft
+  published
+  archived
+  superseded
+}
+
+enum KnowledgeArticleCategory {
+  troubleshooting
+  procedure
+  fault_code
+  lubrication
+  safety
+}
+
+enum KnowledgeArticleStatus {
+  draft
+  published
+  archived
+}
+
+enum DeviceType {
+  openplc
+  simulator
+  gateway
+}
+
+enum DeviceConnectionStatus {
+  unknown
+  online
+  offline
+}
+
+enum FaultEventSeverity {
+  info
+  warning
+  critical
+}
+
+enum PredictionModelType {
+  zscore
+  isolation_forest
+  dbscan
+  autoencoder
+}
+
+enum PredictionModelVersionStatus {
+  active
+  archived
+}
+
+enum PredictionRiskLevel {
+  low
+  medium
+  high
+  critical
+  insufficient_data
+}
+
+enum AiInteractionStatus {
+  ok
+  disabled
+  missing_configuration
+  invalid_credentials
+  quota_limited
+  temporary_failure
+  rate_limited
+  timeout
+  error
+}
+
+enum ReportType {
+  machine_history
+  preventive_compliance
+  corrective_downtime
+  mttr_mtbf_trends
+  stock_movements
+  maintenance_costs
+  technician_workload
+  fault_frequency
+  audit_history
+  predictive_risk
+}
+
+enum ReportFormat {
+  pdf
+  excel
+  csv
+}
+
+enum ReportStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+enum ScheduleFrequency {
+  daily
+  weekly
+  monthly
 }
 
 ' =============================
-' AUTHENTIFICATION & UTILISATEURS
+' IDENTITE, ACCES & AUTHENTIFICATION
 ' =============================
-package "Authentification & Utilisateurs" {
-    class User {
-        +_id: ObjectId <<PK>>
-        +user_id: String <<UK>>
-        +nom_complet: String
-        +email: String <<UK>>
-        +password: String?
-        +google_id: String? <<UK,sparse>>
-        +google_linked_at: Date?
-        +google_unlinked_at: Date?
-        +refresh_token_hash: String?
-        +reset_password_token: String?
-        +reset_password_expires: Date?
-        +role: Role
-        +is_active: Boolean
-        +last_login: Date?
-        +login_history: Date[]
-        +created_at: Date
-        +phone: String?
-        +department: String?
-        +position: String?
-        +language: String?
-        +profile_completed: Boolean
-        +photo: String?
-        +photo_storage_path: String?
-        +photo_url: String?
-        +assigned_machine_ids: ObjectId[] <<FK Machine>>
-        +is_verified: Boolean
-        +approval_status: ApprovalStatus?
-        +approved_by: ObjectId? <<FK User>>
-        +approved_at: Date?
-        +rejected_by: ObjectId? <<FK User>>
-        +rejected_at: Date?
-        +rejection_reason: String?
-    }
+package "Identite, acces & authentification" {
+  class User {
+    +_id: ObjectId <<PK>>
+    +user_id: String <<UK>>
+    +nom_complet: String
+    +email: String <<UK>>
+    +password: String? <<sensitive>>
+    +google_id: String? <<UK,sparse,sensitive>>
+    +google_linked_at: Date?
+    +google_unlinked_at: Date?
+    +refresh_token_hash: String? <<sensitive>>
+    +reset_password_token: String? <<sensitive>>
+    +reset_password_expires: Date?
+    +must_reset_password: Boolean?
+    +credentials_invalidated_at: Date?
+    +role: Role
+    +is_active: Boolean
+    +last_login: Date?
+    +login_history: Date[]
+    +created_at: Date
+    +phone: String?
+    +department: String?
+    +position: String?
+    +language: String?
+    +profile_completed: Boolean
+    +photo: String?
+    +photo_storage_path: String?
+    +photo_url: String?
+    +assigned_machine_ids: ObjectId[] <<FK Machine>>
+    +is_verified: Boolean
+    +approval_status: ApprovalStatus?
+    +approved_by: ObjectId? <<FK User>>
+    +approved_at: Date?
+    +rejected_by: ObjectId? <<FK User>>
+    +rejected_at: Date?
+    +rejection_reason: String?
+    +google_auth_history: GoogleAuthHistoryEntry[]
+    +approval_history: ApprovalHistoryEntry[]
+  }
 
-    class GoogleAuthHistoryEntry {
-        +action: String {linked|unlinked|relinked}
-        +google_id: String?
-        +previous_google_id: String?
-        +actor_user_id: ObjectId? <<FK User>>
-        +at: Date
-    }
+  class GoogleAuthHistoryEntry {
+    +action: String {linked|unlinked|relinked}
+    +google_id: String?
+    +previous_google_id: String?
+    +actor_user_id: ObjectId? <<FK User>>
+    +at: Date
+  }
 
-    class GoogleLoginExchange {
-        +_id: ObjectId <<PK>>
-        +code_hash: String <<UK>>
-        +encrypted_payload: String
-        +encryption_iv: String
-        +encryption_tag: String
-        +created_at: Date
-        +expires_at: Date <<TTL>>
-    }
+  class ApprovalHistoryEntry {
+    +status: ApprovalStatus
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +at: Date
+  }
 
-    class Counter {
-        +_id: String <<PK>>
-        +seq: Number
-    }
+  class GoogleLoginExchange {
+    +_id: ObjectId <<PK>>
+    +code_hash: String <<UK>>
+    +encrypted_payload: String
+    +encryption_iv: String
+    +encryption_tag: String
+    +created_at: Date
+    +expires_at: Date <<TTL>>
+  }
+
+  class Counter {
+    +_id: String <<PK>>
+    +seq: Number
+  }
 }
 
 ' =============================
 ' ACTIFS INDUSTRIELS
 ' =============================
-package "Actifs (machines, modules, capteurs, mesures)" {
-    class MachineType {
-        +_id: ObjectId <<PK>>
-        +type_id: Number <<UK>>
-        +name: String
-        +description: String?
-        +createdAt: Date
-        +updatedAt: Date
-    }
+package "Actifs industriels" {
+  class MachineType {
+    +_id: ObjectId <<PK>>
+    +type_id: Number <<UK>>
+    +name: String
+    +description: String?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class Machine {
-        +_id: ObjectId <<PK>>
-        +machine_id: String <<UK>>
-        +type_id: ObjectId <<FK MachineType>>
-        +serial_no: String
-        +reference: String?
-        +installation_date: Date?
-        +poids_kg: Number?
-        +fabricant: String?
-        +model: String?
-        +location: String?
-        +status: String
-    }
+  class Machine {
+    +_id: ObjectId <<PK>>
+    +machine_id: String <<UK>>
+    +type_id: ObjectId <<FK MachineType>>
+    +serial_no: String
+    +reference: String?
+    +installation_date: Date?
+    +poids_kg: Number?
+    +fabricant: String?
+    +model: String?
+    +location: String?
+    +status: String
+    +lifecycle_history: MachineLifecycleEntry[]
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class ModuleType {
-        +_id: ObjectId <<PK>>
-        +mod_type_id: String <<UK>>
-        +type_id: ObjectId <<FK MachineType>>
-        +nom_module: String
-        +categorie_module: String?
-    }
+  class MachineLifecycleEntry {
+    +action: String {created|status_changed}
+    +from_status: String?
+    +to_status: String
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +at: Date
+  }
 
-    class Module {
-        +_id: ObjectId <<PK>>
-        +module_id: String <<UK>>
-        +machine_id: ObjectId <<FK Machine>>
-        +mod_type_id: ObjectId <<FK ModuleType>>
-        +parent_module_id: ObjectId? <<FK Module>>
-        +localisation: String?
-    }
+  class ModuleType {
+    +_id: ObjectId <<PK>>
+    +mod_type_id: String <<UK>>
+    +type_id: ObjectId <<FK MachineType>>
+    +nom_module: String
+    +categorie_module: String?
+  }
 
-    class Capteur {
-        +_id: ObjectId <<PK>>
-        +capteur_id: String <<UK>>
-        +module_id: ObjectId <<FK Module>>
-        +code_capteur: String
-        +type_capteur: String
-        +unite_mesure: String?
-        +mqtt_topic: String?
-        +seuil_avertissement: Number?
-        +seuil_critique: Number?
-        +frequence_echantillonnage: Number?
-        +is_active: Boolean
-        +last_seen_at: Date?
-        +firmware_version: String?
-    }
+  class Module {
+    +_id: ObjectId <<PK>>
+    +module_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +mod_type_id: ObjectId <<FK ModuleType>>
+    +parent_module_id: ObjectId? <<FK Module>>
+    +localisation: String?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class Mesure {
-        +_id: ObjectId <<PK>>
-        +mesure_id: String <<UK>>
-        +capteur_id: ObjectId <<FK Capteur>>
-        +valeur: Number
-        +timestamp: Date
-        +status: String
-        +createdAt: Date
-        +updatedAt: Date
-    }
+  class Capteur {
+    +_id: ObjectId <<PK>>
+    +capteur_id: String <<UK>>
+    +module_id: ObjectId <<FK Module>>
+    +code_capteur: String
+    +type_capteur: String
+    +unite_mesure: String?
+    +mqtt_topic: String?
+    +seuil_avertissement: Number?
+    +seuil_critique: Number?
+    +frequence_echantillonnage: Number?
+    +is_active: Boolean
+    +last_seen_at: Date?
+    +firmware_version: String?
+  }
+
+  class Mesure {
+    +_id: ObjectId <<PK>>
+    +mesure_id: String <<UK>>
+    +capteur_id: ObjectId <<FK Capteur>>
+    +valeur: Number
+    +timestamp: Date
+    +status: String
+    +createdAt: Date
+    +updatedAt: Date
+  }
+}
+
+' =============================
+' MAINTENANCE, PLANS, OT & INTERVENTIONS
+' =============================
+package "Maintenance, plans, OT & interventions" {
+  class MaintenancePlan {
+    +_id: ObjectId <<PK>>
+    +plan_id: String <<UK>>
+    +module_id: ObjectId <<FK Module>>
+    +type_maintenance: String
+    +frequence: Number
+    +unite_frequence: String
+    +instruction: String?
+    +responsable: String?
+    +huile_graisse: String?
+    +documentation: String?
+    +maintenance_code: String?
+    +frequence_label: String?
+    +status: MaintenancePlanStatus?
+    +version: Number?
+    +lifecycle_history: MaintenancePlanLifecycleEntry[]
+    +createdAt: Date
+    +updatedAt: Date
+  }
+
+  class MaintenancePlanLifecycleEntry {
+    +action: String {created|activated|paused|resumed|archived|completed|updated}
+    +from_status: MaintenancePlanStatus?
+    +to_status: MaintenancePlanStatus
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +at: Date
+  }
+
+  class PreventiveTask {
+    +_id: ObjectId <<PK>>
+    +task_id: String <<UK>>
+    +plan_id: ObjectId? <<FK MaintenancePlan>>
+    +plan_code: String?
+    +module_id: ObjectId? <<FK Module>>
+    +instruction: String
+    +responsable: String?
+    +status: String {pending|completed}
+    +notes: String?
+    +completed_at: Date?
+    +source: String {plan|manual}
+    +source_key: String? <<UK,sparse>>
+    +deleted_at: Date?
+    +createdAt: Date
+    +updatedAt: Date
+  }
+
+  class WorkOrder {
+    +_id: ObjectId <<PK>>
+    +ot_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +module_id: ObjectId? <<FK Module>>
+    +technician_id: ObjectId? <<FK User>>
+    +plan_id: ObjectId? <<FK MaintenancePlan>>
+    +description: String?
+    +type_maintenance: String?
+    +status: String
+    +priorite: String?
+    +code_panne: String?
+    +date_created: Date
+    +date_start: Date?
+    +scheduled_date: Date?
+    +due_date: Date?
+    +execution_date: Date?
+    +date_end: Date?
+    +date_closed: Date?
+    +recurrence_source_occurrence_id: ObjectId? <<FK WorkOrder>>
+    +preventive_occurrence_key: String? <<UK,partial>>
+    +original_due_date: Date?
+    +reschedule_reason: String?
+    +rescheduled_by: ObjectId? <<FK User>>
+    +rescheduled_at: Date?
+    +validated_by: ObjectId? <<FK User>>
+    +validated_at: Date?
+    +lifecycle_history: WorkOrderLifecycleEntry[]
+  }
+
+  class WorkOrderLifecycleEntry {
+    +action: String {closed_for_validation|validated|rejected|returned}
+    +from_status: String?
+    +to_status: String
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +at: Date
+  }
+
+  class InterventionReport {
+    +_id: ObjectId <<PK>>
+    +report_id: String <<UK>>
+    +ot_id: ObjectId <<FK WorkOrder>>
+    +technician_id: ObjectId <<FK User>>
+    +date_debut: Date
+    +date_fin: Date
+    +cause_racine: String?
+    +description_action: String?
+    +etat_final: String?
+    +validation_responsable: String?
+    +validated_by: ObjectId? <<FK User>>
+    +validated_at: Date?
+  }
+
+  class KPI {
+    +_id: ObjectId <<PK>>
+    +kpi_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +mtbf_value: Number?
+    +mttr_value: Number?
+    +availability_rate: Number?
+    +date_calcul: Date
+    +periode_debut: Date
+    +periode_fin: Date
+  }
 }
 
 ' =============================
 ' CATALOGUE, STOCK & PIECES
 ' =============================
-package "Catalogue, Stock & Pieces" {
-    class Catalogue {
-        +_id: ObjectId <<PK>>
-        +part_id: String <<UK>>
-        +nom_piece: String
-        +ref_constructeur: String
-        +fabricant: String?
-        +categorie_piece: String?
-    }
+package "Catalogue, stock & pieces" {
+  class Catalogue {
+    +_id: ObjectId <<PK>>
+    +part_id: String <<UK>>
+    +nom_piece: String
+    +ref_constructeur: String
+    +fabricant: String?
+    +categorie_piece: String?
+    +unit_cost: Number?
+  }
 
-    class Stock {
-        +_id: ObjectId <<PK>>
-        +stock_id: String <<UK>>
-        +part_id: ObjectId <<FK Catalogue>>
-        +quantite_en_stock: Number
-        +quantite_reservee: Number
-        +seuil_alerte_stock: Number?
-        +quantite_minimale: Number?
-        +emplacement: String?
-        +version: Number?
-    }
+  class Stock {
+    +_id: ObjectId <<PK>>
+    +stock_id: String <<UK>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +quantite_en_stock: Number
+    +quantite_reservee: Number
+    +seuil_alerte_stock: Number?
+    +quantite_minimale: Number?
+    +emplacement: String?
+    +version: Number?
+  }
 
-    class StockMovement {
-        +_id: ObjectId <<PK>>
-        +movement_id: String <<UK>>
-        +type: StockMovementType
-        +stock_id: ObjectId <<FK Stock>>
-        +part_id: ObjectId <<FK Catalogue>>
-        +quantity_delta: Number
-        +reserved_delta: Number
-        +quantite_en_stock_after: Number
-        +quantite_reservee_after: Number
-        +work_order_id: ObjectId? <<FK WorkOrder>>
-        +part_request_id: ObjectId? <<FK PartRequest>>
-        +actor_user_id: ObjectId? <<FK User>>
-        +reason: String?
-        +createdAt: Date
-        +updatedAt: Date
-    }
+  class StockMovement {
+    +_id: ObjectId <<PK>>
+    +movement_id: String <<UK>>
+    +type: StockMovementType
+    +stock_id: ObjectId <<FK Stock>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +quantity_delta: Number
+    +reserved_delta: Number
+    +quantite_en_stock_after: Number
+    +quantite_reservee_after: Number
+    +work_order_id: ObjectId? <<FK WorkOrder>>
+    +part_request_id: ObjectId? <<FK PartRequest>>
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class ModulePieces {
-        +_id: ObjectId <<PK>>
-        +mod_type_id: ObjectId <<FK ModuleType>>
-        +part_id: ObjectId <<FK Catalogue>>
-        +quantite_standard: Number
-        +createdAt: Date
-        +updatedAt: Date
-    }
+  class ModulePieces {
+    +_id: ObjectId <<PK>>
+    +mod_type_id: ObjectId <<FK ModuleType>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +quantite_standard: Number
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class OTPieces {
-        +_id: ObjectId <<PK>>
-        +ot_id: ObjectId <<FK WorkOrder>>
-        +part_id: ObjectId <<FK Catalogue>>
-        +quantite: Number
-    }
+  class OTPieces {
+    +_id: ObjectId <<PK>>
+    +ot_id: ObjectId <<FK WorkOrder>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +quantite: Number
+  }
 
-    class PartRequest {
-        +_id: ObjectId <<PK>>
-        +request_id: String <<UK>>
-        +ot_id: ObjectId <<FK WorkOrder>>
-        +part_id: ObjectId <<FK Catalogue>>
-        +quantity: Number
-        +requested_by: ObjectId <<FK User>>
-        +status: PartRequestStatus
-        +requested_at: Date
-        +createdAt: Date
-        +updatedAt: Date
-    }
+  class PartRequest {
+    +_id: ObjectId <<PK>>
+    +request_id: String <<UK>>
+    +ot_id: ObjectId <<FK WorkOrder>>
+    +part_id: ObjectId <<FK Catalogue>>
+    +quantity: Number
+    +requested_by: ObjectId <<FK User>>
+    +status: PartRequestStatus
+    +requested_at: Date
+    +createdAt: Date
+    +updatedAt: Date
+  }
 }
 
 ' =============================
-' MAINTENANCE & ORDRES DE TRAVAIL
+' DOCUMENTS & BASE DE CONNAISSANCES
 ' =============================
-package "Maintenance, calendrier intelligent & interventions" {
-    class MaintenancePlan {
-        +_id: ObjectId <<PK>>
-        +plan_id: String <<UK>>
-        +module_id: ObjectId <<FK Module>>
-        +type_maintenance: String
-        +frequence: Number
-        +unite_frequence: String
-        +instruction: String?
-        +responsable: String?
-        +huile_graisse: String?
-        +documentation: String?
-        +maintenance_code: String?
-        +frequence_label: String?
-        +status: MaintenancePlanStatus?
-        +version: Number?
-        +createdAt: Date
-        +updatedAt: Date
-    }
+package "Documents & base de connaissances" {
+  class DocumentEntity {
+    +_id: ObjectId <<PK>>
+    +document_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +maintenance_plan_id: ObjectId? <<FK MaintenancePlan>>
+    +work_order_id: ObjectId? <<FK WorkOrder>>
+    +intervention_report_id: ObjectId? <<FK InterventionReport>>
+    +type_document: String
+    +file_path: String
+    +storage_path: String?
+    +file_url: String?
+    +file_name: String
+    +preview_path: String?
+    +description: String?
+    +tags: String[]
+    +uploaded_by: String
+    +date_ajout: Date
+    +status: DocumentStatus?
+    +version: Number?
+    +revision: Number?
+    +root_document_id: ObjectId? <<FK DocumentEntity>>
+    +supersedes_document_id: ObjectId? <<FK DocumentEntity>>
+    +superseded_by_document_id: ObjectId? <<FK DocumentEntity>>
+    +lifecycle_history: DocumentLifecycleEntry[]
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class MaintenancePlanLifecycleEntry {
-        +action: String {created|activated|paused|resumed|archived|completed|updated}
-        +from_status: MaintenancePlanStatus?
-        +to_status: MaintenancePlanStatus
-        +actor_user_id: ObjectId? <<FK User>>
-        +reason: String?
-        +at: Date
-    }
+  class DocumentLifecycleEntry {
+    +action: String {created|published|archived|superseded|replaced|updated}
+    +from_status: DocumentStatus?
+    +to_status: DocumentStatus
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +at: Date
+  }
 
-    class PreventiveTask {
-        +_id: ObjectId <<PK>>
-        +task_id: String <<UK>>
-        +plan_id: ObjectId? <<FK MaintenancePlan>>
-        +plan_code: String?
-        +module_id: ObjectId? <<FK Module>>
-        +instruction: String
-        +responsable: String?
-        +status: String {pending|completed}
-        +notes: String?
-        +completed_at: Date?
-        +source: String {plan|manual}
-        +source_key: String? <<UK,sparse>>
-        +deleted_at: Date?
-        +createdAt: Date
-        +updatedAt: Date
-    }
+  class DocumentRejection {
+    +_id: ObjectId <<PK>>
+    +machine_id: ObjectId? <<FK Machine>>
+    +original_file_name: String
+    +mime_type: String?
+    +size: Number
+    +reason: String
+    +rejected_by: ObjectId? <<FK User>>
+    +quarantine_storage_key: String?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class WorkOrder {
-        +_id: ObjectId <<PK>>
-        +ot_id: String <<UK>>
-        +machine_id: ObjectId <<FK Machine>>
-        +module_id: ObjectId? <<FK Module>>
-        +technician_id: ObjectId? <<FK User>>
-        +plan_id: ObjectId? <<FK MaintenancePlan>>
-        +description: String?
-        +type_maintenance: String?
-        +status: String
-        +priorite: String?
-        +code_panne: String?
-        +date_created: Date
-        +date_start: Date?
-        +scheduled_date: Date?
-        +due_date: Date?
-        +execution_date: Date?
-        +date_end: Date?
-        +date_closed: Date?
-        +recurrence_source_occurrence_id: ObjectId? <<FK WorkOrder>>
-        +original_due_date: Date?
-        +reschedule_reason: String?
-        +rescheduled_by: ObjectId? <<FK User>>
-        +rescheduled_at: Date?
-    }
+  class KnowledgeArticle {
+    +_id: ObjectId <<PK>>
+    +article_id: String <<UK>>
+    +title: String
+    +category: KnowledgeArticleCategory
+    +summary: String?
+    +content: String
+    +tags: String[]
+    +machine_type_id: ObjectId? <<FK MachineType>>
+    +machine_id: ObjectId? <<FK Machine>>
+    +maintenance_plan_id: ObjectId? <<FK MaintenancePlan>>
+    +preventive_task_id: ObjectId? <<FK PreventiveTask>>
+    +fault_codes: String[]
+    +error_codes: String[]
+    +author_id: ObjectId? <<FK User>>
+    +status: KnowledgeArticleStatus?
+    +version: Number?
+    +revision: Number?
+    +root_article_id: ObjectId? <<FK KnowledgeArticle>>
+    +supersedes_article_id: ObjectId? <<FK KnowledgeArticle>>
+    +superseded_by_article_id: ObjectId? <<FK KnowledgeArticle>>
+    +lifecycle_history: KnowledgeArticleLifecycleEntry[]
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class InterventionReport {
-        +_id: ObjectId <<PK>>
-        +report_id: String <<UK>>
-        +ot_id: ObjectId <<FK WorkOrder>>
-        +technician_id: ObjectId <<FK User>>
-        +date_debut: Date
-        +date_fin: Date
-        +cause_racine: String?
-        +description_action: String?
-        +etat_final: String?
-        +validation_responsable: String?
-    }
-
-    class KPI {
-        +_id: ObjectId <<PK>>
-        +kpi_id: String <<UK>>
-        +machine_id: ObjectId <<FK Machine>>
-        +mtbf_value: Number?
-        +mttr_value: Number?
-        +availability_rate: Number?
-        +date_calcul: Date
-        +periode_debut: Date
-        +periode_fin: Date
-    }
+  class KnowledgeArticleLifecycleEntry {
+    +action: String {created|published|archived|superseded|revised|updated}
+    +from_status: KnowledgeArticleStatus?
+    +to_status: KnowledgeArticleStatus
+    +actor_user_id: ObjectId? <<FK User>>
+    +reason: String?
+    +at: Date
+  }
 }
 
 ' =============================
-' LUBRIFICATION, PANNES, DOCS, NOTIFICATIONS
+' DEVICE GATEWAY, TELEMETRIE & ALARMES
 ' =============================
-package "Lubrification, pannes, documents, notifications" {
-    class Lubrifiant {
-        +_id: ObjectId <<PK>>
-        +lubrifiant_id: String <<UK>>
-        +nom: String
-        +type: String
-        +viscosite: String?
-        +usage: String?
-    }
+package "Device gateway, telemetrie & alarmes" {
+  class Device {
+    +_id: ObjectId <<PK>>
+    +device_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +label: String?
+    +device_type: DeviceType
+    +api_key_hash: String <<sensitive>>
+    +key_prefix: String
+    +is_active: Boolean
+    +heartbeat_interval_seconds: Number
+    +last_seen_at: Date?
+    +last_known_status: DeviceConnectionStatus
+    +created_by: ObjectId? <<FK User>>
+    +key_rotated_at: Date?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class LubrificationLog {
-        +_id: ObjectId <<PK>>
-        +log_id: String <<UK>>
-        +module_id: ObjectId <<FK Module>>
-        +lubrifiant_id: ObjectId <<FK Lubrifiant>>
-        +date_application: Date
-        +quantite: Number
-        +technician_id: ObjectId <<FK User>>
-    }
+  class Telemetry {
+    +_id: ObjectId <<PK>>
+    +device_id: ObjectId <<FK Device>>
+    +machine_id: ObjectId <<FK Machine>>
+    +metrics: Object
+    +recorded_at: Date
+    +received_at: Date <<TTL>>
+  }
 
-    class Panne {
-        +_id: ObjectId <<PK>>
-        +panne_id: String <<UK>>
-        +code_panne: String
-        +description: String
-        +gravite: String?
-    }
-
-    class PanneSolution {
-        +_id: ObjectId <<PK>>
-        +solution_id: String <<UK>>
-        +panne_id: ObjectId <<FK Panne>>
-        +cause_probable: String?
-        +solution_recommandee: String?
-    }
-
-    class DocumentEntity {
-        +_id: ObjectId <<PK>>
-        +document_id: String <<UK>>
-        +machine_id: ObjectId <<FK Machine>>
-        +type_document: String
-        +file_path: String
-        +storage_path: String?
-        +file_url: String?
-        +file_name: String
-        +preview_path: String?
-        +description: String?
-        +tags: String[]
-        +uploaded_by: String
-        +date_ajout: Date
-        +createdAt: Date
-        +updatedAt: Date
-    }
-
-    class Notification {
-        +_id: ObjectId <<PK>>
-        +notification_id: String <<UK>>
-        +type: NotificationType
-        +title: String
-        +message: String?
-        +recipient_user_id: ObjectId? <<FK User>>
-        +recipient_role: Role?
-        +work_order_id: ObjectId? <<FK WorkOrder>>
-        +machine_id: ObjectId? <<FK Machine>>
-        +reference_id: ObjectId?
-        +dedupe_key: String <<UK>>
-        +is_read: Boolean
-        +read_at: Date?
-        +createdAt: Date
-        +updatedAt: Date
-    }
+  class FaultEvent {
+    +_id: ObjectId <<PK>>
+    +device_id: ObjectId <<FK Device>>
+    +machine_id: ObjectId <<FK Machine>>
+    +code_panne: String
+    +severity: FaultEventSeverity
+    +message: String?
+    +raised_at: Date
+    +received_at: Date <<TTL when resolved>>
+    +resolved_at: Date?
+    +resolved_by: ObjectId? <<FK User>>
+    +resolution_note: String?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 }
 
 ' =============================
-' SERVICES METIER CLES (METHODES PRINCIPALES)
+' MAINTENANCE PREDICTIVE & IA
 ' =============================
-package "Services metier (backend)" {
-    class AuthService <<service>> {
-        +register(...)
-        +login(...)
-        +refreshToken(...)
-        +verifyEmail(...)
-        +forgotPassword(...)
-        +resetPassword(...)
-        +googleLogin(...)
-        +exchangeGoogleLogin(...)
-        +completeGoogleProfile(...)
-        +logout(...)
-    }
+package "Maintenance predictive & assistant IA" {
+  class PredictionModelVersion {
+    +_id: ObjectId <<PK>>
+    +model_type: PredictionModelType
+    +version: Number
+    +status: PredictionModelVersionStatus
+    +feature_names: String[]
+    +training_sample_count: Number
+    +random_seed: Number
+    +artifact: Object
+    +trained_at: Date
+    +trained_by: ObjectId? <<FK User>>
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class MaintenancePlansService <<service>> {
-        +create(...)
-        +findAll(...)
-        +findOne(...)
-        +update(...)
-        +remove(...)
-        +transition(...)
-    }
+  class MachineHealthPrediction {
+    +_id: ObjectId <<PK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +model_version_id: ObjectId <<FK PredictionModelVersion>>
+    +model_type: PredictionModelType
+    +health_score: Number
+    +anomaly_score: Number
+    +risk_level: PredictionRiskLevel
+    +confidence: Number
+    +feature_snapshot: Number[]
+    +explanation: PredictionExplanation
+    +generated_at: Date <<TTL>>
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class WorkOrdersService <<service>> {
-        +create(...)
-        +findAll(...)
-        +update(...)
-        +triggerScheduler(...)
-        +scheduleFirstPreventiveOccurrence(...)
-        +createInitialOccurrenceForPlan(...)
-        +reschedulePreventiveOccurrence(...)
-        +applyValidationAction(...)
-        +requestPartsForOperator(...)
-        +decidePartRequest(...)
-        +submitPreventiveMaintenanceForOperator(...)
-        +createCorrectiveReportForOperator(...)
-        +getCalendarEvents(...)
-        +getTimeline(...)
-        +getDashboardCalendarWidget(...)
-        +getCorrectiveAssistant(...)
-    }
+  class PredictionExplanation {
+    +measuredFacts: String[]
+    +modelOutputNotes: String[]
+    +uncertaintyNotes: String[]
+  }
 
-    class AutomationSchedulerService <<service>> {
-        +runNightlyJobs()
-        +runHourlyJobs()
-        +runTenMinuteJobs()
-    }
+  class AiInteraction {
+    +_id: ObjectId <<PK>>
+    +actor_user_id: ObjectId <<FK User>>
+    +actor_role: String
+    +machine_id: ObjectId? <<FK Machine>>
+    +work_order_id: ObjectId? <<FK WorkOrder>>
+    +fault_code: String?
+    +locale: String
+    +question: String
+    +status: AiInteractionStatus
+    +answer: AiAssistantAnswer?
+    +provider: String
+    +model: String?
+    +latency_ms: Number?
+    +redactions_applied: Number
+    +injection_flags: String[]
+    +error_message: String?
+    +createdAt: Date
+    +updatedAt: Date
+  }
 
-    class StockMovementsService <<service>> {
-        +reserve(...)
-        +cancelReservation(...)
-        +recordUsageChange(...)
-        +adjust(...)
-        +recordCreation(...)
-        +listForStock(...)
-    }
+  class AiAssistantAnswer {
+    +knownFacts: String[]
+    +probableCauses: String[]
+    +recommendedChecks: String[]
+    +safetyWarnings: String[]
+    +uncertainty: String
+  }
+}
 
-    class NotificationCenterService <<service>> {
-        +createIfNotExists(...)
-        +listForUser(...)
-        +unreadCount(...)
-        +markAsRead(...)
-        +markAllAsRead(...)
-        +clearOne(...)
-        +clearAll(...)
-    }
+' =============================
+' LUBRIFICATION, PANNES & NOTIFICATIONS
+' =============================
+package "Lubrification, pannes & notifications" {
+  class Lubrifiant {
+    +_id: ObjectId <<PK>>
+    +lubrifiant_id: String <<UK>>
+    +nom: String
+    +type: String
+    +viscosite: String?
+    +usage: String?
+  }
 
-    class DocumentsService <<service>> {
-        +create(...)
-        +findAll(...)
-        +findOne(...)
-        +findByMachine(...)
-        +update(...)
-        +remove(...)
-        +readProtectedFile(...)
-    }
+  class LubrificationLog {
+    +_id: ObjectId <<PK>>
+    +log_id: String <<UK>>
+    +module_id: ObjectId <<FK Module>>
+    +lubrifiant_id: ObjectId <<FK Lubrifiant>>
+    +date_application: Date
+    +quantite: Number
+    +technician_id: ObjectId <<FK User>>
+  }
+
+  class Panne {
+    +_id: ObjectId <<PK>>
+    +panne_id: String <<UK>>
+    +code_panne: String
+    +description: String
+    +gravite: String?
+  }
+
+  class PanneSolution {
+    +_id: ObjectId <<PK>>
+    +solution_id: String <<UK>>
+    +panne_id: ObjectId <<FK Panne>>
+    +cause_probable: String?
+    +solution_recommandee: String?
+  }
+
+  class Notification {
+    +_id: ObjectId <<PK>>
+    +notification_id: String <<UK>>
+    +type: NotificationType
+    +title: String
+    +message: String?
+    +recipient_user_id: ObjectId? <<FK User>>
+    +recipient_role: Role?
+    +work_order_id: ObjectId? <<FK WorkOrder>>
+    +machine_id: ObjectId? <<FK Machine>>
+    +reference_id: ObjectId?
+    +dedupe_key: String <<UK>>
+    +is_read: Boolean
+    +read_at: Date?
+    +createdAt: Date
+    +updatedAt: Date
+  }
+}
+
+' =============================
+' RAPPORTS, VUES & AUTOMATISATION
+' =============================
+package "Rapports, vues & automatisation" {
+  class GeneratedReport {
+    +_id: ObjectId <<PK>>
+    +report_id: String <<UK>>
+    +type: ReportType
+    +format: ReportFormat
+    +status: ReportStatus
+    +parameters: Object
+    +requested_by: ObjectId <<FK User>>
+    +requester_role: String
+    +scheduled_report_id: ObjectId? <<FK ScheduledReport>>
+    +file_path: String?
+    +file_size_bytes: Number?
+    +checksum: String?
+    +row_count: Number?
+    +error_message: String?
+    +generated_at: Date?
+    +expires_at: Date? <<TTL>>
+    +createdAt: Date
+    +updatedAt: Date
+  }
+
+  class ScheduledReport {
+    +_id: ObjectId <<PK>>
+    +schedule_id: String <<UK>>
+    +type: ReportType
+    +format: ReportFormat
+    +parameters: Object
+    +frequency: ScheduleFrequency
+    +active: Boolean
+    +created_by: ObjectId <<FK User>>
+    +last_run_at: Date?
+    +next_run_at: Date
+    +createdAt: Date
+    +updatedAt: Date
+  }
+
+  class SavedView {
+    +_id: ObjectId <<PK>>
+    +view_id: String <<UK>>
+    +user_id: ObjectId <<FK User>>
+    +page_key: String
+    +name: String
+    +is_default: Boolean
+    +query: Object
+    +createdAt: Date
+    +updatedAt: Date
+  }
+
+  class AutomationJobLock {
+    +_id: ObjectId <<PK>>
+    +name: String <<UK>>
+    +owner: String
+    +owner_id: String?
+    +run_id: String?
+    +acquired_at: Date?
+    +heartbeat_at: Date?
+    +expires_at: Date <<TTL>>
+    +status: String?
+    +metadata: Object?
+    +createdAt: Date
+    +updatedAt: Date
+  }
+}
+
+' =============================
+' SERVICES METIER PRINCIPAUX
+' =============================
+package "Services metier backend" {
+  class AuthService <<service>> {
+    +register(...)
+    +login(...)
+    +refreshToken(...)
+    +verifyEmail(...)
+    +forgotPassword(...)
+    +resetPassword(...)
+    +googleLogin(...)
+    +exchangeGoogleLogin(...)
+    +completeGoogleProfile(...)
+    +logout(...)
+  }
+
+  class WorkOrdersService <<service>> {
+    +create(...)
+    +findAll(...)
+    +findOne(...)
+    +update(...)
+    +triggerScheduler(...)
+    +scheduleFirstPreventiveOccurrence(...)
+    +reschedulePreventiveOccurrence(...)
+    +applyValidationAction(...)
+    +requestPartsForOperator(...)
+    +decidePartRequest(...)
+    +submitPreventiveMaintenanceForOperator(...)
+    +createCorrectiveReportForOperator(...)
+    +getCalendarEvents(...)
+    +getTimeline(...)
+    +getDashboardCalendarWidget(...)
+    +getCorrectiveAssistant(...)
+  }
+
+  class MaintenancePlansService <<service>> {
+    +create(...)
+    +findAll(...)
+    +findOne(...)
+    +update(...)
+    +remove(...)
+    +transition(...)
+  }
+
+  class StockMovementsService <<service>> {
+    +reserve(...)
+    +cancelReservation(...)
+    +recordUsageChange(...)
+    +adjust(...)
+    +recordCreation(...)
+    +listForStock(...)
+  }
+
+  class DocumentsService <<service>> {
+    +create(...)
+    +findAll(...)
+    +findOne(...)
+    +findByMachine(...)
+    +update(...)
+    +remove(...)
+    +readProtectedFile(...)
+  }
+
+  class KnowledgeBaseService <<service>> {
+    +create(...)
+    +findAll(...)
+    +findOne(...)
+    +update(...)
+    +transition(...)
+    +revise(...)
+    +suggestions(...)
+  }
+
+  class DevicesService <<service>> {
+    +register(...)
+    +rotateKey(...)
+    +findAll(...)
+    +findOne(...)
+    +remove(...)
+  }
+
+  class TelemetryIngestionService <<service>> {
+    +ingestTelemetry(...)
+    +ingestFault(...)
+    +resolveFault(...)
+  }
+
+  class LiveStatusService <<service>> {
+    +getLiveStatus(...)
+    +computeStatus(...)
+  }
+
+  class PredictiveMaintenanceService <<service>> {
+    +predictForMachine(...)
+    +predictAllMachines(...)
+    +getLatestForMachine(...)
+    +getHistoryForMachine(...)
+  }
+
+  class AiAssistantService <<service>> {
+    +recommend(...)
+    +buildContext(...)
+    +recordInteraction(...)
+  }
+
+  class ReportsService <<service>> {
+    +requestReport(...)
+    +generateReport(...)
+    +downloadReport(...)
+    +cleanupExpiredReports(...)
+  }
+
+  class ReportSchedulerService <<service>> {
+    +create(...)
+    +update(...)
+    +runDueSchedules(...)
+  }
+
+  class NotificationCenterService <<service>> {
+    +createIfNotExists(...)
+    +listForUser(...)
+    +unreadCount(...)
+    +markAsRead(...)
+    +markAllAsRead(...)
+    +clearOne(...)
+    +clearAll(...)
+  }
+
+  class AutomationSchedulerService <<service>> {
+    +runNightlyJobs()
+    +runHourlyJobs()
+    +runTenMinuteJobs()
+  }
 }
 
 ' =============================
 ' RELATIONS STRUCTURELLES
 ' =============================
 
-' Auth/utilisateurs
+' Identite
 User "1" *-- "0..*" GoogleAuthHistoryEntry : google_auth_history
+User "1" *-- "0..*" ApprovalHistoryEntry : approval_history
 User "0..*" -- "0..*" Machine : assigned_machine_ids
 User "0..*" --> "0..1" User : approved_by
 User "0..*" --> "0..1" User : rejected_by
 GoogleAuthHistoryEntry "0..*" --> "0..1" User : actor_user_id
+ApprovalHistoryEntry "0..*" --> "0..1" User : actor_user_id
 
 ' Actifs
 MachineType "1" -- "0..*" Machine : type_id
 MachineType "1" -- "0..*" ModuleType : type_id
+Machine "1" *-- "0..*" MachineLifecycleEntry : lifecycle_history
+MachineLifecycleEntry "0..*" --> "0..1" User : actor_user_id
 Machine "1" -- "0..*" Module : machine_id
 ModuleType "1" -- "0..*" Module : mod_type_id
 Module "0..1" <-- "0..*" Module : parent_module_id
 Module "1" -- "0..*" Capteur : module_id
 Capteur "1" -- "0..*" Mesure : capteur_id
 
-' Maintenance & ordres de travail
+' Maintenance
 Module "1" -- "0..*" MaintenancePlan : module_id
 MaintenancePlan "1" *-- "0..*" MaintenancePlanLifecycleEntry : lifecycle_history
 MaintenancePlanLifecycleEntry "0..*" --> "0..1" User : actor_user_id
@@ -563,8 +1029,12 @@ User "0..1" <-- "0..*" WorkOrder : technician_id
 MaintenancePlan "0..1" <-- "0..*" WorkOrder : plan_id
 WorkOrder "0..1" <-- "0..*" WorkOrder : recurrence_source_occurrence_id
 User "0..1" <-- "0..*" WorkOrder : rescheduled_by
+User "0..1" <-- "0..*" WorkOrder : validated_by
+WorkOrder "1" *-- "0..*" WorkOrderLifecycleEntry : lifecycle_history
+WorkOrderLifecycleEntry "0..*" --> "0..1" User : actor_user_id
 WorkOrder "1" -- "0..*" InterventionReport : ot_id
 User "1" -- "0..*" InterventionReport : technician_id
+User "0..1" <-- "0..*" InterventionReport : validated_by
 Machine "1" -- "0..*" KPI : machine_id
 
 ' Catalogue / stock / pieces
@@ -582,55 +1052,122 @@ Catalogue "1" -- "0..*" OTPieces : part_id
 ModuleType "1" -- "0..*" ModulePieces : mod_type_id
 Catalogue "1" -- "0..*" ModulePieces : part_id
 
-' Lubrification / pannes / documents / notifications
+' Documents et connaissance
+Machine "1" -- "0..*" DocumentEntity : machine_id
+MaintenancePlan "0..1" <-- "0..*" DocumentEntity : maintenance_plan_id
+WorkOrder "0..1" <-- "0..*" DocumentEntity : work_order_id
+InterventionReport "0..1" <-- "0..*" DocumentEntity : intervention_report_id
+DocumentEntity "1" *-- "0..*" DocumentLifecycleEntry : lifecycle_history
+DocumentLifecycleEntry "0..*" --> "0..1" User : actor_user_id
+DocumentEntity "0..1" <-- "0..*" DocumentEntity : root_document_id
+DocumentEntity "0..1" <-- "0..1" DocumentEntity : supersedes_document_id
+DocumentEntity "0..1" <-- "0..1" DocumentEntity : superseded_by_document_id
+Machine "0..1" <-- "0..*" DocumentRejection : machine_id
+User "0..1" <-- "0..*" DocumentRejection : rejected_by
+MachineType "0..1" <-- "0..*" KnowledgeArticle : machine_type_id
+Machine "0..1" <-- "0..*" KnowledgeArticle : machine_id
+MaintenancePlan "0..1" <-- "0..*" KnowledgeArticle : maintenance_plan_id
+PreventiveTask "0..1" <-- "0..*" KnowledgeArticle : preventive_task_id
+User "0..1" <-- "0..*" KnowledgeArticle : author_id
+KnowledgeArticle "1" *-- "0..*" KnowledgeArticleLifecycleEntry : lifecycle_history
+KnowledgeArticleLifecycleEntry "0..*" --> "0..1" User : actor_user_id
+KnowledgeArticle "0..1" <-- "0..*" KnowledgeArticle : root_article_id
+KnowledgeArticle "0..1" <-- "0..1" KnowledgeArticle : supersedes_article_id
+KnowledgeArticle "0..1" <-- "0..1" KnowledgeArticle : superseded_by_article_id
+Panne "0..*" .. "0..*" KnowledgeArticle : fault_codes/code_panne
+
+' Device, telemetry, alarms
+Machine "1" -- "0..*" Device : machine_id
+User "0..1" <-- "0..*" Device : created_by
+Device "1" -- "0..*" Telemetry : device_id
+Machine "1" -- "0..*" Telemetry : machine_id
+Device "1" -- "0..*" FaultEvent : device_id
+Machine "1" -- "0..*" FaultEvent : machine_id
+User "0..1" <-- "0..*" FaultEvent : resolved_by
+Panne "0..*" .. "0..*" FaultEvent : code_panne
+
+' Prediction et IA
+PredictionModelVersion "1" -- "0..*" MachineHealthPrediction : model_version_id
+Machine "1" -- "0..*" MachineHealthPrediction : machine_id
+MachineHealthPrediction "1" *-- "1" PredictionExplanation : explanation
+User "0..1" <-- "0..*" PredictionModelVersion : trained_by
+User "1" -- "0..*" AiInteraction : actor_user_id
+Machine "0..1" <-- "0..*" AiInteraction : machine_id
+WorkOrder "0..1" <-- "0..*" AiInteraction : work_order_id
+AiInteraction "0..1" *-- "0..1" AiAssistantAnswer : answer
+Panne "0..*" .. "0..*" AiInteraction : fault_code/code_panne
+
+' Lubrification, pannes, notifications
 Module "1" -- "0..*" LubrificationLog : module_id
 Lubrifiant "1" -- "0..*" LubrificationLog : lubrifiant_id
 User "1" -- "0..*" LubrificationLog : technician_id
 Panne "1" -- "0..*" PanneSolution : panne_id
-Machine "1" -- "0..*" DocumentEntity : machine_id
 User "0..1" <-- "0..*" Notification : recipient_user_id
 WorkOrder "0..1" <-- "0..*" Notification : work_order_id
 Machine "0..1" <-- "0..*" Notification : machine_id
+Role "0..1" <-- "0..*" Notification : recipient_role
 
-' Services -> entites (dependances majeures)
+' Rapports et vues
+User "1" -- "0..*" GeneratedReport : requested_by
+ScheduledReport "0..1" <-- "0..*" GeneratedReport : scheduled_report_id
+User "1" -- "0..*" ScheduledReport : created_by
+User "1" -- "0..*" SavedView : user_id
+
+' Services -> entites principales
 AuthService ..> User
 AuthService ..> GoogleLoginExchange
-MaintenancePlansService ..> MaintenancePlan
-MaintenancePlansService ..> WorkOrder
 WorkOrdersService ..> WorkOrder
 WorkOrdersService ..> MaintenancePlan
-WorkOrdersService ..> PartRequest
+WorkOrdersService ..> PreventiveTask
 WorkOrdersService ..> InterventionReport
+WorkOrdersService ..> PartRequest
+WorkOrdersService ..> OTPieces
 WorkOrdersService ..> KPI
 WorkOrdersService ..> Notification
-WorkOrdersService ..> LubrificationLog
-AutomationSchedulerService ..> WorkOrdersService
-AutomationSchedulerService ..> WorkOrder
-AutomationSchedulerService ..> MaintenancePlan
-AutomationSchedulerService ..> Stock
-AutomationSchedulerService ..> Capteur
-AutomationSchedulerService ..> Mesure
-AutomationSchedulerService ..> NotificationCenterService
+MaintenancePlansService ..> MaintenancePlan
+MaintenancePlansService ..> WorkOrder
 StockMovementsService ..> Stock
 StockMovementsService ..> StockMovement
 StockMovementsService ..> PartRequest
-StockMovementsService ..> WorkOrder
-NotificationCenterService ..> Notification
 DocumentsService ..> DocumentEntity
+DocumentsService ..> DocumentRejection
+KnowledgeBaseService ..> KnowledgeArticle
+DevicesService ..> Device
+TelemetryIngestionService ..> Device
+TelemetryIngestionService ..> Telemetry
+TelemetryIngestionService ..> FaultEvent
+LiveStatusService ..> Device
+LiveStatusService ..> Telemetry
+LiveStatusService ..> FaultEvent
+PredictiveMaintenanceService ..> PredictionModelVersion
+PredictiveMaintenanceService ..> MachineHealthPrediction
+AiAssistantService ..> AiInteraction
+AiAssistantService ..> KnowledgeArticle
+ReportsService ..> GeneratedReport
+ReportSchedulerService ..> ScheduledReport
+ReportSchedulerService ..> GeneratedReport
+NotificationCenterService ..> Notification
+AutomationSchedulerService ..> AutomationJobLock
+AutomationSchedulerService ..> WorkOrdersService
+AutomationSchedulerService ..> ReportSchedulerService
+AutomationSchedulerService ..> PredictiveMaintenanceService
+AutomationSchedulerService ..> NotificationCenterService
 
 legend right
-    <<PK>>  Cle primaire
-    <<FK X>>  Cle etrangere vers X
-    <<UK>>  Contrainte unique
-    <<TTL>>  Expiration automatique MongoDB
-    <<service>>  Classe applicative/metier
+  <<PK>> Cle primaire
+  <<FK X>> Cle etrangere vers X
+  <<UK>> Contrainte unique
+  <<TTL>> Expiration automatique MongoDB
+  <<sensitive>> Champ masque a la serialisation/API
+  <<service>> Classe applicative/metier
 end legend
 
 note bottom
-    Diagramme reconstruit a partir des schemas/backend services reels
-    (NestJS + Mongoose) : backend/src/schemas/*.schema.ts,
-    backend/src/auth/schemas/google-login-exchange.schema.ts,
-    backend/src/counters/counter.schema.ts et services metier associes.
+  Source: schemas NestJS + Mongoose de backend/src/schemas/*.schema.ts,
+  backend/src/auth/schemas/google-login-exchange.schema.ts,
+  backend/src/counters/counter.schema.ts et services backend principaux.
+  Ce diagramme est volontairement detaille; utiliser uml-compact-executive.puml
+  pour une slide courte.
 end note
 
 @enduml

@@ -29,6 +29,8 @@ services:
         value: "3001"
       - key: MONGODB_URI
         sync: false
+      - key: MONGODB_REQUIRE_ATLAS
+        value: "true"
       - key: JWT_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
@@ -51,7 +53,11 @@ services:
         sync: false
       - key: BACKEND_URL
         sync: false
+      - key: API_URL
+        sync: false
       - key: FRONTEND_BASE_URL
+        sync: false
+      - key: APP_URL
         sync: false
       - key: CORS_ORIGINS
         sync: false
@@ -73,13 +79,49 @@ services:
         sync: false
       - key: SMTP_PORT
         value: "587"
+      - key: SMTP_SECURE
+        value: "false"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
         sync: false
+      - key: SMTP_REJECT_UNAUTHORIZED
+        value: "true"
       - key: EMAIL_FROM
         sync: false
+      - key: EMAIL_DELIVERY_MODE
+        value: auto
+      - key: SMTP_VERIFY_ON_STARTUP
+        value: "false"
+      - key: SMTP_CONNECTION_TIMEOUT_MS
+        value: "10000"
+      - key: SMTP_GREETING_TIMEOUT_MS
+        value: "10000"
+      - key: SMTP_SOCKET_TIMEOUT_MS
+        value: "15000"
+      - key: SMTP_FALLBACK_COOLDOWN_MS
+        value: "300000"
       - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_API_URL
+        value: https://api.brevo.com/v3/smtp/email
+      - key: BREVO_API_TIMEOUT_MS
+        value: "10000"
+      - key: FORGOT_PASSWORD_ASYNC_EMAIL
+        value: "true"
+      - key: DEFAULT_LOCALE
+        value: en
+      - key: ENABLE_LEGACY_EMAIL_TOKENS
+        value: "false"
+      - key: ENABLE_LEGACY_RESET_TOKENS
+        value: "false"
+      - key: LEGACY_AUTH_MIGRATION_DEADLINE
+        sync: false
+      - key: ENABLE_EVENT_BASED_EMAILS
+        value: "false"
+      - key: ENABLE_EMAIL_DIAGNOSTIC_TEST
+        value: "false"
+      - key: EMAIL_DIAGNOSTIC_RECIPIENT
         sync: false
       # Optional AI assistant — leave AI_ASSISTANT_ENABLED unset/false unless
       # Gemini access has been approved for this environment (see
@@ -100,10 +142,49 @@ services:
       - key: REQUEST_TIMEOUT_MS
         value: "30000"
       # Phase F additions — see src/instrument.ts and src/app.module.ts.
-      # LOG_FORMAT/SLOW_QUERY_THRESHOLD_MS are left unset here to keep
-      # their code-level defaults (text logs, 200ms); set explicitly only
-      # if this environment needs to override them.
+      - key: LOG_FORMAT
+        value: json
+      - key: SLOW_QUERY_THRESHOLD_MS
+        value: "200"
       - key: SENTRY_DSN
         sync: false
       - key: SENTRY_TRACES_SAMPLE_RATE
         value: "0.1"
+      - key: BUSINESS_TIMEZONE
+        value: Africa/Tunis
+      - key: MQTT_BROKER_URL
+        sync: false
+      - key: TELEMETRY_RETENTION_SECONDS
+        value: "604800"
+      - key: FAULT_EVENT_RETENTION_SECONDS
+        value: "7776000"
+      - key: PREDICTIVE_MAINTENANCE_ENABLED
+        value: "true"
+      - key: PREDICTION_HISTORY_RETENTION_SECONDS
+        value: "15552000"
+      - key: THROTTLE_ENABLED
+        value: "true"
+      - key: THROTTLE_DEFAULT_TTL_MS
+        value: "60000"
+      - key: THROTTLE_DEFAULT_LIMIT
+        value: "120"
+      - key: THROTTLE_DEVICE_TTL_MS
+        value: "60000"
+      - key: THROTTLE_DEVICE_LIMIT
+        value: "120"
+      - key: AUTOMATION_SCHEDULER_ENABLED
+        value: "true"
+      - key: AUTOMATION_BATCH_SIZE
+        value: "100"
+      - key: AUTOMATION_CONCURRENCY
+        value: "3"
+      - key: AUTOMATION_EXTERNAL_CONCURRENCY
+        value: "2"
+      - key: AUTOMATION_LOCK_TTL_MS
+        value: "300000"
+      - key: AUTOMATION_LOCK_HEARTBEAT_MS
+        value: "30000"
+      - key: AUTOMATION_JOB_TIMEOUT_MS
+        value: "600000"
+      - key: AUTOMATION_MAX_ITEMS_PER_RUN
+        value: "1000"

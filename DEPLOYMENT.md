@@ -13,11 +13,11 @@ self-hosted Nginx anywhere in local development or production.
 ## Environment variable placement — quick reference
 
 Every credential is a **Render (backend) environment variable, never a
-Vercel one**. Vercel gets exactly one variable. If a variable name does not
-start with `NEXT_PUBLIC_`, it must never be added to the Vercel project —
-anything Next.js exposes to the client bundle has to be explicitly prefixed
-`NEXT_PUBLIC_`, and no code in `frontend/src` reads any other `process.env`
-key (verified by an automated test — see
+Vercel one**. Vercel gets only public `NEXT_PUBLIC_*` variables. If a
+variable name does not start with `NEXT_PUBLIC_`, it must never be added to
+the Vercel project — anything Next.js exposes to the client bundle has to be
+explicitly prefixed `NEXT_PUBLIC_`, and no code in `frontend/src` reads any
+project-configured variable without that prefix (verified by an automated test — see
 [`frontend/tests/env-secret-exposure.test.ts`](frontend/tests/env-secret-exposure.test.ts)).
 
 | Variable | Where it lives | Why |
@@ -29,7 +29,9 @@ key (verified by an automated test — see
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET*` | Render only | Service-role storage access |
 | `GEMINI_API_KEY` | Render only | Billable AI provider credential |
 | `CORS_ORIGINS`, `FRONTEND_BASE_URL`, `BACKEND_URL`, `APP_URL`, `API_URL`, `GOOGLE_CALLBACK_URL` | Render only | Server-side config, not secret, but has no reason to exist client-side |
-| `NEXT_PUBLIC_API_BASE_URL` | **Vercel** (and Render, for the backend's own CORS config) | The only variable the frontend build is allowed to read |
+| `NEXT_PUBLIC_API_BASE_URL` | Vercel only | Public Render backend URL used by the frontend API client |
+| `NEXT_PUBLIC_SUPABASE_URL` | Vercel only, optional | Public Supabase project origin if the frontend needs to resolve public/signed asset URLs |
+| `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | Vercel only, optional | Public frontend error-tracking config; unset keeps Sentry disabled |
 
 The repo-root `.env.production` file is a **placeholder reference
 template only** — every credential in it is a literal `<placeholder>`
@@ -117,18 +119,23 @@ Configure these as Render backend environment variables or secrets:
 NODE_ENV=production
 PORT=3001
 MONGODB_URI=<mongodb-atlas-uri>
+MONGODB_REQUIRE_ATLAS=true
 JWT_SECRET=<strong-secret>
 JWT_REFRESH_SECRET=<strong-refresh-secret>
 JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=1d
+JWT_REFRESH_EXPIRES_IN=7d
 JWT_REFRESH_COOKIE_MAX_AGE_MS=86400000
 EMAIL_VERIFICATION_SECRET=<strong-email-verification-secret>
+GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY=<32-byte-base64-or-32-character-key>
 GOOGLE_CLIENT_ID=<google-client-id>
 GOOGLE_CLIENT_SECRET=<google-client-secret>
 GOOGLE_CALLBACK_URL=https://your-backend.onrender.com/auth/google/callback
 BACKEND_URL=https://your-backend.onrender.com
+API_URL=https://your-backend.onrender.com
 FRONTEND_BASE_URL=https://your-frontend.vercel.app
+APP_URL=https://your-frontend.vercel.app
 CORS_ORIGINS=https://your-frontend.vercel.app
+TRUST_PROXY=true
 FILE_STORAGE_DRIVER=supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SECRET_KEY=<supabase-service-role-secret>
@@ -140,24 +147,66 @@ SUPABASE_SIGNED_URL_EXPIRES_IN_SECONDS=604800
 # BREVO_API_KEY are credentials — Render only, never Vercel.
 SMTP_HOST=<smtp-host>
 SMTP_PORT=587
+SMTP_SECURE=false
 SMTP_USER=<production-smtp-user>
 SMTP_PASS=<production-smtp-password>
+SMTP_REJECT_UNAUTHORIZED=true
 EMAIL_FROM=<from-address>
+EMAIL_DELIVERY_MODE=auto
+SMTP_VERIFY_ON_STARTUP=false
+SMTP_CONNECTION_TIMEOUT_MS=10000
+SMTP_GREETING_TIMEOUT_MS=10000
+SMTP_SOCKET_TIMEOUT_MS=15000
+SMTP_FALLBACK_COOLDOWN_MS=300000
 BREVO_API_KEY=<brevo-api-key>
+BREVO_API_URL=https://api.brevo.com/v3/smtp/email
+BREVO_API_TIMEOUT_MS=10000
+FORGOT_PASSWORD_ASYNC_EMAIL=true
+DEFAULT_LOCALE=en
+
+# Auth compatibility flags. Keep disabled unless a temporary migration is
+# explicitly active, and then set LEGACY_AUTH_MIGRATION_DEADLINE to a future
+# ISO timestamp.
+ENABLE_LEGACY_EMAIL_TOKENS=false
+ENABLE_LEGACY_RESET_TOKENS=false
+LEGACY_AUTH_MIGRATION_DEADLINE=
+ENABLE_EVENT_BASED_EMAILS=false
+ENABLE_EMAIL_DIAGNOSTIC_TEST=false
+EMAIL_DIAGNOSTIC_RECIPIENT=
 
 # Optional backend-only AI assistant. Leave disabled unless Gemini is approved.
-AI_ASSISTANT_ENABLED=true
+AI_ASSISTANT_ENABLED=false
 AI_ASSISTANT_PROVIDER=gemini
 GEMINI_API_KEY=<gemini-api-key>
 GEMINI_MODEL=gemini-flash-lite-latest
 AI_ASSISTANT_TIMEOUT_MS=12000
 AI_ASSISTANT_RATE_LIMIT_PER_HOUR=20
 
-# Optional — all have safe code-level defaults if unset (see
-# backend/.env.example for the exact default of each).
+# Optional operations/device/predictive settings — all have safe code-level
+# defaults if unset (see backend/.env.example for the exact default of each).
 REQUEST_TIMEOUT_MS=30000
 LOG_FORMAT=json
 SLOW_QUERY_THRESHOLD_MS=200
+BUSINESS_TIMEZONE=Africa/Tunis
+MQTT_BROKER_URL=
+TELEMETRY_RETENTION_SECONDS=604800
+FAULT_EVENT_RETENTION_SECONDS=7776000
+PREDICTIVE_MAINTENANCE_ENABLED=true
+PREDICTION_HISTORY_RETENTION_SECONDS=15552000
+THROTTLE_ENABLED=true
+THROTTLE_DEFAULT_TTL_MS=60000
+THROTTLE_DEFAULT_LIMIT=120
+THROTTLE_DEVICE_TTL_MS=60000
+THROTTLE_DEVICE_LIMIT=120
+AUTOMATION_SCHEDULER_ENABLED=true
+AUTOMATION_BATCH_SIZE=100
+AUTOMATION_CONCURRENCY=3
+AUTOMATION_EXTERNAL_CONCURRENCY=2
+AUTOMATION_LOCK_TTL_MS=300000
+AUTOMATION_LOCK_HEARTBEAT_MS=30000
+AUTOMATION_JOB_TIMEOUT_MS=600000
+AUTOMATION_MAX_ITEMS_PER_RUN=1000
+
 # Backend error tracking — unset means Sentry stays fully uninitialized
 # (safe no-op). A Sentry DSN is not a secret (write-only, publishable by
 # design), so no special handling is needed if it's ever set here.
@@ -171,11 +220,11 @@ self-hosted Nginx or reverse proxy is used.
 ### Render Blueprint (`render.yaml`)
 
 The repo-root [`render.yaml`](render.yaml) declares this service (build/start
-commands, health check path, and every env var *name* above — never a
-value; every entry uses Render's `sync: false`, which makes the Render
-dashboard prompt for the real value instead of reading one from the file).
-Applying it (Render dashboard → New → Blueprint, pointing at this repo)
-creates the service; it does not deploy code or set secrets on its own.
+commands, health check path, safe defaults, and every required secret env var
+*name* above). Secret-bearing entries use Render's `sync: false`, which makes
+the Render dashboard prompt for the real value instead of reading one from
+the file. Applying it (Render dashboard → New → Blueprint, pointing at this
+repo) creates the service; it does not deploy code or set secrets on its own.
 
 ### Render AI Assistant
 
@@ -194,6 +243,9 @@ Configure only public frontend variables in Vercel:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://your-backend.onrender.com
+
+# Optional public Supabase project origin. This is not the service-role key.
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 
 # Optional frontend error tracking — unset means Sentry stays fully
 # uninitialized (safe no-op). See frontend/src/instrumentation*.ts and
@@ -215,8 +267,9 @@ directly — no self-hosted Nginx is used.
 
 An automated test (`frontend/tests/env-secret-exposure.test.ts`) enforces
 this by scanning `frontend/src` for `process.env` references and failing if
-anything other than `NEXT_PUBLIC_API_BASE_URL`/`NODE_ENV` is ever read —
-run as part of `npm run test` in `frontend/`.
+anything other than `NODE_ENV`, Next.js runtime variables, or explicitly
+public `NEXT_PUBLIC_*` variables is ever read — run as part of
+`npm run test` in `frontend/`.
 
 ### Vercel project config (`frontend/vercel.json`)
 
@@ -228,9 +281,10 @@ do, because the format has no way to:
   config — set it to `frontend` in the dashboard (or run `vercel link` from
   inside `frontend/`) so Vercel finds this file and runs its commands from
   the right place.
-- **`NEXT_PUBLIC_API_BASE_URL`.** Set directly in the Vercel dashboard for
-  this project — see the table above for the exact value and everything
-  that must *not* be set here.
+- **Public env vars.** Set `NEXT_PUBLIC_API_BASE_URL`,
+  optional `NEXT_PUBLIC_SUPABASE_URL`, and any optional frontend Sentry
+  variables directly in the Vercel dashboard for this project — see the
+  table above for what must *not* be set here.
 
 Security headers (CSP, `X-Frame-Options`, etc.) live in
 `frontend/next.config.mjs`'s `headers()` function, not `vercel.json` — one
@@ -249,7 +303,9 @@ straight to production. Standing one up:
    (e.g. `https://gmao-staging-api.onrender.com`).
 2. **Vercel**: create a second Vercel project (or use Vercel's Preview
    Deployments against a `staging` branch) with its own
-   `NEXT_PUBLIC_API_BASE_URL` pointing at the staging backend from step 1.
+   `NEXT_PUBLIC_API_BASE_URL` pointing at the staging backend from step 1
+   and optional `NEXT_PUBLIC_SUPABASE_URL` pointing at the staging Supabase
+   project if staging uses frontend-resolved Supabase asset URLs.
 3. Set the staging backend's `FRONTEND_BASE_URL` and `CORS_ORIGINS` to the
    staging frontend's origin, and `AI_ASSISTANT_ENABLED=false` unless
    staging genuinely needs to exercise the (billable) Gemini integration.

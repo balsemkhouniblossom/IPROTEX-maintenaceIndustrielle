@@ -16,10 +16,12 @@ actor "Utilisateur authentifie" as User
 actor "Administrateur" as Admin
 actor "Operateur" as Operator
 actor "Technicien" as Technician
-actor "Machine" as MachineActor
+actor "Equipement IoT / Machine" as DeviceActor
 actor "Service de messagerie" as Messaging
-actor "Module IA (assistant correctif)" as AI
+actor "Stockage fichiers" as FileStorage
+actor "Module IA" as AI
 actor "Planificateur automatique" as Scheduler
+actor "Passerelle temps reel" as RealtimeGateway
 
 User <|-- Admin
 User <|-- Operator
@@ -32,30 +34,55 @@ rectangle "Systeme GMAO" {
     usecase "Verifier email" as UC_VerifyEmail
     usecase "Se connecter" as UC_Login
     usecase "Se connecter avec Google" as UC_GoogleLogin
+    usecase "Echanger resultat Google" as UC_GoogleExchange
+    usecase "Completer profil" as UC_CompleteProfile
     usecase "Rafraichir session" as UC_Refresh
     usecase "Se deconnecter" as UC_Logout
     usecase "Mot de passe oublie" as UC_ForgotPassword
+    usecase "Verifier jeton de reinitialisation" as UC_VerifyResetToken
     usecase "Reinitialiser mot de passe" as UC_ResetPassword
-    usecase "Gerer son profil" as UC_Profile
+    usecase "Forcer reinitialisation mot de passe" as UC_ForceReset
+    usecase "Gerer son profil et photo" as UC_Profile
+    usecase "Consulter etat de sante API" as UC_Health
   }
 
-  package "Administration" {
+  package "Administration et referentiels" {
     usecase "Gerer utilisateurs" as UC_ManageUsers
+    usecase "Approuver / rejeter comptes" as UC_ApproveUsers
+    usecase "Approuver / rejeter en masse" as UC_BulkApproveUsers
+    usecase "Gerer authentification Google utilisateur" as UC_UserGoogleAuth
     usecase "Gerer machines" as UC_ManageMachines
+    usecase "Consulter fiche et timeline machine" as UC_MachineTimeline
     usecase "Gerer types de machines" as UC_ManageMachineTypes
     usecase "Gerer modules" as UC_ManageModules
     usecase "Gerer types de modules" as UC_ManageModuleTypes
+    usecase "Gerer pieces de module" as UC_ManageModulePieces
     usecase "Gerer plans de maintenance" as UC_ManagePlans
+    usecase "Changer etat plan de maintenance" as UC_TransitionPlan
     usecase "Gerer checklist preventive" as UC_ManagePreventiveTasks
     usecase "Synchroniser checklist depuis plans" as UC_SyncChecklist
+    usecase "Gerer vues sauvegardees" as UC_SavedViews
   }
 
   package "Interventions et ordres de travail" {
     usecase "Gerer ordres de travail" as UC_ManageWO
     usecase "Creer ordre de travail" as UC_CreateWO
     usecase "Mettre a jour ordre de travail" as UC_UpdateWO
+    usecase "Supprimer ordre de travail" as UC_DeleteWO
+    usecase "Consulter calendrier OT" as UC_WorkOrderCalendar
+    usecase "Replanifier OT / evenement" as UC_RescheduleWO
+    usecase "Completer ordre de travail" as UC_CompleteWO
     usecase "Valider ordre de travail" as UC_ValidateWO
-    usecase "Consulter rapports d'intervention" as UC_ViewReports
+    usecase "Consulter statistiques OT" as UC_WorkOrderStats
+    usecase "Consulter rapports d'intervention" as UC_ViewInterventionReports
+    usecase "Gerer rapports d'intervention" as UC_ManageInterventionReports
+  }
+
+  package "Espace operateur" {
+    usecase "Consulter tableau de bord operateur" as UC_OperatorDashboard
+    usecase "Consulter machines assignees" as UC_OperatorMachines
+    usecase "Consulter calendrier intelligent" as UC_OperatorCalendar
+    usecase "Consulter mes rapports" as UC_OperatorReports
   }
 
   package "Maintenance preventive" {
@@ -72,109 +99,232 @@ rectangle "Systeme GMAO" {
   package "Maintenance corrective" {
     usecase "Traiter maintenance corrective" as UC_CorrectiveFlow
     usecase "Signaler panne et creer OT corrective" as UC_ReportFault
+    usecase "Gerer pannes" as UC_ManageFaults
+    usecase "Gerer solutions de panne" as UC_ManageFaultSolutions
     usecase "Executer intervention corrective" as UC_ExecuteCorrective
     usecase "Valider intervention corrective" as UC_ApproveCorrective
     usecase "Demander pieces" as UC_RequestParts
     usecase "Decider demande pieces" as UC_DecideParts
     usecase "Consommer pieces et decrementer stock" as UC_ConsumeStock
     usecase "Consulter assistant correctif" as UC_CorrectiveAssistant
-    usecase "Proposer solutions de panne" as UC_ProposeFaultSolutions
+    usecase "Proposer recommandations IA" as UC_AIRecommendations
+    usecase "Consulter historique IA" as UC_AIHistory
   }
 
-  package "Stocks et catalogue" {
+  package "Espace technicien" {
+    usecase "Consulter tableau de bord technicien" as UC_TechnicianDashboard
+    usecase "Consulter OT assignes" as UC_TechnicianWO
+    usecase "Revendiquer OT" as UC_ClaimWO
+    usecase "Demarrer intervention" as UC_StartWO
+    usecase "Mettre OT en attente pieces" as UC_WaitingParts
+    usecase "Reprendre intervention" as UC_ResumeWO
+    usecase "Renseigner rapport technicien" as UC_TechnicianReport
+    usecase "Definir quantites pieces" as UC_SetPartQuantity
+    usecase "Cloturer intervention" as UC_CloseWO
+    usecase "Consulter interventions en cours" as UC_CurrentInterventions
+    usecase "Consulter attente pieces" as UC_WaitingPartsView
+    usecase "Consulter historique technicien" as UC_TechnicianHistory
+  }
+
+  package "Stocks et lubrification" {
     usecase "Gerer stock" as UC_ManageStock
+    usecase "Ajuster stock" as UC_AdjustStock
+    usecase "Consulter mouvements de stock" as UC_StockMovements
     usecase "Gerer catalogue des pieces" as UC_ManageCatalog
     usecase "Gerer pieces liees aux OT" as UC_ManageOtPieces
     usecase "Gerer lubrifiants" as UC_ManageLubricants
     usecase "Gerer journaux de lubrification" as UC_ManageLubLogs
   }
 
-  package "Documents" {
+  package "Documents et connaissance" {
     usecase "Gerer documents techniques" as UC_ManageDocuments
-    usecase "Televerser document" as UC_UploadDocument
-    usecase "Consulter document" as UC_ViewDocument
+    usecase "Televerser / remplacer document" as UC_UploadDocument
+    usecase "Publier / archiver document" as UC_PublishDocument
+    usecase "Consulter document ou apercu" as UC_ViewDocument
+    usecase "Consulter versions document" as UC_DocumentVersions
     usecase "Consulter manuels machine" as UC_ViewManuals
+    usecase "Gerer base de connaissances" as UC_ManageKnowledge
+    usecase "Publier / archiver article" as UC_PublishKnowledge
+    usecase "Reviser article" as UC_ReviseKnowledge
+    usecase "Consulter suggestions connaissance" as UC_KnowledgeSuggestions
   }
 
   package "Notifications et messagerie" {
     usecase "Consulter notifications" as UC_ViewNotifications
+    usecase "Consulter compteur non lu" as UC_UnreadCount
     usecase "Marquer notifications comme lues" as UC_ReadNotifications
+    usecase "Supprimer notifications" as UC_DeleteNotifications
     usecase "Generer notifications automatiques" as UC_AutoNotifications
     usecase "Envoyer emails transactionnels" as UC_SendEmails
   }
 
-  package "Capteurs et KPI" {
+  package "Capteurs, devices et supervision" {
     usecase "Gerer capteurs" as UC_ManageSensors
     usecase "Gerer mesures" as UC_ManageMeasures
+    usecase "Gerer devices" as UC_ManageDevices
+    usecase "Rotation cle device" as UC_RotateDeviceKey
+    usecase "Recevoir heartbeat device" as UC_DeviceHeartbeat
+    usecase "Ingerer telemetrie device" as UC_DeviceTelemetry
+    usecase "Ingerer panne device" as UC_DeviceFault
     usecase "Collecter mesures machine" as UC_CollectMeasures
+    usecase "Superviser etat live machines" as UC_LiveMonitoring
+    usecase "Resoudre alerte panne live" as UC_ResolveLiveFault
+    usecase "Diffuser evenements temps reel" as UC_RealtimeEvents
     usecase "Surveiller alertes capteurs" as UC_SensorAlerts
-    usecase "Consulter KPI" as UC_ViewKPI
+  }
+
+  package "KPI, prediction et rapports" {
+    usecase "Consulter KPI / dashboard admin" as UC_ViewKPI
     usecase "Mettre a jour KPI automatiquement" as UC_RefreshKPI
+    usecase "Consulter sante predictive flotte" as UC_PredictiveFleet
+    usecase "Consulter prediction machine" as UC_PredictiveMachine
+    usecase "Rafraichir prediction machine" as UC_RefreshPrediction
+    usecase "Entrainer modele predictif" as UC_TrainPredictionModel
+    usecase "Demander rapport exporte" as UC_RequestGeneratedReport
+    usecase "Consulter / telecharger rapports" as UC_DownloadReports
+    usecase "Gerer rapports planifies" as UC_ScheduledReports
+    usecase "Executer rapports planifies" as UC_RunScheduledReports
   }
 }
 
 Visitor --> UC_Register
 Visitor --> UC_Login
 Visitor --> UC_GoogleLogin
+Visitor --> UC_GoogleExchange
 Visitor --> UC_VerifyEmail
 Visitor --> UC_ForgotPassword
+Visitor --> UC_VerifyResetToken
 Visitor --> UC_ResetPassword
+Visitor --> UC_Health
 
+User --> UC_CompleteProfile
 User --> UC_Refresh
 User --> UC_Logout
 User --> UC_Profile
+User --> UC_ViewNotifications
+User --> UC_UnreadCount
+User --> UC_ReadNotifications
+User --> UC_DeleteNotifications
+User --> UC_SavedViews
+User --> UC_ManageKnowledge
+User --> UC_KnowledgeSuggestions
+User --> UC_RequestGeneratedReport
+User --> UC_DownloadReports
+User --> UC_ScheduledReports
 
 Admin --> UC_ManageUsers
+Admin --> UC_ApproveUsers
+Admin --> UC_BulkApproveUsers
+Admin --> UC_UserGoogleAuth
+Admin --> UC_ForceReset
 Admin --> UC_ManageMachines
+Admin --> UC_MachineTimeline
 Admin --> UC_ManageMachineTypes
 Admin --> UC_ManageModules
 Admin --> UC_ManageModuleTypes
+Admin --> UC_ManageModulePieces
 Admin --> UC_ManagePlans
+Admin --> UC_TransitionPlan
 Admin --> UC_ManagePreventiveTasks
 Admin --> UC_ManageWO
 Admin --> UC_ValidateWO
-Admin --> UC_ViewReports
+Admin --> UC_WorkOrderStats
+Admin --> UC_ManageInterventionReports
+Admin --> UC_ManageFaults
+Admin --> UC_ManageFaultSolutions
 Admin --> UC_ManageStock
+Admin --> UC_AdjustStock
+Admin --> UC_StockMovements
 Admin --> UC_ManageCatalog
 Admin --> UC_ManageOtPieces
 Admin --> UC_ManageLubricants
 Admin --> UC_ManageLubLogs
 Admin --> UC_ManageDocuments
-Admin --> UC_ViewKPI
+Admin --> UC_PublishDocument
 Admin --> UC_ManageSensors
 Admin --> UC_ManageMeasures
+Admin --> UC_ManageDevices
+Admin --> UC_RotateDeviceKey
+Admin --> UC_LiveMonitoring
+Admin --> UC_ResolveLiveFault
+Admin --> UC_ViewKPI
+Admin --> UC_PredictiveFleet
+Admin --> UC_PredictiveMachine
+Admin --> UC_RefreshPrediction
+Admin --> UC_TrainPredictionModel
 Admin --> UC_CorrectiveAssistant
-Admin --> UC_ViewNotifications
 
+Operator --> UC_OperatorDashboard
+Operator --> UC_OperatorMachines
+Operator --> UC_OperatorCalendar
+Operator --> UC_OperatorReports
 Operator --> UC_PreventiveFlow
 Operator --> UC_CorrectiveFlow
 Operator --> UC_PreventiveState
 Operator --> UC_ViewManuals
-Operator --> UC_ViewNotifications
+Operator --> UC_ViewDocument
 Operator --> UC_ViewKPI
+Operator --> UC_KnowledgeSuggestions
 
+Technician --> UC_TechnicianDashboard
+Technician --> UC_TechnicianWO
+Technician --> UC_ClaimWO
+Technician --> UC_StartWO
+Technician --> UC_WaitingParts
+Technician --> UC_ResumeWO
+Technician --> UC_TechnicianReport
+Technician --> UC_SetPartQuantity
+Technician --> UC_CloseWO
+Technician --> UC_CurrentInterventions
+Technician --> UC_WaitingPartsView
+Technician --> UC_TechnicianHistory
 Technician --> UC_ApprovePreventive
 Technician --> UC_ExecuteCorrective
 Technician --> UC_ApproveCorrective
 Technician --> UC_DecideParts
 Technician --> UC_ConsumeStock
 Technician --> UC_ViewManuals
-Technician --> UC_ViewReports
-Technician --> UC_ViewNotifications
+Technician --> UC_ViewInterventionReports
+Technician --> UC_ManagePreventiveTasks
+Technician --> UC_KnowledgeSuggestions
 
-MachineActor --> UC_CollectMeasures
+DeviceActor --> UC_DeviceHeartbeat
+DeviceActor --> UC_DeviceTelemetry
+DeviceActor --> UC_DeviceFault
+DeviceActor --> UC_CollectMeasures
 Messaging --> UC_SendEmails
-AI --> UC_ProposeFaultSolutions
+FileStorage --> UC_UploadDocument
+FileStorage --> UC_ViewDocument
+AI --> UC_AIRecommendations
+AI --> UC_RefreshPrediction
+AI --> UC_TrainPredictionModel
+RealtimeGateway --> UC_RealtimeEvents
 Scheduler --> UC_GenerateNextDue
 Scheduler --> UC_AutoNotifications
 Scheduler --> UC_SensorAlerts
 Scheduler --> UC_RefreshKPI
+Scheduler --> UC_RunScheduledReports
+
+UC_Register ..> UC_VerifyEmail : <<include>>
+UC_GoogleLogin ..> UC_GoogleExchange : <<include>>
+UC_ResetPassword ..> UC_VerifyResetToken : <<include>>
+UC_Profile ..> UC_UploadDocument : <<extend>>
+
+UC_ManageUsers ..> UC_ApproveUsers : <<include>>
+UC_ManageUsers ..> UC_BulkApproveUsers : <<extend>>
+UC_ManageUsers ..> UC_UserGoogleAuth : <<extend>>
+UC_ManageUsers ..> UC_ForceReset : <<extend>>
+UC_ManageMachines ..> UC_MachineTimeline : <<extend>>
+UC_ManagePlans ..> UC_TransitionPlan : <<include>>
+UC_ManagePreventiveTasks ..> UC_SyncChecklist : <<extend>>
 
 UC_ManageWO ..> UC_CreateWO : <<include>>
 UC_ManageWO ..> UC_UpdateWO : <<include>>
+UC_ManageWO ..> UC_DeleteWO : <<include>>
+UC_ManageWO ..> UC_WorkOrderCalendar : <<include>>
+UC_ManageWO ..> UC_RescheduleWO : <<extend>>
+UC_ManageWO ..> UC_CompleteWO : <<extend>>
 UC_ManageWO ..> UC_ValidateWO : <<include>>
-
-UC_ManagePreventiveTasks ..> UC_SyncChecklist : <<extend>>
 
 UC_PreventiveFlow ..> UC_ScheduleFirst : <<include>>
 UC_PreventiveFlow ..> UC_ExecutePreventive : <<include>>
@@ -188,18 +338,50 @@ UC_CorrectiveFlow ..> UC_ReportFault : <<include>>
 UC_CorrectiveFlow ..> UC_ExecuteCorrective : <<include>>
 UC_CorrectiveFlow ..> UC_ApproveCorrective : <<include>>
 UC_CorrectiveFlow ..> UC_RequestParts : <<extend>>
+UC_ReportFault ..> UC_ManageFaults : <<include>>
 UC_DecideParts ..> UC_ConsumeStock : <<include>>
-UC_CorrectiveAssistant ..> UC_ProposeFaultSolutions : <<include>>
+UC_CorrectiveAssistant ..> UC_AIRecommendations : <<include>>
+UC_CorrectiveAssistant ..> UC_AIHistory : <<extend>>
+
+UC_TechnicianWO ..> UC_ClaimWO : <<extend>>
+UC_TechnicianWO ..> UC_StartWO : <<extend>>
+UC_TechnicianWO ..> UC_WaitingParts : <<extend>>
+UC_TechnicianWO ..> UC_ResumeWO : <<extend>>
+UC_TechnicianWO ..> UC_TechnicianReport : <<include>>
+UC_TechnicianWO ..> UC_SetPartQuantity : <<extend>>
+UC_TechnicianWO ..> UC_CloseWO : <<extend>>
+
+UC_ManageStock ..> UC_AdjustStock : <<extend>>
+UC_ManageStock ..> UC_StockMovements : <<include>>
+UC_ManageOtPieces ..> UC_ConsumeStock : <<extend>>
 
 UC_ManageDocuments ..> UC_UploadDocument : <<include>>
+UC_ManageDocuments ..> UC_PublishDocument : <<extend>>
+UC_ManageDocuments ..> UC_DocumentVersions : <<include>>
 UC_ViewManuals ..> UC_ViewDocument : <<include>>
+UC_ManageKnowledge ..> UC_PublishKnowledge : <<extend>>
+UC_ManageKnowledge ..> UC_ReviseKnowledge : <<include>>
+UC_ManageKnowledge ..> UC_KnowledgeSuggestions : <<extend>>
 
 UC_AutoNotifications ..> UC_SendEmails : <<extend>>
+UC_ViewNotifications ..> UC_UnreadCount : <<include>>
 UC_ViewNotifications ..> UC_ReadNotifications : <<extend>>
+UC_ViewNotifications ..> UC_DeleteNotifications : <<extend>>
 
+UC_ManageDevices ..> UC_RotateDeviceKey : <<extend>>
+UC_DeviceTelemetry ..> UC_RealtimeEvents : <<include>>
+UC_DeviceFault ..> UC_RealtimeEvents : <<include>>
+UC_DeviceHeartbeat ..> UC_RealtimeEvents : <<extend>>
+UC_LiveMonitoring ..> UC_RealtimeEvents : <<include>>
+UC_LiveMonitoring ..> UC_ResolveLiveFault : <<extend>>
 UC_ManageMeasures ..> UC_CollectMeasures : <<include>>
 UC_SensorAlerts ..> UC_CollectMeasures : <<include>>
+
 UC_RefreshKPI ..> UC_ViewKPI : <<extend>>
+UC_PredictiveMachine ..> UC_RefreshPrediction : <<extend>>
+UC_PredictiveFleet ..> UC_PredictiveMachine : <<include>>
+UC_RequestGeneratedReport ..> UC_DownloadReports : <<extend>>
+UC_ScheduledReports ..> UC_RunScheduledReports : <<include>>
 
 note right of UC_PreventiveFlow
 Flux preventif implemente:
@@ -212,7 +394,14 @@ end note
 note right of UC_CorrectiveFlow
 Flux correctif implemente:
 signalement panne, intervention,
-validation, pieces et impact stock.
+validation, pieces et impact stock,
+avec assistant IA et demandes de pieces.
+end note
+
+note right of UC_DeviceTelemetry
+Les devices utilisent une authentification
+independante de la session utilisateur,
+puis diffusent les changements en temps reel.
 end note
 
 @enduml
