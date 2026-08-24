@@ -137,6 +137,8 @@ describe('AuthService', () => {
     process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
     process.env.JWT_EXPIRES_IN = '15m';
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+    delete process.env.JWT_PERSISTENT_REFRESH_EXPIRES_IN;
+    delete process.env.JWT_SESSION_REFRESH_EXPIRES_IN;
     process.env.APP_URL = 'https://app.example.com';
     process.env.DEFAULT_LOCALE = 'en';
 
@@ -1497,6 +1499,15 @@ describe('AuthService', () => {
     const result = await service.login(plainUser as never);
 
     expect(jwtService.sign).toHaveBeenCalledTimes(2);
+    expect(jwtService.sign).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sub: plainUser._id.toString(),
+        type: 'refresh',
+        persistent: true,
+      }),
+      expect.objectContaining({ expiresIn: '7d' }),
+    );
     expect(bcrypt.hash).toHaveBeenCalledWith(
       expect.stringMatching(/^[a-f0-9]{64}$/),
       10,
@@ -1510,8 +1521,44 @@ describe('AuthService', () => {
       access_token: 'access-token',
       token: 'access-token',
       refresh_token: 'refresh-token',
+      refresh_persistent: true,
       user: plainUser,
     });
+  });
+
+  it('issues session-only refresh tokens when keepLoggedIn is false', async () => {
+    process.env.JWT_PERSISTENT_REFRESH_EXPIRES_IN = '30d';
+    process.env.JWT_SESSION_REFRESH_EXPIRES_IN = '12h';
+    const plainUser = {
+      _id: new Types.ObjectId(),
+      email: 'plain@example.com',
+      user_id: 'USER-010',
+      role: 'operator',
+      is_active: true,
+      nom_complet: 'Plain User',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
+    jwtService.sign
+      .mockReturnValueOnce('access-token')
+      .mockReturnValueOnce('refresh-token');
+    (bcrypt.hash as jest.Mock).mockResolvedValue('refresh-token-hash');
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
+
+    const result = await service.login(plainUser as never, false);
+
+    expect(jwtService.sign).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sub: plainUser._id.toString(),
+        type: 'refresh',
+        persistent: false,
+      }),
+      expect.objectContaining({ expiresIn: '12h' }),
+    );
+    expect(result.refresh_persistent).toBe(false);
   });
 
   it('rejects missing, malformed, wrong-type, and bad-subject refresh tokens with stable codes', async () => {
@@ -1767,6 +1814,7 @@ describe('AuthService', () => {
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
     expect(result.access_token).toBe('new-access-token');
     expect(result.refresh_token).toBe('old-refresh-token');
+    expect(result.refresh_persistent).toBe(true);
     expect(result.user).not.toHaveProperty('password');
     expect(result.user).not.toHaveProperty('refresh_token_hash');
     expect(result.user).not.toHaveProperty('google_id');

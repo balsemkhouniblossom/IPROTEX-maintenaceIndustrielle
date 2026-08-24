@@ -52,11 +52,12 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
   const tUsers = useTranslations('users');
   const t = useTranslations('sidebar');
   const tTechnician = useTranslations('technician');
+  const tProtected = useTranslations('auth.protected');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: authLoading, isAuthenticated } = useAuth();
   const { statistics } = useDashboardStatistics();
   const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const localePrefix = `/${locale}`;
@@ -66,14 +67,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     return `${localePrefix}${href}`;
   };
 
-  const handleLogoClick = () => {
-    if (user?.role === 'admin') router.push(withLocale('/'));
-    else if (user?.role === 'operator') router.push(withLocale('/operator'));
-    else if (user?.role === 'technician') router.push(withLocale('/technician'));
-    else router.push(withLocale('/'));
-  };
-
-  const role = user?.role ?? 'operator';
+  const role = user?.role;
 
   useEffect(() => {
     if (user?.profile_completed === false) {
@@ -82,6 +76,14 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     // withLocale is derived from the stable locale for this mounted layout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, user?.profile_completed]);
+
+  useEffect(() => {
+    if (!authLoading && (!isAuthenticated || !user)) {
+      router.replace(withLocale('/auth/login'));
+    }
+    // withLocale is derived from the stable locale for this mounted layout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated, router, user]);
 
   useEffect(() => {
     let active = true;
@@ -115,6 +117,26 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     };
   }, [role]);
 
+  if (authLoading || !isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 animate-spin rounded-full border-b-2 border-blue-600" />
+          <p className="mt-4 text-sm font-medium text-slate-700">{tProtected('loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleLogoClick = () => {
+    if (user.role === 'admin') router.push(withLocale('/'));
+    else if (user.role === 'operator') router.push(withLocale('/operator'));
+    else if (user.role === 'technician') router.push(withLocale('/technician'));
+    else router.push(withLocale('/'));
+  };
+
+  const activeRole = user.role;
+
   interface NavItem {
     name: string;
     href: string;
@@ -134,8 +156,8 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     technicianNav: NavItem[],
     operatorNav: NavItem[],
   ) => {
-    if (role === 'admin') return adminNav;
-    if (role === 'technician') return technicianNav;
+    if (activeRole === 'admin') return adminNav;
+    if (activeRole === 'technician') return technicianNav;
     return operatorNav;
   };
 
@@ -273,7 +295,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
             <SignalIcon className="h-4 w-4 shrink-0 text-green-500" />
             <span title={t('systemStatus.online')}>{t('systemStatus.online')}</span>
           </div>
-          {role === 'admin' && (
+          {activeRole === 'admin' && (
             <>
               <div className="status-item-modern warning">
                 <ExclamationTriangleIcon className="h-4 w-4 shrink-0 text-amber-500" />
@@ -329,15 +351,14 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
           <div className="px-4 py-2">
             <div className="flex items-center gap-3 mb-3">
               <ProfileAvatar
-                name={user?.nom_complet}
-                photo={user?.photo}
-                alt={user?.nom_complet || tCommon('defaultUserName')}
+                name={user.nom_complet}
+                photo={user.photo}
+                alt={user.nom_complet || tCommon('defaultUserName')}
                 size="sm"
               />
               <div className="flex-1 min-w-0">
-                <div className="dashboard-user-name text-sm font-medium truncate">{user?.nom_complet || tCommon('defaultUserName')}</div>
-                <div className="dashboard-user-role text-xs capitalize">{user?.role ? tUsers(`roles.${user.role}`)
-                  : tCommon('user')}</div>
+                <div className="dashboard-user-name text-sm font-medium truncate">{user.nom_complet || tCommon('defaultUserName')}</div>
+                <div className="dashboard-user-role text-xs capitalize">{tUsers(`roles.${user.role}`)}</div>
               </div>
             </div>
 
@@ -382,15 +403,14 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
               <div className="hidden md:flex items-center gap-3">
                 <div className="flex items-center gap-3">
                   <ProfileAvatar
-                    name={user?.nom_complet}
-                    photo={user?.photo}
-                    alt={user?.nom_complet || tCommon('defaultUserName')}
+                    name={user.nom_complet}
+                    photo={user.photo}
+                    alt={user.nom_complet || tCommon('defaultUserName')}
                     size="sm"
                   />
                   <div className="text-end">
-                    <div className="dashboard-user-name text-sm font-medium">{user?.nom_complet || tCommon('defaultUserName')}</div>
-                    <div className="dashboard-user-role text-xs capitalize">{user?.role ? tUsers(`roles.${user.role}`)
-                      : tCommon('user')}</div>
+                    <div className="dashboard-user-name text-sm font-medium">{user.nom_complet || tCommon('defaultUserName')}</div>
+                    <div className="dashboard-user-role text-xs capitalize">{tUsers(`roles.${user.role}`)}</div>
                   </div>
                 </div>
 

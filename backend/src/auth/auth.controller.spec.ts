@@ -32,10 +32,14 @@ describe('AuthController refresh cookie configuration', () => {
     const res = { cookie: jest.fn() };
 
     const result = await controller.login(
-      { user: { _id: 'user-id' } } as never,
+      { user: { _id: 'user-id' }, body: { keepLoggedIn: true } } as never,
       res as never,
     );
 
+    expect(authService.login).toHaveBeenCalledWith(
+      { _id: 'user-id' },
+      true,
+    );
     expect(result).toEqual({
       access_token: 'access-token',
       token: 'access-token',
@@ -67,6 +71,54 @@ describe('AuthController refresh cookie configuration', () => {
     expect(res.cookie.mock.calls[1][2]).not.toHaveProperty('domain');
   });
 
+  it('uses browser-session cookies when keepLoggedIn is false', async () => {
+    process.env.NODE_ENV = 'production';
+
+    const authService = {
+      login: jest.fn().mockResolvedValue({
+        access_token: 'access-token',
+        token: 'access-token',
+        refresh_token: 'refresh-token',
+        refresh_persistent: false,
+        user: { _id: 'user-id' },
+      }),
+    };
+    const controller = new AuthController(
+      authService as never,
+      {
+        consume: jest.fn(),
+        recordSuccess: jest.fn(),
+        recordFailure: jest.fn(),
+      } as never,
+    );
+    const res = { cookie: jest.fn() };
+
+    const result = await controller.login(
+      { user: { _id: 'user-id' }, body: { keepLoggedIn: false } } as never,
+      res as never,
+    );
+
+    expect(authService.login).toHaveBeenCalledWith(
+      { _id: 'user-id' },
+      false,
+    );
+    expect(result).toEqual({
+      access_token: 'access-token',
+      token: 'access-token',
+      user: { _id: 'user-id' },
+    });
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refresh_token',
+      'refresh-token',
+      expect.not.objectContaining({ maxAge: expect.any(Number) }),
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.any(String),
+      expect.not.objectContaining({ maxAge: expect.any(Number) }),
+    );
+  });
+
   it('rotates refresh and CSRF cookies after a valid cookie refresh', async () => {
     process.env.NODE_ENV = 'production';
 
@@ -75,6 +127,7 @@ describe('AuthController refresh cookie configuration', () => {
         access_token: 'new-access-token',
         token: 'new-access-token',
         refresh_token: 'new-refresh-token',
+        refresh_persistent: false,
         user: { _id: 'user-id' },
       }),
     };
@@ -108,12 +161,7 @@ describe('AuthController refresh cookie configuration', () => {
     expect(res.cookie).toHaveBeenCalledWith(
       'refresh_token',
       'new-refresh-token',
-      expect.objectContaining({
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-      }),
+      expect.not.objectContaining({ maxAge: expect.any(Number) }),
     );
     expect(res.cookie).toHaveBeenCalledWith(
       'csrf_token',

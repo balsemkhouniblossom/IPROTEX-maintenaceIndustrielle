@@ -123,3 +123,13 @@ test("login page lets users choose whether to stay logged in", () => {
   assert.match(source, /login\(formData\.email,\s*formData\.password,\s*keepLoggedIn\)/);
   assert.match(source, /t\('keepLoggedIn'\)/);
 });
+
+test("login request sends keepLoggedIn to backend session cookie policy", () => {
+  const source = readFileSync(
+    join(process.cwd(), "src", "contexts", "AuthContext.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /login = useCallback\(async \(email: string, password: string, keepLoggedIn = true\)/);
+  assert.match(source, /api\.post\(\s*['"]\/auth\/login['"],\s*\{ email, password, keepLoggedIn \}/);
+});

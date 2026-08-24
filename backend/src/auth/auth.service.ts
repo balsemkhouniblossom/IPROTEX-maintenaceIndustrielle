@@ -57,12 +57,14 @@ interface JwtPayload {
   type?: 'access' | 'refresh';
   jti?: string;
   iat?: number;
+  persistent?: boolean;
 }
 
 export interface LoginResult {
   access_token: string;
   token: string;
   refresh_token: string;
+  refresh_persistent: boolean;
   user: UserWithoutSensitiveData;
 }
 
@@ -236,15 +238,19 @@ export class AuthService {
 
     return this.buildVerificationResponse(verifiedUser, false);
   }
-  async login(user: SanitizableUser): Promise<LoginResult> {
+  async login(
+    user: SanitizableUser,
+    keepLoggedIn = true,
+  ): Promise<LoginResult> {
     const { accessToken, refreshToken, refreshTokenHash } =
-      await this.issueTokenPair(user);
+      await this.issueTokenPair(user, keepLoggedIn);
     await this.setRefreshTokenHash(user._id.toString(), refreshTokenHash);
 
     return {
       access_token: accessToken,
       token: accessToken,
       refresh_token: refreshToken,
+      refresh_persistent: keepLoggedIn,
       user: await this.sanitizeUser(user),
     };
   }
@@ -332,6 +338,7 @@ export class AuthService {
       access_token: accessToken,
       token: accessToken,
       refresh_token: token,
+      refresh_persistent: payload.persistent !== false,
       user: await this.sanitizeRefreshUser(user),
     };
   }
@@ -1140,12 +1147,21 @@ export class AuthService {
     return userObj as unknown as UserWithoutSensitiveData;
   }
 
-  private async issueTokenPair(user: SanitizableUser): Promise<{
+  private async issueTokenPair(
+    user: SanitizableUser,
+    persistent: boolean,
+  ): Promise<{
     accessToken: string;
     refreshToken: string;
     refreshTokenHash: string;
   }> {
-    const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
+    const refreshExpiresIn = persistent
+      ? (process.env.JWT_PERSISTENT_REFRESH_EXPIRES_IN ??
+        process.env.JWT_REFRESH_EXPIRES_IN ??
+        '30d')
+      : (process.env.JWT_SESSION_REFRESH_EXPIRES_IN ??
+        process.env.JWT_REFRESH_EXPIRES_IN ??
+        '1d');
     const accessToken = this.issueAccessToken(user);
 
     const refreshToken = this.jwtService.sign(
@@ -1153,6 +1169,7 @@ export class AuthService {
         sub: user._id.toString(),
         type: 'refresh',
         jti: crypto.randomUUID(),
+        persistent,
       },
       {
         secret: process.env.JWT_REFRESH_SECRET,

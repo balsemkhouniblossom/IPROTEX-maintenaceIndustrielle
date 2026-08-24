@@ -44,6 +44,9 @@ import { Public } from './decorators/public.decorator';
 
 type LoginRequest = ExpressRequest & {
   user?: UserDocument;
+  body?: {
+    keepLoggedIn?: unknown;
+  };
 };
 
 type JwtRequest = ExpressRequest & {
@@ -111,9 +114,11 @@ export class AuthController {
       throw new UnauthorizedException('Authentication failed');
     }
 
+    const keepLoggedIn = req.body?.keepLoggedIn !== false;
+
     return this.attachRefreshCookie(
       res,
-      await this.authService.login(req.user),
+      await this.authService.login(req.user, keepLoggedIn),
     );
   }
   @Get('google')
@@ -347,11 +352,14 @@ export class AuthController {
       access_token: string;
       token?: string;
       refresh_token: string;
+      refresh_persistent?: boolean;
       user: unknown;
     },
   ) {
     const csrfToken = cryptoRandomToken();
-    const cookieOptions = this.getRefreshCookieOptions();
+    const cookieOptions = this.getRefreshCookieOptions(
+      result.refresh_persistent !== false,
+    );
 
     res.cookie(REFRESH_COOKIE_NAME, result.refresh_token, {
       ...cookieOptions,
@@ -362,7 +370,11 @@ export class AuthController {
       httpOnly: false,
     });
 
-    const { refresh_token: _refreshToken, ...publicResult } = result;
+    const {
+      refresh_token: _refreshToken,
+      refresh_persistent: _refreshPersistent,
+      ...publicResult
+    } = result;
     return publicResult;
   }
 
@@ -380,15 +392,20 @@ export class AuthController {
     });
   }
 
-  private getRefreshCookieOptions(): CookieOptions {
+  private getRefreshCookieOptions(persistent = true): CookieOptions {
     const secure = process.env.NODE_ENV === 'production';
 
-    return {
+    const options: CookieOptions = {
       secure,
       sameSite: secure ? 'none' : 'lax',
       path: '/',
-      maxAge: this.getRefreshCookieMaxAgeMs(),
     };
+
+    if (persistent) {
+      options.maxAge = this.getRefreshCookieMaxAgeMs();
+    }
+
+    return options;
   }
 
   private assertCsrfToken(req: ExpressRequest): void {

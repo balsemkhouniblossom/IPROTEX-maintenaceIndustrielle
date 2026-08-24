@@ -39,8 +39,12 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 1d
+      - key: JWT_PERSISTENT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: JWT_SESSION_REFRESH_EXPIRES_IN
+        value: 1d
       - key: JWT_REFRESH_COOKIE_MAX_AGE_MS
-        value: "86400000"
+        value: "2592000000"
       - key: EMAIL_VERIFICATION_SECRET
         sync: false
       - key: GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY

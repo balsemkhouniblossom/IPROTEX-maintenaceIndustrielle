@@ -312,10 +312,14 @@ test("silent refresh can cover a full working day with short access tokens", () 
 
   assert.match(renderSource, /key:\s*JWT_EXPIRES_IN\s*\r?\n\s*value:\s*15m/);
   assert.match(renderSource, /key:\s*JWT_REFRESH_EXPIRES_IN\s*\r?\n\s*value:\s*1d/);
-  assert.match(renderSource, /key:\s*JWT_REFRESH_COOKIE_MAX_AGE_MS\s*\r?\n\s*value:\s*"86400000"/);
+  assert.match(renderSource, /key:\s*JWT_PERSISTENT_REFRESH_EXPIRES_IN\s*\r?\n\s*value:\s*30d/);
+  assert.match(renderSource, /key:\s*JWT_SESSION_REFRESH_EXPIRES_IN\s*\r?\n\s*value:\s*1d/);
+  assert.match(renderSource, /key:\s*JWT_REFRESH_COOKIE_MAX_AGE_MS\s*\r?\n\s*value:\s*"2592000000"/);
   assert.match(envExampleSource, /JWT_EXPIRES_IN=15m/);
   assert.match(envExampleSource, /JWT_REFRESH_EXPIRES_IN=1d/);
-  assert.match(envExampleSource, /JWT_REFRESH_COOKIE_MAX_AGE_MS=86400000/);
+  assert.match(envExampleSource, /JWT_PERSISTENT_REFRESH_EXPIRES_IN=30d/);
+  assert.match(envExampleSource, /JWT_SESSION_REFRESH_EXPIRES_IN=1d/);
+  assert.match(envExampleSource, /JWT_REFRESH_COOKIE_MAX_AGE_MS=2592000000/);
   assert.match(controllerSource, /process\.env\.JWT_REFRESH_COOKIE_MAX_AGE_MS/);
 });
 

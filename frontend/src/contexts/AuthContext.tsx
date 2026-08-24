@@ -184,7 +184,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     try {
       const response = await api.post(
         '/auth/login',
-        { email, password },
+        { email, password, keepLoggedIn },
         { withCredentials: true },
       );
       const session = parseLocalLoginSession(response.data);

@@ -120,8 +120,33 @@ test("DashboardLayout only shows the admin-only KPI topbar badges to admins", ()
 
   assert.match(
     source,
-    /\{role === 'admin' && \(/,
+    /\{activeRole === 'admin' && \(/,
     "DashboardLayout must gate the pendingMaintenance/percentageChange badges behind an admin role check",
+  );
+});
+
+test("DashboardLayout waits for restored auth before rendering role-specific shell", () => {
+  const source = readSource("src/components/DashboardLayout.tsx");
+
+  assert.match(
+    source,
+    /const \{ user, logout, isLoading: authLoading, isAuthenticated \} = useAuth\(\);/,
+    "DashboardLayout must read the auth loading state directly",
+  );
+  assert.match(
+    source,
+    /if \(authLoading \|\| !isAuthenticated \|\| !user\) \{/,
+    "DashboardLayout must not render the sidebar/header profile while refresh auth is still restoring",
+  );
+  assert.doesNotMatch(
+    source,
+    /user\?\.role \?\? ['"]operator['"]/,
+    "DashboardLayout must not default to an operator shell before the backend returns the real refreshed user",
+  );
+  assert.doesNotMatch(
+    source,
+    /user\?\.role \? tUsers\(`roles\.\$\{user\.role\}`\)\s*:\s*tCommon\('user'\)/,
+    "DashboardLayout must not show the generic User role while auth is still loading",
   );
 });
 
