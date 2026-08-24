@@ -36,10 +36,7 @@ describe('AuthController refresh cookie configuration', () => {
       res as never,
     );
 
-    expect(authService.login).toHaveBeenCalledWith(
-      { _id: 'user-id' },
-      true,
-    );
+    expect(authService.login).toHaveBeenCalledWith({ _id: 'user-id' }, true);
     expect(result).toEqual({
       access_token: 'access-token',
       token: 'access-token',
@@ -98,10 +95,7 @@ describe('AuthController refresh cookie configuration', () => {
       res as never,
     );
 
-    expect(authService.login).toHaveBeenCalledWith(
-      { _id: 'user-id' },
-      false,
-    );
+    expect(authService.login).toHaveBeenCalledWith({ _id: 'user-id' }, false);
     expect(result).toEqual({
       access_token: 'access-token',
       token: 'access-token',

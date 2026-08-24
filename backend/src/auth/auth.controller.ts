@@ -42,11 +42,9 @@ import type { UserDocument } from '../schemas/user.schema';
 import type { GoogleUserProfile } from './auth.service';
 import { Public } from './decorators/public.decorator';
 
-type LoginRequest = ExpressRequest & {
+type LoginRequest = Omit<ExpressRequest, 'body'> & {
   user?: UserDocument;
-  body?: {
-    keepLoggedIn?: unknown;
-  };
+  body?: unknown;
 };
 
 type JwtRequest = ExpressRequest & {
@@ -114,7 +112,7 @@ export class AuthController {
       throw new UnauthorizedException('Authentication failed');
     }
 
-    const keepLoggedIn = req.body?.keepLoggedIn !== false;
+    const keepLoggedIn = getKeepLoggedIn(req.body);
 
     return this.attachRefreshCookie(
       res,
@@ -438,4 +436,13 @@ export class AuthController {
 
 function cryptoRandomToken(): string {
   return crypto.randomBytes(32).toString('base64url');
+}
+
+function getKeepLoggedIn(body: unknown): boolean {
+  return (
+    typeof body !== 'object' ||
+    body === null ||
+    !('keepLoggedIn' in body) ||
+    body.keepLoggedIn !== false
+  );
 }
