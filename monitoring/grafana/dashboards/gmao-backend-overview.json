@@ -391,7 +391,7 @@
       "id": 7,
       "targets": [
         {
-          "expr": "sum(rate(http_request_duration_ms_sum{job=\"gmao-backend\"}[5m])) / sum(rate(http_request_duration_ms_count{job=\"gmao-backend\"}[5m]))",
+          "expr": "((sum(rate(http_request_duration_ms_sum{job=\"gmao-backend\"}[5m])) / sum(rate(http_request_duration_ms_count{job=\"gmao-backend\"}[5m]))) and (sum(rate(http_request_duration_ms_count{job=\"gmao-backend\"}[5m])) > 0)) or vector(0)",
           "legendFormat": "average",
           "refId": "A"
         }

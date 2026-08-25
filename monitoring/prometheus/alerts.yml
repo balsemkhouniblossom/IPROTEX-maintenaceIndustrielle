@@ -26,6 +26,8 @@ groups:
             /
             sum(rate(http_request_duration_ms_count{job="gmao-backend"}[5m]))
           ) > 1000
+          and
+          sum(rate(http_request_duration_ms_count{job="gmao-backend"}[5m])) > 0
         for: 10m
         labels:
           severity: warning
