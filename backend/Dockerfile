@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy only package files for dependency caching
 COPY package*.json ./
 
-# Install all dependencies (including dev)
-RUN npm ci
+# Install all dependencies without running dependency lifecycle scripts
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY . .
@@ -26,8 +26,8 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 # Copy only package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install only production dependencies without running dependency lifecycle scripts
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
