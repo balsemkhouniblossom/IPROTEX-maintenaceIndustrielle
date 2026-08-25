@@ -17,6 +17,7 @@ const apiWebSocketOrigin = apiOrigin.replace(/^http/, "ws");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : null;
 const supabaseImageSource = supabaseOrigin || "https://*.supabase.co";
+const googleAvatarImageSource = "https://lh3.googleusercontent.com";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -46,7 +47,7 @@ const nextConfig = {
       "default-src 'self'",
       scriptSrc,
       `style-src 'self' 'unsafe-inline'`,
-      `img-src 'self' data: blob: ${apiOrigin} ${supabaseImageSource}`,
+      `img-src 'self' data: blob: ${apiOrigin} ${supabaseImageSource} ${googleAvatarImageSource}`,
       "font-src 'self' data:",
       `connect-src 'self' ${apiOrigin} ${apiWebSocketOrigin}`,
       "frame-src 'self' blob:",
