@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+dist
+test
+coverage
+.git
+.gitignore
+README.md
+.eslintrc.js
+.prettierrc
+*.spec.ts
+.env
+.env.local
+.env.*.local

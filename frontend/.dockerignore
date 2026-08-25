@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.next
+out
+.git
+.gitignore
+README.md
+.eslintrc.js
+tests
+test-results
+.env
+.env.local
+.env.*.local
+.vercelignore
+playwright.config.ts
+e2e
