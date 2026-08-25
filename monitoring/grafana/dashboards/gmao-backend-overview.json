@@ -74,7 +74,7 @@
       "pluginVersion": "12.4.9",
       "targets": [
         {
-          "expr": "up{job=\"gmao-backend\"}",
+          "expr": "gmao_backend_up{job=\"gmao-backend\"}",
           "legendFormat": "backend",
           "refId": "A"
         }
@@ -136,8 +136,8 @@
       "pluginVersion": "12.4.9",
       "targets": [
         {
-          "expr": "scrape_duration_seconds{job=\"gmao-backend\"}",
-          "legendFormat": "last scrape",
+          "expr": "time() - gmao_metrics_collection_timestamp_seconds{job=\"gmao-backend\"}",
+          "legendFormat": "age",
           "refId": "A"
         }
       ],
@@ -191,7 +191,7 @@
       "pluginVersion": "12.4.9",
       "targets": [
         {
-          "expr": "sum(http_requests_total{job=\"gmao-backend\"})",
+          "expr": "sum(http_requests_total{job=\"gmao-backend\"}) or vector(0)",
           "legendFormat": "requests",
           "refId": "A"
         }
@@ -246,12 +246,12 @@
       "pluginVersion": "12.4.9",
       "targets": [
         {
-          "expr": "scrape_samples_scraped{job=\"gmao-backend\"}",
-          "legendFormat": "samples",
+          "expr": "gmao_metrics_exposed_series{job=\"gmao-backend\"}",
+          "legendFormat": "series",
           "refId": "A"
         }
       ],
-      "title": "Collected Metrics Samples",
+      "title": "Collected Metrics",
       "type": "stat"
     },
     {
@@ -337,8 +337,8 @@
       "id": 6,
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"gmao-backend\",status=~\"4..|5..\"}[5m])) by (status)",
-          "legendFormat": "{{status}}",
+          "expr": "sum(rate(http_requests_total{job=\"gmao-backend\",status=~\"4..|5..\"}[5m])) or vector(0)",
+          "legendFormat": "errors",
           "refId": "A"
         }
       ],
@@ -391,7 +391,7 @@
       "id": 7,
       "targets": [
         {
-          "expr": "sum(rate(http_request_duration_ms_sum{job=\"gmao-backend\"}[5m])) / sum(rate(http_requests_total{job=\"gmao-backend\"}[5m]))",
+          "expr": "sum(rate(http_request_duration_ms_sum{job=\"gmao-backend\"}[5m])) / sum(rate(http_request_duration_ms_count{job=\"gmao-backend\"}[5m]))",
           "legendFormat": "average",
           "refId": "A"
         }

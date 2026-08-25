@@ -19,6 +19,9 @@ describe('MetricsRegistry', () => {
     expect(text).toContain(
       'http_request_duration_ms_sum{method="GET",route="/work-orders/:id",status="200"} 30',
     );
+    expect(text).toContain(
+      'http_request_duration_ms_count{method="GET",route="/work-orders/:id",status="200"} 2',
+    );
   });
 
   it('keeps distinct status codes as separate series for the same route', () => {
@@ -35,13 +38,29 @@ describe('MetricsRegistry', () => {
     );
   });
 
-  it('includes HELP/TYPE metadata lines for both metrics', () => {
+  it('includes HELP/TYPE metadata lines for backend health and request metrics', () => {
     registry.record('GET', '/health', 200, 5);
 
     const text = registry.renderPrometheusText();
 
+    expect(text).toContain('# TYPE gmao_backend_up gauge');
+    expect(text).toContain('# TYPE gmao_backend_start_time_seconds gauge');
+    expect(text).toContain(
+      '# TYPE gmao_metrics_collection_timestamp_seconds gauge',
+    );
+    expect(text).toContain('# TYPE gmao_metrics_collections_total counter');
+    expect(text).toContain('# TYPE gmao_metrics_exposed_series gauge');
     expect(text).toContain('# TYPE http_requests_total counter');
     expect(text).toContain('# TYPE http_request_duration_ms_sum counter');
+    expect(text).toContain('# TYPE http_request_duration_ms_count counter');
+  });
+
+  it('increments the metrics collection counter every time metrics are rendered', () => {
+    const first = registry.renderPrometheusText();
+    const second = registry.renderPrometheusText();
+
+    expect(first).toContain('gmao_metrics_collections_total 1');
+    expect(second).toContain('gmao_metrics_collections_total 2');
   });
 
   it('escapes route label values for Prometheus text output', () => {
@@ -52,9 +71,11 @@ describe('MetricsRegistry', () => {
     expect(text).toContain(String.raw`route="/docs/\"manual\"\\v1"`);
   });
 
-  it('renders an empty body (just HELP/TYPE headers) when nothing has been recorded', () => {
+  it('renders backend health metrics when no request metrics have been recorded', () => {
     const text = registry.renderPrometheusText();
 
+    expect(text).toContain('gmao_backend_up 1');
+    expect(text).toContain('gmao_metrics_exposed_series 4');
     expect(text).not.toContain('http_requests_total{');
   });
 });
