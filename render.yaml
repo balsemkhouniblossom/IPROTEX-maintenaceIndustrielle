@@ -198,12 +198,15 @@ services:
     name: gmao-prometheus
     runtime: docker
     rootDir: monitoring/prometheus
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: monitoring/prometheus/Dockerfile
+    dockerContext: monitoring/prometheus
     disk:
       name: prometheus-data
       mountPath: /prometheus
       sizeGB: 10
     envVars:
+      - key: BACKEND_URL
+        sync: false
       - key: METRICS_BEARER_TOKEN
         sync: false
       - key: PROMETHEUS_EXTERNAL_URL
@@ -212,7 +215,8 @@ services:
     name: gmao-grafana
     runtime: docker
     rootDir: monitoring/grafana
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: monitoring/grafana/Dockerfile
+    dockerContext: monitoring/grafana
     disk:
       name: grafana-data
       mountPath: /var/lib/grafana

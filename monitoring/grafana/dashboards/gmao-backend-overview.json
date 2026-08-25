@@ -55,7 +55,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "12.5.1",
+      "pluginVersion": "12.4.9",
       "targets": [
         {
           "expr": "up{job=\"gmao-backend\"}",

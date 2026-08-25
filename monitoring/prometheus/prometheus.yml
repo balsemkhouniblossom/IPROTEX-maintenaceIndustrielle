@@ -7,14 +7,14 @@ rule_files:
 
 scrape_configs:
   - job_name: gmao-backend
-    scheme: https
+    scheme: __BACKEND_SCHEME__
     metrics_path: /health/metrics
     authorization:
       type: Bearer
       credentials_file: /prometheus/secrets/metrics-bearer-token
     static_configs:
       - targets:
-          - pfe-maintenaceindustrielle.onrender.com
+          - __BACKEND_TARGET__
         labels:
           service: gmao-backend
           environment: production

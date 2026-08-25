@@ -25,15 +25,19 @@ openssl rand -base64 48
 The repo-root `render.yaml` defines:
 
 - `gmao-backend`: the NestJS production API
-- `gmao-prometheus`: scrapes `https://pfe-maintenaceindustrielle.onrender.com/health/metrics`
+- `gmao-prometheus`: scrapes `${BACKEND_URL}/health/metrics`
 - `gmao-grafana`: provisions the Prometheus datasource and the backend overview dashboard
 
 Set these service secrets before deploying the monitoring services:
 
 ```text
+BACKEND_URL
 METRICS_BEARER_TOKEN
 GF_SECURITY_ADMIN_PASSWORD
+PROMETHEUS_URL
 ```
 
-If the Prometheus service URL differs from the default, set Grafana's
-`PROMETHEUS_URL` to that Render URL.
+`BACKEND_URL` must be the backend origin only, for example
+`https://gmao-backend.onrender.com`, with no trailing path. `PROMETHEUS_URL`
+must be the Prometheus service origin, for example
+`https://gmao-prometheus.onrender.com`.
