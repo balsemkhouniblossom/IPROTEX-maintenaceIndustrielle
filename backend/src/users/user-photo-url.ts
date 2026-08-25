@@ -1,9 +1,10 @@
 import {
   MANAGED_AVATAR_FILE_PREFIX,
+  MANAGED_AVATAR_DIRECTORY,
   MANAGED_AVATAR_ROUTE,
+  resolveManagedFileUrl,
   toManagedAvatarPath,
 } from '../common/managed-file-url';
-export { resolveManagedFileUrl as resolveUserPhotoUrl } from '../common/managed-file-url';
 import { ApprovalStatus } from '../schemas/user.schema';
 
 const MANAGED_AVATAR_FILE_PATTERN = new RegExp(
@@ -12,6 +13,30 @@ const MANAGED_AVATAR_FILE_PATTERN = new RegExp(
 
 export function toManagedUserPhotoPath(fileName: string): string {
   return toManagedAvatarPath(fileName);
+}
+
+function normalizeUserPhotoPath(photo?: string | null): string {
+  const normalized = photo?.trim().replaceAll('\\', '/') ?? '';
+  if (!normalized || /^https?:\/\//i.test(normalized)) return normalized;
+
+  const legacyAvatarPrefix = `uploads/${MANAGED_AVATAR_DIRECTORY}/`;
+  if (normalized.startsWith(legacyAvatarPrefix)) {
+    return `${MANAGED_AVATAR_ROUTE}/${normalized.slice(legacyAvatarPrefix.length)}`;
+  }
+
+  const slashLegacyAvatarPrefix = `/${legacyAvatarPrefix}`;
+  if (normalized.startsWith(slashLegacyAvatarPrefix)) {
+    return `${MANAGED_AVATAR_ROUTE}/${normalized.slice(slashLegacyAvatarPrefix.length)}`;
+  }
+
+  return normalized;
+}
+
+export function resolveUserPhotoUrl(
+  photo?: string | null,
+  req?: Parameters<typeof resolveManagedFileUrl>[1],
+): string {
+  return resolveManagedFileUrl(normalizeUserPhotoPath(photo), req);
 }
 
 export function getManagedAvatarFileName(photo?: string | null): string | null {

@@ -1,4 +1,7 @@
-import { resolveManagedFileUrl } from '@/services/managedFileUrls';
+import { resolveManagedFileUrl } from './managedFileUrls.ts';
+
+const LEGACY_AVATAR_PATH_PREFIX = 'uploads/avatars/';
+const MANAGED_AVATAR_ROUTE = '/files/uploads/avatars/';
 
 function stripWrappingQuotes(value?: string | null): string | undefined {
   if (!value) return undefined;
@@ -11,9 +14,24 @@ function stripWrappingQuotes(value?: string | null): string | undefined {
   return value.slice(start, end);
 }
 
+function normalizeUserPhotoPath(photoPath?: string | null): string | undefined {
+  const stripped = stripWrappingQuotes(photoPath)?.trim().replace(/\\/g, '/');
+  if (!stripped || /^https?:\/\//i.test(stripped)) return stripped;
+
+  if (stripped.startsWith(LEGACY_AVATAR_PATH_PREFIX)) {
+    return `${MANAGED_AVATAR_ROUTE}${stripped.slice(LEGACY_AVATAR_PATH_PREFIX.length)}`;
+  }
+
+  const slashLegacyAvatarPathPrefix = `/${LEGACY_AVATAR_PATH_PREFIX}`;
+  if (stripped.startsWith(slashLegacyAvatarPathPrefix)) {
+    return `${MANAGED_AVATAR_ROUTE}${stripped.slice(slashLegacyAvatarPathPrefix.length)}`;
+  }
+
+  return stripped;
+}
+
 export function resolveUserPhotoUrl(photoPath?: string | null): string {
-  const stripped = stripWrappingQuotes(photoPath);
-  const resolved = resolveManagedFileUrl(stripped);
+  const resolved = resolveManagedFileUrl(normalizeUserPhotoPath(photoPath));
   return resolved ? encodeURI(resolved) : '';
 }
 

@@ -113,12 +113,14 @@ export function useUserForm({
     try {
       const uploadData = new FormData();
       uploadData.append('photo', file);
+      if (editingUser) {
+        uploadData.append('userId', getActionId(editingUser));
+      }
       const response = await apiService.uploadPhoto(uploadData);
       const photoPath = response.data.photoPath || response.data.path || '';
       setFormData((prev) => ({ ...prev, photo: photoPath }));
 
       if (editingUser && photoPath) {
-        await apiService.updateUser(getActionId(editingUser), { photo: photoPath });
         await loadCurrentView();
       }
 

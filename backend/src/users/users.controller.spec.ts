@@ -94,6 +94,9 @@ describe('UsersController photo handling', () => {
       photo_url: undefined,
     });
     expect(result.photoPath).toBe(toManagedUserPhotoPath('avatar-new.webp'));
+    expect(result.photoUrl).toBe(
+      expectedRequestUrl(toManagedUserPhotoPath('avatar-new.webp')),
+    );
     expect(result.updatedUser?.photo).toBe(expectedRequestUrl(nextPhoto));
   });
 
@@ -169,6 +172,9 @@ describe('UsersController photo handling', () => {
     );
 
     expect(result.photoPath).toBe('uploads/avatars/avatar-new.webp');
+    expect(result.photoUrl).toBe(
+      'https://project.supabase.co/storage/v1/object/public/bucket/uploads/avatars/avatar-new.webp',
+    );
     expect(usersService.update).toHaveBeenCalledWith('user-1', {
       photo: 'uploads/avatars/avatar-new.webp',
       photo_storage_path: 'uploads/avatars/avatar-new.webp',
@@ -207,6 +213,7 @@ describe('UsersController photo handling', () => {
       photo_url: undefined,
     });
     expect(result.photoPath).toBe('uploads/avatars/avatar-new.webp');
+    expect(result.photoUrl).toContain('token=fresh');
     expect(result.updatedUser?.photo).toContain('token=fresh');
   });
 

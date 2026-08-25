@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   displayText,
   isRawTechnicalId,
   referenceDisplay,
 } from "../src/services/displayValues.ts";
+import { resolveUserPhotoUrl } from "../src/services/userMedia.ts";
 import {
   fetchAllPaginated,
   normalizeApiItems,
@@ -36,6 +39,37 @@ test("displayText hides raw technical identifiers and formats safe scalar values
   assert.equal(displayText(42), "42");
   assert.equal(displayText(false), "false");
   assert.equal(displayText("64f0d61b4e0f7c1b3c9a1234", "hidden"), "hidden");
+});
+
+test("user photo URLs resolve legacy avatar storage paths through the avatar route", () => {
+  assert.match(
+    resolveUserPhotoUrl("uploads/avatars/avatar-1.webp"),
+    /\/files\/uploads\/avatars\/avatar-1\.webp$/,
+  );
+  assert.match(
+    resolveUserPhotoUrl("'uploads/avatars/avatar 2.webp'"),
+    /\/files\/uploads\/avatars\/avatar%202\.webp$/,
+  );
+});
+
+test("user photo URLs preserve absolute provider URLs", () => {
+  assert.equal(
+    resolveUserPhotoUrl("https://lh3.googleusercontent.com/avatar.png"),
+    "https://lh3.googleusercontent.com/avatar.png",
+  );
+});
+
+test("existing user photo uploads send the user id through the upload endpoint", () => {
+  const source = readFileSync(
+    join(process.cwd(), "src", "app", "[locale]", "users", "hooks", "useUserForm.ts"),
+    "utf8",
+  );
+
+  assert.match(source, /uploadData\.append\('userId', getActionId\(editingUser\)\)/);
+  assert.doesNotMatch(
+    source,
+    /apiService\.updateUser\(getActionId\(editingUser\),\s*\{\s*photo:\s*photoPath\s*\}\)/,
+  );
 });
 
 test("displayText and referenceDisplay prefer readable object fields over ids", () => {

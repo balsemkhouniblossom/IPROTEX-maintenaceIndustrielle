@@ -122,6 +122,10 @@ export class UsersController {
     const photoUrl = storedAvatar.shouldPersistUrl
       ? storedAvatar.url
       : undefined;
+    const displayPhotoUrl = resolveUserPhotoUrl(
+      await this.fileUploadService.resolveAvatarUrl(photoPath, photoUrl),
+      req,
+    );
     const rollbackPhotoRef =
       storedAvatar.storageKey ?? storedAvatar.relativePath;
 
@@ -151,6 +155,7 @@ export class UsersController {
     return {
       success: true,
       photoPath,
+      photoUrl: displayPhotoUrl,
       updatedUser: updatedUser
         ? await this.sanitizeUser(updatedUser, req)
         : undefined,

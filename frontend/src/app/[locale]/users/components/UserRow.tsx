@@ -150,7 +150,7 @@ export function UserRow({
         />
       </td>
       <td>
-        <UserIdentity user={user} tUsers={tUsers} />
+        <UserIdentity user={user} tUsers={tUsers} showAvatar={false} />
       </td>
       <td>
         <span className="user-table-text">{user.email || '—'}</span>

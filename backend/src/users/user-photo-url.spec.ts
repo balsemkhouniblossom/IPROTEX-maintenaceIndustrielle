@@ -34,6 +34,17 @@ describe('user photo URL helpers', () => {
     );
   });
 
+  it('resolves legacy avatar storage keys through the public avatar route', () => {
+    process.env.API_URL = 'https://api.example.test/';
+
+    expect(resolveUserPhotoUrl('uploads/avatars/avatar-1.webp')).toBe(
+      'https://api.example.test/files/uploads/avatars/avatar-1.webp',
+    );
+    expect(resolveUserPhotoUrl('/uploads/avatars/avatar-2.webp')).toBe(
+      'https://api.example.test/files/uploads/avatars/avatar-2.webp',
+    );
+  });
+
   it('preserves existing absolute and external photo URLs', () => {
     expect(resolveUserPhotoUrl('https://lh3.googleusercontent.com/a.png')).toBe(
       'https://lh3.googleusercontent.com/a.png',
