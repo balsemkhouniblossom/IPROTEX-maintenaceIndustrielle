@@ -41,7 +41,7 @@ chmod 0400 /prometheus/secrets/metrics-bearer-token
 sed \
   -e "s|__BACKEND_SCHEME__|$backend_scheme|g" \
   -e "s|__BACKEND_TARGET__|$backend_target|g" \
-  /etc/prometheus/prometheus.yml > /tmp/prometheus.yml
+  /etc/prometheus/prometheus.template.yml > /tmp/prometheus.yml
 
 exec /bin/prometheus \
   --config.file=/tmp/prometheus.yml \

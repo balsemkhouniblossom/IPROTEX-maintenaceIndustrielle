@@ -258,7 +258,7 @@ scraping is not tied to a user session.
 
 The deployable monitoring stack lives in [`monitoring/`](monitoring/):
 
-- [`monitoring/prometheus/prometheus.yml`](monitoring/prometheus/prometheus.yml)
+- [`monitoring/prometheus/prometheus.template.yml`](monitoring/prometheus/prometheus.template.yml)
   scrapes the production backend every 30 seconds.
 - [`monitoring/prometheus/alerts.yml`](monitoring/prometheus/alerts.yml)
   defines backend-down, elevated-5xx, and high-latency alerts.
