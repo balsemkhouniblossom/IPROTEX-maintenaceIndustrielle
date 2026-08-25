@@ -17,15 +17,31 @@
           "color": {
             "mode": "thresholds"
           },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "DOWN"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "UP"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No scrape",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "red",
+                "color": "green",
                 "value": 1
               }
             ]
@@ -34,12 +50,74 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 5,
         "w": 6,
         "x": 0,
         "y": 0
       },
       "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.9",
+      "targets": [
+        {
+          "expr": "up{job=\"gmao-backend\"}",
+          "legendFormat": "backend",
+          "refId": "A"
+        }
+      ],
+      "title": "Backend Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gmao-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "No scrape",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -58,11 +136,12 @@
       "pluginVersion": "12.4.9",
       "targets": [
         {
-          "expr": "up{job=\"gmao-backend\"}",
+          "expr": "scrape_duration_seconds{job=\"gmao-backend\"}",
+          "legendFormat": "last scrape",
           "refId": "A"
         }
       ],
-      "title": "Backend Up",
+      "title": "Metrics Collection Time",
       "type": "stat"
     },
     {
@@ -72,25 +151,144 @@
       },
       "fieldConfig": {
         "defaults": {
+          "decimals": 0,
+          "noValue": "No requests yet",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.9",
+      "targets": [
+        {
+          "expr": "sum(http_requests_total{job=\"gmao-backend\"})",
+          "legendFormat": "requests",
+          "refId": "A"
+        }
+      ],
+      "title": "Collected Request Metrics",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gmao-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "noValue": "No scrape",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.4.9",
+      "targets": [
+        {
+          "expr": "scrape_samples_scraped{job=\"gmao-backend\"}",
+          "legendFormat": "samples",
+          "refId": "A"
+        }
+      ],
+      "title": "Collected Metrics Samples",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gmao-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "noValue": "No requests yet",
           "unit": "reqps"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 9,
-        "x": 6,
-        "y": 0
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
       },
-      "id": 2,
+      "id": 5,
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=\"gmao-backend\"}[5m])) by (status)",
-          "legendFormat": "{{status}}",
+          "expr": "sum(rate(http_requests_total{job=\"gmao-backend\"}[5m])) by (method, status)",
+          "legendFormat": "{{method}} {{status}}",
           "refId": "A"
         }
       ],
-      "title": "Request Rate By Status",
+      "title": "Request Traffic",
       "type": "timeseries"
     },
     {
@@ -100,17 +298,97 @@
       },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "noValue": "No errors",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"gmao-backend\",status=~\"4..|5..\"}[5m])) by (status)",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gmao-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "noValue": "No requests yet",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
+            ]
+          },
           "unit": "ms"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 9,
-        "x": 15,
-        "y": 0
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
       },
-      "id": 3,
+      "id": 7,
       "targets": [
         {
           "expr": "sum(rate(http_request_duration_ms_sum{job=\"gmao-backend\"}[5m])) / sum(rate(http_requests_total{job=\"gmao-backend\"}[5m]))",
@@ -118,7 +396,7 @@
           "refId": "A"
         }
       ],
-      "title": "Average Request Duration",
+      "title": "Response Time",
       "type": "timeseries"
     },
     {
@@ -128,17 +406,26 @@
       },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "noValue": "No requests yet",
           "unit": "reqps"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 6
+        "w": 12,
+        "x": 12,
+        "y": 13
       },
-      "id": 4,
+      "id": 8,
       "targets": [
         {
           "expr": "topk(10, sum(rate(http_requests_total{job=\"gmao-backend\"}[5m])) by (route, method))",
@@ -146,7 +433,7 @@
           "refId": "A"
         }
       ],
-      "title": "Top Routes",
+      "title": "Busiest Routes",
       "type": "timeseries"
     }
   ],
@@ -167,6 +454,6 @@
   "timezone": "browser",
   "title": "GMAO Backend Overview",
   "uid": "gmao-backend-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
