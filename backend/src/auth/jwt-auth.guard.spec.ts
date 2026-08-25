@@ -13,12 +13,26 @@ function contextFor(request: Record<string, unknown>): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
+type MetricsRequestScenario = Record<string, unknown> & {
+  clearConfiguredToken?: boolean;
+};
+
+const approvedUser = {
+  role: Role.OPERATOR,
+  is_active: true,
+  is_verified: true,
+  approval_status: ApprovalStatus.APPROVED,
+  profile_completed: true,
+};
+
 describe('JwtAuthGuard account state enforcement', () => {
   let passportCanActivate: jest.SpyInstance;
   let guard: JwtAuthGuard;
   let reflector: { getAllAndOverride: jest.Mock };
+  let previousMetricsToken: string | undefined;
 
   beforeEach(() => {
+    previousMetricsToken = process.env.METRICS_BEARER_TOKEN;
     const parentPrototype = Object.getPrototypeOf(JwtAuthGuard.prototype) as {
       canActivate: (context: ExecutionContext) => boolean | Promise<boolean>;
     };
@@ -33,6 +47,11 @@ describe('JwtAuthGuard account state enforcement', () => {
 
   afterEach(() => {
     passportCanActivate.mockRestore();
+    if (previousMetricsToken === undefined) {
+      delete process.env.METRICS_BEARER_TOKEN;
+    } else {
+      process.env.METRICS_BEARER_TOKEN = previousMetricsToken;
+    }
   });
 
   it('allows approved completed users to access protected APIs', async () => {
@@ -142,5 +161,88 @@ describe('JwtAuthGuard account state enforcement', () => {
         }),
       ),
     ).resolves.toBe(true);
+  });
+
+  it('allows Prometheus metrics scrapes with the dedicated bearer token', async () => {
+    process.env.METRICS_BEARER_TOKEN = 'strong-test-metrics-token';
+    const request = {
+      method: 'GET',
+      path: '/health/metrics',
+      headers: {
+        authorization: 'Bearer strong-test-metrics-token',
+      },
+    };
+
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+
+    expect(passportCanActivate).not.toHaveBeenCalled();
+    expect(request).toMatchObject({
+      user: {
+        role: Role.ADMIN,
+        is_active: true,
+        is_verified: true,
+        approval_status: ApprovalStatus.APPROVED,
+        profile_completed: true,
+        must_reset_password: false,
+      },
+    });
+  });
+
+  it.each<[string, MetricsRequestScenario]>([
+    [
+      'non-GET metrics requests',
+      {
+        method: 'POST',
+        path: '/health/metrics',
+        headers: { authorization: 'Bearer strong-test-metrics-token' },
+        user: approvedUser,
+      },
+    ],
+    [
+      'non-metrics paths',
+      {
+        method: 'GET',
+        path: '/health',
+        headers: { authorization: 'Bearer strong-test-metrics-token' },
+        user: approvedUser,
+      },
+    ],
+    [
+      'missing configured tokens',
+      {
+        method: 'GET',
+        path: '/health/metrics',
+        headers: { authorization: 'Bearer strong-test-metrics-token' },
+        user: approvedUser,
+        clearConfiguredToken: true,
+      },
+    ],
+    [
+      'missing bearer headers',
+      {
+        method: 'GET',
+        path: '/health/metrics',
+        headers: {},
+        user: approvedUser,
+      },
+    ],
+    [
+      'mismatched bearer tokens',
+      {
+        method: 'GET',
+        path: '/health/metrics',
+        headers: { authorization: 'Bearer different-token' },
+        user: approvedUser,
+      },
+    ],
+  ])('uses normal JWT validation for %s', async (_, request) => {
+    process.env.METRICS_BEARER_TOKEN = 'strong-test-metrics-token';
+    if (request.clearConfiguredToken) {
+      delete process.env.METRICS_BEARER_TOKEN;
+    }
+
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+
+    expect(passportCanActivate).toHaveBeenCalledTimes(1);
   });
 });
