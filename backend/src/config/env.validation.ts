@@ -28,6 +28,7 @@ type EnvValidationResult = {
   aiAssistantEnabled: boolean;
   predictiveMaintenanceEnabled: boolean;
   predictionHistoryRetentionSeconds: number;
+  metricsBearerTokenConfigured: boolean;
   trustProxy: TrustProxySetting;
   requestTimeoutMs: number;
 };
@@ -298,6 +299,17 @@ function validateThrottleConfig(): void {
       throw new Error(`${key} must be a positive integer`);
     }
   }
+}
+
+function validateMetricsBearerToken(value: string | undefined): boolean {
+  const token = value?.trim();
+  if (!token) return false;
+
+  if (token.length < 32) {
+    throw new Error('METRICS_BEARER_TOKEN must be at least 32 characters');
+  }
+
+  return true;
 }
 
 function validateRetentionSeconds(
@@ -656,6 +668,9 @@ export function validateEnvironment(): EnvValidationResult {
     'PREDICTION_HISTORY_RETENTION_SECONDS',
     180 * 24 * 60 * 60,
   );
+  const metricsBearerTokenConfigured = validateMetricsBearerToken(
+    process.env.METRICS_BEARER_TOKEN,
+  );
   const trustProxy = validateTrustProxy(process.env.TRUST_PROXY);
   const requestTimeoutMs = validateRequestTimeoutMs(
     process.env.REQUEST_TIMEOUT_MS,
@@ -682,6 +697,7 @@ export function validateEnvironment(): EnvValidationResult {
     aiAssistantEnabled,
     predictiveMaintenanceEnabled,
     predictionHistoryRetentionSeconds,
+    metricsBearerTokenConfigured,
     trustProxy,
     requestTimeoutMs,
   };

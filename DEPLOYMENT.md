@@ -6,6 +6,8 @@ self-hosted Nginx anywhere in local development or production.
 
 - **Frontend**: Next.js, deployed on **Vercel**
 - **Backend**: NestJS, deployed on **Render**
+- **Monitoring**: Prometheus and Grafana, deployed on **Render** from
+  [`monitoring/`](monitoring/)
 - **Database**: **MongoDB Atlas**, via a direct `mongodb+srv://` connection
 - **File storage**: **Supabase Storage**
 - **TLS and routing**: handled by Render and Vercel directly
@@ -21,7 +23,7 @@ project-configured variable without that prefix (verified by an automated test â
 [`frontend/tests/env-secret-exposure.test.ts`](frontend/tests/env-secret-exposure.test.ts)).
 
 | Variable | Where it lives | Why |
-|---|---|---|
+| --- | --- | --- |
 | `JWT_SECRET`, `JWT_REFRESH_SECRET`, `EMAIL_VERIFICATION_SECRET`, `GOOGLE_LOGIN_EXCHANGE_ENCRYPTION_KEY` | Render only | Sign/verify tokens; a leak forges sessions |
 | `MONGODB_URI` | Render only | Embeds database credentials |
 | `SMTP_USER`, `SMTP_PASS`, `BREVO_API_KEY` | Render only | Mailbox/API credentials |
@@ -29,6 +31,8 @@ project-configured variable without that prefix (verified by an automated test â
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET*` | Render only | Service-role storage access |
 | `GEMINI_API_KEY` | Render only | Billable AI provider credential |
 | `CORS_ORIGINS`, `FRONTEND_BASE_URL`, `BACKEND_URL`, `APP_URL`, `API_URL`, `GOOGLE_CALLBACK_URL` | Render only | Server-side config, not secret, but has no reason to exist client-side |
+| `METRICS_BEARER_TOKEN` | Render backend and Render Prometheus only | Dedicated bearer token for Prometheus scraping `GET /health/metrics`; not a user JWT |
+| `GF_SECURITY_ADMIN_PASSWORD` | Render Grafana only | Grafana administrator password |
 | `NEXT_PUBLIC_API_BASE_URL` | Vercel only | Public Render backend URL used by the frontend API client |
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel only, optional | Public Supabase project origin if the frontend needs to resolve public/signed asset URLs |
 | `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | Vercel only, optional | Public frontend error-tracking config; unset keeps Sentry disabled |
@@ -212,12 +216,20 @@ AUTOMATION_MAX_ITEMS_PER_RUN=1000
 # design), so no special handling is needed if it's ever set here.
 SENTRY_DSN=
 SENTRY_TRACES_SAMPLE_RATE=0.1
+
+# Prometheus scraping. Generate one strong value and set the same value on
+# the Render Prometheus service.
+METRICS_BEARER_TOKEN=<strong-random-metrics-token>
 ```
 
 Render terminates TLS and routes traffic to the backend directly â€” no
 self-hosted Nginx or reverse proxy is used.
 
 ### Render Blueprint (`render.yaml`)
+
+`render.yaml` now includes the backend plus `gmao-prometheus` and
+`gmao-grafana`. Secret-bearing entries use `sync: false`, so Render prompts
+for values instead of reading them from the repository.
 
 The repo-root [`render.yaml`](render.yaml) declares this service (build/start
 commands, health check path, safe defaults, and every required secret env var
@@ -236,6 +248,37 @@ Vercel or any `NEXT_PUBLIC_*` frontend variable.
 Admins can check backend-only assistant diagnostics at
 `GET /ai-assistant/health`; the response reports enabled/configured/provider
 status and model, never the API key.
+
+## Production Monitoring: Prometheus and Grafana
+
+The backend exports Prometheus text-format request metrics at
+`GET /health/metrics`. That endpoint accepts either an admin JWT or the
+dedicated `METRICS_BEARER_TOKEN`; Prometheus uses the dedicated token so
+scraping is not tied to a user session.
+
+The deployable monitoring stack lives in [`monitoring/`](monitoring/):
+
+- [`monitoring/prometheus/prometheus.yml`](monitoring/prometheus/prometheus.yml)
+  scrapes the production backend every 30 seconds.
+- [`monitoring/prometheus/alerts.yml`](monitoring/prometheus/alerts.yml)
+  defines backend-down, elevated-5xx, and high-latency alerts.
+- [`monitoring/grafana/dashboards/gmao-backend-overview.json`](monitoring/grafana/dashboards/gmao-backend-overview.json)
+  is provisioned automatically by the Grafana Render service.
+
+Before deploying `gmao-prometheus` and `gmao-grafana`, set:
+
+```text
+Backend Render service:
+METRICS_BEARER_TOKEN=<strong-random-token>
+
+Prometheus Render service:
+METRICS_BEARER_TOKEN=<same-token>
+PROMETHEUS_EXTERNAL_URL=https://gmao-prometheus.onrender.com
+
+Grafana Render service:
+GF_SECURITY_ADMIN_PASSWORD=<strong-random-password>
+PROMETHEUS_URL=https://gmao-prometheus.onrender.com
+```
 
 ## Production Frontend: Vercel
 

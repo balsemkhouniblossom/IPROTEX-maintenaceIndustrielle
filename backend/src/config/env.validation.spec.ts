@@ -651,6 +651,24 @@ describe('validateEnvironment', () => {
     );
   });
 
+  it('accepts a strong METRICS_BEARER_TOKEN for Prometheus scraping', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.METRICS_BEARER_TOKEN = 'm'.repeat(32);
+
+    const env = validateEnvironment();
+
+    expect(env.metricsBearerTokenConfigured).toBe(true);
+  });
+
+  it('rejects a weak METRICS_BEARER_TOKEN', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.METRICS_BEARER_TOKEN = 'short';
+
+    expect(() => validateEnvironment()).toThrow(
+      'METRICS_BEARER_TOKEN must be at least 32 characters',
+    );
+  });
+
   it('defaults REQUEST_TIMEOUT_MS to 30 seconds', () => {
     process.env.NODE_ENV = 'test';
     delete process.env.REQUEST_TIMEOUT_MS;

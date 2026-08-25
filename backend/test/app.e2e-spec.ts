@@ -1334,6 +1334,21 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       'http_requests_total{method="GET",route="/health",status="200"}',
     );
 
+    const previousMetricsToken = process.env.METRICS_BEARER_TOKEN;
+    process.env.METRICS_BEARER_TOKEN = 'test-metrics-token-with-enough-length';
+    try {
+      await request(app.getHttpServer())
+        .get('/health/metrics')
+        .set('Authorization', 'Bearer test-metrics-token-with-enough-length')
+        .expect(200);
+    } finally {
+      if (previousMetricsToken === undefined) {
+        delete process.env.METRICS_BEARER_TOKEN;
+      } else {
+        process.env.METRICS_BEARER_TOKEN = previousMetricsToken;
+      }
+    }
+
     await request(app.getHttpServer())
       .post('/auth/forgot-password')
       .set('X-Forwarded-For', '203.0.113.210')

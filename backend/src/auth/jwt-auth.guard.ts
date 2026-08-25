@@ -5,7 +5,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import { ApprovalStatus } from '../schemas/user.schema';
+import { timingSafeEqual } from 'node:crypto';
+import { ApprovalStatus, Role } from '../schemas/user.schema';
 import { validateAccountAccess } from './account-access.validator';
 import type { AuthenticatedRequest } from './types/authenticated-request';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator';
@@ -26,10 +27,22 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    if (this.isMetricsScrapeRequestAllowed(request)) {
+      request.user = {
+        role: Role.ADMIN,
+        is_active: true,
+        is_verified: true,
+        approval_status: ApprovalStatus.APPROVED,
+        profile_completed: true,
+        must_reset_password: false,
+      };
+      return true;
+    }
+
     const authenticated = await super.canActivate(context);
     if (!authenticated) return false;
 
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
 
     if (this.isLimitedSessionAllowed(request)) {
@@ -59,6 +72,30 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return (
       request.method === 'POST' &&
       (path.endsWith('/auth/complete-profile') || path.endsWith('/auth/logout'))
+    );
+  }
+
+  private isMetricsScrapeRequestAllowed(request: AuthenticatedRequest): boolean {
+    if (request.method !== 'GET') return false;
+
+    const path = request.path || request.originalUrl?.split('?')[0] || '';
+    if (!path.endsWith('/health/metrics')) return false;
+
+    const configuredToken = process.env.METRICS_BEARER_TOKEN?.trim();
+    if (!configuredToken) return false;
+
+    const header = request.headers.authorization;
+    const suppliedToken =
+      typeof header === 'string' && header.startsWith('Bearer ')
+        ? header.slice('Bearer '.length).trim()
+        : '';
+
+    if (!suppliedToken) return false;
+
+    const expected = Buffer.from(configuredToken);
+    const actual = Buffer.from(suppliedToken);
+    return (
+      expected.length === actual.length && timingSafeEqual(expected, actual)
     );
   }
 }

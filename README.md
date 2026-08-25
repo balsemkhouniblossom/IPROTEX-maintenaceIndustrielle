@@ -75,6 +75,8 @@ The application is designed around three main roles:
 - PDF, Excel, and CSV report rendering
 - Optional Gemini-powered AI assistant
 - SonarCloud quality and coverage configuration
+- Playwright browser tests enforced in CI
+- Prometheus/Grafana production monitoring configuration under `monitoring/`
 
 ### Frontend Experience
 
@@ -239,7 +241,7 @@ Default local URLs:
 
 Do not commit real secrets. Use local `.env` files and platform secret managers for production.
 
-### Backend
+### Backend Environment
 
 Required for normal development:
 
@@ -298,7 +300,7 @@ REQUEST_TIMEOUT_MS=30000
 TRUST_PROXY=false
 ```
 
-### Frontend
+### Frontend Environment
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
@@ -310,7 +312,7 @@ In production, `NEXT_PUBLIC_API_BASE_URL` must point to the HTTPS backend URL.
 
 ## Available Scripts
 
-### Backend
+### Backend Scripts
 
 Run from `backend/`.
 
@@ -335,7 +337,7 @@ npm run audit:preventive-scheduling
 npm run smoke-test
 ```
 
-### Frontend
+### Frontend Scripts
 
 Run from `frontend/`.
 
@@ -347,6 +349,7 @@ npm run lint            # Run ESLint
 npm run type-check      # Run TypeScript type check
 npm run test            # Run frontend tests
 npm run test:cov        # Run frontend tests with coverage and LCOV output
+npm run test:e2e        # Run Playwright browser tests
 ```
 
 ## Testing And Quality
@@ -370,6 +373,7 @@ Quality tooling:
 - Frontend coverage: Node test runner
 - Static analysis: ESLint and TypeScript
 - SonarCloud: configured by `sonar-project.properties`
+- SonarCloud quality gate: CI waits for it before the workflow can pass.
 - LCOV reports:
   - `backend/coverage/lcov.info`
   - `frontend/coverage/lcov.info`
@@ -388,6 +392,7 @@ The repository includes:
 
 - `render.yaml` for backend deployment on Render
 - `frontend/vercel.json` for frontend deployment on Vercel
+- `monitoring/` for Render-deployed Prometheus/Grafana config
 
 Typical production build commands:
 

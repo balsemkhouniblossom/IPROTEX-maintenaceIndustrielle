@@ -9,8 +9,8 @@
 # real credential — see DEPLOYMENT.md's env var table for what each one is
 # and why it's Render-only.
 #
-# This describes ONE backend web service. The frontend deploys to Vercel
-# (see frontend/vercel.json), not Render — DEPLOYMENT.md explains why.
+# This describes the backend plus production Prometheus/Grafana monitoring
+# services. The frontend deploys to Vercel (see frontend/vercel.json).
 services:
   - type: web
     name: gmao-backend
@@ -154,6 +154,8 @@ services:
         sync: false
       - key: SENTRY_TRACES_SAMPLE_RATE
         value: "0.1"
+      - key: METRICS_BEARER_TOKEN
+        sync: false
       - key: BUSINESS_TIMEZONE
         value: Africa/Tunis
       - key: MQTT_BROKER_URL
@@ -192,3 +194,37 @@ services:
         value: "600000"
       - key: AUTOMATION_MAX_ITEMS_PER_RUN
         value: "1000"
+  - type: web
+    name: gmao-prometheus
+    runtime: docker
+    rootDir: monitoring/prometheus
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: prometheus-data
+      mountPath: /prometheus
+      sizeGB: 10
+    envVars:
+      - key: METRICS_BEARER_TOKEN
+        sync: false
+      - key: PROMETHEUS_EXTERNAL_URL
+        sync: false
+  - type: web
+    name: gmao-grafana
+    runtime: docker
+    rootDir: monitoring/grafana
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: grafana-data
+      mountPath: /var/lib/grafana
+      sizeGB: 10
+    envVars:
+      - key: GF_SECURITY_ADMIN_PASSWORD
+        sync: false
+      - key: GF_SECURITY_ADMIN_USER
+        value: admin
+      - key: GF_USERS_ALLOW_SIGN_UP
+        value: "false"
+      - key: GF_AUTH_ANONYMOUS_ENABLED
+        value: "false"
+      - key: PROMETHEUS_URL
+        value: https://gmao-prometheus.onrender.com

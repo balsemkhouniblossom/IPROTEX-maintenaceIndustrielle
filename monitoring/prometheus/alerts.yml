@@ -1,0 +1,34 @@
+groups:
+  - name: gmao-backend
+    rules:
+      - alert: GmaoBackendDown
+        expr: up{job="gmao-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: GMAO backend metrics scrape is down
+          description: Prometheus has not been able to scrape the production backend for more than 2 minutes.
+
+      - alert: GmaoBackendHigh5xxRate
+        expr: sum(rate(http_requests_total{job="gmao-backend",status=~"5.."}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: GMAO backend is returning elevated 5xx responses
+          description: More than 0.05 server-error responses per second were observed over the last 5 minutes.
+
+      - alert: GmaoBackendHighAverageLatency
+        expr: |
+          (
+            sum(rate(http_request_duration_ms_sum{job="gmao-backend"}[5m]))
+            /
+            sum(rate(http_requests_total{job="gmao-backend"}[5m]))
+          ) > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: GMAO backend average request latency is high
+          description: Average request duration has stayed above 1 second for 10 minutes.

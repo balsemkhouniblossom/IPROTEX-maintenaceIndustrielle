@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=none
+
+apiVersion: 1
+
+datasources:
+  - name: GMAO Prometheus
+    uid: gmao-prometheus
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL}
+    isDefault: true
+    editable: false
