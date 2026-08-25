@@ -75,7 +75,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     );
   }
 
-  private isMetricsScrapeRequestAllowed(request: AuthenticatedRequest): boolean {
+  private isMetricsScrapeRequestAllowed(
+    request: AuthenticatedRequest,
+  ): boolean {
     if (request.method !== 'GET') return false;
 
     const path = request.path || request.originalUrl?.split('?')[0] || '';
