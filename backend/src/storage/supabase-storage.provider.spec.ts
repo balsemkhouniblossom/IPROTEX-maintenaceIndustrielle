@@ -145,16 +145,14 @@ describe('SupabaseStorageProvider', () => {
     expect(createSignedUrl).toHaveBeenCalledWith('uploads/photo.webp', 1800);
   });
 
-  it('falls back to the stored path when resolving a signed URL fails', async () => {
+  it('returns an empty URL when a managed object cannot be resolved', async () => {
     createSignedUrl.mockResolvedValue({
       data: null,
       error: { message: 'object not found' },
     });
     const storage = provider();
 
-    await expect(storage.resolveUrl('uploads/missing.webp')).resolves.toBe(
-      'uploads/missing.webp',
-    );
+    await expect(storage.resolveUrl('uploads/missing.webp')).resolves.toBe('');
   });
 
   it('falls back to a persisted URL when resolving a signed URL fails', async () => {

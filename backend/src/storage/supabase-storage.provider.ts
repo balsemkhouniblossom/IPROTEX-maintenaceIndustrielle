@@ -157,7 +157,7 @@ export class SupabaseStorageProvider implements FileStorageProvider {
       return await this.createReadableUrl(storageKey, false);
     } catch {
       this.logger.warn('Failed to resolve managed file URL');
-      return storedUrl || stablePath || '';
+      return storedUrl || '';
     }
   }
 

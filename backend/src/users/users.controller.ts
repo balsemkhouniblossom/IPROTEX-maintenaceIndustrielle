@@ -65,7 +65,12 @@ export class UsersController {
         photo,
         photoUrl,
       );
-      plain.photo = resolveUserPhotoUrl(resolvedPhoto || photo, req);
+      if (resolvedPhoto) {
+        plain.photo = resolveUserPhotoUrl(resolvedPhoto, req);
+      } else {
+        delete plain.photo;
+        delete plain.photo_url;
+      }
     } else {
       delete plain.photo;
       delete plain.photo_url;
