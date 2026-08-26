@@ -62,7 +62,7 @@ export class HealthController {
   @Get('metrics')
   @AdminOnly()
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-  getMetrics() {
+  async getMetrics() {
     return this.metrics.renderPrometheusText();
   }
 }

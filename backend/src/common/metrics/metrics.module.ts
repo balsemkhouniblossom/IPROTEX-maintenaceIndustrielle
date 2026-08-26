@@ -1,4 +1,12 @@
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { KpiModule } from '../../kpi/kpi.module';
+import {
+  InterventionReport,
+  InterventionReportSchema,
+} from '../../schemas/intervention-report.schema';
+import { WorkOrder, WorkOrderSchema } from '../../schemas/work-order.schema';
+import { BusinessMetricsCollector } from './business-metrics.collector';
 import { MetricsRegistry } from './metrics-registry';
 
 /**
@@ -10,7 +18,14 @@ import { MetricsRegistry } from './metrics-registry';
  * counters.
  */
 @Module({
-  providers: [MetricsRegistry],
+  imports: [
+    KpiModule,
+    MongooseModule.forFeature([
+      { name: WorkOrder.name, schema: WorkOrderSchema },
+      { name: InterventionReport.name, schema: InterventionReportSchema },
+    ]),
+  ],
+  providers: [BusinessMetricsCollector, MetricsRegistry],
   exports: [MetricsRegistry],
 })
 export class MetricsModule {}

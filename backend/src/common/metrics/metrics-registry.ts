@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  BusinessMetricsCollector,
+  BusinessMetricsSnapshot,
+} from './business-metrics.collector';
 import { normalizeRouteForMetrics } from './route-normalizer';
 
 interface RouteStats {
@@ -6,8 +10,14 @@ interface RouteStats {
   totalDurationMs: number;
 }
 
-const STATIC_METRIC_SERIES_COUNT = 4;
+const STATIC_METRIC_SERIES_COUNT = 10;
 const METRIC_KEY_SEPARATOR = String.fromCodePoint(0);
+const EMPTY_BUSINESS_METRICS: BusinessMetricsSnapshot = {
+  openWorkOrders: 0,
+  machineDowntimeHours: 0,
+  completedInterventions: 0,
+  lowStockItems: 0,
+};
 
 function escapeLabelValue(value: string): string {
   return value
@@ -24,9 +34,15 @@ function escapeLabelValue(value: string): string {
  */
 @Injectable()
 export class MetricsRegistry {
+  private readonly logger = new Logger(MetricsRegistry.name);
   private readonly statsByKey = new Map<string, RouteStats>();
   private readonly processStartedAtSeconds = Date.now() / 1000;
   private metricsCollectionsTotal = 0;
+
+  constructor(
+    @Optional()
+    private readonly businessMetricsCollector?: BusinessMetricsCollector,
+  ) {}
 
   record(
     method: string,
@@ -45,9 +61,11 @@ export class MetricsRegistry {
     this.statsByKey.set(key, existing);
   }
 
-  renderPrometheusText(): string {
+  async renderPrometheusText(): Promise<string> {
     this.metricsCollectionsTotal += 1;
     const collectionTimestampSeconds = Date.now() / 1000;
+    const { businessMetrics, businessMetricsSuccess } =
+      await this.collectBusinessMetrics();
     const exposedSeriesCount =
       STATIC_METRIC_SERIES_COUNT + this.statsByKey.size * 3;
 
@@ -67,6 +85,21 @@ export class MetricsRegistry {
       '# HELP gmao_metrics_exposed_series Number of backend metric series exposed in the latest metrics render.',
       '# TYPE gmao_metrics_exposed_series gauge',
       `gmao_metrics_exposed_series ${exposedSeriesCount}`,
+      '# HELP gmao_business_metrics_collection_success Whether business metric collection succeeded during the latest metrics render.',
+      '# TYPE gmao_business_metrics_collection_success gauge',
+      `gmao_business_metrics_collection_success ${businessMetricsSuccess ? 1 : 0}`,
+      '# HELP gmao_work_orders_open Current number of open work orders.',
+      '# TYPE gmao_work_orders_open gauge',
+      `gmao_work_orders_open ${businessMetrics.openWorkOrders}`,
+      '# HELP gmao_machine_downtime_hours_total Total completed corrective machine downtime in hours.',
+      '# TYPE gmao_machine_downtime_hours_total gauge',
+      `gmao_machine_downtime_hours_total ${businessMetrics.machineDowntimeHours}`,
+      '# HELP gmao_interventions_completed_total Current number of completed intervention reports.',
+      '# TYPE gmao_interventions_completed_total gauge',
+      `gmao_interventions_completed_total ${businessMetrics.completedInterventions}`,
+      '# HELP gmao_stock_low_items Current number of stock records at or below their alert threshold.',
+      '# TYPE gmao_stock_low_items gauge',
+      `gmao_stock_low_items ${businessMetrics.lowStockItems}`,
       '# HELP http_requests_total Total HTTP requests handled, labeled by method, route, and status code.',
       '# TYPE http_requests_total counter',
     ];
@@ -105,5 +138,34 @@ export class MetricsRegistry {
   resetForTests(): void {
     this.statsByKey.clear();
     this.metricsCollectionsTotal = 0;
+  }
+
+  private async collectBusinessMetrics(): Promise<{
+    businessMetrics: BusinessMetricsSnapshot;
+    businessMetricsSuccess: boolean;
+  }> {
+    if (!this.businessMetricsCollector) {
+      return {
+        businessMetrics: EMPTY_BUSINESS_METRICS,
+        businessMetricsSuccess: false,
+      };
+    }
+
+    try {
+      return {
+        businessMetrics: await this.businessMetricsCollector.collect(),
+        businessMetricsSuccess: true,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Business metrics collection failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return {
+        businessMetrics: EMPTY_BUSINESS_METRICS,
+        businessMetricsSuccess: false,
+      };
+    }
   }
 }
