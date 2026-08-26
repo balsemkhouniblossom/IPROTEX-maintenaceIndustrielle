@@ -294,7 +294,10 @@ test("refresh coordinator prevents same-tab and cross-tab refresh races", () => 
   assert.match(coordinatorSource, /const REFRESH_CHANNEL_NAME = ['"]gmao-auth-refresh['"]/);
   assert.match(coordinatorSource, /new BroadcastChannel\(REFRESH_CHANNEL_NAME\)/);
   assert.match(coordinatorSource, /const REFRESH_LOCK_KEY = ['"]gmao:auth-refresh-lock['"]/);
-  assert.match(coordinatorSource, /if\s*\(!acquireRefreshLock\(\)\)\s*\{\s*return getOrCreateRemoteRefreshRequest\(\)/);
+  assert.match(coordinatorSource, /if\s*\(!acquireRefreshLock\(\)\)\s*\{\s*return waitForRemoteRefreshOrTakeOver\(\)/);
+  assert.match(coordinatorSource, /function waitForRemoteRefreshOrTakeOver\(\):\s*Promise<LoginSession>/);
+  assert.match(coordinatorSource, /acquireRefreshLock\(\{\s*forceTakeover:\s*true\s*\}\)/);
+  assert.match(coordinatorSource, /function isRefreshCoordinationTimeout\(error:\s*unknown\):\s*boolean/);
   assert.match(coordinatorSource, /type:\s*['"]refresh-started['"]/);
   assert.match(coordinatorSource, /type:\s*['"]refresh-success['"]/);
   assert.match(coordinatorSource, /type:\s*['"]refresh-failure['"]/);

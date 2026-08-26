@@ -8,6 +8,7 @@ const REFRESH_CHANNEL_NAME = 'gmao-auth-refresh';
 const REFRESH_LOCK_KEY = 'gmao:auth-refresh-lock';
 const REFRESH_LOCK_TTL_MS = 20000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+const AUTH_REFRESH_COORDINATION_TIMEOUT = 'AUTH_REFRESH_COORDINATION_TIMEOUT';
 
 type RefreshMessage =
   | { type: 'refresh-started'; ownerId: string }
@@ -44,8 +45,14 @@ export async function requestAuthRefresh(): Promise<LoginSession> {
   if (remoteRefreshRequest) return remoteRefreshRequest;
 
   if (!acquireRefreshLock()) {
-    return getOrCreateRemoteRefreshRequest();
+    return waitForRemoteRefreshOrTakeOver();
   }
+
+  return startOwnedRefresh();
+}
+
+function startOwnedRefresh(): Promise<LoginSession> {
+  if (refreshRequest) return refreshRequest;
 
   postRefreshMessage({ type: 'refresh-started', ownerId: tabId });
 
@@ -70,6 +77,25 @@ export async function requestAuthRefresh(): Promise<LoginSession> {
     });
 
   return refreshRequest;
+}
+
+async function waitForRemoteRefreshOrTakeOver(): Promise<LoginSession> {
+  try {
+    return await getOrCreateRemoteRefreshRequest();
+  } catch (error) {
+    if (!isRefreshCoordinationTimeout(error)) {
+      throw error;
+    }
+
+    if (refreshRequest) return refreshRequest;
+
+    acquireRefreshLock({ forceTakeover: true });
+    if (readRefreshLock()?.ownerId !== tabId) {
+      throw error;
+    }
+
+    return startOwnedRefresh();
+  }
 }
 
 // Two refreshes can legitimately race (proactive timer, 401 retry, or a
@@ -131,7 +157,7 @@ function getOrCreateRemoteRefreshRequest(): Promise<LoginSession> {
     rejectRemoteRefresh = reject;
     remoteRefreshTimeout = setTimeout(() => {
       clearRemoteRefreshRequest();
-      reject(new Error('AUTH_REFRESH_COORDINATION_TIMEOUT'));
+      reject(new Error(AUTH_REFRESH_COORDINATION_TIMEOUT));
     }, REFRESH_LOCK_TTL_MS);
   });
 
@@ -187,12 +213,17 @@ function postRefreshMessage(message: RefreshMessage): void {
   getBroadcastChannel()?.postMessage(message);
 }
 
-function acquireRefreshLock(): boolean {
+function acquireRefreshLock(options: { forceTakeover?: boolean } = {}): boolean {
   if (typeof window === 'undefined') return true;
 
   const now = Date.now();
   const current = readRefreshLock();
-  if (current && current.expiresAt > now && current.ownerId !== tabId) {
+  if (
+    current &&
+    current.expiresAt > now &&
+    current.ownerId !== tabId &&
+    !options.forceTakeover
+  ) {
     return false;
   }
 
@@ -273,4 +304,11 @@ function createTabId(): string {
   }
   fallbackTabSequence += 1;
   return `${Date.now()}-${fallbackTabSequence.toString(16)}`;
+}
+
+function isRefreshCoordinationTimeout(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message === AUTH_REFRESH_COORDINATION_TIMEOUT
+  );
 }
