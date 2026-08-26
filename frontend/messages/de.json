@@ -102,6 +102,7 @@
     "registrationPendingApproval": "Ihr Konto wurde erfolgreich erstellt. Bitte bestätigen Sie Ihre E-Mail. Danach muss ein Administrator das Konto genehmigen, bevor Sie sich anmelden können.",
     "emailAlreadyRegistered": "Diese E-Mail-Adresse ist bereits registriert.",
     "publicRoleNotAllowed": "Diese Rolle ist nicht für die öffentliche Registrierung verfügbar.",
+    "registrationEmailDeliveryFailed": "Das Konto konnte nicht erstellt werden, weil die Bestaetigungs-E-Mail nicht gesendet werden konnte. Bitte versuchen Sie es spaeter erneut.",
     "emailVerified": "Ihre E-Mail-Adresse wurde bestätigt. Sie können sich jetzt anmelden.",
     "emailAlreadyVerified": "Ihre E-Mail-Adresse wurde bereits bestätigt.",
     "emailVerifiedPendingApproval": "Ihre E-Mail-Adresse wurde bestätigt. Ihr Konto wartet noch auf die Genehmigung durch einen Administrator. Danach können Sie sich anmelden.",

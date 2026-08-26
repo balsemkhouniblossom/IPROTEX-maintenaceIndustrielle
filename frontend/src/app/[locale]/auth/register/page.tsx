@@ -100,6 +100,8 @@ export default function RegisterPage() {
           setError(t('emailAlreadyRegistered', { default: 'Email already registered.' }));
         } else if (err.message === 'PUBLIC_ROLE_NOT_ALLOWED') {
           setError(t('publicRoleNotAllowed', { default: 'This role is not available for public registration.' }));
+        } else if (err.message === 'REGISTRATION_EMAIL_DELIVERY_FAILED') {
+          setError(t('registrationEmailDeliveryFailed', { default: 'The account could not be created because the verification email could not be sent. Please try again later.' }));
         } else {
           setError(err.message);
         }

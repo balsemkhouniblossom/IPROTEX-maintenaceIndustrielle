@@ -102,6 +102,7 @@
     "registrationPendingApproval": "Votre compte a été créé avec succès. Veuillez vérifier votre e-mail. Après vérification, un administrateur doit approuver le compte avant votre connexion.",
     "emailAlreadyRegistered": "Cette adresse e-mail est déjà enregistrée.",
     "publicRoleNotAllowed": "Ce rôle n'est pas disponible pour l'inscription publique.",
+    "registrationEmailDeliveryFailed": "Le compte n'a pas pu etre cree car l'e-mail de verification n'a pas pu etre envoye. Veuillez reessayer plus tard.",
     "emailVerified": "Votre adresse e-mail a été vérifiée. Vous pouvez maintenant vous connecter.",
     "emailAlreadyVerified": "Votre adresse e-mail est déjà vérifiée.",
     "emailVerifiedPendingApproval": "Votre adresse e-mail a été vérifiée. Votre compte attend toujours l'approbation d'un administrateur. Vous pourrez vous connecter après son approbation.",

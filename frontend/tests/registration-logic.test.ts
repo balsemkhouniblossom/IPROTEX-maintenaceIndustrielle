@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   buildPublicRegistrationPayload,
   getRegistrationErrorCode,
@@ -63,7 +65,7 @@ test("registration helper stores no token or user session", () => {
   assert.deepEqual(writes, []);
 });
 
-test("duplicate-email and unsupported-role backend codes are extracted", () => {
+test("registration backend error codes are extracted", () => {
   assert.equal(
     getRegistrationErrorCode({
       response: { data: { code: "EMAIL_ALREADY_REGISTERED" } },
@@ -83,6 +85,27 @@ test("duplicate-email and unsupported-role backend codes are extracted", () => {
     }),
     "PUBLIC_ROLE_NOT_ALLOWED",
   );
+  assert.equal(
+    getRegistrationErrorCode({
+      response: { data: { code: "REGISTRATION_EMAIL_DELIVERY_FAILED" } },
+    }),
+    "REGISTRATION_EMAIL_DELIVERY_FAILED",
+  );
+});
+
+test("registration page maps email delivery failure and quiets expected API logging", () => {
+  const pageSource = readFileSync(
+    join(process.cwd(), "src", "app", "[locale]", "auth", "register", "page.tsx"),
+    "utf8",
+  );
+  const authContextSource = readFileSync(
+    join(process.cwd(), "src", "contexts", "AuthContext.tsx"),
+    "utf8",
+  );
+
+  assert.match(pageSource, /REGISTRATION_EMAIL_DELIVERY_FAILED/);
+  assert.match(pageSource, /registrationEmailDeliveryFailed/);
+  assert.match(authContextSource, /api\.post\('\/auth\/register',\s*userData,\s*quiet\(/);
 });
 
 test("unsupported public role is rejected before payload submission", () => {

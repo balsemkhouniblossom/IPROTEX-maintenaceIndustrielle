@@ -102,6 +102,7 @@
     "registrationPendingApproval": "Your account was created successfully. Please verify your email. After verification, an administrator must approve the account before you can sign in.",
     "emailAlreadyRegistered": "Email already registered.",
     "publicRoleNotAllowed": "This role is not available for public registration.",
+    "registrationEmailDeliveryFailed": "The account could not be created because the verification email could not be sent. Please try again later.",
     "emailVerified": "Your email has been verified. You can now sign in.",
     "emailAlreadyVerified": "Your email is already verified.",
     "emailVerifiedPendingApproval": "Your email has been verified. Your account is still waiting for administrator approval. You will be able to sign in after an administrator approves it.",

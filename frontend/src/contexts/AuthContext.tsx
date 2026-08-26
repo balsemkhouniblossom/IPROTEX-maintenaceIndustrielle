@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
-import api, { getCsrfHeaders, resetAuthRefreshState } from '../services/api';
+import api, { getCsrfHeaders, quiet, resetAuthRefreshState } from '../services/api';
 import {
   AUTH_SESSION_REFRESHED_EVENT,
   requestAuthRefresh,
@@ -222,12 +222,12 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     options?: { locale?: string },
   ) => {
     try {
-      await api.post('/auth/register', userData, {
+      await api.post('/auth/register', userData, quiet({
         withCredentials: true,
         headers: options?.locale
           ? { 'X-App-Locale': options.locale }
           : undefined,
-      });
+      }));
       // Registration successful, but don't auto-login
     } catch (error: unknown) {
       const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;

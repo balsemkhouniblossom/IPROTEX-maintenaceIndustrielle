@@ -102,6 +102,7 @@
     "registrationPendingApproval": "Il tuo account è stato creato correttamente. Verifica la tua e-mail. Dopo la verifica, un amministratore deve approvare l'account prima che tu possa accedere.",
     "emailAlreadyRegistered": "E-mail già registrata.",
     "publicRoleNotAllowed": "Questo ruolo non è disponibile per la registrazione pubblica.",
+    "registrationEmailDeliveryFailed": "Non e stato possibile creare l'account perche l'e-mail di verifica non e stata inviata. Riprova piu tardi.",
     "emailVerified": "Il tuo indirizzo e-mail è stato verificato. Ora puoi accedere.",
     "emailAlreadyVerified": "Il tuo indirizzo e-mail è già stato verificato.",
     "emailVerifiedPendingApproval": "Il tuo indirizzo e-mail è stato verificato. Il tuo account è ancora in attesa dell'approvazione di un amministratore. Potrai accedere dopo l'approvazione.",

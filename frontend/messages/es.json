@@ -109,6 +109,7 @@
     "registrationPendingApproval": "Tu cuenta se creó correctamente. Verifica tu correo electrónico. Después de la verificación, un administrador debe aprobar la cuenta antes de que puedas iniciar sesión.",
     "emailAlreadyRegistered": "El correo electrónico ya está registrado.",
     "publicRoleNotAllowed": "Este rol no está disponible para el registro público.",
+    "registrationEmailDeliveryFailed": "No se pudo crear la cuenta porque no se pudo enviar el correo de verificacion. Intentalo de nuevo mas tarde.",
     "emailVerified": "Tu correo electrónico ha sido verificado. Ya puedes iniciar sesión.",
     "emailAlreadyVerified": "Tu correo electrónico ya está verificado.",
     "emailVerifiedPendingApproval": "Tu correo electrónico ha sido verificado. Tu cuenta aún está esperando la aprobación de un administrador. Podrás iniciar sesión después de que la apruebe.",
