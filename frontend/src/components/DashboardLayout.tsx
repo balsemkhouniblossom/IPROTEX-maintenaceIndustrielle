@@ -179,6 +179,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       { name: t('navigation.dashboard'), href: '/', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
       { name: t('navigation.users'), href: '/users', icon: UsersIcon, categoryKey: 'categories.users', domain: 'users' },
       { name: t('navigation.machines'), href: '/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
+      { name: 'Digital Twin', href: '/digital-twin', icon: CubeIcon, categoryKey: 'categories.equipment', domain: 'assets' },
       { name: t('navigation.machineTypes'), href: '/machine-types', icon: CubeIcon, categoryKey: 'categories.equipmentTypes', domain: 'assets' },
       { name: t('navigation.moduleTypes'), href: '/module-types', icon: DocumentTextIcon, categoryKey: 'categories.systemModules', domain: 'assets' },
       { name: t('navigation.devices'), href: '/devices', icon: CpuChipIcon, categoryKey: 'categories.equipment', domain: 'assets' },
