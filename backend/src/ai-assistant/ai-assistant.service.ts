@@ -22,6 +22,17 @@ import {
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
+const CLARIFICATION_MESSAGE_BY_LOCALE: Record<string, string> = {
+  en: 'I need a clearer maintenance question before giving recommendations. Please describe the fault, symptom, alarm, noise, temperature, movement, or check you want help with.',
+  fr: "J'ai besoin d'une question de maintenance plus claire avant de donner des recommandations. Veuillez decrire la panne, le symptome, l'alarme, le bruit, la temperature, le mouvement ou le controle souhaite.",
+  es: 'Necesito una pregunta de mantenimiento mas clara antes de dar recomendaciones. Describe la averia, el sintoma, la alarma, el ruido, la temperatura, el movimiento o la comprobacion que necesitas.',
+  de: 'Ich brauche eine klarere Wartungsfrage, bevor ich Empfehlungen gebe. Bitte beschreiben Sie die Stoerung, das Symptom, den Alarm, das Geraeusch, die Temperatur, die Bewegung oder die gewuenschte Pruefung.',
+  it: "Ho bisogno di una domanda di manutenzione piu chiara prima di dare raccomandazioni. Descrivi il guasto, il sintomo, l'allarme, il rumore, la temperatura, il movimento o il controllo richiesto.",
+  ar: 'احتاج الى سؤال صيانة اوضح قبل تقديم توصيات. يرجى وصف العطل او العرض او الانذار او الضوضاء او الحرارة او الحركة او الفحص المطلوب.',
+};
+
+const MAINTENANCE_INTENT_PATTERN =
+  /\b(alarm|alarme|alarma|allarme|fault|failure|fail|error|code|panne|defect|defaut|averia|guasto|stoerung|machine|machine|maquina|macchina|maschine|motor|moteur|motore|engine|bearing|roulement|belt|courroie|correa|cinghia|cable|cabling|wire|wiring|resistor|brake|braking|oil|huile|aceite|olio|lubric|grease|overcurrent|current|voltage|short|circuit|trip|tripping|stop|stopped|blocked|jam|jammed|noise|noisy|grinding|vibration|heat|hot|temperature|sensor|pump|gear|check|inspect|repair|replace|maintenance|preventive|corrective|work order|diagnos|symptom|problem|issue|wrong|عطل|صيانة|انذار|محرك|ضوضاء|حرارة|فحص)\b/i;
 
 export type AiRecommendationResponse = {
   status: AiInteractionStatus;
@@ -113,6 +124,22 @@ export class AiAssistantService {
         dto,
         status: AiInteractionStatus.DISABLED,
         provider: this.provider.name,
+        question: redactionResult.redacted,
+        redactionsApplied: redactionResult.count,
+        injectionFlags: injectionResult.flags,
+      });
+    }
+
+    if (
+      injectionResult.flags.length === 0 &&
+      !this.isClearMaintenanceQuestion(redactionResult.redacted)
+    ) {
+      return this.record({
+        actor,
+        dto,
+        status: AiInteractionStatus.OK,
+        provider: this.provider.name,
+        answer: this.buildClarificationAnswer(dto.locale),
         question: redactionResult.redacted,
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
@@ -244,6 +271,42 @@ export class AiAssistantService {
     return Number.isInteger(configured) && configured > 0
       ? configured
       : DEFAULT_TIMEOUT_MS;
+  }
+
+  private isClearMaintenanceQuestion(question: string): boolean {
+    const normalized = question.trim().replace(/\s+/g, ' ');
+    if (normalized.length < 4 || !/\p{L}/u.test(normalized)) {
+      return false;
+    }
+
+    if (MAINTENANCE_INTENT_PATTERN.test(normalized)) {
+      return true;
+    }
+
+    const words = normalized.match(/[\p{L}\p{N}]{2,}/gu) ?? [];
+    const uniqueWords = new Set(words.map((word) => word.toLowerCase()));
+    if (words.length < 4 || uniqueWords.size < 3) {
+      return false;
+    }
+
+    return (
+      /[?]/.test(normalized) &&
+      /\b(why|what|how|when|where|can|should|do|does|is|are|pourquoi|quoi|comment|cuando|que|como|warum|was|wie|perche|cosa|come)\b/i.test(
+        normalized,
+      )
+    );
+  }
+
+  private buildClarificationAnswer(locale: string): AiAssistantAnswer {
+    return {
+      knownFacts: [],
+      probableCauses: [],
+      recommendedChecks: [],
+      safetyWarnings: [],
+      uncertainty:
+        CLARIFICATION_MESSAGE_BY_LOCALE[locale] ??
+        CLARIFICATION_MESSAGE_BY_LOCALE.en,
+    };
   }
 
   private statusFromProviderError(error: unknown): AiInteractionStatus {

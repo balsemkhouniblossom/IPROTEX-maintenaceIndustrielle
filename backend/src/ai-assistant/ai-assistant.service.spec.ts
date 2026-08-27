@@ -175,6 +175,35 @@ describe('AiAssistantService', () => {
     );
   });
 
+  it('asks for clarification instead of generating recommendations for unclear text', async () => {
+    const service = buildService();
+
+    const result = await service.getRecommendation(
+      actor,
+      baseDto({ question: 'asdfgh qwerty zxcvbn' }),
+    );
+
+    expect(result.status).toBe(AiInteractionStatus.OK);
+    expect(result.answer).toEqual({
+      knownFacts: [],
+      probableCauses: [],
+      recommendedChecks: [],
+      safetyWarnings: [],
+      uncertainty: expect.stringMatching(/clearer maintenance question/i),
+    });
+    expect(contextBuilder.buildContext).not.toHaveBeenCalled();
+    expect(provider.generate).not.toHaveBeenCalled();
+    expect(interactionModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: AiInteractionStatus.OK,
+        answer: expect.objectContaining({
+          probableCauses: [],
+          recommendedChecks: [],
+        }),
+      }),
+    );
+  });
+
   it('sanitizes prompt-injection attempts and redacts sensitive data before sending the question to the provider', async () => {
     injectionGuard.scan.mockReturnValue({
       sanitized: '[redacted: instruction-like text removed]',
