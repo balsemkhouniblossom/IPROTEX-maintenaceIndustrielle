@@ -11,6 +11,7 @@ type TwinStatus = "operational" | "maintenance" | "offline";
 type TwinMachine = {
   id: string;
   name: string;
+  backendMachineId: string | null;
   assetUrl: string;
   position: [number, number, number];
   rotationY: number;
@@ -18,33 +19,53 @@ type TwinMachine = {
   status: TwinStatus;
   location: string;
   health: number;
+  simulatedMetrics: {
+    temperatureC: number;
+    vibrationMms: number;
+    loadPercent: number;
+    availabilityPercent: number;
+  };
   lastUpdate: string;
 };
 
 const twinMachines: TwinMachine[] = [
   {
-    id: "machine-a",
-    name: "Machine A",
+    id: "harry-lucas-rv4s",
+    name: "Harry Lucas RV-4s",
+    backendMachineId: null,
     assetUrl: "/models/machine-a.glb",
     position: [-1.9, 0, 0],
     rotationY: Math.PI / 6,
     targetSize: 1.7,
     status: "operational",
-    location: "Line 1",
+    location: "Prototype workshop - Line 1",
     health: 92,
-    lastUpdate: "Live model connected",
+    simulatedMetrics: {
+      temperatureC: 41.8,
+      vibrationMms: 1.2,
+      loadPercent: 72,
+      availabilityPercent: 96,
+    },
+    lastUpdate: "Prototype mode - simulated values",
   },
   {
-    id: "machine-b",
-    name: "Machine B",
+    id: "pw800",
+    name: "PW800",
+    backendMachineId: null,
     assetUrl: "/models/machine-b.glb",
     position: [1.9, 0, 0],
     rotationY: -Math.PI / 8,
     targetSize: 1.7,
     status: "maintenance",
-    location: "Line 1",
+    location: "Prototype workshop - Line 1",
     health: 68,
-    lastUpdate: "Maintenance watch",
+    simulatedMetrics: {
+      temperatureC: 58.4,
+      vibrationMms: 3.7,
+      loadPercent: 44,
+      availabilityPercent: 81,
+    },
+    lastUpdate: "Prototype mode - maintenance scenario",
   },
 ];
 
@@ -283,7 +304,7 @@ export default function FactoryTwinScene() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-4">
             <div>
               <h2 className="text-base font-bold text-slate-900">Factory Twin</h2>
-              <p className="mt-1 text-sm text-slate-500">Two-machine pilot layout</p>
+              <p className="mt-1 text-sm text-slate-500">Prototype mode - no backend machine records yet</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(statusStyle).map(([key, value]) => (
@@ -367,6 +388,38 @@ export default function FactoryTwinScene() {
           </div>
 
           <dl className="grid gap-3 text-sm">
+            <div className="rounded-md border border-slate-200 p-3">
+              <dt className="font-medium text-slate-500">Connection</dt>
+              <dd className="mt-1 font-semibold text-slate-900">
+                {selectedMachine.backendMachineId ?? "Prototype only"}
+              </dd>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-md border border-slate-200 p-3">
+                <dt className="font-medium text-slate-500">Temperature</dt>
+                <dd className="mt-1 font-semibold text-slate-900">
+                  {selectedMachine.simulatedMetrics.temperatureC.toFixed(1)} C
+                </dd>
+              </div>
+              <div className="rounded-md border border-slate-200 p-3">
+                <dt className="font-medium text-slate-500">Vibration</dt>
+                <dd className="mt-1 font-semibold text-slate-900">
+                  {selectedMachine.simulatedMetrics.vibrationMms.toFixed(1)} mm/s
+                </dd>
+              </div>
+              <div className="rounded-md border border-slate-200 p-3">
+                <dt className="font-medium text-slate-500">Load</dt>
+                <dd className="mt-1 font-semibold text-slate-900">
+                  {selectedMachine.simulatedMetrics.loadPercent}%
+                </dd>
+              </div>
+              <div className="rounded-md border border-slate-200 p-3">
+                <dt className="font-medium text-slate-500">Availability</dt>
+                <dd className="mt-1 font-semibold text-slate-900">
+                  {selectedMachine.simulatedMetrics.availabilityPercent}%
+                </dd>
+              </div>
+            </div>
             <div className="rounded-md border border-slate-200 p-3">
               <dt className="font-medium text-slate-500">3D asset</dt>
               <dd className="mt-1 break-all font-semibold text-slate-900">{selectedMachine.assetUrl}</dd>
