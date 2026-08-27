@@ -31,8 +31,100 @@ const CLARIFICATION_MESSAGE_BY_LOCALE: Record<string, string> = {
   ar: 'احتاج الى سؤال صيانة اوضح قبل تقديم توصيات. يرجى وصف العطل او العرض او الانذار او الضوضاء او الحرارة او الحركة او الفحص المطلوب.',
 };
 
-const MAINTENANCE_INTENT_PATTERN =
-  /\b(alarm|alarme|alarma|allarme|fault|failure|fail|error|code|panne|defect|defaut|averia|guasto|stoerung|machine|machine|maquina|macchina|maschine|motor|moteur|motore|engine|bearing|roulement|belt|courroie|correa|cinghia|cable|cabling|wire|wiring|resistor|brake|braking|oil|huile|aceite|olio|lubric|grease|overcurrent|current|voltage|short|circuit|trip|tripping|stop|stopped|blocked|jam|jammed|noise|noisy|grinding|vibration|heat|hot|temperature|sensor|pump|gear|check|inspect|repair|replace|maintenance|preventive|corrective|work order|diagnos|symptom|problem|issue|wrong|عطل|صيانة|انذار|محرك|ضوضاء|حرارة|فحص)\b/i;
+const MAINTENANCE_INTENT_TERMS = [
+  'alarm',
+  'alarme',
+  'alarma',
+  'allarme',
+  'fault',
+  'failure',
+  'fail',
+  'error',
+  'code',
+  'panne',
+  'defect',
+  'defaut',
+  'averia',
+  'guasto',
+  'stoerung',
+  'machine',
+  'maquina',
+  'macchina',
+  'maschine',
+  'motor',
+  'moteur',
+  'motore',
+  'engine',
+  'bearing',
+  'roulement',
+  'belt',
+  'courroie',
+  'correa',
+  'cinghia',
+  'cable',
+  'cabling',
+  'wire',
+  'wiring',
+  'resistor',
+  'brake',
+  'braking',
+  'oil',
+  'huile',
+  'aceite',
+  'olio',
+  'lubric',
+  'grease',
+  'overcurrent',
+  'current',
+  'voltage',
+  'short',
+  'circuit',
+  'trip',
+  'tripping',
+  'stop',
+  'stopped',
+  'blocked',
+  'jam',
+  'jammed',
+  'noise',
+  'noisy',
+  'grinding',
+  'vibration',
+  'heat',
+  'hot',
+  'temperature',
+  'sensor',
+  'pump',
+  'gear',
+  'check',
+  'inspect',
+  'repair',
+  'replace',
+  'maintenance',
+  'preventive',
+  'corrective',
+  'work order',
+  'diagnos',
+  'symptom',
+  'problem',
+  'issue',
+  'wrong',
+] as const;
+const ARABIC_MAINTENANCE_INTENT_TERMS = [
+  'عطل',
+  'صيانة',
+  'انذار',
+  'محرك',
+  'ضوضاء',
+  'حرارة',
+  'فحص',
+] as const;
+const QUESTION_WORD_PATTERN =
+  /\b(why|what|how|when|where|can|should|do|does|is|are|pourquoi|quoi|comment|cuando|que|como|warum|was|wie|perche|cosa|come)\b/i;
+
+function extractWords(value: string): string[] {
+  return Array.from(value.matchAll(/[\p{L}\p{N}]+/gu), (match) => match[0]);
+}
 
 export type AiRecommendationResponse = {
   status: AiInteractionStatus;
@@ -279,21 +371,32 @@ export class AiAssistantService {
       return false;
     }
 
-    if (MAINTENANCE_INTENT_PATTERN.test(normalized)) {
+    if (this.hasMaintenanceIntent(normalized)) {
       return true;
     }
 
-    const words = normalized.match(/[\p{L}\p{N}]{2,}/gu) ?? [];
+    const words = extractWords(normalized).filter((word) => word.length >= 2);
     const uniqueWords = new Set(words.map((word) => word.toLowerCase()));
     if (words.length < 4 || uniqueWords.size < 3) {
       return false;
     }
 
+    return /[?]/.test(normalized) && QUESTION_WORD_PATTERN.test(normalized);
+  }
+
+  private hasMaintenanceIntent(question: string): boolean {
+    const lowerQuestion = question.toLowerCase();
+    const words = extractWords(lowerQuestion);
+    const wordSet = new Set(words);
+
     return (
-      /[?]/.test(normalized) &&
-      /\b(why|what|how|when|where|can|should|do|does|is|are|pourquoi|quoi|comment|cuando|que|como|warum|was|wie|perche|cosa|come)\b/i.test(
-        normalized,
-      )
+      MAINTENANCE_INTENT_TERMS.some((term) =>
+        term.includes(' ')
+          ? lowerQuestion.includes(term)
+          : wordSet.has(term) ||
+            words.some((word) => word.startsWith(term) && term.length >= 5),
+      ) ||
+      ARABIC_MAINTENANCE_INTENT_TERMS.some((term) => question.includes(term))
     );
   }
 
