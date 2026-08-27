@@ -331,7 +331,7 @@ describe('AI Assistant — mocked provider (e2e)', () => {
         .post('/ai-assistant/recommendations')
         .set('Authorization', `Bearer ${errorTestToken}`)
         .send({
-          question: 'Whatever happens, this must not crash.',
+          question: 'Whatever happens, this motor fault must not crash.',
           locale: 'en',
         })
         .expect(201);
@@ -350,7 +350,7 @@ describe('AI Assistant — mocked provider (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/ai-assistant/recommendations')
         .set('Authorization', `Bearer ${timeoutTestToken}`)
-        .send({ question: 'This should time out.', locale: 'en' })
+        .send({ question: 'This motor fault should time out.', locale: 'en' })
         .expect(201);
 
       expect(response.body.status).toBe('timeout');

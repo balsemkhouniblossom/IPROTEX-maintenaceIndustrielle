@@ -119,11 +119,38 @@ const ARABIC_MAINTENANCE_INTENT_TERMS = [
   'حرارة',
   'فحص',
 ] as const;
-const QUESTION_WORD_PATTERN =
-  /\b(why|what|how|when|where|can|should|do|does|is|are|pourquoi|quoi|comment|cuando|que|como|warum|was|wie|perche|cosa|come)\b/i;
+const QUESTION_WORDS = new Set([
+  'why',
+  'what',
+  'how',
+  'when',
+  'where',
+  'can',
+  'should',
+  'do',
+  'does',
+  'is',
+  'are',
+  'pourquoi',
+  'quoi',
+  'comment',
+  'cuando',
+  'que',
+  'como',
+  'warum',
+  'was',
+  'wie',
+  'perche',
+  'cosa',
+  'come',
+]);
 
 function extractWords(value: string): string[] {
   return Array.from(value.matchAll(/[\p{L}\p{N}]+/gu), (match) => match[0]);
+}
+
+function hasQuestionWord(words: string[]): boolean {
+  return words.some((word) => QUESTION_WORDS.has(word.toLowerCase()));
 }
 
 export type AiRecommendationResponse = {
@@ -381,7 +408,7 @@ export class AiAssistantService {
       return false;
     }
 
-    return /[?]/.test(normalized) && QUESTION_WORD_PATTERN.test(normalized);
+    return normalized.includes('?') && hasQuestionWord(words);
   }
 
   private hasMaintenanceIntent(question: string): boolean {
