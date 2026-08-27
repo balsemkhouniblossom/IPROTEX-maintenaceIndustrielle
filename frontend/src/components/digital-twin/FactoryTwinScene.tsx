@@ -6,7 +6,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Skeleton } from "@/components/Skeleton";
 
-type TwinStatus = "operational" | "maintenance" | "offline";
+type TwinStatus = "running" | "stopped" | "fault" | "offline";
 
 type TwinMachine = {
   id: string;
@@ -29,13 +29,14 @@ type TwinMachine = {
 };
 
 type FactoryCanvasProps = {
+  machines: TwinMachine[];
   selectedId: string;
   onSelect: (machine: TwinMachine) => void;
   onLoaded: () => void;
   onError: (message: string) => void;
 };
 
-const twinMachines: TwinMachine[] = [
+const initialTwinMachines: TwinMachine[] = [
   {
     id: "harry-lucas-rv4s",
     name: "Harry Lucas RV-4s",
@@ -44,7 +45,7 @@ const twinMachines: TwinMachine[] = [
     position: [-1.9, 0, 0],
     rotationY: Math.PI / 6,
     targetSize: 1.7,
-    status: "operational",
+    status: "running",
     location: "Prototype workshop - Line 1",
     health: 92,
     simulatedMetrics: {
@@ -63,7 +64,7 @@ const twinMachines: TwinMachine[] = [
     position: [1.9, 0, 0],
     rotationY: -Math.PI / 8,
     targetSize: 1.7,
-    status: "maintenance",
+    status: "fault",
     location: "Prototype workshop - Line 1",
     health: 68,
     simulatedMetrics: {
@@ -72,14 +73,56 @@ const twinMachines: TwinMachine[] = [
       loadPercent: 44,
       availabilityPercent: 81,
     },
-    lastUpdate: "Prototype mode - maintenance scenario",
+    lastUpdate: "Prototype mode - fault scenario",
   },
 ];
 
 const statusStyle: Record<TwinStatus, { label: string; color: string; bg: string }> = {
-  operational: { label: "Operational", color: "#16a34a", bg: "bg-green-100 text-green-800" },
-  maintenance: { label: "Maintenance", color: "#f59e0b", bg: "bg-amber-100 text-amber-800" },
+  running: { label: "Running", color: "#16a34a", bg: "bg-green-100 text-green-800" },
+  stopped: { label: "Stopped", color: "#f59e0b", bg: "bg-amber-100 text-amber-800" },
+  fault: { label: "Fault", color: "#dc2626", bg: "bg-red-100 text-red-800" },
   offline: { label: "Offline", color: "#64748b", bg: "bg-slate-100 text-slate-700" },
+};
+
+const simulatedMetricsByStatus: Record<TwinStatus, TwinMachine["simulatedMetrics"]> = {
+  running: {
+    temperatureC: 42.6,
+    vibrationMms: 1.3,
+    loadPercent: 74,
+    availabilityPercent: 96,
+  },
+  stopped: {
+    temperatureC: 27.4,
+    vibrationMms: 0.1,
+    loadPercent: 0,
+    availabilityPercent: 88,
+  },
+  fault: {
+    temperatureC: 69.2,
+    vibrationMms: 5.8,
+    loadPercent: 28,
+    availabilityPercent: 63,
+  },
+  offline: {
+    temperatureC: 0,
+    vibrationMms: 0,
+    loadPercent: 0,
+    availabilityPercent: 0,
+  },
+};
+
+const healthByStatus: Record<TwinStatus, number> = {
+  running: 92,
+  stopped: 78,
+  fault: 41,
+  offline: 0,
+};
+
+const stateMessageByStatus: Record<TwinStatus, string> = {
+  running: "Prototype mode - normal operation",
+  stopped: "Prototype mode - planned stop",
+  fault: "Prototype mode - fault scenario",
+  offline: "Prototype mode - disconnected",
 };
 
 function fitObjectToSize(object: THREE.Object3D, targetSize: number) {
@@ -107,6 +150,7 @@ function createStatusRing(machine: TwinMachine) {
   );
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.035;
+  ring.name = "status-ring";
   return ring;
 }
 
@@ -152,16 +196,22 @@ async function loadMachineGroup(loader: GLTFLoader, machine: TwinMachine, isDisp
 }
 
 function FactoryCanvas({
+  machines,
   selectedId,
   onSelect,
   onLoaded,
   onError,
 }: Readonly<FactoryCanvasProps>) {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const machinesRef = useRef(machines);
   const selectedIdRef = useRef(selectedId);
   const onSelectRef = useRef(onSelect);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    machinesRef.current = machines;
+  }, [machines]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -243,10 +293,22 @@ function FactoryCanvas({
       }
     };
 
+    const updateStatusRings = () => {
+      machinesRef.current.forEach((machine) => {
+        const ring = machineGroups.get(machine.id)?.getObjectByName("status-ring");
+        const material = ring instanceof THREE.Mesh ? ring.material : null;
+        if (!(material instanceof THREE.MeshStandardMaterial)) return;
+
+        const nextColor = statusStyle[machine.status].color;
+        material.color.set(nextColor);
+        material.emissive.set(nextColor);
+      });
+    };
+
     const loadMachines = async () => {
       try {
         const groups = await Promise.all(
-          twinMachines.map((machine) => loadMachineGroup(loader, machine, () => disposed)),
+          machinesRef.current.map((machine) => loadMachineGroup(loader, machine, () => disposed)),
         );
         groups.forEach((group) => {
           if (!group) return;
@@ -269,13 +331,14 @@ function FactoryCanvas({
       const machineId = intersects
         .map((hit) => hit.object.userData.machineId)
         .find((value): value is string => typeof value === "string");
-      const machine = twinMachines.find((item) => item.id === machineId);
+      const machine = machinesRef.current.find((item) => item.id === machineId);
       if (machine) onSelectRef.current(machine);
     };
 
     const animate = () => {
       controls.update();
       updateSelection();
+      updateStatusRings();
       renderer.render(scene, camera);
       frame = window.requestAnimationFrame(animate);
     };
@@ -301,9 +364,28 @@ function FactoryCanvas({
 }
 
 export default function FactoryTwinScene() {
-  const [selectedMachine, setSelectedMachine] = useState<TwinMachine>(twinMachines[0]);
+  const [machines, setMachines] = useState<TwinMachine[]>(initialTwinMachines);
+  const [selectedMachineId, setSelectedMachineId] = useState(initialTwinMachines[0].id);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectedMachine =
+    machines.find((machine) => machine.id === selectedMachineId) ?? machines[0];
+
+  const updateSelectedMachineStatus = (status: TwinStatus) => {
+    setMachines((currentMachines) =>
+      currentMachines.map((machine) =>
+        machine.id === selectedMachineId
+          ? {
+              ...machine,
+              status,
+              health: healthByStatus[status],
+              simulatedMetrics: simulatedMetricsByStatus[status],
+              lastUpdate: stateMessageByStatus[status],
+            }
+          : machine,
+      ),
+    );
+  };
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -336,8 +418,9 @@ export default function FactoryTwinScene() {
               </div>
             )}
             <FactoryCanvas
+              machines={machines}
               selectedId={selectedMachine.id}
-              onSelect={setSelectedMachine}
+              onSelect={(machine) => setSelectedMachineId(machine.id)}
               onLoaded={() => setLoading(false)}
               onError={(message) => {
                 setError(message);
@@ -361,7 +444,7 @@ export default function FactoryTwinScene() {
 
         <div className="mt-6 space-y-4">
           <div className="grid gap-2">
-            {twinMachines.map((machine) => (
+            {machines.map((machine) => (
               <button
                 key={machine.id}
                 type="button"
@@ -370,7 +453,7 @@ export default function FactoryTwinScene() {
                     ? "border-blue-500 bg-blue-50 text-blue-950"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                 }`}
-                onClick={() => setSelectedMachine(machine)}
+                onClick={() => setSelectedMachineId(machine.id)}
               >
                 <span className="font-semibold">{machine.name}</span>
                 <span
@@ -380,6 +463,26 @@ export default function FactoryTwinScene() {
                 />
               </button>
             ))}
+          </div>
+
+          <div>
+            <div className="mb-2 text-sm font-medium text-slate-700">Simulation state</div>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(statusStyle) as TwinStatus[]).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+                    selectedMachine.status === status
+                      ? "border-blue-500 bg-blue-50 text-blue-950"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  }`}
+                  onClick={() => updateSelectedMachineStatus(status)}
+                >
+                  {statusStyle[status].label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
