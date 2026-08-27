@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Skeleton } from "@/components/Skeleton";
 
 type TwinStatus = "operational" | "maintenance" | "offline";
@@ -26,6 +26,13 @@ type TwinMachine = {
     availabilityPercent: number;
   };
   lastUpdate: string;
+};
+
+type FactoryCanvasProps = {
+  selectedId: string;
+  onSelect: (machine: TwinMachine) => void;
+  onLoaded: () => void;
+  onError: (message: string) => void;
 };
 
 const twinMachines: TwinMachine[] = [
@@ -117,20 +124,44 @@ function createSelectionRing() {
   return ring;
 }
 
+function createMachineGroup(machine: TwinMachine, gltf: GLTF) {
+  const group = new THREE.Group();
+  group.name = machine.id;
+  group.userData.machineId = machine.id;
+  group.position.set(...machine.position);
+  group.rotation.y = machine.rotationY;
+
+  const model = gltf.scene;
+  fitObjectToSize(model, machine.targetSize);
+  model.traverse((child) => {
+    child.userData.machineId = machine.id;
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  group.add(model);
+  group.add(createStatusRing(machine));
+  return group;
+}
+
+async function loadMachineGroup(loader: GLTFLoader, machine: TwinMachine, isDisposed: () => boolean) {
+  const gltf = await loader.loadAsync(machine.assetUrl);
+  return isDisposed() ? null : createMachineGroup(machine, gltf);
+}
+
 function FactoryCanvas({
   selectedId,
   onSelect,
   onLoaded,
   onError,
-}: {
-  selectedId: string;
-  onSelect: (machine: TwinMachine) => void;
-  onLoaded: () => void;
-  onError: (message: string) => void;
-}) {
+}: Readonly<FactoryCanvasProps>) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const selectedIdRef = useRef(selectedId);
   const onSelectRef = useRef(onSelect);
+  const onLoadedRef = useRef(onLoaded);
+  const onErrorRef = useRef(onError);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -139,6 +170,14 @@ function FactoryCanvas({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    onLoadedRef.current = onLoaded;
+  }, [onLoaded]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -206,47 +245,18 @@ function FactoryCanvas({
 
     const loadMachines = async () => {
       try {
-        await Promise.all(
-          twinMachines.map(
-            (machine) =>
-              new Promise<void>((resolve, reject) => {
-                loader.load(
-                  machine.assetUrl,
-                  (gltf) => {
-                    if (disposed) return resolve();
-
-                    const group = new THREE.Group();
-                    group.name = machine.id;
-                    group.userData.machineId = machine.id;
-                    group.position.set(...machine.position);
-                    group.rotation.y = machine.rotationY;
-
-                    const model = gltf.scene;
-                    fitObjectToSize(model, machine.targetSize);
-                    model.traverse((child) => {
-                      child.userData.machineId = machine.id;
-                      if (child instanceof THREE.Mesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                      }
-                    });
-
-                    group.add(model);
-                    group.add(createStatusRing(machine));
-                    scene.add(group);
-                    machineGroups.set(machine.id, group);
-                    resolve();
-                  },
-                  undefined,
-                  reject,
-                );
-              }),
-          ),
+        const groups = await Promise.all(
+          twinMachines.map((machine) => loadMachineGroup(loader, machine, () => disposed)),
         );
+        groups.forEach((group) => {
+          if (!group) return;
+          scene.add(group);
+          machineGroups.set(group.userData.machineId, group);
+        });
         updateSelection();
-        onLoaded();
+        onLoadedRef.current();
       } catch (error) {
-        onError(error instanceof Error ? error.message : "Unable to load digital twin assets");
+        onErrorRef.current(error instanceof Error ? error.message : "Unable to load digital twin assets");
       }
     };
 
@@ -283,11 +293,9 @@ function FactoryCanvas({
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       controls.dispose();
       renderer.dispose();
-      if (renderer.domElement.parentNode === host) {
-        host.removeChild(renderer.domElement);
-      }
+      renderer.domElement.remove();
     };
-  }, [onError, onLoaded]);
+  }, []);
 
   return <div ref={hostRef} className="absolute inset-0" />;
 }
