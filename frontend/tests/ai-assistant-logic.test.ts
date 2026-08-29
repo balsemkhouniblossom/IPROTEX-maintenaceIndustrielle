@@ -17,22 +17,22 @@ test("apiService exposes the AI assistant recommendation and audit-history endpo
 
   assert.match(
     source,
-    /requestAiAssistantRecommendation:\s*\(data:\s*\{[\s\S]*?\}\)\s*=>\s*api\.post\('\/ai-assistant\/recommendations',\s*data\)/,
+    /requestAiAssistantRecommendation:\s*\(data:\s*\{[\s\S]*?\}\)\s*=>\s*api\.post\(["']\/ai-assistant\/recommendations["'],\s*data\)/,
     "apiService.requestAiAssistantRecommendation must POST /ai-assistant/recommendations",
   );
   assert.match(
     source,
-    /getAiAssistantHistory:\s*\(\)\s*=>\s*api\.get\('\/ai-assistant\/history'\)/,
+    /getAiAssistantHistory:\s*\(\)\s*=>\s*api\.get\(["']\/ai-assistant\/history["']\)/,
     "apiService.getAiAssistantHistory must GET /ai-assistant/history",
   );
   assert.match(
     source,
-    /getAllAiAssistantHistory:\s*\(\)\s*=>\s*api\.get\('\/ai-assistant\/history\/all'\)/,
+    /getAllAiAssistantHistory:\s*\(\)\s*=>\s*api\.get\(["']\/ai-assistant\/history\/all["']\)/,
     "apiService.getAllAiAssistantHistory must GET /ai-assistant/history/all",
   );
   assert.match(
     source,
-    /getAiAssistantHealth:\s*\(\)\s*=>\s*api\.get\('\/ai-assistant\/health'\)/,
+    /getAiAssistantHealth:\s*\(\)\s*=>\s*api\.get\(["']\/ai-assistant\/health["']\)/,
     "apiService.getAiAssistantHealth must GET /ai-assistant/health",
   );
 });

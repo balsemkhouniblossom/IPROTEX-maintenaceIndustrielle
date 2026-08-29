@@ -20,12 +20,12 @@ test("apiService exposes the predictive maintenance read endpoints and the admin
 
   assert.match(
     source,
-    /getPredictiveFleetSummary:\s*\(\)\s*=>\s*api\.get\('\/predictive-maintenance\/fleet-summary'\)/,
+    /getPredictiveFleetSummary:\s*\(\)\s*=>\s*api\.get\(["']\/predictive-maintenance\/fleet-summary["']\)/,
     "apiService.getPredictiveFleetSummary must GET /predictive-maintenance/fleet-summary",
   );
   assert.match(
     source,
-    /getPredictivePlansSummary:\s*\(\)\s*=>\s*api\.get\('\/predictive-maintenance\/plans-summary'\)/,
+    /getPredictivePlansSummary:\s*\(\)\s*=>\s*api\.get\(["']\/predictive-maintenance\/plans-summary["']\)/,
     "apiService.getPredictivePlansSummary must GET /predictive-maintenance/plans-summary",
   );
   assert.match(
@@ -45,7 +45,7 @@ test("apiService exposes the predictive maintenance read endpoints and the admin
   );
   assert.match(
     source,
-    /getPredictionModelVersions:\s*\(\)\s*=>\s*api\.get\('\/predictive-maintenance\/models'\)/,
+    /getPredictionModelVersions:\s*\(\)\s*=>\s*api\.get\(["']\/predictive-maintenance\/models["']\)/,
     "apiService.getPredictionModelVersions must GET /predictive-maintenance/models",
   );
   assert.match(

@@ -16,12 +16,12 @@ test("apiService exposes device registration/management and role-scoped live-mon
 
   assert.match(
     source,
-    /getDevices:\s*\(\)\s*=>\s*api\.get\('\/devices'\)/,
+    /getDevices:\s*\(\)\s*=>\s*api\.get\(["']\/devices["']\)/,
     "apiService.getDevices must GET /devices",
   );
   assert.match(
     source,
-    /registerDevice:\s*\(data:\s*AnyObject\)\s*=>\s*api\.post\('\/devices',\s*data\)/,
+    /registerDevice:\s*\(data:\s*AnyObject\)\s*=>\s*api\.post\(["']\/devices["'],\s*data\)/,
     "apiService.registerDevice must POST /devices",
   );
   assert.match(
@@ -36,7 +36,7 @@ test("apiService exposes device registration/management and role-scoped live-mon
   );
   assert.match(
     source,
-    /getLiveMonitoringSummary:\s*\(\)\s*=>\s*api\.get\('\/live-monitoring\/machines'\)/,
+    /getLiveMonitoringSummary:\s*\(\)\s*=>\s*api\.get\(["']\/live-monitoring\/machines["']\)/,
     "apiService.getLiveMonitoringSummary must GET /live-monitoring/machines",
   );
   assert.match(

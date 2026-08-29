@@ -211,11 +211,11 @@ test("apiService.getWorkOrders and getMaintenancePlans accept an AbortSignal opt
 
   assert.match(
     source,
-    /getWorkOrders:\s*\([\s\S]*?options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\('\/work-orders',\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
+    /getWorkOrders:\s*\([\s\S]*?options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\(["']\/work-orders["'],\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
   );
   assert.match(
     source,
-    /getMaintenancePlans:\s*\([\s\S]*?options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\('\/maintenance-plans',\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
+    /getMaintenancePlans:\s*\([\s\S]*?options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\(["']\/maintenance-plans["'],\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
   );
 });
 

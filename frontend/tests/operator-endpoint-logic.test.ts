@@ -311,19 +311,19 @@ test("apiService exposes the scoped Operator calendar endpoints pointing at /ope
       "getMyCalendarTimeline",
     ],
     [
-      /getMyCalendarEventDetails:\s*\(id:\s*string\)\s*=>\s*api\.get\(`\/operator\/calendar\/events\/\$\{id\}`\)/,
+      /getMyCalendarEventDetails:\s*\(\s*id:\s*string,?\s*\)\s*=>\s*api\.get\(`\/operator\/calendar\/events\/\$\{id\}`\)/,
       "getMyCalendarEventDetails",
     ],
     [
-      /startMyCalendarEvent:\s*\(id:\s*string\)\s*=>\s*api\.post\(`\/operator\/calendar\/events\/\$\{id\}\/start`\)/,
+      /startMyCalendarEvent:\s*\(\s*id:\s*string,?\s*\)\s*=>\s*api\.post\(`\/operator\/calendar\/events\/\$\{id\}\/start`\)/,
       "startMyCalendarEvent",
     ],
     [
-      /completeMyCalendarEvent:\s*\(id:\s*string\)\s*=>\s*api\.post\(`\/operator\/calendar\/events\/\$\{id\}\/complete`\)/,
+      /completeMyCalendarEvent:\s*\(\s*id:\s*string,?\s*\)\s*=>\s*api\.post\(`\/operator\/calendar\/events\/\$\{id\}\/complete`\)/,
       "completeMyCalendarEvent",
     ],
     [
-      /rescheduleMyCalendarEvent:\s*\(id:\s*string,\s*data:[^)]*\)\s*=>\s*api\.patch\(`\/operator\/calendar\/events\/\$\{id\}\/reschedule`/,
+      /rescheduleMyCalendarEvent:\s*\(\s*id:\s*string,\s*data:[^)]*,?\s*\)\s*=>\s*api\.patch\(`\/operator\/calendar\/events\/\$\{id\}\/reschedule`/,
       "rescheduleMyCalendarEvent",
     ],
   ];
@@ -338,7 +338,7 @@ test("apiService exposes the scoped Operator parts-request endpoint with no requ
   const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
   const match = source.match(
-    /requestOperatorParts:\s*\(workOrderId:\s*string,\s*data:\s*([\s\S]*?)\)\s*=>\s*api\.post\(\s*`\/operator\/work-orders\/\$\{workOrderId\}\/parts-request`/,
+    /requestOperatorParts:\s*\(\s*workOrderId:\s*string,\s*data:\s*([\s\S]*?),?\s*\)\s*=>\s*api\.post\(\s*`\/operator\/work-orders\/\$\{workOrderId\}\/parts-request`/,
   );
   assert.ok(
     match,

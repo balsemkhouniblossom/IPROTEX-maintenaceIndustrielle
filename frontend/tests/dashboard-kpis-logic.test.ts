@@ -12,12 +12,12 @@ test("apiService exposes the role-scoped KPI dashboard endpoints", () => {
 
   assert.match(
     source,
-    /getAdminDashboard:\s*\(\)\s*=>\s*api\.get\('\/dashboard\/admin'\)/,
+    /getAdminDashboard:\s*\(\)\s*=>\s*api\.get\(["']\/dashboard\/admin["']\)/,
     "apiService.getAdminDashboard must GET /dashboard/admin",
   );
   assert.match(
     source,
-    /getOperatorDashboard:\s*\(\)\s*=>\s*api\.get\('\/operator\/dashboard'\)/,
+    /getOperatorDashboard:\s*\(\)\s*=>\s*api\.get\(["']\/operator\/dashboard["']\)/,
     "apiService.getOperatorDashboard must GET /operator/dashboard",
   );
 });

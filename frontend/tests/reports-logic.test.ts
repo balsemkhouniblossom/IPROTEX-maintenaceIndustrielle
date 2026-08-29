@@ -16,15 +16,15 @@ const DASHBOARD_LAYOUT = "src/components/DashboardLayout.tsx";
 test("apiService exposes the reports read, write, and schedule endpoints", () => {
   const source = readSource(API);
 
-  assert.match(source, /getReportTypes:\s*\(\)\s*=>\s*api\.get\('\/reports\/types'\)/);
+  assert.match(source, /getReportTypes:\s*\(\)\s*=>\s*api\.get\(["']\/reports\/types["']\)/);
   assert.match(
     source,
-    /getReports:\s*\(\s*\n?\s*params\?:[\s\S]*?\n?\s*options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\('\/reports',\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
+    /getReports:\s*\(\s*\n?\s*params\?:[\s\S]*?\n?\s*options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\(["']\/reports["'],\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
     "apiService.getReports must GET /reports with optional pagination/filter params and an abortable signal",
   );
   assert.match(
     source,
-    /getAllReports:\s*\(\s*\n?\s*params\?:[\s\S]*?\n?\s*options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\('\/reports\/all',\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
+    /getAllReports:\s*\(\s*\n?\s*params\?:[\s\S]*?\n?\s*options\?:\s*\{\s*signal\?:\s*AbortSignal\s*\},?\s*\n?\s*\)\s*=>\s*\n?\s*api\.get\(["']\/reports\/all["'],\s*\{\s*params,\s*signal:\s*options\?\.signal\s*\}\)/,
     "apiService.getAllReports must GET /reports/all with optional pagination/filter params and an abortable signal",
   );
   assert.match(
@@ -34,7 +34,7 @@ test("apiService exposes the reports read, write, and schedule endpoints", () =>
   );
   assert.match(
     source,
-    /requestReport:\s*\(data:\s*\{[\s\S]*?\}\)\s*=>\s*api\.post\('\/reports',\s*data\)/,
+    /requestReport:\s*\(data:\s*\{[\s\S]*?\}\)\s*=>\s*api\.post\(["']\/reports["'],\s*data\)/,
     "apiService.requestReport must POST /reports",
   );
   assert.match(
@@ -44,13 +44,13 @@ test("apiService exposes the reports read, write, and schedule endpoints", () =>
   );
   assert.match(
     source,
-    /downloadReportFile:\s*\(id:\s*string\)\s*=>\s*\n?\s*api\.get\(`\/reports\/\$\{id\}\/download`,\s*\{[\s\S]*?responseType:\s*'blob'[\s\S]*?\}\)/,
+    /downloadReportFile:\s*\(id:\s*string\)\s*=>\s*\n?\s*api\.get\(`\/reports\/\$\{id\}\/download`,\s*\{[\s\S]*?responseType:\s*["']blob["'][\s\S]*?\}\)/,
     "apiService.downloadReportFile must GET /reports/:id/download as a blob",
   );
-  assert.match(source, /getReportSchedules:\s*\(\)\s*=>\s*api\.get\('\/reports\/schedules'\)/);
+  assert.match(source, /getReportSchedules:\s*\(\)\s*=>\s*api\.get\(["']\/reports\/schedules["']\)/);
   assert.match(
     source,
-    /createReportSchedule:\s*\(data:\s*\{[\s\S]*?\}\)\s*=>\s*api\.post\('\/reports\/schedules',\s*data\)/,
+    /createReportSchedule:\s*\(data:\s*\{[\s\S]*?\}\)\s*=>\s*api\.post\(["']\/reports\/schedules["'],\s*data\)/,
   );
   assert.match(
     source,

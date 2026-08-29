@@ -16,17 +16,17 @@ test("apiService exposes the full Knowledge Base CRUD, lifecycle, and suggestion
 
   assert.match(
     source,
-    /getKnowledgeArticles:\s*\(params\?:\s*AnyObject\)\s*=>\s*api\.get\('\/knowledge-base\/articles',\s*\{\s*params\s*\}\)/,
+    /getKnowledgeArticles:\s*\(params\?:\s*AnyObject\)\s*=>\s*api\.get\(["']\/knowledge-base\/articles["'],\s*\{\s*params\s*\}\)/,
     "apiService.getKnowledgeArticles must GET /knowledge-base/articles",
   );
   assert.match(
     source,
-    /getKnowledgeArticleSuggestions:\s*\(params\?:\s*AnyObject\)\s*=>\s*api\.get\('\/knowledge-base\/articles\/suggestions'/,
+    /getKnowledgeArticleSuggestions:\s*\(params\?:\s*AnyObject\)\s*=>\s*api\.get\(["']\/knowledge-base\/articles\/suggestions["']/,
     "apiService.getKnowledgeArticleSuggestions must GET /knowledge-base/articles/suggestions",
   );
   assert.match(
     source,
-    /createKnowledgeArticle:\s*\(data:\s*AnyObject\)\s*=>\s*api\.post\('\/knowledge-base\/articles',\s*data\)/,
+    /createKnowledgeArticle:\s*\(data:\s*AnyObject\)\s*=>\s*api\.post\(["']\/knowledge-base\/articles["'],\s*data\)/,
     "apiService.createKnowledgeArticle must POST /knowledge-base/articles",
   );
   assert.match(

@@ -185,18 +185,18 @@ test("the Reports page lazy-loads BarChartCard via next/dynamic instead of a sta
 test("apiService exposes saved-views CRUD and transactional bulk user approve/reject endpoints", () => {
   const source = readSource(API);
 
-  assert.match(source, /getSavedViews:\s*\(pageKey: string\)\s*=>\s*api\.get\('\/saved-views',\s*\{\s*params:\s*\{\s*pageKey\s*\}\s*\}\)/);
+  assert.match(source, /getSavedViews:\s*\(pageKey: string\)\s*=>\s*api\.get\(["']\/saved-views["'],\s*\{\s*params:\s*\{\s*pageKey\s*\}\s*\}\)/);
   assert.match(source, /createSavedView:/);
   assert.match(source, /updateSavedView:/);
   assert.match(source, /deleteSavedView:\s*\(id: string\)\s*=>\s*api\.delete\(`\/saved-views\/\$\{id\}`\)/);
 
   assert.match(
     source,
-    /bulkApproveUsers:\s*\(userIds: string\[\]\)\s*=>\s*api\.post\('\/users\/bulk-approve',\s*\{\s*userIds\s*\}\)/,
+    /bulkApproveUsers:\s*\(userIds: string\[\]\)\s*=>\s*api\.post\(["']\/users\/bulk-approve["'],\s*\{\s*userIds\s*\}\)/,
   );
   assert.match(
     source,
-    /bulkRejectUsers:\s*\(userIds: string\[\], reason: string\)\s*=>\s*\n?\s*api\.post\('\/users\/bulk-reject',\s*\{\s*userIds,\s*reason\s*\}\)/,
+    /bulkRejectUsers:\s*\(userIds: string\[\], reason: string\)\s*=>\s*\n?\s*api\.post\(["']\/users\/bulk-reject["'],\s*\{\s*userIds,\s*reason\s*\}\)/,
   );
 });
 

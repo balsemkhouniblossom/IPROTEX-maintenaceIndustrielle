@@ -108,7 +108,7 @@ test("registration page maps email delivery failure and quiets expected API logg
 
   assert.match(pageSource, /REGISTRATION_EMAIL_DELIVERY_FAILED/);
   assert.match(pageSource, /registrationEmailDeliveryFailed/);
-  assert.match(authContextSource, /api\.post\('\/auth\/register',\s*userData,\s*quiet\(/);
+  assert.match(authContextSource, /api\.post\(["']\/auth\/register["'],\s*userData,\s*quiet\(/);
 });
 
 test("unsupported public role is rejected before payload submission", () => {
