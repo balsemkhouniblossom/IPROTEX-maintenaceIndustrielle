@@ -305,6 +305,10 @@ export default function PannesPage() {
     setTimeout(() => setNotification(null), 5000);
   }
 
+  function commonMessage(key: string, fallback: string): string {
+    return tCommon.has(key) ? tCommon(key) : fallback;
+  }
+
   const solutionsByPanne = useMemo(
     () => groupSolutionsByPanne(solutions),
     [solutions],
@@ -651,7 +655,7 @@ export default function PannesPage() {
     const toggleLabel = getToggleLabel(
       expanded,
       panne.solutions.length,
-      tCommon("collapse", { default: "Collapse" }),
+      commonMessage("collapse", "Collapse"),
       tSolutions("title"),
     );
 
@@ -702,7 +706,7 @@ export default function PannesPage() {
     const toggleLabel = getToggleLabel(
       expanded,
       panne.solutions.length,
-      tCommon("collapse", { default: "Collapse" }),
+      commonMessage("collapse", "Collapse"),
       tSolutions("title"),
     );
 
