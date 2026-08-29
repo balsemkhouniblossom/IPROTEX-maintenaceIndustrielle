@@ -29,6 +29,37 @@ const MAX_BATCH_ITEMS = 25;
 const MAX_FIELD_RESULTS = 75;
 const MAX_TEXT_LENGTH = 4000;
 const DEFAULT_SOURCE_LOCALE: SupportedContentLocale = 'en';
+const PROTECTED_TOKEN_FILE_EXTENSIONS = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.zip',
+] as const;
+const PROTECTED_TOKEN_UNITS = new Set([
+  'mm',
+  'cm',
+  'm',
+  'kg',
+  'g',
+  'l',
+  'L',
+  'bar',
+  'psi',
+  'V',
+  'A',
+  'kW',
+  'W',
+  'Hz',
+  'rpm',
+  '\u00b0C',
+  'C',
+]);
 
 const ALLOWED_FIELDS: Record<
   TranslatableEntityType,
@@ -69,40 +100,78 @@ export class DynamicContentTranslationService {
     const results: TranslationResultItem[] = [];
     const seenRequests = new Set<string>();
     for (const item of dto.items) {
-      if (item.entityType !== 'workOrder') {
-        throw new BadRequestException('Unsupported entityType');
-      }
-      this.assertAllowedFields(item.entityType, item.fields);
-      const workOrder = await this.loadAccessibleWorkOrder(
+      const itemResults = await this.translateBatchItem(
         actor,
-        item.entityId,
+        item,
+        sourceLocale,
+        targetLocale,
+        seenRequests,
       );
-      for (const requestField of new Set(item.fields)) {
-        const requestKey = `${item.entityType}:${workOrder._id.toString()}:${requestField}`;
-        if (seenRequests.has(requestKey)) continue;
-        seenRequests.add(requestKey);
-
-        const extracted = this.extractWorkOrderField(workOrder, requestField);
-        for (const fieldValue of extracted) {
-          if (results.length >= MAX_FIELD_RESULTS) {
-            throw new BadRequestException(
-              `Translation field result limit is ${MAX_FIELD_RESULTS}`,
-            );
-          }
-          const result = await this.translateField({
-            entityType: 'workOrder',
-            entityId: workOrder._id.toString(),
-            field: fieldValue.field,
-            originalText: fieldValue.text,
-            sourceLocale,
-            targetLocale,
-          });
-          results.push(result);
+      for (const result of itemResults) {
+        if (results.length >= MAX_FIELD_RESULTS) {
+          throw new BadRequestException(
+            `Translation field result limit is ${MAX_FIELD_RESULTS}`,
+          );
         }
+        results.push(result);
       }
     }
 
     return { items: results };
+  }
+
+  private async translateBatchItem(
+    actor: TranslationActor,
+    item: BatchTranslationDto['items'][number],
+    sourceLocale: SupportedContentLocale,
+    targetLocale: SupportedContentLocale,
+    seenRequests: Set<string>,
+  ): Promise<TranslationResultItem[]> {
+    if (item.entityType !== 'workOrder') {
+      throw new BadRequestException('Unsupported entityType');
+    }
+    this.assertAllowedFields(item.entityType, item.fields);
+    const workOrder = await this.loadAccessibleWorkOrder(actor, item.entityId);
+
+    const results: TranslationResultItem[] = [];
+    for (const requestField of new Set(item.fields)) {
+      const requestKey = `${item.entityType}:${workOrder._id.toString()}:${requestField}`;
+      if (seenRequests.has(requestKey)) continue;
+      seenRequests.add(requestKey);
+
+      const fieldResults = await this.translateExtractedFields(
+        workOrder,
+        requestField,
+        sourceLocale,
+        targetLocale,
+      );
+      results.push(...fieldResults);
+    }
+    return results;
+  }
+
+  private async translateExtractedFields(
+    workOrder: WorkOrderDocument,
+    requestField: WorkOrderTranslatableField,
+    sourceLocale: SupportedContentLocale,
+    targetLocale: SupportedContentLocale,
+  ): Promise<TranslationResultItem[]> {
+    const results: TranslationResultItem[] = [];
+    const entityId = workOrder._id.toString();
+    const extracted = this.extractWorkOrderField(workOrder, requestField);
+    for (const fieldValue of extracted) {
+      results.push(
+        await this.translateField({
+          entityType: 'workOrder',
+          entityId,
+          field: fieldValue.field,
+          originalText: fieldValue.text,
+          sourceLocale,
+          targetLocale,
+        }),
+      );
+    }
+    return results;
   }
 
   private assertLocale(value: string, field: string): SupportedContentLocale {
@@ -254,9 +323,9 @@ export class DynamicContentTranslationService {
       return this.result(input, originalText, 'translated', translated);
     } catch (error) {
       this.logger.warn(
-        `Dynamic translation fallback for ${input.entityType}/${input.entityId}/${input.field}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `Dynamic translation fallback for ${input.entityType}/${input.entityId}/${input.field}: ${errorToLogMessage(
+          error,
+        )}`,
       );
       return this.result(input, originalText, 'fallback', {
         translatedText: originalText,
@@ -320,7 +389,7 @@ export class DynamicContentTranslationService {
   private referenceToString(value: unknown): string {
     if (!value) return '';
     if (typeof value === 'string') return value;
-    if (value instanceof Types.ObjectId) return value.toString();
+    if (value instanceof Types.ObjectId) return value.toHexString();
     if (typeof value === 'object' && '_id' in value) {
       return this.referenceToString((value as { _id?: unknown })._id);
     }
@@ -332,18 +401,121 @@ function hashSource(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function errorToLogMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (typeof error === 'number') return error.toString();
+  if (typeof error === 'boolean') return error ? 'true' : 'false';
+  if (typeof error === 'bigint') return error.toString();
+  return 'Unknown dynamic translation error';
+}
+
 function extractProtectedTokens(text: string): string[] {
-  const patterns = [
-    /\b[A-Z]{2,}[-_A-Z0-9]*\b/g,
-    /\b[A-Z]+-\d+[A-Z0-9-]*\b/g,
-    /\b\d+(?:[.,]\d+)?\s?(?:mm|cm|m|kg|g|l|L|bar|psi|V|A|kW|W|Hz|rpm|°C|C)\b/g,
-    /https?:\/\/\S+/g,
-    /\b[\w.-]+@[\w.-]+\.\w+\b/g,
-    /\b[\w.-]+\.(?:pdf|docx?|xlsx?|png|jpe?g|webp|zip)\b/gi,
-  ];
-  return Array.from(
-    new Set(patterns.flatMap((pattern) => text.match(pattern) ?? [])),
+  const tokens = new Set<string>();
+  const words = text.split(/\s+/);
+  for (let index = 0; index < words.length; index += 1) {
+    const word = trimToken(words[index]);
+    if (!word) continue;
+    collectStandaloneProtectedToken(tokens, word);
+
+    const nextWord = trimToken(words[index + 1] ?? '');
+    if (isMeasurementToken(word, nextWord)) {
+      tokens.add(`${word} ${nextWord}`);
+    }
+  }
+  return Array.from(tokens);
+}
+
+function collectStandaloneProtectedToken(tokens: Set<string>, word: string) {
+  if (
+    isUppercaseCodeToken(word) ||
+    isUrlToken(word) ||
+    isEmailToken(word) ||
+    isFileToken(word)
+  ) {
+    tokens.add(word);
+  }
+}
+
+function trimToken(value: string): string {
+  const trimCharacters = '.,;:!?()[]{}<>"\'';
+  let start = 0;
+  let end = value.length;
+  while (start < end && trimCharacters.includes(value[start])) {
+    start += 1;
+  }
+  while (end > start && trimCharacters.includes(value[end - 1])) {
+    end -= 1;
+  }
+  return value.slice(start, end);
+}
+
+function isUppercaseCodeToken(value: string): boolean {
+  if (value.length < 2 || !isUppercaseAscii(value[0])) return false;
+  let uppercaseCount = 0;
+  for (const character of value) {
+    if (isUppercaseAscii(character)) {
+      uppercaseCount += 1;
+      continue;
+    }
+    if (!isDigit(character) && character !== '-' && character !== '_') {
+      return false;
+    }
+  }
+  return uppercaseCount >= 2;
+}
+
+function isMeasurementToken(value: string, unit: string): boolean {
+  return PROTECTED_TOKEN_UNITS.has(unit) && isDecimalNumber(value);
+}
+
+function isUrlToken(value: string): boolean {
+  return value.startsWith('http://') || value.startsWith('https://');
+}
+
+function isEmailToken(value: string): boolean {
+  const atIndex = value.indexOf('@');
+  const dotIndex = value.lastIndexOf('.');
+  return atIndex > 0 && dotIndex > atIndex + 1 && dotIndex < value.length - 1;
+}
+
+function isFileToken(value: string): boolean {
+  const lowerValue = value.toLowerCase();
+  return PROTECTED_TOKEN_FILE_EXTENSIONS.some((extension) =>
+    lowerValue.endsWith(extension),
   );
+}
+
+function isDecimalNumber(value: string): boolean {
+  if (!value) return false;
+  const decimalSeparator = value.includes(',') ? ',' : '.';
+  const parts = value.split(decimalSeparator);
+  if (parts.length > 2) return false;
+  return parts.every(
+    (part) => part.length > 0 && everyCharacter(part, isDigit),
+  );
+}
+
+function isUppercaseAscii(value: string): boolean {
+  const code = value.codePointAt(0);
+  if (code === undefined) return false;
+  return code >= 65 && code <= 90;
+}
+
+function isDigit(value: string): boolean {
+  const code = value.codePointAt(0);
+  if (code === undefined) return false;
+  return code >= 48 && code <= 57;
+}
+
+function everyCharacter(
+  value: string,
+  predicate: (character: string) => boolean,
+): boolean {
+  for (const character of value) {
+    if (!predicate(character)) return false;
+  }
+  return true;
 }
 
 function isValidTranslation(
