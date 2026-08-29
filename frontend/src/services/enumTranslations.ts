@@ -26,7 +26,7 @@ export function normalizeEnumValue(value: unknown): string {
     .trim()
     .replace(/([a-z])([A-Z])/g, '$1_$2')
     .replace(/[\s-]+/g, '_')
-    .replace(/[^A-Za-z0-9_]/g, '')
+    .replace(/\W/g, '')
     .replace(/_+/g, '_')
     .toLowerCase();
 

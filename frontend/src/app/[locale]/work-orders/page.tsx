@@ -6,11 +6,14 @@ import { Modal } from "@/components/Modal";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import Pagination from "@/components/Pagination";
 import { StatusBadge } from "@/components/StatusBadge";
-import { VirtualizedDataTable, DataTableColumn } from "@/components/VirtualizedDataTable";
-import { SavedViewsBar, SavedView } from "@/components/SavedViewsBar";
+import {
+  type DataTableColumn,
+  VirtualizedDataTable,
+} from "@/components/VirtualizedDataTable";
+import { type SavedView, SavedViewsBar } from "@/components/SavedViewsBar";
 import { apiService } from "@/services/api";
 import { extractApiErrorMessage } from "@/services/apiErrors";
-import { useServerTable, ServerTableQuery } from "@/hooks/useServerTable";
+import { type ServerTableQuery, useServerTable } from "@/hooks/useServerTable";
 import { invalidateList, LIST_EVENTS, useListInvalidation } from "@/services/listInvalidation";
 import {
   PencilIcon,
@@ -22,8 +25,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { translateEnumValue } from "@/services/enumTranslations";
 import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";

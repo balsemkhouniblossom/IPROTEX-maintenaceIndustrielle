@@ -1,4 +1,10 @@
-import { Body, Controller, ForbiddenException, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Post,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthenticatedRoles } from '../auth/decorators/roles.decorator';
 import { DynamicContentTranslationService } from './dynamic-content-translation.service';

@@ -9,14 +9,18 @@ export const SUPPORTED_CONTENT_LOCALES = [
 
 export type SupportedContentLocale = (typeof SUPPORTED_CONTENT_LOCALES)[number];
 
-export type TranslatableEntityType = 'workOrder';
+export const TRANSLATABLE_ENTITY_TYPES = ['workOrder'] as const;
+
+export type TranslatableEntityType = (typeof TRANSLATABLE_ENTITY_TYPES)[number];
+
+export const WORK_ORDER_TRANSLATABLE_FIELDS = [
+  'description',
+  'reschedule_reason',
+  'lifecycle_history.reason',
+] as const;
 
 export type WorkOrderTranslatableField =
-  | 'description'
-  | 'reschedule_reason'
-  | 'lifecycle_history.reason';
-
-export type TranslatableField = WorkOrderTranslatableField;
+  (typeof WORK_ORDER_TRANSLATABLE_FIELDS)[number];
 
 export type TranslationActor = {
   userId: string;

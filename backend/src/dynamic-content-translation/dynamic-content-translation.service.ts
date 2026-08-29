@@ -17,9 +17,11 @@ import { BatchTranslationDto } from './dto/batch-translation.dto';
 import {
   SupportedContentLocale,
   SUPPORTED_CONTENT_LOCALES,
-  TranslatableField,
+  TranslatableEntityType,
   TranslationActor,
   TranslationResultItem,
+  WorkOrderTranslatableField,
+  WORK_ORDER_TRANSLATABLE_FIELDS,
 } from './dynamic-content-translation.types';
 import { GeminiDynamicTranslationProvider } from './dynamic-translation.provider';
 
@@ -28,8 +30,11 @@ const MAX_FIELD_RESULTS = 75;
 const MAX_TEXT_LENGTH = 4000;
 const DEFAULT_SOURCE_LOCALE: SupportedContentLocale = 'en';
 
-const ALLOWED_FIELDS: Record<string, readonly TranslatableField[]> = {
-  workOrder: ['description', 'reschedule_reason', 'lifecycle_history.reason'],
+const ALLOWED_FIELDS: Record<
+  TranslatableEntityType,
+  readonly WorkOrderTranslatableField[]
+> = {
+  workOrder: WORK_ORDER_TRANSLATABLE_FIELDS,
 };
 
 @Injectable()
@@ -108,12 +113,12 @@ export class DynamicContentTranslationService {
   }
 
   private assertAllowedFields(
-    entityType: string,
+    entityType: TranslatableEntityType,
     fields: readonly string[],
   ): void {
     const allowed = ALLOWED_FIELDS[entityType] ?? [];
     for (const field of fields) {
-      if (!allowed.includes(field as TranslatableField)) {
+      if (!allowed.includes(field as WorkOrderTranslatableField)) {
         throw new BadRequestException(`Field "${field}" is not translatable`);
       }
     }
@@ -140,7 +145,7 @@ export class DynamicContentTranslationService {
 
   private extractWorkOrderField(
     workOrder: WorkOrderDocument,
-    field: TranslatableField,
+    field: WorkOrderTranslatableField,
   ): Array<{ field: string; text: string }> {
     if (field === 'description') {
       return typeof workOrder.description === 'string' &&

@@ -16,9 +16,7 @@ const TRANSLATION_RESPONSE_SCHEMA = {
 } as const;
 
 @Injectable()
-export class GeminiDynamicTranslationProvider
-  implements DynamicTranslationProvider
-{
+export class GeminiDynamicTranslationProvider implements DynamicTranslationProvider {
   readonly name = 'gemini';
   private readonly client?: GoogleGenAI;
   private readonly model?: string;
@@ -62,7 +60,10 @@ export class GeminiDynamicTranslationProvider
     const text = extractJsonText(response.text);
     if (!text) throw new Error('Gemini returned no translation text');
     const parsed = JSON.parse(text) as { translatedText?: unknown };
-    if (typeof parsed.translatedText !== 'string' || !parsed.translatedText.trim()) {
+    if (
+      typeof parsed.translatedText !== 'string' ||
+      !parsed.translatedText.trim()
+    ) {
       throw new Error('Gemini returned malformed translation data');
     }
 

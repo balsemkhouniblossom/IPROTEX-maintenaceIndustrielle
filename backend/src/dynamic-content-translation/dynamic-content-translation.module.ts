@@ -19,6 +19,9 @@ import { GeminiDynamicTranslationProvider } from './dynamic-translation.provider
     ]),
   ],
   controllers: [DynamicContentTranslationController],
-  providers: [DynamicContentTranslationService, GeminiDynamicTranslationProvider],
+  providers: [
+    DynamicContentTranslationService,
+    GeminiDynamicTranslationProvider,
+  ],
 })
 export class DynamicContentTranslationModule {}

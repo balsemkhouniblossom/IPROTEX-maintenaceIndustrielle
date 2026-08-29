@@ -171,6 +171,24 @@ function getSolutionPanneDisplayValue(
   return getPanneLabel(fallbackPanneId);
 }
 
+function getPanneEmptyMessage(
+  searchTerm: string,
+  searchEmptyLabel: string,
+  defaultEmptyLabel: string,
+): string {
+  if (searchTerm) return searchEmptyLabel;
+  return defaultEmptyLabel;
+}
+
+function getModalTitle(
+  editing: boolean,
+  editLabel: string,
+  addLabel: string,
+): string {
+  if (editing) return editLabel;
+  return addLabel;
+}
+
 function getSolutionIdOptions(solutionPanne: Panne | null) {
   if (!solutionPanne) return [];
 
@@ -758,13 +776,21 @@ export default function PannesPage() {
   } else if (editingSolution) {
     solutionSubmitLabel = tCommon("actions.update");
   }
-  const panneEmptyMessage = searchTerm
-    ? t("empty.search")
-    : t("empty.default");
-  const panneModalTitle = editingPanne ? t("modal.edit") : t("modal.add");
-  const solutionModalTitle = editingSolution
-    ? tSolutions("modal.edit")
-    : tSolutions("modal.add");
+  const panneEmptyMessage = getPanneEmptyMessage(
+    searchTerm,
+    t("empty.search"),
+    t("empty.default"),
+  );
+  const panneModalTitle = getModalTitle(
+    Boolean(editingPanne),
+    t("modal.edit"),
+    t("modal.add"),
+  );
+  const solutionModalTitle = getModalTitle(
+    Boolean(editingSolution),
+    tSolutions("modal.edit"),
+    tSolutions("modal.add"),
+  );
   const solutionPanneDisplayValue = getSolutionPanneDisplayValue(
     solutionPanne,
     solutionFormData.panne_id,

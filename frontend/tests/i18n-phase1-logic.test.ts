@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { normalizeEnumValue } from "../src/services/enumTranslations.ts";
 
 const LOCALES = ["en", "fr", "ar", "es", "de", "it"] as const;
 const compareStrings = (left: string, right: string): number => left.localeCompare(right);
@@ -100,6 +101,15 @@ test("shared database enum display mappings exist in every locale", () => {
       assert.equal(typeof leaf(messages, `common.enums.${key}`), "string", `${locale}.json common.enums.${key} must be translated`);
     }
   }
+});
+
+test("enum value normalization keeps aliases, camelCase, punctuation, and blanks stable", () => {
+  assert.equal(normalizeEnumValue("waitingForValidation"), "waiting_validation");
+  assert.equal(normalizeEnumValue("pending-validation"), "waiting_validation");
+  assert.equal(normalizeEnumValue("administrator"), "admin");
+  assert.equal(normalizeEnumValue("wait parts"), "waiting_parts");
+  assert.equal(normalizeEnumValue("High!"), "high");
+  assert.equal(normalizeEnumValue(null), "");
 });
 
 test("important visible hardcoded text is not rendered directly in protected interfaces", () => {

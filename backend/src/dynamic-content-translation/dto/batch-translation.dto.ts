@@ -9,12 +9,14 @@ import {
 import { Type } from 'class-transformer';
 import {
   SUPPORTED_CONTENT_LOCALES,
+  TRANSLATABLE_ENTITY_TYPES,
   TranslatableEntityType,
-  TranslatableField,
+  WorkOrderTranslatableField,
+  WORK_ORDER_TRANSLATABLE_FIELDS,
 } from '../dynamic-content-translation.types';
 
 export class BatchTranslationItemDto {
-  @IsIn(['workOrder'])
+  @IsIn(TRANSLATABLE_ENTITY_TYPES)
   entityType: TranslatableEntityType;
 
   @IsString()
@@ -22,10 +24,10 @@ export class BatchTranslationItemDto {
 
   @IsArray()
   @ArrayMaxSize(3)
-  @IsIn(['description', 'reschedule_reason', 'lifecycle_history.reason'], {
+  @IsIn(WORK_ORDER_TRANSLATABLE_FIELDS, {
     each: true,
   })
-  fields: TranslatableField[];
+  fields: WorkOrderTranslatableField[];
 }
 
 export class BatchTranslationDto {
