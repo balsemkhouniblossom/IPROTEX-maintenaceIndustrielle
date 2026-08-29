@@ -2137,10 +2137,10 @@
   "pannes": {
     "title": "Pannes",
     "heading": "Gestion des pannes",
-    "description": "Creer, modifier et suivre les enregistrements de pannes.",
+    "description": "Creer, modifier et suivre les pannes avec leurs causes probables et solutions recommandees.",
     "totalPannes": "Total des pannes",
     "allPannes": "Toutes les pannes",
-    "searchPlaceholder": "Rechercher par identifiant, code, description ou gravite...",
+    "searchPlaceholder": "Rechercher par identifiant, code, description, gravite, cause ou solution...",
     "actions": {
       "add": "Ajouter une panne",
       "edit": "Modifier",

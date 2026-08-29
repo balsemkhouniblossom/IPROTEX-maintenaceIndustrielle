@@ -2001,10 +2001,10 @@
   "pannes": {
     "title": "Guasti",
     "heading": "Gestione guasti",
-    "description": "Crea, aggiorna e monitora i record dei guasti.",
+    "description": "Crea, aggiorna e monitora guasti con cause probabili e soluzioni raccomandate.",
     "totalPannes": "Totale guasti",
     "allPannes": "Tutti i guasti",
-    "searchPlaceholder": "Cerca per ID guasto, codice, descrizione o gravita...",
+    "searchPlaceholder": "Cerca per ID guasto, codice, descrizione, gravita, causa o soluzione...",
     "actions": {
       "add": "Aggiungi guasto",
       "edit": "Modifica",

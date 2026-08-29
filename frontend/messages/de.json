@@ -2155,10 +2155,10 @@
   "pannes": {
     "title": "Stoerungen",
     "heading": "Stoerungsverwaltung",
-    "description": "Stoerungseintraege erstellen, aktualisieren und verfolgen.",
+    "description": "Stoerungen mit wahrscheinlichen Ursachen und empfohlenen Loesungen erstellen, aktualisieren und verfolgen.",
     "totalPannes": "Gesamtstoerungen",
     "allPannes": "Alle Stoerungen",
-    "searchPlaceholder": "Nach Stoerungs-ID, Code, Beschreibung oder Schwere suchen...",
+    "searchPlaceholder": "Nach Stoerungs-ID, Code, Beschreibung, Schwere, Ursache oder Loesung suchen...",
     "actions": {
       "add": "Stoerung hinzufuegen",
       "edit": "Bearbeiten",

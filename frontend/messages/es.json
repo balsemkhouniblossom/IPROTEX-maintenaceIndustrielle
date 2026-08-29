@@ -2001,10 +2001,10 @@
   "pannes": {
     "title": "Averias",
     "heading": "Gestion de averias",
-    "description": "Crear, actualizar y dar seguimiento a registros de averias.",
+    "description": "Crear, actualizar y seguir averias con sus causas probables y soluciones recomendadas.",
     "totalPannes": "Total de averias",
     "allPannes": "Todas las averias",
-    "searchPlaceholder": "Buscar por ID de averia, codigo, descripcion o gravedad...",
+    "searchPlaceholder": "Buscar por ID de averia, codigo, descripcion, gravedad, causa o solucion...",
     "actions": {
       "add": "Agregar averia",
       "edit": "Editar",

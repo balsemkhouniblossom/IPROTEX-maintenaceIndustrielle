@@ -2154,11 +2154,11 @@
   },
   "pannes": {
     "title": "Pannes",
-    "heading": "Pannes Management",
-    "description": "Create, update, and track panne records.",
+    "heading": "Failures Management",
+    "description": "Create, update, and track pannes with their probable causes and recommended solutions.",
     "totalPannes": "Total Pannes",
     "allPannes": "All Pannes",
-    "searchPlaceholder": "Search by panne ID, code, description, or severity...",
+    "searchPlaceholder": "Search by panne ID, code, description, severity, cause, or solution...",
     "actions": {
       "add": "Add Panne",
       "edit": "Edit",
