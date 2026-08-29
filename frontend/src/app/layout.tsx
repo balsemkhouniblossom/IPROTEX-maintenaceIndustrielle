@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { cookies } from "next/headers";
 import { getLocale } from "next-intl/server";
 import "./globals.css";
@@ -66,10 +65,13 @@ export default async function RootLayout({
       data-theme-preference={themePreference}
       style={initialTheme ? { colorScheme: initialTheme } : undefined}
     >
+      <head>
+        <script
+          id="theme-init"
+          dangerouslySetInnerHTML={{ __html: buildThemeInitScript() }}
+        />
+      </head>
       <body>
-        <Script id="theme-init" strategy="beforeInteractive">
-          {buildThemeInitScript()}
-        </Script>
         <ThemeProvider>
           <AuthProvider>
             {children}

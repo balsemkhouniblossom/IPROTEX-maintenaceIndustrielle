@@ -18,6 +18,8 @@ import { apiService } from "@/services/api";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
+import { translateEnumValue } from "@/services/enumTranslations";
+import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
 
 type Detail = {
   workOrder: any;
@@ -281,12 +283,18 @@ function WorkOrderSummarySection({
   reportOwner,
   locale,
   t,
+  tEnums,
+  description,
+  automaticallyTranslated,
 }: Readonly<{
   workOrder: any;
   status: string;
   reportOwner: ReportOwner | undefined;
   locale: string;
   t: TechnicianTranslator;
+  tEnums: TechnicianTranslator;
+  description: string;
+  automaticallyTranslated: boolean;
 }>) {
   const statusKey = `status.${status}`;
 
@@ -295,20 +303,30 @@ function WorkOrderSummarySection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold">{workOrder.ot_id}</h2>
-          <p>{workOrder.description || t("notAvailable")}</p>
+          <p>
+            {description || t("notAvailable")}
+            {automaticallyTranslated ? (
+              <span
+                className="ms-1 text-xs text-amber-700"
+                title={t("dynamicTranslations.safetyNotice")}
+              >
+                {t("dynamicTranslations.auto")}
+              </span>
+            ) : null}
+          </p>
         </div>
         <span className="rounded-full bg-sky-100 px-3 py-1 text-sm text-sky-800">
-          {t.has(statusKey) ? t(statusKey) : status}
+          {t.has(statusKey) ? t(statusKey) : translateEnumValue(tEnums, 'workOrderStatuses', status)}
         </span>
       </div>
       <dl className="mt-4 grid gap-3 text-sm md:grid-cols-4">
         <div>
           <dt className="text-slate-500">{t("fields.type")}</dt>
-          <dd>{workOrder.type_maintenance || "â€”"}</dd>
+          <dd>{translateEnumValue(tEnums, 'maintenanceTypes', workOrder.type_maintenance) || "â€”"}</dd>
         </div>
         <div>
           <dt className="text-slate-500">{t("fields.priority")}</dt>
-          <dd>{workOrder.priorite || "â€”"}</dd>
+          <dd>{translateEnumValue(tEnums, 'priorities', workOrder.priorite) || "â€”"}</dd>
         </div>
         <div>
           <dt className="text-slate-500">{t("fields.created")}</dt>
@@ -611,6 +629,7 @@ function ManualsSection({
 
 function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
+  const tEnums = useTranslations("common.enums");
   const locale = useLocale();
   const [detail, setDetail] = useState<Detail>();
   const [available, setAvailable] = useState<AvailablePart[]>([]);
@@ -650,6 +669,10 @@ function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) 
   useEffect(() => {
     void load();
   }, [load]);
+  const dynamicTranslations = useWorkOrderDynamicTranslations(
+    detail?.workOrder ? [detail.workOrder] : [],
+    locale,
+  );
   const act = async (action: () => Promise<unknown>) => {
     if (saving) return;
     try {
@@ -709,7 +732,34 @@ function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) 
             reportOwner={reportOwner}
             locale={locale}
             t={t}
+            tEnums={tEnums}
+            description={dynamicTranslations.textFor(
+              wo._id,
+              "description",
+              wo.description,
+            )}
+            automaticallyTranslated={dynamicTranslations.isAutomaticallyTranslated(
+              wo._id,
+              "description",
+            )}
           />
+          {dynamicTranslations.hasTranslationLocale ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-2 text-sm text-amber-700"
+                onClick={() =>
+                  dynamicTranslations.setShowOriginal(
+                    !dynamicTranslations.showOriginal,
+                  )
+                }
+              >
+                {dynamicTranslations.showOriginal
+                  ? t("dynamicTranslations.showTranslation")
+                  : t("dynamicTranslations.showOriginal")}
+              </button>
+            </div>
+          ) : null}
           <KnowledgeSuggestions
             machineId={machine?._id}
             faultCode={wo.code_panne}

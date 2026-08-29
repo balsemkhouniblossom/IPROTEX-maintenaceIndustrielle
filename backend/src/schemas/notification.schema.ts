@@ -48,6 +48,12 @@ export class Notification {
   @Prop()
   message?: string;
 
+  @Prop()
+  translationKey?: string;
+
+  @Prop({ type: Object })
+  translationParams?: Record<string, string | number | boolean | null>;
+
   @Prop({ type: Types.ObjectId, ref: 'User' })
   recipient_user_id?: Types.ObjectId;
 

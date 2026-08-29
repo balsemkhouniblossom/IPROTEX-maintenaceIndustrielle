@@ -25,7 +25,14 @@
     "ar": "العربية",
     "es": "Español",
     "de": "Deutsch",
-    "it": "Italiano"
+    "it": "Italiano",
+    "theme": {
+      "dark": "Oscuro",
+      "label": "Tema",
+      "light": "Claro",
+      "toggleToDark": "Cambiar al modo oscuro",
+      "toggleToLight": "Cambiar al modo claro"
+    }
   },
   "auth": {
     "signIn": "Anmelden",
@@ -146,7 +153,8 @@
     "completeProfileLanguage": "Sprache",
     "completeProfileRequestedRole": "Angeforderte Rolle",
     "showPassword": "Passwort anzeigen",
-    "hidePassword": "Passwort ausblenden"
+    "hidePassword": "Passwort ausblenden",
+    "saving": "Saving..."
   },
   "dashboard": {
     "status": {
@@ -162,7 +170,11 @@
       },
       "systemOnlineKey": "systemOnline",
       "loadingKey": "loading",
-      "pendingMaintenanceKey": "pendingMaintenance"
+      "pendingMaintenanceKey": "pendingMaintenance",
+      "percentageChange": {
+        "negative": "{{value}}% from last month",
+        "positive": "+{{value}}% from last month"
+      }
     },
     "welcome": "Willkommen",
     "logout": "Abmelden",
@@ -186,7 +198,10 @@
         "dueToday": "Heute faellig",
         "waitingValidation": "Wartet auf Freigabe",
         "completedTodayLabel": "Heute abgeschlossen",
-        "completionRateHint": "Praeventive Wartung rechtzeitig oder vor Faelligkeit abgeschlossen"
+        "completionRateHint": "Praeventive Wartung rechtzeitig oder vor Faelligkeit abgeschlossen",
+        "completed": "مكتملة",
+        "inProgress": "قيد التنفيذ",
+        "pending": "قيد الانتظار"
       },
       "quickKpis": {
         "title": "Schnell-KPIs",
@@ -198,7 +213,10 @@
         "correctiveResponseTime": "Reaktionszeit bei Korrekturmassnahmen",
         "mttr": "MTTR (mittlere Reparaturzeit)",
         "mtbf": "MTBF (mittlere Zeit zwischen Ausfaellen)",
-        "hoursValue": "{hours} Std."
+        "hoursValue": "{hours} Std.",
+        "systemHealth": "حالة النظام",
+        "userActivity": "نشاط المستخدمين",
+        "workOrderCompletion": "إتمام أوامر العمل"
       },
       "stats": {
         "totalMachines": "Maschinen gesamt",
@@ -329,7 +347,10 @@
         "noScheduledItems": "Keine Eintraege im aktuellen Zeitraum geplant.",
         "noPriority": "Normal",
         "dueAt": "Faellig am",
-        "openManual": "Handbuch oeffnen"
+        "openManual": "Handbuch oeffnen",
+        "aiAssistantSubtitle": "Ask the assistant for help with the current machine or task. It is advisory only and will not modify work orders.",
+        "aiAssistantTitle": "Maintenance AI Assistant",
+        "startMaintenance": "Start Maintenance"
       },
       "shift": {
         "morning": "Fruehschicht",
@@ -369,7 +390,10 @@
         "manuals": "Maschinenhandbücher",
         "reports": "Meine Wartungsberichte",
         "myReports": "Meine Wartungsberichte",
-        "smartCalendar": "Intelligenter Kalender"
+        "smartCalendar": "Intelligenter Kalender",
+        "reportIssue": "Reportar un problema",
+        "viewCorrective": "Ver mantenimiento correctivo",
+        "viewPreventive": "Ver mantenimiento preventivo"
       },
       "health": {
         "title": "Systemzustand",
@@ -563,7 +587,41 @@
         "startTaskAction": "Aufgabe starten",
         "continueAction": "Fortsetzen",
         "viewDetailsAction": "Details anzeigen",
-        "operatorFlowNote": "Der Operator-Ablauf ist voll automatisiert: auswaehlen, pruefen, abschliessen. Planung, Berichtserzeugung, Erinnerungen und naechste Faelligkeit laufen automatisch."
+        "operatorFlowNote": "Der Operator-Ablauf ist voll automatisiert: auswaehlen, pruefen, abschliessen. Planung, Berichtserzeugung, Erinnerungen und naechste Faelligkeit laufen automatisch.",
+        "lifecycle": {
+          "actualExecutionDate": "Date réelle d'exécution",
+          "alreadyScheduled": "Cette tâche est déjà planifiée.",
+          "completed": "Terminé",
+          "dueSoon": "Bientôt dû",
+          "dueToday": "Dû aujourd'hui",
+          "duplicateOccurrence": "Une occurrence en double existe déjà.",
+          "inProgress": "En cours",
+          "invalidPlanForMachine": "Ce plan de maintenance ne s'applique pas à la machine sélectionnée.",
+          "lastCompleted": "Dernière réalisation",
+          "newDueDate": "Nouvelle échéance",
+          "nextDue": "Prochaine échéance",
+          "nextOccurrenceCreated": "Occurrence suivante créée",
+          "noDueDate": "Aucune date d'échéance",
+          "notScheduled": "Pas encore planifié",
+          "originalDueDate": "Échéance initiale",
+          "overdue": "En retard",
+          "performToday": "Effectuer aujourd'hui",
+          "preventivePlan": "Plan préventif",
+          "reschedule": "Replanifier",
+          "rescheduleSuccess": "L'occurrence a été replanifiée.",
+          "rescheduledAt": "Replanifié le",
+          "rescheduledBy": "Replanifié par",
+          "reschedulingReason": "Motif de replanification",
+          "returned": "Retourné",
+          "scheduleCreated": "La première date d'intervention a été planifiée.",
+          "scheduled": "Planifié",
+          "scheduledOccurrences": "Occurrences planifiées",
+          "setFirstInterventionDate": "Définir la première date d'intervention",
+          "taskAlreadySubmitted": "Cette intervention a déjà été soumise.",
+          "technicianValidationRequired": "Validation technicien requise",
+          "upcoming": "À venir",
+          "waitingValidation": "En attente de validation"
+        }
       },
       "module": "Modul"
     },
@@ -618,7 +676,19 @@
         "sixHoursAgo": "vor 6 Stunden",
         "eightHoursAgo": "vor 8 Stunden"
       }
-    }
+    },
+    "assigned": "مسندة",
+    "completed": "مكتملة",
+    "correctiveMaintenance": "الصيانة التصحيحية",
+    "inProgress": "قيد التنفيذ",
+    "machineCategories": "فئات الآلات",
+    "machineManuals": "أدلة الآلات",
+    "myReports": "تقارير الصيانة الخاصة بي",
+    "preventiveMaintenance": "الصيانة الوقائية",
+    "quickActions": "الإجراءات السريعة",
+    "reportProblem": "الإبلاغ عن مشكلة",
+    "viewMachines": "عرض الآلات",
+    "waitingValidation": "في انتظار التحقق"
   },
   "catalogues": {
     "pageTitle": "Teilekatalog",
@@ -701,7 +771,8 @@
       "location": "Standort",
       "stockQuantity": "Lagerbestand",
       "minimumStock": "Mindestbestand",
-      "partCode": "Teilecode"
+      "partCode": "Teilecode",
+      "manufacturerRef": "Référence fabricant"
     },
     "validation": {
       "partIdRequired": "Teile-ID ist erforderlich",
@@ -752,7 +823,8 @@
     "confirm": "Bestätigen",
     "table": {
       "actions": "Aktionen",
-      "noData": "Keine Daten verfügbar"
+      "noData": "Keine Daten verfügbar",
+      "allFields": "All Fields"
     },
     "auth": {
       "logout": "Abmelden"
@@ -762,7 +834,8 @@
       "light": "Hell",
       "dark": "Dunkel",
       "toggleToLight": "Zum hellen Modus wechseln",
-      "toggleToDark": "Zum dunklen Modus wechseln"
+      "toggleToDark": "Zum dunklen Modus wechseln",
+      "smartMaintenanceCalendar": "Calendrier intelligent de maintenance"
     },
     "status": {
       "pending": "Ausstehend",
@@ -777,7 +850,9 @@
       "error": "Fehler"
     },
     "time": {
-      "justNow": "Gerade eben"
+      "justNow": "Gerade eben",
+      "daysAgo": "منذ {count} يوم",
+      "hoursAgo": "منذ {count} ساعة"
     },
     "systemOnline": "System online",
     "percentageChangeFromLastMonth": {
@@ -792,7 +867,18 @@
       "create": "Erstellen",
       "update": "Aktualisieren",
       "search": "Suchen",
-      "saving": "Wird gespeichert..."
+      "saving": "Wird gespeichert...",
+      "actions": "Actions",
+      "add": "إضافة",
+      "back": "رجوع",
+      "close": "إغلاق",
+      "confirm": "تأكيد",
+      "delete": "Delete",
+      "edit": "Edit",
+      "next": "التالي",
+      "previous": "السابق",
+      "save": "حفظ",
+      "smartMaintenanceCalendar": "تقويم الصيانة الذكي"
     },
     "skipToContent": "Zum Hauptinhalt springen",
     "offlineBanner": "Sie sind offline. Einige Funktionen funktionieren moeglicherweise erst wieder, wenn die Verbindung wiederhergestellt ist.",
@@ -806,6 +892,105 @@
       "namePlaceholder": "Name der Ansicht",
       "empty": "Noch keine gespeicherten Ansichten.",
       "delete": "Ansicht loeschen"
+    },
+    "enums": {
+      "roles": {
+        "admin": "Administrator",
+        "technician": "Techniker",
+        "operator": "Bediener"
+      },
+      "permissions": {
+        "read": "Lesen",
+        "create": "Erstellen",
+        "update": "Aktualisieren",
+        "delete": "Loschen",
+        "approve": "Genehmigen",
+        "reject": "Ablehnen",
+        "export": "Exportieren",
+        "manage": "Verwalten"
+      },
+      "workOrderStatuses": {
+        "pending": "Ausstehend",
+        "assigned": "Zugewiesen",
+        "in_progress": "In Bearbeitung",
+        "waiting_parts": "Wartet auf Teile",
+        "waiting_validation": "Wartet auf Validierung",
+        "technician_required": "Techniker erforderlich",
+        "returned": "Zuruckgegeben",
+        "completed": "Abgeschlossen",
+        "validated": "Validiert",
+        "cancelled": "Storniert",
+        "canceled": "Storniert",
+        "closed": "Geschlossen"
+      },
+      "priorities": {
+        "urgent": "Dringend",
+        "high": "Hoch",
+        "medium": "Mittel",
+        "low": "Niedrig"
+      },
+      "maintenanceTypes": {
+        "preventive": "Vorbeugend",
+        "corrective": "Korrektiv",
+        "predictive": "Pradiktiv",
+        "inspection": "Inspektion",
+        "lubrication": "Schmierung"
+      },
+      "machineStates": {
+        "operational": "Betriebsbereit",
+        "running": "Lauft",
+        "stopped": "Gestoppt",
+        "maintenance": "Wartung",
+        "inactive": "Inaktiv",
+        "active": "Aktiv",
+        "online": "Online",
+        "offline": "Offline",
+        "warning": "Warnung",
+        "error": "Fehler",
+        "fault": "Storung"
+      },
+      "reportTypes": {
+        "corrective_downtime": "Korrektive Ausfallzeit",
+        "fault_frequency": "Storungshaufigkeit",
+        "preventive_compliance": "Vorbeugende Konformitat",
+        "maintenance_costs": "Wartungskosten",
+        "technician_workload": "Technikerauslastung",
+        "stock_movements": "Bestandsbewegungen",
+        "machine_history": "Maschinenhistorie",
+        "predictive_risk": "Pradiktives Risiko",
+        "audit_history": "Auditverlauf",
+        "mttr_mtbf_trends": "MTTR-/MTBF-Trends"
+      },
+      "notificationTypes": {
+        "work_order_assigned": "Arbeitsauftrag zugewiesen",
+        "work_order_updated": "Arbeitsauftrag aktualisiert",
+        "work_order_completed": "Arbeitsauftrag abgeschlossen",
+        "validation_required": "Validierung erforderlich",
+        "part_request_created": "Teileanfrage erstellt",
+        "part_request_approved": "Teileanfrage genehmigt",
+        "part_request_rejected": "Teileanfrage abgelehnt",
+        "preventive_due": "Vorbeugende Wartung fallig",
+        "preventive_overdue": "Vorbeugende Wartung uberfallig",
+        "report_ready": "Bericht bereit",
+        "system": "System"
+      }
+    },
+    "allFields": "All fields",
+    "app": {
+      "version": "الإصدار"
+    },
+    "na": "غير متوفر",
+    "now": "Now",
+    "pagination": {
+      "next": "Next",
+      "previous": "Previous"
+    },
+    "priority": "Priority",
+    "dynamicTranslations": {
+      "showOriginal": "Original anzeigen",
+      "showTranslation": "Ubersetzung anzeigen",
+      "auto": "Automatisch ubersetzt",
+      "safetyNotice": "Automatische Ubersetzung nur zur Anzeige. Prufen Sie sicherheitsrelevante Maschineninhalte am Original."
     }
   },
   "navigation": {
@@ -813,13 +998,15 @@
       "dashboard": "Dashboard",
       "users": "Benutzer",
       "machines": "Maschinen",
+      "digitalTwin": "Digitaler Zwilling",
       "workOrders": "Arbeitsaufträge",
       "maintenancePlans": "Wartungspläne",
       "preventiveTaskChecklist": "Checkliste für präventive Aufgaben",
       "catalogues": "Kataloge",
       "machineTypes": "Maschinentypen",
       "sensors": "Sensoren",
-      "moduleTypes": "Modultypen"
+      "moduleTypes": "Modultypen",
+      "smartMaintenanceCalendar": "Smart Maintenance Calendar"
     },
     "categories": {
       "overview": "Übersicht",
@@ -953,7 +1140,12 @@
       "workOrders": "Arbeitsaufträge",
       "catalogues": "Kataloge",
       "machineTypes": "Typen",
-      "types": "Typen"
+      "types": "Typen",
+      "manuals": "Manuals",
+      "myReports": "My Reports",
+      "reportProblem": "Report Problem",
+      "startCorrectiveMaintenance": "Corrective Maintenance",
+      "startPreventiveMaintenance": "Preventive Maintenance"
     }
   },
   "operatorDashboard": {
@@ -1356,7 +1548,9 @@
       "passwordMin": "Das Passwort muss mindestens 6 Zeichen lang sein",
       "fullNameRequired": "Der vollständige Name ist erforderlich",
       "photoUploaded": "Foto erfolgreich hochgeladen",
-      "photoUploadFailed": "Foto konnte nicht hochgeladen werden"
+      "photoUploadFailed": "Foto konnte nicht hochgeladen werden",
+      "confirmDelete": "Are you sure you want to delete this user?",
+      "loadFailed": "فشل في تحميل المستخدمين"
     },
     "button": {
       "cancel": "Abbrechen",
@@ -1608,6 +1802,7 @@
       "dashboard": "Dashboard",
       "users": "Benutzer",
       "machines": "Maschinen",
+      "digitalTwin": "Digitaler Zwilling",
       "workOrders": "Arbeitsaufträge",
       "catalogues": "Kataloge",
       "machineTypes": "Maschinentypen",
@@ -1641,7 +1836,12 @@
       "panneSolutions": "Stoerungsloesungen",
       "knowledgeBase": "Wissensdatenbank",
       "devices": "Geräte",
-      "reports": "Berichte"
+      "reports": "Berichte",
+      "manuals": "Manuals",
+      "myReports": "My Reports",
+      "reportProblem": "Report Problem",
+      "startCorrectiveMaintenance": "Corrective Maintenance",
+      "startPreventiveMaintenance": "Preventive Maintenance"
     }
   },
   "machines": {
@@ -1751,7 +1951,13 @@
       "retry": "Erneut versuchen",
       "showMore": "Mehr anzeigen",
       "showLess": "Weniger anzeigen",
-      "viewDocument": "Dokument ansehen"
+      "viewDocument": "Dokument ansehen",
+      "back": "Back",
+      "clearSearch": "Clear search",
+      "previewDocument": "Preview document",
+      "resetFilters": "Reset filters",
+      "viewWorkOrder": "View work order",
+      "workOrders": "Work orders"
     },
     "empty": {
       "default": "Für diese Maschine wurden noch keine Ereignisse erfasst.",
@@ -1764,7 +1970,8 @@
       "openWorkOrders": "Offene Arbeitsaufträge",
       "machineAge": "Maschinenalter",
       "ageDays": "{days, plural, one {# Tag} other {# Tage}}",
-      "none": "—"
+      "none": "—",
+      "currentTechnician": "Current technician"
     },
     "stats": {
       "totalInterventions": "Interventionen gesamt",
@@ -1871,6 +2078,16 @@
       "partName": "Teil",
       "partRef": "Teilereferenz",
       "provider": "KI-Anbieter"
+    },
+    "statsContext": {
+      "averageRepairTime": "Across timed work orders",
+      "closedWorkOrders": "Closed or archived",
+      "correctiveCompleted": "Completed corrective WOs",
+      "downtimeHours": "Start to end duration",
+      "openWorkOrders": "Currently active",
+      "partsConsumed": "Consumed stock quantity",
+      "preventiveCompleted": "Completed preventive WOs",
+      "totalInterventions": "All work orders"
     }
   },
   "interventionReports": {
@@ -2579,6 +2796,12 @@
       "confirmClose": "Diesen Auftrag schließen? Der Bericht muss vollständig sein.",
       "completed": "Dieser Einsatz ist abgeschlossen.",
       "awaitingValidation": "Diese Arbeit ist abgeschlossen und wartet auf eine unabhängige Validierung durch einen anderen autorisierten Benutzer."
+    },
+    "dynamicTranslations": {
+      "showOriginal": "Original anzeigen",
+      "showTranslation": "Ubersetzung anzeigen",
+      "auto": "Automatisch ubersetzt",
+      "safetyNotice": "Automatische Ubersetzung nur zur Anzeige. Prufen Sie sicherheitsrelevante Maschineninhalte am Original."
     }
   },
   "miniAvatar": {
@@ -2758,7 +2981,12 @@
     "probableCauses": "Wahrscheinliche Ursachen",
     "recommendedChecks": "Empfohlene Prüfungen",
     "safetyWarnings": "Sicherheitshinweise",
-    "uncertainty": "Unsicherheit"
+    "uncertainty": "Unsicherheit",
+    "globalOpen": "KI-Assistent öffnen",
+    "globalClose": "KI-Assistent schließen",
+    "globalOpenShort": "KI-Assistent",
+    "globalCloseShort": "Assistent schließen",
+    "globalPanelLabel": "Globaler KI-Assistent"
   },
   "deviceMonitoring": {
     "title": "Geräte",

@@ -9,6 +9,9 @@ import {
   PUBLIC_REGISTRATION_ROLES,
 } from "../src/services/publicRegistration.ts";
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 test("admin is not available in the public role selector source", () => {
   assert.equal(PUBLIC_REGISTRATION_ROLES.includes("admin" as never), false);
 });
@@ -29,7 +32,7 @@ test("registration sends only allowed public fields", () => {
     approval_status: "approved",
   } as never);
 
-  assert.deepEqual(Object.keys(payload).sort(), [
+  assert.deepEqual(Object.keys(payload).sort(compareStrings), [
     "department",
     "email",
     "nom_complet",

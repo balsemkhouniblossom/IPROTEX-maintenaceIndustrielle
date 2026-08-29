@@ -8,6 +8,7 @@ function readSource(relativePath: string): string {
 }
 
 const PANEL = "src/components/ai-assistant/AiAssistantPanel.tsx";
+const GLOBAL_LAUNCHER = "src/components/ai-assistant/GlobalAiAssistantLauncher.tsx";
 const CORRECTIVE_PAGE = "src/app/[locale]/operator/corrective/page.tsx";
 const TECHNICIAN_DETAIL = "src/components/technician/TechnicianWorkOrderDetail.tsx";
 
@@ -81,6 +82,25 @@ test("AiAssistantPanel never calls any endpoint other than the recommendation en
   );
 });
 
+test("DashboardLayout exposes a global AI assistant launcher across protected interfaces", () => {
+  const layout = readSource("src/components/DashboardLayout.tsx");
+  const launcher = readSource(GLOBAL_LAUNCHER);
+
+  assert.match(layout, /GlobalAiAssistantLauncher/);
+  assert.match(layout, /<GlobalAiAssistantLauncher \/>/);
+  assert.match(launcher, /data-testid="global-ai-assistant-launcher"/);
+  assert.match(launcher, /data-testid="global-ai-assistant-panel"/);
+  assert.match(launcher, /<AiAssistantPanel \/>/);
+});
+
+test("GlobalAiAssistantLauncher is user-triggered and does not auto-call Gemini", () => {
+  const source = readSource(GLOBAL_LAUNCHER);
+
+  assert.doesNotMatch(source, /useEffect/);
+  assert.match(source, /onClick=\{\(\)\s*=>\s*setOpen/);
+  assert.doesNotMatch(source, /apiService\./);
+});
+
 test("AiAssistantPanel structurally separates known facts, probable causes, recommended checks, safety warnings, and uncertainty", () => {
   const source = readSource(PANEL);
 
@@ -132,6 +152,7 @@ test("AiAssistantPanel renders safe backend diagnostics for non-OK assistant res
 test("frontend never references backend-only Gemini secret names", () => {
   const filesToCheck = [
     PANEL,
+    GLOBAL_LAUNCHER,
     "src/services/api.ts",
     ...fs
       .readdirSync(path.join(process.cwd(), "messages"))
@@ -203,6 +224,11 @@ test("all supported locales define the aiAssistant translation namespace with ma
     "recommendedChecks",
     "safetyWarnings",
     "uncertainty",
+    "globalOpen",
+    "globalClose",
+    "globalOpenShort",
+    "globalCloseShort",
+    "globalPanelLabel",
   ];
   for (const key of requiredKeys) {
     assert.ok(englishKeys.has(key), `en.json aiAssistant is missing required key: ${key}`);

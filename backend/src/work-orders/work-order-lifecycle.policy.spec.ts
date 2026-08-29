@@ -7,6 +7,9 @@ import {
   validationTransitionPlan,
 } from './work-order-lifecycle.policy';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 describe('work-order lifecycle policy', () => {
   const expectedActions = [
     'operator_start',
@@ -21,8 +24,8 @@ describe('work-order lifecycle policy', () => {
   ] as const;
 
   it('has a transition definition for every extracted lifecycle action', () => {
-    expect(EXTRACTED_LIFECYCLE_ACTIONS.sort()).toEqual(
-      [...expectedActions].sort(),
+    expect(EXTRACTED_LIFECYCLE_ACTIONS.sort(compareStrings)).toEqual(
+      [...expectedActions].sort(compareStrings),
     );
 
     for (const action of expectedActions) {

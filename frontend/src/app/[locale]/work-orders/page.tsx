@@ -23,12 +23,17 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
+import { translateEnumValue } from "@/services/enumTranslations";
+import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
 
 interface WorkOrder {
   _id: string;
   ot_id: string;
   description?: string;
+  reschedule_reason?: string;
+  lifecycle_history?: Array<{ reason?: string }>;
   priorite?: string;
   status: string;
   estimated_duration?: number;
@@ -89,6 +94,8 @@ type SavedWorkOrdersQuery = {
 export default function WorkOrdersPage() {
   const tWorkOrders = useTranslations("workOrders");
   const tCommon = useTranslations("common");
+  const tEnums = useTranslations("common.enums");
+  const locale = useLocale();
   const router = useRouter();
 
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -142,6 +149,7 @@ export default function WorkOrdersPage() {
     initialFilters: { status: '', priority: '' },
     pageSize: 10,
   });
+  const dynamicTranslations = useWorkOrderDynamicTranslations(table.items, locale);
 
   // Picks up: this page's own CRUD (below), plus Operator corrective/
   // preventive submissions and Technician work-order actions, all of
@@ -369,7 +377,20 @@ export default function WorkOrdersPage() {
         key: 'description',
         header: tWorkOrders("table.description"),
         width: 'minmax(10rem, 1.5fr)',
-        render: (wo) => wo.description || tCommon("notAvailable"),
+        render: (wo) => {
+          const text = dynamicTranslations.textFor(wo._id, "description", wo.description);
+          if (!text) return tCommon("notAvailable");
+          return (
+            <span title={dynamicTranslations.isAutomaticallyTranslated(wo._id, "description") ? tCommon("dynamicTranslations.safetyNotice") : text}>
+              {text}
+              {dynamicTranslations.isAutomaticallyTranslated(wo._id, "description") ? (
+                <span className="ms-1 text-xs text-amber-700">
+                  {tCommon("dynamicTranslations.auto")}
+                </span>
+              ) : null}
+            </span>
+          );
+        },
       },
       {
         key: 'machine',
@@ -398,7 +419,7 @@ export default function WorkOrdersPage() {
         width: '9rem',
         render: (wo) => (
           <StatusBadge
-            label={tWorkOrders(`status.${wo.status}`)}
+            label={translateEnumValue(tEnums, "workOrderStatuses", wo.status)}
             colorClassName={STATUS_BADGE_CLASSES[wo.status] ?? DEFAULT_STATUS_BADGE_CLASS}
           />
         ),
@@ -410,7 +431,7 @@ export default function WorkOrdersPage() {
         width: '9rem',
         render: (wo) => (
           <StatusBadge
-            label={tWorkOrders(`priority.${wo.priorite || "low"}`)}
+            label={translateEnumValue(tEnums, "priorities", wo.priorite || "low")}
             colorClassName={PRIORITY_BADGE_CLASSES[wo.priorite || 'low'] ?? DEFAULT_PRIORITY_BADGE_CLASS}
           />
         ),
@@ -500,7 +521,7 @@ export default function WorkOrdersPage() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tWorkOrders, tCommon, users, machines],
+    [tWorkOrders, tCommon, tEnums, users, machines, dynamicTranslations],
   );
 
   const workOrderSubmitLabel = editingWorkOrder
@@ -561,6 +582,17 @@ export default function WorkOrdersPage() {
           <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
             <div className="card-title">{tWorkOrders("allWorkOrders")}</div>
             <div className="flex flex-wrap items-center gap-2">
+              {dynamicTranslations.hasTranslationLocale ? (
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-2 text-xs"
+                  onClick={() => dynamicTranslations.setShowOriginal(!dynamicTranslations.showOriginal)}
+                >
+                  {dynamicTranslations.showOriginal
+                    ? tCommon("dynamicTranslations.showTranslation")
+                    : tCommon("dynamicTranslations.showOriginal")}
+                </button>
+              ) : null}
               <input
                 value={table.searchInput}
                 onChange={(e) => table.setSearchInput(e.target.value)}

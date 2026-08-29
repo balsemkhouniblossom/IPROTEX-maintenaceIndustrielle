@@ -1,6 +1,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 function tsFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry);
@@ -304,9 +307,11 @@ describe('work-orders service architecture', () => {
         return containsDirectWorkOrderStatusWrite(source);
       })
       .map((file) => relative(srcDir, file).replace(/\\/g, '/'))
-      .sort();
+      .sort(compareStrings);
 
-    expect(statusWriters).toEqual([...allowedStatusWriters].sort());
+    expect(statusWriters).toEqual(
+      [...allowedStatusWriters].sort(compareStrings),
+    );
   });
 
   it('keeps preventive occurrence upserts out of the WorkOrdersService facade', () => {
@@ -331,9 +336,9 @@ describe('work-orders service architecture', () => {
         readFileSync(file, 'utf8').includes('buildPreventiveOccurrenceKey'),
       )
       .map((file) => relative(srcDir, file).replace(/\\/g, '/'))
-      .sort();
+      .sort(compareStrings);
 
-    expect(builders).toEqual([...allowed].sort());
+    expect(builders).toEqual([...allowed].sort(compareStrings));
   });
 });
 

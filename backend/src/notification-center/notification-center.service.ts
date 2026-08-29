@@ -19,6 +19,8 @@ export interface CreateNotificationInput {
   type: NotificationType;
   title: string;
   message?: string;
+  translationKey?: string;
+  translationParams?: Record<string, string | number | boolean | null>;
   recipientUserId?: string;
   recipientRole?: Role;
   workOrderId?: string;
@@ -65,6 +67,8 @@ export class NotificationCenterService {
         type: input.type,
         title: input.title,
         message: input.message,
+        translationKey: input.translationKey,
+        translationParams: input.translationParams,
         recipient_user_id: input.recipientUserId
           ? new Types.ObjectId(input.recipientUserId)
           : undefined,

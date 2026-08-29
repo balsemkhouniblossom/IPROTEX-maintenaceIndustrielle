@@ -758,7 +758,11 @@ describe('Stock movements — transactional, traceable inventory (e2e)', () => {
           .findById(requestBResponse.body._id)
           .then((doc) => doc?.status),
       ]);
-      expect(requestStatuses.sort()).toEqual(['pending', 'reserved']);
+      expect(
+        requestStatuses.sort((left, right) =>
+          String(left).localeCompare(String(right)),
+        ),
+      ).toEqual(['pending', 'reserved']);
     });
   });
 

@@ -818,6 +818,8 @@ export class TechnicianService {
       dedupeKey: `intervention_completed:${id.toString()}`,
       type: NotificationType.INTERVENTION_COMPLETED,
       title: `Intervention completed for work order ${updated.ot_id} - awaiting validation`,
+      translationKey: 'templates.interventionCompleted',
+      translationParams: { workOrder: updated.ot_id },
       recipientRole: Role.ADMIN,
       workOrderId: id.toString(),
       machineId: updated.machine_id?.toString(),

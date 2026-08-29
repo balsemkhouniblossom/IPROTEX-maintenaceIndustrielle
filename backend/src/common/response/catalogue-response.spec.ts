@@ -1,6 +1,9 @@
 import { Types } from 'mongoose';
 import { toCatalogueSummary, toStockResponse } from './catalogue-response';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 describe('toCatalogueSummary', () => {
   it('excludes unit_cost (internal pricing never consumed by Operator/Technician UI) and Mongoose metadata', () => {
     const doc = {
@@ -18,7 +21,7 @@ describe('toCatalogueSummary', () => {
 
     expect(summary).not.toHaveProperty('unit_cost');
     expect(summary).not.toHaveProperty('__v');
-    expect(Object.keys(summary).sort()).toEqual(
+    expect(Object.keys(summary).sort(compareStrings)).toEqual(
       [
         '_id',
         'part_id',
@@ -26,7 +29,7 @@ describe('toCatalogueSummary', () => {
         'ref_constructeur',
         'fabricant',
         'categorie_piece',
-      ].sort(),
+      ].sort(compareStrings),
     );
   });
 });

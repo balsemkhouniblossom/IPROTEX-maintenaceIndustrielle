@@ -8,6 +8,7 @@ import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto'
 type ProviderGenerateCall = [
   {
     question: string;
+    locale: string;
   },
 ];
 
@@ -172,6 +173,27 @@ describe('AiAssistantService', () => {
         model: 'fake-model',
         actor_role: 'operator',
       }),
+    );
+  });
+
+  it('passes the requested locale to the provider and audit record', async () => {
+    const service = buildService();
+
+    const result = await service.getRecommendation(
+      actor,
+      baseDto({
+        locale: 'fr',
+        question: 'Pourquoi le moteur fait-il du bruit?',
+      }),
+    );
+
+    const mockCalls = provider.generate.mock
+      .calls as Array<ProviderGenerateCall>;
+    const [[requestArg]] = mockCalls;
+    expect(result.status).toBe(AiInteractionStatus.OK);
+    expect(requestArg.locale).toBe('fr');
+    expect(interactionModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: 'fr' }),
     );
   });
 

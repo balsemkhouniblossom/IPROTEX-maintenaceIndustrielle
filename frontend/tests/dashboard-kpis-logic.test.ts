@@ -125,6 +125,22 @@ test("DashboardLayout only shows the admin-only KPI topbar badges to admins", ()
   );
 });
 
+test("DashboardLayout localizes every admin sidebar item including Digital Twin", () => {
+  const source = readSource("src/components/DashboardLayout.tsx");
+  const locales = ["en", "fr", "ar", "es", "de", "it"];
+
+  assert.match(source, /t\('navigation\.digitalTwin'\)/);
+  assert.doesNotMatch(source, /name: 'Digital Twin'/);
+
+  for (const locale of locales) {
+    const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
+    const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
+    const label = messages.sidebar?.navigation?.digitalTwin;
+    assert.equal(typeof label, "string", `${locale}.json sidebar.navigation.digitalTwin must be a string`);
+    assert.ok(label.length > 0, `${locale}.json sidebar.navigation.digitalTwin must not be empty`);
+  }
+});
+
 test("DashboardLayout waits for restored auth before rendering role-specific shell", () => {
   const source = readSource("src/components/DashboardLayout.tsx");
 

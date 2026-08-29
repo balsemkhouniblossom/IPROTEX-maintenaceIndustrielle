@@ -4,6 +4,9 @@ import {
   toWorkOrderResponseOrNull,
 } from './work-order-response.mapper';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 function baseWorkOrder() {
   return {
     _id: new Types.ObjectId(),
@@ -109,9 +112,9 @@ describe('toWorkOrderResponse', () => {
     expect(response.technician_id).not.toHaveProperty('password');
     expect(response.technician_id).not.toHaveProperty('refresh_token_hash');
     expect(response.technician_id).not.toHaveProperty('reset_password_token');
-    expect(Object.keys(response.technician_id as object).sort()).toEqual(
-      ['_id', 'nom_complet', 'role', 'user_id'].sort(),
-    );
+    expect(
+      Object.keys(response.technician_id as object).sort(compareStrings),
+    ).toEqual(['_id', 'nom_complet', 'role', 'user_id'].sort(compareStrings));
   });
 
   it('serializes Date fields to the same ISO strings Date#toJSON would have produced', () => {

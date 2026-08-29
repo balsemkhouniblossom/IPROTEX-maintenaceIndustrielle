@@ -88,6 +88,10 @@ import {
   GoogleLoginExchange,
   GoogleLoginExchangeSchema,
 } from '../auth/schemas/google-login-exchange.schema';
+import {
+  TranslationCache,
+  TranslationCacheSchema,
+} from '../schemas/translation-cache.schema';
 
 export interface SchemaRegistryEntry {
   modelName: string;
@@ -154,4 +158,5 @@ export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   },
   { modelName: Counter.name, schema: CounterSchema },
   { modelName: GoogleLoginExchange.name, schema: GoogleLoginExchangeSchema },
+  { modelName: TranslationCache.name, schema: TranslationCacheSchema },
 ];

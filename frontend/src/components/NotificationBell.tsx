@@ -12,11 +12,27 @@ interface NotificationItem {
   type: string;
   title: string;
   message?: string;
+  translationKey?: string;
+  translationParams?: Record<string, string | number | boolean | null>;
   is_read: boolean;
   createdAt: string;
 }
 
 const POLL_INTERVAL_MS = 30000;
+
+function notificationTranslationParams(
+  params?: Record<string, string | number | boolean | null>,
+): Record<string, string | number> {
+  if (!params) return {};
+  return Object.fromEntries(
+    Object.entries(params)
+      .filter(([, value]) => value !== null)
+      .map(([key, value]) => [
+        key,
+        typeof value === "boolean" ? String(value) : value,
+      ]),
+  ) as Record<string, string | number>;
+}
 
 export default function NotificationBell() {
   const t = useTranslations("notificationCenter");
@@ -49,7 +65,10 @@ export default function NotificationBell() {
 
     try {
       setLoading(true);
-      const response = await apiService.getNotifications({ page: 1, limit: 10 });
+      const response = await apiService.getNotifications({
+        page: 1,
+        limit: 10,
+      });
       setItems((response.data?.items || []) as NotificationItem[]);
     } catch (error) {
       console.error("Failed to load notifications", error);
@@ -97,7 +116,9 @@ export default function NotificationBell() {
     try {
       await apiService.markNotificationRead(id);
       setItems((prev) =>
-        prev.map((item) => (item._id === id ? { ...item, is_read: true } : item)),
+        prev.map((item) =>
+          item._id === id ? { ...item, is_read: true } : item,
+        ),
       );
       void refreshUnreadCount();
     } catch (error) {
@@ -135,13 +156,25 @@ export default function NotificationBell() {
     }
   }
 
+  function renderNotificationTitle(item: NotificationItem): string {
+    const key = item.translationKey
+      ? `templates.${item.translationKey.replace(/^templates\./, "")}`
+      : "";
+    if (key && t.has(key)) {
+      return t(key, notificationTranslationParams(item.translationParams));
+    }
+    return item.title;
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) text-cyan-800 dark:text-cyan-600 backdrop-blur-xl shadow-(--shadow) transition hover:-translate-y-0.5 hover:border-cyan-700/55"
-        aria-label={unreadCount > 0 ? `${t("title")} (${unreadCount})` : t("title")}
+        aria-label={
+          unreadCount > 0 ? `${t("title")} (${unreadCount})` : t("title")
+        }
       >
         <BellAlertIcon className="h-5 w-5" />
         {unreadCount > 0 ? (
@@ -158,7 +191,9 @@ export default function NotificationBell() {
         <div className="absolute right-0 z-140 mt-2 w-80 rounded-3xl border border-border bg-(--surface-elevated) p-4 shadow-(--shadow-lg) backdrop-blur-xl md:w-96">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-text-primary">{t("title")}</div>
+              <div className="text-sm font-semibold text-text-primary">
+                {t("title")}
+              </div>
               <div className="text-xs text-text-secondary">
                 {unreadCount} {t("unread")}
               </div>
@@ -192,7 +227,8 @@ export default function NotificationBell() {
                 {t("empty")}
               </div>
             )}
-            {!loading && items.length > 0 && (
+            {!loading &&
+              items.length > 0 &&
               items.map((item) => (
                 <div
                   key={item._id}
@@ -203,13 +239,17 @@ export default function NotificationBell() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium text-text-primary">{item.title}</span>
+                    <span className="font-medium text-text-primary">
+                      {renderNotificationTitle(item)}
+                    </span>
                     <span className="shrink-0 text-[10px] text-text-secondary">
                       {new Date(item.createdAt).toLocaleString()}
                     </span>
                   </div>
                   {item.message ? (
-                    <div className="mt-1 text-xs text-text-secondary">{item.message}</div>
+                    <div className="mt-1 text-xs text-text-secondary">
+                      {item.message}
+                    </div>
                   ) : null}
                   <div className="mt-2 flex items-center gap-3">
                     {!item.is_read ? (
@@ -230,8 +270,7 @@ export default function NotificationBell() {
                     </button>
                   </div>
                 </div>
-              ))
-            )}
+              ))}
           </div>
         </div>
       ) : null}

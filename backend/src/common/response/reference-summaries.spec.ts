@@ -7,6 +7,9 @@ import {
   toUserSummary,
 } from './reference-summaries';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 describe('toUserSummary', () => {
   it('never surfaces sensitive User fields even if the source object carries them', () => {
     const compromised = {
@@ -24,8 +27,8 @@ describe('toUserSummary', () => {
 
     const summary = toUserSummary(compromised);
 
-    expect(Object.keys(summary).sort()).toEqual(
-      ['_id', 'nom_complet', 'role', 'user_id'].sort(),
+    expect(Object.keys(summary).sort(compareStrings)).toEqual(
+      ['_id', 'nom_complet', 'role', 'user_id'].sort(compareStrings),
     );
   });
 });

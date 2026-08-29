@@ -25,7 +25,14 @@
     "ar": "العربية",
     "es": "Español",
     "de": "Deutsch",
-    "it": "Italiano"
+    "it": "Italiano",
+    "theme": {
+      "dark": "Oscuro",
+      "label": "Tema",
+      "light": "Claro",
+      "toggleToDark": "Cambiar al modo oscuro",
+      "toggleToLight": "Cambiar al modo claro"
+    }
   },
   "auth": {
     "signIn": "Accedi",
@@ -146,7 +153,8 @@
     "completeProfileLanguage": "Lingua",
     "completeProfileRequestedRole": "Ruolo richiesto",
     "showPassword": "Mostra password",
-    "hidePassword": "Nascondi password"
+    "hidePassword": "Nascondi password",
+    "saving": "Saving..."
   },
   "dashboard": {
     "status": {
@@ -162,7 +170,11 @@
       },
       "systemOnlineKey": "systemOnline",
       "loadingKey": "loading",
-      "pendingMaintenanceKey": "pendingMaintenance"
+      "pendingMaintenanceKey": "pendingMaintenance",
+      "percentageChange": {
+        "negative": "{{value}}% from last month",
+        "positive": "+{{value}}% from last month"
+      }
     },
     "welcome": "Benvenuto",
     "logout": "Esci",
@@ -221,13 +233,17 @@
         "recent": "Ordini di Lavoro Recenti",
         "completionRate": "Tasso di Completamento Ordini di Lavoro",
         "distribution": "Distribuzione Ordini di Lavoro",
-        "outOf": "su"
+        "outOf": "su",
+        "completed": "مكتملة",
+        "inProgress": "قيد التنفيذ",
+        "pending": "قيد الانتظار"
       },
       "machines": {
         "availabilityHint": "Basato sul tempo medio tra i guasti e il tempo medio di riparazione",
         "availability": "Disponibilita Macchine",
         "overview": "Panoramica Macchine",
-        "online": "macchine online"
+        "online": "macchine online",
+        "offline": "Offline"
       },
       "quickKpis": {
         "stockAlerts": "Avvisi di magazzino",
@@ -239,7 +255,10 @@
         "machineAvailability": "Disponibilita Macchine",
         "completionRate": "Tasso di Completamento",
         "activeWorkOrders": "Ordini di Lavoro Attivi",
-        "activeUsers": "Utenti Attivi"
+        "activeUsers": "Utenti Attivi",
+        "systemHealth": "حالة النظام",
+        "userActivity": "نشاط المستخدمين",
+        "workOrderCompletion": "إتمام أوامر العمل"
       },
       "stockAlerts": {
         "title": "Avvisi di magazzino",
@@ -314,7 +333,10 @@
         "noScheduledItems": "Nessun elemento pianificato nella finestra corrente.",
         "noPriority": "Normale",
         "dueAt": "Scade il",
-        "openManual": "Apri manuale"
+        "openManual": "Apri manuale",
+        "aiAssistantSubtitle": "Ask the assistant for help with the current machine or task. It is advisory only and will not modify work orders.",
+        "aiAssistantTitle": "Maintenance AI Assistant",
+        "startMaintenance": "Start Maintenance"
       },
       "shift": {
         "morning": "Turno mattina",
@@ -347,7 +369,17 @@
         "checkMachines": "Controlla macchine",
         "monitorSensors": "Monitora sensori",
         "browseCatalogues": "Sfoglia cataloghi",
-        "smartCalendar": "Calendario intelligente"
+        "smartCalendar": "Calendario intelligente",
+        "correctiveMaintenance": "Corrective Maintenance",
+        "manuals": "Machine Manuals",
+        "myReports": "My Maintenance Reports",
+        "preventiveMaintenance": "Preventive Maintenance",
+        "reportIssue": "Reportar un problema",
+        "reportProblem": "Report Problem",
+        "reports": "My Maintenance Reports",
+        "viewCorrective": "Ver mantenimiento correctivo",
+        "viewPreventive": "Ver mantenimiento preventivo",
+        "viewWorkOrders": "View Work Orders"
       },
       "health": {
         "title": "Stato del sistema",
@@ -528,7 +560,70 @@
         "viewDetailsAction": "Vedi dettagli",
         "operatorFlowNote": "Il flusso operatore e totalmente automatico: seleziona, controlla, completa. Pianificazione, generazione report, promemoria e prossima scadenza sono automatici."
       },
-      "module": "Modulo"
+      "module": "Modulo",
+      "assigned": "Assigned",
+      "cards": {
+        "completedToday": "Completed Today",
+        "machinesActive": "Active Machines",
+        "urgentWork": "Urgent Work",
+        "waitingActions": "Waiting Actions"
+      },
+      "correctiveMaintenance": "Corrective Maintenance",
+      "inProgress": "In Progress",
+      "lifecycle": {
+        "actualExecutionDate": "Actual execution date",
+        "alreadyScheduled": "This task is already scheduled.",
+        "completed": "Completed",
+        "dueSoon": "Due soon",
+        "dueToday": "Due today",
+        "duplicateOccurrence": "A duplicate occurrence already exists.",
+        "inProgress": "In progress",
+        "invalidPlanForMachine": "This maintenance plan does not apply to the selected machine.",
+        "lastCompleted": "Last completed",
+        "newDueDate": "New due date",
+        "nextDue": "Next due",
+        "nextOccurrenceCreated": "Next occurrence created",
+        "noDueDate": "No due date",
+        "notScheduled": "Not scheduled yet",
+        "originalDueDate": "Original due date",
+        "overdue": "Overdue",
+        "performToday": "Perform today",
+        "preventivePlan": "Preventive plan",
+        "reschedule": "Reschedule",
+        "rescheduleSuccess": "The occurrence was rescheduled.",
+        "rescheduledAt": "Rescheduled at",
+        "rescheduledBy": "Rescheduled by",
+        "reschedulingReason": "Rescheduling reason",
+        "returned": "Returned",
+        "scheduleCreated": "First intervention date was scheduled.",
+        "scheduled": "Scheduled",
+        "scheduledOccurrences": "Scheduled occurrences",
+        "setFirstInterventionDate": "Set first intervention date",
+        "taskAlreadySubmitted": "This intervention has already been submitted.",
+        "technicianValidationRequired": "Technician validation required",
+        "upcoming": "Upcoming",
+        "waitingValidation": "Waiting validation"
+      },
+      "machineCategories": "Machine Categories",
+      "machineInspection": "Machine Inspection",
+      "machineManuals": "Machine Manuals",
+      "manuals": {
+        "braiding": "Braiding Manual",
+        "cutting": "Cutting Manual",
+        "rolling": "Rolling Manual",
+        "winding": "Winding Manual"
+      },
+      "myReports": "My Maintenance Reports",
+      "overdue": "Overdue",
+      "overview": "Overview",
+      "pending": "Pending",
+      "preventiveMaintenance": "Preventive Maintenance",
+      "reportProblem": "Report Problem",
+      "scheduled": "Scheduled",
+      "urgent": "Urgent",
+      "validated": "Validated",
+      "viewAllReports": "View All Reports",
+      "viewMachines": "View Machines"
     },
     "technician": {
       "title": "Dashboard tecnico",
@@ -581,7 +676,19 @@
         "sixHoursAgo": "6 ore fa",
         "eightHoursAgo": "8 ore fa"
       }
-    }
+    },
+    "assigned": "مسندة",
+    "completed": "مكتملة",
+    "correctiveMaintenance": "الصيانة التصحيحية",
+    "inProgress": "قيد التنفيذ",
+    "machineCategories": "فئات الآلات",
+    "machineManuals": "أدلة الآلات",
+    "myReports": "تقارير الصيانة الخاصة بي",
+    "preventiveMaintenance": "الصيانة الوقائية",
+    "quickActions": "الإجراءات السريعة",
+    "reportProblem": "الإبلاغ عن مشكلة",
+    "viewMachines": "عرض الآلات",
+    "waitingValidation": "في انتظار التحقق"
   },
   "common": {
     "loading": "Loading...",
@@ -602,14 +709,16 @@
     "confirm": "Conferma",
     "table": {
       "actions": "Azioni",
-      "noData": "Nessun dato disponibile"
+      "noData": "Nessun dato disponibile",
+      "allFields": "All Fields"
     },
     "theme": {
       "label": "Tema",
       "light": "Chiaro",
       "dark": "Scuro",
       "toggleToLight": "Passa alla modalità chiara",
-      "toggleToDark": "Passa alla modalità scura"
+      "toggleToDark": "Passa alla modalità scura",
+      "smartMaintenanceCalendar": "Calendrier intelligent de maintenance"
     },
     "systemOnline": "System online",
     "percentageChangeFromLastMonth": {
@@ -631,6 +740,143 @@
       "namePlaceholder": "Nome della vista",
       "empty": "Nessuna vista salvata.",
       "delete": "Elimina vista"
+    },
+    "enums": {
+      "roles": {
+        "admin": "Amministratore",
+        "technician": "Tecnico",
+        "operator": "Operatore"
+      },
+      "permissions": {
+        "read": "Leggere",
+        "create": "Creare",
+        "update": "Aggiornare",
+        "delete": "Eliminare",
+        "approve": "Approvare",
+        "reject": "Rifiutare",
+        "export": "Esportare",
+        "manage": "Gestire"
+      },
+      "workOrderStatuses": {
+        "pending": "In attesa",
+        "assigned": "Assegnato",
+        "in_progress": "In corso",
+        "waiting_parts": "In attesa di parti",
+        "waiting_validation": "In attesa di validazione",
+        "technician_required": "Tecnico richiesto",
+        "returned": "Restituito",
+        "completed": "Completato",
+        "validated": "Validato",
+        "cancelled": "Annullato",
+        "canceled": "Annullato",
+        "closed": "Chiuso"
+      },
+      "priorities": {
+        "urgent": "Urgente",
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Bassa"
+      },
+      "maintenanceTypes": {
+        "preventive": "Preventiva",
+        "corrective": "Correttiva",
+        "predictive": "Predittiva",
+        "inspection": "Ispezione",
+        "lubrication": "Lubrificazione"
+      },
+      "machineStates": {
+        "operational": "Operativa",
+        "running": "In esecuzione",
+        "stopped": "Ferma",
+        "maintenance": "Manutenzione",
+        "inactive": "Inattiva",
+        "active": "Attiva",
+        "online": "Online",
+        "offline": "Offline",
+        "warning": "Avviso",
+        "error": "Errore",
+        "fault": "Guasto"
+      },
+      "reportTypes": {
+        "corrective_downtime": "Fermo correttivo",
+        "fault_frequency": "Frequenza guasti",
+        "preventive_compliance": "Conformita preventiva",
+        "maintenance_costs": "Costi di manutenzione",
+        "technician_workload": "Carico tecnici",
+        "stock_movements": "Movimenti stock",
+        "machine_history": "Storico macchina",
+        "predictive_risk": "Rischio predittivo",
+        "audit_history": "Storico audit",
+        "mttr_mtbf_trends": "Trend MTTR / MTBF"
+      },
+      "notificationTypes": {
+        "work_order_assigned": "Ordine di lavoro assegnato",
+        "work_order_updated": "Ordine di lavoro aggiornato",
+        "work_order_completed": "Ordine di lavoro completato",
+        "validation_required": "Validazione richiesta",
+        "part_request_created": "Richiesta parte creata",
+        "part_request_approved": "Richiesta parte approvata",
+        "part_request_rejected": "Richiesta parte rifiutata",
+        "preventive_due": "Manutenzione preventiva in scadenza",
+        "preventive_overdue": "Manutenzione preventiva scaduta",
+        "report_ready": "Report pronto",
+        "system": "Sistema"
+      }
+    },
+    "actions": {
+      "actions": "Actions",
+      "add": "إضافة",
+      "back": "رجوع",
+      "cancel": "Cancel",
+      "close": "إغلاق",
+      "confirm": "تأكيد",
+      "create": "Create",
+      "delete": "Delete",
+      "edit": "Edit",
+      "next": "التالي",
+      "previous": "السابق",
+      "save": "حفظ",
+      "saving": "Saving...",
+      "search": "Search",
+      "smartMaintenanceCalendar": "تقويم الصيانة الذكي",
+      "update": "Update"
+    },
+    "allFields": "All fields",
+    "app": {
+      "version": "الإصدار"
+    },
+    "auth": {
+      "logout": "Logout"
+    },
+    "machineStatus": {
+      "error": "Error",
+      "offline": "Offline",
+      "online": "Online",
+      "operational": "Operational",
+      "warning": "Warning"
+    },
+    "na": "غير متوفر",
+    "now": "Now",
+    "pagination": {
+      "next": "Next",
+      "previous": "Previous"
+    },
+    "priority": "Priority",
+    "status": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "pending": "Pending"
+    },
+    "time": {
+      "daysAgo": "منذ {count} يوم",
+      "hoursAgo": "منذ {count} ساعة",
+      "justNow": "Just now"
+    },
+    "dynamicTranslations": {
+      "showOriginal": "Mostra originale",
+      "showTranslation": "Mostra traduzione",
+      "auto": "Tradotto automaticamente",
+      "safetyNotice": "Traduzione automatica solo per visualizzazione. Verificare i contenuti di sicurezza macchina con l originale."
     }
   },
   "navigation": {
@@ -638,12 +884,15 @@
       "dashboard": "Dashboard",
       "users": "Utenti",
       "machines": "Macchine",
+      "digitalTwin": "Gemello digitale",
       "workOrders": "Ordini di lavoro",
       "maintenancePlans": "Piani di manutenzione",
       "catalogues": "Cataloghi",
       "machineTypes": "Tipi di macchina",
       "sensors": "Sensori",
-      "moduleTypes": "Tipi di modulo"
+      "moduleTypes": "Tipi di modulo",
+      "preventiveTaskChecklist": "Preventive Task Checklist",
+      "smartMaintenanceCalendar": "Smart Maintenance Calendar"
     },
     "categories": {
       "overview": "Panoramica",
@@ -776,7 +1025,13 @@
       "machines": "Macchine",
       "workOrders": "Ordini di lavoro",
       "catalogues": "Cataloghi",
-      "machineTypes": "Tipi"
+      "machineTypes": "Tipi",
+      "manuals": "Manuals",
+      "myReports": "My Reports",
+      "reportProblem": "Report Problem",
+      "startCorrectiveMaintenance": "Corrective Maintenance",
+      "startPreventiveMaintenance": "Preventive Maintenance",
+      "types": "Types"
     }
   },
   "operatorDashboard": {
@@ -966,7 +1221,8 @@
       "rejected": "Ordine di lavoro rifiutato con successo",
       "rejectFailed": "Errore durante il rifiuto dell'ordine di lavoro",
       "correctionRequested": "Richiesta di correzione inviata con successo",
-      "correctionFailed": "Errore durante la richiesta di correzione"
+      "correctionFailed": "Errore durante la richiesta di correzione",
+      "confirmDelete": "Are you sure you want to delete this user?"
     },
     "sort": {
       "priorityHighToLow": "Ordina priorit? da alta a bassa",
@@ -1014,7 +1270,9 @@
       "manufacturer": "Produttore",
       "category": "Categoria",
       "actions": "Azioni",
-      "partCode": "Codice ricambio"
+      "partCode": "Codice ricambio",
+      "stock": "Stock",
+      "unitPrice": "Unit Price"
     },
     "empty": {
       "search": "Nessun ricambio corrisponde alla ricerca.",
@@ -1032,7 +1290,12 @@
       "manufacturerReference": "Riferimento produttore",
       "manufacturer": "Produttore",
       "category": "Categoria",
-      "partCode": "Codice ricambio"
+      "partCode": "Codice ricambio",
+      "location": "Location",
+      "manufacturerRef": "Référence fabricant",
+      "minimumStock": "Minimum Stock",
+      "stockQuantity": "Stock Quantity",
+      "unitPrice": "Unit Price"
     },
     "validation": {
       "partIdRequired": "L'ID ricambio è obbligatorio",
@@ -1046,7 +1309,8 @@
       "enterManufacturerRef": "Inserisci riferimento produttore",
       "enterManufacturer": "Inserisci produttore",
       "enterCategory": "Inserisci categoria",
-      "enterPartCode": "Inserisci codice ricambio"
+      "enterPartCode": "Inserisci codice ricambio",
+      "enterLocation": "Enter location"
     },
     "actions": {
       "addPart": "Aggiungi ricambio",
@@ -1062,12 +1326,36 @@
       "deleteFailed": "Errore durante l'eliminazione del ricambio",
       "updated": "Ricambio aggiornato con successo",
       "created": "Ricambio creato con successo",
-      "saveFailed": "Errore durante il salvataggio del ricambio"
+      "saveFailed": "Errore durante il salvataggio del ricambio",
+      "createSuccess": "Part created successfully",
+      "deleteError": "Failed to delete part",
+      "deleteSuccess": "Part deleted successfully",
+      "manufacturerRefRequired": "Manufacturer reference is required",
+      "partIdRequired": "Part ID is required",
+      "partNameRequired": "Part name is required",
+      "saveError": "Failed to save part",
+      "updateSuccess": "Part updated successfully"
     },
     "messages": {
       "noSearchResults": "Nessun ricambio corrisponde alla ricerca.",
       "noParts": "Nessun ricambio disponibile.",
       "confirmDelete": "Sei sicuro di voler eliminare questo ricambio? Questa azione non può essere annullata."
+    },
+    "button": {
+      "cancel": "Cancel",
+      "create": "Create",
+      "saving": "Saving...",
+      "update": "Update"
+    },
+    "options": {
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "status": {
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock"
     }
   },
   "users": {
@@ -1204,7 +1492,9 @@
     "roles": {
       "admin": "Amministratore",
       "technician": "Tecnico",
-      "operator": "Operatore"
+      "operator": "Operatore",
+      "manager": "Manager",
+      "user": "Utilisateur"
     },
     "empty": {
       "search": "Nessun utente trovato che corrisponde alla ricerca.",
@@ -1258,7 +1548,9 @@
       "passwordMin": "La password deve contenere almeno 6 caratteri",
       "fullNameRequired": "Il nome completo è obbligatorio",
       "photoUploaded": "Foto caricata con successo",
-      "photoUploadFailed": "Caricamento della foto non riuscito"
+      "photoUploadFailed": "Caricamento della foto non riuscito",
+      "confirmDelete": "Are you sure you want to delete this user?",
+      "loadFailed": "فشل في تحميل المستخدمين"
     },
     "button": {
       "cancel": "Annulla",
@@ -1339,6 +1631,7 @@
       "dashboard": "Dashboard",
       "users": "Utenti",
       "machines": "Macchine",
+      "digitalTwin": "Gemello digitale",
       "workOrders": "Ordini di lavoro",
       "catalogues": "Cataloghi",
       "machineTypes": "Tipi di macchina",
@@ -1372,7 +1665,29 @@
       "panneSolutions": "Soluzioni guasti",
       "knowledgeBase": "Base di conoscenza",
       "devices": "Dispositivi",
-      "reports": "Report"
+      "reports": "Report",
+      "manuals": "Manuals",
+      "myReports": "My Reports",
+      "reportProblem": "Report Problem",
+      "startCorrectiveMaintenance": "Corrective Maintenance",
+      "startPreventiveMaintenance": "Preventive Maintenance"
+    },
+    "categories": {
+      "catalogues": "Kataloge",
+      "equipment": "Machines",
+      "equipmentTypes": "Machine Types",
+      "iotMonitoring": "IoT Monitoring",
+      "machineTypes": "Maschinentypen",
+      "maintenance": "Maintenance",
+      "moduleTypes": "Modultypen",
+      "overview": "Overview",
+      "partsInventory": "Catalogues",
+      "sensors": "Sensoren",
+      "systemModules": "System Modules",
+      "technicalReference": "Technical Reference",
+      "userManagement": "Benutzerverwaltung",
+      "users": "Users",
+      "workOrders": "Arbeitsaufträge"
     }
   },
   "machines": {
@@ -1463,7 +1778,8 @@
       "viewTimeline": "Cronologia",
       "openManual": "Apri manuale"
     },
-    "description": "Gestisci e monitora tutte le macchine del sistema"
+    "description": "Gestisci e monitora tutte le macchine del sistema",
+    "singular": "Machine"
   },
   "machineTimeline": {
     "pageTitle": "Cronologia della macchina",
@@ -1481,7 +1797,13 @@
       "retry": "Riprova",
       "showMore": "Mostra di più",
       "showLess": "Mostra meno",
-      "viewDocument": "Visualizza documento"
+      "viewDocument": "Visualizza documento",
+      "back": "Back",
+      "clearSearch": "Clear search",
+      "previewDocument": "Preview document",
+      "resetFilters": "Reset filters",
+      "viewWorkOrder": "View work order",
+      "workOrders": "Work orders"
     },
     "empty": {
       "default": "Nessun evento ancora registrato per questa macchina.",
@@ -1494,7 +1816,8 @@
       "openWorkOrders": "Ordini di lavoro aperti",
       "machineAge": "Età della macchina",
       "ageDays": "{days, plural, one {# giorno} other {# giorni}}",
-      "none": "—"
+      "none": "—",
+      "currentTechnician": "Current technician"
     },
     "stats": {
       "totalInterventions": "Interventi totali",
@@ -1601,6 +1924,16 @@
       "partName": "Ricambio",
       "partRef": "Riferimento ricambio",
       "provider": "Fornitore IA"
+    },
+    "statsContext": {
+      "averageRepairTime": "Across timed work orders",
+      "closedWorkOrders": "Closed or archived",
+      "correctiveCompleted": "Completed corrective WOs",
+      "downtimeHours": "Start to end duration",
+      "openWorkOrders": "Currently active",
+      "partsConsumed": "Consumed stock quantity",
+      "preventiveCompleted": "Completed preventive WOs",
+      "totalInterventions": "All work orders"
     }
   },
   "interventionReports": {
@@ -2309,6 +2642,12 @@
       "confirmClose": "Chiudere questo ordine? Il rapporto deve essere completo.",
       "completed": "Intervento completato.",
       "awaitingValidation": "Questo lavoro è completo ed è in attesa di convalida indipendente da parte di un altro utente autorizzato."
+    },
+    "dynamicTranslations": {
+      "showOriginal": "Mostra originale",
+      "showTranslation": "Mostra traduzione",
+      "auto": "Tradotto automaticamente",
+      "safetyNotice": "Traduzione automatica solo per visualizzazione. Verificare i contenuti di sicurezza macchina con l originale."
     }
   },
   "miniAvatar": {
@@ -2488,7 +2827,12 @@
     "probableCauses": "Cause probabili",
     "recommendedChecks": "Controlli consigliati",
     "safetyWarnings": "Avvisi di sicurezza",
-    "uncertainty": "Incertezza"
+    "uncertainty": "Incertezza",
+    "globalOpen": "Apri assistente IA",
+    "globalClose": "Chiudi assistente IA",
+    "globalOpenShort": "Assistente IA",
+    "globalCloseShort": "Chiudi assistente",
+    "globalPanelLabel": "Assistente IA globale"
   },
   "deviceMonitoring": {
     "title": "Dispositivi",
@@ -2677,5 +3021,159 @@
       "scheduleDeleted": "Pianificazione eliminata.",
       "scheduleDeleteFailed": "Impossibile eliminare la pianificazione."
     }
+  },
+  "machineTypes": {
+    "addType": "Add Type",
+    "allTypes": "All Types",
+    "button": {
+      "cancel": "Cancel",
+      "create": "Create",
+      "saving": "Saving...",
+      "update": "Update"
+    },
+    "empty": {
+      "default": "No machine types available.",
+      "search": "No machine types found matching your search."
+    },
+    "form": {
+      "category": "Category",
+      "description": "Description",
+      "expectedLifespan": "Expected Lifespan (years)",
+      "maintenanceInterval": "Maintenance Interval (days)",
+      "manufacturer": "Manufacturer",
+      "modelName": "Model Name",
+      "typeId": "Type ID"
+    },
+    "heading": "Machine Types Management",
+    "modal": {
+      "add": "Add New Machine Type",
+      "edit": "Edit Machine Type"
+    },
+    "notifications": {
+      "created": "Machine type created successfully",
+      "deleteFailed": "Failed to delete machine type",
+      "deleted": "Machine type deleted successfully",
+      "manufacturerRequired": "Manufacturer is required",
+      "modelNameRequired": "Model name is required",
+      "saveFailed": "Failed to save machine type",
+      "typeIdRequired": "Type ID is required",
+      "updated": "Machine type updated successfully"
+    },
+    "options": {
+      "electrical": "Electrical",
+      "hydraulic": "Hydraulic",
+      "mechanical": "Mechanical",
+      "mixed": "Mixed",
+      "pneumatic": "Pneumatic"
+    },
+    "pageTitle": "Machine Types Management",
+    "placeholders": {
+      "enterCategory": "Enter category",
+      "enterDescription": "Enter description",
+      "enterManufacturer": "Enter manufacturer",
+      "enterModelName": "Enter model name",
+      "enterTypeId": "Enter type ID"
+    },
+    "searchPlaceholder": "Search machine types...",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "actions": "Actions",
+      "category": "Category",
+      "description": "Description",
+      "expectedLifespan": "Expected Lifespan",
+      "maintenanceInterval": "Maintenance Interval",
+      "manufacturer": "Manufacturer",
+      "modelName": "Model Name",
+      "typeId": "Type ID"
+    },
+    "totalTypes": "Total Types"
+  },
+  "moduleTypes": {
+    "addType": "Add Module Type",
+    "allTypes": "All Module Types",
+    "button": {
+      "cancel": "Cancel",
+      "create": "Create",
+      "saving": "Saving...",
+      "update": "Update"
+    },
+    "empty": {
+      "default": "No module types available.",
+      "search": "No module types found matching your search."
+    },
+    "form": {
+      "category": "Category",
+      "compatibility": "Compatibility (comma-separated)",
+      "description": "Description",
+      "moduleTypeId": "Module Type ID",
+      "name": "Name",
+      "specifications": "Specifications"
+    },
+    "heading": "Module Types Management",
+    "modal": {
+      "add": "Add New Module Type",
+      "edit": "Edit Module Type"
+    },
+    "notifications": {
+      "created": "Module type created successfully",
+      "deleteFailed": "Failed to delete module type",
+      "deleted": "Module type deleted successfully",
+      "moduleTypeIdRequired": "Module Type ID is required",
+      "nameRequired": "Name is required",
+      "saveFailed": "Failed to save module type",
+      "updated": "Module type updated successfully"
+    },
+    "options": {
+      "actuation": "Actuation",
+      "communication": "Communication",
+      "control": "Control",
+      "power": "Power",
+      "sensing": "Sensing"
+    },
+    "pageTitle": "Module Types Management",
+    "placeholders": {
+      "enterCategory": "Enter category",
+      "enterCompatibility": "Enter compatibility (e.g., Machine A, Machine B)",
+      "enterDescription": "Enter description",
+      "enterModuleTypeId": "Enter module type ID",
+      "enterName": "Enter name",
+      "enterSpecifications": "Enter technical specifications"
+    },
+    "searchPlaceholder": "Search module types...",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "actions": "Actions",
+      "category": "Category",
+      "compatibility": "Compatibility",
+      "description": "Description",
+      "moduleTypeId": "Module Type ID",
+      "name": "Name",
+      "specifications": "Specifications"
+    },
+    "totalTypes": "Total Module Types"
+  },
+  "operatorMachines": {
+    "allMachines": "All Machines",
+    "allMachinesDescription": "List of all machines in the system",
+    "categoryDescription": "Machines in this category",
+    "details": "Details",
+    "machineCount": "{count} machines found",
+    "manufacturer": "Manufacturer",
+    "noMachinesFound": "No machines found",
+    "pageTitle": "Machines",
+    "reportIssue": "Report Issue",
+    "serialNumber": "Serial Number",
+    "status": {
+      "inactive": "Inactive",
+      "maintenance": "Maintenance",
+      "operational": "Operational"
+    },
+    "timeline": "Timeline"
   }
 }

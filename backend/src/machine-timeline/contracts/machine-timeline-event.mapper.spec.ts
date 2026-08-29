@@ -6,6 +6,9 @@ import {
 import { toMachineTimelineEventResponse } from './machine-timeline-event.mapper';
 import { assertEveryMachineTimelineEventTypeIsCovered } from './machine-timeline-event-response.types';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 function baseEvent(
   overrides: Partial<MachineTimelineEvent>,
 ): MachineTimelineEvent {
@@ -75,8 +78,8 @@ describe('toMachineTimelineEventResponse', () => {
       metadata: { faultCode: 'F-1', severity: 'critical' },
     });
     const response = toMachineTimelineEventResponse(event);
-    expect(Object.keys(response.metadata).sort()).toEqual(
-      ['faultCode', 'severity'].sort(),
+    expect(Object.keys(response.metadata).sort(compareStrings)).toEqual(
+      ['faultCode', 'severity'].sort(compareStrings),
     );
   });
 

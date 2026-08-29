@@ -1,6 +1,9 @@
 import { Types } from 'mongoose';
 import { toTechnicianPartResponse } from './technician-response.mapper';
 
+const compareStrings = (left: string, right: string): number =>
+  left.localeCompare(right);
+
 describe('toTechnicianPartResponse', () => {
   it('serializes an unpopulated part_id ref to a plain id string', () => {
     const partId = new Types.ObjectId();
@@ -47,8 +50,8 @@ describe('toTechnicianPartResponse', () => {
     };
     const response = toTechnicianPartResponse(doc);
     expect(response).not.toHaveProperty('__v');
-    expect(Object.keys(response).sort()).toEqual(
-      ['_id', 'ot_id', 'part_id', 'quantite'].sort(),
+    expect(Object.keys(response).sort(compareStrings)).toEqual(
+      ['_id', 'ot_id', 'part_id', 'quantite'].sort(compareStrings),
     );
   });
 });

@@ -22,6 +22,7 @@ import {
 import { Link } from '@/i18n/navigation';
 import { apiService } from "@/services/api";
 import ProfileAvatar from "@/components/ProfileAvatar";
+import { translateEnumValue } from "@/services/enumTranslations";
 
 type MinimalUser = {
   _id?: string;
@@ -49,6 +50,7 @@ type DashboardProps = Readonly<{
 
 export default function Dashboard({ locale: propLocale }: DashboardProps) {
   const tAdmin = useTranslations("dashboard.admin");
+  const tEnums = useTranslations("common.enums");
 
   const { user, isLoading: authLoading } = useAuth();
   const locale = propLocale || 'en';
@@ -195,10 +197,12 @@ export default function Dashboard({ locale: propLocale }: DashboardProps) {
                       {wo.title || wo.description}
                     </div>
                     <div className="truncate text-xs text-slate-500" title={wo.status}>
-                      {wo.status}
+                      {translateEnumValue(tEnums, 'workOrderStatuses', wo.status)}
                     </div>
                   </div>
-                  <div className={`status-badge ${getStatusBadge(wo.status ?? 'pending')}`}>{wo.status}</div>
+                  <div className={`status-badge ${getStatusBadge(wo.status ?? 'pending')}`}>
+                    {translateEnumValue(tEnums, 'workOrderStatuses', wo.status)}
+                  </div>
                 </div>
               ))}
             </div>

@@ -88,6 +88,11 @@ import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive
 import { ReportsModule } from './reports/reports.module';
 import { SavedViewsModule } from './saved-views/saved-views.module';
 import { MachineTimelineModule } from './machine-timeline/machine-timeline.module';
+import { DynamicContentTranslationModule } from './dynamic-content-translation/dynamic-content-translation.module';
+import {
+  TranslationCache,
+  TranslationCacheSchema,
+} from './schemas/translation-cache.schema';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
@@ -203,6 +208,7 @@ const SLOW_QUERY_THRESHOLD_MS =
       { name: Panne.name, schema: PanneSchema },
       { name: PanneSolution.name, schema: PanneSolutionSchema },
       { name: KPI.name, schema: KPISchema },
+      { name: TranslationCache.name, schema: TranslationCacheSchema },
     ]),
     UsersModule,
     MachinesModule,
@@ -241,6 +247,7 @@ const SLOW_QUERY_THRESHOLD_MS =
     ReportsModule,
     SavedViewsModule,
     MachineTimelineModule,
+    DynamicContentTranslationModule,
     MetricsModule,
   ],
   controllers: [AppController],

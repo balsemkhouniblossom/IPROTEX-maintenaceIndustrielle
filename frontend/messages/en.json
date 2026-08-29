@@ -25,7 +25,14 @@
     "ar": "العربية",
     "es": "Español",
     "de": "Deutsch",
-    "it": "Italiano"
+    "it": "Italiano",
+    "theme": {
+      "dark": "Oscuro",
+      "label": "Tema",
+      "light": "Claro",
+      "toggleToDark": "Cambiar al modo oscuro",
+      "toggleToLight": "Cambiar al modo claro"
+    }
   },
   "auth": {
     "signIn": "Sign In",
@@ -159,7 +166,15 @@
       "saving": "Saving...",
       "create": "Create",
       "update": "Update",
-      "search": "Search"
+      "search": "Search",
+      "add": "إضافة",
+      "back": "رجوع",
+      "close": "إغلاق",
+      "confirm": "تأكيد",
+      "next": "التالي",
+      "previous": "السابق",
+      "save": "حفظ",
+      "smartMaintenanceCalendar": "تقويم الصيانة الذكي"
     },
     "status": {
       "pending": "Pending",
@@ -181,7 +196,8 @@
       "light": "Light",
       "dark": "Dark",
       "toggleToLight": "Switch to light mode",
-      "toggleToDark": "Switch to dark mode"
+      "toggleToDark": "Switch to dark mode",
+      "smartMaintenanceCalendar": "Calendrier intelligent de maintenance"
     },
     "loading": "Loading...",
     "now": "Now",
@@ -206,7 +222,9 @@
     "close": "Close",
     "confirm": "Confirm",
     "time": {
-      "justNow": "Just now"
+      "justNow": "Just now",
+      "daysAgo": "منذ {count} يوم",
+      "hoursAgo": "منذ {count} ساعة"
     },
     "table": {
       "actions": "Actions",
@@ -233,6 +251,98 @@
       "namePlaceholder": "View name",
       "empty": "No saved views yet.",
       "delete": "Delete view"
+    },
+    "enums": {
+      "roles": {
+        "admin": "Admin",
+        "technician": "Technician",
+        "operator": "Operator"
+      },
+      "permissions": {
+        "read": "Read",
+        "create": "Create",
+        "update": "Update",
+        "delete": "Delete",
+        "approve": "Approve",
+        "reject": "Reject",
+        "export": "Export",
+        "manage": "Manage"
+      },
+      "workOrderStatuses": {
+        "pending": "Pending",
+        "assigned": "Assigned",
+        "in_progress": "In progress",
+        "waiting_parts": "Waiting for parts",
+        "waiting_validation": "Waiting for validation",
+        "technician_required": "Technician required",
+        "returned": "Returned",
+        "completed": "Completed",
+        "validated": "Validated",
+        "cancelled": "Cancelled",
+        "canceled": "Cancelled",
+        "closed": "Closed"
+      },
+      "priorities": {
+        "urgent": "Urgent",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "maintenanceTypes": {
+        "preventive": "Preventive",
+        "corrective": "Corrective",
+        "predictive": "Predictive",
+        "inspection": "Inspection",
+        "lubrication": "Lubrication"
+      },
+      "machineStates": {
+        "operational": "Operational",
+        "running": "Running",
+        "stopped": "Stopped",
+        "maintenance": "Maintenance",
+        "inactive": "Inactive",
+        "active": "Active",
+        "online": "Online",
+        "offline": "Offline",
+        "warning": "Warning",
+        "error": "Error",
+        "fault": "Fault"
+      },
+      "reportTypes": {
+        "corrective_downtime": "Corrective downtime",
+        "fault_frequency": "Fault frequency",
+        "preventive_compliance": "Preventive compliance",
+        "maintenance_costs": "Maintenance costs",
+        "technician_workload": "Technician workload",
+        "stock_movements": "Stock movements",
+        "machine_history": "Machine history",
+        "predictive_risk": "Predictive risk",
+        "audit_history": "Audit history",
+        "mttr_mtbf_trends": "MTTR / MTBF trends"
+      },
+      "notificationTypes": {
+        "work_order_assigned": "Work order assigned",
+        "work_order_updated": "Work order updated",
+        "work_order_completed": "Work order completed",
+        "validation_required": "Validation required",
+        "part_request_created": "Part request created",
+        "part_request_approved": "Part request approved",
+        "part_request_rejected": "Part request rejected",
+        "preventive_due": "Preventive maintenance due",
+        "preventive_overdue": "Preventive maintenance overdue",
+        "report_ready": "Report ready",
+        "system": "System"
+      }
+    },
+    "app": {
+      "version": "الإصدار"
+    },
+    "na": "غير متوفر",
+    "dynamicTranslations": {
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "auto": "Auto-translated",
+      "safetyNotice": "Automatically translated for display only. Verify machine-safety content against the original."
     }
   },
   "dashboard": {
@@ -249,7 +359,11 @@
       },
       "systemOnlineKey": "systemOnline",
       "loadingKey": "loading",
-      "pendingMaintenanceKey": "pendingMaintenance"
+      "pendingMaintenanceKey": "pendingMaintenance",
+      "percentageChange": {
+        "negative": "{{value}}% from last month",
+        "positive": "+{{value}}% from last month"
+      }
     },
     "welcome": "Welcome",
     "logout": "Logout",
@@ -270,13 +384,17 @@
         "dueToday": "Due Today",
         "waitingValidation": "Waiting Validation",
         "completedTodayLabel": "Completed Today",
-        "completionRateHint": "Preventive maintenance completed on or before its due date"
+        "completionRateHint": "Preventive maintenance completed on or before its due date",
+        "completed": "مكتملة",
+        "inProgress": "قيد التنفيذ",
+        "pending": "قيد الانتظار"
       },
       "machines": {
         "availability": "Machine Availability",
         "overview": "Machine Overview",
         "online": "machines online",
-        "availabilityHint": "Based on mean time between failures vs. mean time to repair"
+        "availabilityHint": "Based on mean time between failures vs. mean time to repair",
+        "offline": "Offline"
       },
       "quickKpis": {
         "title": "Quick KPIs",
@@ -288,7 +406,10 @@
         "correctiveResponseTime": "Corrective Response Time",
         "mttr": "MTTR (Mean Time To Repair)",
         "mtbf": "MTBF (Mean Time Between Failures)",
-        "hoursValue": "{hours}h"
+        "hoursValue": "{hours}h",
+        "systemHealth": "حالة النظام",
+        "userActivity": "نشاط المستخدمين",
+        "workOrderCompletion": "إتمام أوامر العمل"
       },
       "title": "Full Database Dashboard",
       "searchPlaceholder": "Search across all database records...",
@@ -509,7 +630,10 @@
         "manuals": "Machine Manuals",
         "reports": "My Maintenance Reports",
         "myReports": "My Maintenance Reports",
-        "smartCalendar": "Smart Calendar"
+        "smartCalendar": "Smart Calendar",
+        "reportIssue": "Reportar un problema",
+        "viewCorrective": "Ver mantenimiento correctivo",
+        "viewPreventive": "Ver mantenimiento preventivo"
       },
       "health": {
         "title": "System Health",
@@ -652,7 +776,41 @@
         "startTaskAction": "Start Task",
         "continueAction": "Continue",
         "viewDetailsAction": "View Details",
-        "operatorFlowNote": "Operator flow is fully automated: select, check, complete. Scheduling, report generation, reminders, and next due generation are automatic."
+        "operatorFlowNote": "Operator flow is fully automated: select, check, complete. Scheduling, report generation, reminders, and next due generation are automatic.",
+        "lifecycle": {
+          "actualExecutionDate": "Date réelle d'exécution",
+          "alreadyScheduled": "Cette tâche est déjà planifiée.",
+          "completed": "Terminé",
+          "dueSoon": "Bientôt dû",
+          "dueToday": "Dû aujourd'hui",
+          "duplicateOccurrence": "Une occurrence en double existe déjà.",
+          "inProgress": "En cours",
+          "invalidPlanForMachine": "Ce plan de maintenance ne s'applique pas à la machine sélectionnée.",
+          "lastCompleted": "Dernière réalisation",
+          "newDueDate": "Nouvelle échéance",
+          "nextDue": "Prochaine échéance",
+          "nextOccurrenceCreated": "Occurrence suivante créée",
+          "noDueDate": "Aucune date d'échéance",
+          "notScheduled": "Pas encore planifié",
+          "originalDueDate": "Échéance initiale",
+          "overdue": "En retard",
+          "performToday": "Effectuer aujourd'hui",
+          "preventivePlan": "Plan préventif",
+          "reschedule": "Replanifier",
+          "rescheduleSuccess": "L'occurrence a été replanifiée.",
+          "rescheduledAt": "Replanifié le",
+          "rescheduledBy": "Replanifié par",
+          "reschedulingReason": "Motif de replanification",
+          "returned": "Retourné",
+          "scheduleCreated": "La première date d'intervention a été planifiée.",
+          "scheduled": "Planifié",
+          "scheduledOccurrences": "Occurrences planifiées",
+          "setFirstInterventionDate": "Définir la première date d'intervention",
+          "taskAlreadySubmitted": "Cette intervention a déjà été soumise.",
+          "technicianValidationRequired": "Validation technicien requise",
+          "upcoming": "À venir",
+          "waitingValidation": "En attente de validation"
+        }
       },
       "module": "Module"
     },
@@ -705,14 +863,28 @@
         "fourHoursAgo": "4 hours ago",
         "sixHoursAgo": "6 hours ago",
         "eightHoursAgo": "8 hours ago"
-      }
-    }
+      },
+      "smartMaintenanceCalendar": "Calendario inteligente de mantenimiento"
+    },
+    "assigned": "مسندة",
+    "completed": "مكتملة",
+    "correctiveMaintenance": "الصيانة التصحيحية",
+    "inProgress": "قيد التنفيذ",
+    "machineCategories": "فئات الآلات",
+    "machineManuals": "أدلة الآلات",
+    "myReports": "تقارير الصيانة الخاصة بي",
+    "preventiveMaintenance": "الصيانة الوقائية",
+    "quickActions": "الإجراءات السريعة",
+    "reportProblem": "الإبلاغ عن مشكلة",
+    "viewMachines": "عرض الآلات",
+    "waitingValidation": "في انتظار التحقق"
   },
   "navigation": {
     "menu": {
       "dashboard": "Dashboard",
       "users": "Users",
       "machines": "Machines",
+      "digitalTwin": "Digital Twin",
       "workOrders": "Work Orders",
       "maintenancePlans": "Maintenance Plans",
       "smartMaintenanceCalendar": "Smart Maintenance Calendar",
@@ -1193,7 +1365,8 @@
       "lastLogin": "Last Login",
       "actions": "Actions",
       "userCode": "User Code",
-      "customDepartment": "Custom department"
+      "customDepartment": "Custom department",
+      "fullName": "Nom complet"
     },
     "actions": {
       "edit": "Edit",
@@ -1205,7 +1378,9 @@
     "roles": {
       "admin": "Admin",
       "technician": "Technician",
-      "operator": "Operator"
+      "operator": "Operator",
+      "manager": "Manager",
+      "user": "Utilisateur"
     },
     "empty": {
       "search": "No users found matching your search.",
@@ -1260,7 +1435,8 @@
       "fullNameRequired": "Full name is required",
       "photoUploaded": "Photo uploaded successfully",
       "photoUploadFailed": "Failed to upload photo",
-      "confirmDelete": "Are you sure you want to delete this user?"
+      "confirmDelete": "Are you sure you want to delete this user?",
+      "loadFailed": "فشل في تحميل المستخدمين"
     },
     "button": {
       "cancel": "Cancel",
@@ -1361,7 +1537,8 @@
       "location": "Location",
       "stockQuantity": "Stock Quantity",
       "minimumStock": "Minimum Stock",
-      "partCode": "Part Code"
+      "partCode": "Part Code",
+      "manufacturerRef": "Référence fabricant"
     },
     "validation": {
       "partIdRequired": "Part ID is required",
@@ -1570,7 +1747,13 @@
       "equipmentTypes": "Machine Types",
       "iotMonitoring": "IoT Monitoring",
       "systemModules": "System Modules",
-      "technicalReference": "Technical Reference"
+      "technicalReference": "Technical Reference",
+      "catalogues": "Kataloge",
+      "machineTypes": "Maschinentypen",
+      "moduleTypes": "Modultypen",
+      "sensors": "Sensoren",
+      "userManagement": "Benutzerverwaltung",
+      "workOrders": "Arbeitsaufträge"
     },
     "domains": {
       "dashboard": "Dashboard",
@@ -1601,6 +1784,7 @@
       "dashboard": "Dashboard",
       "users": "Users",
       "machines": "Machines",
+      "digitalTwin": "Digital Twin",
       "workOrders": "Work Orders",
       "startPreventiveMaintenance": "Preventive Maintenance",
       "startCorrectiveMaintenance": "Corrective Maintenance",
@@ -2612,6 +2796,12 @@
       "confirmClose": "Close this work order? This action requires a complete report.",
       "completed": "This intervention is complete.",
       "awaitingValidation": "This work is complete and awaiting independent validation by another authorized user."
+    },
+    "dynamicTranslations": {
+      "showOriginal": "Show original",
+      "showTranslation": "Show translation",
+      "auto": "Auto-translated",
+      "safetyNotice": "Automatically translated for display only. Verify machine-safety content against the original."
     }
   },
   "miniAvatar": {
@@ -2791,7 +2981,12 @@
     "probableCauses": "Probable causes",
     "recommendedChecks": "Recommended checks",
     "safetyWarnings": "Safety warnings",
-    "uncertainty": "Uncertainty"
+    "uncertainty": "Uncertainty",
+    "globalOpen": "Open AI assistant",
+    "globalClose": "Close AI assistant",
+    "globalOpenShort": "AI assistant",
+    "globalCloseShort": "Close assistant",
+    "globalPanelLabel": "Global AI assistant"
   },
   "deviceMonitoring": {
     "title": "Devices",

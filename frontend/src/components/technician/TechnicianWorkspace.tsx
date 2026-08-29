@@ -9,6 +9,8 @@ import { Modal } from "@/components/Modal";
 import Pagination from "@/components/Pagination";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { apiService } from "@/services/api";
+import { translateEnumValue } from "@/services/enumTranslations";
+import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
 
 type WorkOrder = {
   _id: string;
@@ -17,6 +19,8 @@ type WorkOrder = {
   priorite?: string;
   type_maintenance?: string;
   description?: string;
+  reschedule_reason?: string;
+  lifecycle_history?: Array<{ reason?: string }>;
   date_created?: string;
   date_start?: string;
   scheduled_date?: string;
@@ -139,12 +143,17 @@ function OrderCard({
   order,
   locale,
   viewLabel,
+  description,
+  automaticallyTranslated,
 }: Readonly<{
   order: WorkOrder;
   locale: string;
   viewLabel: string;
+  description: string;
+  automaticallyTranslated: boolean;
 }>) {
   const t = useTranslations("technician");
+  const tEnums = useTranslations("common.enums");
   const statusKey = `status.${order.status}`;
   const dateRows = [
     {
@@ -173,20 +182,28 @@ function OrderCard({
           </p>
         </div>
         <span className="technician-order-status rounded-full px-2 py-1 text-xs">
-          {t.has(statusKey) ? t(statusKey) : order.status}
+          {t.has(statusKey) ? t(statusKey) : translateEnumValue(tEnums, 'workOrderStatuses', order.status)}
         </span>
       </div>
       <p className="technician-order-description mt-3 line-clamp-2 text-sm">
-        {order.description || t("notAvailable")}
+        {description || t("notAvailable")}
+        {automaticallyTranslated ? (
+          <span
+            className="ms-1 text-xs text-amber-700"
+            title={t("dynamicTranslations.safetyNotice")}
+          >
+            {t("dynamicTranslations.auto")}
+          </span>
+        ) : null}
       </p>
       <p className="technician-order-text mt-2 text-sm">
         <span className="font-medium">{t("operator")}:</span>{" "}
         {order.operator?.nom_complet || t("notAvailable")}
       </p>
       <div className="technician-order-muted mt-3 flex flex-wrap gap-2 text-xs [&>span:nth-child(n+4)]:hidden">
-        <span>{order.type_maintenance || "—"}</span>
+        <span>{translateEnumValue(tEnums, 'maintenanceTypes', order.type_maintenance) || "—"}</span>
         <span>•</span>
-        <span>{order.priorite || "—"}</span>
+        <span>{translateEnumValue(tEnums, 'priorities', order.priorite) || "—"}</span>
         <span>•</span>
         <span>
           {order.date_created
@@ -238,6 +255,22 @@ export function TechnicianDashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+  const visibleWorkOrders = useMemo(
+    () =>
+      data
+        ? [
+            ...data.urgentTasks,
+            ...data.current,
+            ...data.waitingPartsTasks,
+            ...data.recent,
+          ]
+        : [],
+    [data],
+  );
+  const dynamicTranslations = useWorkOrderDynamicTranslations(
+    visibleWorkOrders,
+    locale,
+  );
   const cards = [
     "assigned",
     "inProgress",
@@ -287,12 +320,29 @@ export function TechnicianDashboard() {
                     <h2 className="text-lg font-semibold">
                       {t(`dashboard.sections.${key}`)}
                     </h2>
-                    <Link
-                      className="text-sm text-blue-700"
-                      href={`/${locale}/technician/work-orders`}
-                    >
-                      {t("actions.viewAll")}
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      {dynamicTranslations.hasTranslationLocale ? (
+                        <button
+                          type="button"
+                          className="text-sm text-amber-700"
+                          onClick={() =>
+                            dynamicTranslations.setShowOriginal(
+                              !dynamicTranslations.showOriginal,
+                            )
+                          }
+                        >
+                          {dynamicTranslations.showOriginal
+                            ? t("dynamicTranslations.showTranslation")
+                            : t("dynamicTranslations.showOriginal")}
+                        </button>
+                      ) : null}
+                      <Link
+                        className="text-sm text-blue-700"
+                        href={`/${locale}/technician/work-orders`}
+                      >
+                        {t("actions.viewAll")}
+                      </Link>
+                    </div>
                   </div>
                   {items.length ? (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -302,6 +352,15 @@ export function TechnicianDashboard() {
                           order={item}
                           locale={locale}
                           viewLabel={t("actions.viewDetails")}
+                          description={dynamicTranslations.textFor(
+                            item._id,
+                            "description",
+                            item.description,
+                          )}
+                          automaticallyTranslated={dynamicTranslations.isAutomaticallyTranslated(
+                            item._id,
+                            "description",
+                          )}
                         />
                       ))}
                     </div>
@@ -396,6 +455,10 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
   useEffect(() => {
     void load();
   }, [load]);
+  const dynamicTranslations = useWorkOrderDynamicTranslations(
+    data?.items ?? [],
+    locale,
+  );
   return (
     <ProtectedRoute requiredRole="technician">
       <DashboardLayout title={t("workOrders.title")}>
@@ -468,6 +531,23 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
               />
             </div>
           )}
+          {dynamicTranslations.hasTranslationLocale ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="rounded-lg border px-3 py-2 text-sm text-amber-700"
+                onClick={() =>
+                  dynamicTranslations.setShowOriginal(
+                    !dynamicTranslations.showOriginal,
+                  )
+                }
+              >
+                {dynamicTranslations.showOriginal
+                  ? t("dynamicTranslations.showTranslation")
+                  : t("dynamicTranslations.showOriginal")}
+              </button>
+            </div>
+          ) : null}
           {loading && (
             <div className="panel">{t("loading")}</div>
           )}
@@ -487,6 +567,15 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
                     order={item}
                     locale={locale}
                     viewLabel={t("actions.viewDetails")}
+                    description={dynamicTranslations.textFor(
+                      item._id,
+                      "description",
+                      item.description,
+                    )}
+                    automaticallyTranslated={dynamicTranslations.isAutomaticallyTranslated(
+                      item._id,
+                      "description",
+                    )}
                   />
                 ))}
               </div>

@@ -116,6 +116,27 @@ describe('NotificationCenterService', () => {
       expect(result).toBeNull();
     });
 
+    it('persists repeatable notification templates separately from optional free-form messages', async () => {
+      await service.createIfNotExists({
+        dedupeKey: 'intervention_completed:wo-1',
+        type: NotificationType.INTERVENTION_COMPLETED,
+        title: 'Intervention completed',
+        message: 'Free-form technician note',
+        translationKey: 'templates.interventionCompleted',
+        translationParams: { workOrder: 'WO-1' },
+        recipientUserId: userId,
+      });
+
+      expect(notificationModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Intervention completed',
+          message: 'Free-form technician note',
+          translationKey: 'templates.interventionCompleted',
+          translationParams: { workOrder: 'WO-1' },
+        }),
+      );
+    });
+
     it('rejects a notification with neither a recipient user nor a recipient role', async () => {
       await expect(
         service.createIfNotExists({
