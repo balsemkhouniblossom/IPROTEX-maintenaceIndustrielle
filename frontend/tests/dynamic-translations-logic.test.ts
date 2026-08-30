@@ -2,6 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  buildVisibleWorkOrderTranslationReferences,
+  dynamicTranslationKey,
+  mergeTranslationResults,
+  requestDynamicTranslations,
+  translatedTextFor,
+  type DynamicTranslationResult,
+} from "../src/services/dynamicTranslations.ts";
 import { translateEnumValue } from "../src/services/enumTranslations.ts";
 
 function readSource(relativePath: string): string {
@@ -9,33 +17,139 @@ function readSource(relativePath: string): string {
 }
 
 test("visible work-order translation references are deduplicated and send no source text", () => {
-  const source = readSource("src/services/dynamicTranslations.ts");
-
-  assert.match(source, /const seen = new Set<string>\(\)/);
-  assert.match(source, /seen\.has\(workOrder\._id\)/);
-  assert.match(source, /fields\.push\("description"\)/);
-  assert.match(source, /fields\.push\("reschedule_reason"\)/);
-  assert.match(source, /fields\.push\("lifecycle_history\.reason"\)/);
-  assert.match(source, /entityId: workOrder\._id/);
-  assert.doesNotMatch(source, /originalText:\s*workOrder/);
-  assert.doesNotMatch(source, /translatedText:\s*workOrder/);
+  assert.deepEqual(
+    buildVisibleWorkOrderTranslationReferences([
+      {
+        _id: "wo-1",
+        description: "Inspect pump",
+        reschedule_reason: "  ",
+        lifecycle_history: [{ reason: "" }, { reason: "Delayed" }],
+      },
+      {
+        _id: "wo-1",
+        description: "Duplicate should be ignored",
+      },
+      {
+        _id: "wo-2",
+        description: " ",
+        reschedule_reason: "Waiting",
+        lifecycle_history: [],
+      },
+      {
+        _id: "wo-3",
+      },
+      {
+        description: "Missing id",
+      },
+    ]),
+    [
+      {
+        entityType: "workOrder",
+        entityId: "wo-1",
+        fields: ["description", "lifecycle_history.reason"],
+      },
+      {
+        entityType: "workOrder",
+        entityId: "wo-2",
+        fields: ["reschedule_reason"],
+      },
+    ],
+  );
 });
 
 test("translation map supports show-original and translated display modes", () => {
-  const source = readSource("src/services/dynamicTranslations.ts");
+  const result: DynamicTranslationResult = {
+    entityType: "workOrder",
+    entityId: "wo-1",
+    field: "description",
+    originalText: "Inspect pump",
+    translatedText: "Inspecter la pompe",
+    targetLocale: "fr",
+    status: "translated",
+    automaticallyTranslated: true,
+    safetyNotice: true,
+  };
+  const map = mergeTranslationResults({}, [result]);
 
-  assert.match(
-    source,
-    /if \(params\.showOriginal\) return params\.originalText \?\? ""/,
+  assert.equal(
+    map[dynamicTranslationKey("workOrder", "wo-1", "description")],
+    result,
   );
-  assert.match(
-    source,
-    /translation\?\.translatedText \|\| params\.originalText \|\| ""/,
+  assert.equal(
+    translatedTextFor({
+      translations: map,
+      entityType: "workOrder",
+      entityId: "wo-1",
+      field: "description",
+      originalText: "Inspect pump",
+      showOriginal: false,
+    }),
+    "Inspecter la pompe",
   );
-  assert.match(
-    source,
-    /dynamicTranslationKey\(result\.entityType, result\.entityId, result\.field\)/,
+  assert.equal(
+    translatedTextFor({
+      translations: map,
+      entityType: "workOrder",
+      entityId: "wo-1",
+      field: "description",
+      originalText: "Inspect pump",
+      showOriginal: true,
+    }),
+    "Inspect pump",
   );
+  assert.equal(
+    translatedTextFor({
+      translations: {},
+      entityType: "workOrder",
+      entityId: "wo-2",
+      field: "description",
+      showOriginal: false,
+    }),
+    "",
+  );
+});
+
+test("requestDynamicTranslations forwards payload and abort signal through the API client", async () => {
+  const controller = new AbortController();
+  const expected = { items: [] };
+  const apiClient = {
+    batchDynamicTranslations: async (
+      input: unknown,
+      options: { signal?: AbortSignal },
+    ) => {
+      assert.deepEqual(input, {
+        targetLocale: "fr",
+        sourceLocale: "en",
+        items: [
+          {
+            entityType: "workOrder",
+            entityId: "wo-1",
+            fields: ["description"],
+          },
+        ],
+      });
+      assert.equal(options.signal, controller.signal);
+      return { data: expected };
+    },
+  };
+
+  const response = await requestDynamicTranslations(
+    {
+      targetLocale: "fr",
+      sourceLocale: "en",
+      items: [
+        {
+          entityType: "workOrder",
+          entityId: "wo-1",
+          fields: ["description"],
+        },
+      ],
+    },
+    controller.signal,
+    apiClient,
+  );
+
+  assert.equal(response, expected);
 });
 
 test("hook cancels stale locale/page requests and resets display mode on locale change", () => {

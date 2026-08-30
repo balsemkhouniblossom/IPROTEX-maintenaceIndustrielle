@@ -69,3 +69,16 @@ pnpm-debug.log*
 # TYPESCRIPT
 # =====================
 *.tsbuildinfo
+
+# =====================
+# PYTHON / AI SERVICE
+# =====================
+ai-service/.venv/
+ai-service/**/__pycache__/
+ai-service/**/.ipynb_checkpoints/
+ai-service/data/raw/*
+!ai-service/data/raw/.gitkeep
+ai-service/data/processed/*
+!ai-service/data/processed/.gitkeep
+ai-service/artifacts/*
+!ai-service/artifacts/.gitkeep

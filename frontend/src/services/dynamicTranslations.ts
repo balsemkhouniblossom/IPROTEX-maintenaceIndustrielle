@@ -1,5 +1,3 @@
-import { apiService } from "@/services/api";
-
 export type DynamicTranslationEntityType = "workOrder";
 export type DynamicTranslationField =
   "description" | "reschedule_reason" | "lifecycle_history.reason";
@@ -27,6 +25,16 @@ export type DynamicTranslationBatchResponse = {
 };
 
 export type DynamicTranslationMap = Record<string, DynamicTranslationResult>;
+type DynamicTranslationsApiService = {
+  batchDynamicTranslations: (
+    input: {
+      targetLocale: string;
+      sourceLocale?: string;
+      items: DynamicTranslationReference[];
+    },
+    options: { signal?: AbortSignal },
+  ) => Promise<{ data: DynamicTranslationBatchResponse }>;
+};
 
 type VisibleWorkOrderTranslationInput = {
   _id?: string;
@@ -106,7 +114,9 @@ export async function requestDynamicTranslations(
     items: DynamicTranslationReference[];
   },
   signal?: AbortSignal,
+  apiClient?: DynamicTranslationsApiService,
 ): Promise<DynamicTranslationBatchResponse> {
-  const response = await apiService.batchDynamicTranslations(input, { signal });
+  const client = apiClient ?? (await import("./api")).apiService;
+  const response = await client.batchDynamicTranslations(input, { signal });
   return response.data;
 }
