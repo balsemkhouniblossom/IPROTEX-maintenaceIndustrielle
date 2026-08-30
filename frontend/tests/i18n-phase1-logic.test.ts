@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { normalizeEnumValue } from "../src/services/enumTranslations.ts";
+import {
+  normalizeEnumValue,
+  translateEnumValue,
+} from "../src/services/enumTranslations.ts";
 
 const LOCALES = ["en", "fr", "ar", "es", "de", "it"] as const;
 const compareStrings = (left: string, right: string): number => left.localeCompare(right);
@@ -109,7 +112,22 @@ test("enum value normalization keeps aliases, camelCase, punctuation, and blanks
   assert.equal(normalizeEnumValue("administrator"), "admin");
   assert.equal(normalizeEnumValue("wait parts"), "waiting_parts");
   assert.equal(normalizeEnumValue("High!"), "high");
+  assert.equal(normalizeEnumValue(123), "123");
+  assert.equal(normalizeEnumValue(false), "false");
+  assert.equal(normalizeEnumValue(BigInt("10")), "10");
+  assert.equal(normalizeEnumValue({ value: "High" }), "");
   assert.equal(normalizeEnumValue(null), "");
+});
+
+test("enum translation falls back without object stringification", () => {
+  const t = (key: string) => `translated:${key}`;
+  t.has = (key: string) => key === "priorities.high";
+
+  assert.equal(translateEnumValue(t, "priorities", "High!"), "translated:priorities.high");
+  assert.equal(translateEnumValue(t, "priorities", 123), "123");
+  assert.equal(translateEnumValue(t, "priorities", false), "false");
+  assert.equal(translateEnumValue(t, "priorities", BigInt("10")), "10");
+  assert.equal(translateEnumValue(t, "priorities", { value: "High" }), "");
 });
 
 test("important visible hardcoded text is not rendered directly in protected interfaces", () => {

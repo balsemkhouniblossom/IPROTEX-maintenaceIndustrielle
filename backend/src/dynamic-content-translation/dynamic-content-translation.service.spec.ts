@@ -353,6 +353,21 @@ describe('DynamicContentTranslationService', () => {
         },
       },
       {
+        provider: { translate: jest.fn().mockRejectedValue('disabled') },
+      },
+      {
+        provider: { translate: jest.fn().mockRejectedValue(503) },
+      },
+      {
+        provider: { translate: jest.fn().mockRejectedValue(false) },
+      },
+      {
+        provider: { translate: jest.fn().mockRejectedValue(1n) },
+      },
+      {
+        provider: { translate: jest.fn().mockRejectedValue({ code: 'boom' }) },
+      },
+      {
         provider: { translate: jest.fn().mockImplementation(never) },
         timeoutMs: '1',
       },
@@ -360,6 +375,15 @@ describe('DynamicContentTranslationService', () => {
         provider: {
           translate: jest.fn().mockResolvedValue({
             translatedText: '',
+            provider: 'gemini',
+            model: 'gemini-test',
+          }),
+        },
+      },
+      {
+        provider: {
+          translate: jest.fn().mockResolvedValue({
+            translatedText: 'x'.repeat(5000),
             provider: 'gemini',
             model: 'gemini-test',
           }),
@@ -388,6 +412,50 @@ describe('DynamicContentTranslationService', () => {
         status: 'fallback',
       });
     }
+  });
+
+  it('extracts protected technical tokens with punctuation, URLs, email, files, and decimal units', async () => {
+    const order = workOrder({
+      description:
+        '  Check (FAULT-77), "PMP-22"; contact ops@example.com via https://example.com/a using manual.DOCX at 12,5 °C and ignore 12.3.4 m.',
+    });
+    const provider = {
+      translate: jest.fn().mockResolvedValue({
+        translatedText:
+          'Check FAULT-77 PMP-22 ops@example.com https://example.com/a manual.DOCX 12,5 °C',
+        provider: 'gemini',
+        model: 'gemini-test',
+      }),
+    };
+    const { service } = createService({ order, provider });
+
+    await service.batch(
+      { userId: 'admin-id', role: Role.ADMIN },
+      {
+        targetLocale: 'fr',
+        items: [
+          {
+            entityType: 'workOrder',
+            entityId: String(order._id),
+            fields: ['description'],
+          },
+        ],
+      },
+    );
+
+    expect(provider.translate.mock.calls[0][0].protectedTokens).toEqual(
+      expect.arrayContaining([
+        'FAULT-77',
+        'PMP-22',
+        'ops@example.com',
+        'https://example.com/a',
+        'manual.DOCX',
+        '12,5 °C',
+      ]),
+    );
+    expect(provider.translate.mock.calls[0][0].protectedTokens).not.toContain(
+      '12.3.4 m',
+    );
   });
 
   it('extracts only actual work-order free-text fields implemented in phase 2', async () => {
