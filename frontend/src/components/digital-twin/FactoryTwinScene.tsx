@@ -666,7 +666,7 @@ export default function FactoryTwinScene() {
         );
         if (cancelled || rows.length === 0) return;
 
-        const secondFloorMachines = rows.map(toSecondFloorMachine);
+        const secondFloorMachines = rows.map((row, index) => toSecondFloorMachine(row, index));
         setMachines([...firstFloorAssetMachines, ...secondFloorMachines]);
       } catch (loadError) {
         console.error("Unable to load IPROTEX machine table for digital twin:", loadError);
