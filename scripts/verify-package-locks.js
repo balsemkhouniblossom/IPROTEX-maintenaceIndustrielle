@@ -4,6 +4,7 @@ const { join } = require('node:path');
 const ignoredDirectories = new Set([
   '.git',
   '.next',
+  '.venv',
   '.vercel',
   'artifacts',
   'backups',

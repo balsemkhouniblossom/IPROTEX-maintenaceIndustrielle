@@ -17,6 +17,7 @@ import {
 
 import { Link } from '@/i18n/navigation';
 import { apiService } from "@/services/api";
+import { translateEnumValue } from "@/services/enumTranslations";
 import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
 import { usePredictiveHealth } from "@/hooks/usePredictiveHealth";
 
@@ -57,6 +58,7 @@ function normalizeArray<T>(value: unknown): T[] {
 
 export default function Dashboard() {
   const tAdmin = useTranslations("dashboard.admin");
+  const tEnums = useTranslations("common.enums");
 
   const { user, isLoading: authLoading } = useAuth();
   const { statistics } = useDashboardStatistics();
@@ -90,6 +92,13 @@ export default function Dashboard() {
   const openCount = workOrders?.openCount ?? 0;
   const inProgressCount = workOrders?.inProgressCount ?? 0;
   const machineCount = statistics?.totals.machines ?? machines.length;
+  const userCount = statistics?.totals.users ?? 0;
+  const availabilityPercent = statistics?.mttrMtbf.availabilityPercent ?? 0;
+  const complianceRatePercent = statistics?.preventiveCompliance.ratePercent ?? 0;
+  const stockAlertsCount = statistics?.stockAlerts.count ?? 0;
+  const averageResponseHours = statistics?.correctiveResponseTime.averageResponseHours ?? 0;
+  const mttrHours = statistics?.mttrMtbf.mttrHours ?? 0;
+  const mtbfHours = statistics?.mttrMtbf.mtbfHours ?? 0;
   const healthyMachineCount = machines.filter((machine) => {
     const health = machine._id ? healthByMachine[machine._id] : undefined;
     return !health || health.riskLevel === 'low' || health.riskLevel === 'insufficient_data';
@@ -125,6 +134,18 @@ export default function Dashboard() {
     ['criticalAlerts', String(criticalAlerts), '/pannes', 'border-s-4 border-red-500 bg-red-50/60 dark:bg-red-950/20', 'text-red-700 dark:text-red-300', ExclamationTriangleIcon],
     ['maintenanceDue', String(overdueCount + dueTodayCount), '/work-orders', 'border-s-4 border-amber-500 bg-amber-50/60 dark:bg-amber-950/20', 'text-amber-700 dark:text-amber-300', WrenchScrewdriverIcon],
   ];
+  const kpiCards: OverviewCard[] = [
+    ['fleetTotal', String(statistics?.totals.machines ?? 0), '/machines', 'border-s-4 border-cyan-500 bg-cyan-50/60 dark:bg-cyan-950/20', 'text-cyan-700 dark:text-cyan-300', WrenchScrewdriverIcon],
+    ['totalUsers', String(userCount), '/users', 'border-s-4 border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20', 'text-indigo-700 dark:text-indigo-300', HeartIcon],
+    ['openMaintenance', String(workOrders?.overdueCount ?? 0), '/work-orders', 'border-s-4 border-amber-500 bg-amber-50/60 dark:bg-amber-950/20', 'text-amber-700 dark:text-amber-300', ClipboardDocumentListIcon],
+    ['completedToday', String(workOrders?.completedTodayCount ?? 0), '/work-orders', 'border-s-4 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20', 'text-emerald-700 dark:text-emerald-300', CheckCircleIcon],
+  ];
+  const quickKpis: Array<[string, string]> = [
+    ['stockAlerts', String(stockAlertsCount)],
+    ['correctiveResponseTime', tAdmin('quickKpis.hoursValue', { hours: averageResponseHours.toFixed(1) })],
+    ['mttr', tAdmin('quickKpis.hoursValue', { hours: mttrHours.toFixed(1) })],
+    ['mtbf', tAdmin('quickKpis.hoursValue', { hours: mtbfHours.toFixed(1) })],
+  ];
   const maintenanceActivityRows: Array<[string, number, string]> = [
     ['open', openCount, 'text-blue-600'],
     ['inProgress', inProgressCount, 'text-amber-600'],
@@ -147,13 +168,78 @@ export default function Dashboard() {
               </Link>
             ))}
           </div>
+          <div className="stats-grid">
+            {kpiCards.map(([label, value, href, accentClass, valueClass, Icon]) => (
+              <Link key={label} href={href} className={`panel block p-5 no-underline text-inherit ${accentClass} focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2`}>
+                <div className="card-title flex items-center gap-2"><Icon className={`h-5 w-5 ${valueClass}`} />{tAdmin(`stats.${label}`)}</div>
+                <div className={`text-2xl font-bold ${valueClass}`}>{value}</div>
+                {label === 'openMaintenance' && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {tAdmin('stats.openMaintenanceHint', { overdue: workOrders?.overdueCount ?? 0, dueToday: workOrders?.dueTodayCount ?? 0 })}
+                  </p>
+                )}
+                {label === 'completedToday' && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {tAdmin('stats.outOfTotal', { total: workOrders?.totalCount ?? 0 })}
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+          <section className="col-span-full panel p-6">
+            <h2 className="mb-4 text-lg font-semibold">{tAdmin('quickKpis.title')}</h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {quickKpis.map(([label, value]) => (
+                <div key={label} className="rounded-md border border-slate-200 p-3">
+                  <div className="text-sm text-slate-500">{tAdmin(`quickKpis.${label}`)}</div>
+                  <div className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{value}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+              <div className="rounded-md border border-slate-200 p-3">
+                <span className="text-slate-500">{tAdmin('machines.availabilityHint')}</span>
+                <strong className="ms-2">{availabilityPercent}%</strong>
+              </div>
+              <div className="rounded-md border border-slate-200 p-3">
+                <span className="text-slate-500">{tAdmin('workOrders.completionRateHint')}</span>
+                <strong className="ms-2">{complianceRatePercent}%</strong>
+              </div>
+            </div>
+          </section>
+          {statistics && statistics.stockAlerts.count > 0 && (
+            <section className="bento-item panel p-6 md:col-span-2">
+              <h2 className="mb-4 text-lg font-semibold">{tAdmin('stockAlerts.title')}</h2>
+              <div className="space-y-3">
+                {statistics.stockAlerts.items.slice(0, 5).map((item) => (
+                  <div key={item.stockId} className="flex justify-between gap-3 border-t pt-3 text-sm">
+                    <span>{item.partLabel || item.stockCode}</span>
+                    <strong>{tAdmin('stockAlerts.availableOf', { available: item.available, threshold: item.threshold })}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {statistics && statistics.workload.length > 0 && (
+            <section className="bento-item panel p-6 md:col-span-2">
+              <h2 className="mb-4 text-lg font-semibold">{tAdmin('workload.title')}</h2>
+              <div className="space-y-3">
+                {statistics.workload.slice(0, 6).map((entry) => (
+                  <div key={entry.technicianId} className="flex justify-between gap-3 border-t pt-3 text-sm">
+                    <span>{entry.name}</span>
+                    <strong>{tAdmin('workload.openCount', { count: entry.openCount })}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
           <section className="col-span-full panel p-6">
             <div className="mb-4 flex items-center justify-between gap-4"><h2 className="flex items-center gap-2 text-lg font-semibold"><ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />{tAdmin('overview.attention')}</h2><span className="text-sm text-slate-500">{todayLabel}</span></div>
             <div className="space-y-3">{attentionMachines.length ? attentionMachines.map(({ machine, health }) => <div key={machine._id} className={`flex flex-wrap items-center justify-between gap-3 border-s-4 border-t px-3 pt-3 ${health?.riskLevel === 'critical' ? 'border-s-red-500' : 'border-s-amber-500'}`}><div><div className="font-semibold">{machine.reference || machine.machine_id || machine.serial_no}</div><div className={`text-sm ${health?.riskLevel === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>{health ? tAdmin('overview.healthValue', { value: Math.round(health.healthScore) }) : tAdmin('overview.activeAlert')}</div></div><Link href={`/machines/${machine._id}`} className="text-sm font-medium text-blue-600">{tAdmin('overview.viewMachine')}</Link></div>) : <p className="text-sm text-slate-500">{tAdmin('overview.noAttention')}</p>}</div>
           </section>
           <section className="bento-item panel p-6 md:col-span-2"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClipboardDocumentListIcon className="h-5 w-5 text-blue-600" />{tAdmin('overview.maintenanceActivity')}</h2>{maintenanceActivityRows.map(([label, value, colorClass]) => <div key={label} className="flex justify-between border-t py-2 text-sm"><span>{tAdmin(`overview.${label}`)}</span><strong className={colorClass}>{value}</strong></div>)}</section>
           <section className="bento-item panel p-6 md:col-span-2"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><WrenchScrewdriverIcon className="h-5 w-5 text-emerald-600" />{tAdmin('overview.factoryStatus')}</h2>{[['running', machineStatusCounts.operational ?? machineStatusCounts.running ?? 0], ['maintenance', machineStatusCounts.maintenance ?? 0], ['stopped', machineStatusCounts.stopped ?? machineStatusCounts.out_of_service ?? 0]].map(([label, value]) => <div key={label} className="flex justify-between border-t py-2 text-sm"><span>{tAdmin(`overview.${label}`)}</span><strong>{value}</strong></div>)}</section>
-          <section className="col-span-full panel p-6"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><CheckCircleIcon className="h-5 w-5 text-blue-600" />{tAdmin('overview.recentActivity')}</h2><div className="space-y-3">{recentWorkOrders.map((order) => <div key={order._id} className="flex gap-4 border-t pt-3 text-sm"><time className="text-slate-500">{order.date_start || order.date_created ? activityDateFormatter.format(new Date(order.date_start || order.date_created!)) : '--:--'}</time><span>{order.ot_id || order.description || tAdmin('overview.workOrder')}</span></div>)}</div></section>
+          <section className="col-span-full panel p-6"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><CheckCircleIcon className="h-5 w-5 text-blue-600" />{tAdmin('overview.recentActivity')}</h2><div className="space-y-3">{recentWorkOrders.map((wo) => <div key={wo._id} className="flex gap-4 border-t pt-3 text-sm"><time className="text-slate-500">{wo.date_start || wo.date_created ? activityDateFormatter.format(new Date(wo.date_start || wo.date_created!)) : '--:--'}</time><span>{wo.ot_id || wo.description || tAdmin('overview.workOrder')}</span>{wo.status && <span className="text-slate-500">{translateEnumValue(tEnums, 'workOrderStatuses', wo.status)}</span>}</div>)}</div></section>
 
         </div>
       </DashboardLayout>
