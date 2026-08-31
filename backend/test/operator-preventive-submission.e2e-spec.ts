@@ -10,6 +10,10 @@ import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { AppModule } from './../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
+import {
+  addBusinessMonths,
+  getBusinessTimezone,
+} from '../src/common/business-time';
 import { User, UserDocument } from '../src/schemas/user.schema';
 import {
   MachineType,
@@ -533,8 +537,11 @@ describe('Operator preventive-maintenance submission (e2e)', () => {
     });
     expect(next).not.toBeNull();
 
-    const expectedNextDue = new Date(executionDate);
-    expectedNextDue.setMonth(expectedNextDue.getMonth() + 1);
+    const expectedNextDue = addBusinessMonths(
+      executionDate,
+      1,
+      getBusinessTimezone(),
+    );
     // The plan's monthly cadence is applied to the real execution date
     // (submission time), not to the original 2026-07-14 due date.
     expect(next?.due_date?.toISOString().slice(0, 10)).toBe(
