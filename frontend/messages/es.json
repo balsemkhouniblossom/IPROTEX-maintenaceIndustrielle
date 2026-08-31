@@ -714,6 +714,7 @@
     "previous": "Anterior",
     "close": "Cerrar",
     "collapse": "Contraer",
+    "expand": "Expandir",
     "confirm": "Confirmar",
     "table": {
       "actions": "Acciones",
@@ -1605,6 +1606,7 @@
   "sidebar": {
     "domains": {
       "dashboard": "Panel de control",
+      "overview": "Resumen",
       "users": "Usuarios",
       "assets": "Activos",
       "maintenance": "Mantenimiento",
@@ -1612,7 +1614,9 @@
       "monitoring": "Supervisión",
       "inventory": "Inventario",
       "inventoryLubrication": "Inventario y lubricación",
-      "documents": "Documentos"
+      "documents": "Documentos",
+      "insights": "Análisis",
+      "management": "Gestión"
     },
     "systemStatus": {
       "online": "Sistema en línea",
@@ -1630,6 +1634,13 @@
     },
     "navigation": {
       "dashboard": "Panel",
+      "factory": "Fábrica",
+      "maintenance": "Mantenimiento",
+      "alertsAndFailures": "Alertas y fallas",
+      "inventory": "Inventario",
+      "machineHealth": "Estado de las máquinas",
+      "analyticsAndReports": "Análisis e informes",
+      "administration": "Administración",
       "users": "Usuarios",
       "machines": "Máquinas",
       "digitalTwin": "Gemelo digital",

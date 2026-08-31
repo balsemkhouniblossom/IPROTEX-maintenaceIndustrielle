@@ -221,6 +221,7 @@
     },
     "close": "Close",
     "collapse": "Collapse",
+    "expand": "Expand",
     "confirm": "Confirm",
     "time": {
       "justNow": "Just now",
@@ -1758,6 +1759,7 @@
     },
     "domains": {
       "dashboard": "Dashboard",
+      "overview": "Overview",
       "users": "Users",
       "assets": "Assets",
       "maintenance": "Maintenance",
@@ -1765,7 +1767,9 @@
       "monitoring": "Monitoring",
       "inventory": "Inventory",
       "inventoryLubrication": "Inventory & Lubrication",
-      "documents": "Documents"
+      "documents": "Documents",
+      "insights": "Insights",
+      "management": "Management"
     },
     "systemStatus": {
       "online": "System online",
@@ -1783,6 +1787,13 @@
     },
     "navigation": {
       "dashboard": "Dashboard",
+      "factory": "Factory",
+      "maintenance": "Maintenance",
+      "alertsAndFailures": "Alerts & Failures",
+      "inventory": "Inventory",
+      "machineHealth": "Machine Health",
+      "analyticsAndReports": "Analytics & Reports",
+      "administration": "Administration",
       "users": "Users",
       "machines": "Machines",
       "digitalTwin": "Digital Twin",

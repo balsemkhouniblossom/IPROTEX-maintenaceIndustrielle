@@ -821,6 +821,7 @@
     "previous": "Zurück",
     "close": "Schließen",
     "collapse": "Einklappen",
+    "expand": "Ausklappen",
     "confirm": "Bestätigen",
     "table": {
       "actions": "Aktionen",
@@ -1776,6 +1777,7 @@
     },
     "domains": {
       "dashboard": "Instrumententafel",
+      "overview": "Übersicht",
       "users": "Benutzer",
       "assets": "Vermögenswerte",
       "maintenance": "Wartung",
@@ -1783,7 +1785,9 @@
       "monitoring": "Überwachung",
       "inventory": "Bestand",
       "inventoryLubrication": "Bestand und Schmierung",
-      "documents": "Dokumente"
+      "documents": "Dokumente",
+      "insights": "Einblicke",
+      "management": "Verwaltung"
     },
     "systemStatus": {
       "online": "System online",
@@ -1801,6 +1805,13 @@
     },
     "navigation": {
       "dashboard": "Dashboard",
+      "factory": "Fabrik",
+      "maintenance": "Wartung",
+      "alertsAndFailures": "Warnungen und Ausfälle",
+      "inventory": "Bestand",
+      "machineHealth": "Maschinenzustand",
+      "analyticsAndReports": "Analysen und Berichte",
+      "administration": "Verwaltung",
       "users": "Benutzer",
       "machines": "Maschinen",
       "digitalTwin": "Digitaler Zwilling",

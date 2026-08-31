@@ -125,19 +125,19 @@ test("DashboardLayout only shows the admin-only KPI topbar badges to admins", ()
   );
 });
 
-test("DashboardLayout localizes every admin sidebar item including Digital Twin", () => {
+test("DashboardLayout localizes the compact Factory admin sidebar item", () => {
   const source = readSource("src/components/DashboardLayout.tsx");
   const locales = ["en", "fr", "ar", "es", "de", "it"];
 
-  assert.match(source, /t\('navigation\.digitalTwin'\)/);
-  assert.doesNotMatch(source, /name: 'Digital Twin'/);
+  assert.match(source, /t\('navigation\.factory'\)/);
+  assert.doesNotMatch(source, /name: 'Factory'/);
 
   for (const locale of locales) {
     const messagesPath = path.join(process.cwd(), "messages", `${locale}.json`);
     const messages = JSON.parse(fs.readFileSync(messagesPath, "utf8"));
-    const label = messages.sidebar?.navigation?.digitalTwin;
-    assert.equal(typeof label, "string", `${locale}.json sidebar.navigation.digitalTwin must be a string`);
-    assert.ok(label.length > 0, `${locale}.json sidebar.navigation.digitalTwin must not be empty`);
+    const label = messages.sidebar?.navigation?.factory;
+    assert.equal(typeof label, "string", `${locale}.json sidebar.navigation.factory must be a string`);
+    assert.ok(label.length > 0, `${locale}.json sidebar.navigation.factory must not be empty`);
   }
 });
 

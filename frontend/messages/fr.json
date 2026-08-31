@@ -178,6 +178,7 @@
     },
     "close": "Fermer",
     "collapse": "Réduire",
+    "expand": "Développer",
     "confirm": "Confirmer",
     "status": {
       "completed": "Completed",
@@ -1758,6 +1759,7 @@
     },
     "domains": {
       "dashboard": "Tableau de bord",
+      "overview": "Vue d'ensemble",
       "users": "Utilisateurs",
       "assets": "Actifs",
       "maintenance": "Maintenance",
@@ -1765,7 +1767,9 @@
       "monitoring": "Surveillance",
       "inventory": "Inventaire",
       "inventoryLubrication": "Inventaire & Lubrification",
-      "documents": "Documents"
+      "documents": "Documents",
+      "insights": "Analyses",
+      "management": "Gestion"
     },
     "systemStatus": {
       "online": "Système en ligne",
@@ -1783,6 +1787,13 @@
     },
     "navigation": {
       "dashboard": "Tableau de bord",
+      "factory": "Usine",
+      "maintenance": "Maintenance",
+      "alertsAndFailures": "Alertes et pannes",
+      "inventory": "Inventaire",
+      "machineHealth": "Santé des machines",
+      "analyticsAndReports": "Analyses et rapports",
+      "administration": "Administration",
       "users": "Utilisateurs",
       "machines": "Machines",
       "digitalTwin": "Jumeau numerique",

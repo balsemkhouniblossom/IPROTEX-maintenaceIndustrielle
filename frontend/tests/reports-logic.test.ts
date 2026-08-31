@@ -129,13 +129,13 @@ test("BarChartCard and LineChartCard are generic reusable components, not report
   }
 });
 
-test("DashboardLayout adds a Reports nav entry for Admin", () => {
+test("DashboardLayout adds an Analytics & Reports nav entry for Admin", () => {
   const source = readSource(DASHBOARD_LAYOUT);
 
   assert.match(
     source,
-    /\{ name: t\('navigation\.reports'\), href: '\/reports', icon: ChartBarIcon,/,
-    "Admin nav must include a Reports link",
+    /\{ name: t\('navigation\.analyticsAndReports'\), href: '\/reports', icon: ChartBarIcon,/, 
+    "Admin nav must include an Analytics & Reports link",
   );
 });
 

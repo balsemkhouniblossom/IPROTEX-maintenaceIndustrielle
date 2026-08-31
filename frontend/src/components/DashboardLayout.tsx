@@ -28,6 +28,8 @@ import {
   ExclamationTriangleIcon,
   ChartBarIcon,
   ArrowRightStartOnRectangleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   SignalIcon,
   BuildingStorefrontIcon,
   CubeIcon,
@@ -55,6 +57,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
   const tTechnician = useTranslations('technician');
   const tProtected = useTranslations('auth.protected');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedNavItems, setExpandedNavItems] = useState<Set<string>>(new Set());
 
 
   const router = useRouter();
@@ -142,8 +145,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     name: string;
     href: string;
     icon: any;
-    categoryKey: string;
-    domain?: string;
+    children?: NavItem[];
   }
 
   interface NavSection {
@@ -151,16 +153,6 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     domainKey: string;
     items: NavItem[];
   }
-
-  const navItemsForRole = (
-    adminNav: NavItem[],
-    technicianNav: NavItem[],
-    operatorNav: NavItem[],
-  ) => {
-    if (activeRole === 'admin') return adminNav;
-    if (activeRole === 'technician') return technicianNav;
-    return operatorNav;
-  };
 
   const pendingMaintenanceLabel = () => {
     if (!statistics) return t('systemStatus.loading');
@@ -176,74 +168,28 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
   };
 
   const getNavigation = (): NavSection[] => {
-    const adminNav: NavItem[] = [
-      { name: t('navigation.dashboard'), href: '/', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
-      { name: t('navigation.users'), href: '/users', icon: UsersIcon, categoryKey: 'categories.users', domain: 'users' },
-      { name: t('navigation.machines'), href: '/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
-      { name: t('navigation.digitalTwin'), href: '/digital-twin', icon: CubeIcon, categoryKey: 'categories.equipment', domain: 'assets' },
-      { name: t('navigation.machineTypes'), href: '/machine-types', icon: CubeIcon, categoryKey: 'categories.equipmentTypes', domain: 'assets' },
-      { name: t('navigation.moduleTypes'), href: '/module-types', icon: DocumentTextIcon, categoryKey: 'categories.systemModules', domain: 'assets' },
-      { name: t('navigation.devices'), href: '/devices', icon: CpuChipIcon, categoryKey: 'categories.equipment', domain: 'assets' },
-      { name: t('navigation.workOrders'), href: '/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.preventiveTaskChecklist'), href: '/preventive-task-checklist', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.interventionReports'), href: '/intervention-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.pannes'), href: '/pannes', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'failures' },
-      { name: t('navigation.capteurs'), href: '/capteurs', icon: CpuChipIcon, categoryKey: 'categories.iotMonitoring', domain: 'monitoring' },
-      { name: t('navigation.mesures'), href: '/mesures', icon: ChartBarIcon, categoryKey: 'categories.iotMonitoring', domain: 'monitoring' },
-      { name: t('navigation.catalogues'), href: '/catalogues', icon: BuildingStorefrontIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.modulePieces'), href: '/module-pieces', icon: CubeIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.stocks'), href: '/stocks', icon: BuildingStorefrontIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.lubrifiants'), href: '/lubrifiants', icon: CubeIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.lubrificationLogs'), href: '/lubrification-logs', icon: ClipboardDocumentListIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.otPieces'), href: '/ot-pieces', icon: ClipboardDocumentListIcon, categoryKey: 'categories.partsInventory', domain: 'inventoryLubrication' },
-      { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
-      { name: t('navigation.knowledgeBase'), href: '/knowledge-base', icon: BookOpenIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
-      { name: t('navigation.reports'), href: '/reports', icon: ChartBarIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
+    if (activeRole === 'technician') {
+      return [
+        { domain: 'overview', domainKey: 'domains.overview', items: [{ name: t('navigation.dashboard'), href: '/technician', icon: HomeIcon }] },
+        { domain: 'maintenance', domainKey: 'domains.maintenance', items: [{ name: tTechnician('workOrders.title'), href: '/technician/work-orders', icon: ClipboardDocumentListIcon, children: [{ name: tTechnician('dashboard.sections.current'), href: '/technician/interventions', icon: CogIcon }, { name: tTechnician('dashboard.sections.waitingPartsTasks'), href: '/technician/waiting-parts', icon: BuildingStorefrontIcon }, { name: tTechnician('dashboard.sections.recent'), href: '/technician/history', icon: ClipboardDocumentListIcon }] }] },
+        { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.documents'), href: '/technician/manuals', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/technician/knowledge-base', icon: BookOpenIcon }] }] },
+      ];
+    }
+
+    if (activeRole === 'operator') {
+      return [
+        { domain: 'overview', domainKey: 'domains.overview', items: [{ name: t('navigation.dashboard'), href: '/operator', icon: HomeIcon }] },
+        { domain: 'maintenance', domainKey: 'domains.maintenance', items: [{ name: t('navigation.maintenance'), href: '/operator/preventive', icon: ClipboardDocumentListIcon, children: [{ name: t('navigation.startCorrectiveMaintenance'), href: '/operator/corrective', icon: ExclamationTriangleIcon }, { name: t('navigation.smartMaintenanceCalendar'), href: '/operator/smart-maintenance-calendar', icon: CalendarDaysIcon }, { name: t('navigation.myReports'), href: '/operator/my-reports', icon: ClipboardDocumentListIcon }] }, { name: t('navigation.machines'), href: '/operator/machines', icon: CogIcon }] },
+        { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.documents'), href: '/operator/manuals', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/operator/knowledge-base', icon: BookOpenIcon }] }] },
+      ];
+    }
+
+    return [
+      { domain: 'overview', domainKey: 'domains.overview', items: [{ name: t('navigation.dashboard'), href: '/', icon: HomeIcon }, { name: t('navigation.factory'), href: '/digital-twin', icon: CubeIcon }] },
+      { domain: 'maintenance', domainKey: 'domains.maintenance', items: [{ name: t('navigation.machines'), href: '/machines', icon: CogIcon, children: [{ name: t('navigation.devices'), href: '/devices', icon: CpuChipIcon }] }, { name: t('navigation.maintenance'), href: '/work-orders', icon: ClipboardDocumentListIcon, children: [{ name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon }, { name: t('navigation.preventiveTaskChecklist'), href: '/preventive-task-checklist', icon: ClipboardDocumentListIcon }, { name: t('navigation.interventionReports'), href: '/intervention-reports', icon: ClipboardDocumentListIcon }, { name: t('navigation.lubrificationLogs'), href: '/lubrification-logs', icon: ClipboardDocumentListIcon }] }, { name: t('navigation.alertsAndFailures'), href: '/pannes', icon: ExclamationTriangleIcon }, { name: t('navigation.inventory'), href: '/catalogues', icon: BuildingStorefrontIcon, children: [{ name: t('navigation.modulePieces'), href: '/module-pieces', icon: CubeIcon }, { name: t('navigation.stocks'), href: '/stocks', icon: BuildingStorefrontIcon }, { name: t('navigation.lubrifiants'), href: '/lubrifiants', icon: CubeIcon }, { name: t('navigation.otPieces'), href: '/ot-pieces', icon: ClipboardDocumentListIcon }] }] },
+      { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.machineHealth'), href: '/capteurs', icon: CpuChipIcon, children: [{ name: t('navigation.mesures'), href: '/mesures', icon: ChartBarIcon }] }, { name: t('navigation.analyticsAndReports'), href: '/reports', icon: ChartBarIcon }, { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/knowledge-base', icon: BookOpenIcon }] }] },
+      { domain: 'management', domainKey: 'domains.management', items: [{ name: t('navigation.administration'), href: '/users', icon: UsersIcon, children: [{ name: t('navigation.machineTypes'), href: '/machine-types', icon: CubeIcon }, { name: t('navigation.moduleTypes'), href: '/module-types', icon: DocumentTextIcon }] }] },
     ];
-
-    const technicianNav: NavItem[] = [
-      { name: t('navigation.dashboard'), href: '/technician', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
-      { name: tTechnician('workOrders.title'), href: '/technician/work-orders', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: tTechnician('dashboard.sections.current'), href: '/technician/interventions', icon: CogIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: tTechnician('dashboard.sections.waitingPartsTasks'), href: '/technician/waiting-parts', icon: BuildingStorefrontIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: tTechnician('dashboard.sections.recent'), href: '/technician/history', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: tTechnician('manuals.title'), href: '/technician/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
-      { name: t('navigation.knowledgeBase'), href: '/technician/knowledge-base', icon: BookOpenIcon, categoryKey: 'categories.technicalReference', domain: 'documents' }
-    ];
-
-    const operatorNav: NavItem[] = [
-      { name: t('navigation.dashboard'), href: '/operator', icon: HomeIcon, categoryKey: 'categories.overview', domain: 'dashboard' },
-      { name: t('navigation.startPreventiveMaintenance'), href: '/operator/preventive', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.startCorrectiveMaintenance'), href: '/operator/corrective', icon: ExclamationTriangleIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.smartMaintenanceCalendar'), href: '/operator/smart-maintenance-calendar', icon: CalendarDaysIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-      { name: t('navigation.machines'), href: '/operator/machines', icon: CogIcon, categoryKey: 'categories.equipment', domain: 'assets' },
-      { name: t('navigation.manuals'), href: '/operator/manuals', icon: DocumentTextIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
-      { name: t('navigation.knowledgeBase'), href: '/operator/knowledge-base', icon: BookOpenIcon, categoryKey: 'categories.technicalReference', domain: 'documents' },
-      { name: t('navigation.myReports'), href: '/operator/my-reports', icon: ClipboardDocumentListIcon, categoryKey: 'categories.maintenance', domain: 'maintenance' },
-    ];
-
-    const navItems = navItemsForRole(adminNav, technicianNav, operatorNav);
-
-    // Group by domain
-    const domainMap: Record<string, NavItem[]> = {};
-    const domainOrder = ['dashboard', 'users', 'assets', 'maintenance', 'failures', 'monitoring', 'inventory', 'inventoryLubrication', 'documents'];
-
-    navItems.forEach(item => {
-      const domain = item.domain || 'other';
-      if (!domainMap[domain]) {
-        domainMap[domain] = [];
-      }
-      domainMap[domain].push(item);
-    });
-
-    return domainOrder
-      .filter(domain => domainMap[domain])
-      .map(domain => ({
-        domain,
-        domainKey: `domains.${domain}`,
-        items: domainMap[domain]
-      }));
   };
 
   const navigation = getNavigation();
@@ -324,22 +270,57 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
               <div className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon;
+                  const hasChildren = Boolean(item.children?.length);
+                  const isExpanded = expandedNavItems.has(item.href) || item.children?.some((child) => pathname === withLocale(child.href));
                   return (
-                    <Link
-                      key={item.href}
-                      href={withLocale(item.href)}
-                      className={`nav-link-modern ${pathname === withLocale(item.href) ? 'active' : ''}`}
-                      onClick={() => setSidebarOpen(false)}
-                      title={item.name}
-                    >
-                      <Icon className="h-5 w-5 shrink-0" />
-                      <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                      {item.href === '/users' && pendingApprovalCount > 0 && (
-                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                          {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
-                        </span>
+                    <div key={item.href}>
+                      <div className="flex items-center">
+                        <Link
+                          href={withLocale(item.href)}
+                          className={`nav-link-modern flex-1 ${pathname === withLocale(item.href) ? 'active' : ''}`}
+                          onClick={() => setSidebarOpen(false)}
+                          title={item.name}
+                        >
+                          <Icon className="h-5 w-5 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                          {item.href === '/users' && pendingApprovalCount > 0 && (
+                            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                              {pendingApprovalCount > 99 ? '99+' : pendingApprovalCount}
+                            </span>
+                          )}
+                        </Link>
+                        {hasChildren && (
+                          <button
+                            type="button"
+                            className="toolbar-action mr-2 h-7 w-7 p-1"
+                            aria-label={isExpanded ? tCommon('collapse') : tCommon('expand')}
+                            aria-expanded={isExpanded}
+                            onClick={() => setExpandedNavItems((current) => {
+                              const next = new Set(current);
+                              if (next.has(item.href)) next.delete(item.href);
+                              else next.add(item.href);
+                              return next;
+                            })}
+                            title={isExpanded ? tCommon('collapse') : tCommon('expand')}
+                          >
+                            {isExpanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
+                      {hasChildren && isExpanded && (
+                        <div className="ms-6 space-y-1 border-s ps-2">
+                          {item.children!.map((child) => {
+                            const ChildIcon = child.icon;
+                            return (
+                              <Link key={child.href} href={withLocale(child.href)} className={`nav-link-modern ${pathname === withLocale(child.href) ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} title={child.name}>
+                                <ChildIcon className="h-4 w-4 shrink-0" />
+                                <span className="min-w-0 flex-1 truncate text-sm">{child.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>

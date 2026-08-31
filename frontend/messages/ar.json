@@ -218,6 +218,7 @@
     "previous": "السابق",
     "close": "إغلاق",
     "collapse": "طي",
+    "expand": "توسيع",
     "confirm": "تأكيد",
     "time": {
       "justNow": "الآن",
@@ -1583,6 +1584,7 @@
     },
     "domains": {
       "dashboard": "لوحة التحكم",
+      "overview": "نظرة عامة",
       "users": "المستخدمون",
       "assets": "الأصول",
       "maintenance": "الصيانة",
@@ -1590,7 +1592,9 @@
       "monitoring": "المراقبة",
       "inventory": "المخزون",
       "inventoryLubrication": "المخزون والتشحيم",
-      "documents": "المستندات"
+      "documents": "المستندات",
+      "insights": "الرؤى",
+      "management": "الإدارة"
     },
     "systemStatus": {
       "online": "النظام متصل",
@@ -1608,6 +1612,13 @@
     },
     "navigation": {
       "dashboard": "لوحة التحكم",
+      "factory": "المصنع",
+      "maintenance": "الصيانة",
+      "alertsAndFailures": "التنبيهات والأعطال",
+      "inventory": "المخزون",
+      "machineHealth": "حالة الآلات",
+      "analyticsAndReports": "التحليلات والتقارير",
+      "administration": "الإدارة",
       "users": "المستخدمين",
       "machines": "الآلات",
       "digitalTwin": "التوأم الرقمي",
