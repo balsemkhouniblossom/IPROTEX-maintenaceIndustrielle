@@ -391,6 +391,7 @@
     "admin": {
       "title": "نظرة عامة على الصيانة",
       "description": "راقب حالة المعدات ونشاط الصيانة والمخاطر التشغيلية.",
+      "overview": { "machineHealth": "حالة الآلات", "openWorkOrders": "أوامر العمل المفتوحة", "criticalAlerts": "تنبيهات حرجة", "maintenanceDue": "صيانة مستحقة", "attention": "آلات تحتاج إلى اهتمام", "healthValue": "الحالة {value}%", "activeAlert": "تنبيه نشط", "viewMachine": "عرض الآلة", "noAttention": "لا توجد آلات تحتاج إلى اهتمام.", "maintenanceActivity": "نشاط الصيانة", "factoryStatus": "حالة المصنع", "open": "مفتوحة", "inProgress": "قيد التنفيذ", "waitingValidation": "بانتظار التحقق", "completedToday": "مكتملة اليوم", "running": "تعمل", "maintenance": "صيانة", "stopped": "متوقفة", "recentActivity": "النشاط الأخير", "workOrder": "أمر عمل" },
       "searchPlaceholder": "البحث في جميع سجلات قاعدة البيانات...",
       "fromLastMonth": "منذ الشهر الماضي",
       "stats": {

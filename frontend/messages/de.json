@@ -188,6 +188,7 @@
     "admin": {
       "title": "Wartungsübersicht",
       "description": "Überwachen Sie den Zustand der Anlagen, Wartungsaktivitäten und operative Risiken.",
+      "overview": { "machineHealth": "Maschinenzustand", "openWorkOrders": "Offene Arbeitsaufträge", "criticalAlerts": "Kritische Warnungen", "maintenanceDue": "Fällige Wartung", "attention": "Maschinen mit Handlungsbedarf", "healthValue": "Zustand {value}%", "activeAlert": "Aktive Warnung", "viewMachine": "Maschine ansehen", "noAttention": "Keine Maschinen benötigen Aufmerksamkeit.", "maintenanceActivity": "Wartungsaktivität", "factoryStatus": "Werksstatus", "open": "Offen", "inProgress": "In Bearbeitung", "waitingValidation": "Wartet auf Freigabe", "completedToday": "Heute abgeschlossen", "running": "In Betrieb", "maintenance": "Wartung", "stopped": "Angehalten", "recentActivity": "Letzte Aktivitäten", "workOrder": "Arbeitsauftrag" },
       "searchPlaceholder": "In allen Datenbankeinträgen suchen...",
       "fromLastMonth": "seit dem letzten Monat",
       "workOrders": {

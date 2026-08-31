@@ -188,6 +188,7 @@
     "admin": {
       "title": "Resumen de mantenimiento",
       "description": "Supervise el estado de los equipos, la actividad de mantenimiento y los riesgos operativos.",
+      "overview": { "machineHealth": "Estado de las máquinas", "openWorkOrders": "Órdenes abiertas", "criticalAlerts": "Alertas críticas", "maintenanceDue": "Mantenimiento pendiente", "attention": "Máquinas que requieren atención", "healthValue": "Estado {value}%", "activeAlert": "Alerta activa", "viewMachine": "Ver máquina", "noAttention": "Ninguna máquina requiere atención.", "maintenanceActivity": "Actividad de mantenimiento", "factoryStatus": "Estado de la fábrica", "open": "Abiertas", "inProgress": "En curso", "waitingValidation": "Esperando validación", "completedToday": "Completadas hoy", "running": "En marcha", "maintenance": "Mantenimiento", "stopped": "Detenidas", "recentActivity": "Actividad reciente", "workOrder": "Orden de trabajo" },
       "searchPlaceholder": "Buscar en todos los registros de la base de datos...",
       "fromLastMonth": "desde el mes pasado",
       "stats": {

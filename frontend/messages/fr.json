@@ -379,6 +379,7 @@
     "admin": {
       "title": "Vue d'ensemble de la maintenance",
       "description": "Surveillez l'état des équipements, l'activité de maintenance et les risques opérationnels.",
+      "overview": { "machineHealth": "État des machines", "openWorkOrders": "Ordres ouverts", "criticalAlerts": "Alertes critiques", "maintenanceDue": "Maintenance à effectuer", "attention": "Machines nécessitant une attention", "healthValue": "État {value}%", "activeAlert": "Alerte active", "viewMachine": "Voir la machine", "noAttention": "Aucune machine ne nécessite d'attention.", "maintenanceActivity": "Activité de maintenance", "factoryStatus": "État de l'usine", "open": "Ouvertes", "inProgress": "En cours", "waitingValidation": "En attente de validation", "completedToday": "Terminées aujourd'hui", "running": "En marche", "maintenance": "Maintenance", "stopped": "Arrêtées", "recentActivity": "Activité récente", "workOrder": "Ordre de travail" },
       "searchPlaceholder": "Rechercher dans tous les enregistrements de la base de données...",
       "fromLastMonth": "depuis le mois dernier",
       "stats": {

@@ -21,6 +21,8 @@ function facetResult(counts: Partial<Record<string, number>>) {
   const toRows = (count?: number) => (count === undefined ? [] : [{ count }]);
   return [
     {
+      open: toRows(counts.open),
+      inProgress: toRows(counts.inProgress),
       overdue: toRows(counts.overdue),
       dueToday: toRows(counts.dueToday),
       waitingValidation: toRows(counts.waitingValidation),
@@ -73,6 +75,8 @@ describe('KpiService', () => {
       workOrderModel.aggregate.mockReturnValue(
         execResult(
           facetResult({
+            open: 8,
+            inProgress: 2,
             overdue: 3,
             dueToday: 2,
             waitingValidation: 5,
@@ -85,6 +89,8 @@ describe('KpiService', () => {
       const result = await service.computeWorkOrderStatusCounts();
 
       expect(result).toEqual({
+        openCount: 8,
+        inProgressCount: 2,
         overdueCount: 3,
         dueTodayCount: 2,
         waitingValidationCount: 5,
@@ -100,6 +106,8 @@ describe('KpiService', () => {
       const result = await service.computeWorkOrderStatusCounts();
 
       expect(result).toEqual({
+        openCount: 0,
+        inProgressCount: 0,
         overdueCount: 0,
         dueTodayCount: 0,
         waitingValidationCount: 0,
@@ -537,6 +545,8 @@ describe('KpiService', () => {
       const result = await service.getTechnicianDashboardCounts(technicianId);
 
       expect(result).toEqual({
+        openCount: 0,
+        inProgressCount: 0,
         overdueCount: 1,
         dueTodayCount: 2,
         waitingValidationCount: 0,

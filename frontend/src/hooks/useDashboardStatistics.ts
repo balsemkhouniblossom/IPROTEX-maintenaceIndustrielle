@@ -3,6 +3,8 @@ import { apiService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface WorkOrderKpiCounts {
+  openCount: number;
+  inProgressCount: number;
   overdueCount: number;
   dueTodayCount: number;
   waitingValidationCount: number;

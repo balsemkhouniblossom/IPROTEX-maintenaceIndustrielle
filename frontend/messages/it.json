@@ -188,6 +188,7 @@
     "admin": {
       "title": "Panoramica della manutenzione",
       "description": "Monitora lo stato delle attrezzature, l'attività di manutenzione e i rischi operativi.",
+      "overview": { "machineHealth": "Stato macchine", "openWorkOrders": "Ordini aperti", "criticalAlerts": "Avvisi critici", "maintenanceDue": "Manutenzione in scadenza", "attention": "Macchine che richiedono attenzione", "healthValue": "Stato {value}%", "activeAlert": "Avviso attivo", "viewMachine": "Visualizza macchina", "noAttention": "Nessuna macchina richiede attenzione.", "maintenanceActivity": "Attività di manutenzione", "factoryStatus": "Stato fabbrica", "open": "Aperti", "inProgress": "In corso", "waitingValidation": "In attesa di validazione", "completedToday": "Completati oggi", "running": "In funzione", "maintenance": "Manutenzione", "stopped": "Fermi", "recentActivity": "Attività recenti", "workOrder": "Ordine di lavoro" },
       "searchPlaceholder": "Cerca in tutti i record del database...",
       "fromLastMonth": "dal mese scorso",
       "stats": {
