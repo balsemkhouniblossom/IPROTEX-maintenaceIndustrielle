@@ -16,6 +16,7 @@ import {
   CommandLineIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import { Link } from '@/i18n/navigation';
 import { apiService } from "@/services/api";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { translateEnumValue } from "@/services/enumTranslations";
@@ -122,7 +123,7 @@ export default function Dashboard() {
 
           {/* Stats Cards Row */}
           <div className="stats-grid">
-            <div className="featured-card">
+            <Link href="/machines" className="featured-card block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
               <div className="card-title">{tAdmin("stats.totalMachines")}</div>
               <div className="flex items-center justify-between">
                 <div>
@@ -131,8 +132,8 @@ export default function Dashboard() {
                 </div>
                 <WrenchScrewdriverIcon className="w-16 h-16 text-blue-200 opacity-80" />
               </div>
-            </div>
-            <div className="panel group">
+            </Link>
+            <Link href="/users" className="panel group block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
               <div className="card-title">{tAdmin("stats.totalUsers")}</div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -147,8 +148,8 @@ export default function Dashboard() {
                 </div>
                 <UsersIcon className="w-12 h-12 text-blue-600 card-icon" />
               </div>
-            </div>
-            <div className="panel group">
+            </Link>
+            <Link href="/work-orders" className="panel group block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
               <div className="card-title flex items-center">
                 <div className="pulse-dot"></div>
                 {tAdmin("stats.openMaintenance")}
@@ -162,8 +163,8 @@ export default function Dashboard() {
                 </div>
                 <ClipboardDocumentListIcon className="w-12 h-12 text-amber-600 card-icon" />
               </div>
-            </div>
-            <div className="panel group relative">
+            </Link>
+            <Link href="/work-orders" className="panel group relative block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2">
               <div className="success-badge">
                 <CheckCircleIcon className="w-3 h-3 text-white" />
               </div>
@@ -175,10 +176,10 @@ export default function Dashboard() {
                 </div>
                 <CheckCircleIcon className="w-12 h-12 text-emerald-600 card-icon" />
               </div>
-            </div>
+            </Link>
           </div>
 
-          <div className="bento-item panel md:col-span-2">
+          <Link href="/work-orders" className="bento-item panel md:col-span-2 block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
             <div className="card-title">{tAdmin("workOrders.recent")}</div>
             <div className="space-y-3">
               {recentWorkOrders.slice(0, 5).map((wo) => (
@@ -197,9 +198,9 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          </div>
+          </Link>
 
-          <div className="bento-item panel">
+          <Link href="/machines" className="bento-item panel block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2">
             <div className="card-title">{tAdmin("machines.availability")}</div>
             <div className="text-5xl font-bold text-green-600">{availabilityPercent}%</div>
             <div className="mt-4">
@@ -208,9 +209,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="text-sm text-slate-500 mt-3">{tAdmin("machines.availabilityHint")}</div>
-          </div>
+          </Link>
 
-          <div className="bento-item panel">
+          <Link href="/work-orders" className="bento-item panel block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
             <div className="card-title">{tAdmin("workOrders.completionRate")}</div>
             <div className="text-5xl font-bold text-blue-600">{complianceRate}%</div>
             <div className="mt-4">
@@ -219,9 +220,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="text-sm text-slate-500 mt-3">{tAdmin("workOrders.completionRateHint")}</div>
-          </div>
+          </Link>
 
-          <div className="bento-item panel md:col-span-2">
+          <Link href="/work-orders" className="bento-item panel md:col-span-2 block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
             <div className="card-title">{tAdmin("workOrders.distribution")}</div>
             <div className="space-y-5">
               <div>
@@ -261,9 +262,9 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="bento-item panel md:col-span-2">
+          <Link href="/reports" className="bento-item panel md:col-span-2 block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
             <div className="card-title">{tAdmin("quickKpis.title")}</div>
             <div className="space-y-4">
               <div className="flex justify-between">
@@ -293,10 +294,10 @@ export default function Dashboard() {
                 <span>{tAdmin("quickKpis.hoursValue", { hours: statistics?.mttrMtbf.mtbfHours ?? 0 })}</span>
               </div>
             </div>
-          </div>
+          </Link>
 
           {statistics && statistics.stockAlerts.count > 0 && (
-            <div className="col-span-full bento-item panel border border-amber-200 bg-amber-50">
+            <Link href="/stocks" className="col-span-full bento-item panel block cursor-pointer no-underline text-inherit border border-amber-200 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
               <div className="card-title flex items-center gap-2 text-amber-800">
                 <ExclamationTriangleIcon className="w-5 h-5" />
                 {tAdmin("stockAlerts.title", { default: "Stock Alerts" })}
@@ -311,11 +312,11 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Link>
           )}
 
           {statistics && statistics.workload.length > 0 && (
-            <div className="col-span-full bento-item panel">
+            <Link href="/users" className="col-span-full bento-item panel block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2">
               <div className="card-title">{tAdmin("workload.title")}</div>
               <div className="space-y-3 mt-2">
                 {statistics.workload.slice(0, 6).map((entry) => (
@@ -335,7 +336,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Link>
           )}
 
         </div>
