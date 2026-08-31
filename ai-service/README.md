@@ -382,6 +382,145 @@ Inference limitations:
 - No alert is generated from Gemini or textual interpretation.
 - No FastAPI, NestJS, MongoDB, frontend, or platform integration has been implemented.
 
+## FastAPI IMS Anomaly Serving Layer
+
+Application entry point:
+
+```text
+app/main.py
+```
+
+Purpose: expose the validated deterministic IMS anomaly-inference pipeline through a small production-oriented FastAPI service. This phase intentionally does not implement NestJS, MongoDB, frontend integration, Gemini, CWRU, or RUL.
+
+Installation from `ai-service`:
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Development start command:
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload
+```
+
+OpenAPI documentation is available while running locally:
+
+```text
+http://127.0.0.1:8011/docs
+http://127.0.0.1:8011/openapi.json
+```
+
+Endpoints:
+
+- `GET /health`: liveness probe.
+- `GET /ready`: readiness probe; reports ready after the IMS v0.1.0 artifact loads during application startup.
+- `GET /v1/models`: served model metadata, validation scope, runtime versions, and limitations.
+- `POST /v1/anomaly/analyze`: stateful streaming inference for exactly one timestamp.
+- `POST /v1/anomaly/analyze-batch`: stateless deterministic replay for chronological input rows.
+
+Request example:
+
+```json
+{
+  "rows": [
+    {
+      "timestamp": "2003-10-22T12:06:24",
+      "experiment": "1st_test",
+      "sensor_channel": 1,
+      "bearing": 1,
+      "axis": "x",
+      "rms": 0.1246138191,
+      "standard_deviation": 0.0811240654,
+      "peak_to_peak": 1.108,
+      "kurtosis": 4.0697168532,
+      "skewness": -0.0299949617,
+      "crest_factor": 5.7778503645,
+      "spectral_energy": 67.3877502195,
+      "dominant_frequency_hz": 986.328125
+    }
+  ]
+}
+```
+
+Response example:
+
+```json
+{
+  "results": [
+    {
+      "modelVersion": "0.1.0",
+      "experiment": "1st_test",
+      "timestamp": "2003-10-22T12:06:24",
+      "bearing": 1,
+      "anomalyScore": 0.0,
+      "riskScore": 0,
+      "riskLevel": "NORMAL",
+      "rawAnomaly": false,
+      "persistentAlert": false,
+      "componentScores": {
+        "zScore": 0.0,
+        "isolationForest": 0.0
+      },
+      "reasonCodes": [],
+      "prototypeResult": true
+    }
+  ]
+}
+```
+
+The API delegates scoring only to `src/inference/ims_anomaly_inference.py`. It does not duplicate the model formula, thresholds, feature order, normalization parameters, weights, aggregation rule, or persistence logic, and it never trains or modifies the model from a request.
+
+Input validation rejects:
+
+- Missing required fields.
+- Duplicate `experiment` + `timestamp` + `sensor_channel` rows.
+- Non-finite numeric features.
+- Unknown experiments.
+- Undocumented sensor-channel, bearing, or axis mappings.
+- Non-chronological input within each experiment and sensor channel.
+- More rows than `AI_SERVICE_MAX_BATCH_ROWS`.
+- Request bodies larger than `AI_SERVICE_MAX_REQUEST_BYTES`.
+
+State and concurrency:
+
+- `/v1/anomaly/analyze` preserves streaming persistence state independently by experiment, bearing, method, and sensor channel through the existing inference pipeline.
+- Stateful streaming calls are guarded by a lock so concurrent requests cannot corrupt persistence history.
+- `/v1/anomaly/analyze-batch` uses a fresh in-memory replay pipeline cloned from the startup-loaded artifact state, so repeated batch requests are deterministic and do not mutate streaming state.
+
+Environment variables:
+
+- `AI_SERVICE_ENV`: `development` by default. In `production`, wildcard CORS origins are rejected.
+- `AI_SERVICE_CORS_ORIGINS`: comma-separated allowed origins, default `http://localhost:3000`.
+- `AI_SERVICE_MAX_REQUEST_BYTES`: request body limit, default `1048576`.
+- `AI_SERVICE_MAX_BATCH_ROWS`: maximum rows accepted by either anomaly endpoint, default `512`.
+- `IMS_ANOMALY_ARTIFACT_PATH`: override path for the v0.1.0 joblib artifact.
+- `IMS_ANOMALY_METADATA_PATH`: override path for the v0.1.0 metadata JSON.
+
+Artifact warning and runtime versions:
+
+- The joblib artifact can emit NumPy/scikit-learn unpickle deprecation or version warnings at startup.
+- These warnings are documented and intentionally not globally suppressed.
+- Artifact production versions recorded or inferred for this phase: Python not recorded in artifact, NumPy `2.5.2` from the frozen requirements at artifact time, scikit-learn `1.9.0` from the pickle warning, joblib `1.5.3` from the frozen requirements at artifact time.
+- Local API load validation on 2026-08-31 used Python `3.12.5`, NumPy `2.2.6`, scikit-learn `1.8.0`, and joblib `1.5.3`.
+
+FastAPI validation results on 2026-08-31:
+
+- Focused API tests: `18` tests passed.
+- Full AI-service test suite: `36` tests passed.
+- `python -m compileall -q app src tests` passed.
+- Strict JSON parsing passed for `data/processed/ims_inference_pipeline_sample_predictions.json` and `artifacts/models/ims_selected_anomaly_model_v0_1_0.json`.
+- Local uvicorn startup smoke test passed for `GET /health`, `GET /ready`, and `GET /v1/models`.
+
+Serving limitations:
+
+- Model metadata clearly identifies the dataset as IMS public test-rig data.
+- Validation currently covers only `1st_test`.
+- Generalization to `2nd_test`, `3rd_test`, and IPROTEX industrial machines is not established.
+- The selected weighted method remains a deterministic prototype, not a certified industrial safety threshold.
+- API logs are structured around endpoint action, row counts, experiments, bearings, and timestamp ranges; complete vibration payloads are not logged.
+
 ## Progress Log
 
 - Step 1: Created the `ai-service` folder structure for data, notebooks, source code, artifacts, and tests.
@@ -394,5 +533,6 @@ Inference limitations:
 - Step 8: Created the first anomaly-detection notebook, implemented a chronological rolling Z-score baseline, implemented Isolation Forest on the same healthy baseline, saved model/scores/plots, and validated the comparison output.
 - Step 9: Created and executed the IMS anomaly-validation notebook, added reusable validation utilities and tests, generated validated anomaly scores, metrics JSON, validation plots, and versioned selected-method artifacts, and documented factual conclusions and limitations.
 - Step 10: Fixed the selected v0.1.0 artifact to include all reproducibility parameters required for inference, created the deterministic inference module, added inference tests, validated parity against notebook 04 outputs, verified batch and streaming behavior, generated JSON-safe sample outputs, and documented cross-experiment limitations.
+- Step 11: Added the FastAPI serving layer for the deterministic IMS anomaly pipeline, including health/readiness/model metadata endpoints, stateful streaming inference, stateless batch replay, centralized error handling, CORS and size limits, structured logs, API tests, compile checks, strict JSON parsing, and uvicorn startup smoke validation.
 
 Going forward, update this README after each instruction with the completed steps, validation results, and any known next action.
