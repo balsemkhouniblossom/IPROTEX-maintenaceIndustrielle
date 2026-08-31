@@ -186,7 +186,8 @@
     "reports": "Rapporti",
     "settings": "Impostazioni",
     "admin": {
-      "title": "Dashboard completa del database",
+      "title": "Panoramica della manutenzione",
+      "description": "Monitora lo stato delle attrezzature, l'attività di manutenzione e i rischi operativi.",
       "searchPlaceholder": "Cerca in tutti i record del database...",
       "fromLastMonth": "dal mese scorso",
       "stats": {

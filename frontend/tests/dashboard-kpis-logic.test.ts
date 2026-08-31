@@ -215,6 +215,8 @@ test("all supported locales define the new admin and operator dashboard KPI tran
   const locales = ["en", "fr", "ar", "es", "de", "it"];
 
   const requiredAdminKeys = [
+    "title",
+    "description",
     "stats.fleetTotal",
     "stats.totalUsers",
     "stats.openMaintenance",

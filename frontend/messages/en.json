@@ -413,7 +413,8 @@
         "userActivity": "نشاط المستخدمين",
         "workOrderCompletion": "إتمام أوامر العمل"
       },
-      "title": "Full Database Dashboard",
+      "title": "Maintenance Overview",
+      "description": "Monitor equipment health, maintenance activity and operational risks.",
       "searchPlaceholder": "Search across all database records...",
       "fromLastMonth": "from last month",
       "stats": {

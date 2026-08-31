@@ -377,7 +377,8 @@
     "reports": "Rapports",
     "settings": "Paramètres",
     "admin": {
-      "title": "Tableau de bord complet de la base de données",
+      "title": "Vue d'ensemble de la maintenance",
+      "description": "Surveillez l'état des équipements, l'activité de maintenance et les risques opérationnels.",
       "searchPlaceholder": "Rechercher dans tous les enregistrements de la base de données...",
       "fromLastMonth": "depuis le mois dernier",
       "stats": {

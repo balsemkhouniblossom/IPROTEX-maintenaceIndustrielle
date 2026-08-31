@@ -186,7 +186,8 @@
     "reports": "Berichte",
     "settings": "Einstellungen",
     "admin": {
-      "title": "Vollständiges Datenbank-Dashboard",
+      "title": "Wartungsübersicht",
+      "description": "Überwachen Sie den Zustand der Anlagen, Wartungsaktivitäten und operative Risiken.",
       "searchPlaceholder": "In allen Datenbankeinträgen suchen...",
       "fromLastMonth": "seit dem letzten Monat",
       "workOrders": {

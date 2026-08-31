@@ -186,7 +186,8 @@
     "reports": "Informes",
     "settings": "Configuración",
     "admin": {
-      "title": "Panel completo de base de datos",
+      "title": "Resumen de mantenimiento",
+      "description": "Supervise el estado de los equipos, la actividad de mantenimiento y los riesgos operativos.",
       "searchPlaceholder": "Buscar en todos los registros de la base de datos...",
       "fromLastMonth": "desde el mes pasado",
       "stats": {

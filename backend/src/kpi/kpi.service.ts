@@ -16,6 +16,8 @@ import { NOT_CORRECTIVE_TYPE_FILTER } from '../common/maintenance-type';
 import * as businessTime from '../common/business-time';
 
 export interface WorkOrderStatusCounts {
+  openCount: number;
+  inProgressCount: number;
   overdueCount: number;
   dueTodayCount: number;
   waitingValidationCount: number;
@@ -174,6 +176,8 @@ export class KpiService {
 
     const [result] = await this.workOrderModel
       .aggregate<{
+        open: FacetCountRow[];
+        inProgress: FacetCountRow[];
         overdue: FacetCountRow[];
         dueToday: FacetCountRow[];
         waitingValidation: FacetCountRow[];
@@ -183,6 +187,14 @@ export class KpiService {
         { $match: match },
         {
           $facet: {
+            open: [
+              { $match: { status: { $nin: CLOSED_WORK_ORDER_STATUSES } } },
+              { $count: 'count' },
+            ],
+            inProgress: [
+              { $match: { status: 'in_progress' } },
+              { $count: 'count' },
+            ],
             overdue: [
               {
                 $match: {
@@ -244,6 +256,8 @@ export class KpiService {
       .exec();
 
     return {
+      openCount: extractFacetCount(result?.open),
+      inProgressCount: extractFacetCount(result?.inProgress),
       overdueCount: extractFacetCount(result?.overdue),
       dueTodayCount: extractFacetCount(result?.dueToday),
       waitingValidationCount: extractFacetCount(result?.waitingValidation),
