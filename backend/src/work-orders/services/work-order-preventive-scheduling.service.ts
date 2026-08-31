@@ -182,6 +182,13 @@ export class WorkOrderPreventiveSchedulingService {
       module_id: moduleEntity._id,
       technician_id: new Types.ObjectId(input.operatorId),
       plan_id: plan._id,
+      preventive_occurrence_key: buildPreventiveOccurrenceKey({
+        maintenanceType: plan.type_maintenance,
+        machineId: machine._id,
+        moduleId: moduleEntity._id,
+        planId: plan._id,
+        dueDate: scheduledDate,
+      }),
       description: plan.instruction || 'Preventive maintenance task',
       type_maintenance: plan.type_maintenance,
       status: 'scheduled',
@@ -228,11 +235,19 @@ export class WorkOrderPreventiveSchedulingService {
 
     const now = new Date();
     const otId = await this.generateWorkOrderCode(plan.type_maintenance);
+    const machineId = this.toPersistedObjectId(moduleEntity.machine_id);
     return this.workOrderModel.create({
       ot_id: otId,
-      machine_id: this.toPersistedObjectId(moduleEntity.machine_id),
+      machine_id: machineId,
       module_id: moduleEntity._id,
       plan_id: plan._id,
+      preventive_occurrence_key: buildPreventiveOccurrenceKey({
+        maintenanceType: plan.type_maintenance,
+        machineId,
+        moduleId: moduleEntity._id,
+        planId: plan._id,
+        dueDate: now,
+      }),
       description: plan.instruction || 'Preventive maintenance task',
       type_maintenance: plan.type_maintenance,
       status: 'scheduled',
@@ -287,6 +302,7 @@ export class WorkOrderPreventiveSchedulingService {
 
     const previousDue =
       workOrder.due_date || workOrder.scheduled_date || workOrder.date_start;
+    const occurrenceKey = this.buildOccurrenceKeyIfPossible(workOrder, nextDue);
     const updated = await this.workOrderModel
       .findByIdAndUpdate(
         workOrder._id,
@@ -295,6 +311,9 @@ export class WorkOrderPreventiveSchedulingService {
             scheduled_date: nextDue,
             due_date: nextDue,
             date_start: nextDue,
+            ...(occurrenceKey
+              ? { preventive_occurrence_key: occurrenceKey }
+              : {}),
             status: 'scheduled',
             original_due_date: workOrder.original_due_date || previousDue,
             reschedule_reason: input.reason,
@@ -975,6 +994,28 @@ export class WorkOrderPreventiveSchedulingService {
       this.objectIdString(moduleEntity),
       this.objectIdString(plan),
     ].join('|');
+  }
+
+  private buildOccurrenceKeyIfPossible(
+    workOrder: WorkOrderPayload,
+    dueDate: Date,
+  ): string | undefined {
+    if (
+      !isSchedulableMaintenanceType(workOrder.type_maintenance) ||
+      !this.objectIdString(workOrder.machine_id) ||
+      !this.objectIdString(workOrder.plan_id) ||
+      Number.isNaN(dueDate.getTime())
+    ) {
+      return undefined;
+    }
+
+    return buildPreventiveOccurrenceKey({
+      maintenanceType: workOrder.type_maintenance,
+      machineId: workOrder.machine_id,
+      moduleId: workOrder.module_id,
+      planId: workOrder.plan_id,
+      dueDate,
+    });
   }
 
   private getSchedulerSettings(): SchedulerRuntimeSettings {

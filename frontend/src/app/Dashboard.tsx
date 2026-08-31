@@ -11,15 +11,11 @@ import { useTranslations } from "next-intl";
 import {
   WrenchScrewdriverIcon,
   UsersIcon,
-  CogIcon,
   ClipboardDocumentListIcon,
-  BuildingStorefrontIcon,
   CheckCircleIcon,
   CommandLineIcon,
-  CubeIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { Link } from '@/i18n/navigation';
 import { apiService } from "@/services/api";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import { translateEnumValue } from "@/services/enumTranslations";
@@ -44,16 +40,11 @@ function normalizeArray<T>(value: unknown): T[] {
   return Array.isArray(items) ? (items as T[]) : [];
 }
 
-type DashboardProps = Readonly<{
-  locale?: string;
-}>;
-
-export default function Dashboard({ locale: propLocale }: DashboardProps) {
+export default function Dashboard() {
   const tAdmin = useTranslations("dashboard.admin");
   const tEnums = useTranslations("common.enums");
 
   const { user, isLoading: authLoading } = useAuth();
-  const locale = propLocale || 'en';
   const { statistics } = useDashboardStatistics();
 
   // These two lists are for on-screen display only (a handful of avatars,
@@ -347,56 +338,6 @@ export default function Dashboard({ locale: propLocale }: DashboardProps) {
             </div>
           )}
 
-          {/* Quick Access Cards */}
-          <div className="col-span-full bento-item panel">
-            <div className="card-title">{tAdmin("quickAccess.title")}</div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <Link href={`/${locale}/users`} className="app-icon">
-                <div className="app-icon-icon">
-                  <UsersIcon className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm font-semibold text-slate-700 text-center">
-                  {tAdmin("quickAccess.users")}
-                </span>
-              </Link>
-
-              <Link href={`/${locale}/machines`} className="app-icon">
-                <div className="app-icon-icon">
-                  <CogIcon className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm font-semibold text-slate-700 text-center">
-                  {tAdmin("quickAccess.machines")}
-                </span>
-              </Link>
-
-              <Link href={`/${locale}/work-orders`} className="app-icon">
-                <div className="app-icon-icon">
-                  <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm font-semibold text-slate-700 text-center">
-                  {tAdmin("quickAccess.workOrders")}
-                </span>
-              </Link>
-
-              <Link href={`/${locale}/catalogues`} className="app-icon">
-                <div className="app-icon-icon">
-                  <BuildingStorefrontIcon className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm font-semibold text-slate-700 text-center">
-                  {tAdmin("quickAccess.catalogues")}
-                </span>
-              </Link>
-
-              <Link href={`/${locale}/machine-types`} className="app-icon">
-                <div className="app-icon-icon">
-                  <CubeIcon className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm font-semibold text-slate-700 text-center">
-                  {tAdmin("quickAccess.types")}
-                </span>
-              </Link>
-            </div>
-          </div>
         </div>
       </DashboardLayout>
     </ProtectedRoute>

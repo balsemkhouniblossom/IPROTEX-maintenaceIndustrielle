@@ -267,6 +267,13 @@ describe('WorkOrderPreventiveSchedulingService.scheduleFirstPreventiveOccurrence
     });
 
     expect(workOrderModel.create).toHaveBeenCalled();
+    expect(workOrderModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preventive_occurrence_key: expect.stringContaining(
+          `preventive:v1:preventive:${machineId.toHexString()}:${moduleId.toHexString()}:${planId.toHexString()}:`,
+        ),
+      }),
+    );
   });
 
   it.each(['lubrication', 'inspection', 'annual-calibration'])(
@@ -377,6 +384,9 @@ describe('WorkOrderPreventiveSchedulingService.createInitialOccurrenceForPlan', 
         module_id: moduleId,
         type_maintenance: 'preventive',
         status: 'scheduled',
+        preventive_occurrence_key: expect.stringContaining(
+          `preventive:v1:preventive:${machineId.toHexString()}:${moduleId.toHexString()}:${planId.toHexString()}:`,
+        ),
       }),
     );
   });
@@ -443,10 +453,16 @@ describe('WorkOrderPreventiveSchedulingService.createInitialOccurrenceForPlan', 
 
 describe('WorkOrderPreventiveSchedulingService.reschedulePreventiveOccurrence', () => {
   const workOrderId = new Types.ObjectId();
+  const machineId = new Types.ObjectId();
+  const moduleId = new Types.ObjectId();
+  const planId = new Types.ObjectId();
 
   function reschedulableOrder(overrides: Record<string, unknown> = {}) {
     return {
       _id: workOrderId,
+      machine_id: machineId,
+      module_id: moduleId,
+      plan_id: planId,
       type_maintenance: 'preventive',
       status: 'scheduled',
       ...overrides,
@@ -456,6 +472,7 @@ describe('WorkOrderPreventiveSchedulingService.reschedulePreventiveOccurrence', 
   let workOrderModel: {
     findById: jest.Mock;
     findByIdAndUpdate: jest.Mock;
+    findOne: jest.Mock;
   };
   let service: WorkOrderPreventiveSchedulingService;
 
@@ -467,6 +484,7 @@ describe('WorkOrderPreventiveSchedulingService.reschedulePreventiveOccurrence', 
         .mockReturnValue(
           execResult(reschedulableOrder({ status: 'scheduled' })),
         ),
+      findOne: jest.fn().mockReturnValue(execResult(null)),
     };
 
     service = new WorkOrderPreventiveSchedulingService(
@@ -496,6 +514,17 @@ describe('WorkOrderPreventiveSchedulingService.reschedulePreventiveOccurrence', 
 
       expect(result.occurrence).toBeDefined();
       expect(workOrderModel.findByIdAndUpdate).toHaveBeenCalled();
+      expect(workOrderModel.findByIdAndUpdate).toHaveBeenCalledWith(
+        workOrderId,
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            preventive_occurrence_key: expect.stringContaining(
+              `preventive:v1:${type}:${machineId.toHexString()}:${moduleId.toHexString()}:${planId.toHexString()}:`,
+            ),
+          }),
+        }),
+        { new: true },
+      );
     },
   );
 
