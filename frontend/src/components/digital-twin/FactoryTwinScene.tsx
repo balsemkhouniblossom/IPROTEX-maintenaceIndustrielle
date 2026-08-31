@@ -10,6 +10,7 @@ import { fetchAllPaginated } from "@/services/pagination";
 
 type TwinStatus = "running" | "stopped" | "fault" | "offline";
 type TwinFloor = "first" | "second";
+type FactoryViewMode = "complete" | "first" | "second";
 
 type MachineRecord = {
   _id: string;
@@ -46,6 +47,8 @@ type TwinMachine = {
 type FactoryCanvasProps = {
   machines: TwinMachine[];
   selectedId: string;
+  viewMode: FactoryViewMode;
+  resetCameraTick: number;
   onSelect: (machine: TwinMachine) => void;
   onLoaded: () => void;
   onError: (message: string) => void;
@@ -54,6 +57,27 @@ type FactoryCanvasProps = {
 const FLOOR_HEIGHT = 2.7;
 const FACTORY_WIDTH = 12;
 const FACTORY_DEPTH = 7;
+
+const floorViewOptions: Array<{ key: FactoryViewMode; label: string }> = [
+  { key: "complete", label: "Complete Factory" },
+  { key: "first", label: "First Floor" },
+  { key: "second", label: "Second Floor" },
+];
+
+const cameraViews: Record<FactoryViewMode, { position: THREE.Vector3Tuple; target: THREE.Vector3Tuple }> = {
+  complete: {
+    position: [8.2, 5.4, 8.5],
+    target: [0, 1.25, 0],
+  },
+  first: {
+    position: [7.2, 3.1, 6.4],
+    target: [0, 0.45, 0.15],
+  },
+  second: {
+    position: [7.1, 5.9, 5.8],
+    target: [0, FLOOR_HEIGHT + 0.45, 0.05],
+  },
+};
 
 const firstFloorAssetMachines: TwinMachine[] = [
   {
@@ -333,6 +357,14 @@ function createFloorLabel(text: string, position: THREE.Vector3) {
 }
 
 function createFactoryStructure(scene: THREE.Scene) {
+  const firstFloorGroup = new THREE.Group();
+  const secondFloorGroup = new THREE.Group();
+  const sharedGroup = new THREE.Group();
+  firstFloorGroup.name = "first-floor-structure";
+  secondFloorGroup.name = "second-floor-structure";
+  sharedGroup.name = "shared-factory-structure";
+  scene.add(firstFloorGroup, secondFloorGroup, sharedGroup);
+
   const slabMaterial = new THREE.MeshStandardMaterial({
     color: "#e2e8f0",
     roughness: 0.82,
@@ -341,14 +373,14 @@ function createFactoryStructure(scene: THREE.Scene) {
   const edgeMaterial = new THREE.MeshStandardMaterial({ color: "#475569" });
   const railMaterial = new THREE.MeshStandardMaterial({ color: "#2563eb" });
 
-  const createSlab = (y: number, label: string) => {
+  const createSlab = (y: number, label: string, group: THREE.Group) => {
     const slab = new THREE.Mesh(
       new THREE.BoxGeometry(FACTORY_WIDTH, 0.12, FACTORY_DEPTH),
       slabMaterial,
     );
     slab.position.y = y - 0.06;
     slab.receiveShadow = true;
-    scene.add(slab);
+    group.add(slab);
 
     const edge = new THREE.Mesh(
       new THREE.BoxGeometry(FACTORY_WIDTH + 0.1, 0.16, FACTORY_DEPTH + 0.1),
@@ -356,12 +388,12 @@ function createFactoryStructure(scene: THREE.Scene) {
     );
     edge.position.y = y - 0.13;
     edge.scale.y = 0.35;
-    scene.add(edge);
-    scene.add(createFloorLabel(label, new THREE.Vector3(-4.25, y + 0.45, -3.08)));
+    group.add(edge);
+    group.add(createFloorLabel(label, new THREE.Vector3(-4.25, y + 0.45, -3.08)));
   };
 
-  createSlab(0, "First Floor");
-  createSlab(FLOOR_HEIGHT, "Second Floor");
+  createSlab(0, "First Floor", firstFloorGroup);
+  createSlab(FLOOR_HEIGHT, "Second Floor", secondFloorGroup);
 
   for (const x of [-5.7, -1.9, 1.9, 5.7]) {
     for (const z of [-3.2, 3.2]) {
@@ -371,7 +403,7 @@ function createFactoryStructure(scene: THREE.Scene) {
       );
       column.position.set(x, FLOOR_HEIGHT / 2, z);
       column.castShadow = true;
-      scene.add(column);
+      sharedGroup.add(column);
     }
   }
 
@@ -381,7 +413,7 @@ function createFactoryStructure(scene: THREE.Scene) {
       railMaterial,
     );
     rail.position.set(0, FLOOR_HEIGHT + 0.55, z);
-    scene.add(rail);
+    secondFloorGroup.add(rail);
   }
 
   const stairs = new THREE.Group();
@@ -393,20 +425,24 @@ function createFactoryStructure(scene: THREE.Scene) {
     step.position.set(-5.15 + i * 0.35, i * (FLOOR_HEIGHT / 9), 3.55 - i * 0.32);
     stairs.add(step);
   }
-  scene.add(stairs);
+  sharedGroup.add(stairs);
 
   const firstGrid = new THREE.GridHelper(FACTORY_WIDTH, 18, "#64748b", "#cbd5e1");
   firstGrid.position.y = 0.004;
-  scene.add(firstGrid);
+  firstFloorGroup.add(firstGrid);
 
   const secondGrid = new THREE.GridHelper(FACTORY_WIDTH, 18, "#475569", "#bfdbfe");
   secondGrid.position.y = FLOOR_HEIGHT + 0.004;
-  scene.add(secondGrid);
+  secondFloorGroup.add(secondGrid);
+
+  return { firstFloorGroup, secondFloorGroup, sharedGroup };
 }
 
 function FactoryCanvas({
   machines,
   selectedId,
+  viewMode,
+  resetCameraTick,
   onSelect,
   onLoaded,
   onError,
@@ -414,6 +450,8 @@ function FactoryCanvas({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const machinesRef = useRef(machines);
   const selectedIdRef = useRef(selectedId);
+  const viewModeRef = useRef(viewMode);
+  const resetCameraTickRef = useRef(resetCameraTick);
   const onSelectRef = useRef(onSelect);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
@@ -425,6 +463,14 @@ function FactoryCanvas({
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+
+  useEffect(() => {
+    resetCameraTickRef.current = resetCameraTick;
+  }, [resetCameraTick]);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -446,7 +492,7 @@ function FactoryCanvas({
     scene.background = new THREE.Color("#f8fafc");
 
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    camera.position.set(8.2, 5.4, 8.5);
+    camera.position.fromArray(cameraViews.complete.position);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -459,7 +505,7 @@ function FactoryCanvas({
     controls.minDistance = 4;
     controls.maxDistance = 17;
     controls.maxPolarAngle = Math.PI / 2.04;
-    controls.target.set(0, 1.25, 0);
+    controls.target.fromArray(cameraViews.complete.target);
 
     scene.add(new THREE.AmbientLight("#ffffff", 1.25));
     const mainLight = new THREE.DirectionalLight("#ffffff", 2.4);
@@ -473,7 +519,7 @@ function FactoryCanvas({
     fillLight.position.set(-4, 5, -4);
     scene.add(fillLight);
 
-    createFactoryStructure(scene);
+    const factoryGroups = createFactoryStructure(scene);
 
     const machineGroups = new Map<string, THREE.Group>();
     const selectionRing = createSelectionRing();
@@ -482,6 +528,8 @@ function FactoryCanvas({
     const loader = new GLTFLoader();
     let disposed = false;
     let frame = 0;
+    let activeViewMode: FactoryViewMode | null = null;
+    let activeResetCameraTick = resetCameraTickRef.current;
 
     const resize = () => {
       const rect = host.getBoundingClientRect();
@@ -514,6 +562,28 @@ function FactoryCanvas({
       });
     };
 
+    const applyViewMode = (forceCameraReset = false) => {
+      const nextMode = viewModeRef.current;
+      const modeChanged = nextMode !== activeViewMode;
+      if (!modeChanged && !forceCameraReset) return;
+
+      factoryGroups.firstFloorGroup.visible = nextMode !== "second";
+      factoryGroups.secondFloorGroup.visible = nextMode !== "first";
+      factoryGroups.sharedGroup.visible = nextMode === "complete";
+
+      machinesRef.current.forEach((machine) => {
+        const group = machineGroups.get(machine.id);
+        if (!group) return;
+        group.visible = nextMode === "complete" || machine.floor === nextMode;
+      });
+
+      const cameraView = cameraViews[nextMode];
+      camera.position.fromArray(cameraView.position);
+      controls.target.fromArray(cameraView.target);
+      controls.update();
+      activeViewMode = nextMode;
+    };
+
     const loadMachines = async () => {
       try {
         const groups = await Promise.all(
@@ -524,6 +594,7 @@ function FactoryCanvas({
           scene.add(group);
           machineGroups.set(group.userData.machineId, group);
         });
+        applyViewMode(true);
         updateSelection();
         onLoadedRef.current();
       } catch (error) {
@@ -536,7 +607,8 @@ function FactoryCanvas({
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const intersects = raycaster.intersectObjects(Array.from(machineGroups.values()), true);
+      const visibleGroups = Array.from(machineGroups.values()).filter((group) => group.visible);
+      const intersects = raycaster.intersectObjects(visibleGroups, true);
       const machineId = intersects
         .map((hit) => hit.object.userData.machineId)
         .find((value): value is string => typeof value === "string");
@@ -545,6 +617,9 @@ function FactoryCanvas({
     };
 
     const animate = () => {
+      const resetCameraRequested = resetCameraTickRef.current !== activeResetCameraTick;
+      if (resetCameraRequested) activeResetCameraTick = resetCameraTickRef.current;
+      applyViewMode(resetCameraRequested);
       controls.update();
       updateSelection();
       updateStatusIndicators();
@@ -575,6 +650,8 @@ function FactoryCanvas({
 export default function FactoryTwinScene() {
   const [machines, setMachines] = useState<TwinMachine[]>(firstFloorAssetMachines);
   const [selectedMachineId, setSelectedMachineId] = useState(firstFloorAssetMachines[0].id);
+  const [viewMode, setViewMode] = useState<FactoryViewMode>("complete");
+  const [resetCameraTick, setResetCameraTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -605,6 +682,16 @@ export default function FactoryTwinScene() {
 
   const selectedMachine =
     machines.find((machine) => machine.id === selectedMachineId) ?? machines[0];
+
+  useEffect(() => {
+    if (viewMode === "complete") return;
+
+    const selectedMachineIsVisible = selectedMachine?.floor === viewMode;
+    if (selectedMachineIsVisible) return;
+
+    const nextMachine = machines.find((machine) => machine.floor === viewMode);
+    if (nextMachine) setSelectedMachineId(nextMachine.id);
+  }, [machines, selectedMachine, viewMode]);
 
   const floorCounts = useMemo(
     () => ({
@@ -651,6 +738,31 @@ export default function FactoryTwinScene() {
               ))}
             </div>
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 bg-slate-50/80 px-5 py-3">
+            <div className="flex flex-wrap gap-2" aria-label="Factory floor view controls">
+              {floorViewOptions.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={`rounded-md border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                    viewMode === option.key
+                      ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-700"
+                  }`}
+                  onClick={() => setViewMode(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              onClick={() => setResetCameraTick((currentTick) => currentTick + 1)}
+            >
+              Reset Camera
+            </button>
+          </div>
           <div className="relative min-h-[600px] flex-1">
             {loading && (
               <div className="absolute inset-0 z-10 p-6">
@@ -668,6 +780,8 @@ export default function FactoryTwinScene() {
               key={sceneKey}
               machines={machines}
               selectedId={selectedMachine.id}
+              viewMode={viewMode}
+              resetCameraTick={resetCameraTick}
               onSelect={(machine) => setSelectedMachineId(machine.id)}
               onLoaded={() => setLoading(false)}
               onError={(message) => {
