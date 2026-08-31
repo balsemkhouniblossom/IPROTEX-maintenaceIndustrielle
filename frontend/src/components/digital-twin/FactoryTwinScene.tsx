@@ -1,24 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Skeleton } from "@/components/Skeleton";
+import { apiService } from "@/services/api";
+import { fetchAllPaginated } from "@/services/pagination";
 
 type TwinStatus = "running" | "stopped" | "fault" | "offline";
+type TwinFloor = "first" | "second";
+
+type MachineRecord = {
+  _id: string;
+  machine_id: string;
+  fabricant?: string;
+  model?: string;
+  location?: string;
+  status?: string;
+};
 
 type TwinMachine = {
   id: string;
   name: string;
   backendMachineId: string | null;
-  assetUrl: string;
+  assetUrl: string | null;
+  floor: TwinFloor;
   position: [number, number, number];
   rotationY: number;
   targetSize: number;
   status: TwinStatus;
   location: string;
   health: number;
+  manufacturer?: string;
+  model?: string;
   simulatedMetrics: {
     temperatureC: number;
     vibrationMms: number;
@@ -36,44 +51,52 @@ type FactoryCanvasProps = {
   onError: (message: string) => void;
 };
 
-const initialTwinMachines: TwinMachine[] = [
+const FLOOR_HEIGHT = 2.7;
+const FACTORY_WIDTH = 12;
+const FACTORY_DEPTH = 7;
+
+const firstFloorAssetMachines: TwinMachine[] = [
   {
-    id: "harry-lucas-rv4s",
+    id: "asset-harry-lucas-rv4s",
     name: "Harry Lucas RV-4s",
     backendMachineId: null,
     assetUrl: "/models/machine-a.glb",
-    position: [-1.9, 0, 0],
-    rotationY: Math.PI / 6,
-    targetSize: 1.7,
+    floor: "first",
+    position: [-2.8, 0, 0.9],
+    rotationY: Math.PI / 7,
+    targetSize: 1.45,
     status: "running",
-    location: "Prototype workshop - Line 1",
+    location: "First Floor - modeled machine bay",
     health: 92,
+    manufacturer: "Modeled asset",
     simulatedMetrics: {
       temperatureC: 41.8,
       vibrationMms: 1.2,
       loadPercent: 72,
       availabilityPercent: 96,
     },
-    lastUpdate: "Prototype mode - simulated values",
+    lastUpdate: "First floor 3D asset - simulated live state",
   },
   {
-    id: "pw800",
+    id: "asset-pw800",
     name: "PW800",
     backendMachineId: null,
     assetUrl: "/models/machine-b.glb",
-    position: [1.9, 0, 0],
+    floor: "first",
+    position: [2.6, 0, 0.55],
     rotationY: -Math.PI / 8,
-    targetSize: 1.7,
-    status: "fault",
-    location: "Prototype workshop - Line 1",
-    health: 68,
+    targetSize: 1.45,
+    status: "running",
+    location: "First Floor - modeled machine bay",
+    health: 89,
+    manufacturer: "Modeled asset",
     simulatedMetrics: {
-      temperatureC: 58.4,
-      vibrationMms: 3.7,
-      loadPercent: 44,
-      availabilityPercent: 81,
+      temperatureC: 44.2,
+      vibrationMms: 1.5,
+      loadPercent: 68,
+      availabilityPercent: 94,
     },
-    lastUpdate: "Prototype mode - fault scenario",
+    lastUpdate: "First floor 3D asset - simulated live state",
   },
 ];
 
@@ -119,11 +142,48 @@ const healthByStatus: Record<TwinStatus, number> = {
 };
 
 const stateMessageByStatus: Record<TwinStatus, string> = {
-  running: "Prototype mode - normal operation",
-  stopped: "Prototype mode - planned stop",
-  fault: "Prototype mode - fault scenario",
-  offline: "Prototype mode - disconnected",
+  running: "Normal operation",
+  stopped: "Planned stop",
+  fault: "Fault scenario",
+  offline: "Disconnected",
 };
+
+function toTwinStatus(status?: string): TwinStatus {
+  if (status === "maintenance") return "stopped";
+  if (status === "out_of_service" || status === "retired") return "offline";
+  return "running";
+}
+
+function toSecondFloorMachine(record: MachineRecord, index: number): TwinMachine {
+  const columns = 5;
+  const spacingX = 2.05;
+  const spacingZ = 1.35;
+  const row = Math.floor(index / columns);
+  const column = index % columns;
+  const status = toTwinStatus(record.status);
+
+  return {
+    id: `machine-${record._id}`,
+    name: record.machine_id || `Machine ${index + 1}`,
+    backendMachineId: record._id,
+    assetUrl: null,
+    floor: "second",
+    position: [
+      (column - (columns - 1) / 2) * spacingX,
+      FLOOR_HEIGHT,
+      -2.1 + row * spacingZ,
+    ],
+    rotationY: column % 2 === 0 ? Math.PI / 2 : -Math.PI / 2,
+    targetSize: 1,
+    status,
+    location: record.location || "Second Floor",
+    health: healthByStatus[status],
+    manufacturer: record.fabricant,
+    model: record.model,
+    simulatedMetrics: simulatedMetricsByStatus[status],
+    lastUpdate: "Machine-table placeholder - 3D asset not available yet",
+  };
+}
 
 function fitObjectToSize(object: THREE.Object3D, targetSize: number) {
   const box = new THREE.Box3().setFromObject(object);
@@ -141,7 +201,7 @@ function fitObjectToSize(object: THREE.Object3D, targetSize: number) {
 
 function createStatusRing(machine: TwinMachine) {
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(1.05, 0.025, 12, 96),
+    new THREE.TorusGeometry(0.74, 0.022, 12, 72),
     new THREE.MeshStandardMaterial({
       color: statusStyle[machine.status].color,
       emissive: statusStyle[machine.status].color,
@@ -156,7 +216,7 @@ function createStatusRing(machine: TwinMachine) {
 
 function createSelectionRing() {
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(1.2, 0.035, 12, 96),
+    new THREE.TorusGeometry(0.9, 0.032, 12, 72),
     new THREE.MeshStandardMaterial({
       color: "#2563eb",
       emissive: "#2563eb",
@@ -164,8 +224,75 @@ function createSelectionRing() {
     }),
   );
   ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.055;
+  ring.position.y = 0.065;
   return ring;
+}
+
+function createLabelSprite(text: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return new THREE.Sprite();
+
+  context.fillStyle = "rgba(15, 23, 42, 0.86)";
+  context.roundRect(8, 20, 496, 88, 18);
+  context.fill();
+  context.font = "700 38px Arial";
+  context.fillStyle = "#ffffff";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(text.slice(0, 22), 256, 64, 460);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: texture, transparent: true }),
+  );
+  sprite.scale.set(1.7, 0.42, 1);
+  sprite.position.y = 1.15;
+  return sprite;
+}
+
+function createPlaceholderMachine(machine: TwinMachine) {
+  const group = new THREE.Group();
+  group.name = machine.id;
+  group.userData.machineId = machine.id;
+  group.position.set(...machine.position);
+  group.rotation.y = machine.rotationY;
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(1.15, 0.7, 0.86),
+    new THREE.MeshStandardMaterial({
+      color: "#c7d2fe",
+      metalness: 0.15,
+      roughness: 0.55,
+    }),
+  );
+  body.position.y = 0.38;
+  body.castShadow = true;
+  body.receiveShadow = true;
+
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(0.78, 0.32, 0.62),
+    new THREE.MeshStandardMaterial({ color: "#64748b", roughness: 0.6 }),
+  );
+  top.position.y = 0.92;
+  top.castShadow = true;
+
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, 0.38, 0.42),
+    new THREE.MeshStandardMaterial({
+      color: statusStyle[machine.status].color,
+      emissive: statusStyle[machine.status].color,
+      emissiveIntensity: 0.2,
+    }),
+  );
+  panel.position.set(0.61, 0.48, 0);
+  panel.name = "status-panel";
+
+  group.add(body, top, panel, createStatusRing(machine), createLabelSprite(machine.name));
+  return group;
 }
 
 function createMachineGroup(machine: TwinMachine, gltf: GLTF) {
@@ -175,7 +302,7 @@ function createMachineGroup(machine: TwinMachine, gltf: GLTF) {
   group.position.set(...machine.position);
   group.rotation.y = machine.rotationY;
 
-  const model = gltf.scene;
+  const model = gltf.scene.clone(true);
   fitObjectToSize(model, machine.targetSize);
   model.traverse((child) => {
     child.userData.machineId = machine.id;
@@ -185,14 +312,96 @@ function createMachineGroup(machine: TwinMachine, gltf: GLTF) {
     }
   });
 
-  group.add(model);
-  group.add(createStatusRing(machine));
+  group.add(model, createStatusRing(machine), createLabelSprite(machine.name));
   return group;
 }
 
 async function loadMachineGroup(loader: GLTFLoader, machine: TwinMachine, isDisposed: () => boolean) {
+  if (!machine.assetUrl) {
+    return isDisposed() ? null : createPlaceholderMachine(machine);
+  }
+
   const gltf = await loader.loadAsync(machine.assetUrl);
   return isDisposed() ? null : createMachineGroup(machine, gltf);
+}
+
+function createFloorLabel(text: string, position: THREE.Vector3) {
+  const sprite = createLabelSprite(text);
+  sprite.position.copy(position);
+  sprite.scale.set(2.3, 0.55, 1);
+  return sprite;
+}
+
+function createFactoryStructure(scene: THREE.Scene) {
+  const slabMaterial = new THREE.MeshStandardMaterial({
+    color: "#e2e8f0",
+    roughness: 0.82,
+    metalness: 0.05,
+  });
+  const edgeMaterial = new THREE.MeshStandardMaterial({ color: "#475569" });
+  const railMaterial = new THREE.MeshStandardMaterial({ color: "#2563eb" });
+
+  const createSlab = (y: number, label: string) => {
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(FACTORY_WIDTH, 0.12, FACTORY_DEPTH),
+      slabMaterial,
+    );
+    slab.position.y = y - 0.06;
+    slab.receiveShadow = true;
+    scene.add(slab);
+
+    const edge = new THREE.Mesh(
+      new THREE.BoxGeometry(FACTORY_WIDTH + 0.1, 0.16, FACTORY_DEPTH + 0.1),
+      edgeMaterial,
+    );
+    edge.position.y = y - 0.13;
+    edge.scale.y = 0.35;
+    scene.add(edge);
+    scene.add(createFloorLabel(label, new THREE.Vector3(-4.25, y + 0.45, -3.08)));
+  };
+
+  createSlab(0, "First Floor");
+  createSlab(FLOOR_HEIGHT, "Second Floor");
+
+  for (const x of [-5.7, -1.9, 1.9, 5.7]) {
+    for (const z of [-3.2, 3.2]) {
+      const column = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, FLOOR_HEIGHT, 0.16),
+        edgeMaterial,
+      );
+      column.position.set(x, FLOOR_HEIGHT / 2, z);
+      column.castShadow = true;
+      scene.add(column);
+    }
+  }
+
+  for (const z of [-3.25, 3.25]) {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(FACTORY_WIDTH, 0.08, 0.08),
+      railMaterial,
+    );
+    rail.position.set(0, FLOOR_HEIGHT + 0.55, z);
+    scene.add(rail);
+  }
+
+  const stairs = new THREE.Group();
+  for (let i = 0; i < 9; i += 1) {
+    const step = new THREE.Mesh(
+      new THREE.BoxGeometry(1.15, 0.12, 0.42),
+      new THREE.MeshStandardMaterial({ color: "#94a3b8", roughness: 0.7 }),
+    );
+    step.position.set(-5.15 + i * 0.35, i * (FLOOR_HEIGHT / 9), 3.55 - i * 0.32);
+    stairs.add(step);
+  }
+  scene.add(stairs);
+
+  const firstGrid = new THREE.GridHelper(FACTORY_WIDTH, 18, "#64748b", "#cbd5e1");
+  firstGrid.position.y = 0.004;
+  scene.add(firstGrid);
+
+  const secondGrid = new THREE.GridHelper(FACTORY_WIDTH, 18, "#475569", "#bfdbfe");
+  secondGrid.position.y = FLOOR_HEIGHT + 0.004;
+  scene.add(secondGrid);
 }
 
 function FactoryCanvas({
@@ -236,38 +445,35 @@ function FactoryCanvas({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#f8fafc");
 
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-    camera.position.set(4.5, 3.2, 5.2);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    camera.position.set(8.2, 5.4, 8.5);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.minDistance = 2.6;
-    controls.maxDistance = 9;
-    controls.maxPolarAngle = Math.PI / 2.05;
-    controls.target.set(0, 0.45, 0);
+    controls.minDistance = 4;
+    controls.maxDistance = 17;
+    controls.maxPolarAngle = Math.PI / 2.04;
+    controls.target.set(0, 1.25, 0);
 
-    scene.add(new THREE.AmbientLight("#ffffff", 1.2));
-    const mainLight = new THREE.DirectionalLight("#ffffff", 2.2);
-    mainLight.position.set(5, 7, 4);
+    scene.add(new THREE.AmbientLight("#ffffff", 1.25));
+    const mainLight = new THREE.DirectionalLight("#ffffff", 2.4);
+    mainLight.position.set(3.5, 8, 4.5);
     mainLight.castShadow = true;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 18;
     scene.add(mainLight);
 
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(8, 5),
-      new THREE.MeshStandardMaterial({ color: "#eef2f7", roughness: 0.92 }),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
+    const fillLight = new THREE.DirectionalLight("#dbeafe", 0.8);
+    fillLight.position.set(-4, 5, -4);
+    scene.add(fillLight);
 
-    const grid = new THREE.GridHelper(8, 16, "#94a3b8", "#cbd5e1");
-    grid.position.y = -0.01;
-    scene.add(grid);
+    createFactoryStructure(scene);
 
     const machineGroups = new Map<string, THREE.Group>();
     const selectionRing = createSelectionRing();
@@ -293,15 +499,18 @@ function FactoryCanvas({
       }
     };
 
-    const updateStatusRings = () => {
+    const updateStatusIndicators = () => {
       machinesRef.current.forEach((machine) => {
-        const ring = machineGroups.get(machine.id)?.getObjectByName("status-ring");
-        const material = ring instanceof THREE.Mesh ? ring.material : null;
-        if (!(material instanceof THREE.MeshStandardMaterial)) return;
+        const group = machineGroups.get(machine.id);
+        for (const name of ["status-ring", "status-panel"]) {
+          const item = group?.getObjectByName(name);
+          const material = item instanceof THREE.Mesh ? item.material : null;
+          if (!(material instanceof THREE.MeshStandardMaterial)) continue;
 
-        const nextColor = statusStyle[machine.status].color;
-        material.color.set(nextColor);
-        material.emissive.set(nextColor);
+          const nextColor = statusStyle[machine.status].color;
+          material.color.set(nextColor);
+          material.emissive.set(nextColor);
+        }
       });
     };
 
@@ -338,7 +547,7 @@ function FactoryCanvas({
     const animate = () => {
       controls.update();
       updateSelection();
-      updateStatusRings();
+      updateStatusIndicators();
       renderer.render(scene, camera);
       frame = window.requestAnimationFrame(animate);
     };
@@ -364,12 +573,48 @@ function FactoryCanvas({
 }
 
 export default function FactoryTwinScene() {
-  const [machines, setMachines] = useState<TwinMachine[]>(initialTwinMachines);
-  const [selectedMachineId, setSelectedMachineId] = useState(initialTwinMachines[0].id);
+  const [machines, setMachines] = useState<TwinMachine[]>(firstFloorAssetMachines);
+  const [selectedMachineId, setSelectedMachineId] = useState(firstFloorAssetMachines[0].id);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMachineTable() {
+      try {
+        const rows = await fetchAllPaginated<MachineRecord>(
+          (params) => apiService.getMachines(params),
+          100,
+        );
+        if (cancelled || rows.length === 0) return;
+
+        const secondFloorMachines = rows.map(toSecondFloorMachine);
+        setMachines([...firstFloorAssetMachines, ...secondFloorMachines]);
+      } catch (loadError) {
+        console.error("Unable to load IPROTEX machine table for digital twin:", loadError);
+      }
+    }
+
+    void loadMachineTable();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const selectedMachine =
     machines.find((machine) => machine.id === selectedMachineId) ?? machines[0];
+
+  const floorCounts = useMemo(
+    () => ({
+      first: machines.filter((machine) => machine.floor === "first").length,
+      second: machines.filter((machine) => machine.floor === "second").length,
+    }),
+    [machines],
+  );
+
+  const sceneKey = machines.map((machine) => machine.id).join("|");
 
   const updateSelectedMachineStatus = (status: TwinStatus) => {
     setMachines((currentMachines) =>
@@ -388,13 +633,15 @@ export default function FactoryTwinScene() {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="panel overflow-hidden p-0">
-        <div className="flex min-h-[560px] flex-col">
+        <div className="flex min-h-[680px] flex-col">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Factory Twin</h2>
-              <p className="mt-1 text-sm text-slate-500">Prototype mode - no backend machine records yet</p>
+              <h2 className="text-base font-bold text-slate-900">IPROTEX Factory Twin</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Two-floor factory view: {floorCounts.first} first-floor modeled assets, {floorCounts.second} second-floor machine-table records
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(statusStyle).map(([key, value]) => (
@@ -404,7 +651,7 @@ export default function FactoryTwinScene() {
               ))}
             </div>
           </div>
-          <div className="relative min-h-[480px] flex-1">
+          <div className="relative min-h-[600px] flex-1">
             {loading && (
               <div className="absolute inset-0 z-10 p-6">
                 <Skeleton className="h-full w-full rounded-lg" />
@@ -418,6 +665,7 @@ export default function FactoryTwinScene() {
               </div>
             )}
             <FactoryCanvas
+              key={sceneKey}
               machines={machines}
               selectedId={selectedMachine.id}
               onSelect={(machine) => setSelectedMachineId(machine.id)}
@@ -443,7 +691,7 @@ export default function FactoryTwinScene() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <div className="grid gap-2">
+          <div className="grid max-h-80 gap-2 overflow-y-auto pr-1">
             {machines.map((machine) => (
               <button
                 key={machine.id}
@@ -455,9 +703,14 @@ export default function FactoryTwinScene() {
                 }`}
                 onClick={() => setSelectedMachineId(machine.id)}
               >
-                <span className="font-semibold">{machine.name}</span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">{machine.name}</span>
+                  <span className="block text-xs text-slate-500">
+                    {machine.floor === "first" ? "First Floor" : "Second Floor"}
+                  </span>
+                </span>
                 <span
-                  className="h-2.5 w-2.5 rounded-full"
+                  className="ml-3 h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: statusStyle[machine.status].color }}
                   aria-hidden="true"
                 />
@@ -500,9 +753,15 @@ export default function FactoryTwinScene() {
 
           <dl className="grid gap-3 text-sm">
             <div className="rounded-md border border-slate-200 p-3">
-              <dt className="font-medium text-slate-500">Connection</dt>
+              <dt className="font-medium text-slate-500">Factory level</dt>
               <dd className="mt-1 font-semibold text-slate-900">
-                {selectedMachine.backendMachineId ?? "Prototype only"}
+                {selectedMachine.floor === "first" ? "First Floor" : "Second Floor"}
+              </dd>
+            </div>
+            <div className="rounded-md border border-slate-200 p-3">
+              <dt className="font-medium text-slate-500">Machine table ID</dt>
+              <dd className="mt-1 break-all font-semibold text-slate-900">
+                {selectedMachine.backendMachineId ?? "3D asset only"}
               </dd>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -532,8 +791,18 @@ export default function FactoryTwinScene() {
               </div>
             </div>
             <div className="rounded-md border border-slate-200 p-3">
-              <dt className="font-medium text-slate-500">3D asset</dt>
-              <dd className="mt-1 break-all font-semibold text-slate-900">{selectedMachine.assetUrl}</dd>
+              <dt className="font-medium text-slate-500">Manufacturer / model</dt>
+              <dd className="mt-1 font-semibold text-slate-900">
+                {[selectedMachine.manufacturer, selectedMachine.model]
+                  .filter((value) => value && value !== "N/A")
+                  .join(" / ") || "Not available"}
+              </dd>
+            </div>
+            <div className="rounded-md border border-slate-200 p-3">
+              <dt className="font-medium text-slate-500">3D representation</dt>
+              <dd className="mt-1 break-all font-semibold text-slate-900">
+                {selectedMachine.assetUrl ?? "Named placeholder until asset is added"}
+              </dd>
             </div>
             <div className="rounded-md border border-slate-200 p-3">
               <dt className="font-medium text-slate-500">Twin state</dt>

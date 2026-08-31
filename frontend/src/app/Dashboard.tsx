@@ -1,39 +1,53 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardStatistics } from "@/hooks/useDashboardStatistics";
 import { useTranslations } from "next-intl";
-
 import {
-  WrenchScrewdriverIcon,
-  UsersIcon,
-  ClipboardDocumentListIcon,
   CheckCircleIcon,
-  CommandLineIcon,
+  ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
+  HeartIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
+
 import { Link } from '@/i18n/navigation';
 import { apiService } from "@/services/api";
-import ProfileAvatar from "@/components/ProfileAvatar";
-import { translateEnumValue } from "@/services/enumTranslations";
+import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
+import { usePredictiveHealth } from "@/hooks/usePredictiveHealth";
 
-type MinimalUser = {
+type Machine = {
   _id?: string;
-  is_active?: boolean;
-  nom_complet?: string;
-  photo?: string;
+  machine_id?: string;
+  serial_no?: string;
+  reference?: string;
+  fabricant?: string;
+  model?: string;
+  status?: string;
 };
 
 type WorkOrder = {
   _id?: string;
-  title?: string;
+  ot_id?: string;
   description?: string;
   status?: string;
+  machine_id?: string | { _id?: string; machine_id?: string; reference?: string };
+  date_created?: string;
+  date_start?: string;
 };
+
+type OverviewCard = [
+  label: string,
+  value: string,
+  href: string,
+  accentClass: string,
+  valueClass: string,
+  Icon: ComponentType<SVGProps<SVGSVGElement>>,
+];
 
 function normalizeArray<T>(value: unknown): T[] {
   if (Array.isArray(value)) return value as T[];
@@ -43,64 +57,80 @@ function normalizeArray<T>(value: unknown): T[] {
 
 export default function Dashboard() {
   const tAdmin = useTranslations("dashboard.admin");
-  const tEnums = useTranslations("common.enums");
 
   const { user, isLoading: authLoading } = useAuth();
   const { statistics } = useDashboardStatistics();
-
-  // These two lists are for on-screen display only (a handful of avatars,
-  // a short "recent work orders" feed) — never used to derive a count or
-  // percentage. Every KPI number on this page comes from `statistics`
-  // (`GET /dashboard/admin`), computed by the shared `KpiService`.
+  const { statusByMachine } = useLiveMonitoring();
+  const { healthByMachine } = usePredictiveHealth();
   const [recentWorkOrders, setRecentWorkOrders] = useState<WorkOrder[]>([]);
-  const [activeUsersPreview, setActiveUsersPreview] = useState<MinimalUser[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
 
   useEffect(() => {
     if (authLoading || user?.role !== 'admin') return;
 
     (async () => {
       try {
-        const [workOrdersRes, usersRes] = await Promise.all([
+        const [workOrdersRes, machinesRes] = await Promise.all([
           apiService.getWorkOrders({ page: 1, limit: 5 }),
-          apiService.getUsers({ page: 1, limit: 5 }),
+          apiService.getMachines({ page: 1, limit: 200 }),
         ]);
         setRecentWorkOrders(normalizeArray<WorkOrder>(workOrdersRes.data));
-        setActiveUsersPreview(
-          normalizeArray<MinimalUser>(usersRes.data).filter((u) => u.is_active),
-        );
+        setMachines(normalizeArray<Machine>(machinesRes.data));
       } catch (error) {
         console.error('Error loading dashboard preview lists:', error);
       }
     })();
   }, [authLoading, user]);
 
-  const getStatusBadge = (status: string) => {
-    const statusClasses: Record<string, string> = {
-      pending: 'status-pending',
-      in_progress: 'status-active',
-      completed: 'status-completed',
-      validated: 'status-completed',
-      cancelled: 'status-pending',
-    };
-
-    return statusClasses[status] || 'status-pending';
-  };
-
   const workOrders = statistics?.workOrders;
-  const totalCount = workOrders?.totalCount ?? 0;
   const overdueCount = workOrders?.overdueCount ?? 0;
   const dueTodayCount = workOrders?.dueTodayCount ?? 0;
   const waitingValidationCount = workOrders?.waitingValidationCount ?? 0;
   const completedTodayCount = workOrders?.completedTodayCount ?? 0;
-  const openMaintenanceCount = overdueCount + dueTodayCount;
-
-  const availabilityPercent = statistics?.mttrMtbf.availabilityPercent ?? 0;
-  const complianceRate = statistics?.preventiveCompliance.ratePercent ?? 0;
-
-  const distributionBar = (count: number) =>
-    totalCount > 0 ? `${(count / totalCount) * 100}%` : '0%';
+  const openCount = workOrders?.openCount ?? 0;
+  const inProgressCount = workOrders?.inProgressCount ?? 0;
+  const machineCount = statistics?.totals.machines ?? machines.length;
+  const healthyMachineCount = machines.filter((machine) => {
+    const health = machine._id ? healthByMachine[machine._id] : undefined;
+    return !health || health.riskLevel === 'low' || health.riskLevel === 'insufficient_data';
+  }).length;
+  const criticalAlerts = Object.values(statusByMachine).reduce(
+    (total, status) => total + status.activeAlarmCount,
+    0,
+  ) + Object.values(healthByMachine).filter((health) => health.riskLevel === 'critical').length;
+  const machineStatusCounts = machines.reduce<Record<string, number>>((counts, machine) => {
+    const key = machine.status?.toLowerCase() || 'unknown';
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+  const attentionMachines = machines
+    .map((machine) => ({ machine, health: machine._id ? healthByMachine[machine._id] : undefined }))
+    .filter(({ machine, health }) => health?.riskLevel === 'high' || health?.riskLevel === 'critical' || (machine._id ? (statusByMachine[machine._id]?.activeAlarmCount ?? 0) > 0 : false))
+    .sort((left, right) => (left.health?.healthScore ?? 100) - (right.health?.healthScore ?? 100))
+    .slice(0, 3);
+  const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
+  const activityDateFormatter = new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const dashboardTitle = tAdmin('title');
+  const overviewCards: OverviewCard[] = [
+    ['machineHealth', `${healthyMachineCount} / ${machineCount}`, '/machines', 'border-s-4 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20', 'text-emerald-700 dark:text-emerald-300', HeartIcon],
+    ['openWorkOrders', String(openCount), '/work-orders', 'border-s-4 border-blue-500 bg-blue-50/60 dark:bg-blue-950/20', 'text-blue-700 dark:text-blue-300', ClipboardDocumentListIcon],
+    ['criticalAlerts', String(criticalAlerts), '/pannes', 'border-s-4 border-red-500 bg-red-50/60 dark:bg-red-950/20', 'text-red-700 dark:text-red-300', ExclamationTriangleIcon],
+    ['maintenanceDue', String(overdueCount + dueTodayCount), '/work-orders', 'border-s-4 border-amber-500 bg-amber-50/60 dark:bg-amber-950/20', 'text-amber-700 dark:text-amber-300', WrenchScrewdriverIcon],
+  ];
+  const maintenanceActivityRows: Array<[string, number, string]> = [
+    ['open', openCount, 'text-blue-600'],
+    ['inProgress', inProgressCount, 'text-amber-600'],
+    ['waitingValidation', waitingValidationCount, 'text-orange-600'],
+    ['completedToday', completedTodayCount, 'text-emerald-600'],
+  ];
 
   return (
     <ProtectedRoute requiredRole="admin">
@@ -109,238 +139,21 @@ export default function Dashboard() {
           <div className="col-span-full mb-2">
             <p className="text-sm text-slate-600 dark:text-slate-300">{tAdmin("description")}</p>
           </div>
-          {/* Search Bar */}
-          <div className="col-span-full mb-6 bento-item">
-            <div className="search-bar">
-              <input
-                type="text"
-                placeholder={tAdmin("searchPlaceholder")}
-                className="search-input"
-              />
-              <div className="search-shortcut">
-                <CommandLineIcon className="w-3 h-3 inline mr-1" />
-                F
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Cards Row */}
           <div className="stats-grid">
-            <Link href="/machines" className="featured-card block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-              <div className="card-title">{tAdmin("stats.totalMachines")}</div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-4xl font-bold mb-2">{statistics?.totals.machines ?? 0}</div>
-                  <div className="text-blue-200 text-sm">{tAdmin("stats.fleetTotal")}</div>
-                </div>
-                <WrenchScrewdriverIcon className="w-16 h-16 text-blue-200 opacity-80" />
-              </div>
-            </Link>
-            <Link href="/users" className="panel group block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-              <div className="card-title">{tAdmin("stats.totalUsers")}</div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="text-3xl font-bold text-slate-800">{statistics?.totals.users ?? 0}</div>
-                  <div className="mini-avatar-stack" style={{ gap: '0.25rem' }}>
-                    {activeUsersPreview.slice(0, 3).map((u, index: number) => (
-                      <div key={u._id || index} className="mini-avatar" style={{ zIndex: 30 - index }}>
-                        <ProfileAvatar name={u.nom_complet} photo={u.photo} size="sm" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <UsersIcon className="w-12 h-12 text-blue-600 card-icon" />
-              </div>
-            </Link>
-            <Link href="/work-orders" className="panel group block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
-              <div className="card-title flex items-center">
-                <div className="pulse-dot"></div>
-                {tAdmin("stats.openMaintenance")}
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold text-slate-800 mb-1">{openMaintenanceCount}</div>
-                  <div className="text-amber-600 text-sm">
-                    {tAdmin("stats.openMaintenanceHint", { overdue: overdueCount, dueToday: dueTodayCount })}
-                  </div>
-                </div>
-                <ClipboardDocumentListIcon className="w-12 h-12 text-amber-600 card-icon" />
-              </div>
-            </Link>
-            <Link href="/work-orders" className="panel group relative block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2">
-              <div className="success-badge">
-                <CheckCircleIcon className="w-3 h-3 text-white" />
-              </div>
-              <div className="card-title">{tAdmin("stats.completedToday")}</div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-3xl font-bold text-slate-800 mb-1">{completedTodayCount}</div>
-                  <div className="text-emerald-600 text-sm">{tAdmin("stats.outOfTotal", { total: totalCount })}</div>
-                </div>
-                <CheckCircleIcon className="w-12 h-12 text-emerald-600 card-icon" />
-              </div>
-            </Link>
+            {overviewCards.map(([label, value, href, accentClass, valueClass, Icon]) => (
+              <Link key={label} href={href} className={`panel block p-6 no-underline text-inherit ${accentClass} focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2`}>
+                <div className="card-title flex items-center gap-2"><Icon className={`h-5 w-5 ${valueClass}`} />{tAdmin(`overview.${label}`)}</div>
+                <div className={`text-3xl font-bold ${valueClass}`}>{value}</div>
+              </Link>
+            ))}
           </div>
-
-          <Link href="/work-orders" className="bento-item panel md:col-span-2 block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-            <div className="card-title">{tAdmin("workOrders.recent")}</div>
-            <div className="space-y-3">
-              {recentWorkOrders.slice(0, 5).map((wo) => (
-                <div key={wo._id} className="flex min-w-0 items-center justify-between gap-3 border-b pb-2">
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold" title={wo.title || wo.description || ''}>
-                      {wo.title || wo.description}
-                    </div>
-                    <div className="truncate text-xs text-slate-500" title={wo.status}>
-                      {translateEnumValue(tEnums, 'workOrderStatuses', wo.status)}
-                    </div>
-                  </div>
-                  <div className={`status-badge ${getStatusBadge(wo.status ?? 'pending')}`}>
-                    {translateEnumValue(tEnums, 'workOrderStatuses', wo.status)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Link>
-
-          <Link href="/machines" className="bento-item panel block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2">
-            <div className="card-title">{tAdmin("machines.availability")}</div>
-            <div className="text-5xl font-bold text-green-600">{availabilityPercent}%</div>
-            <div className="mt-4">
-              <div className="w-full h-3 bg-slate-200 rounded-full">
-                <div className="h-3 bg-green-500 rounded-full" style={{ width: `${availabilityPercent}%` }} />
-              </div>
-            </div>
-            <div className="text-sm text-slate-500 mt-3">{tAdmin("machines.availabilityHint")}</div>
-          </Link>
-
-          <Link href="/work-orders" className="bento-item panel block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-            <div className="card-title">{tAdmin("workOrders.completionRate")}</div>
-            <div className="text-5xl font-bold text-blue-600">{complianceRate}%</div>
-            <div className="mt-4">
-              <div className="w-full h-3 bg-slate-200 rounded-full">
-                <div className="h-3 bg-blue-500 rounded-full" style={{ width: `${complianceRate}%` }} />
-              </div>
-            </div>
-            <div className="text-sm text-slate-500 mt-3">{tAdmin("workOrders.completionRateHint")}</div>
-          </Link>
-
-          <Link href="/work-orders" className="bento-item panel md:col-span-2 block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-            <div className="card-title">{tAdmin("workOrders.distribution")}</div>
-            <div className="space-y-5">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span>{tAdmin("workOrders.overdue")}</span>
-                  <span>{overdueCount}</span>
-                </div>
-                <div className="w-full bg-slate-200 h-3 rounded-full">
-                  <div className="bg-red-500 h-3 rounded-full" style={{ width: distributionBar(overdueCount) }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span>{tAdmin("workOrders.dueToday")}</span>
-                  <span>{dueTodayCount}</span>
-                </div>
-                <div className="w-full bg-slate-200 h-3 rounded-full">
-                  <div className="bg-amber-500 h-3 rounded-full" style={{ width: distributionBar(dueTodayCount) }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span>{tAdmin("workOrders.waitingValidation")}</span>
-                  <span>{waitingValidationCount}</span>
-                </div>
-                <div className="w-full bg-slate-200 h-3 rounded-full">
-                  <div className="bg-purple-500 h-3 rounded-full" style={{ width: distributionBar(waitingValidationCount) }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span>{tAdmin("workOrders.completedTodayLabel")}</span>
-                  <span>{completedTodayCount}</span>
-                </div>
-                <div className="w-full bg-slate-200 h-3 rounded-full">
-                  <div className="bg-green-500 h-3 rounded-full" style={{ width: distributionBar(completedTodayCount) }} />
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          <Link href="/reports" className="bento-item panel md:col-span-2 block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2">
-            <div className="card-title">{tAdmin("quickKpis.title")}</div>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span>{tAdmin("quickKpis.machineAvailability")}</span>
-                <span>{availabilityPercent}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{tAdmin("quickKpis.completionRate")}</span>
-                <span>{complianceRate}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{tAdmin("quickKpis.stockAlerts")}</span>
-                <span className={statistics && statistics.stockAlerts.count > 0 ? 'text-amber-600 font-semibold' : ''}>
-                  {statistics?.stockAlerts.count ?? 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>{tAdmin("quickKpis.correctiveResponseTime")}</span>
-                <span>{tAdmin("quickKpis.hoursValue", { hours: statistics?.correctiveResponseTime.averageResponseHours ?? 0 })}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{tAdmin("quickKpis.mttr")}</span>
-                <span>{tAdmin("quickKpis.hoursValue", { hours: statistics?.mttrMtbf.mttrHours ?? 0 })}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>{tAdmin("quickKpis.mtbf")}</span>
-                <span>{tAdmin("quickKpis.hoursValue", { hours: statistics?.mttrMtbf.mtbfHours ?? 0 })}</span>
-              </div>
-            </div>
-          </Link>
-
-          {statistics && statistics.stockAlerts.count > 0 && (
-            <Link href="/stocks" className="col-span-full bento-item panel block cursor-pointer no-underline text-inherit border border-amber-200 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2">
-              <div className="card-title flex items-center gap-2 text-amber-800">
-                <ExclamationTriangleIcon className="w-5 h-5" />
-                {tAdmin("stockAlerts.title", { default: "Stock Alerts" })}
-              </div>
-              <div className="space-y-2 mt-2">
-                {statistics.stockAlerts.items.slice(0, 5).map((item) => (
-                  <div key={item.stockId} className="flex items-center justify-between text-sm">
-                    <span>{item.partLabel || item.stockCode}</span>
-                    <span className="text-amber-700 font-medium">
-                      {tAdmin("stockAlerts.availableOf", { available: item.available, threshold: item.threshold })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Link>
-          )}
-
-          {statistics && statistics.workload.length > 0 && (
-            <Link href="/users" className="col-span-full bento-item panel block cursor-pointer no-underline text-inherit focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2">
-              <div className="card-title">{tAdmin("workload.title")}</div>
-              <div className="space-y-3 mt-2">
-                {statistics.workload.slice(0, 6).map((entry) => (
-                  <div key={entry.technicianId}>
-                    <div className="flex justify-between mb-1 text-sm">
-                      <span>{entry.name}</span>
-                      <span>{tAdmin("workload.openCount", { count: entry.openCount })}</span>
-                    </div>
-                    <div className="w-full bg-slate-200 h-2 rounded-full">
-                      <div
-                        className="bg-indigo-500 h-2 rounded-full"
-                        style={{
-                          width: `${Math.min(100, (entry.openCount / statistics.workload[0].openCount) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Link>
-          )}
+          <section className="col-span-full panel p-6">
+            <div className="mb-4 flex items-center justify-between gap-4"><h2 className="flex items-center gap-2 text-lg font-semibold"><ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />{tAdmin('overview.attention')}</h2><span className="text-sm text-slate-500">{todayLabel}</span></div>
+            <div className="space-y-3">{attentionMachines.length ? attentionMachines.map(({ machine, health }) => <div key={machine._id} className={`flex flex-wrap items-center justify-between gap-3 border-s-4 border-t px-3 pt-3 ${health?.riskLevel === 'critical' ? 'border-s-red-500' : 'border-s-amber-500'}`}><div><div className="font-semibold">{machine.reference || machine.machine_id || machine.serial_no}</div><div className={`text-sm ${health?.riskLevel === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>{health ? tAdmin('overview.healthValue', { value: Math.round(health.healthScore) }) : tAdmin('overview.activeAlert')}</div></div><Link href={`/machines/${machine._id}`} className="text-sm font-medium text-blue-600">{tAdmin('overview.viewMachine')}</Link></div>) : <p className="text-sm text-slate-500">{tAdmin('overview.noAttention')}</p>}</div>
+          </section>
+          <section className="bento-item panel p-6 md:col-span-2"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClipboardDocumentListIcon className="h-5 w-5 text-blue-600" />{tAdmin('overview.maintenanceActivity')}</h2>{maintenanceActivityRows.map(([label, value, colorClass]) => <div key={label} className="flex justify-between border-t py-2 text-sm"><span>{tAdmin(`overview.${label}`)}</span><strong className={colorClass}>{value}</strong></div>)}</section>
+          <section className="bento-item panel p-6 md:col-span-2"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><WrenchScrewdriverIcon className="h-5 w-5 text-emerald-600" />{tAdmin('overview.factoryStatus')}</h2>{[['running', machineStatusCounts.operational ?? machineStatusCounts.running ?? 0], ['maintenance', machineStatusCounts.maintenance ?? 0], ['stopped', machineStatusCounts.stopped ?? machineStatusCounts.out_of_service ?? 0]].map(([label, value]) => <div key={label} className="flex justify-between border-t py-2 text-sm"><span>{tAdmin(`overview.${label}`)}</span><strong>{value}</strong></div>)}</section>
+          <section className="col-span-full panel p-6"><h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><CheckCircleIcon className="h-5 w-5 text-blue-600" />{tAdmin('overview.recentActivity')}</h2><div className="space-y-3">{recentWorkOrders.map((order) => <div key={order._id} className="flex gap-4 border-t pt-3 text-sm"><time className="text-slate-500">{order.date_start || order.date_created ? activityDateFormatter.format(new Date(order.date_start || order.date_created!)) : '--:--'}</time><span>{order.ot_id || order.description || tAdmin('overview.workOrder')}</span></div>)}</div></section>
 
         </div>
       </DashboardLayout>
