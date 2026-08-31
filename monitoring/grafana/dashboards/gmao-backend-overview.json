@@ -99,11 +99,11 @@
               },
               {
                 "color": "yellow",
-                "value": 0.5
+                "value": 0.25
               },
               {
                 "color": "red",
-                "value": 2
+                "value": 1
               }
             ]
           },
@@ -136,8 +136,8 @@
       "pluginVersion": "12.4.9",
       "targets": [
         {
-          "expr": "time() - gmao_metrics_collection_timestamp_seconds{job=\"gmao-backend\"}",
-          "legendFormat": "age",
+          "expr": "scrape_duration_seconds{job=\"gmao-backend\"}",
+          "legendFormat": "scrape duration",
           "refId": "A"
         }
       ],
@@ -462,7 +462,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
