@@ -9,8 +9,9 @@
 # real credential — see DEPLOYMENT.md's env var table for what each one is
 # and why it's Render-only.
 #
-# This describes the backend plus production Prometheus/Grafana monitoring
-# services. The frontend deploys to Vercel (see frontend/vercel.json).
+# This describes the backend, the IMS FastAPI service, and production
+# Prometheus/Grafana monitoring services. The frontend deploys to Vercel
+# (see frontend/vercel.json).
 services:
   - type: web
     name: gmao-backend
@@ -194,6 +195,41 @@ services:
         value: "600000"
       - key: AUTOMATION_MAX_ITEMS_PER_RUN
         value: "1000"
+      # IMS anomaly FastAPI integration. Set AI_SERVICE_URL to the deployed
+      # gmao-ai-service URL after that service is created.
+      - key: AI_SERVICE_ENABLED
+        value: "true"
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: AI_SERVICE_TIMEOUT_MS
+        value: "12000"
+  - type: web
+    name: gmao-ai-service
+    runtime: python
+    rootDir: ai-service
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /ready
+    autoDeployTrigger: off
+    disk:
+      name: ims-anomaly-artifacts
+      mountPath: /var/data/ims-anomaly
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.5"
+      - key: AI_SERVICE_ENV
+        value: production
+      - key: AI_SERVICE_CORS_ORIGINS
+        sync: false
+      - key: AI_SERVICE_MAX_REQUEST_BYTES
+        value: "1048576"
+      - key: AI_SERVICE_MAX_BATCH_ROWS
+        value: "512"
+      - key: IMS_ANOMALY_ARTIFACT_PATH
+        value: /var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.joblib
+      - key: IMS_ANOMALY_METADATA_PATH
+        value: /var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.json
   - type: web
     name: gmao-prometheus
     runtime: docker

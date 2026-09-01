@@ -6,6 +6,7 @@ self-hosted Nginx anywhere in local development or production.
 
 - **Frontend**: Next.js, deployed on **Vercel**
 - **Backend**: NestJS, deployed on **Render**
+- **IMS anomaly API**: FastAPI/Python, deployed on **Render**
 - **Monitoring**: Prometheus and Grafana, deployed on **Render** from
   [`monitoring/`](monitoring/)
 - **Database**: **MongoDB Atlas**, via a direct `mongodb+srv://` connection
@@ -30,6 +31,8 @@ project-configured variable without that prefix (verified by an automated test �
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Render only | OAuth client secret |
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET*` | Render only | Service-role storage access |
 | `GEMINI_API_KEY` | Render only | Billable AI provider credential |
+| `AI_SERVICE_ENABLED`, `AI_SERVICE_URL`, `AI_SERVICE_TIMEOUT_MS` | Render backend only | Enables the NestJS to FastAPI IMS anomaly integration |
+| `AI_SERVICE_ENV`, `AI_SERVICE_CORS_ORIGINS`, `IMS_ANOMALY_ARTIFACT_PATH`, `IMS_ANOMALY_METADATA_PATH` | Render IMS anomaly API only | FastAPI runtime config and externally provisioned artifact paths |
 | `CORS_ORIGINS`, `FRONTEND_BASE_URL`, `BACKEND_URL`, `APP_URL`, `API_URL`, `GOOGLE_CALLBACK_URL` | Render only | Server-side config, not secret, but has no reason to exist client-side |
 | `METRICS_BEARER_TOKEN` | Render backend and Render Prometheus only | Dedicated bearer token for Prometheus scraping `GET /health/metrics`; not a user JWT |
 | `GF_SECURITY_ADMIN_PASSWORD` | Render Grafana only | Grafana administrator password |
@@ -186,6 +189,12 @@ GEMINI_MODEL=gemini-flash-lite-latest
 AI_ASSISTANT_TIMEOUT_MS=12000
 AI_ASSISTANT_RATE_LIMIT_PER_HOUR=20
 
+# IMS anomaly FastAPI integration. This must point at the deployed Render
+# FastAPI service, not a localhost URL.
+AI_SERVICE_ENABLED=true
+AI_SERVICE_URL=https://your-ai-service.onrender.com
+AI_SERVICE_TIMEOUT_MS=12000
+
 # Optional operations/device/predictive settings — all have safe code-level
 # defaults if unset (see backend/.env.example for the exact default of each).
 REQUEST_TIMEOUT_MS=30000
@@ -227,16 +236,50 @@ self-hosted Nginx or reverse proxy is used.
 
 ### Render Blueprint (`render.yaml`)
 
-`render.yaml` now includes the backend plus `gmao-prometheus` and
-`gmao-grafana`. Secret-bearing entries use `sync: false`, so Render prompts
-for values instead of reading them from the repository.
+`render.yaml` now includes the backend, `gmao-ai-service`,
+`gmao-prometheus`, and `gmao-grafana`. Secret-bearing entries use
+`sync: false`, so Render prompts for values instead of reading them from the
+repository.
 
-The repo-root [`render.yaml`](render.yaml) declares this service (build/start
-commands, health check path, safe defaults, and every required secret env var
+The repo-root [`render.yaml`](render.yaml) declares these services
+(build/start commands, health check paths, safe defaults, and every required
+secret env var
 *name* above). Secret-bearing entries use Render's `sync: false`, which makes
 the Render dashboard prompt for the real value instead of reading one from
 the file. Applying it (Render dashboard → New → Blueprint, pointing at this
 repo) creates the service; it does not deploy code or set secrets on its own.
+
+### Render IMS Anomaly API
+
+The FastAPI service deploys from `ai-service` as `gmao-ai-service`.
+
+Required Render variables for `gmao-ai-service`:
+
+```env
+PYTHON_VERSION=3.12.5
+AI_SERVICE_ENV=production
+AI_SERVICE_CORS_ORIGINS=https://your-backend.onrender.com
+AI_SERVICE_MAX_REQUEST_BYTES=1048576
+AI_SERVICE_MAX_BATCH_ROWS=512
+IMS_ANOMALY_ARTIFACT_PATH=/var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.joblib
+IMS_ANOMALY_METADATA_PATH=/var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.json
+```
+
+The IMS model files and generated datasets are intentionally not committed to
+Git. Before enabling production traffic, provision the validated v0.1.0
+artifact and metadata JSON at the two paths above on the Render disk mounted
+at `/var/data/ims-anomaly`. The service health check is `GET /ready`, which
+only reports ready after the artifact loads.
+
+Required Render variables for the NestJS backend integration:
+
+```env
+AI_SERVICE_ENABLED=true
+AI_SERVICE_URL=https://your-ai-service.onrender.com
+AI_SERVICE_TIMEOUT_MS=12000
+```
+
+Do not set `AI_SERVICE_URL` to localhost in production.
 
 ### Render AI Assistant
 
@@ -410,6 +453,21 @@ staging one:
 cd backend
 npm run smoke-test -- --url=https://gmao-staging-api.onrender.com
 ```
+
+IMS anomaly deployment verification:
+
+1. Confirm `gmao-ai-service` is live: `GET https://your-ai-service.onrender.com/health`.
+2. Confirm the model artifact loaded: `GET https://your-ai-service.onrender.com/ready`.
+3. Confirm metadata and limitations: `GET https://your-ai-service.onrender.com/v1/models`.
+4. Confirm backend configuration: `GET https://your-backend.onrender.com/ai-anomaly/models` as an Admin or Technician.
+5. Submit one IMS dataset replay analysis through the existing machine workflow.
+6. Open the Vercel frontend at `/en/ai-anomaly`, verify the record is labeled
+   "IMS dataset replay", and apply `dateFrom`/`dateTo` filters.
+7. Confirm or reject one `PENDING` analysis with a comment.
+8. Verify Admin and Technician receive at most one persistent-alert
+   notification per analysis identity, the text says experimental IMS dataset
+   replay, and no WorkOrder is created automatically.
+9. Verify an Operator account cannot browse `/ai-anomaly` history.
 
 ## Environment file & secret hygiene
 
