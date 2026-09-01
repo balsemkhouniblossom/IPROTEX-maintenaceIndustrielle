@@ -22,7 +22,6 @@ import {
   type AiAnomalyValidationStatus,
   buildRiskScoreChartData,
   canValidateAiAnomaly,
-  filterAiAnomalyAnalyses,
   isAiServiceUnavailable,
   machineDisplayName,
   sourceLabelKey,
@@ -183,6 +182,8 @@ function AiAnomalyMonitoringContent() {
                 ? undefined
                 : filters.validationStatus,
             input_source: "DATASET_REPLAY",
+            dateFrom: filters.dateFrom || undefined,
+            dateTo: filters.dateTo || undefined,
           },
           { signal: controller.signal },
         ),
@@ -215,23 +216,21 @@ function AiAnomalyMonitoringContent() {
     }
 
     return () => controller.abort();
-  }, [filters.machineId, filters.riskLevel, filters.validationStatus, page, t]);
+  }, [
+    filters.dateFrom,
+    filters.dateTo,
+    filters.machineId,
+    filters.riskLevel,
+    filters.validationStatus,
+    page,
+    t,
+  ]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  const visibleAnalyses = useMemo(
-    () =>
-      filterAiAnomalyAnalyses(analyses, {
-        machineId: filters.machineId || undefined,
-        riskLevel: filters.riskLevel,
-        validationStatus: filters.validationStatus,
-        dateFrom: filters.dateFrom || undefined,
-        dateTo: filters.dateTo || undefined,
-      }),
-    [analyses, filters],
-  );
+  const visibleAnalyses = analyses;
 
   const summary = useMemo(
     () => summarizeAiAnomalyAnalyses(visibleAnalyses),
@@ -422,12 +421,13 @@ function AiAnomalyMonitoringContent() {
                 className="input-field mt-1"
                 type="date"
                 value={filters.dateFrom}
-                onChange={(event) =>
+                onChange={(event) => {
+                  setPage(1);
                   setFilters((current) => ({
                     ...current,
                     dateFrom: event.target.value,
-                  }))
-                }
+                  }));
+                }}
               />
             </label>
             <label className="block text-sm font-medium text-slate-700">
@@ -436,12 +436,13 @@ function AiAnomalyMonitoringContent() {
                 className="input-field mt-1"
                 type="date"
                 value={filters.dateTo}
-                onChange={(event) =>
+                onChange={(event) => {
+                  setPage(1);
                   setFilters((current) => ({
                     ...current,
                     dateTo: event.target.value,
-                  }))
-                }
+                  }));
+                }}
               />
             </label>
           </div>
@@ -735,9 +736,6 @@ function AiAnomalyMonitoringContent() {
               )}
             </div>
 
-            <button type="button" className="btn-secondary" disabled>
-              {t("details.proposeWorkOrder")}
-            </button>
           </div>
         ) : null}
       </Modal>

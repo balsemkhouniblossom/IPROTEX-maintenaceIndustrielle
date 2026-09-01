@@ -719,6 +719,8 @@ export const apiService = {
       risk_level?: string;
       validation_status?: string;
       input_source?: string;
+      dateFrom?: string;
+      dateTo?: string;
     },
     options?: { signal?: AbortSignal },
   ) => api.get("/ai-anomaly/analyses", { params, signal: options?.signal }),
@@ -730,6 +732,8 @@ export const apiService = {
       risk_level?: string;
       validation_status?: string;
       input_source?: string;
+      dateFrom?: string;
+      dateTo?: string;
     },
     options?: { signal?: AbortSignal },
   ) =>

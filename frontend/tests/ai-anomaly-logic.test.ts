@@ -86,6 +86,8 @@ test("apiService integrates only the existing /ai-anomaly backend endpoints", ()
     source,
     /validateAiAnomalyAnalysis:[\s\S]*\/ai-anomaly\/analyses\/\$\{id\}\/validation/,
   );
+  assert.match(source, /dateFrom\?: string/);
+  assert.match(source, /dateTo\?: string/);
 });
 
 test("filters support machine, risk level, validation status, date range and pagination", () => {
@@ -112,6 +114,12 @@ test("filters support machine, risk level, validation status, date range and pag
     ["AI-ANOM-1"],
   );
   assert.match(readSource(PAGE), /<Pagination/);
+  assert.match(readSource(PAGE), /dateFrom: filters\.dateFrom \|\| undefined/);
+  assert.match(readSource(PAGE), /dateTo: filters\.dateTo \|\| undefined/);
+  assert.doesNotMatch(
+    readSource(PAGE),
+    /filterAiAnomalyAnalyses\(analyses/,
+  );
 });
 
 test("summary cards count persistent alerts and validation outcomes", () => {
@@ -213,8 +221,8 @@ test("human-readable machine labels hide Mongo IDs when available", () => {
 
 test("UI omits automatic work-order creation", () => {
   assert.doesNotMatch(readSource(API), /ai-anomaly[\s\S]*createWorkOrder/);
-  assert.match(readSource(PAGE), /proposeWorkOrder/);
-  assert.match(readSource(PAGE), /disabled/);
+  assert.doesNotMatch(readSource(PAGE), /proposeWorkOrder/);
+  assert.doesNotMatch(readSource(PAGE), /apiService\.createWorkOrder/);
 });
 
 test("translations exist for all locales and Arabic keeps RTL available", () => {
