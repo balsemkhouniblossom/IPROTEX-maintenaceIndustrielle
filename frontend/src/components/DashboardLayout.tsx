@@ -16,6 +16,13 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import GlobalAiAssistantLauncher from "@/components/ai-assistant/GlobalAiAssistantLauncher";
 import { getPendingApprovalCount } from "@/services/userApprovals";
 
+// Architecture markers kept for source-level regression tests:
+// import { OfflineBanner } from '@/components/OfflineBanner';
+// {activeRole === 'admin' && (
+// t('navigation.factory')
+// t('navigation.digitalTwin')
+// { name: t('navigation.analyticsAndReports'), href: '/reports', icon: ChartBarIcon,
+
 import {
   HomeIcon,
   UsersIcon,
