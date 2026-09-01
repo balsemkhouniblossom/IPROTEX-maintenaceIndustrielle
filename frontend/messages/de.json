@@ -188,7 +188,28 @@
     "admin": {
       "title": "Wartungsübersicht",
       "description": "Überwachen Sie den Zustand der Anlagen, Wartungsaktivitäten und operative Risiken.",
-      "overview": { "machineHealth": "Maschinenzustand", "openWorkOrders": "Offene Arbeitsaufträge", "criticalAlerts": "Kritische Warnungen", "maintenanceDue": "Fällige Wartung", "attention": "Maschinen mit Handlungsbedarf", "healthValue": "Zustand {value}%", "activeAlert": "Aktive Warnung", "viewMachine": "Maschine ansehen", "noAttention": "Keine Maschinen benötigen Aufmerksamkeit.", "maintenanceActivity": "Wartungsaktivität", "factoryStatus": "Werksstatus", "open": "Offen", "inProgress": "In Bearbeitung", "waitingValidation": "Wartet auf Freigabe", "completedToday": "Heute abgeschlossen", "running": "In Betrieb", "maintenance": "Wartung", "stopped": "Angehalten", "recentActivity": "Letzte Aktivitäten", "workOrder": "Arbeitsauftrag" },
+      "overview": {
+        "machineHealth": "Maschinenzustand",
+        "openWorkOrders": "Offene Arbeitsaufträge",
+        "criticalAlerts": "Kritische Warnungen",
+        "maintenanceDue": "Fällige Wartung",
+        "attention": "Maschinen mit Handlungsbedarf",
+        "healthValue": "Zustand {value}%",
+        "activeAlert": "Aktive Warnung",
+        "viewMachine": "Maschine ansehen",
+        "noAttention": "Keine Maschinen benötigen Aufmerksamkeit.",
+        "maintenanceActivity": "Wartungsaktivität",
+        "factoryStatus": "Werksstatus",
+        "open": "Offen",
+        "inProgress": "In Bearbeitung",
+        "waitingValidation": "Wartet auf Freigabe",
+        "completedToday": "Heute abgeschlossen",
+        "running": "In Betrieb",
+        "maintenance": "Wartung",
+        "stopped": "Angehalten",
+        "recentActivity": "Letzte Aktivitäten",
+        "workOrder": "Arbeitsauftrag"
+      },
       "searchPlaceholder": "In allen Datenbankeinträgen suchen...",
       "fromLastMonth": "seit dem letzten Monat",
       "workOrders": {
@@ -1855,7 +1876,8 @@
       "myReports": "My Reports",
       "reportProblem": "Report Problem",
       "startCorrectiveMaintenance": "Corrective Maintenance",
-      "startPreventiveMaintenance": "Preventive Maintenance"
+      "startPreventiveMaintenance": "Preventive Maintenance",
+      "aiAnomalyMonitoring": "KI-Anomalie?berwachung"
     }
   },
   "machines": {
@@ -3188,6 +3210,103 @@
       "confirmScheduleDelete": "Diesen Zeitplan löschen?",
       "scheduleDeleted": "Zeitplan gelöscht.",
       "scheduleDeleteFailed": "Zeitplan konnte nicht gelöscht werden."
+    }
+  },
+  "aiAnomaly": {
+    "title": "KI-Anomalie?berwachung",
+    "heading": "KI-Anomalie?berwachung",
+    "limitationNotice": "Experimenteller Prototyp auf Basis des ?ffentlichen IMS-Lagerdatensatzes. Die Validierung ist derzeit auf 1st_test begrenzt und belegt keine Generalisierung auf IPROTEX-Maschinen.",
+    "summary": {
+      "latestRiskScore": "Latest risk score",
+      "riskLevel": "Risk level",
+      "persistentAlerts": "Persistent alerts",
+      "pendingValidation": "Pending validation",
+      "confirmedRejected": "Confirmed / rejected",
+      "latestRecord": "Latest analysis record",
+      "needsReview": "Requires technician review",
+      "confirmedRejectedDetail": "Technician validation outcomes"
+    },
+    "filters": {
+      "machine": "Machine",
+      "allMachines": "All machines",
+      "riskLevel": "Risk level",
+      "allRiskLevels": "All risk levels",
+      "validationStatus": "Validation status",
+      "allValidationStatuses": "All statuses",
+      "dateFrom": "From",
+      "dateTo": "To"
+    },
+    "riskLevels": {
+      "NORMAL": "NORMAL",
+      "MONITOR": "MONITOR",
+      "HIGH": "HIGH",
+      "CRITICAL": "CRITICAL"
+    },
+    "boolean": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "persistentAlert": {
+      "active": "Persistent alert",
+      "clear": "No persistent alert"
+    },
+    "sources": {
+      "datasetReplay": "IMS-Datensatzwiedergabe",
+      "demo": "Demo-Wiedergabe"
+    },
+    "validation": {
+      "title": "Technician validation",
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "REJECTED": "Rejected",
+      "pending": "Pending",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "comment": "Validation comment",
+      "save": "Save validation",
+      "saved": "Validation saved",
+      "failed": "Validation failed",
+      "alreadyValidated": "This analysis is already {status} and cannot be validated again."
+    },
+    "states": {
+      "loading": "Anomalieanalysen werden geladen...",
+      "emptyTitle": "Keine Anomalieanalysen gefunden",
+      "emptyDescription": "Passe die Filter an oder starte eine Datensatzwiedergabe aus einem freigegebenen Ablauf.",
+      "errorTitle": "Anomalieanalysen konnten nicht geladen werden",
+      "errorDescription": "Der Anomalieverlauf konnte nicht geladen werden.",
+      "unavailableTitle": "KI-Anomalieservice nicht verf?gbar",
+      "retry": "Erneut versuchen",
+      "retrying": "Wiederholen...",
+      "noRisk": "Noch kein Risiko"
+    },
+    "chart": {
+      "title": "Chronological risk score",
+      "empty": "No risk score data for the selected filters."
+    },
+    "table": {
+      "title": "Analysis history",
+      "chronological": "Chronological risk records",
+      "machine": "Machine",
+      "timestamp": "Measurement timestamp",
+      "anomalyScore": "Anomaly score",
+      "riskScore": "Risk score",
+      "riskLevel": "Risk level",
+      "rawAnomaly": "Raw anomaly",
+      "persistentAlert": "Persistent alert",
+      "modelVersion": "Model version",
+      "source": "Source",
+      "reasonCodes": "Reason codes",
+      "validationStatus": "Validation status"
+    },
+    "details": {
+      "title": "Analysis details",
+      "componentZScore": "Rolling Z-score component",
+      "componentIsolationForest": "Isolation Forest component",
+      "datasetOrigin": "Dataset origin",
+      "imsDataset": "IMS public test-rig data",
+      "validationScope": "Validation scope",
+      "reasonCodes": "Reason codes",
+      "proposeWorkOrder": "Propose work order (future)"
     }
   }
 }

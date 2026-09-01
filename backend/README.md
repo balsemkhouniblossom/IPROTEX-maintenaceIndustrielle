@@ -58,6 +58,113 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## IMS Anomaly Integration
+
+The `ai-anomaly` module connects the NestJS backend to the separate FastAPI IMS anomaly service. It does not train models, modify artifacts, duplicate scoring formulas, create work orders, call Gemini, or invent live IPROTEX vibration data. The backend stores audit records only after FastAPI returns a validated response.
+
+### Local Setup
+
+Install backend dependencies:
+
+```bash
+npm install
+```
+
+Start the FastAPI service from `../ai-service`:
+
+```bash
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload
+```
+
+Enable the NestJS integration in `backend/.env`:
+
+```env
+AI_SERVICE_ENABLED=true
+AI_SERVICE_URL=http://127.0.0.1:8011
+AI_SERVICE_TIMEOUT_MS=12000
+```
+
+Start the backend:
+
+```bash
+npm run start:dev
+```
+
+### Environment Variables
+
+- `AI_SERVICE_ENABLED`: defaults to `false`. When false, backend anomaly calls fail closed with service unavailable.
+- `AI_SERVICE_URL`: required when `AI_SERVICE_ENABLED=true`.
+- `AI_SERVICE_TIMEOUT_MS`: FastAPI response timeout in milliseconds, default `12000`.
+
+The backend request body limit remains `1mb`; anomaly requests are additionally limited to `512` IMS feature rows.
+
+### Endpoints
+
+- `GET /ai-anomaly/models`: model metadata and limitations, admin/technician only.
+- `POST /ai-anomaly/analyses`: stateful single-timestamp analysis, authenticated roles.
+- `POST /ai-anomaly/analyses/batch`: stateless deterministic replay, authenticated roles.
+- `GET /ai-anomaly/analyses`: paginated history, admin/technician only.
+- `GET /ai-anomaly/analyses/:id`: one audit record, admin/technician only.
+- `GET /ai-anomaly/machines/:machineId/history`: machine-scoped history, admin/technician only.
+- `PATCH /ai-anomaly/analyses/:id/validation`: confirm or reject an analysis, admin/technician only.
+
+Request example:
+
+```json
+{
+  "machine_id": "64a111111111111111111111",
+  "capteur_id": "64a222222222222222222222",
+  "input_source": "DATASET_REPLAY",
+  "rows": [
+    {
+      "timestamp": "2003-11-15T18:18:46",
+      "experiment": "1st_test",
+      "sensor_channel": 1,
+      "bearing": 1,
+      "axis": "x",
+      "rms": 0.1246,
+      "standard_deviation": 0.0811,
+      "peak_to_peak": 1.108,
+      "kurtosis": 4.0697,
+      "skewness": -0.03,
+      "crest_factor": 5.7778,
+      "spectral_energy": 67.3877,
+      "dominant_frequency_hz": 986.328125
+    }
+  ]
+}
+```
+
+Response records include `analysis_id`, machine/capteur references, requester, model version, experiment, timestamp, bearing, anomaly/risk fields, component scores, reason codes, `prototype_result`, validation status, and timestamps. The full raw vibration payload is not stored.
+
+Validation example:
+
+```json
+{
+  "validation_status": "CONFIRMED",
+  "validation_comment": "Technician confirmed matching vibration symptoms."
+}
+```
+
+### Scientific Limitations
+
+- The model uses IMS public test-rig data.
+- Validation currently covers only `1st_test`.
+- Generalization to `2nd_test`, `3rd_test`, and IPROTEX factory machines is not established.
+- `prototypeResult=true` is retained for auditability and means the result is a deterministic prototype, not a certified industrial safety threshold.
+- Backend machine/capteur IDs are mapped only to the platform audit record. The IMS model identity still comes from `experiment`, `sensor_channel`, `bearing`, and `axis`.
+
+### Validation Results
+
+Added focused mocked tests for the NestJS integration:
+
+```bash
+npm test -- ai-anomaly --runInBand
+```
+
+Latest focused result: `21` tests passed across client, service, and controller specs.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

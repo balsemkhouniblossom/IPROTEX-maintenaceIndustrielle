@@ -85,6 +85,7 @@ import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { DeviceMonitoringModule } from './device-monitoring/device-monitoring.module';
 import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
 import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive-maintenance.module';
+import { AiAnomalyModule } from './ai-anomaly/ai-anomaly.module';
 import { ReportsModule } from './reports/reports.module';
 import { SavedViewsModule } from './saved-views/saved-views.module';
 import { MachineTimelineModule } from './machine-timeline/machine-timeline.module';
@@ -244,6 +245,7 @@ const SLOW_QUERY_THRESHOLD_MS =
     DeviceMonitoringModule,
     AiAssistantModule,
     PredictiveMaintenanceModule,
+    AiAnomalyModule,
     ReportsModule,
     SavedViewsModule,
     MachineTimelineModule,

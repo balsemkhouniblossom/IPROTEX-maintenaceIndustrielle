@@ -379,7 +379,28 @@
     "admin": {
       "title": "Vue d'ensemble de la maintenance",
       "description": "Surveillez l'état des équipements, l'activité de maintenance et les risques opérationnels.",
-      "overview": { "machineHealth": "État des machines", "openWorkOrders": "Ordres ouverts", "criticalAlerts": "Alertes critiques", "maintenanceDue": "Maintenance à effectuer", "attention": "Machines nécessitant une attention", "healthValue": "État {value}%", "activeAlert": "Alerte active", "viewMachine": "Voir la machine", "noAttention": "Aucune machine ne nécessite d'attention.", "maintenanceActivity": "Activité de maintenance", "factoryStatus": "État de l'usine", "open": "Ouvertes", "inProgress": "En cours", "waitingValidation": "En attente de validation", "completedToday": "Terminées aujourd'hui", "running": "En marche", "maintenance": "Maintenance", "stopped": "Arrêtées", "recentActivity": "Activité récente", "workOrder": "Ordre de travail" },
+      "overview": {
+        "machineHealth": "État des machines",
+        "openWorkOrders": "Ordres ouverts",
+        "criticalAlerts": "Alertes critiques",
+        "maintenanceDue": "Maintenance à effectuer",
+        "attention": "Machines nécessitant une attention",
+        "healthValue": "État {value}%",
+        "activeAlert": "Alerte active",
+        "viewMachine": "Voir la machine",
+        "noAttention": "Aucune machine ne nécessite d'attention.",
+        "maintenanceActivity": "Activité de maintenance",
+        "factoryStatus": "État de l'usine",
+        "open": "Ouvertes",
+        "inProgress": "En cours",
+        "waitingValidation": "En attente de validation",
+        "completedToday": "Terminées aujourd'hui",
+        "running": "En marche",
+        "maintenance": "Maintenance",
+        "stopped": "Arrêtées",
+        "recentActivity": "Activité récente",
+        "workOrder": "Ordre de travail"
+      },
       "searchPlaceholder": "Rechercher dans tous les enregistrements de la base de données...",
       "fromLastMonth": "depuis le mois dernier",
       "stats": {
@@ -1837,7 +1858,8 @@
       "panneSolutions": "Solutions de panne",
       "knowledgeBase": "Base de connaissances",
       "devices": "Appareils",
-      "reports": "Rapports"
+      "reports": "Rapports",
+      "aiAnomalyMonitoring": "Surveillance IA des anomalies"
     }
   },
   "machines": {
@@ -3189,5 +3211,102 @@
       "operational": "Operational"
     },
     "timeline": "Timeline"
+  },
+  "aiAnomaly": {
+    "title": "Surveillance IA des anomalies",
+    "heading": "Surveillance IA des anomalies",
+    "limitationNotice": "Prototype exp?rimental bas? sur le jeu de donn?es public IMS sur les roulements. La validation est actuellement limit?e ? 1st_test et ne prouve pas la g?n?ralisation aux machines IPROTEX.",
+    "summary": {
+      "latestRiskScore": "Latest risk score",
+      "riskLevel": "Risk level",
+      "persistentAlerts": "Persistent alerts",
+      "pendingValidation": "Pending validation",
+      "confirmedRejected": "Confirmed / rejected",
+      "latestRecord": "Latest analysis record",
+      "needsReview": "Requires technician review",
+      "confirmedRejectedDetail": "Technician validation outcomes"
+    },
+    "filters": {
+      "machine": "Machine",
+      "allMachines": "All machines",
+      "riskLevel": "Risk level",
+      "allRiskLevels": "All risk levels",
+      "validationStatus": "Validation status",
+      "allValidationStatuses": "All statuses",
+      "dateFrom": "From",
+      "dateTo": "To"
+    },
+    "riskLevels": {
+      "NORMAL": "NORMAL",
+      "MONITOR": "MONITOR",
+      "HIGH": "HIGH",
+      "CRITICAL": "CRITICAL"
+    },
+    "boolean": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "persistentAlert": {
+      "active": "Persistent alert",
+      "clear": "No persistent alert"
+    },
+    "sources": {
+      "datasetReplay": "Relecture du jeu de donn?es IMS",
+      "demo": "Relecture d?mo"
+    },
+    "validation": {
+      "title": "Technician validation",
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "REJECTED": "Rejected",
+      "pending": "Pending",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "comment": "Validation comment",
+      "save": "Save validation",
+      "saved": "Validation saved",
+      "failed": "Validation failed",
+      "alreadyValidated": "This analysis is already {status} and cannot be validated again."
+    },
+    "states": {
+      "loading": "Chargement des analyses...",
+      "emptyTitle": "Aucune analyse trouv?e",
+      "emptyDescription": "Ajustez les filtres ou lancez une relecture de donn?es depuis un flux approuv?.",
+      "errorTitle": "Impossible de charger les analyses",
+      "errorDescription": "L?historique des anomalies n?a pas pu ?tre charg?.",
+      "unavailableTitle": "Service IA des anomalies indisponible",
+      "retry": "R?essayer",
+      "retrying": "Nouvel essai...",
+      "noRisk": "Aucun risque"
+    },
+    "chart": {
+      "title": "Chronological risk score",
+      "empty": "No risk score data for the selected filters."
+    },
+    "table": {
+      "title": "Analysis history",
+      "chronological": "Chronological risk records",
+      "machine": "Machine",
+      "timestamp": "Measurement timestamp",
+      "anomalyScore": "Anomaly score",
+      "riskScore": "Risk score",
+      "riskLevel": "Risk level",
+      "rawAnomaly": "Raw anomaly",
+      "persistentAlert": "Persistent alert",
+      "modelVersion": "Model version",
+      "source": "Source",
+      "reasonCodes": "Reason codes",
+      "validationStatus": "Validation status"
+    },
+    "details": {
+      "title": "Analysis details",
+      "componentZScore": "Rolling Z-score component",
+      "componentIsolationForest": "Isolation Forest component",
+      "datasetOrigin": "Dataset origin",
+      "imsDataset": "IMS public test-rig data",
+      "validationScope": "Validation scope",
+      "reasonCodes": "Reason codes",
+      "proposeWorkOrder": "Propose work order (future)"
+    }
   }
 }

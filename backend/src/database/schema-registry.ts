@@ -80,6 +80,10 @@ import {
   MachineHealthPredictionSchema,
 } from '../schemas/machine-health-prediction.schema';
 import {
+  AiAnomalyAnalysis,
+  AiAnomalyAnalysisSchema,
+} from '../schemas/ai-anomaly-analysis.schema';
+import {
   PredictionModelVersion,
   PredictionModelVersionSchema,
 } from '../schemas/prediction-model-version.schema';
@@ -151,6 +155,10 @@ export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   {
     modelName: MachineHealthPrediction.name,
     schema: MachineHealthPredictionSchema,
+  },
+  {
+    modelName: AiAnomalyAnalysis.name,
+    schema: AiAnomalyAnalysisSchema,
   },
   {
     modelName: PredictionModelVersion.name,

@@ -26,6 +26,9 @@ type EnvValidationResult = {
   telemetryRetentionSeconds: number;
   faultEventRetentionSeconds: number;
   aiAssistantEnabled: boolean;
+  aiServiceEnabled: boolean;
+  aiServiceUrl?: string;
+  aiServiceTimeoutMs: number;
   predictiveMaintenanceEnabled: boolean;
   predictionHistoryRetentionSeconds: number;
   metricsBearerTokenConfigured: boolean;
@@ -238,6 +241,32 @@ function validateAiAssistant(nodeEnv: RuntimeMode): boolean {
   return enabled;
 }
 
+function validateAiAnomalyService(): {
+  enabled: boolean;
+  url?: string;
+  timeoutMs: number;
+} {
+  const enabled = parseBoolean(process.env.AI_SERVICE_ENABLED, false);
+  const timeoutMs = validateAiServiceTimeoutMs(
+    process.env.AI_SERVICE_TIMEOUT_MS,
+  );
+
+  const rawUrl = process.env.AI_SERVICE_URL?.trim();
+  if (!enabled && !rawUrl) {
+    return { enabled, timeoutMs };
+  }
+
+  if (enabled && !rawUrl) {
+    throw new Error('AI_SERVICE_URL is required when AI_SERVICE_ENABLED=true');
+  }
+
+  return {
+    enabled,
+    url: rawUrl ? parseUrl(rawUrl, 'AI_SERVICE_URL') : undefined,
+    timeoutMs,
+  };
+}
+
 /**
  * Express's `trust proxy` setting, applied in `main.ts`. Left untrusted
  * (`false`) unless an operator explicitly configures it for their real
@@ -332,6 +361,18 @@ function validateRequestTimeoutMs(value: string | undefined): number {
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(
       'REQUEST_TIMEOUT_MS must be a positive integer number of milliseconds',
+    );
+  }
+  return parsed;
+}
+
+function validateAiServiceTimeoutMs(value: string | undefined): number {
+  const fallbackMs = 12000;
+  if (!value?.trim()) return fallbackMs;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(
+      'AI_SERVICE_TIMEOUT_MS must be a positive integer number of milliseconds',
     );
   }
   return parsed;
@@ -656,6 +697,7 @@ export function validateEnvironment(): EnvValidationResult {
     90 * 24 * 60 * 60,
   );
   const aiAssistantEnabled = validateAiAssistant(nodeEnv);
+  const aiService = validateAiAnomalyService();
   // Predictive maintenance is pure local computation (no external service,
   // no secret) — unlike MQTT/AI-assistant this needs no production-gating,
   // just a simple on/off switch for ops to pause the nightly sweep.
@@ -695,6 +737,9 @@ export function validateEnvironment(): EnvValidationResult {
     telemetryRetentionSeconds,
     faultEventRetentionSeconds,
     aiAssistantEnabled,
+    aiServiceEnabled: aiService.enabled,
+    aiServiceUrl: aiService.url,
+    aiServiceTimeoutMs: aiService.timeoutMs,
     predictiveMaintenanceEnabled,
     predictionHistoryRetentionSeconds,
     metricsBearerTokenConfigured,

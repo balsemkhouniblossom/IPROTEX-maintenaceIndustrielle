@@ -391,7 +391,28 @@
     "admin": {
       "title": "نظرة عامة على الصيانة",
       "description": "راقب حالة المعدات ونشاط الصيانة والمخاطر التشغيلية.",
-      "overview": { "machineHealth": "حالة الآلات", "openWorkOrders": "أوامر العمل المفتوحة", "criticalAlerts": "تنبيهات حرجة", "maintenanceDue": "صيانة مستحقة", "attention": "آلات تحتاج إلى اهتمام", "healthValue": "الحالة {value}%", "activeAlert": "تنبيه نشط", "viewMachine": "عرض الآلة", "noAttention": "لا توجد آلات تحتاج إلى اهتمام.", "maintenanceActivity": "نشاط الصيانة", "factoryStatus": "حالة المصنع", "open": "مفتوحة", "inProgress": "قيد التنفيذ", "waitingValidation": "بانتظار التحقق", "completedToday": "مكتملة اليوم", "running": "تعمل", "maintenance": "صيانة", "stopped": "متوقفة", "recentActivity": "النشاط الأخير", "workOrder": "أمر عمل" },
+      "overview": {
+        "machineHealth": "حالة الآلات",
+        "openWorkOrders": "أوامر العمل المفتوحة",
+        "criticalAlerts": "تنبيهات حرجة",
+        "maintenanceDue": "صيانة مستحقة",
+        "attention": "آلات تحتاج إلى اهتمام",
+        "healthValue": "الحالة {value}%",
+        "activeAlert": "تنبيه نشط",
+        "viewMachine": "عرض الآلة",
+        "noAttention": "لا توجد آلات تحتاج إلى اهتمام.",
+        "maintenanceActivity": "نشاط الصيانة",
+        "factoryStatus": "حالة المصنع",
+        "open": "مفتوحة",
+        "inProgress": "قيد التنفيذ",
+        "waitingValidation": "بانتظار التحقق",
+        "completedToday": "مكتملة اليوم",
+        "running": "تعمل",
+        "maintenance": "صيانة",
+        "stopped": "متوقفة",
+        "recentActivity": "النشاط الأخير",
+        "workOrder": "أمر عمل"
+      },
       "searchPlaceholder": "البحث في جميع سجلات قاعدة البيانات...",
       "fromLastMonth": "منذ الشهر الماضي",
       "stats": {
@@ -1662,7 +1683,8 @@
       "myReports": "My Reports",
       "reportProblem": "Report Problem",
       "startCorrectiveMaintenance": "Corrective Maintenance",
-      "startPreventiveMaintenance": "Preventive Maintenance"
+      "startPreventiveMaintenance": "Preventive Maintenance",
+      "aiAnomalyMonitoring": "?????? ?????? ??????? ?????????"
     }
   },
   "machines": {
@@ -3189,5 +3211,102 @@
       "operational": "Operational"
     },
     "timeline": "Timeline"
+  },
+  "aiAnomaly": {
+    "title": "?????? ?????? ??????? ?????????",
+    "heading": "?????? ?????? ??????? ?????????",
+    "limitationNotice": "????? ???? ?????? ????? ??? ?????? ?????? IMS ?????? ???????. ????? ?????? ????? ??? 1st_test ??? ???? ??????? ??? ???? IPROTEX.",
+    "summary": {
+      "latestRiskScore": "Latest risk score",
+      "riskLevel": "Risk level",
+      "persistentAlerts": "Persistent alerts",
+      "pendingValidation": "Pending validation",
+      "confirmedRejected": "Confirmed / rejected",
+      "latestRecord": "Latest analysis record",
+      "needsReview": "Requires technician review",
+      "confirmedRejectedDetail": "Technician validation outcomes"
+    },
+    "filters": {
+      "machine": "Machine",
+      "allMachines": "All machines",
+      "riskLevel": "Risk level",
+      "allRiskLevels": "All risk levels",
+      "validationStatus": "Validation status",
+      "allValidationStatuses": "All statuses",
+      "dateFrom": "From",
+      "dateTo": "To"
+    },
+    "riskLevels": {
+      "NORMAL": "NORMAL",
+      "MONITOR": "MONITOR",
+      "HIGH": "HIGH",
+      "CRITICAL": "CRITICAL"
+    },
+    "boolean": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "persistentAlert": {
+      "active": "Persistent alert",
+      "clear": "No persistent alert"
+    },
+    "sources": {
+      "datasetReplay": "????? ????? ?????? ?????? IMS",
+      "demo": "????? ????? ???????"
+    },
+    "validation": {
+      "title": "Technician validation",
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "REJECTED": "Rejected",
+      "pending": "Pending",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "comment": "Validation comment",
+      "save": "Save validation",
+      "saved": "Validation saved",
+      "failed": "Validation failed",
+      "alreadyValidated": "This analysis is already {status} and cannot be validated again."
+    },
+    "states": {
+      "loading": "??? ????? ??????? ??????...",
+      "emptyTitle": "?? ???? ??????? ????",
+      "emptyDescription": "???? ????? ??????? ?? ???? ????? ?????? ?? ???? ?????.",
+      "errorTitle": "???? ????? ??????? ??????",
+      "errorDescription": "???? ????? ??? ??????.",
+      "unavailableTitle": "???? ???? ?????? ????????? ??? ?????",
+      "retry": "????? ????????",
+      "retrying": "??? ????? ????????...",
+      "noRisk": "?? ???? ???"
+    },
+    "chart": {
+      "title": "Chronological risk score",
+      "empty": "No risk score data for the selected filters."
+    },
+    "table": {
+      "title": "Analysis history",
+      "chronological": "Chronological risk records",
+      "machine": "Machine",
+      "timestamp": "Measurement timestamp",
+      "anomalyScore": "Anomaly score",
+      "riskScore": "Risk score",
+      "riskLevel": "Risk level",
+      "rawAnomaly": "Raw anomaly",
+      "persistentAlert": "Persistent alert",
+      "modelVersion": "Model version",
+      "source": "Source",
+      "reasonCodes": "Reason codes",
+      "validationStatus": "Validation status"
+    },
+    "details": {
+      "title": "Analysis details",
+      "componentZScore": "Rolling Z-score component",
+      "componentIsolationForest": "Isolation Forest component",
+      "datasetOrigin": "Dataset origin",
+      "imsDataset": "IMS public test-rig data",
+      "validationScope": "Validation scope",
+      "reasonCodes": "Reason codes",
+      "proposeWorkOrder": "Propose work order (future)"
+    }
   }
 }

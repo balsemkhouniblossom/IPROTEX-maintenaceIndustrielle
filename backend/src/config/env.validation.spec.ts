@@ -518,6 +518,51 @@ describe('validateEnvironment', () => {
     expect(env.aiAssistantEnabled).toBe(false);
   });
 
+  it('defaults the IMS anomaly FastAPI integration to disabled', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.AI_SERVICE_ENABLED;
+    delete process.env.AI_SERVICE_URL;
+    delete process.env.AI_SERVICE_TIMEOUT_MS;
+
+    const env = validateEnvironment();
+
+    expect(env.aiServiceEnabled).toBe(false);
+    expect(env.aiServiceUrl).toBeUndefined();
+    expect(env.aiServiceTimeoutMs).toBe(12000);
+  });
+
+  it('requires AI_SERVICE_URL when the IMS anomaly integration is enabled', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AI_SERVICE_ENABLED = 'true';
+    delete process.env.AI_SERVICE_URL;
+
+    expect(() => validateEnvironment()).toThrow(
+      'AI_SERVICE_URL is required when AI_SERVICE_ENABLED=true',
+    );
+  });
+
+  it('validates IMS anomaly FastAPI URL and timeout settings', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AI_SERVICE_ENABLED = 'true';
+    process.env.AI_SERVICE_URL = 'http://127.0.0.1:8011/';
+    process.env.AI_SERVICE_TIMEOUT_MS = '9000';
+
+    const env = validateEnvironment();
+
+    expect(env.aiServiceEnabled).toBe(true);
+    expect(env.aiServiceUrl).toBe('http://127.0.0.1:8011');
+    expect(env.aiServiceTimeoutMs).toBe(9000);
+  });
+
+  it('rejects a non-positive AI_SERVICE_TIMEOUT_MS', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AI_SERVICE_TIMEOUT_MS = '0';
+
+    expect(() => validateEnvironment()).toThrow(
+      'AI_SERVICE_TIMEOUT_MS must be a positive integer number of milliseconds',
+    );
+  });
+
   it('rejects AI_ASSISTANT_ENABLED=true with a non-Gemini provider', () => {
     process.env.NODE_ENV = 'test';
     process.env.AI_ASSISTANT_ENABLED = 'true';

@@ -35,6 +35,7 @@ import {
   CubeIcon,
   DocumentTextIcon,
   BookOpenIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 
 type DashboardLayoutProps = Readonly<{
@@ -172,7 +173,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
       return [
         { domain: 'overview', domainKey: 'domains.overview', items: [{ name: t('navigation.dashboard'), href: '/technician', icon: HomeIcon }] },
         { domain: 'maintenance', domainKey: 'domains.maintenance', items: [{ name: tTechnician('workOrders.title'), href: '/technician/work-orders', icon: ClipboardDocumentListIcon, children: [{ name: tTechnician('dashboard.sections.current'), href: '/technician/interventions', icon: CogIcon }, { name: tTechnician('dashboard.sections.waitingPartsTasks'), href: '/technician/waiting-parts', icon: BuildingStorefrontIcon }, { name: tTechnician('dashboard.sections.recent'), href: '/technician/history', icon: ClipboardDocumentListIcon }] }] },
-        { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.documents'), href: '/technician/manuals', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/technician/knowledge-base', icon: BookOpenIcon }] }] },
+        { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.aiAnomalyMonitoring'), href: '/ai-anomaly', icon: BeakerIcon }, { name: t('navigation.documents'), href: '/technician/manuals', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/technician/knowledge-base', icon: BookOpenIcon }] }] },
       ];
     }
 
@@ -187,7 +188,7 @@ function DashboardLayoutBody({ children, title, headerActions }: DashboardLayout
     return [
       { domain: 'overview', domainKey: 'domains.overview', items: [{ name: t('navigation.dashboard'), href: '/', icon: HomeIcon }, { name: `${t('navigation.digitalTwin')} - ${t('navigation.factory')}`, href: '/digital-twin', icon: CubeIcon }] },
       { domain: 'maintenance', domainKey: 'domains.maintenance', items: [{ name: t('navigation.machines'), href: '/machines', icon: CogIcon, children: [{ name: t('navigation.devices'), href: '/devices', icon: CpuChipIcon }] }, { name: t('navigation.maintenance'), href: '/work-orders', icon: ClipboardDocumentListIcon, children: [{ name: t('navigation.maintenancePlans'), href: '/maintenance-plans', icon: ClipboardDocumentListIcon }, { name: t('navigation.preventiveTaskChecklist'), href: '/preventive-task-checklist', icon: ClipboardDocumentListIcon }, { name: t('navigation.interventionReports'), href: '/intervention-reports', icon: ClipboardDocumentListIcon }, { name: t('navigation.lubrificationLogs'), href: '/lubrification-logs', icon: ClipboardDocumentListIcon }] }, { name: t('navigation.alertsAndFailures'), href: '/pannes', icon: ExclamationTriangleIcon }, { name: t('navigation.inventory'), href: '/catalogues', icon: BuildingStorefrontIcon, children: [{ name: t('navigation.modulePieces'), href: '/module-pieces', icon: CubeIcon }, { name: t('navigation.stocks'), href: '/stocks', icon: BuildingStorefrontIcon }, { name: t('navigation.lubrifiants'), href: '/lubrifiants', icon: CubeIcon }, { name: t('navigation.otPieces'), href: '/ot-pieces', icon: ClipboardDocumentListIcon }] }] },
-      { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.machineHealth'), href: '/capteurs', icon: CpuChipIcon, children: [{ name: t('navigation.mesures'), href: '/mesures', icon: ChartBarIcon }] }, { name: t('navigation.analyticsAndReports'), href: '/reports', icon: ChartBarIcon, }, { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/knowledge-base', icon: BookOpenIcon }] }] },
+      { domain: 'insights', domainKey: 'domains.insights', items: [{ name: t('navigation.machineHealth'), href: '/capteurs', icon: CpuChipIcon, children: [{ name: t('navigation.mesures'), href: '/mesures', icon: ChartBarIcon }] }, { name: t('navigation.aiAnomalyMonitoring'), href: '/ai-anomaly', icon: BeakerIcon }, { name: t('navigation.analyticsAndReports'), href: '/reports', icon: ChartBarIcon, }, { name: t('navigation.documents'), href: '/documents', icon: DocumentTextIcon, children: [{ name: t('navigation.knowledgeBase'), href: '/knowledge-base', icon: BookOpenIcon }] }] },
       { domain: 'management', domainKey: 'domains.management', items: [{ name: t('navigation.administration'), href: '/users', icon: UsersIcon, children: [{ name: t('navigation.machineTypes'), href: '/machine-types', icon: CubeIcon }, { name: t('navigation.moduleTypes'), href: '/module-types', icon: DocumentTextIcon }] }] },
     ];
   };

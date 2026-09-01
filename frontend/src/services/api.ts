@@ -709,6 +709,43 @@ export const apiService = {
   trainPredictionModel: (modelType: string) =>
     api.post(`/predictive-maintenance/models/${modelType}/train`),
 
+  // IMS anomaly analysis (FastAPI-backed, advisory prototype only)
+  getAiAnomalyModels: () => api.get("/ai-anomaly/models"),
+  getAiAnomalyAnalyses: (
+    params?: {
+      page?: number;
+      limit?: number;
+      machine_id?: string;
+      risk_level?: string;
+      validation_status?: string;
+      input_source?: string;
+    },
+    options?: { signal?: AbortSignal },
+  ) => api.get("/ai-anomaly/analyses", { params, signal: options?.signal }),
+  getAiAnomalyMachineHistory: (
+    machineId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      risk_level?: string;
+      validation_status?: string;
+      input_source?: string;
+    },
+    options?: { signal?: AbortSignal },
+  ) =>
+    api.get(`/ai-anomaly/machines/${machineId}/history`, {
+      params,
+      signal: options?.signal,
+    }),
+  getAiAnomalyAnalysis: (id: string) => api.get(`/ai-anomaly/analyses/${id}`),
+  validateAiAnomalyAnalysis: (
+    id: string,
+    data: {
+      validation_status: "CONFIRMED" | "REJECTED";
+      validation_comment?: string;
+    },
+  ) => api.patch(`/ai-anomaly/analyses/${id}/validation`, data),
+
   // Get all data for dashboard
   getDashboardData: async (options: { includeUsers?: boolean } = {}) => {
     try {
