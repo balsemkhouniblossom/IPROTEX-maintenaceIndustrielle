@@ -6,7 +6,10 @@ import Pagination from "@/components/Pagination";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { LineChartCard } from "@/components/charts/LineChartCard";
 import { Modal } from "@/components/Modal";
-import { ToastNotification, type ToastNotificationState } from "@/components/ToastNotification";
+import {
+  ToastNotification,
+  type ToastNotificationState,
+} from "@/components/ToastNotification";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/services/api";
 import { extractApiErrorDetails } from "@/services/apiErrors";
@@ -52,6 +55,13 @@ const VALIDATION_STATUSES: Array<"ALL" | AiAnomalyValidationStatus> = [
   "REJECTED",
 ];
 
+const RISK_ICONS = {
+  NORMAL: CheckCircleIcon,
+  MONITOR: EyeIcon,
+  HIGH: ExclamationTriangleIcon,
+  CRITICAL: ShieldExclamationIcon,
+} satisfies Record<AiAnomalyRiskLevel, typeof CheckCircleIcon>;
+
 type MachineRecord = {
   _id: string;
   machine_id?: string;
@@ -60,17 +70,14 @@ type MachineRecord = {
 };
 
 function riskIcon(level: AiAnomalyRiskLevel | null) {
-  if (level === "NORMAL") return CheckCircleIcon;
-  if (level === "MONITOR") return EyeIcon;
-  if (level === "HIGH") return ExclamationTriangleIcon;
-  return ShieldExclamationIcon;
+  return level ? RISK_ICONS[level] : ShieldExclamationIcon;
 }
 
 function RiskBadge({
   level,
   label,
 }: Readonly<{ level: AiAnomalyRiskLevel; label: string }>) {
-  const Icon = riskIcon(level);
+  const Icon = RISK_ICONS[level];
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${AI_ANOMALY_RISK_INDICATORS[level].className}`}
@@ -241,7 +248,10 @@ function AiAnomalyMonitoringContent() {
   };
 
   const submitValidation = async () => {
-    if (!selectedAnalysis || !canValidateAiAnomaly(user?.role, selectedAnalysis)) {
+    if (
+      !selectedAnalysis ||
+      !canValidateAiAnomaly(user?.role, selectedAnalysis)
+    ) {
       return;
     }
     setSubmittingValidation(true);
@@ -283,7 +293,9 @@ function AiAnomalyMonitoringContent() {
         <section className="panel">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">{t("heading")}</h1>
+              <h1 className="text-2xl font-bold text-slate-800">
+                {t("heading")}
+              </h1>
               <p className="mt-1 max-w-4xl text-sm text-slate-600">
                 {t("limitationNotice")}
               </p>
@@ -374,7 +386,9 @@ function AiAnomalyMonitoringContent() {
               >
                 {RISK_LEVELS.map((level) => (
                   <option key={level} value={level}>
-                    {level === "ALL" ? t("filters.allRiskLevels") : t(`riskLevels.${level}`)}
+                    {level === "ALL"
+                      ? t("filters.allRiskLevels")
+                      : t(`riskLevels.${level}`)}
                   </option>
                 ))}
               </select>
@@ -389,14 +403,15 @@ function AiAnomalyMonitoringContent() {
                   setFilters((current) => ({
                     ...current,
                     validationStatus: event.target.value as
-                      | "ALL"
-                      | AiAnomalyValidationStatus,
+                      "ALL" | AiAnomalyValidationStatus,
                   }));
                 }}
               >
                 {VALIDATION_STATUSES.map((status) => (
                   <option key={status} value={status}>
-                    {status === "ALL" ? t("filters.allValidationStatuses") : t(`validation.${status}`)}
+                    {status === "ALL"
+                      ? t("filters.allValidationStatuses")
+                      : t(`validation.${status}`)}
                   </option>
                 ))}
               </select>
@@ -524,7 +539,9 @@ function AiAnomalyMonitoringContent() {
                             {machineDisplayName(analysis.machine_id, machines)}
                           </button>
                         </td>
-                        <td>{formatDateTime(analysis.measurement_timestamp)}</td>
+                        <td>
+                          {formatDateTime(analysis.measurement_timestamp)}
+                        </td>
                         <td>{analysis.anomaly_score.toFixed(3)}</td>
                         <td>{Math.round(analysis.risk_score)}/100</td>
                         <td>
@@ -589,7 +606,10 @@ function AiAnomalyMonitoringContent() {
             <div className="grid gap-3 md:grid-cols-2">
               <DetailField
                 label={t("table.machine")}
-                value={machineDisplayName(selectedAnalysis.machine_id, machines)}
+                value={machineDisplayName(
+                  selectedAnalysis.machine_id,
+                  machines,
+                )}
               />
               <DetailField
                 label={t("table.timestamp")}
@@ -601,7 +621,9 @@ function AiAnomalyMonitoringContent() {
               />
               <DetailField
                 label={t("details.componentIsolationForest")}
-                value={selectedAnalysis.component_scores.isolationForest.toFixed(3)}
+                value={selectedAnalysis.component_scores.isolationForest.toFixed(
+                  3,
+                )}
               />
               <DetailField
                 label={t("table.modelVersion")}
@@ -705,7 +727,9 @@ function AiAnomalyMonitoringContent() {
               ) : (
                 <p className="text-sm text-slate-600">
                   {t("validation.alreadyValidated", {
-                    status: t(`validation.${selectedAnalysis.validation_status}`),
+                    status: t(
+                      `validation.${selectedAnalysis.validation_status}`,
+                    ),
                   })}
                 </p>
               )}
@@ -752,7 +776,9 @@ function DetailField({
 }: Readonly<{ label: string; value: React.ReactNode }>) {
   return (
     <div className="rounded-md border border-slate-200 p-3">
-      <dt className="text-xs font-semibold uppercase text-slate-500">{label}</dt>
+      <dt className="text-xs font-semibold uppercase text-slate-500">
+        {label}
+      </dt>
       <dd className="mt-1 text-sm font-medium text-slate-800">{value}</dd>
     </div>
   );

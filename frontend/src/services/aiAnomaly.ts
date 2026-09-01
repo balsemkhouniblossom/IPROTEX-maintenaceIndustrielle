@@ -97,7 +97,9 @@ export function canValidateAiAnomaly(
   role: string | undefined | null,
   analysis: Pick<AiAnomalyAnalysis, "validation_status">,
 ): boolean {
-  return canBrowseAiAnomalyHistory(role) && analysis.validation_status === "PENDING";
+  return (
+    canBrowseAiAnomalyHistory(role) && analysis.validation_status === "PENDING"
+  );
 }
 
 export function sourceLabelKey(source: AiAnomalyInputSource): string {
@@ -109,7 +111,9 @@ export function machineDisplayName(
   machineId: string,
   machines: AiAnomalyMachineOption[],
 ): string {
-  return machines.find((machine) => machine.id === machineId)?.label || machineId;
+  return (
+    machines.find((machine) => machine.id === machineId)?.label || machineId
+  );
 }
 
 export function filterAiAnomalyAnalyses(
@@ -117,10 +121,13 @@ export function filterAiAnomalyAnalyses(
   filters: AiAnomalyFilters,
 ): AiAnomalyAnalysis[] {
   const from = filters.dateFrom ? Date.parse(filters.dateFrom) : null;
-  const to = filters.dateTo ? Date.parse(`${filters.dateTo}T23:59:59.999`) : null;
+  const to = filters.dateTo
+    ? Date.parse(`${filters.dateTo}T23:59:59.999`)
+    : null;
 
   return analyses.filter((analysis) => {
-    if (filters.machineId && analysis.machine_id !== filters.machineId) return false;
+    if (filters.machineId && analysis.machine_id !== filters.machineId)
+      return false;
     if (
       filters.riskLevel &&
       filters.riskLevel !== "ALL" &&
@@ -183,6 +190,7 @@ export function buildRiskScoreChartData(analyses: AiAnomalyAnalysis[]) {
 }
 
 export function isAiServiceUnavailable(error: unknown): boolean {
-  const status = (error as { response?: { status?: number } })?.response?.status;
+  const status = (error as { response?: { status?: number } })?.response
+    ?.status;
   return status === 502 || status === 503 || status === 504;
 }

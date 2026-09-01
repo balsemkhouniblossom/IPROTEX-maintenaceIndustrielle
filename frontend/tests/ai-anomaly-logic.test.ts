@@ -66,11 +66,26 @@ test("Operator can submit through an existing machine workflow but cannot browse
 
 test("apiService integrates only the existing /ai-anomaly backend endpoints", () => {
   const source = readSource(API);
-  assert.match(source, /getAiAnomalyModels:\s*\(\)\s*=>\s*api\.get\("\/ai-anomaly\/models"\)/);
-  assert.match(source, /getAiAnomalyAnalyses:[\s\S]*api\.get\("\/ai-anomaly\/analyses"/);
-  assert.match(source, /getAiAnomalyMachineHistory:[\s\S]*\/ai-anomaly\/machines\/\$\{machineId\}\/history/);
-  assert.match(source, /getAiAnomalyAnalysis:[\s\S]*\/ai-anomaly\/analyses\/\$\{id\}/);
-  assert.match(source, /validateAiAnomalyAnalysis:[\s\S]*\/ai-anomaly\/analyses\/\$\{id\}\/validation/);
+  assert.match(
+    source,
+    /getAiAnomalyModels:\s*\(\)\s*=>\s*api\.get\("\/ai-anomaly\/models"\)/,
+  );
+  assert.match(
+    source,
+    /getAiAnomalyAnalyses:[\s\S]*api\.get\("\/ai-anomaly\/analyses"/,
+  );
+  assert.match(
+    source,
+    /getAiAnomalyMachineHistory:[\s\S]*\/ai-anomaly\/machines\/\$\{machineId\}\/history/,
+  );
+  assert.match(
+    source,
+    /getAiAnomalyAnalysis:[\s\S]*\/ai-anomaly\/analyses\/\$\{id\}/,
+  );
+  assert.match(
+    source,
+    /validateAiAnomalyAnalysis:[\s\S]*\/ai-anomaly\/analyses\/\$\{id\}\/validation/,
+  );
 });
 
 test("filters support machine, risk level, validation status, date range and pagination", () => {
@@ -170,10 +185,21 @@ test("dataset replay is labelled as IMS replay and never as live IPROTEX measure
 
 test("chart data is chronological", () => {
   const chart = buildRiskScoreChartData([
-    { ...baseAnalysis, measurement_timestamp: "2003-11-16T18:18:46.000Z", risk_score: 66 },
-    { ...baseAnalysis, measurement_timestamp: "2003-11-15T18:18:46.000Z", risk_score: 43 },
+    {
+      ...baseAnalysis,
+      measurement_timestamp: "2003-11-16T18:18:46.000Z",
+      risk_score: 66,
+    },
+    {
+      ...baseAnalysis,
+      measurement_timestamp: "2003-11-15T18:18:46.000Z",
+      risk_score: 43,
+    },
   ]);
-  assert.deepEqual(chart.map((point) => point.value), [43, 66]);
+  assert.deepEqual(
+    chart.map((point) => point.value),
+    [43, 66],
+  );
 });
 
 test("human-readable machine labels hide Mongo IDs when available", () => {
@@ -195,13 +221,22 @@ test("translations exist for all locales and Arabic keeps RTL available", () => 
   const locales = ["en", "fr", "ar", "es", "de", "it"];
   for (const locale of locales) {
     const messages = JSON.parse(
-      fs.readFileSync(path.join(process.cwd(), "messages", `${locale}.json`), "utf8"),
+      fs.readFileSync(
+        path.join(process.cwd(), "messages", `${locale}.json`),
+        "utf8",
+      ),
     );
     assert.ok(messages.aiAnomaly, `${locale} must define aiAnomaly`);
     assert.equal(typeof messages.aiAnomaly.limitationNotice, "string");
     assert.equal(typeof messages.aiAnomaly.sources.datasetReplay, "string");
-    assert.equal(typeof messages.sidebar.navigation.aiAnomalyMonitoring, "string");
+    assert.equal(
+      typeof messages.sidebar.navigation.aiAnomalyMonitoring,
+      "string",
+    );
   }
   assert.match(readSource("src/i18n/config.ts"), /ar/);
-  assert.match(readSource("src/app/[locale]/layout.tsx"), /isRtlLocale\(locale\)/);
+  assert.match(
+    readSource("src/app/[locale]/layout.tsx"),
+    /isRtlLocale\(locale\)/,
+  );
 });
