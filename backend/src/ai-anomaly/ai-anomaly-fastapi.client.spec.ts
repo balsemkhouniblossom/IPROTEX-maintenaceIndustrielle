@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   BadRequestException,
+  GatewayTimeoutException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -36,6 +37,7 @@ describe('AiAnomalyFastApiClient', () => {
   };
 
   afterEach(() => {
+    jest.useRealTimers();
     global.fetch = originalFetch;
     jest.restoreAllMocks();
   });
@@ -89,6 +91,31 @@ describe('AiAnomalyFastApiClient', () => {
     await expect(client.analyze({ rows: [] })).rejects.toThrow(
       BadGatewayException,
     );
+  });
+
+  it('maps FastAPI timeouts to a client-safe timeout response', async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn((_url, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        });
+      });
+    });
+    const client = new AiAnomalyFastApiClient(
+      config({
+        AI_SERVICE_ENABLED: 'true',
+        AI_SERVICE_TIMEOUT_MS: '5',
+      }),
+    );
+
+    const promise = client.analyze({ rows: [] });
+    jest.advanceTimersByTime(5);
+
+    await expect(promise).rejects.toBeInstanceOf(GatewayTimeoutException);
+    jest.useRealTimers();
   });
 
   it('rejects malformed AI service JSON without accepting partial scores', async () => {

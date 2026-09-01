@@ -8,6 +8,7 @@ import {
 import { Capteur, CapteurSchema } from '../schemas/capteur.schema';
 import { Module as ModuleEntity, ModuleSchema } from '../schemas/module.schema';
 import { DocumentsModule } from '../documents/documents.module';
+import { NotificationCenterModule } from '../notification-center/notification-center.module';
 import { AiAnomalyController } from './ai-anomaly.controller';
 import { AiAnomalyFastApiClient } from './ai-anomaly-fastapi.client';
 import { AiAnomalyService } from './ai-anomaly.service';
@@ -16,6 +17,7 @@ import { AiAnomalyService } from './ai-anomaly.service';
   imports: [
     ConfigModule,
     DocumentsModule,
+    NotificationCenterModule,
     MongooseModule.forFeature([
       { name: AiAnomalyAnalysis.name, schema: AiAnomalyAnalysisSchema },
       { name: Capteur.name, schema: CapteurSchema },

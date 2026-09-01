@@ -22,7 +22,9 @@ import {
   ModuleDocument,
 } from '../schemas/module.schema';
 import { Role } from '../schemas/user.schema';
+import { NotificationType } from '../schemas/notification.schema';
 import { DocumentAccessService } from '../documents/document-access.service';
+import { NotificationCenterService } from '../notification-center/notification-center.service';
 import {
   CreateAiAnomalyAnalysisDto,
   CreateAiAnomalyBatchDto,
@@ -71,6 +73,11 @@ type SerializedAiAnomalyAnalysis = {
   updated_at?: string;
 };
 
+type PersistedAiAnomalyResult = {
+  doc: AiAnomalyAnalysisDocument;
+  inserted: boolean;
+};
+
 @Injectable()
 export class AiAnomalyService {
   private readonly logger = new Logger(AiAnomalyService.name);
@@ -84,6 +91,7 @@ export class AiAnomalyService {
     private readonly moduleModel: Model<ModuleDocument>,
     private readonly documentAccessService: DocumentAccessService,
     private readonly fastApiClient: AiAnomalyFastApiClient,
+    private readonly notificationCenterService: NotificationCenterService,
   ) {}
 
   async getModelMetadata() {
@@ -199,14 +207,18 @@ export class AiAnomalyService {
       ),
     );
 
-    return persisted.map((item) => this.serialize(item));
+    await Promise.all(
+      persisted.map((item) => this.createPersistentAlertNotifications(item)),
+    );
+
+    return persisted.map((item) => this.serialize(item.doc));
   }
 
   private async persistResult(
     result: AiAnomalyFastApiResult,
     dto: CreateAiAnomalyAnalysisDto,
     userId: string,
-  ): Promise<AiAnomalyAnalysisDocument> {
+  ): Promise<PersistedAiAnomalyResult> {
     const measurementTimestamp = this.parseTimestamp(result.timestamp);
     const filter = {
       machine_id: new Types.ObjectId(dto.machine_id),
@@ -217,8 +229,9 @@ export class AiAnomalyService {
       bearing: result.bearing,
     };
     const analysisId = this.buildAnalysisId(filter);
+    const existing = await this.analysisModel.exists(filter).exec();
 
-    return this.analysisModel
+    const doc = await this.analysisModel
       .findOneAndUpdate(
         filter,
         {
@@ -248,6 +261,54 @@ export class AiAnomalyService {
         { upsert: true, new: true, setDefaultsOnInsert: true },
       )
       .exec();
+
+    if (!doc) {
+      throw new BadRequestException('AI anomaly analysis could not be stored');
+    }
+
+    return { doc, inserted: !existing };
+  }
+
+  private async createPersistentAlertNotifications(
+    persisted: PersistedAiAnomalyResult,
+  ): Promise<void> {
+    const { doc, inserted } = persisted;
+    if (!inserted || !doc.persistent_alert) return;
+
+    const machineId = this.toIdString(doc.machine_id);
+    const referenceId = this.toIdString(doc._id);
+    const timestamp = doc.measurement_timestamp.toISOString();
+    const title = 'Experimental IMS dataset replay persistent alert';
+    const message =
+      `Experimental IMS dataset replay produced a persistent alert for analysis ${doc.analysis_id} ` +
+      `at ${timestamp}. This is not live IPROTEX telemetry.`;
+
+    try {
+      await Promise.all(
+        [Role.ADMIN, Role.TECHNICIAN].map((role) =>
+          this.notificationCenterService.createIfNotExists({
+            type: NotificationType.SENSOR_ALERT,
+            title,
+            message,
+            translationKey: 'notifications.aiAnomalyPersistentAlert',
+            translationParams: {
+              analysisId: doc.analysis_id,
+              machineId,
+              timestamp,
+            },
+            recipientRole: role,
+            machineId,
+            referenceId,
+            dedupeKey: `ai-anomaly:persistent-alert:${doc.analysis_id}:${role}`,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to create IMS anomaly persistent-alert notification analysis=${doc.analysis_id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   private async assertPlatformMapping(
@@ -342,7 +403,75 @@ export class AiAnomalyService {
     if (dto.validation_status) filter.validation_status = dto.validation_status;
     if (dto.risk_level) filter.risk_level = dto.risk_level;
     if (dto.input_source) filter.input_source = dto.input_source;
+    const dateRange = this.buildDateRangeFilter(dto.dateFrom, dto.dateTo);
+    if (dateRange) filter.measurement_timestamp = dateRange;
     return filter;
+  }
+
+  private buildDateRangeFilter(
+    dateFrom?: string,
+    dateTo?: string,
+  ): { $gte?: Date; $lte?: Date } | undefined {
+    const from = dateFrom
+      ? this.parseQueryDate(dateFrom, 'dateFrom', 'start')
+      : undefined;
+    const to = dateTo
+      ? this.parseQueryDate(dateTo, 'dateTo', 'end')
+      : undefined;
+
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new BadRequestException(
+        'dateFrom must be before or equal to dateTo',
+      );
+    }
+
+    if (!from && !to) return undefined;
+    return {
+      ...(from ? { $gte: from } : {}),
+      ...(to ? { $lte: to } : {}),
+    };
+  }
+
+  private parseQueryDate(
+    value: string,
+    fieldName: 'dateFrom' | 'dateTo',
+    bound: 'start' | 'end',
+  ): Date {
+    const trimmed = value.trim();
+    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+
+    if (dateOnlyMatch) {
+      const year = Number(dateOnlyMatch[1]);
+      const month = Number(dateOnlyMatch[2]);
+      const day = Number(dateOnlyMatch[3]);
+      const date =
+        bound === 'start'
+          ? new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+          : new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+
+      if (
+        date.getUTCFullYear() !== year ||
+        date.getUTCMonth() !== month - 1 ||
+        date.getUTCDate() !== day
+      ) {
+        throw new BadRequestException(`${fieldName} must be a valid ISO date`);
+      }
+      return date;
+    }
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(
+        trimmed,
+      )
+    ) {
+      throw new BadRequestException(`${fieldName} must be a valid ISO date`);
+    }
+
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException(`${fieldName} must be a valid ISO date`);
+    }
+    return parsed;
   }
 
   private async findAnalysisByPublicOrMongoId(

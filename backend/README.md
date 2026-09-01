@@ -60,7 +60,7 @@ $ npm run test:cov
 
 ## IMS Anomaly Integration
 
-The `ai-anomaly` module connects the NestJS backend to the separate FastAPI IMS anomaly service. It does not train models, modify artifacts, duplicate scoring formulas, create work orders, call Gemini, or invent live IPROTEX vibration data. The backend stores audit records only after FastAPI returns a validated response.
+The `ai-anomaly` module connects the NestJS backend to the separate FastAPI IMS anomaly service. It does not train models, modify artifacts, duplicate scoring formulas, create work orders, call Gemini, or invent live IPROTEX vibration data. The backend stores audit records only after FastAPI returns a validated response, and the frontend labels those records as IMS dataset replay results.
 
 ### Local Setup
 
@@ -104,10 +104,12 @@ The backend request body limit remains `1mb`; anomaly requests are additionally 
 - `GET /ai-anomaly/models`: model metadata and limitations, admin/technician only.
 - `POST /ai-anomaly/analyses`: stateful single-timestamp analysis, authenticated roles.
 - `POST /ai-anomaly/analyses/batch`: stateless deterministic replay, authenticated roles.
-- `GET /ai-anomaly/analyses`: paginated history, admin/technician only.
+- `GET /ai-anomaly/analyses`: paginated history, admin/technician only. Optional filters include `machine_id`, `risk_level`, `validation_status`, `input_source`, `dateFrom`, and `dateTo`.
 - `GET /ai-anomaly/analyses/:id`: one audit record, admin/technician only.
-- `GET /ai-anomaly/machines/:machineId/history`: machine-scoped history, admin/technician only.
+- `GET /ai-anomaly/machines/:machineId/history`: machine-scoped history, admin/technician only. Supports the same optional date filters.
 - `PATCH /ai-anomaly/analyses/:id/validation`: confirm or reject an analysis, admin/technician only.
+
+`dateFrom` and `dateTo` must be ISO dates or ISO datetimes. Invalid dates and reversed ranges return `400`; valid ranges are applied in MongoDB before pagination.
 
 Request example:
 
@@ -147,6 +149,24 @@ Validation example:
 }
 ```
 
+### Workflow
+
+1. An authenticated Admin, Technician, or Operator submits IMS replay rows through `POST /ai-anomaly/analyses` or `POST /ai-anomaly/analyses/batch`.
+2. NestJS validates machine access, capteur mapping, duplicate rows, chronological order, and request size, then calls the FastAPI scoring endpoint.
+3. FastAPI remains the only scoring source. NestJS persists a unique analysis record keyed by machine, model, input source, experiment, timestamp, and bearing.
+4. Newly inserted records start with validation status `PENDING`. Admin and Technician users can browse history, open details, and change only `PENDING` records to `CONFIRMED` or `REJECTED` with an optional comment.
+5. If a newly stored analysis has `persistent_alert=true`, the platform creates or reuses one deduplicated `sensor_alert` notification for Admins and one for Technicians. The message explicitly says this is an experimental IMS dataset replay and not live IPROTEX telemetry.
+6. No WorkOrder is created automatically. A safe "Propose work order" flow was omitted because the current WorkOrder page has no confirmed-analysis prefill/proposal route that can be reused without changing business rules.
+
+### Demonstration Steps
+
+1. Start FastAPI from `../ai-service`, then start the backend with `AI_SERVICE_ENABLED=true`.
+2. Log in as an Admin or Technician.
+3. Submit an IMS dataset replay analysis through an existing machine workflow.
+4. Open `AI Anomaly Monitoring`, filter by machine, risk level, validation status, and `dateFrom`/`dateTo`, then open an analysis detail.
+5. Confirm or reject a `PENDING` result with a comment. Confirm that no WorkOrder appears unless a human creates one through the normal WorkOrder workflow.
+6. For a persistent alert replay, open notifications as Admin and Technician and verify the IMS replay wording.
+
 ### Scientific Limitations
 
 - The model uses IMS public test-rig data.
@@ -163,7 +183,16 @@ Added focused mocked tests for the NestJS integration:
 npm test -- ai-anomaly --runInBand
 ```
 
-Latest focused result: `21` tests passed across client, service, and controller specs.
+Latest local results from September 1, 2026:
+
+- `npm test -- ai-anomaly --runInBand`: `27` tests passed across client, service, and controller specs.
+- `npm test -- --runInBand`: `1473` tests passed across `169` backend suites.
+- `npm run build` in `backend`: passed.
+- `npm run lint` in `backend`: passed.
+- `npm test -- tests/ai-anomaly-logic.test.ts` in `frontend`: passed; the project script ran the full frontend logic suite with `355` passing tests.
+- `npm run type-check` in `frontend`: passed.
+- `npm run lint` in `frontend`: passed.
+- `npm run build` in `frontend`: passed after clearing stale generated `.next` metadata from a prior failed build.
 
 ## Deployment
 

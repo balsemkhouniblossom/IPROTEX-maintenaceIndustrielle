@@ -96,6 +96,7 @@ describe('AiAnomalyService', () => {
   function makeService() {
     const savedDoc = makeSavedDoc();
     const analysisModel = {
+      exists: jest.fn().mockReturnValue(exec(null)),
       findOneAndUpdate: jest.fn().mockReturnValue(exec(savedDoc)),
       find: jest.fn().mockReturnValue(chainFind([savedDoc])),
       countDocuments: jest.fn().mockReturnValue(exec(1)),
@@ -122,12 +123,16 @@ describe('AiAnomalyService', () => {
       analyze: jest.fn().mockResolvedValue({ results: [result] }),
       analyzeBatch: jest.fn().mockResolvedValue({ results: [result] }),
     };
+    const notificationCenterService = {
+      createIfNotExists: jest.fn().mockResolvedValue(null),
+    };
     const service = new AiAnomalyService(
       analysisModel as never,
       capteurModel as never,
       moduleModel as never,
       documentAccessService as never,
       fastApiClient as never,
+      notificationCenterService as never,
     );
     return {
       service,
@@ -137,6 +142,7 @@ describe('AiAnomalyService', () => {
       moduleModel,
       documentAccessService,
       fastApiClient,
+      notificationCenterService,
     };
   }
 
@@ -148,11 +154,18 @@ describe('AiAnomalyService', () => {
   };
 
   it('stores a valid single inference after a successful FastAPI response', async () => {
-    const { service, analysisModel, fastApiClient } = makeService();
+    const { service, analysisModel, fastApiClient, notificationCenterService } =
+      makeService();
 
     const response = await service.createAnalysis(dto, actor);
 
     expect(fastApiClient.analyze).toHaveBeenCalledWith({ rows: dto.rows });
+    expect(analysisModel.exists).toHaveBeenCalledWith(
+      expect.objectContaining({
+        machine_id: new Types.ObjectId(machineId),
+        model_version: '0.1.0',
+      }),
+    );
     expect(analysisModel.findOneAndUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         machine_id: new Types.ObjectId(machineId),
@@ -170,6 +183,7 @@ describe('AiAnomalyService', () => {
       }),
       expect.objectContaining({ upsert: true, new: true }),
     );
+    expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
     expect(JSON.parse(JSON.stringify(response))).toEqual(response);
     expect(response[0]).toMatchObject({
       machine_id: machineId,
@@ -283,6 +297,118 @@ describe('AiAnomalyService', () => {
       bearing: 1,
       experiment: '1st_test',
     });
+  });
+
+  it('creates Admin and Technician notifications for a newly stored persistent alert only', async () => {
+    const persistentResult = { ...result, persistentAlert: true };
+    const savedDoc = makeSavedDoc({
+      persistent_alert: true,
+      model_response: persistentResult,
+    });
+    const { service, analysisModel, fastApiClient, notificationCenterService } =
+      makeService();
+    analysisModel.findOneAndUpdate.mockReturnValue(exec(savedDoc));
+    fastApiClient.analyze.mockResolvedValue({ results: [persistentResult] });
+
+    await service.createAnalysis(dto, actor);
+
+    expect(notificationCenterService.createIfNotExists).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'sensor_alert',
+        recipientRole: Role.ADMIN,
+        dedupeKey: `ai-anomaly:persistent-alert:${savedDoc.analysis_id}:${
+          Role.ADMIN
+        }`,
+        message: expect.stringContaining('Experimental IMS dataset replay'),
+      }),
+    );
+    expect(notificationCenterService.createIfNotExists).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientRole: Role.TECHNICIAN,
+        message: expect.stringContaining('not live IPROTEX telemetry'),
+      }),
+    );
+  });
+
+  it('does not notify when a persistent analysis already exists', async () => {
+    const persistentResult = { ...result, persistentAlert: true };
+    const savedDoc = makeSavedDoc({
+      persistent_alert: true,
+      model_response: persistentResult,
+    });
+    const { service, analysisModel, fastApiClient, notificationCenterService } =
+      makeService();
+    analysisModel.exists.mockReturnValue(exec({ _id: savedDoc._id }));
+    analysisModel.findOneAndUpdate.mockReturnValue(exec(savedDoc));
+    fastApiClient.analyze.mockResolvedValue({ results: [persistentResult] });
+
+    await service.createAnalysis(dto, actor);
+
+    expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
+  });
+
+  it('applies server-side date filtering before pagination', async () => {
+    const { service, analysisModel } = makeService();
+
+    await service.listAnalyses(
+      {
+        dateFrom: '2003-11-15',
+        dateTo: '2003-11-16T12:00:00Z',
+        input_source: AiAnomalyInputSource.DATASET_REPLAY,
+      },
+      actor,
+    );
+
+    const filter = analysisModel.find.mock.calls[0][0];
+    expect(filter).toMatchObject({
+      input_source: AiAnomalyInputSource.DATASET_REPLAY,
+      measurement_timestamp: {
+        $gte: new Date('2003-11-15T00:00:00.000Z'),
+        $lte: new Date('2003-11-16T12:00:00.000Z'),
+      },
+    });
+    expect(analysisModel.countDocuments).toHaveBeenCalledWith(filter);
+  });
+
+  it('applies date filtering to machine-scoped history before pagination', async () => {
+    const { service, analysisModel, documentAccessService } = makeService();
+
+    await service.getMachineHistory(
+      machineId,
+      { dateFrom: '2003-11-15', dateTo: '2003-11-15' },
+      actor,
+    );
+
+    const filter = analysisModel.find.mock.calls[0][0];
+    expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
+      actor,
+      machineId,
+    );
+    expect(filter).toMatchObject({
+      machine_id: new Types.ObjectId(machineId),
+      measurement_timestamp: {
+        $gte: new Date('2003-11-15T00:00:00.000Z'),
+        $lte: new Date('2003-11-15T23:59:59.999Z'),
+      },
+    });
+  });
+
+  it('rejects invalid and reversed date ranges', async () => {
+    const { service, analysisModel } = makeService();
+
+    await expect(
+      service.listAnalyses({ dateFrom: '2003-02-31' }, actor),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      service.listAnalyses(
+        { dateFrom: '2003-11-16', dateTo: '2003-11-15' },
+        actor,
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(analysisModel.find).not.toHaveBeenCalled();
   });
 
   it('lists history only for admin and technician roles', async () => {

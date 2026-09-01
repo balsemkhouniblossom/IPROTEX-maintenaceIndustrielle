@@ -106,6 +106,14 @@ export class AiAnomalyQueryDto {
   @IsOptional()
   @IsEnum(AiAnomalyInputSource)
   input_source?: AiAnomalyInputSource;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  dateTo?: string;
 }
 
 export class ValidateAiAnomalyAnalysisDto {
