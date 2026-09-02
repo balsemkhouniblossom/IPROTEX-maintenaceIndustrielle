@@ -1,6 +1,8 @@
+import { Types } from 'mongoose';
 import {
   mapPopulatedRef,
   serializeObjectId,
+  isObjectIdRef,
 } from '../../common/response/serialization.util';
 import { toCatalogueSummary } from '../../common/response/catalogue-response';
 import { CatalogueDocument } from '../../schemas/catalogue.schema';
@@ -20,5 +22,30 @@ export function toTechnicianPartResponse(
       toCatalogueSummary,
     )!,
     quantite: doc.quantite,
+  };
+}
+
+/** A populated `mod_type_id` reference — either a plain ObjectId or a document with `_id`/`name`. */
+export type ModuleTypeRef = unknown;
+
+/**
+ * Serializes a module's `mod_type_id` reference, whether it arrives as a raw
+ * ObjectId or as a populated `{ _id, name }` document.
+ */
+export function toModuleTypeSummary(ref: unknown): {
+  _id?: string;
+  name?: string;
+} {
+  if (ref === null || ref === undefined) return {};
+  if (isObjectIdRef(ref) || typeof ref === 'string') {
+    return { _id: serializeObjectId(ref as Types.ObjectId | string) ?? undefined };
+  }
+  const doc = ref as { _id?: unknown; name?: string };
+  return {
+    _id:
+      doc._id !== undefined
+        ? serializeObjectId(doc._id as Types.ObjectId | string) ?? undefined
+        : undefined,
+    name: doc.name,
   };
 }

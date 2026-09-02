@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -317,7 +317,7 @@ describe('TechnicianService.details', () => {
     expect(documentAccessService.assertCanAccessMachine).not.toHaveBeenCalled();
   });
 
-  it('never fetches the full technician User document — populate is restricted to a safe projection', async () => {
+  it('never fetches the full technician User document â€” populate is restricted to a safe projection', async () => {
     const workOrderChain = populateChain({
       _id: workOrderId,
       machine_id: null,
@@ -335,7 +335,7 @@ describe('TechnicianService.details', () => {
   });
 });
 
-describe('TechnicianService.workOrders — technician projection', () => {
+describe('TechnicianService.workOrders â€” technician projection', () => {
   const technicianId = new Types.ObjectId().toHexString();
 
   function populateChain(value: unknown) {
@@ -373,21 +373,25 @@ describe('TechnicianService.workOrders — technician projection', () => {
       listAccessibleMachineIds: jest.fn().mockResolvedValue([]),
     };
     service = new TechnicianService(
-      workOrdersModel as never,
-      reportsModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      documentAccessService as never,
-      { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
-      {} as never,
-      {} as never,
-    );
+        workOrdersModel as never,
+        reportsModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        documentAccessService as never,
+        { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
+        {} as never,
+        {} as never,
+      );
   });
 
   it('never fetches the full technician User document on the list endpoint either', async () => {
@@ -453,21 +457,25 @@ describe('TechnicianService.close notifications', () => {
     };
 
     service = new TechnicianService(
-      workOrdersModel as never,
-      reportsModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      workOrderLifecycleService as never,
-      {} as never,
-      notificationCenterService as never,
-      {} as never,
-      {} as never,
-    );
+        workOrdersModel as never,
+        reportsModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        workOrderLifecycleService as never,
+        {} as never,
+        notificationCenterService as never,
+        {} as never,
+        {} as never,
+      );
   });
 
   it('notifies Admins that an intervention was completed', async () => {
@@ -542,24 +550,28 @@ describe('TechnicianService.review', () => {
         .mockResolvedValue({ _id: workOrderId, status: 'in_progress' }),
     };
     service = new TechnicianService(
-      workOrdersModel as never,
-      reportsModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      workOrdersService as never,
-      {} as never,
-      workOrderLifecycleService as never,
-      documentAccessService as never,
-      { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
-      {} as never,
-      {} as never,
-    );
+        workOrdersModel as never,
+        reportsModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        workOrdersService as never,
+        {} as never,
+        workOrderLifecycleService as never,
+        documentAccessService as never,
+        { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
+        {} as never,
+        {} as never,
+      );
   });
 
-  it('rejects an "approve" action outright — a technician can never validate their own actionable work', async () => {
+  it('rejects an "approve" action outright â€” a technician can never validate their own actionable work', async () => {
     await expect(
       service.review(technicianId, workOrderId, 'approve' as never),
     ).rejects.toThrow(BadRequestException);
@@ -638,21 +650,25 @@ describe('TechnicianService.setPartQuantity', () => {
     };
 
     service = new TechnicianService(
-      workOrdersModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      partsModel as never,
-      catalogueModel as never,
-      stockModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      stockMovementsService as never,
-      {} as never,
-    );
+        workOrdersModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        partsModel as never,
+        catalogueModel as never,
+        stockModel as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        stockMovementsService as never,
+        {} as never,
+      );
   });
 
   it('rejects a missing part id', async () => {

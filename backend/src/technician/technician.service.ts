@@ -64,7 +64,10 @@ import {
   TechnicianPartResponse,
   TechnicianWorkOrderDetailResponse,
 } from './contracts/technician-response.types';
-import { toTechnicianPartResponse } from './contracts/technician-response.mapper';
+import {
+  toModuleTypeSummary,
+  toTechnicianPartResponse,
+} from './contracts/technician-response.mapper';
 import {
   StockResponse,
   toStockResponse,
@@ -619,18 +622,11 @@ export class TechnicianService {
       machine: toMachineResponse(machine),
       summary: { stats },
       components: modules.map((module) => {
-        const type = module.mod_type_id as unknown as {
-          _id?: unknown;
-          name?: string;
-        };
         return {
           _id: module._id.toString(),
           module_id: module.module_id,
           localisation: module.localisation,
-          type: {
-            _id: this.referenceId(type)?.toString(),
-            name: type?.name,
-          },
+          type: toModuleTypeSummary(module.mod_type_id),
           parent_module_id:
             this.referenceId(module.parent_module_id)?.toString() ?? null,
           sensors: (sensorsByModule.get(module._id.toString()) ?? []).map(
@@ -1011,6 +1007,14 @@ export class TechnicianService {
       .exec();
     if (!workOrder) throw new NotFoundException('Work order not found');
     const machineId = this.referenceId(workOrder.machine_id);
+    // The record passed the visibility scope, but every machine-scoped detail
+    // view must still pass the explicit document-level machine authorization.
+    if (machineId) {
+      await this.documentAccessService.assertCanAccessMachine(
+        { userId: technicianId, role: Role.TECHNICIAN },
+        machineId.toString(),
+      );
+    }
     const manualScope = await this.accessibleManualMachineFilter(technicianId);
     const manualQuery: FilterQuery<DocumentDocument> | null = machineId
       ? {
@@ -1309,13 +1313,13 @@ export class TechnicianService {
 
   /**
    * Finishes the technician's own hands-on work and submits it for
-   * independent validation — it never self-finalizes to `completed`. A
+   * independent validation â€” it never self-finalizes to `completed`. A
    * technician can never be the one who validates their own corrective or
    * preventive work: only `WorkOrdersService.applyValidationAction` (reached
    * via the Admin-only `/work-orders/:id/validation` endpoint) can move a
    * `waiting_validation` order on to `validated`, and that method refuses to
    * let the performer validate themselves. This mirrors how an Operator's
-   * own submission already works — never straight to a terminal status.
+   * own submission already works â€” never straight to a terminal status.
    */
   async close(
     technicianId: string,
