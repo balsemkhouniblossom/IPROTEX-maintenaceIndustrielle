@@ -75,6 +75,7 @@
       "accountInactive": "حسابك غير نشط. يرجى التواصل مع المسؤول.",
       "accountRoleNotAllowed": "دور هذا الحساب غير مسموح له بتسجيل الدخول.",
       "authenticationFailed": "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
+      "tooManyAttempts": "Too many sign-in attempts. Please try again later.",
       "profileCompletionRequired": "???? ???? ?????? ??? ?????? ??? ???????."
     },
     "protected": {
@@ -1617,6 +1618,10 @@
       "inventoryLubrication": "المخزون والتشحيم",
       "documents": "المستندات",
       "insights": "الرؤى",
+      "myWork": "My Work",
+      "equipment": "Equipment",
+      "resources": "Resources",
+      "history": "History",
       "management": "الإدارة"
     },
     "systemStatus": {
@@ -1680,6 +1685,8 @@
       "devices": "الأجهزة",
       "reports": "التقارير",
       "manuals": "Manuals",
+      "parts": "Parts",
+      "completedWork": "Completed Work",
       "myReports": "My Reports",
       "reportProblem": "Report Problem",
       "startCorrectiveMaintenance": "Corrective Maintenance",
@@ -1776,7 +1783,22 @@
       "viewTimeline": "الجدول الزمني",
       "openManual": "فتح الدليل"
     },
-    "singular": "Machine"
+    "singular": "Machine",
+    "technician": {
+      "title": "Machines",
+      "subtitle": "Find a machine, inspect its condition, and act through a Work Order.",
+      "searchPlaceholder": "Search by machine name, serial number...",
+      "viewMachine": "View Machine",
+      "openWorkOrders": "Open Work Orders",
+      "nextMaintenance": "Next Maintenance",
+      "lastMaintenance": "Last Maintenance",
+      "filters": {
+        "all": "All",
+        "attention": "Attention",
+        "maintenance": "Maintenance",
+        "operational": "Operational"
+      }
+    }
   },
   "machineTimeline": {
     "pageTitle": "الجدول الزمني للآلة",
@@ -1795,6 +1817,7 @@
       "showMore": "عرض المزيد",
       "showLess": "عرض أقل",
       "viewDocument": "عرض المستند",
+      "openDocument": "فتح المستند",
       "viewWorkOrder": "عرض أمر العمل",
       "previewDocument": "معاينة المستند",
       "back": "رجوع",
@@ -1931,6 +1954,56 @@
       "partName": "القطعة",
       "partRef": "مرجع القطعة",
       "provider": "مزوّد الذكاء الاصطناعي"
+    },
+    "technician": {
+      "tabs": {
+        "overview": "Overview",
+        "components": "Components",
+        "maintenance": "Maintenance",
+        "monitoring": "Monitoring",
+        "documents": "Documents",
+        "history": "History"
+      },
+      "overview": {
+        "machineStatus": "Machine Status",
+        "status": "Status",
+        "health": "Health",
+        "openWorkOrders": "Open Work Orders",
+        "lastMaintenance": "Last Maintenance",
+        "nextMaintenance": "Next Maintenance",
+        "currentAttention": "Current Attention",
+        "possibleComponent": "Possible affected component",
+        "noAttention": "No current attention item for this machine."
+      },
+      "components": {
+        "title": "Components",
+        "type": "Type",
+        "sensors": "Sensors",
+        "noSensors": "No sensors assigned to this component.",
+        "empty": "No components available for this machine."
+      },
+      "maintenance": {
+        "openWork": "Open Work",
+        "upcomingPreventive": "Upcoming Preventive",
+        "recentMaintenance": "Recent Maintenance",
+        "openWorkOrder": "Open Work Order",
+        "noOpenWork": "No open work for this machine.",
+        "noUpcoming": "No upcoming preventive work available.",
+        "noRecent": "No recent maintenance available."
+      },
+      "monitoring": {
+        "title": "Monitoring",
+        "active": "Active",
+        "inactive": "Inactive",
+        "latestValue": "Latest value",
+        "lastMeasurement": "Last measurement",
+        "noMeasurements": "No measurements available for this sensor.",
+        "noSensors": "No sensors available for this machine."
+      },
+      "documents": {
+        "title": "Documents",
+        "empty": "No documents available for this machine."
+      }
     }
   },
   "interventionReports": {
@@ -2530,12 +2603,24 @@
         "urgentTasks": "المهام العاجلة",
         "current": "التدخلات الحالية",
         "waitingPartsTasks": "بانتظار القطع",
-        "recent": "مكتملة مؤخراً"
+        "recent": "مكتملة مؤخراً",
+        "todaysPriority": "Today priority",
+        "upcomingWork": "Upcoming work",
+        "recentlyCompleted": "Recently completed"
       }
     },
     "workOrders": {
       "title": "أوامر العمل",
-      "detailTitle": "تفاصيل أمر العمل"
+      "detailTitle": "تفاصيل أمر العمل",
+      "myTitle": "My Work Orders"
+    },
+    "workOrderTabs": {
+      "assigned": "Assigned",
+      "inProgress": "In Progress",
+      "waitingParts": "Waiting Parts",
+      "review": "Review",
+      "completed": "Completed",
+      "all": "All"
     },
     "actions": {
       "title": "الإجراءات المتاحة",
@@ -2553,7 +2638,14 @@
       "start": "بدء التدخل",
       "waitingParts": "وضعه بانتظار القطع",
       "resume": "استئناف التدخل",
-      "close": "إغلاق أمر العمل"
+      "close": "إغلاق أمر العمل",
+      "viewWorkOrder": "View Work Order",
+      "viewPartsRequest": "View Parts Request",
+      "continueIntervention": "Continue Intervention",
+      "viewReport": "View Report",
+      "saveProgress": "Save Progress",
+      "completeIntervention": "Complete Intervention",
+      "cancel": "Cancel"
     },
     "filters": {
       "status": "الحالة",
@@ -2563,7 +2655,13 @@
       "priority": "الأولوية",
       "allPriorities": "كل الأولويات",
       "dateFrom": "من تاريخ",
-      "dateTo": "إلى تاريخ"
+      "dateTo": "إلى تاريخ",
+      "search": "Search",
+      "searchPlaceholder": "Search work order, machine...",
+      "machine": "Machine",
+      "allMachines": "All machines",
+      "dueDate": "Due date",
+      "anyDueDate": "Any due date"
     },
     "status": {
       "waiting_validation": "بانتظار المراجعة",
@@ -2593,7 +2691,10 @@
       "created": "تاريخ الإنشاء",
       "technician": "الفني",
       "startDate": "???????",
-      "endDate": "???????"
+      "endDate": "???????",
+      "due": "Due",
+      "machine": "Machine",
+      "status": "Status"
     },
     "machine": {
       "title": "الآلة",
@@ -2618,7 +2719,17 @@
     "parts": {
       "title": "قطع الغيار",
       "select": "اختر قطعة موجودة",
-      "quantity": "إجمالي الكمية المستخدمة"
+      "quantity": "إجمالي الكمية المستخدمة",
+      "stock": "Stock",
+      "reserved": "Reserved",
+      "minimum": "Minimum",
+      "location": "Location",
+      "used": "Parts used",
+      "noneAdded": "No parts added yet",
+      "addPart": "Add Part",
+      "available": "Available",
+      "requestPart": "Request Part",
+      "requestStatus": "Requested Parts status"
     },
     "manuals": {
       "title": "الأدلة"
@@ -2627,7 +2738,9 @@
       "workOrders": "لا توجد أوامر عمل.",
       "manuals": "لا يتوفر دليل.",
       "report": "لا يوجد تقرير مرتبط.",
-      "parts": "لم تُسجل قطع غيار."
+      "parts": "لم تُسجل قطع غيار.",
+      "waitingParts": "No work orders waiting for parts. All your current interventions have the required parts.",
+      "completed": "No completed interventions yet."
     },
     "errors": {
       "network": "تعذر تحميل بيانات الفني.",
@@ -2645,6 +2758,82 @@
       "showTranslation": "عرض الترجمة",
       "auto": "مترجم تلقائيا",
       "safetyNotice": "ترجمة تلقائية للعرض فقط. تحقق من محتوى سلامة الماكينة مقابل النص الاصلي."
+    },
+    "dates": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "next7Days": "Next 7 days"
+    },
+    "placeholders": {
+      "workOrder": "WO-...",
+      "machine": "Machine...",
+      "machineShort": "Machine...",
+      "priority": "Urgent",
+      "due": "Due..."
+    },
+    "badges": {
+      "overdue": "Overdue"
+    },
+    "detailTabs": {
+      "overview": "Overview",
+      "intervention": "Intervention",
+      "parts": "Parts",
+      "documents": "Documents",
+      "history": "History"
+    },
+    "overview": {
+      "title": "Work Order Overview",
+      "problem": "Problem",
+      "reportedBy": "Reported by",
+      "faultCode": "Fault code"
+    },
+    "machineContext": {
+      "title": "Machine Context",
+      "health": "Machine Health",
+      "currentStatus": "Current status",
+      "openWorkOrders": "Open work orders",
+      "lastMaintenance": "Last maintenance"
+    },
+    "aiInsight": {
+      "title": "Machine Health Insight",
+      "summary": "Review machine signals and recommended checks without exposing technical model details first.",
+      "healthInsight": "Health insight",
+      "healthCopy": "Check machine status, recent maintenance, and live monitoring before intervening.",
+      "possibleAnomaly": "Possible anomaly",
+      "recommendedInspection": "Recommended inspection list",
+      "recommendedCopy": "Inspect the reported fault area, safety guards, lubrication, vibration, and electrical connections.",
+      "viewTechnical": "View technical analysis",
+      "hideTechnical": "Hide technical analysis"
+    },
+    "intervention": {
+      "title": "Intervention",
+      "notStarted": "Intervention not started",
+      "startedAt": "Started at",
+      "diagnosis": "Diagnosis",
+      "actionPerformed": "Action performed",
+      "observations": "Observations"
+    },
+    "completion": {
+      "title": "Complete Intervention",
+      "completedTitle": "Intervention completed",
+      "completedMessage": "The intervention was submitted for validation.",
+      "reportId": "Report ID",
+      "duration": "Duration",
+      "partsUsed": "Parts used",
+      "finalResult": "Final result",
+      "finalNotes": "Final notes",
+      "backToWork": "Back to My Work",
+      "results": {
+        "resolved": "Resolved",
+        "followUp": "Follow-up required"
+      }
+    },
+    "history": {
+      "title": "History",
+      "created": "Work order created",
+      "started": "Intervention started",
+      "completed": "Intervention completed",
+      "statusChanged": "Status changed"
     }
   },
   "miniAvatar": {

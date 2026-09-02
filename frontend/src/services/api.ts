@@ -270,8 +270,8 @@ export const apiService = {
   getUsersTotal: () => api.get("/users/total"),
 
   // Machines
-  getMachines: (params?: PaginationParams) =>
-    api.get("/machines", withPagination(params)),
+  getMachines: (params?: PaginationParams, config?: QuietAxiosConfig) =>
+    api.get("/machines", { ...withPagination(params), ...config }),
   createMachine: (data: AnyObject) => api.post("/machines", data),
   updateMachine: (id: string, data: AnyObject) =>
     api.patch(`/machines/${id}`, data),
@@ -499,14 +499,18 @@ export const apiService = {
   getAdminDashboard: () => api.get("/dashboard/admin"),
   getOperatorDashboard: () => api.get("/operator/dashboard"),
   getTechnicianDashboard: () => api.get("/technician/dashboard"),
+  getTechnicianMachines: (params?: PaginationParams) =>
+    api.get("/technician/machines", withPagination(params)),
+  getTechnicianMachineContext: (id: string) =>
+    api.get(`/technician/machines/${id}/context`),
   getTechnicianWorkOrders: (params?: AnyObject) =>
     api.get("/technician/work-orders", { params }),
   getTechnicianWorkOrder: (id: string) =>
     api.get(`/technician/work-orders/${id}`),
   getTechnicianManuals: (params?: AnyObject) =>
     api.get("/technician/manuals", { params }),
-  getTechnicianParts: (params?: AnyObject) =>
-    api.get("/technician/parts", { params }),
+  getTechnicianParts: (params?: AnyObject, config?: QuietAxiosConfig) =>
+    api.get("/technician/parts", { params, ...config }),
   claimTechnicianWorkOrder: (id: string) =>
     api.patch(`/technician/work-orders/${id}/claim`),
   reviewTechnicianWorkOrder: (id: string, action: "return" | "intervene") =>
@@ -523,6 +527,10 @@ export const apiService = {
     id: string,
     data: { partId: string; quantity: number },
   ) => api.post(`/technician/work-orders/${id}/parts`, data),
+  requestTechnicianPart: (
+    id: string,
+    data: { part_id: string; quantity: number },
+  ) => api.post(`/technician/work-orders/${id}/parts-request`, data),
   closeTechnicianWorkOrder: (id: string) =>
     api.patch(`/technician/work-orders/${id}/close`),
 
@@ -640,8 +648,10 @@ export const apiService = {
   getKnowledgeArticles: (params?: AnyObject) =>
     api.get("/knowledge-base/articles", { params }),
 
-  getKnowledgeArticleSuggestions: (params?: AnyObject) =>
-    api.get("/knowledge-base/articles/suggestions", { params }),
+  getKnowledgeArticleSuggestions: (
+    params?: AnyObject,
+    config?: QuietAxiosConfig,
+  ) => api.get("/knowledge-base/articles/suggestions", { params, ...config }),
 
   getKnowledgeArticle: (id: string) =>
     api.get(`/knowledge-base/articles/${id}`),
@@ -687,14 +697,14 @@ export const apiService = {
   getAiAssistantHealth: () => api.get("/ai-assistant/health"),
 
   // Predictive maintenance (advisory only — read endpoints never mutate a work order, stock, or machine)
-  getPredictiveFleetSummary: () =>
-    api.get("/predictive-maintenance/fleet-summary"),
+  getPredictiveFleetSummary: (config?: QuietAxiosConfig) =>
+    api.get("/predictive-maintenance/fleet-summary", config),
 
   getPredictivePlansSummary: () =>
     api.get("/predictive-maintenance/plans-summary"),
 
-  getMachineHealthPredictions: (machineId: string) =>
-    api.get(`/predictive-maintenance/machines/${machineId}`),
+  getMachineHealthPredictions: (machineId: string, config?: QuietAxiosConfig) =>
+    api.get(`/predictive-maintenance/machines/${machineId}`, config),
 
   getMachineHealthHistory: (machineId: string, params?: AnyObject) =>
     api.get(`/predictive-maintenance/machines/${machineId}/history`, {

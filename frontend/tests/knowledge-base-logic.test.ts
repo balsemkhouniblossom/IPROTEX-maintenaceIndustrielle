@@ -21,7 +21,7 @@ test("apiService exposes the full Knowledge Base CRUD, lifecycle, and suggestion
   );
   assert.match(
     source,
-    /getKnowledgeArticleSuggestions:\s*\(params\?:\s*AnyObject\)\s*=>\s*api\.get\(["']\/knowledge-base\/articles\/suggestions["']/,
+    /getKnowledgeArticleSuggestions:\s*\([\s\S]*?params\?:\s*AnyObject[\s\S]*?\)\s*=>\s*api\.get\(["']\/knowledge-base\/articles\/suggestions["']/,
     "apiService.getKnowledgeArticleSuggestions must GET /knowledge-base/articles/suggestions",
   );
   assert.match(

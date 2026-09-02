@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiService } from "@/services/api";
+import { apiService, quiet } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 export type RiskLevel = "low" | "medium" | "high" | "critical" | "insufficient_data";
@@ -36,15 +36,15 @@ export function usePredictiveHealth() {
 
   const refresh = useCallback(async () => {
     try {
-      const response = await apiService.getPredictiveFleetSummary();
+      const response = await apiService.getPredictiveFleetSummary(quiet());
       const items: MachineHealthSummary[] = Array.isArray(response.data) ? response.data : [];
       setHealthByMachine((prev) => {
         const next = { ...prev };
         for (const item of items) next[item.machineId] = item;
         return next;
       });
-    } catch (error) {
-      console.error("Failed to load predictive health summary", error);
+    } catch {
+      setHealthByMachine({});
     }
   }, []);
 

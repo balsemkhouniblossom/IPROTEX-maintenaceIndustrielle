@@ -39,6 +39,12 @@ test("local login errors are parsed from stable backend codes", () => {
     }),
     "EMAIL_NOT_VERIFIED",
   );
+  assert.equal(
+    getAuthErrorCode({
+      response: { status: 429, data: { code: "AUTH_TOO_MANY_ATTEMPTS" } },
+    }),
+    "AUTH_TOO_MANY_ATTEMPTS",
+  );
 });
 
 test("local login parser does not infer codes from English messages", () => {
@@ -65,6 +71,10 @@ test("login error codes map to auth translation keys", () => {
   assert.equal(
     getLoginErrorMessageKey("PROFILE_COMPLETION_REQUIRED"),
     "errors.profileCompletionRequired",
+  );
+  assert.equal(
+    getLoginErrorMessageKey("AUTH_TOO_MANY_ATTEMPTS"),
+    "errors.tooManyAttempts",
   );
   assert.equal(
     getLoginErrorMessageKey(null),
@@ -131,5 +141,5 @@ test("login request sends keepLoggedIn to backend session cookie policy", () => 
   );
 
   assert.match(source, /login = useCallback\(async \(email: string, password: string, keepLoggedIn = true\)/);
-  assert.match(source, /api\.post\(\s*['"]\/auth\/login['"],\s*\{ email, password, keepLoggedIn \}/);
+  assert.match(source, /api\.post\(\s*['"]\/auth\/login['"],\s*\{ email, password, keepLoggedIn \},\s*quiet\(\{ withCredentials: true \}\)/);
 });

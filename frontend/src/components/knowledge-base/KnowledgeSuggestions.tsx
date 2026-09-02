@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { LightBulbIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/Modal";
-import { apiService } from "@/services/api";
+import { apiService, quiet } from "@/services/api";
 
 interface SuggestedArticle {
   _id: string;
@@ -47,13 +47,12 @@ export default function KnowledgeSuggestions({
         faultCode: faultCode || undefined,
         maintenancePlanId: maintenancePlanId || undefined,
         limit: 5,
-      })
+      }, quiet())
       .then((response) => {
         if (cancelled) return;
         setArticles(Array.isArray(response.data) ? response.data : []);
       })
-      .catch((error) => {
-        console.error("Failed to load knowledge base suggestions", error);
+      .catch(() => {
         if (!cancelled) setArticles([]);
       });
 

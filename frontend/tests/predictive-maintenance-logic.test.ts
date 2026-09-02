@@ -20,7 +20,7 @@ test("apiService exposes the predictive maintenance read endpoints and the admin
 
   assert.match(
     source,
-    /getPredictiveFleetSummary:\s*\(\)\s*=>\s*api\.get\(["']\/predictive-maintenance\/fleet-summary["']\)/,
+    /getPredictiveFleetSummary:\s*\([^)]*\)\s*=>\s*api\.get\(["']\/predictive-maintenance\/fleet-summary["']/,
     "apiService.getPredictiveFleetSummary must GET /predictive-maintenance/fleet-summary",
   );
   assert.match(
@@ -30,7 +30,7 @@ test("apiService exposes the predictive maintenance read endpoints and the admin
   );
   assert.match(
     source,
-    /getMachineHealthPredictions:\s*\(machineId:\s*string\)\s*=>\s*\n?\s*api\.get\(`\/predictive-maintenance\/machines\/\$\{machineId\}`\)/,
+    /getMachineHealthPredictions:\s*\(machineId:\s*string[^)]*\)\s*=>\s*\n?\s*api\.get\(`\/predictive-maintenance\/machines\/\$\{machineId\}`/,
     "apiService.getMachineHealthPredictions must GET /predictive-maintenance/machines/:machineId",
   );
   assert.match(
@@ -60,7 +60,7 @@ test("usePredictiveHealth is REST + polling only (no WebSocket), on the shared 3
 
   assert.match(
     source,
-    /apiService\.getPredictiveFleetSummary\(\)/,
+    /apiService\.getPredictiveFleetSummary\([^)]*\)/,
     "the hook must fetch the bulk fleet health summary via REST",
   );
   assert.match(
@@ -102,7 +102,7 @@ test("MachineHealthPanel auto-fetches on mount (like KnowledgeSuggestions) and n
   assert.match(source, /useEffect/, "must auto-fetch predictions when the machine is known, same as KnowledgeSuggestions");
   assert.match(
     source,
-    /\.getMachineHealthPredictions\(machineId\)/,
+    /\.getMachineHealthPredictions\(machineId[^)]*\)/,
     "must read already-computed predictions, not trigger a refresh",
   );
   assert.doesNotMatch(

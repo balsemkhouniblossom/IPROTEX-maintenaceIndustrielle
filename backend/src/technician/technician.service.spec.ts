@@ -23,6 +23,48 @@ function createSessionMock() {
   };
 }
 
+function createTechnicianService(deps: {
+  workOrdersModel?: unknown;
+  reportsModel?: unknown;
+  machinesModel?: unknown;
+  modulesModel?: unknown;
+  maintenancePlansModel?: unknown;
+  documentsModel?: unknown;
+  partsModel?: unknown;
+  catalogueModel?: unknown;
+  stockModel?: unknown;
+  capteursModel?: unknown;
+  mesuresModel?: unknown;
+  workOrdersService?: unknown;
+  workOrderAssignmentService?: unknown;
+  workOrderLifecycleService?: unknown;
+  documentAccessService?: unknown;
+  notificationCenterService?: unknown;
+  stockMovementsService?: unknown;
+  kpiService?: unknown;
+}) {
+  return new TechnicianService(
+    (deps.workOrdersModel ?? {}) as never,
+    (deps.reportsModel ?? {}) as never,
+    (deps.machinesModel ?? {}) as never,
+    (deps.modulesModel ?? {}) as never,
+    (deps.maintenancePlansModel ?? {}) as never,
+    (deps.documentsModel ?? {}) as never,
+    (deps.partsModel ?? {}) as never,
+    (deps.catalogueModel ?? {}) as never,
+    (deps.stockModel ?? {}) as never,
+    (deps.capteursModel ?? {}) as never,
+    (deps.mesuresModel ?? {}) as never,
+    (deps.workOrdersService ?? {}) as never,
+    (deps.workOrderAssignmentService ?? {}) as never,
+    (deps.workOrderLifecycleService ?? {}) as never,
+    (deps.documentAccessService ?? {}) as never,
+    (deps.notificationCenterService ?? {}) as never,
+    (deps.stockMovementsService ?? {}) as never,
+    (deps.kpiService ?? {}) as never,
+  );
+}
+
 describe('TechnicianService authorization policy', () => {
   const technicianId = new Types.ObjectId().toHexString();
   const machineId = new Types.ObjectId();
@@ -67,22 +109,15 @@ describe('TechnicianService authorization policy', () => {
           new Error('Work order is closed or already assigned'),
         ),
     };
-    service = new TechnicianService(
-      workOrdersModel as never,
-      {} as never,
-      {} as never,
-      documentsModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      workOrderAssignmentService as never,
-      {} as never,
-      documentAccessService as never,
-      { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
-      {} as never,
-      {} as never,
-    );
+    service = createTechnicianService({
+      workOrdersModel,
+      documentsModel,
+      workOrderAssignmentService,
+      documentAccessService,
+      notificationCenterService: {
+        createIfNotExists: jest.fn().mockResolvedValue(null),
+      },
+    });
   });
 
   it('limits visible work orders to own records and explicitly claimable assigned-machine records', async () => {
@@ -185,22 +220,17 @@ describe('TechnicianService.details', () => {
   let service: TechnicianService;
 
   function buildService() {
-    return new TechnicianService(
-      workOrdersModel as never,
-      reportsModel as never,
-      {} as never,
-      documentsModel as never,
-      partsModel as never,
-      {} as never,
-      stockModel as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      documentAccessService as never,
-      { createIfNotExists: jest.fn().mockResolvedValue(null) } as never,
-      {} as never,
-      {} as never,
-    );
+    return createTechnicianService({
+      workOrdersModel,
+      reportsModel,
+      documentsModel,
+      partsModel,
+      stockModel,
+      documentAccessService,
+      notificationCenterService: {
+        createIfNotExists: jest.fn().mockResolvedValue(null),
+      },
+    });
   }
 
   beforeEach(() => {

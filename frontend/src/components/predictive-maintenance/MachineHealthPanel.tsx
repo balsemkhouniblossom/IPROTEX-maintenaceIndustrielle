@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChartBarIcon } from "@heroicons/react/24/outline";
-import { apiService } from "@/services/api";
+import { apiService, quiet } from "@/services/api";
 import type { RiskLevel } from "@/hooks/usePredictiveHealth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
@@ -79,13 +79,12 @@ function MachineHealthPanelInner({ machineId }: MachineHealthPanelProps) {
     }
 
     apiService
-      .getMachineHealthPredictions(machineId)
+      .getMachineHealthPredictions(machineId, quiet())
       .then((response) => {
         if (cancelled) return;
         setPredictions(Array.isArray(response.data) ? response.data : []);
       })
-      .catch((error) => {
-        console.error("Failed to load machine health predictions", error);
+      .catch(() => {
         if (!cancelled) setPredictions([]);
       });
 

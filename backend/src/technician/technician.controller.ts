@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { normalizePagination, PaginatedResponse } from '../common/pagination';
 import {
   TechnicianDashboardResponse,
+  TechnicianMachineContextResponse,
   TechnicianService,
   TechnicianWorkOrderView,
 } from './technician.service';
@@ -22,6 +23,7 @@ import { TechnicianOnly } from '../auth/decorators/roles.decorator';
 import { ReviewWorkOrderDto } from './dto/review-work-order.dto';
 import { UpdateTechnicianReportDto } from './dto/update-technician-report.dto';
 import { SetPartQuantityDto } from './dto/set-part-quantity.dto';
+import { CreatePartRequestDto } from '../operator/dto/create-part-request.dto';
 import {
   TechnicianPartResponse,
   TechnicianWorkOrderDetailResponse,
@@ -30,6 +32,8 @@ import { InterventionReportResponse } from '../common/response/intervention-repo
 import { DocumentSummaryResponse } from '../common/response/document-response';
 import { StockResponse } from '../common/response/catalogue-response';
 import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
+import { PartRequestResponse } from '../work-orders/contracts/part-request-response.types';
+import { MachineResponse } from '../machines/contracts/machine-response.types';
 
 interface TechnicianRequest extends Request {
   user?: { userId?: string; role?: string };
@@ -39,6 +43,7 @@ interface TechnicianWorkOrdersQuery {
   page?: string;
   limit?: string;
   status?: string;
+  search?: string;
   maintenanceType?: string;
   priority?: string;
   machineId?: string;
@@ -67,6 +72,24 @@ export class TechnicianController {
     return this.technicianService.dashboard(this.technicianId(req));
   }
 
+  @Get('machines')
+  machines(
+    @Req() req: TechnicianRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<PaginatedResponse<MachineResponse>> {
+    const pagination = normalizePagination(page, limit, 20);
+    return this.technicianService.machines(this.technicianId(req), pagination);
+  }
+
+  @Get('machines/:id/context')
+  machineContext(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+  ): Promise<TechnicianMachineContextResponse> {
+    return this.technicianService.machineContext(this.technicianId(req), id);
+  }
+
   @Get('work-orders')
   workOrders(
     @Req() req: TechnicianRequest,
@@ -76,6 +99,7 @@ export class TechnicianController {
       page,
       limit,
       status,
+      search,
       maintenanceType,
       priority,
       machineId,
@@ -89,6 +113,7 @@ export class TechnicianController {
       pagination,
       {
         status,
+        search,
         maintenanceType,
         priority,
         machineId,
@@ -204,6 +229,20 @@ export class TechnicianController {
       this.technicianId(req),
       id,
       body.partId,
+      body.quantity,
+    );
+  }
+
+  @Post('work-orders/:id/parts-request')
+  requestPart(
+    @Req() req: TechnicianRequest,
+    @Param('id') id: string,
+    @Body() body: CreatePartRequestDto,
+  ): Promise<PartRequestResponse> {
+    return this.technicianService.requestPart(
+      this.technicianId(req),
+      id,
+      body.part_id,
       body.quantity,
     );
   }

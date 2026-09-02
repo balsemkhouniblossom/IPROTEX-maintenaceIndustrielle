@@ -19,10 +19,20 @@ import {
   InterventionReportDocument,
 } from '../schemas/intervention-report.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
+import {
+  Module as ModuleEntity,
+  ModuleDocument,
+} from '../schemas/module.schema';
+import {
+  MaintenancePlan,
+  MaintenancePlanDocument,
+} from '../schemas/maintenance-plan.schema';
 import { DocumentEntity, DocumentDocument } from '../schemas/document.schema';
 import { OTPieces, OTPiecesDocument } from '../schemas/ot-pieces.schema';
 import { Catalogue, CatalogueDocument } from '../schemas/catalogue.schema';
 import { Stock, StockDocument } from '../schemas/stock.schema';
+import { Capteur, CapteurDocument } from '../schemas/capteur.schema';
+import { Mesure, MesureDocument } from '../schemas/mesure.schema';
 import { StockMovementsService } from '../stock-movements/stock-movements.service';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { WorkOrderAssignmentService } from '../work-orders/services/work-order-assignment.service';
@@ -38,12 +48,18 @@ import {
 import { KpiService } from '../kpi/kpi.service';
 import { toWorkOrderResponse } from '../work-orders/contracts/work-order-response.mapper';
 import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
+import { PartRequestResponse } from '../work-orders/contracts/part-request-response.types';
+import { MachineResponse } from '../machines/contracts/machine-response.types';
+import { toMachineResponse } from '../machines/contracts/machine-response.mapper';
 import {
   InterventionReportResponse,
   toInterventionReportResponse,
   toInterventionReportResponseOrNull,
 } from '../common/response/intervention-report-response';
-import { asPopulatedDoc } from '../common/response/serialization.util';
+import {
+  asPopulatedDoc,
+  serializeDate,
+} from '../common/response/serialization.util';
 import {
   TechnicianPartResponse,
   TechnicianWorkOrderDetailResponse,
@@ -66,8 +82,10 @@ const REVIEW_STATUSES = [
 ];
 
 const STATUS_FILTERS: Record<string, string[]> = {
+  assigned: ['assigned'],
   in_progress: ['in_progress', 'EN_COURS'],
   waiting_parts: ['waiting_parts', 'EN_ATTENTE_PIECES'],
+  review: REVIEW_STATUSES,
   completed: COMPLETED_WORK_ORDER_STATUSES,
   cancelled: ['cancelled', 'canceled', 'ANNULE'],
 };
@@ -85,6 +103,7 @@ const MANUAL_DOCUMENT_FILTER: FilterQuery<DocumentDocument> = {
 
 interface TechnicianFilters {
   status?: string;
+  search?: string;
   maintenanceType?: string;
   priority?: string;
   machineId?: string;
@@ -118,9 +137,76 @@ export interface TechnicianDashboardResponse {
   urgentTasks: TechnicianWorkOrderView[];
   current: TechnicianWorkOrderView[];
   waitingPartsTasks: TechnicianWorkOrderView[];
+  upcoming: TechnicianWorkOrderView[];
   recent: TechnicianWorkOrderView[];
   manuals: DocumentSummaryResponse[];
 }
+
+export interface TechnicianMachineContextResponse {
+  machine: MachineResponse;
+  summary: {
+    stats: {
+      totalInterventions: number;
+      preventiveCompleted: number;
+      correctiveCompleted: number;
+      openWorkOrders: number;
+      closedWorkOrders: number;
+      downtimeHours: number;
+      averageRepairTimeHours: number | null;
+      partsConsumed: number;
+      lastMaintenanceAt: string | null;
+      nextMaintenanceAt: string | null;
+      lastInspectionAt: string | null;
+      lastLubricationAt: string | null;
+    };
+  };
+  components: Array<{
+    _id: string;
+    module_id: string;
+    localisation?: string;
+    type?: { _id?: string; name?: string };
+    parent_module_id?: string | null;
+    sensors: Array<{
+      _id: string;
+      capteur_id: string;
+      code_capteur: string;
+      type_capteur: string;
+      unite_mesure?: string;
+      is_active: boolean;
+      last_seen_at?: string;
+      latestMeasurement?: {
+        _id: string;
+        valeur: number;
+        timestamp: string;
+        status: string;
+      } | null;
+    }>;
+  }>;
+  openWork: WorkOrderResponse[];
+  upcomingPreventive: Array<{
+    _id: string;
+    plan_id: string;
+    instruction?: string;
+    maintenance_code?: string;
+    type_maintenance: string;
+    nextDue?: string;
+  }>;
+  recentMaintenance: InterventionReportResponse[];
+  documents: DocumentSummaryResponse[];
+}
+
+type TechnicianMachineStatsResponse =
+  TechnicianMachineContextResponse['summary']['stats'];
+
+type TechnicianMachineListItemResponse = MachineResponse & {
+  technicianSummary: {
+    stats: {
+      openWorkOrders: number;
+      lastMaintenanceAt: string | null;
+      nextMaintenanceAt: string | null;
+    };
+  };
+};
 
 @Injectable()
 export class TechnicianService {
@@ -131,6 +217,10 @@ export class TechnicianService {
     private readonly reportsModel: Model<InterventionReportDocument>,
     @InjectModel(Machine.name)
     private readonly machinesModel: Model<MachineDocument>,
+    @InjectModel(ModuleEntity.name)
+    private readonly modulesModel: Model<ModuleDocument>,
+    @InjectModel(MaintenancePlan.name)
+    private readonly maintenancePlansModel: Model<MaintenancePlanDocument>,
     @InjectModel(DocumentEntity.name)
     private readonly documentsModel: Model<DocumentDocument>,
     @InjectModel(OTPieces.name)
@@ -138,6 +228,10 @@ export class TechnicianService {
     @InjectModel(Catalogue.name)
     private readonly catalogueModel: Model<CatalogueDocument>,
     @InjectModel(Stock.name) private readonly stockModel: Model<StockDocument>,
+    @InjectModel(Capteur.name)
+    private readonly capteursModel: Model<CapteurDocument>,
+    @InjectModel(Mesure.name)
+    private readonly mesuresModel: Model<MesureDocument>,
     private readonly workOrdersService: WorkOrdersService,
     private readonly workOrderAssignmentService: WorkOrderAssignmentService,
     private readonly workOrderLifecycleService: WorkOrderLifecycleService,
@@ -223,11 +317,12 @@ export class TechnicianService {
       urgent,
       current,
       waiting,
+      upcoming,
       recent,
     ] = await Promise.all([
       this.workOrdersModel.countDocuments({
         ...scope,
-        status: { $nin: CLOSED_STATUSES },
+        status: { $in: STATUS_FILTERS.assigned },
       }),
       this.workOrdersModel.countDocuments({
         ...scope,
@@ -263,6 +358,15 @@ export class TechnicianService {
         .populate({ path: 'machine_id', populate: { path: 'type_id' } })
         .exec(),
       this.workOrdersModel
+        .find({
+          ...scope,
+          status: { $in: [...STATUS_FILTERS.assigned, ...STATUS_FILTERS.in_progress] },
+        })
+        .sort({ due_date: 1, scheduled_date: 1, date_created: 1 })
+        .limit(8)
+        .populate({ path: 'machine_id', populate: { path: 'type_id' } })
+        .exec(),
+      this.workOrdersModel
         .find({ ...scope, status: { $in: STATUS_FILTERS.completed } })
         .sort({ date_closed: -1, date_end: -1 })
         .limit(6)
@@ -287,11 +391,13 @@ export class TechnicianService {
       urgentWithOperators,
       currentWithOperators,
       waitingWithOperators,
+      upcomingWithOperators,
       recentWithOperators,
     ] = await Promise.all([
       this.attachOperators(urgentTasks),
       this.attachOperators(current),
       this.attachOperators(waiting),
+      this.attachOperators(upcoming),
       this.attachOperators(recent),
     ]);
     return {
@@ -309,8 +415,344 @@ export class TechnicianService {
       urgentTasks: urgentWithOperators,
       current: currentWithOperators,
       waitingPartsTasks: waitingWithOperators,
+      upcoming: upcomingWithOperators,
       recent: recentWithOperators,
       manuals: manuals.map(toDocumentSummary),
+    };
+  }
+
+  async machines(
+    technicianId: string,
+    pagination: PaginationParams,
+  ): Promise<PaginatedResponse<TechnicianMachineListItemResponse>> {
+    const machineIds = await this.getAccessibleMachineIds(technicianId);
+    if (!machineIds.length) {
+      return toPaginatedResponse([], 0, pagination.page, pagination.limit);
+    }
+
+    const query: FilterQuery<MachineDocument> = { _id: { $in: machineIds } };
+    const [items, total] = await Promise.all([
+      this.machinesModel
+        .find(query)
+        .sort({ machine_id: 1 })
+        .skip(pagination.skip)
+        .limit(pagination.limit)
+        .populate('type_id')
+        .exec(),
+      this.machinesModel.countDocuments(query).exec(),
+    ]);
+
+    const visibleScope = await this.visibleScope(technicianId);
+    const summaries = await Promise.all(
+      items.map(async (machine) => {
+        const machineObjectId = machine._id as Types.ObjectId;
+        const [openWorkOrders, lastMaintenance, nextMaintenance] =
+          await Promise.all([
+            this.workOrdersModel
+              .countDocuments({
+                machine_id: machineObjectId,
+                ...visibleScope,
+                status: { $nin: CLOSED_STATUSES },
+              })
+              .exec(),
+            this.workOrdersModel
+              .findOne({
+                machine_id: machineObjectId,
+                ...visibleScope,
+                status: { $in: COMPLETED_WORK_ORDER_STATUSES },
+              })
+              .sort({ date_closed: -1, date_end: -1, execution_date: -1 })
+              .select('date_closed date_end execution_date')
+              .exec(),
+            this.workOrdersModel
+              .findOne({
+                machine_id: machineObjectId,
+                ...visibleScope,
+                status: { $nin: CLOSED_STATUSES },
+                $or: [
+                  { due_date: { $ne: null } },
+                  { scheduled_date: { $ne: null } },
+                ],
+              })
+              .sort({ due_date: 1, scheduled_date: 1 })
+              .select('due_date scheduled_date')
+              .exec(),
+          ]);
+
+        return {
+          machineId: machine._id.toString(),
+          stats: {
+            openWorkOrders,
+            lastMaintenanceAt:
+              serializeDate(
+                lastMaintenance?.date_closed ??
+                  lastMaintenance?.date_end ??
+                  lastMaintenance?.execution_date,
+              ) ?? null,
+            nextMaintenanceAt:
+              serializeDate(nextMaintenance?.due_date ?? nextMaintenance?.scheduled_date) ??
+              null,
+          },
+        };
+      }),
+    );
+    const summaryByMachine = new Map(
+      summaries.map((summary) => [summary.machineId, summary.stats]),
+    );
+
+    return toPaginatedResponse(
+      items.map((machine) => ({
+        ...toMachineResponse(machine),
+        technicianSummary: {
+          stats: summaryByMachine.get(machine._id.toString()) ?? {
+            openWorkOrders: 0,
+            lastMaintenanceAt: null,
+            nextMaintenanceAt: null,
+          },
+        },
+      })),
+      total,
+      pagination.page,
+      pagination.limit,
+    );
+  }
+
+  async machineContext(
+    technicianId: string,
+    machineId: string,
+  ): Promise<TechnicianMachineContextResponse> {
+    await this.documentAccessService.assertCanAccessMachine(
+      { userId: technicianId, role: Role.TECHNICIAN },
+      machineId,
+    );
+    const machineObjectId = this.objectId(machineId, 'machine');
+    const visibleScope = await this.visibleScope(technicianId);
+
+    const [machine, modules, openWork, plans, recentReports, documents, stats] =
+      await Promise.all([
+        this.machinesModel.findById(machineObjectId).populate('type_id').exec(),
+        this.modulesModel
+          .find({ machine_id: machineObjectId })
+          .populate('mod_type_id')
+          .populate('parent_module_id')
+          .sort({ module_id: 1 })
+          .exec(),
+        this.workOrdersModel
+          .find({
+            machine_id: machineObjectId,
+            ...visibleScope,
+            status: { $nin: CLOSED_STATUSES },
+          })
+          .sort({ due_date: 1, date_created: -1 })
+          .limit(10)
+          .populate({ path: 'machine_id', populate: { path: 'type_id' } })
+          .populate('module_id')
+          .populate('technician_id', SAFE_USER_PROJECTION)
+          .populate('plan_id')
+          .exec(),
+        this.maintenancePlansModel
+          .find({
+            $or: [
+              { status: { $in: ['active', 'paused'] } },
+              { status: { $exists: false } },
+            ],
+          })
+          .populate({
+            path: 'module_id',
+            match: { machine_id: machineObjectId },
+          })
+          .sort({ maintenance_code: 1, plan_id: 1 })
+          .limit(10)
+          .exec(),
+        this.reportsModel
+          .find()
+          .populate({
+            path: 'ot_id',
+            match: { machine_id: machineObjectId },
+            populate: { path: 'machine_id' },
+          })
+          .populate('technician_id', SAFE_USER_PROJECTION)
+          .sort({ date_fin: -1, date_debut: -1 })
+          .limit(10)
+          .exec(),
+        this.documentsModel
+          .find({ machine_id: machineObjectId })
+          .sort({ date_ajout: -1 })
+          .limit(20)
+          .exec(),
+        this.getTechnicianMachineStats(machineObjectId, visibleScope),
+      ]);
+    if (!machine) throw new NotFoundException('Machine not found');
+
+    const moduleIds = modules.map((module) => module._id);
+    const sensors = moduleIds.length
+      ? await this.capteursModel
+          .find({ module_id: { $in: moduleIds } })
+          .sort({ type_capteur: 1, code_capteur: 1 })
+          .exec()
+      : [];
+    const latestMeasurements = await Promise.all(
+      sensors.map((sensor) =>
+        this.mesuresModel
+          .findOne({ capteur_id: sensor._id })
+          .sort({ timestamp: -1 })
+          .exec(),
+      ),
+    );
+    const latestBySensor = new Map(
+      sensors.map((sensor, index) => [
+        sensor._id.toString(),
+        latestMeasurements[index] ?? null,
+      ]),
+    );
+    const sensorsByModule = new Map<string, CapteurDocument[]>();
+    for (const sensor of sensors) {
+      const key = this.referenceId(sensor.module_id)?.toString();
+      if (!key) continue;
+      sensorsByModule.set(key, [...(sensorsByModule.get(key) ?? []), sensor]);
+    }
+
+    return {
+      machine: toMachineResponse(machine),
+      summary: { stats },
+      components: modules.map((module) => {
+        const type = module.mod_type_id as unknown as {
+          _id?: unknown;
+          name?: string;
+        };
+        return {
+          _id: module._id.toString(),
+          module_id: module.module_id,
+          localisation: module.localisation,
+          type: {
+            _id: this.referenceId(type)?.toString(),
+            name: type?.name,
+          },
+          parent_module_id:
+            this.referenceId(module.parent_module_id)?.toString() ?? null,
+          sensors: (sensorsByModule.get(module._id.toString()) ?? []).map(
+            (sensor) => {
+              const latest = latestBySensor.get(sensor._id.toString());
+              return {
+                _id: sensor._id.toString(),
+                capteur_id: sensor.capteur_id,
+                code_capteur: sensor.code_capteur,
+                type_capteur: sensor.type_capteur,
+                unite_mesure: sensor.unite_mesure,
+                is_active: sensor.is_active,
+                last_seen_at: sensor.last_seen_at?.toISOString(),
+                latestMeasurement: latest
+                  ? {
+                      _id: latest._id.toString(),
+                      valeur: latest.valeur,
+                      timestamp: latest.timestamp.toISOString(),
+                      status: latest.status,
+                    }
+                  : null,
+              };
+            },
+          ),
+        };
+      }),
+      openWork: openWork.map(toWorkOrderResponse),
+      upcomingPreventive: plans
+        .filter((plan) => Boolean(plan.module_id))
+        .map((plan) => ({
+          _id: plan._id.toString(),
+          plan_id: plan.plan_id,
+          instruction: plan.instruction,
+          maintenance_code: plan.maintenance_code,
+          type_maintenance: plan.type_maintenance,
+        })),
+      recentMaintenance: recentReports
+        .filter((report) => Boolean(report.ot_id))
+        .map(toInterventionReportResponse),
+      documents: documents.map(toDocumentSummary),
+    };
+  }
+
+  private async getTechnicianMachineStats(
+    machineObjectId: Types.ObjectId,
+    visibleScope: FilterQuery<WorkOrderDocument>,
+  ): Promise<TechnicianMachineStatsResponse> {
+    const [workOrders, partsConsumed] = await Promise.all([
+      this.workOrdersModel
+        .find({ machine_id: machineObjectId, ...visibleScope })
+        .select(
+          'status type_maintenance date_start date_end date_closed execution_date due_date scheduled_date',
+        )
+        .exec(),
+      this.partsModel
+        .aggregate<{ total: number }>([
+          {
+            $lookup: {
+              from: 'workorders',
+              localField: 'ot_id',
+              foreignField: '_id',
+              as: 'workOrder',
+            },
+          },
+          { $unwind: '$workOrder' },
+          { $match: { 'workOrder.machine_id': machineObjectId } },
+          { $group: { _id: null, total: { $sum: '$quantite_utilisee' } } },
+        ])
+        .exec(),
+    ]);
+    const completed = workOrders.filter((order) =>
+      COMPLETED_WORK_ORDER_STATUSES.includes(order.status),
+    );
+    const open = workOrders.filter(
+      (order) => !CLOSED_STATUSES.includes(order.status),
+    );
+    const timedDurations = completed
+      .map((order) => {
+        const start = order.date_start?.getTime();
+        const end = (order.date_end ?? order.date_closed)?.getTime();
+        return start && end && end > start ? (end - start) / 36e5 : null;
+      })
+      .filter((value): value is number => value != null);
+    const sortedCompleted = [...completed].sort(
+      (left, right) =>
+        ((right.date_closed ?? right.date_end ?? right.execution_date)?.getTime() ?? 0) -
+        ((left.date_closed ?? left.date_end ?? left.execution_date)?.getTime() ?? 0),
+    );
+    const sortedOpen = [...open].sort(
+      (left, right) =>
+        ((left.due_date ?? left.scheduled_date)?.getTime() ?? Number.MAX_SAFE_INTEGER) -
+        ((right.due_date ?? right.scheduled_date)?.getTime() ?? Number.MAX_SAFE_INTEGER),
+    );
+    const lastMaintenance = sortedCompleted[0];
+    const nextMaintenance = sortedOpen.find(
+      (order) => order.due_date || order.scheduled_date,
+    );
+
+    return {
+      totalInterventions: workOrders.length,
+      preventiveCompleted: completed.filter(
+        (order) => order.type_maintenance?.toLowerCase() === 'preventive',
+      ).length,
+      correctiveCompleted: completed.filter(
+        (order) => order.type_maintenance?.toLowerCase() === 'corrective',
+      ).length,
+      openWorkOrders: open.length,
+      closedWorkOrders: workOrders.length - open.length,
+      downtimeHours: timedDurations.reduce((sum, value) => sum + value, 0),
+      averageRepairTimeHours: timedDurations.length
+        ? timedDurations.reduce((sum, value) => sum + value, 0) /
+          timedDurations.length
+        : null,
+      partsConsumed: partsConsumed[0]?.total ?? 0,
+      lastMaintenanceAt:
+        serializeDate(
+          lastMaintenance?.date_closed ??
+            lastMaintenance?.date_end ??
+            lastMaintenance?.execution_date,
+        ) ?? null,
+      nextMaintenanceAt:
+        serializeDate(nextMaintenance?.due_date ?? nextMaintenance?.scheduled_date) ??
+        null,
+      lastInspectionAt: null,
+      lastLubricationAt: null,
     };
   }
 
@@ -329,6 +771,40 @@ export class TechnicianService {
     if (filters.maintenanceType)
       query.type_maintenance = filters.maintenanceType;
     if (filters.priority) query.priorite = filters.priority;
+    if (filters.search?.trim()) {
+      const term = filters.search.trim();
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i');
+      const machines = await this.machinesModel
+        .find({
+          $or: [
+            { machine_id: regex },
+            { reference: regex },
+            { model: regex },
+            { serial_no: regex },
+            { fabricant: regex },
+            { location: regex },
+          ],
+        })
+        .select('_id')
+        .limit(100)
+        .exec();
+      query.$and = [
+        ...(Array.isArray(query.$and) ? query.$and : []),
+        {
+          $or: [
+            { ot_id: regex },
+            { description: regex },
+            { code_panne: regex },
+            { type_maintenance: regex },
+            { priorite: regex },
+            ...(machines.length
+              ? [{ machine_id: { $in: machines.map((machine) => machine._id) } }]
+              : []),
+          ],
+        },
+      ];
+    }
     if (filters.machineId)
       query.machine_id = this.objectId(filters.machineId, 'machine');
     if (filters.machineTypeId) {
@@ -341,31 +817,44 @@ export class TechnicianService {
     if (filters.dateFrom || filters.dateTo) {
       const date: { $gte?: Date; $lte?: Date } = {};
       if (filters.dateFrom) date.$gte = new Date(filters.dateFrom);
-      if (filters.dateTo) date.$lte = new Date(filters.dateTo);
+      if (filters.dateTo) {
+        date.$lte = new Date(filters.dateTo);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(filters.dateTo)) {
+          date.$lte.setHours(23, 59, 59, 999);
+        }
+      }
       if (Object.values(date).some((value) => Number.isNaN(value.getTime())))
         throw new BadRequestException('Invalid date filter');
-      query.date_created = date;
+      query.due_date = date;
     }
 
+    const now = new Date();
+    const dueSortDate = {
+      $ifNull: ['$due_date', { $ifNull: ['$scheduled_date', '$date_start'] }],
+    };
     const priorityOrder = {
       $cond: [
-        { $eq: [{ $toLower: { $ifNull: ['$priorite', ''] } }, 'urgent'] },
+        {
+          $and: [
+            { $ne: [dueSortDate, null] },
+            { $lt: [dueSortDate, now] },
+            { $not: [{ $in: ['$status', CLOSED_STATUSES] }] },
+          ],
+        },
         0,
         {
           $cond: [
-            { $in: ['$status', REVIEW_STATUSES] },
+            { $eq: [{ $toLower: { $ifNull: ['$priorite', ''] } }, 'urgent'] },
             1,
             {
               $cond: [
-                { $eq: ['$status', 'assigned'] },
+                { $eq: [{ $toLower: { $ifNull: ['$priorite', ''] } }, 'high'] },
                 2,
                 {
                   $cond: [
-                    { $eq: ['$status', 'in_progress'] },
+                    { $ne: [dueSortDate, null] },
                     3,
-                    {
-                      $cond: [{ $eq: ['$status', 'waiting_parts'] }, 4, 5],
-                    },
+                    4,
                   ],
                 },
               ],
@@ -380,8 +869,8 @@ export class TechnicianService {
           _id: Types.ObjectId;
         }>([
           { $match: query },
-          { $addFields: { technicianSort: priorityOrder } },
-          { $sort: { technicianSort: 1, date_created: -1 } },
+          { $addFields: { technicianSort: priorityOrder, dueSortDate } },
+          { $sort: { technicianSort: 1, dueSortDate: 1, date_created: -1 } },
           { $skip: pagination.skip },
           { $limit: pagination.limit },
           { $project: { _id: 1 } },
@@ -508,21 +997,22 @@ export class TechnicianService {
       .exec();
     if (!workOrder) throw new NotFoundException('Work order not found');
     const machineId = this.referenceId(workOrder.machine_id);
-    if (machineId) {
-      await this.documentAccessService.assertCanAccessMachine(
-        { userId: technicianId, role: Role.TECHNICIAN },
-        machineId.toHexString(),
-      );
-    }
+    const manualScope = await this.accessibleManualMachineFilter(technicianId);
+    const manualQuery: FilterQuery<DocumentDocument> | null = machineId
+      ? {
+          ...MANUAL_DOCUMENT_FILTER,
+          $and: [{ machine_id: machineId }, manualScope],
+        }
+      : null;
     const [report, parts, manuals] = await Promise.all([
       this.reportsModel
         .findOne({ ot_id: workOrder._id })
         .populate('technician_id', SAFE_USER_PROJECTION)
         .exec(),
       this.partsModel.find({ ot_id: workOrder._id }).populate('part_id').exec(),
-      machineId
+      manualQuery
         ? this.documentsModel
-            .find({ machine_id: machineId, ...MANUAL_DOCUMENT_FILTER })
+            .find(manualQuery)
             .sort({ date_ajout: -1 })
             .exec()
         : [],
@@ -787,6 +1277,23 @@ export class TechnicianService {
     } finally {
       await session.endSession();
     }
+  }
+
+  async requestPart(
+    technicianId: string,
+    workOrderId: string,
+    partId?: string,
+    quantity?: number,
+  ): Promise<PartRequestResponse> {
+    if (!partId) throw new BadRequestException('Part is required');
+    if (!Number.isInteger(quantity) || (quantity ?? 0) <= 0)
+      throw new BadRequestException('Part quantity must be a positive integer');
+    return this.workOrdersService.requestPartsForOperator({
+      operatorId: technicianId,
+      workOrderId,
+      partId,
+      quantity: quantity as number,
+    });
   }
 
   /**

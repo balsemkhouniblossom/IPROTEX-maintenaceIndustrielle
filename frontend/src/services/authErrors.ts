@@ -6,6 +6,7 @@ export const ACCOUNT_ACCESS_ERROR_CODES = [
   'ACCOUNT_INACTIVE',
   'ACCOUNT_ROLE_NOT_ALLOWED',
   'PROFILE_COMPLETION_REQUIRED',
+  'AUTH_TOO_MANY_ATTEMPTS',
 ] as const;
 
 export type AccountAccessErrorCode =
@@ -38,6 +39,7 @@ const LOGIN_ERROR_MESSAGE_KEYS: Record<AccountAccessErrorCode, string> = {
   ACCOUNT_INACTIVE: 'errors.accountInactive',
   ACCOUNT_ROLE_NOT_ALLOWED: 'errors.accountRoleNotAllowed',
   PROFILE_COMPLETION_REQUIRED: 'errors.profileCompletionRequired',
+  AUTH_TOO_MANY_ATTEMPTS: 'errors.tooManyAttempts',
 };
 
 export function isAccountAccessErrorCode(

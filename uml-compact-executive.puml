@@ -211,6 +211,41 @@ package "Alertes & Pilotage" {
 }
 
 ' =============================
+' IA & MAINTENANCE PREDICTIVE
+' =============================
+package "IA & Maintenance predictive" {
+  class AiInteraction {
+    +_id: ObjectId <<PK>>
+    +actor_user_id: ObjectId <<FK User>>
+    +machine_id: ObjectId? <<FK Machine>>
+    +work_order_id: ObjectId? <<FK WorkOrder>>
+    +question: String
+    +status: String
+    +createdAt: Date
+  }
+
+  class MachineHealthPrediction {
+    +_id: ObjectId <<PK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +health_score: Number
+    +risk_level: String
+    +generated_at: Date
+  }
+
+  class AiAssistantService <<service>> {
+    +recommend(...)
+    +buildContext(...)
+    +recordInteraction(...)
+  }
+
+  class PredictiveMaintenanceService <<service>> {
+    +predictForMachine(...)
+    +predictAllMachines(...)
+    +getLatestForMachine(...)
+  }
+}
+
+' =============================
 ' RELATIONS CLES (slide-friendly)
 ' =============================
 MachineType "1" -- "0..*" Machine
@@ -238,11 +273,22 @@ User "0..1" <-- "0..*" Notification
 WorkOrder "0..1" <-- "0..*" Notification
 Machine "0..1" <-- "0..*" Notification
 
+User "1" -- "0..*" AiInteraction
+Machine "0..1" <-- "0..*" AiInteraction
+WorkOrder "0..1" <-- "0..*" AiInteraction
+Machine "1" -- "0..*" MachineHealthPrediction
+
 AutomationSchedulerService ..> WorkOrdersService
 WorkOrdersService ..> WorkOrder
 WorkOrdersService ..> MaintenancePlan
 WorkOrdersService ..> KPI
 WorkOrdersService ..> Notification
+WorkOrdersService ..> AiAssistantService
+AiAssistantService ..> AiInteraction
+AiAssistantService ..> Machine
+AiAssistantService ..> WorkOrder
+PredictiveMaintenanceService ..> MachineHealthPrediction
+PredictiveMaintenanceService ..> Machine
 
 legend right
   <<PK>> Cle primaire

@@ -7,6 +7,7 @@ import {
   AI_ANOMALY_DATASET_REPLAY_LABEL,
   AI_ANOMALY_LIMITATION_NOTICE,
   AI_ANOMALY_RISK_INDICATORS,
+  buildAiAnomalyMachineOptions,
   buildRiskScoreChartData,
   canBrowseAiAnomalyHistory,
   canSubmitAiAnomalyAnalysis,
@@ -217,6 +218,29 @@ test("human-readable machine labels hide Mongo IDs when available", () => {
     ]),
     "BRD-01",
   );
+});
+
+test("anomaly page treats the admin machine catalog as optional enrichment", () => {
+  const source = readSource(PAGE);
+  assert.match(source, /apiService,\s*quiet/);
+  assert.match(
+    source,
+    /getMachines\(\{ page: 1, limit: 100 \}, quiet\(\)\)[\s\S]*\.catch\(\(\) => null\)/,
+  );
+
+  assert.deepEqual(
+    buildAiAnomalyMachineOptions([baseAnalysis], [
+      {
+        _id: "machine-a",
+        machine_id: "BRD-01",
+      },
+    ]),
+    [{ id: "machine-a", label: "BRD-01" }],
+  );
+
+  assert.deepEqual(buildAiAnomalyMachineOptions([baseAnalysis]), [
+    { id: "machine-a", label: "machine-a" },
+  ]);
 });
 
 test("UI omits automatic work-order creation", () => {

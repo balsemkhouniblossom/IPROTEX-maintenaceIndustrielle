@@ -75,6 +75,7 @@
       "accountInactive": "Votre compte est inactif. Contactez un administrateur.",
       "accountRoleNotAllowed": "Ce rôle de compte n’est pas autorisé à se connecter.",
       "authenticationFailed": "La connexion a échoué. Veuillez réessayer.",
+      "tooManyAttempts": "Trop de tentatives de connexion. Veuillez reessayer plus tard.",
       "profileCompletionRequired": "Compl?tez votre profil avant d?acc?der ? l?application."
     },
     "protected": {
@@ -1792,6 +1793,10 @@
       "inventoryLubrication": "Inventaire & Lubrification",
       "documents": "Documents",
       "insights": "Analyses",
+      "myWork": "Mon travail",
+      "equipment": "Equipement",
+      "resources": "Ressources",
+      "history": "Historique",
       "management": "Gestion"
     },
     "systemStatus": {
@@ -1825,6 +1830,8 @@
       "startCorrectiveMaintenance": "Maintenance corrective",
       "reportProblem": "Signaler un probleme",
       "manuals": "Manuels",
+      "parts": "Pieces",
+      "completedWork": "Travail termine",
       "myReports": "Mes rapports",
       "catalogues": "Catalogues",
       "machineTypes": "Types de machines",
@@ -1951,7 +1958,22 @@
       "viewTimeline": "Chronologie",
       "openManual": "Ouvrir le manuel"
     },
-    "singular": "Machine"
+    "singular": "Machine",
+    "technician": {
+      "title": "Machines",
+      "subtitle": "Find a machine, inspect its condition, and act through a Work Order.",
+      "searchPlaceholder": "Search by machine name, serial number...",
+      "viewMachine": "View Machine",
+      "openWorkOrders": "Open Work Orders",
+      "nextMaintenance": "Next Maintenance",
+      "lastMaintenance": "Last Maintenance",
+      "filters": {
+        "all": "All",
+        "attention": "Attention",
+        "maintenance": "Maintenance",
+        "operational": "Operational"
+      }
+    }
   },
   "machineTimeline": {
     "pageTitle": "Chronologie de la machine",
@@ -1970,6 +1992,7 @@
       "showMore": "Afficher plus",
       "showLess": "Afficher moins",
       "viewDocument": "Voir le document",
+      "openDocument": "Ouvrir le document",
       "back": "Back",
       "clearSearch": "Clear search",
       "previewDocument": "Preview document",
@@ -2106,6 +2129,56 @@
       "partsConsumed": "Consumed stock quantity",
       "preventiveCompleted": "Completed preventive WOs",
       "totalInterventions": "All work orders"
+    },
+    "technician": {
+      "tabs": {
+        "overview": "Overview",
+        "components": "Components",
+        "maintenance": "Maintenance",
+        "monitoring": "Monitoring",
+        "documents": "Documents",
+        "history": "History"
+      },
+      "overview": {
+        "machineStatus": "Machine Status",
+        "status": "Status",
+        "health": "Health",
+        "openWorkOrders": "Open Work Orders",
+        "lastMaintenance": "Last Maintenance",
+        "nextMaintenance": "Next Maintenance",
+        "currentAttention": "Current Attention",
+        "possibleComponent": "Possible affected component",
+        "noAttention": "No current attention item for this machine."
+      },
+      "components": {
+        "title": "Components",
+        "type": "Type",
+        "sensors": "Sensors",
+        "noSensors": "No sensors assigned to this component.",
+        "empty": "No components available for this machine."
+      },
+      "maintenance": {
+        "openWork": "Open Work",
+        "upcomingPreventive": "Upcoming Preventive",
+        "recentMaintenance": "Recent Maintenance",
+        "openWorkOrder": "Open Work Order",
+        "noOpenWork": "No open work for this machine.",
+        "noUpcoming": "No upcoming preventive work available.",
+        "noRecent": "No recent maintenance available."
+      },
+      "monitoring": {
+        "title": "Monitoring",
+        "active": "Active",
+        "inactive": "Inactive",
+        "latestValue": "Latest value",
+        "lastMeasurement": "Last measurement",
+        "noMeasurements": "No measurements available for this sensor.",
+        "noSensors": "No sensors available for this machine."
+      },
+      "documents": {
+        "title": "Documents",
+        "empty": "No documents available for this machine."
+      }
     }
   },
   "interventionReports": {
@@ -2705,12 +2778,24 @@
         "urgentTasks": "Tâches urgentes",
         "current": "Interventions en cours",
         "waitingPartsTasks": "En attente de pièces",
-        "recent": "Interventions récentes"
+        "recent": "Interventions récentes",
+        "todaysPriority": "Priorite du jour",
+        "upcomingWork": "Travail a venir",
+        "recentlyCompleted": "Termines recemment"
       }
     },
     "workOrders": {
       "title": "Ordres de travail",
-      "detailTitle": "Détail de l’ordre de travail"
+      "detailTitle": "Détail de l’ordre de travail",
+      "myTitle": "Mes ordres de travail"
+    },
+    "workOrderTabs": {
+      "assigned": "Assignes",
+      "inProgress": "En cours",
+      "waitingParts": "Attente pieces",
+      "review": "Revue",
+      "completed": "Termines",
+      "all": "Tous"
     },
     "actions": {
       "title": "Actions disponibles",
@@ -2728,7 +2813,14 @@
       "start": "Démarrer l’intervention",
       "waitingParts": "Mettre en attente de pièces",
       "resume": "Reprendre l’intervention",
-      "close": "Clôturer l’ordre"
+      "close": "Clôturer l’ordre",
+      "viewWorkOrder": "Voir ordre",
+      "viewPartsRequest": "Voir demande de pieces",
+      "continueIntervention": "Continuer intervention",
+      "viewReport": "Voir rapport",
+      "saveProgress": "Save Progress",
+      "completeIntervention": "Complete Intervention",
+      "cancel": "Cancel"
     },
     "filters": {
       "status": "Statut",
@@ -2738,7 +2830,13 @@
       "priority": "Priorité",
       "allPriorities": "Toutes les priorités",
       "dateFrom": "Date de début",
-      "dateTo": "Date de fin"
+      "dateTo": "Date de fin",
+      "search": "Recherche",
+      "searchPlaceholder": "Rechercher ordre ou machine...",
+      "machine": "Machine",
+      "allMachines": "Toutes les machines",
+      "dueDate": "Echeance",
+      "anyDueDate": "Toute echeance"
     },
     "status": {
       "waiting_validation": "En attente de validation",
@@ -2768,7 +2866,10 @@
       "created": "Créé le",
       "technician": "Technicien",
       "startDate": "D?but",
-      "endDate": "Fin"
+      "endDate": "Fin",
+      "due": "Echeance",
+      "machine": "Machine",
+      "status": "Status"
     },
     "machine": {
       "title": "Machine",
@@ -2793,7 +2894,17 @@
     "parts": {
       "title": "Pièces détachées",
       "select": "Sélectionner une pièce existante",
-      "quantity": "Quantité totale utilisée"
+      "quantity": "Quantité totale utilisée",
+      "stock": "Stock",
+      "reserved": "Reserve",
+      "minimum": "Minimum",
+      "location": "Emplacement",
+      "used": "Parts used",
+      "noneAdded": "No parts added yet",
+      "addPart": "Add Part",
+      "available": "Available",
+      "requestPart": "Request Part",
+      "requestStatus": "Requested Parts status"
     },
     "manuals": {
       "title": "Manuels"
@@ -2802,7 +2913,9 @@
       "workOrders": "Aucun ordre de travail trouvé.",
       "manuals": "Aucun manuel disponible.",
       "report": "Aucun rapport lié à cet ordre.",
-      "parts": "Aucune pièce enregistrée."
+      "parts": "Aucune pièce enregistrée.",
+      "waitingParts": "Aucun ordre en attente de pieces. Toutes vos interventions ont les pieces requises.",
+      "completed": "Aucune intervention terminee pour le moment."
     },
     "errors": {
       "network": "Impossible de charger les données technicien. Vérifiez la connexion.",
@@ -2820,6 +2933,82 @@
       "showTranslation": "Afficher la traduction",
       "auto": "Traduit automatiquement",
       "safetyNotice": "Traduction automatique pour affichage uniquement. Verifiez le contenu de securite machine avec l original."
+    },
+    "dates": {
+      "today": "Aujourd hui",
+      "tomorrow": "Demain",
+      "next7Days": "7 prochains jours"
+    },
+    "placeholders": {
+      "workOrder": "WO-...",
+      "machine": "Machine...",
+      "machineShort": "Machine...",
+      "priority": "Urgent",
+      "due": "Echeance..."
+    },
+    "badges": {
+      "overdue": "En retard"
+    },
+    "detailTabs": {
+      "overview": "Overview",
+      "intervention": "Intervention",
+      "parts": "Parts",
+      "documents": "Documents",
+      "history": "History"
+    },
+    "overview": {
+      "title": "Work Order Overview",
+      "problem": "Problem",
+      "reportedBy": "Reported by",
+      "faultCode": "Fault code"
+    },
+    "machineContext": {
+      "title": "Machine Context",
+      "health": "Machine Health",
+      "currentStatus": "Current status",
+      "openWorkOrders": "Open work orders",
+      "lastMaintenance": "Last maintenance"
+    },
+    "aiInsight": {
+      "title": "Machine Health Insight",
+      "summary": "Review machine signals and recommended checks without exposing technical model details first.",
+      "healthInsight": "Health insight",
+      "healthCopy": "Check machine status, recent maintenance, and live monitoring before intervening.",
+      "possibleAnomaly": "Possible anomaly",
+      "recommendedInspection": "Recommended inspection list",
+      "recommendedCopy": "Inspect the reported fault area, safety guards, lubrication, vibration, and electrical connections.",
+      "viewTechnical": "View technical analysis",
+      "hideTechnical": "Hide technical analysis"
+    },
+    "intervention": {
+      "title": "Intervention",
+      "notStarted": "Intervention not started",
+      "startedAt": "Started at",
+      "diagnosis": "Diagnosis",
+      "actionPerformed": "Action performed",
+      "observations": "Observations"
+    },
+    "completion": {
+      "title": "Complete Intervention",
+      "completedTitle": "Intervention completed",
+      "completedMessage": "The intervention was submitted for validation.",
+      "reportId": "Report ID",
+      "duration": "Duration",
+      "partsUsed": "Parts used",
+      "finalResult": "Final result",
+      "finalNotes": "Final notes",
+      "backToWork": "Back to My Work",
+      "results": {
+        "resolved": "Resolved",
+        "followUp": "Follow-up required"
+      }
+    },
+    "history": {
+      "title": "History",
+      "created": "Work order created",
+      "started": "Intervention started",
+      "completed": "Intervention completed",
+      "statusChanged": "Status changed"
     }
   },
   "miniAvatar": {

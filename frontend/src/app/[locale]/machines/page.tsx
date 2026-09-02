@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { Modal } from "@/components/Modal";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import Pagination from "@/components/Pagination";
 import {
   ToastNotification,
@@ -20,12 +21,15 @@ import {
 } from "@/services/dynamicSearch";
 import { sortMachineDocumentsForMachine } from "@/services/machineManuals";
 import { normalizeApiItems } from "@/services/pagination";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   PencilIcon,
   TrashIcon,
   PlusIcon,
   ClockIcon,
   DocumentTextIcon,
+  WrenchScrewdriverIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -41,6 +45,16 @@ interface Machine {
   fabricant: string;
   model: string;
   location: string;
+  machine_type_name?: string;
+  technicianSummary?: TechnicianMachineSummary;
+}
+
+interface TechnicianMachineSummary {
+  stats: {
+    openWorkOrders: number;
+    lastMaintenanceAt: string | null;
+    nextMaintenanceAt: string | null;
+  };
 }
 
 interface MachineType {
@@ -109,12 +123,14 @@ function isNotFoundError(error: unknown): boolean {
 }
 
 const PAGE_LIMIT = 10;
+type TechnicianMachineFilter = "all" | "attention" | "maintenance" | "operational";
 
 export default function MachinesPage() {
   const tMachines = useTranslations("machines");
   const tCommon = useTranslations("common");
   const tPredictiveMaintenance = useTranslations("predictiveMaintenance");
   const { healthByMachine } = usePredictiveHealth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const locale = useLocale();
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -132,12 +148,17 @@ export default function MachinesPage() {
   const [manualsByMachine, setManualsByMachine] = useState<
     Record<string, DocumentEntity[]>
   >({});
+  const [summaryByMachine, setSummaryByMachine] = useState<
+    Record<string, TechnicianMachineSummary>
+  >({});
   const [loadingManualMachineId, setLoadingManualMachineId] = useState<
     string | null
   >(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [technicianFilter, setTechnicianFilter] =
+    useState<TechnicianMachineFilter>("all");
   const [selectedSearchField, setSelectedSearchField] =
     useState(ALL_FIELDS_TOKEN);
   const [notification, setNotification] =
@@ -155,10 +176,14 @@ export default function MachinesPage() {
   });
 
   const loadMachines = useCallback(async () => {
+    if (authLoading || !user?.role) return;
     try {
+      const isTechnician = user?.role === "technician";
       const [machinesRes, typesRes] = await Promise.all([
-        apiService.getMachines({ page, limit }),
-        apiService.getMachineTypes(),
+        isTechnician
+          ? apiService.getTechnicianMachines({ page, limit })
+          : apiService.getMachines({ page, limit }),
+        isTechnician ? Promise.resolve({ data: { items: [] } }) : apiService.getMachineTypes(),
       ]);
 
       const items = normalizeApiItems<Record<string, unknown>>(
@@ -167,34 +192,52 @@ export default function MachinesPage() {
 
       const normalized = items.map((m: any) => ({
         ...m,
+        machine_type_name:
+          typeof m.type_id === "object" ? m.type_id?.name || "" : "",
         type_id: machineTypeId(m.type_id),
       }));
 
       setMachines(normalized);
+      if (isTechnician) {
+        setSummaryByMachine(
+          Object.fromEntries(
+            normalized
+              .filter((machine: Machine) => machine.technicianSummary)
+              .map((machine: Machine) => [
+                machine._id,
+                machine.technicianSummary!,
+              ]),
+          ),
+        );
+      }
 
-      const manualEntries = await Promise.all(
-        normalized.map(async (machine: Machine) => {
-          try {
-            const response = await apiService.getDocumentsByMachine(
-              machine._id,
-            );
-            return [
-              machine._id,
-              sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []),
-            ] as const;
-          } catch (error) {
-            if (!isNotFoundError(error)) {
-              console.error(
-                `Error loading manuals for machine ${machine._id}:`,
-                error,
+      if (isTechnician) {
+        setManualsByMachine({});
+      } else {
+        const manualEntries = await Promise.all(
+          normalized.map(async (machine: Machine) => {
+            try {
+              const response = await apiService.getDocumentsByMachine(
+                machine._id,
               );
+              return [
+                machine._id,
+                sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []),
+              ] as const;
+            } catch (error) {
+              if (!isNotFoundError(error)) {
+                console.error(
+                  `Error loading manuals for machine ${machine._id}:`,
+                  error,
+                );
+              }
+              return [machine._id, []] as const;
             }
-            return [machine._id, []] as const;
-          }
-        }),
-      );
+          }),
+        );
 
-      setManualsByMachine(Object.fromEntries(manualEntries));
+        setManualsByMachine(Object.fromEntries(manualEntries));
+      }
 
       const types = normalizeApiItems<MachineType>(typesRes.data);
 
@@ -208,7 +251,7 @@ export default function MachinesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, tMachines]);
+  }, [authLoading, page, limit, tMachines, user?.role]);
   function showNotification(type: "success" | "error", message: string) {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
@@ -221,8 +264,9 @@ export default function MachinesPage() {
   }
 
   useEffect(() => {
+    if (authLoading || !user?.role) return;
     loadMachines();
-  }, [loadMachines]);
+  }, [authLoading, loadMachines, user?.role]);
 
   useEffect(() => {
     const handleMachinesChanged = () => {
@@ -256,7 +300,10 @@ export default function MachinesPage() {
 
     return safeMachines.map((machine) => ({
       ...machine,
-      machine_type_name: machineTypeMap[String(machine.type_id)]?.name || "",
+      machine_type_name:
+        machine.machine_type_name ||
+        machineTypeMap[String(machine.type_id)]?.name ||
+        "",
     }));
   }, [machines, machineTypeMap]);
 
@@ -270,10 +317,34 @@ export default function MachinesPage() {
 
   const filtered = useMemo(
     () =>
-      searchableMachines.filter((machine) =>
-        matchesDynamicSearch(machine, searchTerm, selectedSearchField),
-      ),
-    [searchableMachines, searchTerm, selectedSearchField],
+      searchableMachines
+        .filter((machine) =>
+          matchesDynamicSearch(machine, searchTerm, selectedSearchField),
+        )
+        .filter((machine) => {
+          if (technicianFilter === "all") return true;
+          if (technicianFilter === "operational") {
+            return machine.status === "operational";
+          }
+          if (technicianFilter === "maintenance") {
+            return machine.status === "maintenance";
+          }
+          const summary = summaryByMachine[machine._id];
+          const health = healthByMachine[machine._id];
+          return (
+            machine.status !== "operational" ||
+            (summary?.stats.openWorkOrders ?? 0) > 0 ||
+            (health?.riskLevel && !["low", "insufficient_data"].includes(health.riskLevel))
+          );
+        }),
+    [
+      searchableMachines,
+      searchTerm,
+      selectedSearchField,
+      technicianFilter,
+      summaryByMachine,
+      healthByMachine,
+    ],
   );
 
   const validateForm = () => {
@@ -492,6 +563,170 @@ export default function MachinesPage() {
   const submitButtonLabel = editingMachine
     ? tMachines("button.update")
     : tMachines("button.create");
+
+  if (user?.role === "technician") {
+    const filters: Array<{ key: TechnicianMachineFilter; label: string }> = [
+      { key: "all", label: tMachines("technician.filters.all") },
+      { key: "attention", label: tMachines("technician.filters.attention") },
+      { key: "maintenance", label: tMachines("technician.filters.maintenance") },
+      { key: "operational", label: tMachines("technician.filters.operational") },
+    ];
+
+    return (
+      <ProtectedRoute requiredRole="technician">
+        <DashboardLayout title={tMachines("technician.title")}>
+          <ToastNotification
+            notification={notification}
+            onClose={() => setNotification(null)}
+            closeLabel={tCommon("close")}
+          />
+
+          <div className="mx-auto max-w-6xl space-y-5">
+            <section className="rounded-lg border border-slate-200 bg-white p-5">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-950">
+                    {tMachines("technician.title")}
+                  </h1>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {tMachines("technician.subtitle")}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-blue-700">
+                    {totalItems}
+                  </p>
+                  <p className="text-xs font-semibold uppercase text-slate-500">
+                    {tMachines("totalMachines")}
+                  </p>
+                </div>
+              </div>
+              <label className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
+                <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder={tMachines("technician.searchPlaceholder")}
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+              </label>
+              <div className="mt-4 flex flex-wrap gap-2" role="tablist">
+                {filters.map((filter) => (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={technicianFilter === filter.key}
+                    onClick={() => setTechnicianFilter(filter.key)}
+                    className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                      technicianFilter === filter.key
+                        ? "bg-blue-700 text-white"
+                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              {filtered.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+                  {searchTerm ? tMachines("empty.search") : tMachines("empty.default")}
+                </div>
+              ) : (
+                filtered.map((machine) => {
+                  const summary = summaryByMachine[machine._id];
+                  const machineType =
+                    machine.machine_type_name ||
+                    machineTypeMap[String(machine.type_id)]?.name ||
+                    tCommon("notAvailable");
+                  const statusTranslationKey = machineStatusTranslationKey(
+                    machine.status,
+                  );
+                  const isAttention =
+                    machine.status !== "operational" ||
+                    (summary?.stats.openWorkOrders ?? 0) > 0;
+                  return (
+                    <article
+                      key={machine._id}
+                      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
+                        <div>
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <h2 className="text-xl font-bold text-slate-950">
+                              {machine.machine_id}
+                            </h2>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${machineStatusClassName(machine.status)}`}
+                            >
+                              {isAttention ? "● " : ""}
+                              {statusTranslationKey
+                                ? tMachines(statusTranslationKey)
+                                : machine.status}
+                            </span>
+                            <MachineHealthBadge status={healthByMachine[machine._id]} />
+                          </div>
+                          <p className="text-sm font-medium text-slate-700">
+                            {machineType}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {machine.serial_no || tCommon("notAvailable")}
+                          </p>
+                        </div>
+                        <div className="flex md:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
+                            className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-3 text-sm font-semibold text-white"
+                          >
+                            <WrenchScrewdriverIcon className="h-4 w-4" />
+                            {tMachines("technician.viewMachine")}
+                          </button>
+                        </div>
+                      </div>
+                      <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
+                        <div className="flex justify-between gap-4 sm:block">
+                          <dt className="text-slate-500">{tMachines("technician.openWorkOrders")}</dt>
+                          <dd className="font-semibold text-slate-900">{summary?.stats.openWorkOrders ?? 0}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4 sm:block">
+                          <dt className="text-slate-500">{tMachines("technician.nextMaintenance")}</dt>
+                          <dd className="font-semibold text-slate-900">
+                            {summary?.stats.nextMaintenanceAt
+                              ? new Date(summary.stats.nextMaintenanceAt).toLocaleDateString(locale, { day: "2-digit", month: "short" })
+                              : tCommon("notAvailable")}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4 sm:block">
+                          <dt className="text-slate-500">{tMachines("technician.lastMaintenance")}</dt>
+                          <dd className="font-semibold text-slate-900">
+                            {summary?.stats.lastMaintenanceAt
+                              ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(locale, { day: "2-digit", month: "short" })
+                              : tCommon("notAvailable")}
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  );
+                })
+              )}
+            </section>
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              totalItems={totalItems}
+              limit={limit}
+            />
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <DashboardLayout title={tMachines("pageTitle")}>

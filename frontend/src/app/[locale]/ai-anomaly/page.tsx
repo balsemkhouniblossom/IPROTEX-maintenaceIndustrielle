@@ -11,15 +11,16 @@ import {
   type ToastNotificationState,
 } from "@/components/ToastNotification";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiService } from "@/services/api";
+import { apiService, quiet } from "@/services/api";
 import { extractApiErrorDetails } from "@/services/apiErrors";
 import {
   AI_ANOMALY_LIMITATION_NOTICE,
   AI_ANOMALY_RISK_INDICATORS,
   type AiAnomalyAnalysis,
-  type AiAnomalyMachineOption,
+  type AiAnomalyMachineRecord,
   type AiAnomalyRiskLevel,
   type AiAnomalyValidationStatus,
+  buildAiAnomalyMachineOptions,
   buildRiskScoreChartData,
   canValidateAiAnomaly,
   isAiServiceUnavailable,
@@ -60,13 +61,6 @@ const RISK_ICONS = {
   HIGH: ExclamationTriangleIcon,
   CRITICAL: ShieldExclamationIcon,
 } satisfies Record<AiAnomalyRiskLevel, typeof CheckCircleIcon>;
-
-type MachineRecord = {
-  _id: string;
-  machine_id?: string;
-  serial_no?: string;
-  model?: string;
-};
 
 function riskIcon(level: AiAnomalyRiskLevel | null) {
   return level ? RISK_ICONS[level] : ShieldExclamationIcon;
@@ -129,7 +123,9 @@ function AiAnomalyMonitoringContent() {
   const locale = useLocale();
   const { user } = useAuth();
   const [analyses, setAnalyses] = useState<AiAnomalyAnalysis[]>([]);
-  const [machines, setMachines] = useState<AiAnomalyMachineOption[]>([]);
+  const [machines, setMachines] = useState(
+    [] as ReturnType<typeof buildAiAnomalyMachineOptions>,
+  );
   const [selectedAnalysis, setSelectedAnalysis] =
     useState<AiAnomalyAnalysis | null>(null);
   const [page, setPage] = useState(1);
@@ -187,21 +183,16 @@ function AiAnomalyMonitoringContent() {
           },
           { signal: controller.signal },
         ),
-        apiService.getMachines({ page: 1, limit: 100 }),
+        apiService
+          .getMachines({ page: 1, limit: 100 }, quiet())
+          .catch(() => null),
       ]);
 
-      const machineOptions = normalizeApiItems<MachineRecord>(
-        machinesResponse.data,
-      ).map((machine) => ({
-        id: machine._id,
-        label:
-          machine.machine_id ||
-          [machine.serial_no, machine.model].filter(Boolean).join(" / ") ||
-          machine._id,
-      }));
-      setMachines(machineOptions);
-
       const items = normalizeApiItems<AiAnomalyAnalysis>(analysesResponse.data);
+      const machineRecords = machinesResponse
+        ? normalizeApiItems<AiAnomalyMachineRecord>(machinesResponse.data)
+        : [];
+      setMachines(buildAiAnomalyMachineOptions(items, machineRecords));
       setAnalyses(items);
       const pagination = readPaginationMeta(analysesResponse.data);
       setTotalItems(Number(analysesResponse.data?.totalItems ?? items.length));

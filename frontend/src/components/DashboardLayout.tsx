@@ -62,7 +62,6 @@ function DashboardLayoutBody({
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
   const t = useTranslations("sidebar");
-  const tTechnician = useTranslations("technician");
   const tProtected = useTranslations("auth.protected");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedNavItems, setExpandedNavItems] = useState<Set<string>>(
@@ -200,53 +199,61 @@ function DashboardLayoutBody({
           ],
         },
         {
-          domain: "maintenance",
-          domainKey: "domains.maintenance",
+          domain: "my-work",
+          domainKey: "domains.myWork",
           items: [
             {
-              name: tTechnician("workOrders.title"),
+              name: t("navigation.workOrders"),
               href: "/technician/work-orders",
               icon: ClipboardDocumentListIcon,
-              children: [
-                {
-                  name: tTechnician("dashboard.sections.current"),
-                  href: "/technician/interventions",
-                  icon: CogIcon,
-                },
-                {
-                  name: tTechnician("dashboard.sections.waitingPartsTasks"),
-                  href: "/technician/waiting-parts",
-                  icon: BuildingStorefrontIcon,
-                },
-                {
-                  name: tTechnician("dashboard.sections.recent"),
-                  href: "/technician/history",
-                  icon: ClipboardDocumentListIcon,
-                },
-              ],
             },
           ],
         },
         {
-          domain: "insights",
-          domainKey: "domains.insights",
+          domain: "equipment",
+          domainKey: "domains.equipment",
           items: [
+            {
+              name: t("navigation.machines"),
+              href: "/machines",
+              icon: CogIcon,
+            },
+          ],
+        },
+        {
+          domain: "resources",
+          domainKey: "domains.resources",
+          items: [
+            {
+              name: t("navigation.parts"),
+              href: "/technician/parts",
+              icon: BuildingStorefrontIcon,
+            },
+            {
+              name: t("navigation.manuals"),
+              href: "/technician/manuals",
+              icon: DocumentTextIcon,
+            },
+            {
+              name: t("navigation.knowledgeBase"),
+              href: "/technician/knowledge-base",
+              icon: BookOpenIcon,
+            },
             {
               name: t("navigation.aiAnomalyMonitoring"),
               href: "/ai-anomaly",
               icon: BeakerIcon,
             },
+          ],
+        },
+        {
+          domain: "history",
+          domainKey: "domains.history",
+          items: [
             {
-              name: t("navigation.documents"),
-              href: "/technician/manuals",
-              icon: DocumentTextIcon,
-              children: [
-                {
-                  name: t("navigation.knowledgeBase"),
-                  href: "/technician/knowledge-base",
-                  icon: BookOpenIcon,
-                },
-              ],
+              name: t("navigation.completedWork"),
+              href: "/technician/history",
+              icon: ClipboardDocumentListIcon,
             },
           ],
         },

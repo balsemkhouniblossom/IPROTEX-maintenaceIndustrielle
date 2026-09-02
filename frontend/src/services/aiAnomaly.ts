@@ -41,6 +41,13 @@ export type AiAnomalyMachineOption = {
   label: string;
 };
 
+export type AiAnomalyMachineRecord = {
+  _id: string;
+  machine_id?: string;
+  serial_no?: string;
+  model?: string;
+};
+
 export type AiAnomalyFilters = {
   machineId?: string;
   riskLevel?: AiAnomalyRiskLevel | "ALL";
@@ -114,6 +121,30 @@ export function machineDisplayName(
   return (
     machines.find((machine) => machine.id === machineId)?.label || machineId
   );
+}
+
+export function buildAiAnomalyMachineOptions(
+  analyses: Pick<AiAnomalyAnalysis, "machine_id">[],
+  machineRecords: AiAnomalyMachineRecord[] = [],
+): AiAnomalyMachineOption[] {
+  const options = new Map<string, string>();
+
+  for (const machine of machineRecords) {
+    options.set(
+      machine._id,
+      machine.machine_id ||
+        [machine.serial_no, machine.model].filter(Boolean).join(" / ") ||
+        machine._id,
+    );
+  }
+
+  for (const analysis of analyses) {
+    if (!options.has(analysis.machine_id)) {
+      options.set(analysis.machine_id, analysis.machine_id);
+    }
+  }
+
+  return [...options.entries()].map(([id, label]) => ({ id, label }));
 }
 
 export function filterAiAnomalyAnalyses(
