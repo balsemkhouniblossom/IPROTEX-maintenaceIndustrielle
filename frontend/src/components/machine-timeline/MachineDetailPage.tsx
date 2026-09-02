@@ -28,6 +28,7 @@ import MachineTimelineFeed from './MachineTimelineFeed';
 import type { MachineTimelineSummary } from './types';
 
 type MachineTab = 'overview' | 'components' | 'maintenance' | 'monitoring' | 'documents' | 'history';
+type WorkOrderRecord = Record<string, unknown>;
 type TechnicianMachineContext = {
   machine: {
     _id: string;
@@ -66,11 +67,24 @@ type TechnicianMachineContext = {
       } | null;
     }>;
   }>;
-  openWork: Array<any>;
-  upcomingPreventive: Array<any>;
-  recentMaintenance: Array<any>;
-  documents: Array<any>;
+  openWork: WorkOrderRecord[];
+  upcomingPreventive: WorkOrderRecord[];
+  recentMaintenance: WorkOrderRecord[];
+  documents: WorkOrderRecord[];
 };
+
+type WorkspaceProps = Readonly<{
+  machineId: string;
+  summary: MachineTimelineSummary | null;
+  context: TechnicianMachineContext | null;
+  activeTab: MachineTab;
+  setActiveTab: (tab: MachineTab) => void;
+  locale: string;
+  statusByMachine: Record<string, unknown>;
+  subscribeToMachine: (machineId: string) => void;
+  healthByMachine: Record<string, unknown>;
+  setPreviewDocument: (document: WorkOrderRecord | null) => void;
+}>;
 
 export default function MachineDetailPage({ machineId }: Readonly<{ machineId: string }>) {
   const t = useTranslations('machineTimeline');
@@ -83,7 +97,7 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<MachineTab>('overview');
-  const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<WorkOrderRecord | null>(null);
 
   function buildTechnicianSummary(data: TechnicianMachineContext): MachineTimelineSummary {
     const type =
@@ -206,16 +220,88 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
           <Modal
             isOpen={Boolean(previewDocument)}
             onClose={() => setPreviewDocument(null)}
-            title={previewDocument?.file_name ?? t('actions.openDocument', { default: 'Open document' })}
+            title={String(previewDocument?.file_name ?? t('actions.openDocument', { default: 'Open document' }))}
             size="xl"
           >
             {previewDocument ? (
-              <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name ?? undefined} />
+              <DocumentAttachmentViewer document={previewDocument} title={previewDocument.file_name ? String(previewDocument.file_name) : undefined} />
             ) : null}
           </Modal>
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+function TabOverview({ summary, context, locale, healthByMachine, machineId }: Readonly<{
+  summary: MachineTimelineSummary | null;
+  context: TechnicianMachineContext | null;
+  locale: string;
+  healthByMachine: Record<string, unknown>;
+  machineId: string;
+}>) {
+  const t = useTranslations('machineTimeline.technician');
+  const tRoot = useTranslations('machineTimeline');
+  const machine = summary?.machine;
+  const health = healthByMachine[machineId];
+  const attention = context?.openWork[0];
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <section className="panel">
+        <h2 className="mb-4 text-lg font-semibold">{t('overview.machineStatus')}</h2>
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <div><dt className="text-slate-500">{t('overview.status')}</dt><dd className="font-semibold">{machine?.status ? tRoot.has(`status.${machine.status}`) ? tRoot(`status.${machine.status}`) : machine.status : tRoot('header.none')}</dd></div>
+          <div><dt className="text-slate-500">{t('overview.health')}</dt><dd><MachineHealthBadge status={health} /></dd></div>
+          <div><dt className="text-slate-500">{t('overview.openWorkOrders')}</dt><dd className="font-semibold">{summary?.stats.openWorkOrders ?? 0}</dd></div>
+          <div><dt className="text-slate-500">{t('overview.lastMaintenance')}</dt><dd className="font-semibold">{summary?.stats.lastMaintenanceAt ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(locale) : tRoot('header.none')}</dd></div>
+          <div><dt className="text-slate-500">{t('overview.nextMaintenance')}</dt><dd className="font-semibold">{summary?.stats.nextMaintenanceAt ? new Date(summary.stats.nextMaintenanceAt).toLocaleDateString(locale) : tRoot('header.none')}</dd></div>
+        </dl>
+      </section>
+      <section className="panel border border-amber-100 bg-amber-50">
+        <h2 className="mb-4 text-lg font-semibold text-amber-950">{t('overview.currentAttention')}</h2>
+        {attention ? (
+          <div className="space-y-3 text-sm">
+            <p className="font-semibold text-amber-950">{String(attention.description ?? attention.ot_id ?? '')}</p>
+            <p className="text-amber-800">{t('overview.possibleComponent')}: {String((attention.module_id as Record<string, unknown>)?.module_id ?? tRoot('header.none'))}</p>
+            <Link href={`/${locale}/technician/work-orders/${String(attention._id)}`} className="inline-flex rounded-lg bg-amber-700 px-3 py-2 text-sm font-semibold text-white">
+              {t('maintenance.openWorkOrder')}
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-amber-800">{t('overview.noAttention')}</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function TabMaintenance({ context, locale }: Readonly<{ context: TechnicianMachineContext | null; locale: string }>) {
+  const t = useTranslations('machineTimeline.technician');
+  const tRoot = useTranslations('machineTimeline');
+  return (
+    <section className="panel space-y-6">
+      <MachineSection title={t('maintenance.openWork')}>
+        {context?.openWork.length ? context.openWork.map((workOrder) => (
+          <div key={String(workOrder._id)} className="rounded-lg border p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><p className="font-semibold">{String(workOrder.ot_id)}</p><p className="text-slate-500">{String(workOrder.type_maintenance)} / {String(workOrder.status)}</p></div>
+              <Link href={`/${locale}/technician/work-orders/${String(workOrder._id)}`} className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white">{t('maintenance.openWorkOrder')}</Link>
+            </div>
+          </div>
+        )) : <p className="text-sm text-slate-500">{t('maintenance.noOpenWork')}</p>}
+      </MachineSection>
+      <MachineSection title={t('maintenance.upcomingPreventive')}>
+        {context?.upcomingPreventive.length ? context.upcomingPreventive.map((plan) => (
+          <div key={String(plan._id)} className="rounded-lg border p-3 text-sm"><p className="font-semibold">{String(plan.instruction ?? plan.maintenance_code ?? plan.plan_id)}</p><p className="text-slate-500">{String(plan.type_maintenance)}</p></div>
+        )) : <p className="text-sm text-slate-500">{t('maintenance.noUpcoming')}</p>}
+      </MachineSection>
+      <MachineSection title={t('maintenance.recentMaintenance')}>
+        {context?.recentMaintenance.length ? context.recentMaintenance.map((report) => (
+          <div key={String(report._id)} className="rounded-lg border p-3 text-sm"><p className="font-semibold">{String(report.report_id)}</p><p className="text-slate-500">{report.date_fin ? new Date(String(report.date_fin)).toLocaleDateString(locale) : tRoot('header.none')}</p></div>
+        )) : <p className="text-sm text-slate-500">{t('maintenance.noRecent')}</p>}
+      </MachineSection>
+    </section>
   );
 }
 
@@ -230,18 +316,7 @@ function TechnicianMachineWorkspace({
   subscribeToMachine,
   healthByMachine,
   setPreviewDocument,
-}: Readonly<{
-  machineId: string;
-  summary: MachineTimelineSummary | null;
-  context: TechnicianMachineContext | null;
-  activeTab: MachineTab;
-  setActiveTab: (tab: MachineTab) => void;
-  locale: string;
-  statusByMachine: Record<string, any>;
-  subscribeToMachine: (machineId: string) => void;
-  healthByMachine: Record<string, any>;
-  setPreviewDocument: (document: any | null) => void;
-}>) {
+}: WorkspaceProps) {
   const t = useTranslations('machineTimeline.technician');
   const tRoot = useTranslations('machineTimeline');
   const tabs: Array<{ key: MachineTab; label: string; Icon: typeof CpuChipIcon }> = [
@@ -252,9 +327,6 @@ function TechnicianMachineWorkspace({
     { key: 'documents', label: t('tabs.documents'), Icon: DocumentTextIcon },
     { key: 'history', label: t('tabs.history'), Icon: ClipboardDocumentListIcon },
   ];
-  const machine = summary?.machine;
-  const health = healthByMachine[machineId];
-  const attention = context?.openWork[0];
 
   return (
     <div className="space-y-5">
@@ -273,32 +345,7 @@ function TechnicianMachineWorkspace({
       </div>
 
       {activeTab === 'overview' ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
-          <section className="panel">
-            <h2 className="mb-4 text-lg font-semibold">{t('overview.machineStatus')}</h2>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-slate-500">{t('overview.status')}</dt><dd className="font-semibold">{machine?.status ? tRoot.has(`status.${machine.status}`) ? tRoot(`status.${machine.status}`) : machine.status : tRoot('header.none')}</dd></div>
-              <div><dt className="text-slate-500">{t('overview.health')}</dt><dd><MachineHealthBadge status={health} /></dd></div>
-              <div><dt className="text-slate-500">{t('overview.openWorkOrders')}</dt><dd className="font-semibold">{summary?.stats.openWorkOrders ?? 0}</dd></div>
-              <div><dt className="text-slate-500">{t('overview.lastMaintenance')}</dt><dd className="font-semibold">{summary?.stats.lastMaintenanceAt ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(locale) : tRoot('header.none')}</dd></div>
-              <div><dt className="text-slate-500">{t('overview.nextMaintenance')}</dt><dd className="font-semibold">{summary?.stats.nextMaintenanceAt ? new Date(summary.stats.nextMaintenanceAt).toLocaleDateString(locale) : tRoot('header.none')}</dd></div>
-            </dl>
-          </section>
-          <section className="panel border border-amber-100 bg-amber-50">
-            <h2 className="mb-4 text-lg font-semibold text-amber-950">{t('overview.currentAttention')}</h2>
-            {attention ? (
-              <div className="space-y-3 text-sm">
-                <p className="font-semibold text-amber-950">{attention.description || attention.ot_id}</p>
-                <p className="text-amber-800">{t('overview.possibleComponent')}: {attention.module_id?.module_id || tRoot('header.none')}</p>
-                <Link href={`/${locale}/technician/work-orders/${attention._id}`} className="inline-flex rounded-lg bg-amber-700 px-3 py-2 text-sm font-semibold text-white">
-                  {t('maintenance.openWorkOrder')}
-                </Link>
-              </div>
-            ) : (
-              <p className="text-sm text-amber-800">{t('overview.noAttention')}</p>
-            )}
-          </section>
-        </div>
+        <TabOverview summary={summary} context={context} locale={locale} healthByMachine={healthByMachine} machineId={machineId} />
       ) : null}
 
       {activeTab === 'components' ? (
@@ -329,28 +376,7 @@ function TechnicianMachineWorkspace({
       ) : null}
 
       {activeTab === 'maintenance' ? (
-        <section className="panel space-y-6">
-          <MachineSection title={t('maintenance.openWork')}>
-            {context?.openWork.length ? context.openWork.map((workOrder) => (
-              <div key={workOrder._id} className="rounded-lg border p-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div><p className="font-semibold">{workOrder.ot_id}</p><p className="text-slate-500">{workOrder.type_maintenance} / {workOrder.status}</p></div>
-                  <Link href={`/${locale}/technician/work-orders/${workOrder._id}`} className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white">{t('maintenance.openWorkOrder')}</Link>
-                </div>
-              </div>
-            )) : <p className="text-sm text-slate-500">{t('maintenance.noOpenWork')}</p>}
-          </MachineSection>
-          <MachineSection title={t('maintenance.upcomingPreventive')}>
-            {context?.upcomingPreventive.length ? context.upcomingPreventive.map((plan) => (
-              <div key={plan._id} className="rounded-lg border p-3 text-sm"><p className="font-semibold">{plan.instruction || plan.maintenance_code || plan.plan_id}</p><p className="text-slate-500">{plan.type_maintenance}</p></div>
-            )) : <p className="text-sm text-slate-500">{t('maintenance.noUpcoming')}</p>}
-          </MachineSection>
-          <MachineSection title={t('maintenance.recentMaintenance')}>
-            {context?.recentMaintenance.length ? context.recentMaintenance.map((report) => (
-              <div key={report._id} className="rounded-lg border p-3 text-sm"><p className="font-semibold">{report.report_id}</p><p className="text-slate-500">{report.date_fin ? new Date(report.date_fin).toLocaleDateString(locale) : tRoot('header.none')}</p></div>
-            )) : <p className="text-sm text-slate-500">{t('maintenance.noRecent')}</p>}
-          </MachineSection>
-        </section>
+        <TabMaintenance context={context} locale={locale} />
       ) : null}
 
       {activeTab === 'monitoring' ? (
@@ -383,8 +409,8 @@ function TechnicianMachineWorkspace({
           {context?.documents.length ? (
             <div className="flex flex-wrap gap-2">
               {context.documents.map((document) => (
-                <button key={document._id} type="button" className="rounded-lg border px-3 py-2 text-sm font-semibold text-blue-700" onClick={() => setPreviewDocument(document)}>
-                  {document.file_name}
+                <button key={String(document._id)} type="button" className="rounded-lg border px-3 py-2 text-sm font-semibold text-blue-700" onClick={() => setPreviewDocument(document)}>
+                  {String(document.file_name)}
                 </button>
               ))}
             </div>

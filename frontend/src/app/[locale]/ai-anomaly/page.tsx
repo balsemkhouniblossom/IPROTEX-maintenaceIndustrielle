@@ -81,6 +81,13 @@ function RiskBadge({
   );
 }
 
+function booleanBadgeClass(value: boolean, urgent?: boolean): string {
+  if (!value) return "border-slate-200 bg-slate-50 text-slate-700";
+  return urgent
+    ? "border-red-200 bg-red-50 text-red-800"
+    : "border-amber-200 bg-amber-50 text-amber-900";
+}
+
 function BooleanBadge({
   value,
   trueLabel,
@@ -95,13 +102,7 @@ function BooleanBadge({
   const Icon = value ? ExclamationTriangleIcon : CheckCircleIcon;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
-        value
-          ? urgent
-            ? "border-red-200 bg-red-50 text-red-800"
-            : "border-amber-200 bg-amber-50 text-amber-900"
-          : "border-slate-200 bg-slate-50 text-slate-700"
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${booleanBadgeClass(value, urgent)}`}
     >
       <Icon className="h-4 w-4" />
       {value ? trueLabel : falseLabel}
@@ -158,6 +159,21 @@ function AiAnomalyMonitoringContent() {
     [locale],
   );
 
+  const buildAnalysesQuery = useCallback(
+    () => ({
+      page,
+      limit: PAGE_LIMIT,
+      machine_id: filters.machineId || undefined,
+      risk_level: filters.riskLevel === "ALL" ? undefined : filters.riskLevel,
+      validation_status:
+        filters.validationStatus === "ALL" ? undefined : filters.validationStatus,
+      input_source: "DATASET_REPLAY" as const,
+      dateFrom: filters.dateFrom || undefined,
+      dateTo: filters.dateTo || undefined,
+    }),
+    [filters.dateFrom, filters.dateTo, filters.machineId, filters.riskLevel, filters.validationStatus, page],
+  );
+
   const loadData = useCallback(async () => {
     const controller = new AbortController();
     setLoading(true);
@@ -166,26 +182,8 @@ function AiAnomalyMonitoringContent() {
 
     try {
       const [analysesResponse, machinesResponse] = await Promise.all([
-        apiService.getAiAnomalyAnalyses(
-          {
-            page,
-            limit: PAGE_LIMIT,
-            machine_id: filters.machineId || undefined,
-            risk_level:
-              filters.riskLevel === "ALL" ? undefined : filters.riskLevel,
-            validation_status:
-              filters.validationStatus === "ALL"
-                ? undefined
-                : filters.validationStatus,
-            input_source: "DATASET_REPLAY",
-            dateFrom: filters.dateFrom || undefined,
-            dateTo: filters.dateTo || undefined,
-          },
-          { signal: controller.signal },
-        ),
-        apiService
-          .getMachines({ page: 1, limit: 100 }, quiet())
-          .catch(() => null),
+        apiService.getAiAnomalyAnalyses(buildAnalysesQuery(), { signal: controller.signal }),
+        apiService.getMachines({ page: 1, limit: 100 }, quiet()).catch(() => null),
       ]);
 
       const items = normalizeApiItems<AiAnomalyAnalysis>(analysesResponse.data);
@@ -207,15 +205,7 @@ function AiAnomalyMonitoringContent() {
     }
 
     return () => controller.abort();
-  }, [
-    filters.dateFrom,
-    filters.dateTo,
-    filters.machineId,
-    filters.riskLevel,
-    filters.validationStatus,
-    page,
-    t,
-  ]);
+  }, [buildAnalysesQuery, t]);
 
   useEffect(() => {
     void loadData();
@@ -455,9 +445,7 @@ function AiAnomalyMonitoringContent() {
                 <NoSymbolIcon className="mt-0.5 h-6 w-6 text-amber-700" />
                 <div>
                   <h2 className="font-semibold text-amber-900">
-                    {serviceUnavailable
-                      ? t("states.unavailableTitle")
-                      : t("states.errorTitle")}
+                    {serviceUnavailable ? t("states.unavailableTitle") : t("states.errorTitle")}
                   </h2>
                   <p className="mt-1 text-sm text-amber-800">{error}</p>
                 </div>
@@ -711,9 +699,7 @@ function AiAnomalyMonitoringContent() {
                     disabled={submittingValidation}
                     onClick={submitValidation}
                   >
-                    {submittingValidation
-                      ? tCommon("saving")
-                      : t("validation.save")}
+                    {submittingValidation ? tCommon("saving") : t("validation.save")}
                   </button>
                 </div>
               ) : (

@@ -1,4 +1,4 @@
-﻿anyio==4.14.2
+anyio==4.14.2
 argon2-cffi==25.1.0
 argon2-cffi-bindings==26.1.0
 arrow==1.4.0
@@ -18,7 +18,7 @@ cycler==0.12.1
 debugpy==1.8.21
 defusedxml==0.7.1
 executing==2.2.1
-fastapi==0.122.0
+fastapi==0.141.1
 fastjsonschema==2.22.2
 fonttools==4.63.0
 fqdn==1.5.1
@@ -83,7 +83,7 @@ pyparsing==3.3.2
 pytest==8.4.1
 python-dateutil==2.9.0.post0
 python-json-logger==4.2.0
-python-multipart==0.0.20
+python-multipart==0.0.32
 pywinpty==3.0.5
 PyYAML==6.0.3
 pyzmq==27.2.0
@@ -100,7 +100,7 @@ Send2Trash==2.1.0
 six==1.17.0
 soupsieve==2.9.2
 stack-data==0.6.3
-starlette==0.50.0
+starlette==1.6.0
 terminado==0.18.1
 threadpoolctl==3.6.0
 tinycss2==1.5.1

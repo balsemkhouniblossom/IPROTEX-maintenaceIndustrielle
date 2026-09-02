@@ -19,6 +19,7 @@
     "@sentry/nextjs": "^10.69.0",
     "@tanstack/react-virtual": "^3.14.8",
     "axios": "^1.15.2",
+    "browserslist": "^4.28.8",
     "country-flag-icons": "^1.6.20",
     "libphonenumber-js": "^1.13.7",
     "lucide-react": "^1.14.0",

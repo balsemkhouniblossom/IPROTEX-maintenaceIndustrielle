@@ -766,59 +766,72 @@ export class TechnicianService {
     };
   }
 
-  async workOrders(
-    technicianId: string,
-    pagination: PaginationParams,
+  private async applySearchFilter(
+    query: FilterQuery<WorkOrderDocument>,
+    term: string,
+  ): Promise<void> {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+    const regex = new RegExp(escaped, 'i');
+    const machines = await this.machinesModel
+      .find({
+        $or: [
+          { machine_id: regex },
+          { reference: regex },
+          { model: regex },
+          { serial_no: regex },
+          { fabricant: regex },
+          { location: regex },
+        ],
+      })
+      .select('_id')
+      .limit(100)
+      .exec();
+    const machineCondition = machines.length
+      ? [{ machine_id: { $in: machines.map((m) => m._id) } }]
+      : [];
+    query.$and = [
+      ...(Array.isArray(query.$and) ? query.$and : []),
+      {
+        $or: [
+          { ot_id: regex },
+          { description: regex },
+          { code_panne: regex },
+          { type_maintenance: regex },
+          { priorite: regex },
+          ...machineCondition,
+        ],
+      },
+    ];
+  }
+
+  private async applyDateFilter(
+    query: FilterQuery<WorkOrderDocument>,
     filters: TechnicianFilters,
-  ): Promise<PaginatedResponse<TechnicianWorkOrderView>> {
-    const query: FilterQuery<WorkOrderDocument> = {
-      ...(await this.visibleScope(technicianId)),
-    };
+  ): Promise<void> {
+    const date: { $gte?: Date; $lte?: Date } = {};
+    if (filters.dateFrom) date.$gte = new Date(filters.dateFrom);
+    if (filters.dateTo) {
+      date.$lte = new Date(filters.dateTo);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(filters.dateTo)) {
+        date.$lte.setHours(23, 59, 59, 999);
+      }
+    }
+    if (Object.values(date).some((value) => Number.isNaN(value.getTime())))
+      throw new BadRequestException('Invalid date filter');
+    query.due_date = date;
+  }
+
+  private async applyWorkOrderFilters(
+    query: FilterQuery<WorkOrderDocument>,
+    filters: TechnicianFilters,
+  ): Promise<void> {
     if (filters.status)
-      query.status = {
-        $in: STATUS_FILTERS[filters.status] || [filters.status],
-      };
+      query.status = { $in: STATUS_FILTERS[filters.status] || [filters.status] };
     if (filters.maintenanceType)
       query.type_maintenance = filters.maintenanceType;
     if (filters.priority) query.priorite = filters.priority;
-    if (filters.search?.trim()) {
-      const term = filters.search.trim();
-      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(escaped, 'i');
-      const machines = await this.machinesModel
-        .find({
-          $or: [
-            { machine_id: regex },
-            { reference: regex },
-            { model: regex },
-            { serial_no: regex },
-            { fabricant: regex },
-            { location: regex },
-          ],
-        })
-        .select('_id')
-        .limit(100)
-        .exec();
-      query.$and = [
-        ...(Array.isArray(query.$and) ? query.$and : []),
-        {
-          $or: [
-            { ot_id: regex },
-            { description: regex },
-            { code_panne: regex },
-            { type_maintenance: regex },
-            { priorite: regex },
-            ...(machines.length
-              ? [
-                  {
-                    machine_id: { $in: machines.map((machine) => machine._id) },
-                  },
-                ]
-              : []),
-          ],
-        },
-      ];
-    }
+    if (filters.search?.trim())
+      await this.applySearchFilter(query, filters.search.trim());
     if (filters.machineId)
       query.machine_id = this.objectId(filters.machineId, 'machine');
     if (filters.machineTypeId) {
@@ -828,19 +841,19 @@ export class TechnicianService {
         .exec();
       query.machine_id = { $in: machines.map((machine) => machine._id) };
     }
-    if (filters.dateFrom || filters.dateTo) {
-      const date: { $gte?: Date; $lte?: Date } = {};
-      if (filters.dateFrom) date.$gte = new Date(filters.dateFrom);
-      if (filters.dateTo) {
-        date.$lte = new Date(filters.dateTo);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(filters.dateTo)) {
-          date.$lte.setHours(23, 59, 59, 999);
-        }
-      }
-      if (Object.values(date).some((value) => Number.isNaN(value.getTime())))
-        throw new BadRequestException('Invalid date filter');
-      query.due_date = date;
-    }
+    if (filters.dateFrom || filters.dateTo)
+      await this.applyDateFilter(query, filters);
+  }
+
+  async workOrders(
+    technicianId: string,
+    pagination: PaginationParams,
+    filters: TechnicianFilters,
+  ): Promise<PaginatedResponse<TechnicianWorkOrderView>> {
+    const query: FilterQuery<WorkOrderDocument> = {
+      ...(await this.visibleScope(technicianId)),
+    };
+    await this.applyWorkOrderFilters(query, filters);
 
     const now = new Date();
     const dueSortDate = {
