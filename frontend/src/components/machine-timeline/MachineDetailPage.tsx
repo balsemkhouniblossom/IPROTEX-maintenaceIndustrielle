@@ -20,7 +20,9 @@ import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
 import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
+import type { LiveMachineStatus } from '@/hooks/useLiveMonitoring';
 import { usePredictiveHealth } from '@/hooks/usePredictiveHealth';
+import type { MachineHealthSummary } from '@/hooks/usePredictiveHealth';
 import { apiService } from '@/services/api';
 import MachineHeader from './MachineHeader';
 import MachineStatsCards from './MachineStatsCards';
@@ -80,9 +82,9 @@ type WorkspaceProps = Readonly<{
   activeTab: MachineTab;
   setActiveTab: (tab: MachineTab) => void;
   locale: string;
-  statusByMachine: Record<string, unknown>;
+  statusByMachine: Record<string, LiveMachineStatus>;
   subscribeToMachine: (machineId: string) => void;
-  healthByMachine: Record<string, unknown>;
+  healthByMachine: Record<string, MachineHealthSummary>;
   setPreviewDocument: (document: WorkOrderRecord | null) => void;
 }>;
 
@@ -237,7 +239,7 @@ function TabOverview({ summary, context, locale, healthByMachine, machineId }: R
   summary: MachineTimelineSummary | null;
   context: TechnicianMachineContext | null;
   locale: string;
-  healthByMachine: Record<string, unknown>;
+  healthByMachine: Record<string, MachineHealthSummary>;
   machineId: string;
 }>) {
   const t = useTranslations('machineTimeline.technician');

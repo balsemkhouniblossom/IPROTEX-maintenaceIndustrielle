@@ -804,10 +804,10 @@ export class TechnicianService {
     ];
   }
 
-  private async applyDateFilter(
+  private applyDateFilter(
     query: FilterQuery<WorkOrderDocument>,
     filters: TechnicianFilters,
-  ): Promise<void> {
+  ): void {
     const date: { $gte?: Date; $lte?: Date } = {};
     if (filters.dateFrom) date.$gte = new Date(filters.dateFrom);
     if (filters.dateTo) {
@@ -826,7 +826,9 @@ export class TechnicianService {
     filters: TechnicianFilters,
   ): Promise<void> {
     if (filters.status)
-      query.status = { $in: STATUS_FILTERS[filters.status] || [filters.status] };
+      query.status = {
+        $in: STATUS_FILTERS[filters.status] || [filters.status],
+      };
     if (filters.maintenanceType)
       query.type_maintenance = filters.maintenanceType;
     if (filters.priority) query.priorite = filters.priority;
@@ -842,7 +844,7 @@ export class TechnicianService {
       query.machine_id = { $in: machines.map((machine) => machine._id) };
     }
     if (filters.dateFrom || filters.dateTo)
-      await this.applyDateFilter(query, filters);
+      this.applyDateFilter(query, filters);
   }
 
   async workOrders(
