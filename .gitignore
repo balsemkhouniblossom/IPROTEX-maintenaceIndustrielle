@@ -82,3 +82,17 @@ ai-service/data/processed/*
 !ai-service/data/processed/.gitkeep
 ai-service/artifacts/*
 !ai-service/artifacts/.gitkeep
+
+# =====================
+# GENERATED LINT / DEBUG / PREVIEW ARTIFACTS (do not commit)
+# ESLint run-output dumps (stdout/stderr/JSON reports/crash logs), temporary
+# config snapshots, and local PDF render-preview check artifacts. Scoped so
+# legitimate docs/PDFs (e.g. resources/*.pdf maintenance plans) and source
+# config files remain tracked.
+# =====================
+backend/lint-*.txt
+backend/lint-*.json
+backend/eslint-*.txt
+backend/temp-eslint-config.*
+backend/preview-*.pdf
+frontend/test-results/

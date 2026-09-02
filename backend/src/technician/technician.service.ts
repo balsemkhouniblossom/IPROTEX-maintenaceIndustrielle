@@ -360,7 +360,9 @@ export class TechnicianService {
       this.workOrdersModel
         .find({
           ...scope,
-          status: { $in: [...STATUS_FILTERS.assigned, ...STATUS_FILTERS.in_progress] },
+          status: {
+            $in: [...STATUS_FILTERS.assigned, ...STATUS_FILTERS.in_progress],
+          },
         })
         .sort({ due_date: 1, scheduled_date: 1, date_created: 1 })
         .limit(8)
@@ -445,7 +447,7 @@ export class TechnicianService {
     const visibleScope = await this.visibleScope(technicianId);
     const summaries = await Promise.all(
       items.map(async (machine) => {
-        const machineObjectId = machine._id as Types.ObjectId;
+        const machineObjectId = machine._id;
         const [openWorkOrders, lastMaintenance, nextMaintenance] =
           await Promise.all([
             this.workOrdersModel
@@ -490,8 +492,9 @@ export class TechnicianService {
                   lastMaintenance?.execution_date,
               ) ?? null,
             nextMaintenanceAt:
-              serializeDate(nextMaintenance?.due_date ?? nextMaintenance?.scheduled_date) ??
-              null,
+              serializeDate(
+                nextMaintenance?.due_date ?? nextMaintenance?.scheduled_date,
+              ) ?? null,
           },
         };
       }),
@@ -713,13 +716,23 @@ export class TechnicianService {
       .filter((value): value is number => value != null);
     const sortedCompleted = [...completed].sort(
       (left, right) =>
-        ((right.date_closed ?? right.date_end ?? right.execution_date)?.getTime() ?? 0) -
-        ((left.date_closed ?? left.date_end ?? left.execution_date)?.getTime() ?? 0),
+        ((
+          right.date_closed ??
+          right.date_end ??
+          right.execution_date
+        )?.getTime() ?? 0) -
+        ((
+          left.date_closed ??
+          left.date_end ??
+          left.execution_date
+        )?.getTime() ?? 0),
     );
     const sortedOpen = [...open].sort(
       (left, right) =>
-        ((left.due_date ?? left.scheduled_date)?.getTime() ?? Number.MAX_SAFE_INTEGER) -
-        ((right.due_date ?? right.scheduled_date)?.getTime() ?? Number.MAX_SAFE_INTEGER),
+        ((left.due_date ?? left.scheduled_date)?.getTime() ??
+          Number.MAX_SAFE_INTEGER) -
+        ((right.due_date ?? right.scheduled_date)?.getTime() ??
+          Number.MAX_SAFE_INTEGER),
     );
     const lastMaintenance = sortedCompleted[0];
     const nextMaintenance = sortedOpen.find(
@@ -749,8 +762,9 @@ export class TechnicianService {
             lastMaintenance?.execution_date,
         ) ?? null,
       nextMaintenanceAt:
-        serializeDate(nextMaintenance?.due_date ?? nextMaintenance?.scheduled_date) ??
-        null,
+        serializeDate(
+          nextMaintenance?.due_date ?? nextMaintenance?.scheduled_date,
+        ) ?? null,
       lastInspectionAt: null,
       lastLubricationAt: null,
     };
@@ -799,7 +813,11 @@ export class TechnicianService {
             { type_maintenance: regex },
             { priorite: regex },
             ...(machines.length
-              ? [{ machine_id: { $in: machines.map((machine) => machine._id) } }]
+              ? [
+                  {
+                    machine_id: { $in: machines.map((machine) => machine._id) },
+                  },
+                ]
               : []),
           ],
         },
@@ -851,11 +869,7 @@ export class TechnicianService {
                 { $eq: [{ $toLower: { $ifNull: ['$priorite', ''] } }, 'high'] },
                 2,
                 {
-                  $cond: [
-                    { $ne: [dueSortDate, null] },
-                    3,
-                    4,
-                  ],
+                  $cond: [{ $ne: [dueSortDate, null] }, 3, 4],
                 },
               ],
             },
@@ -1011,10 +1025,7 @@ export class TechnicianService {
         .exec(),
       this.partsModel.find({ ot_id: workOrder._id }).populate('part_id').exec(),
       manualQuery
-        ? this.documentsModel
-            .find(manualQuery)
-            .sort({ date_ajout: -1 })
-            .exec()
+        ? this.documentsModel.find(manualQuery).sort({ date_ajout: -1 }).exec()
         : [],
     ]);
     const stock = await this.stockModel

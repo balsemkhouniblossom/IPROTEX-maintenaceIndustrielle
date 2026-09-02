@@ -14,6 +14,17 @@ const forbiddenPaths = [
   'backend/coverage',
   'frontend/lighthouse-reports',
   'backups',
+  // Generated ESLint / lint output dumps (stdout, stderr, JSON reports, crash
+  // logs produced by `npm run lint -f json | tee ...` or similar local runs).
+  'backend/lint-*.txt',
+  'backend/lint-*.json',
+  'backend/eslint-*.txt',
+  // Temporary ESLint config dumps (e.g. `eslint --print-config` snapshots).
+  'backend/temp-eslint-config.*',
+  // Local PDF render / preview check artifacts.
+  'backend/preview-*.pdf',
+  // Frontend test runtime artifacts (Playwright / Jest test-results cache).
+  'frontend/test-results',
 ];
 
 const gitExecutable = [

@@ -8,10 +8,7 @@ import {
   InterventionReportSchema,
 } from '../schemas/intervention-report.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
-import {
-  Module as ModuleEntity,
-  ModuleSchema,
-} from '../schemas/module.schema';
+import { Module as ModuleEntity, ModuleSchema } from '../schemas/module.schema';
 import {
   MaintenancePlan,
   MaintenancePlanSchema,
