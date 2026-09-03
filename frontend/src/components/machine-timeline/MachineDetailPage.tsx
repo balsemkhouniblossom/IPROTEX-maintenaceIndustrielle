@@ -261,11 +261,10 @@ function TabOverview({ summary, context, locale, healthByMachine, machineId }: R
   const machine = summary?.machine;
   const health = healthByMachine[machineId];
   const attention = context?.openWork[0];
-  const statusLabel = machine?.status
-    ? tRoot.has(`status.${machine.status}`)
-      ? tRoot(`status.${machine.status}`)
-      : machine.status
-    : tRoot('header.none');
+  let statusLabel = tRoot('header.none');
+  if (machine?.status) {
+    statusLabel = tRoot.has(`status.${machine.status}`) ? tRoot(`status.${machine.status}`) : machine.status;
+  }
   const attentionDescription = formatDisplayValue(attention?.description ?? attention?.ot_id);
 
   return (

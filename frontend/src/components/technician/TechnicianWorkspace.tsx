@@ -476,19 +476,18 @@ function TechnicianWorkOrderCard({
   const canStart = ["assigned", "technician_required", "returned"].includes(order.status);
   const canResume = ["in_progress", "waiting_parts"].includes(order.status);
   const completed = isClosedStatus(order.status);
+  const priorityLevel = order.priorite?.toLowerCase();
+  let cardAccentClass = "border-s-blue-500";
+  if (overdue) {
+    cardAccentClass = "border-s-red-500 bg-red-50/40 dark:bg-red-950/20";
+  } else if (priorityLevel === "urgent") {
+    cardAccentClass = "border-s-red-500";
+  } else if (priorityLevel === "high") {
+    cardAccentClass = "border-s-orange-500";
+  }
 
   return (
-    <article
-      className={`panel border-s-4 p-5 ${
-        overdue
-          ? "border-s-red-500 bg-red-50/40 dark:bg-red-950/20"
-          : order.priorite?.toLowerCase() === "urgent"
-            ? "border-s-red-500"
-            : order.priorite?.toLowerCase() === "high"
-              ? "border-s-orange-500"
-              : "border-s-blue-500"
-      }`}
-    >
+    <article className={`panel border-s-4 p-5 ${cardAccentClass}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-bold text-slate-950 dark:text-slate-100">{order.ot_id}</h3>
@@ -582,6 +581,189 @@ function TechnicianWorkOrderCard({
         ) : null}
       </div>
     </article>
+  );
+}
+
+function PriorityOrderRow({
+  order,
+  locale,
+  t,
+  tEnums,
+  dynamicTranslations,
+  startingId,
+  onStart,
+}: Readonly<{
+  order: WorkOrder;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+  tEnums: ReturnType<typeof useTranslations>;
+  dynamicTranslations: ReturnType<typeof useWorkOrderDynamicTranslations>;
+  startingId: string;
+  onStart: (id: string) => void;
+}>) {
+  const priority = translateEnumValue(tEnums, "priorities", order.priorite) || t("notAvailable");
+  const description = dynamicTranslations.textFor(order._id, "description", order.description);
+  const canStart = ["assigned", "technician_required", "returned"].includes(order.status);
+  const isUrgent = order.priorite?.toLowerCase() === "urgent";
+  const automaticallyTranslated = dynamicTranslations.isAutomaticallyTranslated(order._id, "description");
+  return (
+    <article className="py-4 first:pt-0 last:pb-0">
+      <div
+        className={`flex flex-col gap-3 border-s-4 px-3 lg:flex-row lg:items-start lg:justify-between ${
+          isUrgent ? "border-s-red-500" : "border-s-amber-500"
+        }`}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${isUrgent ? "bg-red-600" : "bg-orange-500"}`}
+              aria-hidden="true"
+            />
+            <h3 className="font-semibold text-slate-950">{order.ot_id}</h3>
+          </div>
+          <dl className="mt-2 grid gap-1 text-sm text-slate-700 md:grid-cols-2">
+            <div>
+              <dt className="inline font-medium">{t("machine.title")}:</dt>{" "}
+              <dd className="inline">{machineName(order) || t("notAvailable")}</dd>
+            </div>
+            <div>
+              <dt className="inline font-medium">{t("fields.priority")}:</dt>{" "}
+              <dd className="inline">{priority}</dd>
+            </div>
+            <div>
+              <dt className="inline font-medium">{t("fields.due")}:</dt>{" "}
+              <dd className="inline">
+                {formatDueLabel(order, locale, t("dates.today"), t("dates.tomorrow"))}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-2 line-clamp-2 text-sm text-slate-600">
+            {description ||
+              translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) ||
+              t("notAvailable")}
+            {automaticallyTranslated ? (
+              <span className="ms-1 text-xs text-amber-700">{t("dynamicTranslations.auto")}</span>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400"
+            href={`/${locale}/technician/work-orders/${order._id}`}
+          >
+            <EyeIcon className="h-4 w-4 text-blue-600" />
+            {t("actions.viewWorkOrder")}
+          </Link>
+          {canStart ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+              disabled={startingId === order._id}
+              onClick={() => onStart(order._id)}
+            >
+              <PlayIcon className="h-4 w-4" />
+              {startingId === order._id ? t("loading") : t("actions.start")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PriorityOrdersPlaceholder({ t }: Readonly<{ t: ReturnType<typeof useTranslations> }>) {
+  return (
+    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-4 text-sm text-slate-500 dark:bg-slate-900/20">
+      <div className="flex items-center gap-2 font-semibold text-slate-600">
+        <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+        {t("placeholders.workOrder")}
+      </div>
+      <div className="mt-2">{t("placeholders.machine")}</div>
+      <div>{t("fields.priority")}: {t("placeholders.priority")}</div>
+      <div>{t("fields.due")}: {t("placeholders.due")}</div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2">
+          <EyeIcon className="h-4 w-4 text-blue-600" />
+          {t("actions.viewWorkOrder")}
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-slate-600">
+          <PlayIcon className="h-4 w-4" />
+          {t("actions.start")}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PriorityOrdersSection({
+  locale,
+  t,
+  tEnums,
+  actionError,
+  priorityOrders,
+  dynamicTranslations,
+  startingId,
+  onStart,
+}: Readonly<{
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+  tEnums: ReturnType<typeof useTranslations>;
+  actionError: string;
+  priorityOrders: WorkOrder[];
+  dynamicTranslations: ReturnType<typeof useWorkOrderDynamicTranslations>;
+  startingId: string;
+  onStart: (id: string) => void;
+}>) {
+  return (
+    <section className="panel">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-300 pb-3">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase text-slate-900">
+          <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
+          {t("dashboard.sections.todaysPriority")}
+        </h2>
+        <div className="flex items-center gap-3">
+          {dynamicTranslations.hasTranslationLocale ? (
+            <button
+              type="button"
+              className="text-sm text-amber-700"
+              onClick={() => dynamicTranslations.setShowOriginal(!dynamicTranslations.showOriginal)}
+            >
+              {dynamicTranslations.showOriginal
+                ? t("dynamicTranslations.showTranslation")
+                : t("dynamicTranslations.showOriginal")}
+            </button>
+          ) : null}
+          <Link
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700"
+            href={`/${locale}/technician/work-orders`}
+          >
+            <EyeIcon className="h-4 w-4" />
+            {t("actions.viewAll")}
+          </Link>
+        </div>
+      </div>
+      {actionError ? (
+        <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>
+      ) : null}
+      {priorityOrders.length ? (
+        <div className="divide-y">
+          {priorityOrders.map((order) => (
+            <PriorityOrderRow
+              key={order._id}
+              order={order}
+              locale={locale}
+              t={t}
+              tEnums={tEnums}
+              dynamicTranslations={dynamicTranslations}
+              startingId={startingId}
+              onStart={onStart}
+            />
+          ))}
+        </div>
+      ) : (
+        <PriorityOrdersPlaceholder t={t} />
+      )}
+    </section>
   );
 }
 
@@ -727,143 +909,16 @@ export function TechnicianDashboard() {
                 ))}
               </div>
 
-              <section className="panel">
-                <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-300 pb-3">
-                  <h2 className="flex items-center gap-2 text-sm font-bold uppercase text-slate-900">
-                    <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
-                    {t("dashboard.sections.todaysPriority")}
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    {dynamicTranslations.hasTranslationLocale ? (
-                      <button
-                        type="button"
-                        className="text-sm text-amber-700"
-                        onClick={() =>
-                          dynamicTranslations.setShowOriginal(
-                            !dynamicTranslations.showOriginal,
-                          )
-                        }
-                      >
-                        {dynamicTranslations.showOriginal
-                          ? t("dynamicTranslations.showTranslation")
-                          : t("dynamicTranslations.showOriginal")}
-                      </button>
-                    ) : null}
-                    <Link
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700"
-                      href={`/${locale}/technician/work-orders`}
-                    >
-                      <EyeIcon className="h-4 w-4" />
-                      {t("actions.viewAll")}
-                    </Link>
-                  </div>
-                </div>
-                {actionError ? (
-                  <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {actionError}
-                  </p>
-                ) : null}
-                {priorityOrders.length ? (
-                  <div className="divide-y">
-                    {priorityOrders.map((order) => {
-                      const priority = translateEnumValue(tEnums, "priorities", order.priorite) || t("notAvailable");
-                      const description = dynamicTranslations.textFor(order._id, "description", order.description);
-                      const canStart = ["assigned", "technician_required", "returned"].includes(order.status);
-                      return (
-                        <article className="py-4 first:pt-0 last:pb-0" key={order._id}>
-                          <div
-                            className={`flex flex-col gap-3 border-s-4 px-3 lg:flex-row lg:items-start lg:justify-between ${
-                              order.priorite?.toLowerCase() === "urgent"
-                                ? "border-s-red-500"
-                                : "border-s-amber-500"
-                            }`}
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                                    order.priorite?.toLowerCase() === "urgent"
-                                      ? "bg-red-600"
-                                      : "bg-orange-500"
-                                  }`}
-                                  aria-hidden="true"
-                                />
-                                <h3 className="font-semibold text-slate-950">{order.ot_id}</h3>
-                              </div>
-                              <dl className="mt-2 grid gap-1 text-sm text-slate-700 md:grid-cols-2">
-                                <div>
-                                  <dt className="inline font-medium">{t("machine.title")}:</dt>{" "}
-                                  <dd className="inline">{machineName(order) || t("notAvailable")}</dd>
-                                </div>
-                                <div>
-                                  <dt className="inline font-medium">{t("fields.priority")}:</dt>{" "}
-                                  <dd className="inline">{priority}</dd>
-                                </div>
-                                <div>
-                                  <dt className="inline font-medium">{t("fields.due")}:</dt>{" "}
-                                  <dd className="inline">
-                                    {formatDueLabel(order, locale, t("dates.today"), t("dates.tomorrow"))}
-                                  </dd>
-                                </div>
-                              </dl>
-                              <p className="mt-2 line-clamp-2 text-sm text-slate-600">
-                                {description ||
-                                  translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) ||
-                                  t("notAvailable")}
-                                {dynamicTranslations.isAutomaticallyTranslated(order._id, "description") ? (
-                                  <span className="ms-1 text-xs text-amber-700">
-                                    {t("dynamicTranslations.auto")}
-                                  </span>
-                                ) : null}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 flex-wrap gap-2">
-                              <Link
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400"
-                                href={`/${locale}/technician/work-orders/${order._id}`}
-                              >
-                                <EyeIcon className="h-4 w-4 text-blue-600" />
-                                {t("actions.viewWorkOrder")}
-                              </Link>
-                              {canStart ? (
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-                                  disabled={startingId === order._id}
-                                  onClick={() => void handleStart(order._id)}
-                                >
-                                  <PlayIcon className="h-4 w-4" />
-                                  {startingId === order._id ? t("loading") : t("actions.start")}
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-4 text-sm text-slate-500 dark:bg-slate-900/20">
-                    <div className="flex items-center gap-2 font-semibold text-slate-600">
-                      <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
-                      {t("placeholders.workOrder")}
-                    </div>
-                    <div className="mt-2">{t("placeholders.machine")}</div>
-                    <div>{t("fields.priority")}: {t("placeholders.priority")}</div>
-                    <div>{t("fields.due")}: {t("placeholders.due")}</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2">
-                        <EyeIcon className="h-4 w-4 text-blue-600" />
-                        {t("actions.viewWorkOrder")}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-2 text-slate-600">
-                        <PlayIcon className="h-4 w-4" />
-                        {t("actions.start")}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </section>
+              <PriorityOrdersSection
+                locale={locale}
+                t={t}
+                tEnums={tEnums}
+                actionError={actionError}
+                priorityOrders={priorityOrders}
+                dynamicTranslations={dynamicTranslations}
+                startingId={startingId}
+                onStart={handleStart}
+              />
 
               <section className="panel">
                 <div className="mb-3 border-b border-slate-300 pb-3">
@@ -968,7 +1023,6 @@ export function TechnicianDashboard() {
 
 export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: string }>) {
   const t = useTranslations("technician");
-  const tEnums = useTranslations("common.enums");
   const locale = useLocale();
   const [data, setData] = useState<PageData<WorkOrder>>();
   const [tabCounts, setTabCounts] = useState<Record<WorkOrderTab["key"], number>>({
@@ -1113,12 +1167,12 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
   }, [data]);
   const activeTabKey =
     TECHNICIAN_WORK_ORDER_TABS.find((tab) => (tab.status || "") === filters.status)?.key ?? "all";
-  const emptyMessageKey =
-    activeTabKey === "waitingParts"
-      ? "waitingParts"
-      : activeTabKey === "completed"
-        ? "completed"
-        : "workOrders";
+  let emptyMessageKey = "workOrders";
+  if (activeTabKey === "waitingParts") {
+    emptyMessageKey = "waitingParts";
+  } else if (activeTabKey === "completed") {
+    emptyMessageKey = "completed";
+  }
   return (
     <ProtectedRoute requiredRole="technician">
       <DashboardLayout title={t("workOrders.myTitle")}>

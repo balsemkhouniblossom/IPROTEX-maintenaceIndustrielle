@@ -925,6 +925,487 @@ function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) 
   );
 }
 
+function OverviewTab({
+  t,
+  tEnums,
+  locale,
+  wo,
+  machine,
+  description,
+  reportOwner,
+  status,
+  isTerminal,
+  detail,
+  statusByMachine,
+  subscribeToMachine,
+  showTechnicalAnalysis,
+  setShowTechnicalAnalysis,
+}: Readonly<{
+  t: TechnicianTranslator;
+  tEnums: TechnicianTranslator;
+  locale: string;
+  wo: any;
+  machine: Record<string, any>;
+  description: string;
+  reportOwner: ReportOwner | undefined;
+  status: string;
+  isTerminal: boolean;
+  detail: Detail;
+  statusByMachine: Record<string, LiveMachineStatus>;
+  subscribeToMachine: (machineId: string) => void;
+  showTechnicalAnalysis: boolean;
+  setShowTechnicalAnalysis: (value: boolean) => void;
+}>) {
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <section className="panel">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+          <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-700" />
+          {t("overview.title")}
+        </h2>
+        <dl className="grid gap-3 text-sm md:grid-cols-2">
+          <div><dt className="text-slate-500">{t("fields.machine")}</dt><dd className="font-medium">{compactMachineLabel(machine, t("notAvailable"))}</dd></div>
+          <div><dt className="text-slate-500">{t("overview.problem")}</dt><dd>{description || t("notAvailable")}</dd></div>
+          <div><dt className="text-slate-500">{t("overview.reportedBy")}</dt><dd>{reportOwner?.nom_complet || t("notAvailable")}</dd></div>
+          <div><dt className="text-slate-500">{t("fields.priority")}</dt><dd>{translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}</dd></div>
+          <div><dt className="text-slate-500">{t("fields.status")}</dt><dd>{t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}</dd></div>
+          <div><dt className="text-slate-500">{t("fields.due")}</dt><dd>{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</dd></div>
+        </dl>
+        {wo.code_panne ? (
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {t("overview.faultCode")}: <strong>{wo.code_panne}</strong>
+          </p>
+        ) : null}
+      </section>
+
+      <section className="panel border border-cyan-100 bg-cyan-50/60">
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-cyan-950">
+          <BeakerIcon className="h-5 w-5" />
+          {t("machineContext.title")}
+        </h2>
+        <dl className="grid gap-3 text-sm">
+          <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.health")}</dt><dd className="font-semibold">{t("notAvailable")}</dd></div>
+          <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.currentStatus")}</dt><dd className="font-semibold">{formatMachineValue(machine, "status", locale)}</dd></div>
+          <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.openWorkOrders")}</dt><dd className="font-semibold">{isTerminal ? 0 : 1}</dd></div>
+          <div className="flex justify-between gap-4"><dt className="text-cyan-800">{t("machineContext.lastMaintenance")}</dt><dd className="font-semibold">{formatOptionalDate(firstDateValue(detail.report?.date_fin, wo.date_closed, wo.date_end), locale, t("notAvailable"))}</dd></div>
+        </dl>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {machine._id ? <LiveStatusBadge machineId={machine._id} status={statusByMachine[machine._id]} onSubscribe={subscribeToMachine} /> : null}
+          {machine._id ? (
+            <Link href={`/${locale}/machines/${machine._id}`} className="rounded-lg border border-cyan-200 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-800">
+              {t("machine.viewTimeline", { default: "View timeline" })}
+            </Link>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="panel xl:col-span-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <SparklesIcon className="h-5 w-5 text-purple-700" />
+              {t("aiInsight.title")}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">{t("aiInsight.summary")}</p>
+          </div>
+          <button type="button" className="rounded-lg border border-purple-200 px-3 py-2 text-sm font-semibold text-purple-800" onClick={() => setShowTechnicalAnalysis(!showTechnicalAnalysis)}>
+            {showTechnicalAnalysis ? t("aiInsight.hideTechnical") : t("aiInsight.viewTechnical")}
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+          <div className="rounded-lg bg-purple-50 p-3"><strong>{t("aiInsight.healthInsight")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.healthCopy")}</p></div>
+          <div className="rounded-lg bg-amber-50 p-3"><strong>{t("aiInsight.possibleAnomaly")}</strong><p className="mt-1 text-slate-600">{wo.code_panne || t("notAvailable")}</p></div>
+          <div className="rounded-lg bg-emerald-50 p-3"><strong>{t("aiInsight.recommendedInspection")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.recommendedCopy")}</p></div>
+        </div>
+        {showTechnicalAnalysis ? (
+          <div className="mt-4 space-y-4">
+            <MachineHealthPanel machineId={machine?._id} />
+            <AiAssistantPanel machineId={machine?._id} workOrderId={wo._id} faultCode={wo.code_panne} />
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+function InterventionActionButtons({
+  t,
+  saving,
+  act,
+  id,
+  status,
+  hasAssignedTechnician,
+  isTerminal,
+  waitingForValidation,
+  report,
+  setActiveTab,
+  setCompleteOpen,
+}: Readonly<{
+  t: TechnicianTranslator;
+  saving: boolean;
+  act: ActFn;
+  id: string;
+  status: string;
+  hasAssignedTechnician: boolean;
+  isTerminal: boolean;
+  waitingForValidation: boolean;
+  report: ReportDraft;
+  setActiveTab: (tab: DetailTab) => void;
+  setCompleteOpen: (open: boolean) => void;
+}>) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {!hasAssignedTechnician && !isTerminal ? <button type="button" disabled={saving} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.claimTechnicianWorkOrder(id))}>{t("claim")}</button> : null}
+      {waitingForValidation ? (
+        <>
+          <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm italic text-slate-600">{t("messages.awaitingValidation")}</span>
+          <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "return"))}>{t("actions.return")}</button>
+          <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "intervene"))}>{t("actions.intervene")}</button>
+        </>
+      ) : null}
+      {status === "assigned" ? <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.startTechnicianWorkOrder(id))}>{t("actions.start")}</button> : null}
+      {status === "in_progress" ? (
+        <>
+          <button type="button" disabled={saving} className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-800 disabled:opacity-50" onClick={() => void act(() => apiService.updateTechnicianReport(id, report))}>{t("actions.saveProgress")}</button>
+          <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.waitForTechnicianParts(id))}>{t("actions.waitingParts")}</button>
+          <button type="button" disabled={saving || !report.description_action.trim() || !report.etat_final.trim()} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => setCompleteOpen(true)}>{t("actions.completeIntervention")}</button>
+        </>
+      ) : null}
+      {status === "waiting_parts" ? (
+        <>
+          <button type="button" className="rounded-lg border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-800" onClick={() => setActiveTab("parts")}>{t("actions.viewPartsRequest")}</button>
+          <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.resumeTechnicianWorkOrder(id))}>{t("actions.resume")}</button>
+        </>
+      ) : null}
+      {isCompletedLike(status) ? <button type="button" className="rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-800">{t("actions.viewReport")}</button> : null}
+    </div>
+  );
+}
+
+function InterventionTab({
+  t,
+  locale,
+  saving,
+  act,
+  id,
+  status,
+  hasAssignedTechnician,
+  isTerminal,
+  waitingForValidation,
+  report,
+  setReport,
+  canEditIntervention,
+  setActiveTab,
+  setCompleteOpen,
+  startedAt,
+}: Readonly<{
+  t: TechnicianTranslator;
+  locale: string;
+  saving: boolean;
+  act: ActFn;
+  id: string;
+  status: string;
+  hasAssignedTechnician: boolean;
+  isTerminal: boolean;
+  waitingForValidation: boolean;
+  report: ReportDraft;
+  setReport: (report: ReportDraft) => void;
+  canEditIntervention: boolean;
+  setActiveTab: (tab: DetailTab) => void;
+  setCompleteOpen: (open: boolean) => void;
+  startedAt: unknown;
+}>) {
+  return (
+    <section className="panel">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <WrenchScrewdriverIcon className="h-5 w-5 text-blue-700" />
+            {t("intervention.title")}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {startedAt ? `${t("intervention.startedAt")}: ${formatOptionalDate(startedAt, locale, t("notAvailable"))}` : t("intervention.notStarted")}
+          </p>
+        </div>
+        <InterventionActionButtons
+          t={t}
+          saving={saving}
+          act={act}
+          id={id}
+          status={status}
+          hasAssignedTechnician={hasAssignedTechnician}
+          isTerminal={isTerminal}
+          waitingForValidation={waitingForValidation}
+          report={report}
+          setActiveTab={setActiveTab}
+          setCompleteOpen={setCompleteOpen}
+        />
+      </div>
+      {canEditIntervention ? (
+        <div className="grid gap-4">
+          <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.diagnosis")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.cause_racine} onChange={(event) => setReport({ ...report, cause_racine: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.actionPerformed")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.description_action} onChange={(event) => setReport({ ...report, description_action: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.observations")}<textarea className="min-h-20 rounded-lg border p-3 font-normal" value={report.etat_final} onChange={(event) => setReport({ ...report, etat_final: event.target.value })} /></label>
+        </div>
+      ) : (
+        <dl className="grid gap-3 text-sm md:grid-cols-3">
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.observations")}</dt><dd>{report.etat_final || t("notAvailable")}</dd></div>
+        </dl>
+      )}
+    </section>
+  );
+}
+
+function PartsTab({
+  t,
+  detail,
+  available,
+  partId,
+  setPartId,
+  quantity,
+  setQuantity,
+  availableQuantity,
+  saving,
+  canEditIntervention,
+  act,
+  id,
+  status,
+}: Readonly<{
+  t: TechnicianTranslator;
+  detail: Detail;
+  available: AvailablePart[];
+  partId: string;
+  setPartId: (id: string) => void;
+  quantity: number;
+  setQuantity: (quantity: number) => void;
+  availableQuantity: number;
+  saving: boolean;
+  canEditIntervention: boolean;
+  act: ActFn;
+  id: string;
+  status: string;
+}>) {
+  return (
+    <section className="panel">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><Cog6ToothIcon className="h-5 w-5 text-amber-700" />{t("parts.title")}</h2>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">{t("parts.used")}</h3>
+          {detail.parts.length ? (
+            <ul className="mt-3 divide-y rounded-lg border">
+              {detail.parts.map((line) => <li className="flex justify-between gap-4 p-3 text-sm" key={line._id}><span>{line.part_id?.ref_constructeur} / {line.part_id?.nom_piece}</span><strong>{line.quantite}</strong></li>)}
+            </ul>
+          ) : (
+            <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("parts.noneAdded")}</p>
+          )}
+        </div>
+        <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
+          <h3 className="font-semibold text-amber-950">{t("parts.addPart")}</h3>
+          <div className="mt-3 grid gap-3">
+            <select className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.select")} value={partId} onChange={(event) => setPartId(event.target.value)}>
+              <option value="">{t("parts.select")}</option>
+              {available.map((stock) => <option key={stock._id} value={stock.part_id?._id}>{stock.part_id?.ref_constructeur} / {stock.part_id?.nom_piece} ({stock.quantite_en_stock})</option>)}
+            </select>
+            <p className="text-xs text-amber-800">{t("parts.available")}: <strong>{partId ? availableQuantity : t("notAvailable")}</strong></p>
+            <input className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.quantity")} type="number" min={1} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
+            <button type="button" disabled={saving || !partId || !canEditIntervention || quantity > availableQuantity} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }))}>{t("actions.addPart")}</button>
+            {partId && quantity > availableQuantity ? <button type="button" disabled={saving || !canEditIntervention} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50" onClick={() => void act(() => apiService.requestTechnicianPart(id, { part_id: partId, quantity }))}>{t("parts.requestPart")}</button> : null}
+            <p className="text-xs text-amber-800">{t("parts.requestStatus")}: {status === "waiting_parts" ? t("status.waiting_parts") : t("notAvailable")}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HistoryTab({
+  t,
+  locale,
+  wo,
+  startedAt,
+  endedAt,
+  lifecycleHistory,
+}: Readonly<{
+  t: TechnicianTranslator;
+  locale: string;
+  wo: any;
+  startedAt: unknown;
+  endedAt: unknown;
+  lifecycleHistory: any[];
+}>) {
+  return (
+    <section className="panel">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClockIcon className="h-5 w-5 text-slate-700" />{t("history.title")}</h2>
+      <ol className="space-y-3">
+        <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.created")}</p><p className="text-slate-500">{formatOptionalDate(wo.date_created, locale, t("notAvailable"))}</p></li>
+        {startedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.started")}</p><p className="text-slate-500">{formatOptionalDate(startedAt, locale, t("notAvailable"))}</p></li> : null}
+        {lifecycleHistory.map((entry: any, index: number) => (
+          <li className="rounded-lg border p-3 text-sm" key={`${entry.action}-${entry.at}-${index}`}>
+            <p className="font-semibold">{entry.action || t("history.statusChanged")}</p>
+            <p className="text-slate-500">{formatOptionalDate(entry.at, locale, t("notAvailable"))}</p>
+            <p className="text-slate-600">{entry.from_status ? `${entry.from_status} -> ` : ""}{entry.to_status}</p>
+            {entry.reason ? <p className="mt-1 text-slate-500">{entry.reason}</p> : null}
+          </li>
+        ))}
+        {endedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.completed")}</p><p className="text-slate-500">{formatOptionalDate(endedAt, locale, t("notAvailable"))}</p></li> : null}
+      </ol>
+    </section>
+  );
+}
+
+function CompletionModal({
+  t,
+  detail,
+  duration,
+  completeOpen,
+  setCompleteOpen,
+  report,
+  finalResult,
+  setFinalResult,
+  finalNotes,
+  setFinalNotes,
+  saving,
+  completeIntervention,
+}: Readonly<{
+  t: TechnicianTranslator;
+  detail: Detail;
+  duration: string;
+  completeOpen: boolean;
+  setCompleteOpen: (open: boolean) => void;
+  report: ReportDraft;
+  finalResult: string;
+  setFinalResult: (value: string) => void;
+  finalNotes: string;
+  setFinalNotes: (value: string) => void;
+  saving: boolean;
+  completeIntervention: () => void;
+}>) {
+  return (
+    <Modal isOpen={completeOpen} onClose={() => setCompleteOpen(false)} title={t("completion.title")} size="lg">
+      <div className="space-y-4">
+        <dl className="grid gap-3 text-sm md:grid-cols-2">
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("completion.partsUsed")}</dt><dd>{detail.parts.length}</dd></div>
+          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("completion.duration")}</dt><dd>{duration}</dd></div>
+        </dl>
+        <div className="grid gap-2 text-sm">
+          <span className="font-semibold">{t("completion.finalResult")}</span>
+          {["resolved", "followUp"].map((value) => (
+            <label key={value} className="flex items-center gap-2 rounded-lg border p-3">
+              <input type="radio" name="finalResult" value={value} checked={finalResult === value} onChange={(event) => setFinalResult(event.target.value)} />
+              {t(`completion.results.${value}`)}
+            </label>
+          ))}
+        </div>
+        <label className="grid gap-1 text-sm font-semibold text-slate-700">
+          {t("completion.finalNotes")}
+          <textarea className="min-h-24 rounded-lg border p-3 font-normal" value={finalNotes} onChange={(event) => setFinalNotes(event.target.value)} />
+        </label>
+        <div className="flex justify-end gap-2">
+          <button type="button" className="rounded-lg border px-4 py-2 text-sm font-semibold" onClick={() => setCompleteOpen(false)}>{t("actions.cancel")}</button>
+          <button type="button" disabled={saving} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={completeIntervention}>{t("actions.completeIntervention")}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function WorkOrderDetailHeader({
+  t,
+  tEnums,
+  locale,
+  wo,
+  machine,
+  status,
+  description,
+  dynamicTranslations,
+  tabs,
+  activeTab,
+  setActiveTab,
+}: Readonly<{
+  t: TechnicianTranslator;
+  tEnums: TechnicianTranslator;
+  locale: string;
+  wo: any;
+  machine: Record<string, any>;
+  status: string;
+  description: string;
+  dynamicTranslations: ReturnType<typeof useWorkOrderDynamicTranslations>;
+  tabs: Array<{ key: DetailTab; label: string; Icon: typeof ClipboardDocumentCheckIcon }>;
+  activeTab: DetailTab;
+  setActiveTab: (tab: DetailTab) => void;
+}>) {
+  return (
+    <>
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${priorityTone(wo.priorite)}`}>
+                  {translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}
+                </span>
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(status)}`}>
+                  {t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}
+                </span>
+              </div>
+              <h1 className="text-2xl font-bold text-slate-950">{wo.ot_id}</h1>
+              <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                {description || t("notAvailable")}
+                {dynamicTranslations.isAutomaticallyTranslated(wo._id, "description") ? (
+                  <span className="ms-1 text-xs text-amber-700" title={t("dynamicTranslations.safetyNotice")}>
+                    {t("dynamicTranslations.auto")}
+                  </span>
+                ) : null}
+              </p>
+            </div>
+            <div className="grid gap-2 text-sm sm:grid-cols-2 lg:min-w-[32rem]">
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
+                <p className="text-xs font-semibold uppercase text-slate-500">{t("fields.machine")}</p>
+                <p className="font-semibold text-slate-900">{compactMachineLabel(machine, t("notAvailable"))}</p>
+                <p className="text-xs text-slate-500">{machineTypeModel(machine, t("notAvailable"))}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
+                <p className="text-xs font-semibold uppercase text-slate-500">{t("fields.due")}</p>
+                <p className="font-semibold text-slate-900">{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</p>
+                <p className="text-xs text-slate-500">{translateEnumValue(tEnums, "maintenanceTypes", wo.type_maintenance) || t("notAvailable")}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2">
+          {tabs.map(({ key, label, Icon }) => (
+            <button key={key} type="button" onClick={() => setActiveTab(key)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === key ? "bg-blue-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {dynamicTranslations.hasTranslationLocale ? (
+        <div className="flex justify-end">
+          <button type="button" className="rounded-lg border px-3 py-2 text-sm text-amber-700" onClick={() => dynamicTranslations.setShowOriginal(!dynamicTranslations.showOriginal)}>
+            {dynamicTranslations.showOriginal ? t("dynamicTranslations.showTranslation") : t("dynamicTranslations.showOriginal")}
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+async function fetchTechnicianAvailableParts(fallbackStock: AvailablePart[]): Promise<AvailablePart[]> {
+  try {
+    const partsResponse = await apiService.getTechnicianParts({ page: 1, limit: 100 }, quiet());
+    return partsResponse.data.items || [];
+  } catch {
+    return fallbackStock;
+  }
+}
+
 function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
   const tEnums = useTranslations("common.enums");
@@ -956,24 +1437,14 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
       setError("");
       const detailResponse = await apiService.getTechnicianWorkOrder(id);
       setDetail(detailResponse.data);
-      setAvailable(detailResponse.data.stock || []);
+      const fallbackStock = detailResponse.data.stock || [];
+      setAvailable(fallbackStock);
       setReport({
         cause_racine: detailResponse.data.report?.cause_racine || "",
         description_action: detailResponse.data.report?.description_action || "",
         etat_final: detailResponse.data.report?.etat_final || "",
       });
-      try {
-        const partsResponse = await apiService.getTechnicianParts(
-          {
-            page: 1,
-            limit: 100,
-          },
-          quiet(),
-        );
-        setAvailable(partsResponse.data.items || []);
-      } catch {
-        setAvailable(detailResponse.data.stock || []);
-      }
+      setAvailable(await fetchTechnicianAvailableParts(fallbackStock));
     } catch (error: unknown) {
       setError(apiErrorMessage(error, t("errors.load")));
     } finally {
@@ -1102,215 +1573,75 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
             </section>
           ) : null}
 
-          <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${priorityTone(wo.priorite)}`}>
-                      {translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}
-                    </span>
-                    <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(status)}`}>
-                      {t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}
-                    </span>
-                  </div>
-                  <h1 className="text-2xl font-bold text-slate-950">{wo.ot_id}</h1>
-                  <p className="mt-1 max-w-3xl text-sm text-slate-600">
-                    {description || t("notAvailable")}
-                    {dynamicTranslations.isAutomaticallyTranslated(wo._id, "description") ? (
-                      <span className="ms-1 text-xs text-amber-700" title={t("dynamicTranslations.safetyNotice")}>
-                        {t("dynamicTranslations.auto")}
-                      </span>
-                    ) : null}
-                  </p>
-                </div>
-                <div className="grid gap-2 text-sm sm:grid-cols-2 lg:min-w-[32rem]">
-                  <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
-                    <p className="text-xs font-semibold uppercase text-slate-500">{t("fields.machine")}</p>
-                    <p className="font-semibold text-slate-900">{compactMachineLabel(machine, t("notAvailable"))}</p>
-                    <p className="text-xs text-slate-500">{machineTypeModel(machine, t("notAvailable"))}</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
-                    <p className="text-xs font-semibold uppercase text-slate-500">{t("fields.due")}</p>
-                    <p className="font-semibold text-slate-900">{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</p>
-                    <p className="text-xs text-slate-500">{translateEnumValue(tEnums, "maintenanceTypes", wo.type_maintenance) || t("notAvailable")}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2">
-              {tabs.map(({ key, label, Icon }) => (
-                <button key={key} type="button" onClick={() => setActiveTab(key)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === key ? "bg-blue-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {dynamicTranslations.hasTranslationLocale ? (
-            <div className="flex justify-end">
-              <button type="button" className="rounded-lg border px-3 py-2 text-sm text-amber-700" onClick={() => dynamicTranslations.setShowOriginal(!dynamicTranslations.showOriginal)}>
-                {dynamicTranslations.showOriginal ? t("dynamicTranslations.showTranslation") : t("dynamicTranslations.showOriginal")}
-              </button>
-            </div>
-          ) : null}
+          <WorkOrderDetailHeader
+            t={t}
+            tEnums={tEnums}
+            locale={locale}
+            wo={wo}
+            machine={machine}
+            status={status}
+            description={description}
+            dynamicTranslations={dynamicTranslations}
+            tabs={tabs}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
 
           {activeTab === "overview" ? (
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-              <section className="panel">
-                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-                  <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-700" />
-                  {t("overview.title")}
-                </h2>
-                <dl className="grid gap-3 text-sm md:grid-cols-2">
-                  <div><dt className="text-slate-500">{t("fields.machine")}</dt><dd className="font-medium">{compactMachineLabel(machine, t("notAvailable"))}</dd></div>
-                  <div><dt className="text-slate-500">{t("overview.problem")}</dt><dd>{description || t("notAvailable")}</dd></div>
-                  <div><dt className="text-slate-500">{t("overview.reportedBy")}</dt><dd>{reportOwner?.nom_complet || t("notAvailable")}</dd></div>
-                  <div><dt className="text-slate-500">{t("fields.priority")}</dt><dd>{translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}</dd></div>
-                  <div><dt className="text-slate-500">{t("fields.status")}</dt><dd>{t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}</dd></div>
-                  <div><dt className="text-slate-500">{t("fields.due")}</dt><dd>{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</dd></div>
-                </dl>
-                {wo.code_panne ? (
-                  <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                    {t("overview.faultCode")}: <strong>{wo.code_panne}</strong>
-                  </p>
-                ) : null}
-              </section>
-
-              <section className="panel border border-cyan-100 bg-cyan-50/60">
-                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-cyan-950">
-                  <BeakerIcon className="h-5 w-5" />
-                  {t("machineContext.title")}
-                </h2>
-                <dl className="grid gap-3 text-sm">
-                  <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.health")}</dt><dd className="font-semibold">{t("notAvailable")}</dd></div>
-                  <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.currentStatus")}</dt><dd className="font-semibold">{formatMachineValue(machine, "status", locale)}</dd></div>
-                  <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.openWorkOrders")}</dt><dd className="font-semibold">{isTerminal ? 0 : 1}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-cyan-800">{t("machineContext.lastMaintenance")}</dt><dd className="font-semibold">{formatOptionalDate(firstDateValue(detail.report?.date_fin, wo.date_closed, wo.date_end), locale, t("notAvailable"))}</dd></div>
-                </dl>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {machine._id ? <LiveStatusBadge machineId={machine._id} status={statusByMachine[machine._id]} onSubscribe={subscribeToMachine} /> : null}
-                  {machine._id ? (
-                    <Link href={`/${locale}/machines/${machine._id}`} className="rounded-lg border border-cyan-200 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-800">
-                      {t("machine.viewTimeline", { default: "View timeline" })}
-                    </Link>
-                  ) : null}
-                </div>
-              </section>
-
-              <section className="panel xl:col-span-2">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="flex items-center gap-2 text-lg font-semibold">
-                      <SparklesIcon className="h-5 w-5 text-purple-700" />
-                      {t("aiInsight.title")}
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">{t("aiInsight.summary")}</p>
-                  </div>
-                  <button type="button" className="rounded-lg border border-purple-200 px-3 py-2 text-sm font-semibold text-purple-800" onClick={() => setShowTechnicalAnalysis(!showTechnicalAnalysis)}>
-                    {showTechnicalAnalysis ? t("aiInsight.hideTechnical") : t("aiInsight.viewTechnical")}
-                  </button>
-                </div>
-                <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                  <div className="rounded-lg bg-purple-50 p-3"><strong>{t("aiInsight.healthInsight")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.healthCopy")}</p></div>
-                  <div className="rounded-lg bg-amber-50 p-3"><strong>{t("aiInsight.possibleAnomaly")}</strong><p className="mt-1 text-slate-600">{wo.code_panne || t("notAvailable")}</p></div>
-                  <div className="rounded-lg bg-emerald-50 p-3"><strong>{t("aiInsight.recommendedInspection")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.recommendedCopy")}</p></div>
-                </div>
-                {showTechnicalAnalysis ? (
-                  <div className="mt-4 space-y-4">
-                    <MachineHealthPanel machineId={machine?._id} />
-                    <AiAssistantPanel machineId={machine?._id} workOrderId={wo._id} faultCode={wo.code_panne} />
-                  </div>
-                ) : null}
-              </section>
-            </div>
+            <OverviewTab
+              t={t}
+              tEnums={tEnums}
+              locale={locale}
+              wo={wo}
+              machine={machine}
+              description={description}
+              reportOwner={reportOwner}
+              status={status}
+              isTerminal={isTerminal}
+              detail={detail}
+              statusByMachine={statusByMachine}
+              subscribeToMachine={subscribeToMachine}
+              showTechnicalAnalysis={showTechnicalAnalysis}
+              setShowTechnicalAnalysis={setShowTechnicalAnalysis}
+            />
           ) : null}
 
           {activeTab === "intervention" ? (
-            <section className="panel">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="flex items-center gap-2 text-lg font-semibold">
-                    <WrenchScrewdriverIcon className="h-5 w-5 text-blue-700" />
-                    {t("intervention.title")}
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    {startedAt ? `${t("intervention.startedAt")}: ${formatOptionalDate(startedAt, locale, t("notAvailable"))}` : t("intervention.notStarted")}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {!hasAssignedTechnician && !isTerminal ? <button type="button" disabled={saving} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.claimTechnicianWorkOrder(id))}>{t("claim")}</button> : null}
-                  {waitingForValidation ? (
-                    <>
-                      <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm italic text-slate-600">{t("messages.awaitingValidation")}</span>
-                      <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "return"))}>{t("actions.return")}</button>
-                      <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "intervene"))}>{t("actions.intervene")}</button>
-                    </>
-                  ) : null}
-                  {status === "assigned" ? <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.startTechnicianWorkOrder(id))}>{t("actions.start")}</button> : null}
-                  {status === "in_progress" ? (
-                    <>
-                      <button type="button" disabled={saving} className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-800 disabled:opacity-50" onClick={() => void act(() => apiService.updateTechnicianReport(id, report))}>{t("actions.saveProgress")}</button>
-                      <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.waitForTechnicianParts(id))}>{t("actions.waitingParts")}</button>
-                      <button type="button" disabled={saving || !report.description_action.trim() || !report.etat_final.trim()} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => setCompleteOpen(true)}>{t("actions.completeIntervention")}</button>
-                    </>
-                  ) : null}
-                  {status === "waiting_parts" ? (
-                    <>
-                      <button type="button" className="rounded-lg border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-800" onClick={() => setActiveTab("parts")}>{t("actions.viewPartsRequest")}</button>
-                      <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.resumeTechnicianWorkOrder(id))}>{t("actions.resume")}</button>
-                    </>
-                  ) : null}
-                  {isCompletedLike(status) ? <button type="button" className="rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-800">{t("actions.viewReport")}</button> : null}
-                </div>
-              </div>
-              {canEditIntervention ? (
-                <div className="grid gap-4">
-                  <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.diagnosis")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.cause_racine} onChange={(event) => setReport({ ...report, cause_racine: event.target.value })} /></label>
-                  <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.actionPerformed")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.description_action} onChange={(event) => setReport({ ...report, description_action: event.target.value })} /></label>
-                  <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.observations")}<textarea className="min-h-20 rounded-lg border p-3 font-normal" value={report.etat_final} onChange={(event) => setReport({ ...report, etat_final: event.target.value })} /></label>
-                </div>
-              ) : (
-                <dl className="grid gap-3 text-sm md:grid-cols-3">
-                  <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
-                  <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
-                  <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.observations")}</dt><dd>{report.etat_final || t("notAvailable")}</dd></div>
-                </dl>
-              )}
-            </section>
+            <InterventionTab
+              t={t}
+              locale={locale}
+              saving={saving}
+              act={act}
+              id={id}
+              status={status}
+              hasAssignedTechnician={hasAssignedTechnician}
+              isTerminal={isTerminal}
+              waitingForValidation={waitingForValidation}
+              report={report}
+              setReport={setReport}
+              canEditIntervention={canEditIntervention}
+              setActiveTab={setActiveTab}
+              setCompleteOpen={setCompleteOpen}
+              startedAt={startedAt}
+            />
           ) : null}
 
           {activeTab === "parts" ? (
-            <section className="panel">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><Cog6ToothIcon className="h-5 w-5 text-amber-700" />{t("parts.title")}</h2>
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-700">{t("parts.used")}</h3>
-                  {detail.parts.length ? (
-                    <ul className="mt-3 divide-y rounded-lg border">
-                      {detail.parts.map((line) => <li className="flex justify-between gap-4 p-3 text-sm" key={line._id}><span>{line.part_id?.ref_constructeur} / {line.part_id?.nom_piece}</span><strong>{line.quantite}</strong></li>)}
-                    </ul>
-                  ) : (
-                    <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("parts.noneAdded")}</p>
-                  )}
-                </div>
-                <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
-                  <h3 className="font-semibold text-amber-950">{t("parts.addPart")}</h3>
-                  <div className="mt-3 grid gap-3">
-                    <select className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.select")} value={partId} onChange={(event) => setPartId(event.target.value)}>
-                      <option value="">{t("parts.select")}</option>
-                      {available.map((stock) => <option key={stock._id} value={stock.part_id?._id}>{stock.part_id?.ref_constructeur} / {stock.part_id?.nom_piece} ({stock.quantite_en_stock})</option>)}
-                    </select>
-                    <p className="text-xs text-amber-800">{t("parts.available")}: <strong>{partId ? availableQuantity : t("notAvailable")}</strong></p>
-                    <input className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.quantity")} type="number" min={1} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
-                    <button type="button" disabled={saving || !partId || !canEditIntervention || quantity > availableQuantity} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }))}>{t("actions.addPart")}</button>
-                    {partId && quantity > availableQuantity ? <button type="button" disabled={saving || !canEditIntervention} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50" onClick={() => void act(() => apiService.requestTechnicianPart(id, { part_id: partId, quantity }))}>{t("parts.requestPart")}</button> : null}
-                    <p className="text-xs text-amber-800">{t("parts.requestStatus")}: {status === "waiting_parts" ? t("status.waiting_parts") : t("notAvailable")}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
+            <PartsTab
+              t={t}
+              detail={detail}
+              available={available}
+              partId={partId}
+              setPartId={setPartId}
+              quantity={quantity}
+              setQuantity={setQuantity}
+              availableQuantity={availableQuantity}
+              saving={saving}
+              canEditIntervention={canEditIntervention}
+              act={act}
+              id={id}
+              status={status}
+            />
           ) : null}
 
           {activeTab === "documents" ? (
@@ -1321,51 +1652,30 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
           ) : null}
 
           {activeTab === "history" ? (
-            <section className="panel">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClockIcon className="h-5 w-5 text-slate-700" />{t("history.title")}</h2>
-              <ol className="space-y-3">
-                <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.created")}</p><p className="text-slate-500">{formatOptionalDate(wo.date_created, locale, t("notAvailable"))}</p></li>
-                {startedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.started")}</p><p className="text-slate-500">{formatOptionalDate(startedAt, locale, t("notAvailable"))}</p></li> : null}
-                {lifecycleHistory.map((entry: any, index: number) => (
-                  <li className="rounded-lg border p-3 text-sm" key={`${entry.action}-${entry.at}-${index}`}>
-                    <p className="font-semibold">{entry.action || t("history.statusChanged")}</p>
-                    <p className="text-slate-500">{formatOptionalDate(entry.at, locale, t("notAvailable"))}</p>
-                    <p className="text-slate-600">{entry.from_status ? `${entry.from_status} -> ` : ""}{entry.to_status}</p>
-                    {entry.reason ? <p className="mt-1 text-slate-500">{entry.reason}</p> : null}
-                  </li>
-                ))}
-                {endedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.completed")}</p><p className="text-slate-500">{formatOptionalDate(endedAt, locale, t("notAvailable"))}</p></li> : null}
-              </ol>
-            </section>
+            <HistoryTab
+              t={t}
+              locale={locale}
+              wo={wo}
+              startedAt={startedAt}
+              endedAt={endedAt}
+              lifecycleHistory={lifecycleHistory}
+            />
           ) : null}
 
-          <Modal isOpen={completeOpen} onClose={() => setCompleteOpen(false)} title={t("completion.title")} size="lg">
-            <div className="space-y-4">
-              <dl className="grid gap-3 text-sm md:grid-cols-2">
-                <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
-                <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
-                <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("completion.partsUsed")}</dt><dd>{detail.parts.length}</dd></div>
-                <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("completion.duration")}</dt><dd>{duration}</dd></div>
-              </dl>
-              <div className="grid gap-2 text-sm">
-                <span className="font-semibold">{t("completion.finalResult")}</span>
-                {["resolved", "followUp"].map((value) => (
-                  <label key={value} className="flex items-center gap-2 rounded-lg border p-3">
-                    <input type="radio" name="finalResult" value={value} checked={finalResult === value} onChange={(event) => setFinalResult(event.target.value)} />
-                    {t(`completion.results.${value}`)}
-                  </label>
-                ))}
-              </div>
-              <label className="grid gap-1 text-sm font-semibold text-slate-700">
-                {t("completion.finalNotes")}
-                <textarea className="min-h-24 rounded-lg border p-3 font-normal" value={finalNotes} onChange={(event) => setFinalNotes(event.target.value)} />
-              </label>
-              <div className="flex justify-end gap-2">
-                <button type="button" className="rounded-lg border px-4 py-2 text-sm font-semibold" onClick={() => setCompleteOpen(false)}>{t("actions.cancel")}</button>
-                <button type="button" disabled={saving} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={completeIntervention}>{t("actions.completeIntervention")}</button>
-              </div>
-            </div>
-          </Modal>
+          <CompletionModal
+            t={t}
+            detail={detail}
+            duration={duration}
+            completeOpen={completeOpen}
+            setCompleteOpen={setCompleteOpen}
+            report={report}
+            finalResult={finalResult}
+            setFinalResult={setFinalResult}
+            finalNotes={finalNotes}
+            setFinalNotes={setFinalNotes}
+            saving={saving}
+            completeIntervention={completeIntervention}
+          />
         </div>
       </DashboardLayout>
     </ProtectedRoute>

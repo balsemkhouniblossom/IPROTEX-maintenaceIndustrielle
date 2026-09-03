@@ -428,144 +428,173 @@ function AiAnomalyMonitoringContent() {
         size="xl"
       >
         {selectedAnalysis ? (
-          <div className="space-y-5">
-            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-              {AI_ANOMALY_LIMITATION_NOTICE}
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <DetailField
-                label={t("table.machine")}
-                value={machineDisplayName(
-                  selectedAnalysis.machine_id,
-                  machines,
-                )}
-              />
-              <DetailField
-                label={t("table.timestamp")}
-                value={formatDateTime(selectedAnalysis.measurement_timestamp)}
-              />
-              <DetailField
-                label={t("details.componentZScore")}
-                value={selectedAnalysis.component_scores.zScore.toFixed(3)}
-              />
-              <DetailField
-                label={t("details.componentIsolationForest")}
-                value={selectedAnalysis.component_scores.isolationForest.toFixed(
-                  3,
-                )}
-              />
-              <DetailField
-                label={t("table.modelVersion")}
-                value={selectedAnalysis.model_version}
-              />
-              <DetailField
-                label={t("table.source")}
-                value={t(sourceLabelKey(selectedAnalysis.input_source))}
-              />
-              <DetailField
-                label={t("details.datasetOrigin")}
-                value={t("details.imsDataset")}
-              />
-              <DetailField
-                label={t("details.validationScope")}
-                value="1st_test"
-              />
-            </div>
-
-            <div>
-              <h3 className="mb-2 text-sm font-semibold text-slate-800">
-                {t("details.reasonCodes")}
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedAnalysis.reason_codes.length ? (
-                  selectedAnalysis.reason_codes.map((code) => (
-                    <span
-                      key={code}
-                      className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700"
-                    >
-                      {code}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-sm text-slate-500">
-                    {tCommon("notAvailable")}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-md border border-slate-200 p-3">
-              <h3 className="mb-3 text-sm font-semibold text-slate-800">
-                {t("validation.title")}
-              </h3>
-              {canValidateAiAnomaly(user?.role, selectedAnalysis) ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={`btn-secondary ${validationForm.status === "CONFIRMED" ? "ring-2 ring-green-500" : ""}`}
-                      onClick={() =>
-                        setValidationForm((current) => ({
-                          ...current,
-                          status: "CONFIRMED",
-                        }))
-                      }
-                    >
-                      <CheckCircleIcon className="h-4 w-4" />
-                      {t("validation.confirm")}
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn-secondary ${validationForm.status === "REJECTED" ? "ring-2 ring-red-500" : ""}`}
-                      onClick={() =>
-                        setValidationForm((current) => ({
-                          ...current,
-                          status: "REJECTED",
-                        }))
-                      }
-                    >
-                      <XCircleIcon className="h-4 w-4" />
-                      {t("validation.reject")}
-                    </button>
-                  </div>
-                  <label className="block text-sm font-medium text-slate-700">
-                    {t("validation.comment")}
-                    <textarea
-                      className="input-field mt-1 min-h-24"
-                      value={validationForm.comment}
-                      onChange={(event) =>
-                        setValidationForm((current) => ({
-                          ...current,
-                          comment: event.target.value,
-                        }))
-                      }
-                      maxLength={1000}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    disabled={submittingValidation}
-                    onClick={submitValidation}
-                  >
-                    {submittingValidation ? tCommon("saving") : t("validation.save")}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-600">
-                  {t("validation.alreadyValidated", {
-                    status: t(
-                      `validation.${selectedAnalysis.validation_status}`,
-                    ),
-                  })}
-                </p>
-              )}
-            </div>
-
-          </div>
+          <AiAnomalyDetailsPanel
+            analysis={selectedAnalysis}
+            machines={machines}
+            t={t}
+            tCommon={tCommon}
+            userRole={user?.role}
+            formatDateTime={formatDateTime}
+            validationForm={validationForm}
+            setValidationForm={setValidationForm}
+            submitValidation={submitValidation}
+            submittingValidation={submittingValidation}
+          />
         ) : null}
       </Modal>
     </DashboardLayout>
+  );
+}
+
+function AiAnomalyDetailsPanel({
+  analysis,
+  machines,
+  t,
+  tCommon,
+  userRole,
+  formatDateTime,
+  validationForm,
+  setValidationForm,
+  submitValidation,
+  submittingValidation,
+}: Readonly<{
+  analysis: AiAnomalyAnalysis;
+  machines: ReturnType<typeof buildAiAnomalyMachineOptions>;
+  t: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
+  userRole: string | undefined;
+  formatDateTime: (value: string) => string;
+  validationForm: { status: "CONFIRMED" | "REJECTED"; comment: string };
+  setValidationForm: React.Dispatch<
+    React.SetStateAction<{ status: "CONFIRMED" | "REJECTED"; comment: string }>
+  >;
+  submitValidation: () => void;
+  submittingValidation: boolean;
+}>) {
+  const canValidate = canValidateAiAnomaly(userRole, analysis);
+  return (
+    <div className="space-y-5">
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+        {AI_ANOMALY_LIMITATION_NOTICE}
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <DetailField label={t("table.machine")} value={machineDisplayName(analysis.machine_id, machines)} />
+        <DetailField
+          label={t("table.timestamp")}
+          value={formatDateTime(analysis.measurement_timestamp)}
+        />
+        <DetailField
+          label={t("details.componentZScore")}
+          value={analysis.component_scores.zScore.toFixed(3)}
+        />
+        <DetailField
+          label={t("details.componentIsolationForest")}
+          value={analysis.component_scores.isolationForest.toFixed(3)}
+        />
+        <DetailField label={t("table.modelVersion")} value={analysis.model_version} />
+        <DetailField label={t("table.source")} value={t(sourceLabelKey(analysis.input_source))} />
+        <DetailField label={t("details.datasetOrigin")} value={t("details.imsDataset")} />
+        <DetailField label={t("details.validationScope")} value="1st_test" />
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800">{t("details.reasonCodes")}</h3>
+        <div className="flex flex-wrap gap-2">
+          {analysis.reason_codes.length ? (
+            analysis.reason_codes.map((code) => (
+              <span
+                key={code}
+                className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-700"
+              >
+                {code}
+              </span>
+            ))
+          ) : (
+            <span className="text-sm text-slate-500">{tCommon("notAvailable")}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-md border border-slate-200 p-3">
+        <h3 className="mb-3 text-sm font-semibold text-slate-800">{t("validation.title")}</h3>
+        {canValidate ? (
+          <AiAnomalyValidationForm
+            t={t}
+            tCommon={tCommon}
+            validationForm={validationForm}
+            setValidationForm={setValidationForm}
+            submitValidation={submitValidation}
+            submittingValidation={submittingValidation}
+          />
+        ) : (
+          <p className="text-sm text-slate-600">
+            {t("validation.alreadyValidated", {
+              status: t(`validation.${analysis.validation_status}`),
+            })}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AiAnomalyValidationForm({
+  t,
+  tCommon,
+  validationForm,
+  setValidationForm,
+  submitValidation,
+  submittingValidation,
+}: Readonly<{
+  t: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
+  validationForm: { status: "CONFIRMED" | "REJECTED"; comment: string };
+  setValidationForm: React.Dispatch<
+    React.SetStateAction<{ status: "CONFIRMED" | "REJECTED"; comment: string }>
+  >;
+  submitValidation: () => void;
+  submittingValidation: boolean;
+}>) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`btn-secondary ${validationForm.status === "CONFIRMED" ? "ring-2 ring-green-500" : ""}`}
+          onClick={() => setValidationForm((current) => ({ ...current, status: "CONFIRMED" }))}
+        >
+          <CheckCircleIcon className="h-4 w-4" />
+          {t("validation.confirm")}
+        </button>
+        <button
+          type="button"
+          className={`btn-secondary ${validationForm.status === "REJECTED" ? "ring-2 ring-red-500" : ""}`}
+          onClick={() => setValidationForm((current) => ({ ...current, status: "REJECTED" }))}
+        >
+          <XCircleIcon className="h-4 w-4" />
+          {t("validation.reject")}
+        </button>
+      </div>
+      <label className="block text-sm font-medium text-slate-700">
+        {t("validation.comment")}
+        <textarea
+          className="input-field mt-1 min-h-24"
+          value={validationForm.comment}
+          onChange={(event) =>
+            setValidationForm((current) => ({ ...current, comment: event.target.value }))
+          }
+          maxLength={1000}
+        />
+      </label>
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={submittingValidation}
+        onClick={submitValidation}
+      >
+        {submittingValidation ? tCommon("saving") : t("validation.save")}
+      </button>
+    </div>
   );
 }
 
