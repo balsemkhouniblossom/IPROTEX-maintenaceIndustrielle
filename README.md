@@ -22,10 +22,11 @@ GMAO means "Gestion de Maintenance Assistee par Ordinateur", also known as Compu
 
 ## Overview
 
-This repository contains two applications:
+This repository contains three applications:
 
 - `backend`: NestJS API with MongoDB, authentication, role-based authorization, reports, schedulers, device monitoring, storage, and business services.
 - `frontend`: Next.js application with role dashboards, localized UI, protected routes, maintenance workflows, and API integration.
+- `ai-service`: FastAPI service that serves a validated IMS bearing anomaly-detection model (data audit, feature engineering, and inference notebooks/pipeline included). The backend's `ai-anomaly` module calls this service over HTTP when `AI_SERVICE_ENABLED=true`.
 
 The application is designed around three main roles:
 
@@ -74,6 +75,8 @@ The application is designed around three main roles:
 - Scheduled reports
 - PDF, Excel, and CSV report rendering
 - Optional Gemini-powered AI assistant
+- IMS bearing anomaly detection served by the standalone `ai-service` FastAPI app, integrated through the backend's `ai-anomaly` module
+- Predictive maintenance health scoring and history
 - SonarCloud quality and coverage configuration
 - Playwright browser tests enforced in CI
 - Prometheus/Grafana production monitoring configuration under `monitoring/`
@@ -118,12 +121,21 @@ The application is designed around three main roles:
 - Node test runner with coverage
 - ESLint
 
+### AI Service
+
+- Python 3.12
+- FastAPI
+- scikit-learn, pandas, numpy, scipy, joblib
+- Jupyter notebooks for data audit, feature engineering, and anomaly-detection validation
+- pytest
+
 ## Repository Structure
 
 ```text
 GMAO/
 |-- backend/
 |   |-- src/
+|   |   |-- ai-anomaly/
 |   |   |-- ai-assistant/
 |   |   |-- auth/
 |   |   |-- catalogues/
@@ -160,6 +172,22 @@ GMAO/
 |   |-- tests/
 |   |-- package.json
 |   `-- next.config.mjs
+|-- ai-service/
+|   |-- app/
+|   |   |-- api/routes/
+|   |   |-- core/
+|   |   |-- schemas/
+|   |   `-- services/
+|   |-- src/
+|   |   |-- preprocessing/
+|   |   |-- features/
+|   |   |-- models/
+|   |   `-- evaluation/
+|   |-- notebooks/
+|   |-- data/
+|   |-- artifacts/
+|   |-- tests/
+|   `-- requirements.txt
 |-- scripts/
 |-- sonar-project.properties
 |-- render.yaml
@@ -174,6 +202,7 @@ GMAO/
 - npm
 - MongoDB 8 or a MongoDB Atlas database
 - Git
+- Python 3.12 or newer (only required to run the optional `ai-service`)
 
 Optional integrations:
 
@@ -184,6 +213,7 @@ Optional integrations:
 - SMTP credentials
 - MQTT broker
 - SonarCloud project token
+- Standalone `ai-service` for IMS anomaly-detection inference
 
 ## Quick Start
 
@@ -232,10 +262,21 @@ cd frontend
 npm run dev
 ```
 
+Optionally run the AI service in a third terminal (only needed if `AI_SERVICE_ENABLED=true` in the backend):
+
+```bash
+cd ai-service
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8011
+```
+
 Default local URLs:
 
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:3001`
+- AI service: `http://localhost:8011`
 
 ## Environment Variables
 
@@ -298,6 +339,21 @@ SENTRY_DSN=
 LOG_FORMAT=pretty
 REQUEST_TIMEOUT_MS=30000
 TRUST_PROXY=false
+
+AI_SERVICE_ENABLED=false
+AI_SERVICE_URL=http://127.0.0.1:8011
+AI_SERVICE_TIMEOUT_MS=12000
+```
+
+### AI Service Environment
+
+```env
+AI_SERVICE_ENV=development
+IMS_ANOMALY_ARTIFACT_PATH=
+IMS_ANOMALY_METADATA_PATH=
+AI_SERVICE_CORS_ORIGINS=http://localhost:3000
+AI_SERVICE_MAX_REQUEST_BYTES=1048576
+AI_SERVICE_MAX_BATCH_ROWS=512
 ```
 
 ### Frontend Environment
@@ -350,6 +406,16 @@ npm run type-check      # Run TypeScript type check
 npm run test            # Run frontend tests
 npm run test:cov        # Run frontend tests with coverage and LCOV output
 npm run test:e2e        # Run Playwright browser tests
+```
+
+### AI Service Scripts
+
+Run from `ai-service/` with the local `.venv` activated.
+
+```bash
+uvicorn app.main:app --reload --port 8011   # Start the FastAPI dev server
+pytest                                       # Run AI service tests
+jupyter notebook                             # Explore data-audit and training notebooks
 ```
 
 ## Testing And Quality
