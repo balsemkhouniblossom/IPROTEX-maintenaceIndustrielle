@@ -31,6 +31,20 @@ import type { MachineTimelineSummary } from './types';
 
 type MachineTab = 'overview' | 'components' | 'maintenance' | 'monitoring' | 'documents' | 'history';
 type WorkOrderRecord = Record<string, unknown>;
+
+function formatDisplayValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value);
+}
+
+function formatDate(value: unknown, locale: string): string | null {
+  if (value === null || value === undefined) return null;
+  const date = new Date(formatDisplayValue(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(locale);
+}
 type TechnicianMachineContext = {
   machine: {
     _id: string;
@@ -247,13 +261,19 @@ function TabOverview({ summary, context, locale, healthByMachine, machineId }: R
   const machine = summary?.machine;
   const health = healthByMachine[machineId];
   const attention = context?.openWork[0];
+  const statusLabel = machine?.status
+    ? tRoot.has(`status.${machine.status}`)
+      ? tRoot(`status.${machine.status}`)
+      : machine.status
+    : tRoot('header.none');
+  const attentionDescription = formatDisplayValue(attention?.description ?? attention?.ot_id);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="panel">
         <h2 className="mb-4 text-lg font-semibold">{t('overview.machineStatus')}</h2>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div><dt className="text-slate-500">{t('overview.status')}</dt><dd className="font-semibold">{machine?.status ? tRoot.has(`status.${machine.status}`) ? tRoot(`status.${machine.status}`) : machine.status : tRoot('header.none')}</dd></div>
+          <div><dt className="text-slate-500">{t('overview.status')}</dt><dd className="font-semibold">{statusLabel}</dd></div>
           <div><dt className="text-slate-500">{t('overview.health')}</dt><dd><MachineHealthBadge status={health} /></dd></div>
           <div><dt className="text-slate-500">{t('overview.openWorkOrders')}</dt><dd className="font-semibold">{summary?.stats.openWorkOrders ?? 0}</dd></div>
           <div><dt className="text-slate-500">{t('overview.lastMaintenance')}</dt><dd className="font-semibold">{summary?.stats.lastMaintenanceAt ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(locale) : tRoot('header.none')}</dd></div>
@@ -264,7 +284,7 @@ function TabOverview({ summary, context, locale, healthByMachine, machineId }: R
         <h2 className="mb-4 text-lg font-semibold text-amber-950">{t('overview.currentAttention')}</h2>
         {attention ? (
           <div className="space-y-3 text-sm">
-            <p className="font-semibold text-amber-950">{String(attention.description ?? attention.ot_id ?? '')}</p>
+            <p className="font-semibold text-amber-950">{attentionDescription}</p>
             <p className="text-amber-800">{t('overview.possibleComponent')}: {String((attention.module_id as Record<string, unknown>)?.module_id ?? tRoot('header.none'))}</p>
             <Link href={`/${locale}/technician/work-orders/${String(attention._id)}`} className="inline-flex rounded-lg bg-amber-700 px-3 py-2 text-sm font-semibold text-white">
               {t('maintenance.openWorkOrder')}
@@ -300,7 +320,7 @@ function TabMaintenance({ context, locale }: Readonly<{ context: TechnicianMachi
       </MachineSection>
       <MachineSection title={t('maintenance.recentMaintenance')}>
         {context?.recentMaintenance.length ? context.recentMaintenance.map((report) => (
-          <div key={String(report._id)} className="rounded-lg border p-3 text-sm"><p className="font-semibold">{String(report.report_id)}</p><p className="text-slate-500">{report.date_fin ? new Date(String(report.date_fin)).toLocaleDateString(locale) : tRoot('header.none')}</p></div>
+          <div key={String(report._id)} className="rounded-lg border p-3 text-sm"><p className="font-semibold">{String(report.report_id)}</p><p className="text-slate-500">{formatDate(report.date_fin, locale) ?? tRoot('header.none')}</p></div>
         )) : <p className="text-sm text-slate-500">{t('maintenance.noRecent')}</p>}
       </MachineSection>
     </section>

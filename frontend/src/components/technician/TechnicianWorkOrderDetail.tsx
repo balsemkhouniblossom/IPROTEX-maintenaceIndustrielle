@@ -62,6 +62,33 @@ type ReportDraft = {
   etat_final: string;
 };
 type DetailTab = "overview" | "intervention" | "parts" | "documents" | "history";
+type ActFn = (action: () => Promise<unknown>) => Promise<void>;
+
+/** Shared work-order mutation wrapper: runs the action, invalidates the
+ *  work-orders list and reloads the detail. Used by both detail layouts. */
+function useWorkOrderAct(options: {
+  saving: boolean;
+  setSaving: (saving: boolean) => void;
+  setError: (message: string) => void;
+  load: () => Promise<void>;
+  fallbackError: string;
+}): ActFn {
+  const { saving, setSaving, setError, load, fallbackError } = options;
+  return async (action: () => Promise<unknown>) => {
+    if (saving) return;
+    try {
+      setSaving(true);
+      setError("");
+      await action();
+      invalidateList(LIST_EVENTS.workOrders);
+      await load();
+    } catch (error: unknown) {
+      setError(apiErrorMessage(error, fallbackError));
+    } finally {
+      setSaving(false);
+    }
+  };
+}
 type CompletionResult = {
   reportId: string;
   duration: string;
@@ -750,23 +777,13 @@ function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) 
     detail?.workOrder ? [detail.workOrder] : [],
     locale,
   );
-  const act = async (action: () => Promise<unknown>) => {
-    if (saving) return;
-    try {
-      setSaving(true);
-      setError("");
-      await action();
-      // Every action here (start/complete/report update) changes this
-      // work order's status server-side — the Admin Work Orders list has
-      // no other way to learn its snapshot is now stale.
-      invalidateList(LIST_EVENTS.workOrders);
-      await load();
-    } catch (error: unknown) {
-      setError(apiErrorMessage(error, t("errors.update")));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const act = useWorkOrderAct({
+    saving,
+    setSaving,
+    setError,
+    load,
+    fallbackError: t("errors.update"),
+  });
   if (loading)
     return (
       <ProtectedRoute requiredRole="technician">
@@ -973,20 +990,13 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
     locale,
   );
 
-  const act = async (action: () => Promise<unknown>) => {
-    if (saving) return;
-    try {
-      setSaving(true);
-      setError("");
-      await action();
-      invalidateList(LIST_EVENTS.workOrders);
-      await load();
-    } catch (error: unknown) {
-      setError(apiErrorMessage(error, t("errors.update")));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const act = useWorkOrderAct({
+    saving,
+    setSaving,
+    setError,
+    load,
+    fallbackError: t("errors.update"),
+  });
 
   if (loading) {
     return (

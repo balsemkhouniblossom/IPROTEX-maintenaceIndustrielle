@@ -1,0 +1,184 @@
+﻿          {activeTab === "overview" ? (
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+              <section className="panel">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-700" />
+                  {t("overview.title")}
+                </h2>
+                <dl className="grid gap-3 text-sm md:grid-cols-2">
+                  <div><dt className="text-slate-500">{t("fields.machine")}</dt><dd className="font-medium">{compactMachineLabel(machine, t("notAvailable"))}</dd></div>
+                  <div><dt className="text-slate-500">{t("overview.problem")}</dt><dd>{description || t("notAvailable")}</dd></div>
+                  <div><dt className="text-slate-500">{t("overview.reportedBy")}</dt><dd>{reportOwner?.nom_complet || t("notAvailable")}</dd></div>
+                  <div><dt className="text-slate-500">{t("fields.priority")}</dt><dd>{translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}</dd></div>
+                  <div><dt className="text-slate-500">{t("fields.status")}</dt><dd>{t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}</dd></div>
+                  <div><dt className="text-slate-500">{t("fields.due")}</dt><dd>{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</dd></div>
+                </dl>
+                {wo.code_panne ? (
+                  <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    {t("overview.faultCode")}: <strong>{wo.code_panne}</strong>
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="panel border border-cyan-100 bg-cyan-50/60">
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-cyan-950">
+                  <BeakerIcon className="h-5 w-5" />
+                  {t("machineContext.title")}
+                </h2>
+                <dl className="grid gap-3 text-sm">
+                  <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.health")}</dt><dd className="font-semibold">{t("notAvailable")}</dd></div>
+                  <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.currentStatus")}</dt><dd className="font-semibold">{formatMachineValue(machine, "status", locale)}</dd></div>
+                  <div className="flex justify-between gap-4 border-b border-cyan-100 pb-2"><dt className="text-cyan-800">{t("machineContext.openWorkOrders")}</dt><dd className="font-semibold">{isTerminal ? 0 : 1}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-cyan-800">{t("machineContext.lastMaintenance")}</dt><dd className="font-semibold">{formatOptionalDate(firstDateValue(detail.report?.date_fin, wo.date_closed, wo.date_end), locale, t("notAvailable"))}</dd></div>
+                </dl>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {machine._id ? <LiveStatusBadge machineId={machine._id} status={statusByMachine[machine._id]} onSubscribe={subscribeToMachine} /> : null}
+                  {machine._id ? (
+                    <Link href={`/${locale}/machines/${machine._id}`} className="rounded-lg border border-cyan-200 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-800">
+                      {t("machine.viewTimeline", { default: "View timeline" })}
+                    </Link>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="panel xl:col-span-2">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="flex items-center gap-2 text-lg font-semibold">
+                      <SparklesIcon className="h-5 w-5 text-purple-700" />
+                      {t("aiInsight.title")}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">{t("aiInsight.summary")}</p>
+                  </div>
+                  <button type="button" className="rounded-lg border border-purple-200 px-3 py-2 text-sm font-semibold text-purple-800" onClick={() => setShowTechnicalAnalysis(!showTechnicalAnalysis)}>
+                    {showTechnicalAnalysis ? t("aiInsight.hideTechnical") : t("aiInsight.viewTechnical")}
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                  <div className="rounded-lg bg-purple-50 p-3"><strong>{t("aiInsight.healthInsight")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.healthCopy")}</p></div>
+                  <div className="rounded-lg bg-amber-50 p-3"><strong>{t("aiInsight.possibleAnomaly")}</strong><p className="mt-1 text-slate-600">{wo.code_panne || t("notAvailable")}</p></div>
+                  <div className="rounded-lg bg-emerald-50 p-3"><strong>{t("aiInsight.recommendedInspection")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.recommendedCopy")}</p></div>
+                </div>
+                {showTechnicalAnalysis ? (
+                  <div className="mt-4 space-y-4">
+                    <MachineHealthPanel machineId={machine?._id} />
+                    <AiAssistantPanel machineId={machine?._id} workOrderId={wo._id} faultCode={wo.code_panne} />
+                  </div>
+                ) : null}
+              </section>
+            </div>
+          ) : null}
+
+          {activeTab === "intervention" ? (
+            <section className="panel">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 text-lg font-semibold">
+                    <WrenchScrewdriverIcon className="h-5 w-5 text-blue-700" />
+                    {t("intervention.title")}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    {startedAt ? `${t("intervention.startedAt")}: ${formatOptionalDate(startedAt, locale, t("notAvailable"))}` : t("intervention.notStarted")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {!hasAssignedTechnician && !isTerminal ? <button type="button" disabled={saving} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.claimTechnicianWorkOrder(id))}>{t("claim")}</button> : null}
+                  {waitingForValidation ? (
+                    <>
+                      <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm italic text-slate-600">{t("messages.awaitingValidation")}</span>
+                      <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "return"))}>{t("actions.return")}</button>
+                      <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "intervene"))}>{t("actions.intervene")}</button>
+                    </>
+                  ) : null}
+                  {status === "assigned" ? <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.startTechnicianWorkOrder(id))}>{t("actions.start")}</button> : null}
+                  {status === "in_progress" ? (
+                    <>
+                      <button type="button" disabled={saving} className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-800 disabled:opacity-50" onClick={() => void act(() => apiService.updateTechnicianReport(id, report))}>{t("actions.saveProgress")}</button>
+                      <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.waitForTechnicianParts(id))}>{t("actions.waitingParts")}</button>
+                      <button type="button" disabled={saving || !report.description_action.trim() || !report.etat_final.trim()} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => setCompleteOpen(true)}>{t("actions.completeIntervention")}</button>
+                    </>
+                  ) : null}
+                  {status === "waiting_parts" ? (
+                    <>
+                      <button type="button" className="rounded-lg border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-800" onClick={() => setActiveTab("parts")}>{t("actions.viewPartsRequest")}</button>
+                      <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.resumeTechnicianWorkOrder(id))}>{t("actions.resume")}</button>
+                    </>
+                  ) : null}
+                  {isCompletedLike(status) ? <button type="button" className="rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-800">{t("actions.viewReport")}</button> : null}
+                </div>
+              </div>
+              {canEditIntervention ? (
+                <div className="grid gap-4">
+                  <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.diagnosis")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.cause_racine} onChange={(event) => setReport({ ...report, cause_racine: event.target.value })} /></label>
+                  <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.actionPerformed")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.description_action} onChange={(event) => setReport({ ...report, description_action: event.target.value })} /></label>
+                  <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.observations")}<textarea className="min-h-20 rounded-lg border p-3 font-normal" value={report.etat_final} onChange={(event) => setReport({ ...report, etat_final: event.target.value })} /></label>
+                </div>
+              ) : (
+                <dl className="grid gap-3 text-sm md:grid-cols-3">
+                  <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
+                  <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
+                  <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.observations")}</dt><dd>{report.etat_final || t("notAvailable")}</dd></div>
+                </dl>
+              )}
+            </section>
+          ) : null}
+
+          {activeTab === "parts" ? (
+            <section className="panel">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><Cog6ToothIcon className="h-5 w-5 text-amber-700" />{t("parts.title")}</h2>
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700">{t("parts.used")}</h3>
+                  {detail.parts.length ? (
+                    <ul className="mt-3 divide-y rounded-lg border">
+                      {detail.parts.map((line) => <li className="flex justify-between gap-4 p-3 text-sm" key={line._id}><span>{line.part_id?.ref_constructeur} / {line.part_id?.nom_piece}</span><strong>{line.quantite}</strong></li>)}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("parts.noneAdded")}</p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
+                  <h3 className="font-semibold text-amber-950">{t("parts.addPart")}</h3>
+                  <div className="mt-3 grid gap-3">
+                    <select className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.select")} value={partId} onChange={(event) => setPartId(event.target.value)}>
+                      <option value="">{t("parts.select")}</option>
+                      {available.map((stock) => <option key={stock._id} value={stock.part_id?._id}>{stock.part_id?.ref_constructeur} / {stock.part_id?.nom_piece} ({stock.quantite_en_stock})</option>)}
+                    </select>
+                    <p className="text-xs text-amber-800">{t("parts.available")}: <strong>{partId ? availableQuantity : t("notAvailable")}</strong></p>
+                    <input className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.quantity")} type="number" min={1} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
+                    <button type="button" disabled={saving || !partId || !canEditIntervention || quantity > availableQuantity} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }))}>{t("actions.addPart")}</button>
+                    {partId && quantity > availableQuantity ? <button type="button" disabled={saving || !canEditIntervention} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50" onClick={() => void act(() => apiService.requestTechnicianPart(id, { part_id: partId, quantity }))}>{t("parts.requestPart")}</button> : null}
+                    <p className="text-xs text-amber-800">{t("parts.requestStatus")}: {status === "waiting_parts" ? t("status.waiting_parts") : t("notAvailable")}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {activeTab === "documents" ? (
+            <div className="space-y-5">
+              <ManualsSection manuals={detail.manuals} previewManual={previewManual} setPreviewManual={setPreviewManual} t={t} />
+              <KnowledgeSuggestions machineId={machine?._id} faultCode={wo.code_panne} maintenancePlanId={maintenancePlanId(wo)} />
+            </div>
+          ) : null}
+
+          {activeTab === "history" ? (
+            <section className="panel">
+              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClockIcon className="h-5 w-5 text-slate-700" />{t("history.title")}</h2>
+              <ol className="space-y-3">
+                <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.created")}</p><p className="text-slate-500">{formatOptionalDate(wo.date_created, locale, t("notAvailable"))}</p></li>
+                {startedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.started")}</p><p className="text-slate-500">{formatOptionalDate(startedAt, locale, t("notAvailable"))}</p></li> : null}
+                {lifecycleHistory.map((entry: any, index: number) => (
+                  <li className="rounded-lg border p-3 text-sm" key={`${entry.action}-${entry.at}-${index}`}>
+                    <p className="font-semibold">{entry.action || t("history.statusChanged")}</p>
+                    <p className="text-slate-500">{formatOptionalDate(entry.at, locale, t("notAvailable"))}</p>
+                    <p className="text-slate-600">{entry.from_status ? `${entry.from_status} -> ` : ""}{entry.to_status}</p>
+                    {entry.reason ? <p className="mt-1 text-slate-500">{entry.reason}</p> : null}
+                  </li>
+                ))}
+                {endedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.completed")}</p><p className="text-slate-500">{formatOptionalDate(endedAt, locale, t("notAvailable"))}</p></li> : null}
+              </ol>
+            </section>
+          ) : null}
+
+

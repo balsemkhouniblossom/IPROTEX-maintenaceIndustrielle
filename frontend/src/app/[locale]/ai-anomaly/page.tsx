@@ -17,6 +17,7 @@ import {
   AI_ANOMALY_LIMITATION_NOTICE,
   AI_ANOMALY_RISK_INDICATORS,
   type AiAnomalyAnalysis,
+  type AiAnomalyInputSource,
   type AiAnomalyMachineRecord,
   type AiAnomalyRiskLevel,
   type AiAnomalyValidationStatus,
@@ -328,152 +329,51 @@ function AiAnomalyMonitoringContent() {
           />
         </section>
 
-        <section className="panel">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <label className="block text-sm font-medium text-slate-700">
-              {t("filters.machine")}
-              <select
-                className="input-field mt-1"
-                value={filters.machineId}
-                onChange={(event) => {
-                  setPage(1);
-                  setFilters((current) => ({
-                    ...current,
-                    machineId: event.target.value,
-                  }));
-                }}
-              >
-                <option value="">{t("filters.allMachines")}</option>
-                {machines.map((machine) => (
-                  <option key={machine.id} value={machine.id}>
-                    {machine.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              {t("filters.riskLevel")}
-              <select
-                className="input-field mt-1"
-                value={filters.riskLevel}
-                onChange={(event) => {
-                  setPage(1);
-                  setFilters((current) => ({
-                    ...current,
-                    riskLevel: event.target.value as "ALL" | AiAnomalyRiskLevel,
-                  }));
-                }}
-              >
-                {RISK_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level === "ALL"
-                      ? t("filters.allRiskLevels")
-                      : t(`riskLevels.${level}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              {t("filters.validationStatus")}
-              <select
-                className="input-field mt-1"
-                value={filters.validationStatus}
-                onChange={(event) => {
-                  setPage(1);
-                  setFilters((current) => ({
-                    ...current,
-                    validationStatus: event.target.value as
-                      "ALL" | AiAnomalyValidationStatus,
-                  }));
-                }}
-              >
-                {VALIDATION_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status === "ALL"
-                      ? t("filters.allValidationStatuses")
-                      : t(`validation.${status}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              {t("filters.dateFrom")}
-              <input
-                className="input-field mt-1"
-                type="date"
-                value={filters.dateFrom}
-                onChange={(event) => {
-                  setPage(1);
-                  setFilters((current) => ({
-                    ...current,
-                    dateFrom: event.target.value,
-                  }));
-                }}
-              />
-            </label>
-            <label className="block text-sm font-medium text-slate-700">
-              {t("filters.dateTo")}
-              <input
-                className="input-field mt-1"
-                type="date"
-                value={filters.dateTo}
-                onChange={(event) => {
-                  setPage(1);
-                  setFilters((current) => ({
-                    ...current,
-                    dateTo: event.target.value,
-                  }));
-                }}
-              />
-            </label>
-          </div>
-        </section>
+        <AiAnomalyFiltersSection
+          filters={filters}
+          machines={machines}
+          machineLabel={t("filters.machine")}
+          allMachinesLabel={t("filters.allMachines")}
+          riskLevelLabel={t("filters.riskLevel")}
+          allRiskLevelsLabel={t("filters.allRiskLevels")}
+          validationStatusLabel={t("filters.validationStatus")}
+          allValidationStatusesLabel={t("filters.allValidationStatuses")}
+          riskLevelOptionLabel={(level) =>
+            level === "ALL" ? t("filters.allRiskLevels") : t(`riskLevels.${level}`)
+          }
+          validationOptionLabel={(status) =>
+            status === "ALL"
+              ? t("filters.allValidationStatuses")
+              : t(`validation.${status}`)
+          }
+          dateFromLabel={t("filters.dateFrom")}
+          dateToLabel={t("filters.dateTo")}
+          onChange={(patch) => {
+            setPage(1);
+            setFilters((current) => ({ ...current, ...patch }));
+          }}
+        />
 
-        {loading ? (
-          <div className="panel flex min-h-64 items-center justify-center">
-            <div className="text-center">
-              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
-              <p className="mt-3 text-sm font-medium text-slate-600">
-                {t("states.loading")}
-              </p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="panel border-amber-200 bg-amber-50">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-3">
-                <NoSymbolIcon className="mt-0.5 h-6 w-6 text-amber-700" />
-                <div>
-                  <h2 className="font-semibold text-amber-900">
-                    {serviceUnavailable ? t("states.unavailableTitle") : t("states.errorTitle")}
-                  </h2>
-                  <p className="mt-1 text-sm text-amber-800">{error}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={retrying}
-                onClick={() => {
-                  setRetrying(true);
-                  void loadData();
-                }}
-              >
-                {retrying ? t("states.retrying") : t("states.retry")}
-              </button>
-            </div>
-          </div>
-        ) : visibleAnalyses.length === 0 ? (
-          <div className="panel py-12 text-center">
-            <EyeIcon className="mx-auto h-10 w-10 text-slate-400" />
-            <h2 className="mt-3 text-lg font-semibold text-slate-800">
-              {t("states.emptyTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              {t("states.emptyDescription")}
-            </p>
-          </div>
-        ) : (
+        {loading ? <LoadingPanel label={t("states.loading")} /> : null}
+        {!loading && error ? (
+          <ErrorPanel
+            title={serviceUnavailable ? t("states.unavailableTitle") : t("states.errorTitle")}
+            message={error}
+            retryLabel={retrying ? t("states.retrying") : t("states.retry")}
+            retrying={retrying}
+            onRetry={() => {
+              setRetrying(true);
+              void loadData();
+            }}
+          />
+        ) : null}
+        {!loading && !error && visibleAnalyses.length === 0 ? (
+          <EmptyPanel
+            title={t("states.emptyTitle")}
+            description={t("states.emptyDescription")}
+          />
+        ) : null}
+        {!loading && !error && visibleAnalyses.length > 0 ? (
           <>
             <LineChartCard
               title={t("chart.title")}
@@ -483,93 +383,42 @@ function AiAnomalyMonitoringContent() {
               valueFormatter={(value) => `${value}/100`}
             />
 
-            <section className="panel">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="card-title">{t("table.title")}</h2>
-                <span className="text-sm text-slate-500">
-                  {t("table.chronological")}
-                </span>
-              </div>
-              <div className="wide-table-scroll">
-                <table className="table wide-table">
-                  <thead>
-                    <tr>
-                      <th>{t("table.machine")}</th>
-                      <th>{t("table.timestamp")}</th>
-                      <th>{t("table.anomalyScore")}</th>
-                      <th>{t("table.riskScore")}</th>
-                      <th>{t("table.riskLevel")}</th>
-                      <th>{t("table.rawAnomaly")}</th>
-                      <th>{t("table.persistentAlert")}</th>
-                      <th>{t("table.modelVersion")}</th>
-                      <th>{t("table.source")}</th>
-                      <th>{t("table.reasonCodes")}</th>
-                      <th>{t("table.validationStatus")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleAnalyses.map((analysis) => (
-                      <tr key={analysis.analysis_id}>
-                        <td>
-                          <button
-                            type="button"
-                            className="font-semibold text-blue-700 hover:text-blue-900"
-                            onClick={() => openDetails(analysis)}
-                          >
-                            {machineDisplayName(analysis.machine_id, machines)}
-                          </button>
-                        </td>
-                        <td>
-                          {formatDateTime(analysis.measurement_timestamp)}
-                        </td>
-                        <td>{analysis.anomaly_score.toFixed(3)}</td>
-                        <td>{Math.round(analysis.risk_score)}/100</td>
-                        <td>
-                          <RiskBadge
-                            level={analysis.risk_level}
-                            label={t(`riskLevels.${analysis.risk_level}`)}
-                          />
-                        </td>
-                        <td>
-                          <BooleanBadge
-                            value={analysis.raw_anomaly}
-                            trueLabel={t("boolean.yes")}
-                            falseLabel={t("boolean.no")}
-                          />
-                        </td>
-                        <td>
-                          <BooleanBadge
-                            value={analysis.persistent_alert}
-                            trueLabel={t("persistentAlert.active")}
-                            falseLabel={t("persistentAlert.clear")}
-                            urgent
-                          />
-                        </td>
-                        <td>{analysis.model_version}</td>
-                        <td>{t(sourceLabelKey(analysis.input_source))}</td>
-                        <td>
-                          {analysis.reason_codes.length
-                            ? analysis.reason_codes.join(", ")
-                            : tCommon("notAvailable")}
-                        </td>
-                        <td>{t(`validation.${analysis.validation_status}`)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-6">
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  totalItems={totalItems}
-                  limit={PAGE_LIMIT}
-                  onPageChange={setPage}
-                />
-              </div>
-            </section>
+            <AiAnomalyResultsTable
+              title={t("table.title")}
+              chronologicalLabel={t("table.chronological")}
+              headerLabels={{
+                machine: t("table.machine"),
+                timestamp: t("table.timestamp"),
+                anomalyScore: t("table.anomalyScore"),
+                riskScore: t("table.riskScore"),
+                riskLevel: t("table.riskLevel"),
+                rawAnomaly: t("table.rawAnomaly"),
+                persistentAlert: t("table.persistentAlert"),
+                modelVersion: t("table.modelVersion"),
+                source: t("table.source"),
+                reasonCodes: t("table.reasonCodes"),
+                validationStatus: t("table.validationStatus"),
+              }}
+              analyses={visibleAnalyses}
+              machines={machines}
+              onOpenDetails={openDetails}
+              formatDateTime={formatDateTime}
+              riskLevelLabel={(level) => t(`riskLevels.${level}`)}
+              sourceLabel={(source) => t(sourceLabelKey(source as AiAnomalyInputSource))}
+              validationLabel={(status) => t(`validation.${status}`)}
+              yesLabel={t("boolean.yes")}
+              noLabel={t("boolean.no")}
+              activeLabel={t("persistentAlert.active")}
+              clearLabel={t("persistentAlert.clear")}
+              notAvailableLabel={tCommon("notAvailable")}
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              limit={PAGE_LIMIT}
+              onPageChange={setPage}
+            />
           </>
-        )}
+        ) : null}
       </div>
 
       <Modal
@@ -756,5 +605,320 @@ function DetailField({
       </dt>
       <dd className="mt-1 text-sm font-medium text-slate-800">{value}</dd>
     </div>
+  );
+}
+
+function LoadingPanel({ label }: Readonly<{ label: string }>) {
+  return (
+    <div className="panel flex min-h-64 items-center justify-center">
+      <div className="text-center">
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
+        <p className="mt-3 text-sm font-medium text-slate-600">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function ErrorPanel({
+  title,
+  message,
+  retryLabel,
+  retrying,
+  onRetry,
+}: Readonly<{
+  title: string;
+  message: string;
+  retryLabel: string;
+  retrying: boolean;
+  onRetry: () => void;
+}>) {
+  return (
+    <div className="panel border-amber-200 bg-amber-50">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <NoSymbolIcon className="mt-0.5 h-6 w-6 text-amber-700" />
+          <div>
+            <h2 className="font-semibold text-amber-900">{title}</h2>
+            <p className="mt-1 text-sm text-amber-800">{message}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={retrying}
+          onClick={onRetry}
+        >
+          {retryLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EmptyPanel({
+  title,
+  description,
+}: Readonly<{ title: string; description: string }>) {
+  return (
+    <div className="panel py-12 text-center">
+      <EyeIcon className="mx-auto h-10 w-10 text-slate-400" />
+      <h2 className="mt-3 text-lg font-semibold text-slate-800">{title}</h2>
+      <p className="mt-1 text-sm text-slate-600">{description}</p>
+    </div>
+  );
+}
+
+function AiAnomalyResultsTable({
+  title,
+  chronologicalLabel,
+  headerLabels,
+  analyses,
+  machines,
+  onOpenDetails,
+  formatDateTime,
+  riskLevelLabel,
+  sourceLabel,
+  validationLabel,
+  yesLabel,
+  noLabel,
+  activeLabel,
+  clearLabel,
+  notAvailableLabel,
+  page,
+  totalPages,
+  totalItems,
+  limit,
+  onPageChange,
+}: Readonly<{
+  title: string;
+  chronologicalLabel: string;
+  headerLabels: {
+    machine: string;
+    timestamp: string;
+    anomalyScore: string;
+    riskScore: string;
+    riskLevel: string;
+    rawAnomaly: string;
+    persistentAlert: string;
+    modelVersion: string;
+    source: string;
+    reasonCodes: string;
+    validationStatus: string;
+  };
+  analyses: AiAnomalyAnalysis[];
+  machines: ReturnType<typeof buildAiAnomalyMachineOptions>;
+  onOpenDetails: (analysis: AiAnomalyAnalysis) => void;
+  formatDateTime: (value: string) => string;
+  riskLevelLabel: (level: AiAnomalyRiskLevel) => string;
+  sourceLabel: (source: AiAnomalyInputSource) => string;
+  validationLabel: (status: AiAnomalyValidationStatus) => string;
+  yesLabel: string;
+  noLabel: string;
+  activeLabel: string;
+  clearLabel: string;
+  notAvailableLabel: string;
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  limit: number;
+  onPageChange: (page: number) => void;
+}>) {
+  return (
+    <section className="panel">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="card-title">{title}</h2>
+        <span className="text-sm text-slate-500">{chronologicalLabel}</span>
+      </div>
+      <div className="wide-table-scroll">
+        <table className="table wide-table">
+          <thead>
+            <tr>
+              <th>{headerLabels.machine}</th>
+              <th>{headerLabels.timestamp}</th>
+              <th>{headerLabels.anomalyScore}</th>
+              <th>{headerLabels.riskScore}</th>
+              <th>{headerLabels.riskLevel}</th>
+              <th>{headerLabels.rawAnomaly}</th>
+              <th>{headerLabels.persistentAlert}</th>
+              <th>{headerLabels.modelVersion}</th>
+              <th>{headerLabels.source}</th>
+              <th>{headerLabels.reasonCodes}</th>
+              <th>{headerLabels.validationStatus}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {analyses.map((analysis) => (
+              <tr key={analysis.analysis_id}>
+                <td>
+                  <button
+                    type="button"
+                    className="font-semibold text-blue-700 hover:text-blue-900"
+                    onClick={() => onOpenDetails(analysis)}
+                  >
+                    {machineDisplayName(analysis.machine_id, machines)}
+                  </button>
+                </td>
+                <td>{formatDateTime(analysis.measurement_timestamp)}</td>
+                <td>{analysis.anomaly_score.toFixed(3)}</td>
+                <td>{Math.round(analysis.risk_score)}/100</td>
+                <td>
+                  <RiskBadge
+                    level={analysis.risk_level}
+                    label={riskLevelLabel(analysis.risk_level)}
+                  />
+                </td>
+                <td>
+                  <BooleanBadge
+                    value={analysis.raw_anomaly}
+                    trueLabel={yesLabel}
+                    falseLabel={noLabel}
+                  />
+                </td>
+                <td>
+                  <BooleanBadge
+                    value={analysis.persistent_alert}
+                    trueLabel={activeLabel}
+                    falseLabel={clearLabel}
+                    urgent
+                  />
+                </td>
+                <td>{analysis.model_version}</td>
+                <td>{sourceLabel(analysis.input_source)}</td>
+                <td>{formatReasonCodes(analysis.reason_codes, notAvailableLabel)}</td>
+                <td>{validationLabel(analysis.validation_status)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-6">
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={onPageChange}
+        />
+      </div>
+    </section>
+  );
+}
+
+function formatReasonCodes(codes: string[], notAvailableLabel: string): string {
+  return codes.length ? codes.join(", ") : notAvailableLabel;
+}
+
+type AiAnomalyFilters = {
+  machineId: string;
+  riskLevel: "ALL" | AiAnomalyRiskLevel;
+  validationStatus: "ALL" | AiAnomalyValidationStatus;
+  dateFrom: string;
+  dateTo: string;
+};
+
+function AiAnomalyFiltersSection({
+  filters,
+  machines,
+  machineLabel,
+  allMachinesLabel,
+  riskLevelLabel,
+  allRiskLevelsLabel,
+  validationStatusLabel,
+  allValidationStatusesLabel,
+  riskLevelOptionLabel,
+  validationOptionLabel,
+  dateFromLabel,
+  dateToLabel,
+  onChange,
+}: Readonly<{
+  filters: AiAnomalyFilters;
+  machines: ReturnType<typeof buildAiAnomalyMachineOptions>;
+  machineLabel: string;
+  allMachinesLabel: string;
+  riskLevelLabel: string;
+  allRiskLevelsLabel: string;
+  validationStatusLabel: string;
+  allValidationStatusesLabel: string;
+  riskLevelOptionLabel: (level: "ALL" | AiAnomalyRiskLevel) => string;
+  validationOptionLabel: (status: "ALL" | AiAnomalyValidationStatus) => string;
+  dateFromLabel: string;
+  dateToLabel: string;
+  onChange: (patch: Partial<AiAnomalyFilters>) => void;
+}>) {
+  return (
+    <section className="panel">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <label className="block text-sm font-medium text-slate-700">
+          {machineLabel}
+          <select
+            className="input-field mt-1"
+            value={filters.machineId}
+            onChange={(event) => onChange({ machineId: event.target.value })}
+          >
+            <option value="">{allMachinesLabel}</option>
+            {machines.map((machine) => (
+              <option key={machine.id} value={machine.id}>
+                {machine.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          {riskLevelLabel}
+          <select
+            className="input-field mt-1"
+            value={filters.riskLevel}
+            onChange={(event) =>
+              onChange({
+                riskLevel: event.target.value as "ALL" | AiAnomalyRiskLevel,
+              })
+            }
+          >
+            {RISK_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {riskLevelOptionLabel(level)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          {validationStatusLabel}
+          <select
+            className="input-field mt-1"
+            value={filters.validationStatus}
+            onChange={(event) =>
+              onChange({
+                validationStatus: event.target
+                  .value as "ALL" | AiAnomalyValidationStatus,
+              })
+            }
+          >
+            {VALIDATION_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {validationOptionLabel(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          {dateFromLabel}
+          <input
+            className="input-field mt-1"
+            type="date"
+            value={filters.dateFrom}
+            onChange={(event) => onChange({ dateFrom: event.target.value })}
+          />
+        </label>
+        <label className="block text-sm font-medium text-slate-700">
+          {dateToLabel}
+          <input
+            className="input-field mt-1"
+            type="date"
+            value={filters.dateTo}
+            onChange={(event) => onChange({ dateTo: event.target.value })}
+          />
+        </label>
+      </div>
+    </section>
   );
 }
