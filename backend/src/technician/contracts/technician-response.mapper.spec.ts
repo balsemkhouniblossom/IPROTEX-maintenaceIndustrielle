@@ -1,5 +1,8 @@
 import { Types } from 'mongoose';
-import { toTechnicianPartResponse } from './technician-response.mapper';
+import {
+  toTechnicianPartResponse,
+  toModuleTypeSummary,
+} from './technician-response.mapper';
 
 const compareStrings = (left: string, right: string): number =>
   left.localeCompare(right);
@@ -53,5 +56,39 @@ describe('toTechnicianPartResponse', () => {
     expect(Object.keys(response).sort(compareStrings)).toEqual(
       ['_id', 'ot_id', 'part_id', 'quantite'].sort(compareStrings),
     );
+  });
+});
+
+describe('toModuleTypeSummary', () => {
+  it('returns an empty object for null or undefined refs', () => {
+    expect(toModuleTypeSummary(null)).toEqual({});
+    expect(toModuleTypeSummary(undefined)).toEqual({});
+  });
+
+  it('serializes an ObjectId ref to an id-only summary', () => {
+    const id = new Types.ObjectId();
+    expect(toModuleTypeSummary(id)).toEqual({ _id: id.toString() });
+  });
+
+  it('serializes a string ref to an id-only summary', () => {
+    const id = new Types.ObjectId().toString();
+    expect(toModuleTypeSummary(id)).toEqual({ _id: id });
+  });
+
+  it('maps a populated ref with name into an id and name summary', () => {
+    const id = new Types.ObjectId();
+    const response = toModuleTypeSummary({ _id: id, name: 'Motor' });
+    expect(response).toEqual({ _id: id.toString(), name: 'Motor' });
+  });
+
+  it('maps a populated ref without an _id to an undefined _id', () => {
+    const response = toModuleTypeSummary({ name: 'Motor' });
+    expect(response).toEqual({ _id: undefined, name: 'Motor' });
+  });
+
+  it('maps a populated ref without a name to an undefined name', () => {
+    const id = new Types.ObjectId();
+    const response = toModuleTypeSummary({ _id: id });
+    expect(response).toEqual({ _id: id.toString(), name: undefined });
   });
 });

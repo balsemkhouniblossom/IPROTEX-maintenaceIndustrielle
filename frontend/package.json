@@ -54,6 +54,7 @@
     "postcss": "$postcss",
     "sharp": "$sharp",
     "pdfjs-dist": "$pdfjs-dist",
+    "fast-uri": "^4.1.4",
     "@eslint/eslintrc": {
       "js-yaml": "^4.3.1"
     },
