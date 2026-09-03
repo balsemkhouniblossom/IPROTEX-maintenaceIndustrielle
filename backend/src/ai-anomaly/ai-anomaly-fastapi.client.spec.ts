@@ -161,4 +161,189 @@ describe('AiAnomalyFastApiClient', () => {
       },
     });
   });
+
+  it('treats unrecognized enabled flag values as disabled by default', async () => {
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'maybe' }),
+    );
+    expect(client.isEnabled()).toBe(false);
+  });
+
+  it('recognizes common truthy and falsy enabled flag values', () => {
+    const truthy = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'YES' }),
+    );
+    expect(truthy.isEnabled()).toBe(true);
+
+    const falsy = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'off' }),
+    );
+    expect(falsy.isEnabled()).toBe(false);
+  });
+
+  it('calls the analyze-batch endpoint as idempotent', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ results: [validResult] }));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await client.analyzeBatch({ rows: [] });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/anomaly/analyze-batch'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('falls back to the default timeout when configured value is invalid', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ results: [validResult] }));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true', AI_SERVICE_TIMEOUT_MS: 'not-a-number' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).resolves.toBeDefined();
+  });
+
+  it('rejects a response payload that is not a results object', async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse({ results: 'nope' }));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      BadGatewayException,
+    );
+  });
+
+  it('rejects a result whose componentScores is not an object', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        results: [{ ...validResult, componentScores: 'nope' }],
+      }),
+    );
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      BadGatewayException,
+    );
+  });
+
+  it('rejects a result whose reasonCodes contains non-string entries', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        results: [{ ...validResult, reasonCodes: [1, 2] }],
+      }),
+    );
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      BadGatewayException,
+    );
+  });
+
+  it('rejects model metadata that is missing the models array', async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse({}));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.getModels()).rejects.toThrow(BadGatewayException);
+  });
+
+  it('rejects model metadata whose first entry is not an object', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ models: ['not-an-object'] }));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.getModels()).rejects.toThrow(BadGatewayException);
+  });
+
+  it('extracts array-shaped validation error details as a generic message', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ detail: [{ msg: 'bad field' }] }, 422));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      'AI anomaly request validation failed',
+    );
+  });
+
+  it('falls back to a message field when detail is absent', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ message: 'nope' }, 400));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow('nope');
+  });
+
+  it('returns a generic error message when the body has no detail or message', async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse({}, 400));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      'AI anomaly request validation failed',
+    );
+  });
+
+  it('rejects with a gateway error when a successful response body is not valid JSON', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response('not json', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      }),
+    );
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      BadGatewayException,
+    );
+  });
+
+  it('treats an unparsable error response body as undefined instead of throwing', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response('not json', {
+        status: 500,
+        headers: { 'content-type': 'text/plain' },
+      }),
+    );
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      BadGatewayException,
+    );
+  });
+
+  it('wraps unexpected network errors as service unavailable', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
 });

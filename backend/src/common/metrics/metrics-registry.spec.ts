@@ -116,4 +116,25 @@ describe('MetricsRegistry', () => {
     expect(text).toContain('gmao_metrics_exposed_series 10');
     expect(text).not.toContain('http_requests_total{');
   });
+
+  it('clears recorded request stats and the collections counter on reset', async () => {
+    registry.record('GET', '/health', 200, 5);
+    await registry.renderPrometheusText();
+
+    registry.resetForTests();
+    const text = await registry.renderPrometheusText();
+
+    expect(text).not.toContain('http_requests_total{');
+    expect(text).toContain('gmao_metrics_collections_total 1');
+  });
+
+  it('handles non-Error rejections from business metric collection', async () => {
+    registry = new MetricsRegistry({
+      collect: jest.fn().mockRejectedValue('boom'),
+    } as never);
+
+    const text = await registry.renderPrometheusText();
+
+    expect(text).toContain('gmao_business_metrics_collection_success 0');
+  });
 });

@@ -459,4 +459,184 @@ describe('AiAnomalyService', () => {
       ),
     ).rejects.toThrow(BadRequestException);
   });
+
+  it('rejects a single analysis spanning more than one timestamp', async () => {
+    const { service, fastApiClient } = makeService();
+
+    await expect(
+      service.createAnalysis(
+        { ...dto, rows: [row(), row('2003-11-15T18:28:46')] },
+        actor,
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(fastApiClient.analyze).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid machine_id before contacting the AI service', async () => {
+    const { service, fastApiClient } = makeService();
+
+    await expect(
+      service.createAnalysis({ ...dto, machine_id: 'not-an-id' }, actor),
+    ).rejects.toThrow(BadRequestException);
+    expect(fastApiClient.analyze).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid capteur_id before contacting the AI service', async () => {
+    const { service, fastApiClient } = makeService();
+
+    await expect(
+      service.createAnalysis({ ...dto, capteur_id: 'not-an-id' }, actor),
+    ).rejects.toThrow(BadRequestException);
+    expect(fastApiClient.analyze).not.toHaveBeenCalled();
+  });
+
+  it('rejects analysis when the capteur cannot be found', async () => {
+    const { service, capteurModel } = makeService();
+    capteurModel.findById.mockReturnValue(exec(null));
+
+    await expect(service.createAnalysis(dto, actor)).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('rejects analysis when the capteur module mapping is unavailable', async () => {
+    const { service, moduleModel } = makeService();
+    moduleModel.findById.mockReturnValue(exec(null));
+
+    await expect(service.createAnalysis(dto, actor)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('skips capteur/module mapping checks when no capteur_id is supplied', async () => {
+    const { service, capteurModel } = makeService();
+
+    await service.createAnalysis({ ...dto, capteur_id: undefined }, actor);
+
+    expect(capteurModel.findById).not.toHaveBeenCalled();
+  });
+
+  it('rejects a FastAPI timestamp that cannot be parsed when persisting', async () => {
+    const { service, fastApiClient } = makeService();
+    fastApiClient.analyze.mockResolvedValue({
+      results: [{ ...result, timestamp: 'not-a-date' }],
+    });
+
+    await expect(service.createAnalysis(dto, actor)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('logs and swallows notification failures without failing the request', async () => {
+    const persistentResult = { ...result, persistentAlert: true };
+    const savedDoc = makeSavedDoc({
+      persistent_alert: true,
+      model_response: persistentResult,
+    });
+    const { service, analysisModel, fastApiClient, notificationCenterService } =
+      makeService();
+    analysisModel.findOneAndUpdate.mockReturnValue(exec(savedDoc));
+    fastApiClient.analyze.mockResolvedValue({ results: [persistentResult] });
+    notificationCenterService.createIfNotExists.mockRejectedValue(
+      new Error('notification service down'),
+    );
+
+    await expect(service.createAnalysis(dto, actor)).resolves.toBeDefined();
+  });
+
+  it('returns FastAPI model metadata unchanged', async () => {
+    const { service, fastApiClient } = makeService();
+
+    const metadata = await service.getModelMetadata();
+
+    expect(fastApiClient.getModels).toHaveBeenCalled();
+    expect(metadata).toEqual({ modelVersion: '0.1.0' });
+  });
+
+  it('fetches a single analysis by public id and enforces machine access', async () => {
+    const { service, analysisModel, documentAccessService } = makeService();
+
+    const response = await service.getAnalysis('AI-ANOM-test', actor);
+
+    expect(analysisModel.findOne).toHaveBeenCalledWith({
+      $or: [{ analysis_id: 'AI-ANOM-test' }],
+    });
+    expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
+      actor,
+      machineId,
+    );
+    expect(response.analysis_id).toBe('AI-ANOM-test');
+  });
+
+  it('looks up an analysis by Mongo id when the id is a valid ObjectId', async () => {
+    const { service, analysisModel, savedDoc } = makeService();
+    const mongoId = savedDoc._id.toHexString();
+
+    await service.getAnalysis(mongoId, actor);
+
+    expect(analysisModel.findOne).toHaveBeenCalledWith({
+      $or: [{ analysis_id: mongoId }, { _id: savedDoc._id }],
+    });
+  });
+
+  it('raises not found when no analysis matches the given id', async () => {
+    const { service, analysisModel } = makeService();
+    analysisModel.findOne.mockReturnValue(exec(null));
+
+    await expect(service.getAnalysis('missing', actor)).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('applies only a lower bound date filter when dateTo is omitted', async () => {
+    const { service, analysisModel } = makeService();
+
+    await service.listAnalyses({ dateFrom: '2003-11-15' }, actor);
+
+    const filter = analysisModel.find.mock.calls[0][0];
+    expect(filter.measurement_timestamp).toEqual({
+      $gte: new Date('2003-11-15T00:00:00.000Z'),
+    });
+  });
+
+  it('applies only an upper bound date filter when dateFrom is omitted', async () => {
+    const { service, analysisModel } = makeService();
+
+    await service.listAnalyses({ dateTo: '2003-11-15' }, actor);
+
+    const filter = analysisModel.find.mock.calls[0][0];
+    expect(filter.measurement_timestamp).toEqual({
+      $lte: new Date('2003-11-15T23:59:59.999Z'),
+    });
+  });
+
+  it('accepts full ISO timestamps with an explicit UTC offset', async () => {
+    const { service, analysisModel } = makeService();
+
+    await service.listAnalyses({ dateFrom: '2003-11-15T18:18:46+01:00' }, actor);
+
+    expect(analysisModel.find).toHaveBeenCalled();
+  });
+
+  it('rejects a date range filter with an invalid ISO timestamp format', async () => {
+    const { service, analysisModel } = makeService();
+
+    await expect(
+      service.listAnalyses({ dateFrom: 'not-a-date-at-all' }, actor),
+    ).rejects.toThrow(BadRequestException);
+    expect(analysisModel.find).not.toHaveBeenCalled();
+  });
+
+  it('restricts listing to accessible machines when no machine filter is given', async () => {
+    const { service, analysisModel, documentAccessService } = makeService();
+    const accessible = [new Types.ObjectId(machineId)];
+    documentAccessService.listAccessibleMachineIds.mockResolvedValue(
+      accessible,
+    );
+
+    await service.listAnalyses({}, actor);
+
+    const filter = analysisModel.find.mock.calls[0][0];
+    expect(filter.machine_id).toEqual({ $in: accessible });
+  });
 });

@@ -1,4 +1,5 @@
 import {
+  getManagedAvatarFileName,
   resolveUserPhotoUrl,
   shouldExposeUserAvatar,
   toManagedUserPhotoPath,
@@ -84,5 +85,27 @@ describe('user photo URL helpers', () => {
         approval_status: ApprovalStatus.PENDING,
       }),
     ).toBe(false);
+    expect(shouldExposeUserAvatar(null)).toBe(false);
+    expect(shouldExposeUserAvatar(undefined)).toBe(false);
+  });
+
+  it('extracts the managed avatar file name from a managed avatar path', () => {
+    const managedPath = toManagedUserPhotoPath('avatar-1.webp');
+    expect(getManagedAvatarFileName(managedPath)).toBe(
+      managedPath.split('/').pop(),
+    );
+  });
+
+  it('returns null for photos outside the managed avatar route', () => {
+    expect(getManagedAvatarFileName(null)).toBeNull();
+    expect(getManagedAvatarFileName(undefined)).toBeNull();
+    expect(getManagedAvatarFileName('')).toBeNull();
+    expect(
+      getManagedAvatarFileName('https://lh3.googleusercontent.com/a.png'),
+    ).toBeNull();
+  });
+
+  it('rejects managed avatar paths whose file name does not match the expected pattern', () => {
+    expect(getManagedAvatarFileName(`${MANAGED_AVATAR_ROUTE}/../secret`)).toBeNull();
   });
 });

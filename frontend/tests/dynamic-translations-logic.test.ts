@@ -107,6 +107,19 @@ test("translation map supports show-original and translated display modes", () =
     }),
     "",
   );
+  assert.equal(
+    translatedTextFor({
+      translations: mergeTranslationResults({}, [
+        { ...result, translatedText: "" },
+      ]),
+      entityType: "workOrder",
+      entityId: "wo-1",
+      field: "description",
+      originalText: "Inspect pump",
+      showOriginal: false,
+    }),
+    "Inspect pump",
+  );
 });
 
 test("requestDynamicTranslations forwards payload and abort signal through the API client", async () => {

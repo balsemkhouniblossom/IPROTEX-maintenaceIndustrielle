@@ -91,4 +91,12 @@ describe('BusinessMetricsCollector', () => {
       date_fin: { $exists: true, $ne: null },
     });
   });
+
+  it('defaults downtime hours to zero when the aggregation returns no rows', async () => {
+    workOrderModel.aggregate.mockReturnValue(execResult([]));
+
+    await expect(collector.collect()).resolves.toMatchObject({
+      machineDowntimeHours: 0,
+    });
+  });
 });

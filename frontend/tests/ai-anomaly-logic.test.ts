@@ -13,6 +13,7 @@ import {
   canSubmitAiAnomalyAnalysis,
   canValidateAiAnomaly,
   filterAiAnomalyAnalyses,
+  isAiServiceUnavailable,
   machineDisplayName,
   sourceLabelKey,
   summarizeAiAnomalyAnalyses,
@@ -247,6 +248,43 @@ test("UI omits automatic work-order creation", () => {
   assert.doesNotMatch(readSource(API), /ai-anomaly[\s\S]*createWorkOrder/);
   assert.doesNotMatch(readSource(PAGE), /proposeWorkOrder/);
   assert.doesNotMatch(readSource(PAGE), /apiService\.createWorkOrder/);
+});
+
+test("machine options fall back to serial/model or the raw id when machine_id is missing", () => {
+  assert.deepEqual(
+    buildAiAnomalyMachineOptions([], [
+      { _id: "machine-a", serial_no: "SN-1", model: "M-100" },
+    ]),
+    [{ id: "machine-a", label: "SN-1 / M-100" }],
+  );
+  assert.deepEqual(buildAiAnomalyMachineOptions([], [{ _id: "machine-a" }]), [
+    { id: "machine-a", label: "machine-a" },
+  ]);
+});
+
+test("demo input source labels use the demo translation key", () => {
+  assert.equal(sourceLabelKey("DEMO"), "sources.demo");
+});
+
+test("AI service outage responses (502/503/504) are recognized as unavailable", () => {
+  assert.equal(
+    isAiServiceUnavailable({ response: { status: 503 } }),
+    true,
+  );
+  assert.equal(
+    isAiServiceUnavailable({ response: { status: 502 } }),
+    true,
+  );
+  assert.equal(
+    isAiServiceUnavailable({ response: { status: 504 } }),
+    true,
+  );
+  assert.equal(
+    isAiServiceUnavailable({ response: { status: 400 } }),
+    false,
+  );
+  assert.equal(isAiServiceUnavailable(new Error("network")), false);
+  assert.equal(isAiServiceUnavailable(undefined), false);
 });
 
 test("translations exist for all locales and Arabic keeps RTL available", () => {

@@ -386,4 +386,60 @@ describe('AiAssistantService', () => {
       expect.arrayContaining(['workOrderModel', 'stockModel', 'machineModel']),
     );
   });
+
+  it("lists only the requesting user's own history, most recent first", async () => {
+    const userId = actor.userId;
+    const exec = jest.fn().mockResolvedValue([{ _id: new Types.ObjectId() }]);
+    const limit = jest.fn().mockReturnValue({ exec });
+    const sort = jest.fn().mockReturnValue({ limit });
+    const find = jest.fn().mockReturnValue({ sort });
+    (interactionModel as unknown as { find: jest.Mock }).find = find;
+    const service = buildService();
+
+    const history = await service.listOwnHistory({ userId }, 5);
+
+    expect(find).toHaveBeenCalledWith({
+      actor_user_id: new Types.ObjectId(userId),
+    });
+    expect(sort).toHaveBeenCalledWith({ createdAt: -1 });
+    expect(limit).toHaveBeenCalledWith(5);
+    expect(history).toHaveLength(1);
+  });
+
+  it('lists history across all users for admin review', async () => {
+    const exec = jest.fn().mockResolvedValue([]);
+    const limit = jest.fn().mockReturnValue({ exec });
+    const sort = jest.fn().mockReturnValue({ limit });
+    const find = jest.fn().mockReturnValue({ sort });
+    (interactionModel as unknown as { find: jest.Mock }).find = find;
+    const service = buildService();
+
+    await service.listAllHistory(10);
+
+    expect(find).toHaveBeenCalledWith({});
+    expect(limit).toHaveBeenCalledWith(10);
+  });
+
+  it('falls back to the English clarification message for an unsupported locale', async () => {
+    injectionGuard.scan.mockReturnValue({ sanitized: 'hi', flags: [] });
+    const service = buildService();
+
+    const response = await service.getRecommendation(
+      actor,
+      baseDto({ question: 'hi', locale: 'xx' }),
+    );
+
+    expect(response.answer?.uncertainty).toBe(
+      'I need a clearer maintenance question before giving recommendations. Please describe the fault, symptom, alarm, noise, temperature, movement, or check you want help with.',
+    );
+  });
+
+  it('falls back to the default timeout when the configured value is not a positive integer', async () => {
+    configService.get.mockReturnValue('not-a-number');
+    const service = buildService();
+
+    await service.getRecommendation(actor, baseDto());
+
+    expect(provider.generate).toHaveBeenCalled();
+  });
 });

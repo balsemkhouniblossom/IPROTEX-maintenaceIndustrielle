@@ -245,4 +245,47 @@ describe('JwtAuthGuard account state enforcement', () => {
 
     expect(passportCanActivate).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects metrics scrapes with a same-length but incorrect bearer token', async () => {
+    process.env.METRICS_BEARER_TOKEN = 'abcdefghij';
+    const request = {
+      method: 'GET',
+      path: '/health/metrics',
+      headers: { authorization: 'Bearer jihgfedcba' },
+      user: approvedUser,
+    };
+
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+    expect(passportCanActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to originalUrl when path is not set on the request', async () => {
+    process.env.METRICS_BEARER_TOKEN = 'strong-test-metrics-token';
+    const request = {
+      method: 'GET',
+      originalUrl: '/health/metrics?foo=bar',
+      headers: { authorization: 'Bearer strong-test-metrics-token' },
+    };
+
+    await expect(guard.canActivate(contextFor(request))).resolves.toBe(true);
+    expect(passportCanActivate).not.toHaveBeenCalled();
+  });
+
+  it('allows logout requests for users with an incomplete profile', async () => {
+    await expect(
+      guard.canActivate(
+        contextFor({
+          method: 'POST',
+          path: '/auth/logout',
+          user: {
+            role: Role.OPERATOR,
+            is_active: false,
+            is_verified: true,
+            approval_status: ApprovalStatus.PENDING,
+            profile_completed: false,
+          },
+        }),
+      ),
+    ).resolves.toBe(true);
+  });
 });

@@ -486,4 +486,184 @@ describe('DynamicContentTranslationService', () => {
       'lifecycle_history.0.reason',
     ]);
   });
+
+  it('rejects an unsupported target or source locale', async () => {
+    const { service, order } = createService({});
+
+    await expect(
+      service.batch(
+        { userId: 'admin-id', role: Role.ADMIN },
+        {
+          targetLocale: 'xx' as never,
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: String(order._id),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(
+      service.batch(
+        { userId: 'admin-id', role: Role.ADMIN },
+        {
+          targetLocale: 'fr',
+          sourceLocale: 'zz' as never,
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: String(order._id),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns an empty result for an empty batch without touching the database', async () => {
+    const { service, workOrderModel } = createService({});
+
+    const response = await service.batch(
+      { userId: 'admin-id', role: Role.ADMIN },
+      { targetLocale: 'fr', items: [] },
+    );
+
+    expect(response).toEqual({ items: [] });
+    expect(workOrderModel.findById).not.toHaveBeenCalled();
+  });
+
+  it('rejects an entityType other than workOrder', async () => {
+    const { service, order } = createService({});
+
+    await expect(
+      service.batch(
+        { userId: 'admin-id', role: Role.ADMIN },
+        {
+          targetLocale: 'fr',
+          items: [
+            {
+              entityType: 'machine' as never,
+              entityId: String(order._id),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects an entityId that is not a valid ObjectId', async () => {
+    const { service } = createService({});
+
+    await expect(
+      service.batch(
+        { userId: 'admin-id', role: Role.ADMIN },
+        {
+          targetLocale: 'fr',
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: 'not-an-object-id',
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('treats a missing work order as inaccessible rather than not found', async () => {
+    const { service, workOrderModel } = createService({});
+    workOrderModel.findById.mockReturnValue(execResult(null));
+
+    await expect(
+      service.batch(
+        { userId: 'admin-id', role: Role.ADMIN },
+        {
+          targetLocale: 'fr',
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: new Types.ObjectId().toHexString(),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('resolves a populated technician_id reference for owner access checks', async () => {
+    const ownerId = new Types.ObjectId();
+    const order = workOrder({ technician_id: { _id: ownerId } });
+    const { service } = createService({ order });
+
+    await expect(
+      service.batch(
+        { userId: ownerId.toHexString(), role: Role.TECHNICIAN },
+        {
+          targetLocale: 'fr',
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: String(order._id),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).resolves.toHaveProperty('items');
+  });
+
+  it('deduplicates repeated field requests for the same entity within a batch', async () => {
+    const order = workOrder();
+    const { service, provider } = createService({ order });
+
+    const response = await service.batch(
+      { userId: 'admin-id', role: Role.ADMIN },
+      {
+        targetLocale: 'fr',
+        items: [
+          {
+            entityType: 'workOrder',
+            entityId: String(order._id),
+            fields: ['description'],
+          },
+          {
+            entityType: 'workOrder',
+            entityId: String(order._id),
+            fields: ['description'],
+          },
+        ],
+      },
+    );
+
+    expect(response.items).toHaveLength(1);
+    expect(provider.translate).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips blank description and reschedule_reason fields', async () => {
+    const order = workOrder({ description: '   ', reschedule_reason: '' });
+    const { service } = createService({ order });
+
+    const response = await service.batch(
+      { userId: 'admin-id', role: Role.ADMIN },
+      {
+        targetLocale: 'fr',
+        items: [
+          {
+            entityType: 'workOrder',
+            entityId: String(order._id),
+            fields: ['description', 'reschedule_reason'],
+          },
+        ],
+      },
+    );
+
+    expect(response.items).toEqual([]);
+  });
 });

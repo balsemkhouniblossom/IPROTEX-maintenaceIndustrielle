@@ -130,6 +130,12 @@ test("enum translation falls back without object stringification", () => {
   assert.equal(translateEnumValue(t, "priorities", { value: "High" }), "");
 });
 
+test("enum translation falls back to the raw string when the translator has no has() method", () => {
+  const t = (key: string) => `translated:${key}`;
+
+  assert.equal(translateEnumValue(t, "priorities", "High!"), "High!");
+});
+
 test("important visible hardcoded text is not rendered directly in protected interfaces", () => {
   const dashboardLayout = readSource("src/components/DashboardLayout.tsx");
   const dashboard = readSource("src/app/Dashboard.tsx");
