@@ -613,7 +613,10 @@ describe('AiAnomalyService', () => {
   it('accepts full ISO timestamps with an explicit UTC offset', async () => {
     const { service, analysisModel } = makeService();
 
-    await service.listAnalyses({ dateFrom: '2003-11-15T18:18:46+01:00' }, actor);
+    await service.listAnalyses(
+      { dateFrom: '2003-11-15T18:18:46+01:00' },
+      actor,
+    );
 
     expect(analysisModel.find).toHaveBeenCalled();
   });

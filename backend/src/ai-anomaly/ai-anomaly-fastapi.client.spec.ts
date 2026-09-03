@@ -202,14 +202,19 @@ describe('AiAnomalyFastApiClient', () => {
       .fn()
       .mockResolvedValue(jsonResponse({ results: [validResult] }));
     const client = new AiAnomalyFastApiClient(
-      config({ AI_SERVICE_ENABLED: 'true', AI_SERVICE_TIMEOUT_MS: 'not-a-number' }),
+      config({
+        AI_SERVICE_ENABLED: 'true',
+        AI_SERVICE_TIMEOUT_MS: 'not-a-number',
+      }),
     );
 
     await expect(client.analyze({ rows: [] })).resolves.toBeDefined();
   });
 
   it('rejects a response payload that is not a results object', async () => {
-    global.fetch = jest.fn().mockResolvedValue(jsonResponse({ results: 'nope' }));
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ results: 'nope' }));
     const client = new AiAnomalyFastApiClient(
       config({ AI_SERVICE_ENABLED: 'true' }),
     );

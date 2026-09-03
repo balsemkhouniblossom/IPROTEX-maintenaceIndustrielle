@@ -106,6 +106,8 @@ describe('user photo URL helpers', () => {
   });
 
   it('rejects managed avatar paths whose file name does not match the expected pattern', () => {
-    expect(getManagedAvatarFileName(`${MANAGED_AVATAR_ROUTE}/../secret`)).toBeNull();
+    expect(
+      getManagedAvatarFileName(`${MANAGED_AVATAR_ROUTE}/../secret`),
+    ).toBeNull();
   });
 });
