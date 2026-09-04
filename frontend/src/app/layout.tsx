@@ -11,6 +11,7 @@ import {
   THEME_COOKIE_NAME,
   THEME_STORAGE_KEY,
 } from "@/components/theme/theme-config";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "IPROTEX - Gestion de machines Industrielles",
@@ -78,6 +79,7 @@ export default async function RootLayout({
             <GlobalApiErrorBanner />
           </AuthProvider>
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
