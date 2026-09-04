@@ -300,7 +300,8 @@ test("DashboardLayout gives technicians the compact role-specific sidebar", () =
   assert.match(technicianNav, /domainKey: "domains\.overview"[\s\S]*name: t\("navigation\.dashboard"\)[\s\S]*href: "\/technician"/);
   assert.match(technicianNav, /domainKey: "domains\.myWork"[\s\S]*name: t\("navigation\.workOrders"\)[\s\S]*href: "\/technician\/work-orders"/);
   assert.match(technicianNav, /domainKey: "domains\.equipment"[\s\S]*name: t\("navigation\.machines"\)[\s\S]*href: "\/machines"/);
-  assert.match(technicianNav, /domainKey: "domains\.resources"[\s\S]*name: t\("navigation\.parts"\)[\s\S]*href: "\/technician\/parts"[\s\S]*name: t\("navigation\.manuals"\)[\s\S]*href: "\/technician\/manuals"[\s\S]*name: t\("navigation\.knowledgeBase"\)[\s\S]*href: "\/technician\/knowledge-base"[\s\S]*name: t\("navigation\.aiAnomalyMonitoring"\)[\s\S]*href: "\/ai-anomaly"/);
+  assert.match(technicianNav, /domainKey: "domains\.equipment"[\s\S]*name: t\("navigation\.machines"\)[\s\S]*href: "\/machines"[\s\S]*name: t\("navigation\.machineHealth"\)[\s\S]*href: "\/technician\/machine-health"/);
+  assert.match(technicianNav, /domainKey: "domains\.resources"[\s\S]*name: t\("navigation\.parts"\)[\s\S]*href: "\/technician\/parts"[\s\S]*name: t\("navigation\.manuals"\)[\s\S]*href: "\/technician\/manuals"[\s\S]*name: t\("navigation\.knowledgeBase"\)[\s\S]*href: "\/technician\/knowledge-base"/);
   assert.match(technicianNav, /domainKey: "domains\.history"[\s\S]*name: t\("navigation\.completedWork"\)[\s\S]*href: "\/technician\/history"/);
   assert.doesNotMatch(technicianNav, /children:/);
 
@@ -312,7 +313,7 @@ test("DashboardLayout gives technicians the compact role-specific sidebar", () =
       assert.equal(typeof label, "string", `${locale}.json sidebar.domains.${key} must be a string`);
       assert.ok(label.length > 0, `${locale}.json sidebar.domains.${key} must not be empty`);
     }
-    for (const key of ["dashboard", "workOrders", "machines", "parts", "manuals", "knowledgeBase", "aiAnomalyMonitoring", "completedWork"]) {
+    for (const key of ["dashboard", "workOrders", "machines", "machineHealth", "parts", "manuals", "knowledgeBase", "completedWork"]) {
       const label = messages.sidebar?.navigation?.[key];
       assert.equal(typeof label, "string", `${locale}.json sidebar.navigation.${key} must be a string`);
       assert.ok(label.length > 0, `${locale}.json sidebar.navigation.${key} must not be empty`);
@@ -354,8 +355,6 @@ test("Technician work orders expose one My Work Orders workspace without deletin
   assert.match(workspace, /export function TechnicianParts\(\)/);
 
   for (const route of [
-    "src/app/[locale]/technician/interventions/page.tsx",
-    "src/app/[locale]/technician/waiting-parts/page.tsx",
     "src/app/[locale]/technician/history/page.tsx",
     "src/app/[locale]/technician/parts/page.tsx",
   ]) {
