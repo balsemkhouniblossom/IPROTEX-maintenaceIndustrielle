@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -10,6 +10,7 @@ import {
   ClipboardDocumentListIcon,
   CpuChipIcon,
   DocumentTextIcon,
+  MagnifyingGlassIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -18,6 +19,14 @@ import { Modal } from '@/components/Modal';
 import DocumentAttachmentViewer from '@/components/DocumentAttachmentViewer';
 import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
 import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
+import TechnicianDocumentCard from '@/components/technician/TechnicianDocumentCard';
+import {
+  documentDateLabel,
+  documentMachineLabel,
+  documentStatusLabel,
+  documentStatusTone,
+  documentTypeLabel,
+} from '@/components/technician/documentPresentation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLiveMonitoring } from '@/hooks/useLiveMonitoring';
 import type { LiveMachineStatus } from '@/hooks/useLiveMonitoring';
@@ -340,6 +349,9 @@ function TechnicianMachineWorkspace({
 }: WorkspaceProps) {
   const t = useTranslations('machineTimeline.technician');
   const tRoot = useTranslations('machineTimeline');
+  const tTech = useTranslations('technician');
+  const [documentSearch, setDocumentSearch] = useState('');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState('');
   const tabs: Array<{ key: MachineTab; label: string; Icon: typeof CpuChipIcon }> = [
     { key: 'overview', label: t('tabs.overview'), Icon: CpuChipIcon },
     { key: 'components', label: t('tabs.components'), Icon: CpuChipIcon },
@@ -428,14 +440,17 @@ function TechnicianMachineWorkspace({
         <section className="panel">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><BookOpenIcon className="h-5 w-5 text-blue-700" />{t('documents.title')}</h2>
           {context?.documents.length ? (
-            <div className="flex flex-wrap gap-2">
-              {context.documents.map((document) => (
-                <button key={String(document._id)} type="button" className="rounded-lg border px-3 py-2 text-sm font-semibold text-blue-700" onClick={() => setPreviewDocument(document)}>
-                  {String(document.file_name)}
-                </button>
-              ))}
-            </div>
-          ) : <p className="text-sm text-slate-500">{t('documents.empty')}</p>}
+            <MachineDocumentsBrowser
+              documents={context.documents}
+              search={documentSearch}
+              setSearch={setDocumentSearch}
+              typeFilter={documentTypeFilter}
+              setTypeFilter={setDocumentTypeFilter}
+              locale={locale}
+              onPreview={(document) => setPreviewDocument(document)}
+              tTech={tTech}
+            />
+          ) : <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">{t('documents.empty')}</p>}
         </section>
       ) : null}
 
@@ -449,6 +464,190 @@ function MachineSection({ title, children }: Readonly<{ title: string; children:
     <div>
       <h3 className="mb-3 border-b pb-2 text-sm font-bold uppercase text-slate-600">{title}</h3>
       <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function MachineDocumentsBrowser({
+  documents,
+  search,
+  setSearch,
+  typeFilter,
+  setTypeFilter,
+  locale,
+  onPreview,
+  tTech,
+}: Readonly<{
+  documents: WorkOrderRecord[];
+  search: string;
+  setSearch: (value: string) => void;
+  typeFilter: string;
+  setTypeFilter: (value: string) => void;
+  locale: string;
+  onPreview: (document: WorkOrderRecord) => void;
+  tTech: ReturnType<typeof useTranslations>;
+}>) {
+  const types = useMemo(() => {
+    const seen = new Set<string>();
+    for (const document of documents) {
+      const value = typeof document.type_document === 'string' ? document.type_document : null;
+      if (value) seen.add(value);
+    }
+    return [...seen].sort((left, right) => left.localeCompare(right));
+  }, [documents]);
+  const filtered = useMemo(() => {
+    let result = documents;
+    if (typeFilter) {
+      const normalized = typeFilter.toLowerCase();
+      result = result.filter(
+        (document) =>
+          typeof document.type_document === 'string' &&
+          document.type_document.toLowerCase() === normalized,
+      );
+    }
+    if (search.trim()) {
+      const query = search.trim().toLowerCase();
+      result = result.filter((document) => {
+        const description =
+          typeof document.description === 'string' ? document.description : '';
+        const fileName =
+          typeof document.file_name === 'string' ? document.file_name : '';
+        const typeLabel =
+          typeof document.type_document === 'string' ? document.type_document : '';
+        const documentId =
+          typeof document.document_id === 'string' ? document.document_id : '';
+        const machine =
+          document.machine_id && typeof document.machine_id === 'object'
+            ? (document.machine_id as { machine_id?: string }).machine_id || ''
+            : '';
+        return [fileName, description, typeLabel, documentId, machine]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      });
+    }
+    return result;
+  }, [documents, typeFilter, search]);
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
+        <label className="relative block">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            aria-label={tTech('manuals.searchLabel')}
+            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+            placeholder={tTech('manuals.searchPlaceholder')}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+        <select
+          aria-label={tTech('manuals.typeLabel')}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value="">{tTech('manuals.allTypes')}</option>
+          {types.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+      </div>
+      {filtered.length ? (
+        <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((document) => {
+            const fileName =
+              typeof document.file_name === 'string' ? document.file_name : '';
+            const description =
+              typeof document.description === 'string' ? document.description : '';
+            const typeDocument =
+              typeof document.type_document === 'string' ? document.type_document : '';
+            const documentId =
+              typeof document.document_id === 'string' ? document.document_id : '';
+            const status =
+              typeof document.status === 'string' ? document.status : undefined;
+            const dateAjout =
+              typeof document.date_ajout === 'string' ? document.date_ajout : undefined;
+            const tags = Array.isArray(document.tags)
+              ? document.tags.filter((tag): tag is string => typeof tag === 'string')
+              : [];
+            const machine = document.machine_id;
+            const machineLabel =
+              machine && typeof machine === 'object'
+                ? documentMachineLabel(
+                    machine as { machine_id?: string; reference?: string; model?: string; serial_no?: string },
+                    tTech('notAvailable'),
+                  )
+                : tTech('notAvailable');
+            const tone = documentStatusTone(status);
+            return (
+              <li
+                key={String(document._id ?? documentId ?? fileName)}
+                className="flex h-full flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="break-words font-semibold text-slate-900">{fileName || tTech('notAvailable')}</p>
+                    {description ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-slate-600">{description}</p>
+                    ) : null}
+                  </div>
+                  {status ? (
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${tone.bg} ${tone.text} ${tone.border}`}>
+                      {documentStatusLabel(status, tTech('notAvailable'))}
+                    </span>
+                  ) : null}
+                </div>
+                <dl className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                  <div>
+                    <dt className="uppercase text-slate-400">{tTech('manuals.typeLabel')}</dt>
+                    <dd className="font-medium text-slate-800">{documentTypeLabel(typeDocument, tTech('notAvailable'))}</dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase text-slate-400">{tTech('manuals.machineLabel')}</dt>
+                    <dd className="font-medium text-slate-800">{machineLabel}</dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase text-slate-400">{tTech('manuals.addedLabel')}</dt>
+                    <dd className="font-medium text-slate-800">{documentDateLabel(dateAjout, locale, tTech('notAvailable'))}</dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase text-slate-400">{tTech('manuals.documentIdLabel')}</dt>
+                    <dd className="font-mono text-[10px] font-medium text-slate-700">{documentId || tTech('notAvailable')}</dd>
+                  </div>
+                </dl>
+                {tags.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {tags.slice(0, 5).map((tag) => (
+                      <span
+                        key={`${documentId || fileName}-${tag}`}
+                        className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="mt-auto inline-flex w-fit items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white"
+                  onClick={() => onPreview(document)}
+                >
+                  {tTech('actions.openManual')}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
+          {tTech('manuals.emptyFilters')}
+        </p>
+      )}
     </div>
   );
 }

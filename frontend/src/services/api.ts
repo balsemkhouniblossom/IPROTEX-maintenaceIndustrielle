@@ -509,8 +509,15 @@ export const apiService = {
     api.get(`/technician/work-orders/${id}`),
   getTechnicianManuals: (params?: AnyObject) =>
     api.get("/technician/manuals", { params }),
-  getTechnicianParts: (params?: AnyObject, config?: QuietAxiosConfig) =>
-    api.get("/technician/parts", { params, ...config }),
+  getTechnicianParts: (
+    params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      availability?: "all" | "in_stock" | "low_stock" | "out_of_stock";
+    },
+    config?: QuietAxiosConfig,
+  ) => api.get("/technician/parts", { params, ...config }),
   claimTechnicianWorkOrder: (id: string) =>
     api.patch(`/technician/work-orders/${id}/claim`),
   reviewTechnicianWorkOrder: (id: string, action: "return" | "intervene") =>

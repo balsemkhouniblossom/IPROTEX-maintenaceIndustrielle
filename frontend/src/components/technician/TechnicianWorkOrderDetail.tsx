@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -10,6 +10,8 @@ import {
   ClockIcon,
   ClipboardDocumentCheckIcon,
   Cog6ToothIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
   SparklesIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
@@ -30,6 +32,17 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
 import { translateEnumValue } from "@/services/enumTranslations";
 import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
+import { useTechnicianPartRequests } from "@/hooks/useTechnicianPartRequests";
+import {
+  asPartRequestRecord,
+  effectiveRequestStatus,
+  isRequestFulfilled,
+  partSummary,
+  presentStock,
+  statusTone as partRequestStatusTone,
+  type TechnicianStock,
+} from "@/components/technician/partsPresentation";
+import type { PartRequestRecord } from "@/components/technician/partsWorkspaceTypes";
 
 type Detail = {
   workOrder: any;
@@ -38,20 +51,19 @@ type Detail = {
   stock: any[];
   manuals: ManualPreview[];
 };
-type AvailablePart = {
-  _id: string;
-  quantite_en_stock: number;
-  part_id?: {
-    _id?: string;
-    part_id?: string;
-    nom_piece?: string;
-    ref_constructeur?: string;
-  };
-};
+type AvailablePart = TechnicianStock;
 
 type TechnicianWorkOrderDetailProps = Readonly<{ id: string }>;
 type TechnicianTranslator = ReturnType<typeof useTranslations>;
-type ManualPreview = ViewableDocument;
+type ManualPreview = ViewableDocument & {
+  document_id?: string;
+  type_document?: string;
+  description?: string;
+  machine_id?: string | { _id?: string; machine_id?: string; serial_no?: string; reference?: string; model?: string };
+  tags?: string[];
+  date_ajout?: string;
+  status?: string;
+};
 type ReportOwner = {
   nom_complet?: string;
   role?: string;
@@ -641,12 +653,14 @@ function PartsSection({
           onChange={(event) => setPartId(event.target.value)}
         >
           <option value="">{t("parts.select")}</option>
-          {available.map((stock) => (
-            <option key={stock._id} value={stock.part_id?._id}>
-              {stock.part_id?.ref_constructeur} Â·{" "}
-              {stock.part_id?.nom_piece} ({stock.quantite_en_stock})
-            </option>
-          ))}
+          {available.map((stock) => {
+            const summary = partSummary(stock.part_id, t("notAvailable"));
+            return (
+              <option key={stock._id} value={summary.id}>
+                {summary.ref} · {summary.name} ({stock.quantite_en_stock})
+              </option>
+            );
+          })}
         </select>
         <input
           aria-label={t("parts.quantity")}
@@ -690,33 +704,171 @@ function ManualsSection({
   previewManual,
   setPreviewManual,
   t,
+  machineId,
+  faultCode,
+  maintenancePlanId,
 }: Readonly<{
   manuals: ManualPreview[];
   previewManual: ManualPreview | undefined;
   setPreviewManual: (manual: ManualPreview | undefined) => void;
   t: TechnicianTranslator;
+  machineId?: string;
+  faultCode?: string;
+  maintenancePlanId?: string;
 }>) {
+  const locale = useLocale();
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const filtered = useMemo(() => {
+    let result = manuals;
+    if (typeFilter) {
+      const normalized = typeFilter.toLowerCase();
+      result = result.filter(
+        (doc) => (doc.type_document || "").toLowerCase() === normalized,
+      );
+    }
+    if (search.trim()) {
+      const query = search.trim().toLowerCase();
+      result = result.filter((doc) => {
+        const machineField = doc.machine_id;
+        const machineLabel =
+          machineField && typeof machineField === "object"
+            ? machineField.machine_id || machineField.serial_no
+            : "";
+        const haystack = [
+          doc.file_name,
+          doc.description,
+          doc.type_document,
+          machineLabel,
+          doc.document_id,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+    return result;
+  }, [manuals, typeFilter, search]);
+  const types = useMemo(() => {
+    const seen = new Set<string>();
+    for (const doc of manuals) {
+      if (doc.type_document) seen.add(doc.type_document);
+    }
+    return [...seen].sort((left, right) => left.localeCompare(right));
+  }, [manuals]);
   return (
     <>
       <section className="panel">
-        <h2 className="mb-3 text-lg font-semibold">{t("manuals.title")}</h2>
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+          <BookOpenIcon className="h-5 w-5 text-blue-700" />
+          {t("manuals.title")}
+        </h2>
         {manuals.length ? (
-          <div className="flex flex-wrap gap-2">
-            {manuals.map((doc) => (
-              <button
-                className="rounded-lg border px-3 py-2 text-blue-700"
-                type="button"
-                onClick={() => setPreviewManual(doc)}
-                key={doc._id ?? doc.id ?? doc.file_path ?? doc.file_url ?? doc.file_name ?? "manual"}
+          <>
+            <div className="mb-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
+              <label className="relative block">
+                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  aria-label={t("manuals.searchLabel")}
+                  className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+                  placeholder={t("manuals.searchPlaceholder")}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <select
+                aria-label={t("manuals.typeLabel")}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value)}
               >
-                {doc.file_name}
-              </button>
-            ))}
-          </div>
+                <option value="">{t("manuals.allTypes")}</option>
+                {types.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {filtered.length ? (
+              <ul className="grid gap-3 md:grid-cols-2">
+                {filtered.map((doc) => {
+                  const machine = doc.machine_id;
+                  const machineLabel =
+                    machine && typeof machine === "object"
+                      ? machine.machine_id || machine.serial_no
+                      : t("notAvailable");
+                  return (
+                    <li
+                      key={doc._id ?? doc.document_id ?? doc.file_path ?? doc.file_name ?? "manual"}
+                      className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">
+                            {doc.file_name || t("notAvailable")}
+                          </p>
+                          {doc.description ? (
+                            <p className="line-clamp-2 text-xs text-slate-600">
+                              {doc.description}
+                            </p>
+                          ) : null}
+                        </div>
+                        {doc.type_document ? (
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700">
+                            {doc.type_document}
+                          </span>
+                        ) : null}
+                      </div>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-2 text-[11px] text-slate-500">
+                        <div>
+                          <dt className="uppercase text-slate-400">
+                            {t("manuals.machineLabel")}
+                          </dt>
+                          <dd className="font-medium text-slate-700">
+                            {machineLabel || t("notAvailable")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="uppercase text-slate-400">
+                            {t("manuals.documentIdLabel")}
+                          </dt>
+                          <dd className="font-mono text-[10px] text-slate-700">
+                            {doc.document_id || t("notAvailable")}
+                          </dd>
+                        </div>
+                      </dl>
+                      <button
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white"
+                        type="button"
+                        onClick={() => setPreviewManual(doc)}
+                      >
+                        <EyeIcon className="h-3.5 w-3.5" />
+                        {t("actions.openManual")}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
+                {t("manuals.emptyFilters")}
+              </p>
+            )}
+          </>
         ) : (
-          <p className="text-slate-500">{t("empty.manuals")}</p>
+          <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
+            {t("empty.manuals")}
+          </p>
         )}
       </section>
+      <KnowledgeSuggestions
+        machineId={machineId}
+        faultCode={faultCode}
+        maintenancePlanId={maintenancePlanId}
+      />
       <Modal
         isOpen={Boolean(previewManual)}
         onClose={() => setPreviewManual(undefined)}
@@ -1169,9 +1321,11 @@ function PartsTab({
   availableQuantity,
   saving,
   canEditIntervention,
-  act,
+  onAddPart,
+  onSubmitRequest,
   id,
   status,
+  requests,
 }: Readonly<{
   t: TechnicianTranslator;
   detail: Detail;
@@ -1183,36 +1337,164 @@ function PartsTab({
   availableQuantity: number;
   saving: boolean;
   canEditIntervention: boolean;
-  act: ActFn;
+  onAddPart: () => void;
+  onSubmitRequest: () => void;
   id: string;
   status: string;
+  requests: PartRequestRecord[];
 }>) {
+  const usedPartIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const line of detail.parts) {
+      const ref = line.part_id;
+      const id = typeof ref === "string" ? ref : ref?._id;
+      if (id) ids.add(String(id));
+    }
+    return ids;
+  }, [detail.parts]);
+  const partLookup = useMemo(() => {
+    const map = new Map<string, { name: string; ref?: string }>();
+    for (const stock of available) {
+      const part = stock.part_id;
+      const partId = typeof part === "string" ? part : part?._id;
+      if (!partId) continue;
+      const summary = partSummary(part, t("notAvailable"));
+      map.set(String(partId), { name: summary.name, ref: summary.ref });
+    }
+    return map;
+  }, [available, t]);
+  const requestShortage = partId
+    ? quantity > availableQuantity && canEditIntervention
+    : false;
   return (
     <section className="panel">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><Cog6ToothIcon className="h-5 w-5 text-amber-700" />{t("parts.title")}</h2>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700">{t("parts.used")}</h3>
-          {detail.parts.length ? (
-            <ul className="mt-3 divide-y rounded-lg border">
-              {detail.parts.map((line) => <li className="flex justify-between gap-4 p-3 text-sm" key={line._id}><span>{line.part_id?.ref_constructeur} / {line.part_id?.nom_piece}</span><strong>{line.quantite}</strong></li>)}
-            </ul>
-          ) : (
-            <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("parts.noneAdded")}</p>
-          )}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">{t("parts.used")}</h3>
+            {detail.parts.length ? (
+              <ul className="mt-3 divide-y rounded-lg border">
+                {detail.parts.map((line) => (
+                  <li className="flex items-center justify-between gap-4 p-3 text-sm" key={line._id}>
+                    <span>
+                      {line.part_id?.ref_constructeur ? `${line.part_id.ref_constructeur} · ` : ""}
+                      {line.part_id?.nom_piece || t("notAvailable")}
+                    </span>
+                    <strong>× {line.quantite}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("parts.noneAdded")}</p>
+            )}
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">{t("parts.myRequests")}</h3>
+            <p className="mt-1 text-xs text-slate-500">{t("parts.myRequestsHint")}</p>
+            {status === "waiting_parts" ? (
+              <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                {t("parts.workOrderWaitingForParts")}
+              </p>
+            ) : null}
+            {requests.length ? (
+              <ul className="mt-3 space-y-2">
+                {requests.map((request) => {
+                  const partInfo = partLookup.get(String(request.part_id));
+                  const status = effectiveRequestStatus(request, usedPartIds);
+                  const tone = partRequestStatusTone(status);
+                  const fulfilledByUsage = status === "fulfilled" && isRequestFulfilled(request, usedPartIds);
+                  return (
+                    <li
+                      key={request._id}
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm ${tone.bg} ${tone.border}`}
+                    >
+                      <div>
+                        <p className={`font-semibold ${tone.text}`}>
+                          {partInfo?.ref ? `${partInfo.ref} · ` : ""}
+                          {partInfo?.name || t("notAvailable")}
+                        </p>
+                        <p className={`text-xs ${tone.text}`}>
+                          {t("parts.requestCode")}: <strong>{request.request_id}</strong>
+                          {" · "}
+                          {t("parts.requestedQuantity")}: <strong>{request.quantity}</strong>
+                          {" · "}
+                          {t("parts.requestedAt")}: {request.requested_at ? new Date(request.requested_at).toLocaleString() : t("notAvailable")}
+                        </p>
+                        {fulfilledByUsage ? (
+                          <p className="mt-1 text-xs text-emerald-700">
+                            {t("parts.fulfilledByUsage")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${tone.bg} ${tone.text} ${tone.border}`}>
+                        {t(`parts.requestStatuses.${status}`)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">
+                {t("parts.noRequestsYet")}
+              </p>
+            )}
+          </div>
         </div>
         <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
-          <h3 className="font-semibold text-amber-950">{t("parts.addPart")}</h3>
+          <h3 className="font-semibold text-amber-950">{t("parts.addOrRequestTitle")}</h3>
+          <p className="mt-1 text-xs text-amber-800">{t("parts.addOrRequestHint")}</p>
           <div className="mt-3 grid gap-3">
-            <select className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.select")} value={partId} onChange={(event) => setPartId(event.target.value)}>
+            <select
+              className="rounded-lg border bg-white p-2 text-sm"
+              aria-label={t("parts.select")}
+              value={partId}
+              onChange={(event) => setPartId(event.target.value)}
+            >
               <option value="">{t("parts.select")}</option>
-              {available.map((stock) => <option key={stock._id} value={stock.part_id?._id}>{stock.part_id?.ref_constructeur} / {stock.part_id?.nom_piece} ({stock.quantite_en_stock})</option>)}
+              {available.map((stock) => {
+                const summary = partSummary(stock.part_id, t("notAvailable"));
+                const presentation = presentStock(stock);
+                return (
+                  <option key={stock._id} value={summary.id}>
+                    {summary.ref ? `${summary.ref} · ` : ""}
+                    {summary.name} ({t("parts.availableNowShort")}: {presentation.available})
+                  </option>
+                );
+              })}
             </select>
-            <p className="text-xs text-amber-800">{t("parts.available")}: <strong>{partId ? availableQuantity : t("notAvailable")}</strong></p>
-            <input className="rounded-lg border bg-white p-2 text-sm" aria-label={t("parts.quantity")} type="number" min={1} value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
-            <button type="button" disabled={saving || !partId || !canEditIntervention || quantity > availableQuantity} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }))}>{t("actions.addPart")}</button>
-            {partId && quantity > availableQuantity ? <button type="button" disabled={saving || !canEditIntervention} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50" onClick={() => void act(() => apiService.requestTechnicianPart(id, { part_id: partId, quantity }))}>{t("parts.requestPart")}</button> : null}
-            <p className="text-xs text-amber-800">{t("parts.requestStatus")}: {status === "waiting_parts" ? t("status.waiting_parts") : t("notAvailable")}</p>
+            <p className="text-xs text-amber-800">
+              {t("parts.available")}: <strong>{partId ? availableQuantity : t("notAvailable")}</strong>
+            </p>
+            <input
+              className="rounded-lg border bg-white p-2 text-sm"
+              aria-label={t("parts.quantity")}
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(event) => setQuantity(Number(event.target.value))}
+            />
+            <button
+              type="button"
+              disabled={saving || !partId || !canEditIntervention || requestShortage}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              onClick={onAddPart}
+            >
+              {t("actions.addPart")}
+            </button>
+            <button
+              type="button"
+              disabled={saving || !partId || !canEditIntervention || !requestShortage}
+              className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50"
+              onClick={onSubmitRequest}
+            >
+              {t("parts.requestPart")}
+            </button>
+            <p className="text-xs text-amber-800">
+              {requestShortage
+                ? t("parts.requestHintShortage", { available: availableQuantity })
+                : t("parts.requestHintEnough")}
+            </p>
           </div>
         </div>
       </div>
@@ -1430,6 +1712,7 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
   const [partId, setPartId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const { statusByMachine, subscribeToMachine } = useLiveMonitoring();
+  const partRequests = useTechnicianPartRequests(id);
 
   const load = useCallback(async () => {
     try {
@@ -1469,6 +1752,39 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
     fallbackError: t("errors.update"),
   });
 
+  const handleAddPart = useCallback(() => {
+    if (!partId) return;
+    return act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }));
+  }, [act, id, partId, quantity]);
+
+  const handleSubmitRequest = useCallback(() => {
+    if (!partId) return Promise.resolve();
+    return act(() =>
+      apiService.requestTechnicianPart(id, { part_id: partId, quantity }).then((response) => {
+        const record = asPartRequestRecord(response.data);
+        if (record) {
+          const partInfo = available
+            .map((stock) => {
+              const part = stock.part_id;
+              const stockPartId = typeof part === "string" ? part : part?._id;
+              if (!stockPartId || String(stockPartId) !== record.part_id) return null;
+              const summary = partSummary(part, "");
+              return {
+                _id: summary.id,
+                part_id: summary.id,
+                nom_piece: summary.name,
+                ref_constructeur: summary.ref,
+                fabricant: summary.fabricant,
+                categorie_piece: summary.category,
+              };
+            })
+            .find((entry): entry is NonNullable<typeof entry> => entry !== null);
+          partRequests.addOrUpdate({ ...record, part: partInfo });
+        }
+      }),
+    );
+  }, [act, available, id, partId, partRequests, quantity]);
+
   if (loading) {
     return (
       <ProtectedRoute requiredRole="technician">
@@ -1501,8 +1817,14 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
   const hasAssignedTechnician = Boolean(wo.technician_id);
   const reportOwner = operatorReportOwner(detail.report);
   const description = dynamicTranslations.textFor(wo._id, "description", wo.description);
-  const selectedStock = available.find((stock) => stock.part_id?._id === partId);
-  const availableQuantity = selectedStock?.quantite_en_stock ?? 0;
+  const selectedStock = available.find((stock) => {
+    const summary = partSummary(stock.part_id, "");
+    return summary.id === partId;
+  });
+  const availableQuantity = (() => {
+    if (!selectedStock) return 0;
+    return presentStock(selectedStock).available;
+  })();
   const startedAt = firstDateValue(wo.date_start, detail.report?.date_debut);
   const endedAt = firstDateValue(wo.date_end, wo.date_closed, detail.report?.date_fin);
   const duration = durationLabel(startedAt, endedAt ?? new Date(), locale, t("notAvailable"));
@@ -1638,16 +1960,25 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
               availableQuantity={availableQuantity}
               saving={saving}
               canEditIntervention={canEditIntervention}
-              act={act}
+              onAddPart={() => void handleAddPart()}
+              onSubmitRequest={() => void handleSubmitRequest()}
               id={id}
               status={status}
+              requests={partRequests.records}
             />
           ) : null}
 
           {activeTab === "documents" ? (
             <div className="space-y-5">
-              <ManualsSection manuals={detail.manuals} previewManual={previewManual} setPreviewManual={setPreviewManual} t={t} />
-              <KnowledgeSuggestions machineId={machine?._id} faultCode={wo.code_panne} maintenancePlanId={maintenancePlanId(wo)} />
+              <ManualsSection
+                manuals={detail.manuals}
+                previewManual={previewManual}
+                setPreviewManual={setPreviewManual}
+                t={t}
+                machineId={typeof machine?._id === "string" ? machine._id : undefined}
+                faultCode={wo.code_panne}
+                maintenancePlanId={maintenancePlanId(wo)}
+              />
             </div>
           ) : null}
 

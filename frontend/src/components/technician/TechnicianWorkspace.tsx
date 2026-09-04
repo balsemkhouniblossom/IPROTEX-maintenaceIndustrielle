@@ -21,6 +21,14 @@ import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { apiService } from "@/services/api";
 import { translateEnumValue } from "@/services/enumTranslations";
 import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
+import {
+  availabilityStateOrder,
+  availabilityTone,
+  partSummary,
+  presentStock,
+  type TechnicianStock,
+} from "@/components/technician/partsPresentation";
+import TechnicianDocumentBrowser from "@/components/technician/TechnicianDocumentBrowser";
 
 type WorkOrder = {
   _id: string;
@@ -189,13 +197,13 @@ function formatOrderDate(value: string | undefined, locale: string): string {
   return date.toLocaleDateString(locale);
 }
 
-function partName(part: StockPart["part_id"], fallback: string): string {
+function partNameLegacy(part: StockPart["part_id"], fallback: string): string {
   if (!part) return fallback;
   if (typeof part === "string") return part || fallback;
   return part.nom_piece || part.part_id || fallback;
 }
 
-function availableQuantity(part: StockPart): number {
+function availableQuantityLegacy(part: StockPart): number {
   return (part.quantite_en_stock ?? 0) - (part.quantite_reservee ?? 0);
 }
 
@@ -1357,65 +1365,27 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
 
 export function TechnicianManuals() {
   const t = useTranslations("technician");
-  const [data, setData] = useState<PageData<Manual>>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [previewManual, setPreviewManual] = useState<Manual>();
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      setData(
-        (await apiService.getTechnicianManuals({ page: 1, limit: 100 })).data,
-      );
-    } catch {
-      setError(t("errors.network"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-  useEffect(() => {
-    void load();
-  }, [load]);
   return (
     <ProtectedRoute requiredRole="technician">
       <DashboardLayout title={t("manuals.title")}>
-        {loading && (
-          <div className="panel">{t("loading")}</div>
-        )}
-        {!loading && error && (
-          <ErrorBox
-            message={error}
-            retry={() => void load()}
-            label={t("actions.retry")}
+        <div className="space-y-4">
+          <section className="panel space-y-1">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t("manuals.heading")}
+            </h2>
+            <p className="text-sm text-slate-600">
+              {t("manuals.subtitle")}
+            </p>
+            <p className="text-xs text-slate-500">
+              {t("manuals.readOnlyHint")}
+            </p>
+          </section>
+          <TechnicianDocumentBrowser
+            previewLabel={t("actions.openManual")}
+            onPreview={(document) => setPreviewManual(document as unknown as Manual)}
           />
-        )}
-        {!loading && !error && data?.items.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {data.items.map((doc) => (
-              <article className="panel" key={doc._id}>
-                <h2 className="font-semibold">{doc.file_name}</h2>
-                <p className="text-sm text-slate-500">
-                  {doc.type_document} ·{" "}
-                  {doc.machine_id?.machine_id || t("notAvailable")}
-                </p>
-                <p className="my-3 text-sm">
-                  {doc.description || t("notAvailable")}
-                </p>
-                <button
-                  type="button"
-                  className="inline-flex rounded-lg bg-blue-700 px-3 py-2 text-white"
-                  onClick={() => setPreviewManual(doc)}
-                >
-                  {t("actions.openManual")}
-                </button>
-              </article>
-            ))}
-          </div>
-        ) : null}
-        {!loading && !error && !data?.items.length && (
-          <div className="panel">{t("empty.manuals")}</div>
-        )}
+        </div>
         <ManualPreviewModal
           manual={previewManual}
           onClose={() => setPreviewManual(undefined)}
@@ -1428,38 +1398,155 @@ export function TechnicianManuals() {
 
 export function TechnicianParts() {
   const t = useTranslations("technician");
-  const [data, setData] = useState<PageData<StockPart>>();
+  const locale = useLocale();
+  const [stocks, setStocks] = useState<TechnicianStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [availability, setAvailability] = useState<
+    "all" | "in_stock" | "low_stock" | "out_of_stock" | "reserved_only"
+  >("all");
   const [page, setPage] = useState(1);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      setData(
-        (await apiService.getTechnicianParts({
-          page,
-          limit: TECHNICIAN_PAGE_SIZE,
-        })).data,
-      );
+      const response = await apiService.getTechnicianParts({
+        page: 1,
+        limit: 200,
+      });
+      setStocks(response.data?.items || []);
     } catch {
       setError(t("errors.network"));
     } finally {
       setLoading(false);
     }
-  }, [page, t]);
+  }, [t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return stocks.filter((stock) => {
+      const summary = partSummary(stock.part_id, "");
+      const haystack = [
+        summary.name,
+        summary.ref,
+        summary.fabricant,
+        summary.category,
+        stock.stock_id,
+        stock.emplacement,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (term && !haystack.includes(term)) return false;
+      if (availability !== "all") {
+        const state = presentStock(stock).availability;
+        if (state !== availability) return false;
+      }
+      return true;
+    });
+  }, [stocks, search, availability]);
+
+  const sorted = useMemo(
+    () =>
+      [...filtered].sort(
+        (left, right) =>
+          availabilityStateOrder(presentStock(left).availability) -
+          availabilityStateOrder(presentStock(right).availability),
+      ),
+    [filtered],
+  );
+
+  const pageSize = TECHNICIAN_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const pageItems = sorted.slice(start, start + pageSize);
+
+  const counts = useMemo(() => {
+    const all = stocks.map(presentStock);
+    return {
+      all: stocks.length,
+      in_stock: all.filter((s) => s.availability === "in_stock").length,
+      low_stock: all.filter((s) => s.availability === "low_stock").length,
+      out_of_stock: all.filter((s) => s.availability === "out_of_stock").length,
+      reserved_only: all.filter((s) => s.availability === "reserved_only").length,
+    };
+  }, [stocks]);
+
   return (
     <ProtectedRoute requiredRole="technician">
-      <DashboardLayout title={t("parts.title")}>
+      <DashboardLayout title={t("parts.workspaceTitle")}>
         <div className="space-y-5">
-          {loading && (
-            <div className="panel">{t("loading")}</div>
-          )}
+          <section className="panel space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {t("parts.workspaceSubtitle")}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {t("parts.workspaceDescription")}
+              </p>
+            </div>
+            <label className="relative block">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                aria-label={t("filters.search")}
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+                placeholder={t("parts.searchPlaceholder")}
+                value={search}
+                onChange={(event) => {
+                  setPage(1);
+                  setSearch(event.target.value);
+                }}
+              />
+            </label>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("parts.availability")}>
+              {[
+                { key: "all" as const, label: t("parts.availabilityAll") },
+                { key: "in_stock" as const, label: t("parts.availabilityInStock") },
+                { key: "low_stock" as const, label: t("parts.availabilityLowStock") },
+                { key: "out_of_stock" as const, label: t("parts.availabilityOutOfStock") },
+                { key: "reserved_only" as const, label: t("parts.availabilityReserved") },
+              ].map((chip) => {
+                const selected = availability === chip.key;
+                const count = counts[chip.key as keyof typeof counts] ?? 0;
+                return (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      selected
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
+                    }`}
+                    onClick={() => {
+                      setPage(1);
+                      setAvailability(chip.key);
+                    }}
+                  >
+                    <span>{chip.label}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] ${
+                        selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {loading && <div className="panel">{t("loading")}</div>}
+
           {!loading && error && (
             <ErrorBox
               message={error}
@@ -1467,65 +1554,114 @@ export function TechnicianParts() {
               label={t("actions.retry")}
             />
           )}
-          {!loading && !error && data?.items.length ? (
+
+          {!loading && !error && sorted.length === 0 && (
+            <div className="panel border-s-4 border-s-slate-300 text-slate-600">
+              {t("empty.partsWorkspace")}
+            </div>
+          )}
+
+          {!loading && !error && pageItems.length > 0 && (
             <>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {data.items.map((item) => (
-                  <article className="panel" key={item._id}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="font-semibold">
-                          {partName(item.part_id, t("notAvailable"))}
-                        </h2>
-                        <p className="text-sm text-slate-500">
-                          {item.stock_id}
-                        </p>
+                {pageItems.map((item) => {
+                  const summary = partSummary(item.part_id, t("notAvailable"));
+                  const presentation = presentStock(item);
+                  const tone = availabilityTone(presentation.availability);
+                  return (
+                    <article className="panel space-y-3" key={item.stock_id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h2 className="font-semibold text-slate-900">
+                            {summary.name}
+                          </h2>
+                          {summary.ref ? (
+                            <p className="text-sm text-slate-500">
+                              {t("parts.reference")}: {summary.ref}
+                            </p>
+                          ) : null}
+                          {summary.fabricant || summary.category ? (
+                            <p className="text-xs text-slate-500">
+                              {[summary.fabricant, summary.category]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </p>
+                          ) : null}
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${tone.bg} ${tone.text} ${tone.border}`}
+                        >
+                          {t(`parts.availabilityLabels.${presentation.availability}`)}
+                        </span>
                       </div>
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
-                        {availableQuantity(item)}
-                      </span>
-                    </div>
-                    <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-lg border px-3 py-2">
-                        <dt className="text-slate-500">{t("parts.stock")}</dt>
-                        <dd className="mt-1 font-medium">
-                          {item.quantite_en_stock ?? 0}
-                        </dd>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-xs uppercase text-slate-500">
+                            {t("parts.availableNow")}
+                          </p>
+                          <p className="mt-1 text-lg font-bold text-slate-900">
+                            {presentation.available}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-xs uppercase text-slate-500">
+                            {t("parts.totalOnHand")}
+                          </p>
+                          <p className="mt-1 text-lg font-bold text-slate-900">
+                            {presentation.stock}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 px-3 py-2">
+                          <p className="text-xs uppercase text-slate-500">
+                            {t("parts.reserved")}
+                          </p>
+                          <p className="mt-1 font-semibold text-slate-700">
+                            {presentation.reserved}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 px-3 py-2">
+                          <p className="text-xs uppercase text-slate-500">
+                            {t("parts.minimum")}
+                          </p>
+                          <p className="mt-1 font-semibold text-slate-700">
+                            {presentation.minimum}
+                          </p>
+                        </div>
                       </div>
-                      <div className="rounded-lg border px-3 py-2">
-                        <dt className="text-slate-500">{t("parts.reserved")}</dt>
-                        <dd className="mt-1 font-medium">
-                          {item.quantite_reservee ?? 0}
-                        </dd>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <span>
+                          {t("parts.location")}:{" "}
+                          <strong className="text-slate-700">
+                            {item.emplacement || t("notAvailable")}
+                          </strong>
+                        </span>
+                        <span>
+                          {t("parts.stockCode")}:{" "}
+                          <strong className="text-slate-700">{item.stock_id}</strong>
+                        </span>
                       </div>
-                      <div className="rounded-lg border px-3 py-2">
-                        <dt className="text-slate-500">{t("parts.minimum")}</dt>
-                        <dd className="mt-1 font-medium">
-                          {item.quantite_minimale ?? item.seuil_alerte_stock ?? 0}
-                        </dd>
-                      </div>
-                      <div className="rounded-lg border px-3 py-2">
-                        <dt className="text-slate-500">{t("parts.location")}</dt>
-                        <dd className="mt-1 font-medium">
-                          {item.emplacement || t("notAvailable")}
-                        </dd>
-                      </div>
-                    </dl>
-                  </article>
-                ))}
+                      <p className="text-xs text-slate-500">
+                        {t("parts.readOnlyHint")}
+                      </p>
+                    </article>
+                  );
+                })}
               </div>
               <Pagination
-                page={data.page}
-                totalPages={data.totalPages}
-                totalItems={data.totalItems}
-                limit={TECHNICIAN_PAGE_SIZE}
+                page={safePage}
+                totalPages={totalPages}
+                totalItems={sorted.length}
+                limit={pageSize}
                 onPageChange={setPage}
               />
             </>
-          ) : null}
-          {!loading && !error && !data?.items.length && (
-            <div className="panel">{t("empty.parts")}</div>
           )}
+
+          <div className="text-xs text-slate-500">
+            {t("parts.openWorkOrderCta", {
+              href: `/${locale}/technician/work-orders`,
+            })}
+          </div>
         </div>
       </DashboardLayout>
     </ProtectedRoute>

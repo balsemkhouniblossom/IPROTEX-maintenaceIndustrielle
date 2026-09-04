@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpenIcon, MagnifyingGlassIcon, TagIcon } from "@heroicons/react/24/outline";
+import {
+  BookOpenIcon,
+  MagnifyingGlassIcon,
+  TagIcon,
+} from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/Modal";
 import { apiService } from "@/services/api";
@@ -22,6 +26,9 @@ export interface KnowledgeArticleSummary {
   tags?: string[];
   fault_codes?: string[];
   error_codes?: string[];
+  machine_id?: string;
+  machine_type_id?: string;
+  status?: string;
 }
 
 const CATEGORIES: KnowledgeArticleCategory[] = [
@@ -29,6 +36,19 @@ const CATEGORIES: KnowledgeArticleCategory[] = [
   "procedure",
   "fault_code",
   "lubrication",
+  "safety",
+];
+
+const TOPIC_KEYS = [
+  "bearing",
+  "lubrication",
+  "vibration",
+  "electrical",
+  "hydraulic",
+  "pneumatic",
+  "cooling",
+  "alignment",
+  "calibration",
   "safety",
 ];
 
@@ -45,6 +65,7 @@ export default function KnowledgeBaseBrowser({
   machineId?: string;
 }>) {
   const t = useTranslations("knowledgeBase");
+  const tTech = useTranslations("technician");
   const tCommon = useTranslations("common");
 
   const [articles, setArticles] = useState<KnowledgeArticleSummary[]>([]);
@@ -52,7 +73,8 @@ export default function KnowledgeBaseBrowser({
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticleSummary | null>(null);
+  const [selectedArticle, setSelectedArticle] =
+    useState<KnowledgeArticleSummary | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +90,9 @@ export default function KnowledgeBaseBrowser({
           search: search.trim() || undefined,
         });
         if (cancelled) return;
-        setArticles(Array.isArray(response.data?.items) ? response.data.items : []);
+        setArticles(
+          Array.isArray(response.data?.items) ? response.data.items : [],
+        );
       } catch (error) {
         console.error("Failed to load knowledge base articles", error);
         if (!cancelled) {
@@ -87,7 +111,25 @@ export default function KnowledgeBaseBrowser({
     };
   }, [machineId, selectedCategory, search]);
 
-  const visibleArticles = useMemo(() => articles, [articles]);
+  const visibleArticles = useMemo(() => {
+    if (!search.trim()) return articles;
+    const query = search.trim().toLowerCase();
+    return articles.filter((article) => {
+      const haystack = [
+        article.title,
+        article.summary,
+        article.content,
+        ...(article.tags || []),
+        ...(article.fault_codes || []),
+        ...(article.error_codes || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [articles, search]);
+
   const emptyMessage = search.trim() || selectedCategory
     ? t("empty.search")
     : t("empty.published");
@@ -96,10 +138,13 @@ export default function KnowledgeBaseBrowser({
     <div className="operator-dashboard-theme bento-grid">
       <section className="col-span-full panel">
         <div className="card-title mb-2">{t("title")}</div>
-        <p className="text-sm text-slate-600 mb-4">{t("readerIntro")}</p>
+        <p className="text-sm text-slate-600 mb-1">{t("readerIntro")}</p>
+        <p className="text-xs text-slate-500 mb-4">
+          {tTech("manuals.readOnlyHint")}
+        </p>
 
-        <div className="flex flex-col gap-3 md:flex-row">
-          <div className="relative flex-1">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="relative">
             <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
             <input
               className="input-field pl-9"
@@ -111,7 +156,7 @@ export default function KnowledgeBaseBrowser({
             />
           </div>
           <select
-            className="input-field md:w-64"
+            className="input-field"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             title={t("form.category")}
@@ -125,6 +170,23 @@ export default function KnowledgeBaseBrowser({
             ))}
           </select>
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span className="font-semibold uppercase tracking-wide text-slate-600">
+            {tTech("knowledgeBase.topicHints")}
+          </span>
+          {TOPIC_KEYS.map((topic) => (
+            <button
+              key={topic}
+              type="button"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-700 hover:border-blue-300"
+              onClick={() => setSearch(topic)}
+              data-testid={`knowledge-base-topic-${topic}`}
+            >
+              {topic}
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="col-span-full">
@@ -132,10 +194,14 @@ export default function KnowledgeBaseBrowser({
           <div className="panel text-sm text-slate-500">{tCommon("loading")}</div>
         ) : null}
         {!loading && loadError ? (
-          <div className="panel text-center py-8 text-red-700">{t("notifications.loadFailed")}</div>
+          <div className="panel text-center py-8 text-red-700">
+            {t("notifications.loadFailed")}
+          </div>
         ) : null}
         {!loading && !loadError && visibleArticles.length === 0 ? (
-          <div className="panel text-center py-8 text-gray-500">{emptyMessage}</div>
+          <div className="panel border-s-4 border-s-slate-300 text-center text-sm text-slate-500">
+            {emptyMessage}
+          </div>
         ) : null}
         {!loading && !loadError && visibleArticles.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -157,6 +223,14 @@ export default function KnowledgeBaseBrowser({
                 <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                   {article.summary || tCommon("notAvailable")}
                 </p>
+                {(article.fault_codes || []).length > 0 ? (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {tTech("knowledgeBase.faultCodesLabel")}:{" "}
+                    <strong className="text-slate-700">
+                      {article.fault_codes?.join(", ")}
+                    </strong>
+                  </p>
+                ) : null}
                 <div className="flex flex-wrap gap-1 mt-2">
                   {(article.tags || []).slice(0, 4).map((tag) => (
                     <span
@@ -184,6 +258,18 @@ export default function KnowledgeBaseBrowser({
           <div className="operator-dashboard-theme space-y-3 text-sm text-slate-700 whitespace-pre-wrap">
             {selectedArticle.summary ? (
               <p className="font-medium text-slate-800">{selectedArticle.summary}</p>
+            ) : null}
+            {(selectedArticle.fault_codes || []).length > 0 ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                {tTech("knowledgeBase.faultCodesLabel")}:{" "}
+                <strong>{selectedArticle.fault_codes?.join(", ")}</strong>
+              </p>
+            ) : null}
+            {(selectedArticle.tags || []).length > 0 ? (
+              <p className="text-xs text-slate-500">
+                {tTech("knowledgeBase.topicsLabel")}:{" "}
+                {selectedArticle.tags?.join(", ")}
+              </p>
             ) : null}
             <p>{selectedArticle.content}</p>
           </div>
