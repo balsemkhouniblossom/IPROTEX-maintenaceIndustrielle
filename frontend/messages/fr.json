@@ -1866,7 +1866,8 @@
       "knowledgeBase": "Base de connaissances",
       "devices": "Appareils",
       "reports": "Rapports",
-      "aiAnomalyMonitoring": "Surveillance IA des anomalies"
+      "aiAnomalyMonitoring": "Surveillance IA des anomalies",
+      "aiAnalytics": "Analyses IA"
     }
   },
   "machines": {
@@ -3098,6 +3099,86 @@
         "corrective": "Corrective",
         "inspection": "Inspection",
         "predictive": "Prédictive"
+      }
+    },
+    "machineHealth": {
+      "title": "Santé des machines",
+      "heading": "Santé des machines",
+      "subtitle": "Vue opérationnelle des alertes IA. Évaluez le risque machine et les vérifications suggérées avant d'intervenir.",
+      "filters": {
+        "all": "Tous",
+        "attention": "Attention",
+        "highRisk": "Risque élevé",
+        "critical": "Critique"
+      },
+      "searchPlaceholder": "Rechercher une machine...",
+      "machineModel": "Modèle",
+      "riskScore": "Score de risque",
+      "persistentAnomaly": "Anomalie persistante détectée",
+      "noPersistentAnomaly": "Aucune anomalie persistante",
+      "lastAnalysis": "Dernière analyse",
+      "lastAnalysisToday": "Aujourd'hui",
+      "investigate": "Examiner",
+      "view": "Voir",
+      "normal": "Normal",
+      "monitor": "Attention",
+      "high": "Risque élevé",
+      "critical": "Critique",
+      "riskLevels": {
+        "NORMAL": "Normal",
+        "MONITOR": "Attention",
+        "HIGH": "Risque élevé",
+        "CRITICAL": "Critique"
+      },
+      "suggestedChecks": "Vérifications suggérées",
+      "defaultSuggestion": "Examiner la maintenance récente et les relevés de capteurs",
+      "technicalDetails": "Détails techniques",
+      "confirmAnomaly": "Confirmer l'anomalie",
+      "rejectAnomaly": "Rejeter l'anomalie",
+      "wasUseful": "Cette alerte IA était-elle utile ?",
+      "reason": "Motif",
+      "comment": "Commentaire",
+      "submit": "Envoyer",
+      "noAnalyses": "Aucune analyse de santé machine disponible.",
+      "viewFullAnalysis": "Voir l'analyse complète",
+      "viewAnalysis": "Voir l'analyse",
+      "viewAll": "Tout voir",
+      "backToList": "Retour à la santé des machines",
+      "alreadyValidated": "Cette analyse a déjà été validée comme {status}.",
+      "advisoryCopy": "Il s'agit d'un avis IA basé sur la relecture d'un jeu de données. Utilisez-le uniquement comme aide à la décision.",
+      "widgetTitle": "Santé des machines",
+      "aiInsightTitle": "Aperçu IA de la machine",
+      "persistentShort": "Persistant",
+      "yes": "Oui",
+      "no": "Non",
+      "detectedBefore": "Détecté avant l'intervention",
+      "persistence": "Persistant ({current} sur les {total} dernières)",
+      "modelVersion": "Version du modèle",
+      "analysisType": "Type d'analyse",
+      "zScore": "Score Z",
+      "isolationForest": "Isolation Forest",
+      "validationStatus": "Statut de validation",
+      "validatedBy": "Validé par",
+      "source": {
+        "DATASET_REPLAY": "Rejeu du jeu de données IMS",
+        "DEMO": "Démo"
+      },
+      "validationStatuses": {
+        "PENDING": "En attente",
+        "CONFIRMED": "Confirmé",
+        "REJECTED": "Rejetée"
+      },
+      "states": {
+        "loading": "Chargement des analyses de santé machine...",
+        "error": "Impossible de charger les analyses de santé machine.",
+        "errorTitle": "Échec du chargement",
+        "unavailableTitle": "Service IA indisponible",
+        "retry": "Réessayer",
+        "retrying": "Nouvelle tentative..."
+      },
+      "validation": {
+        "saved": "Retour enregistré",
+        "failed": "Impossible d'enregistrer le retour"
       }
     }
   },

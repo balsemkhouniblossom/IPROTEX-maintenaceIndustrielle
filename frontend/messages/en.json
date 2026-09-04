@@ -1866,7 +1866,8 @@
       "knowledgeBase": "Knowledge Base",
       "devices": "Devices",
       "reports": "Reports",
-      "aiAnomalyMonitoring": "AI Anomaly Monitoring"
+      "aiAnomalyMonitoring": "AI Anomaly Monitoring",
+      "aiAnalytics": "AI Analytics"
     }
   },
   "machines": {
@@ -3116,6 +3117,86 @@
         "corrective": "Corrective",
         "inspection": "Inspection",
         "predictive": "Predictive"
+      }
+    },
+    "machineHealth": {
+      "title": "Machine Health",
+      "heading": "Machine Health",
+      "subtitle": "Operational view of AI anomaly insights. Review elevated machine risk and suggested checks before intervening.",
+      "filters": {
+        "all": "All",
+        "attention": "Attention",
+        "highRisk": "High Risk",
+        "critical": "Critical"
+      },
+      "searchPlaceholder": "Search machine...",
+      "machineModel": "Model",
+      "riskScore": "Risk score",
+      "persistentAnomaly": "Persistent anomaly detected",
+      "noPersistentAnomaly": "No persistent anomaly",
+      "lastAnalysis": "Last analysis",
+      "lastAnalysisToday": "Today",
+      "investigate": "Investigate",
+      "view": "View",
+      "normal": "Normal",
+      "monitor": "Attention",
+      "high": "High Risk",
+      "critical": "Critical",
+      "riskLevels": {
+        "NORMAL": "Normal",
+        "MONITOR": "Attention",
+        "HIGH": "High Risk",
+        "CRITICAL": "Critical"
+      },
+      "suggestedChecks": "Suggested checks",
+      "defaultSuggestion": "Review recent maintenance and sensor readings",
+      "technicalDetails": "Technical Details",
+      "confirmAnomaly": "Confirm anomaly",
+      "rejectAnomaly": "Reject anomaly",
+      "wasUseful": "Was this AI alert useful?",
+      "reason": "Reason",
+      "comment": "Comment",
+      "submit": "Submit feedback",
+      "noAnalyses": "No machine health analyses available.",
+      "viewFullAnalysis": "View Full Analysis",
+      "viewAnalysis": "View Analysis",
+      "viewAll": "View all",
+      "backToList": "Back to Machine Health",
+      "alreadyValidated": "This analysis has already been validated as {status}.",
+      "advisoryCopy": "This is an AI advisory based on dataset replay. Use it as decision support only.",
+      "widgetTitle": "Machine Health",
+      "aiInsightTitle": "AI Machine Insight",
+      "persistentShort": "Persistent",
+      "yes": "Yes",
+      "no": "No",
+      "detectedBefore": "Detected before intervention",
+      "persistence": "Persistent ({current} of last {total})",
+      "modelVersion": "Model version",
+      "analysisType": "Analysis type",
+      "zScore": "Z-score",
+      "isolationForest": "Isolation Forest",
+      "validationStatus": "Validation status",
+      "validatedBy": "Validated by",
+      "source": {
+        "DATASET_REPLAY": "IMS dataset replay",
+        "DEMO": "Demo"
+      },
+      "validationStatuses": {
+        "PENDING": "Pending",
+        "CONFIRMED": "Confirmed",
+        "REJECTED": "Rejected"
+      },
+      "states": {
+        "loading": "Loading machine health analyses...",
+        "error": "Unable to load machine health analyses.",
+        "errorTitle": "Unable to load",
+        "unavailableTitle": "AI service unavailable",
+        "retry": "Retry",
+        "retrying": "Retrying..."
+      },
+      "validation": {
+        "saved": "Feedback saved",
+        "failed": "Unable to save feedback"
       }
     }
   },

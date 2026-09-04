@@ -1691,7 +1691,8 @@
       "reportProblem": "Report Problem",
       "startCorrectiveMaintenance": "Corrective Maintenance",
       "startPreventiveMaintenance": "Preventive Maintenance",
-      "aiAnomalyMonitoring": "?????? ?????? ??????? ?????????"
+      "aiAnomalyMonitoring": "?????? ?????? ??????? ?????????",
+      "aiAnalytics": "تحليلات الذكاء الاصطناعي"
     }
   },
   "machines": {
@@ -2923,6 +2924,86 @@
         "corrective": "تصحيحية",
         "inspection": "فحص",
         "predictive": "تنبؤية"
+      }
+    },
+    "machineHealth": {
+      "title": "صحة الماكينات",
+      "heading": "صحة الماكينات",
+      "subtitle": "عرض تشغيلي لنتائج تحليل الشذوذ بالذكاء الاصطناعي. راجع المخاطر المرتفعة والفحوصات المقترحة قبل التدخل.",
+      "filters": {
+        "all": "الكل",
+        "attention": "تنبيه",
+        "highRisk": "خطر مرتفع",
+        "critical": "حرج"
+      },
+      "searchPlaceholder": "بحث عن ماكينة...",
+      "machineModel": "الموديل",
+      "riskScore": "درجة المخاطر",
+      "persistentAnomaly": "تم اكتشاف شذوذ مستمر",
+      "noPersistentAnomaly": "لا يوجد شذوذ مستمر",
+      "lastAnalysis": "آخر تحليل",
+      "lastAnalysisToday": "اليوم",
+      "investigate": "تحقق",
+      "view": "عرض",
+      "normal": "طبيعي",
+      "monitor": "تنبيه",
+      "high": "خطر مرتفع",
+      "critical": "حرج",
+      "riskLevels": {
+        "NORMAL": "طبيعي",
+        "MONITOR": "تنبيه",
+        "HIGH": "خطر مرتفع",
+        "CRITICAL": "حرج"
+      },
+      "suggestedChecks": "فحوصات مقترحة",
+      "defaultSuggestion": "راجع الصيانة الأخيرة وقراءات أجهزة الاستشعار",
+      "technicalDetails": "التفاصيل الفنية",
+      "confirmAnomaly": "تأكيد الشذوذ",
+      "rejectAnomaly": "رفض الشذوذ",
+      "wasUseful": "هل كانت هذه التنبيهات مفيدة؟",
+      "reason": "السبب",
+      "comment": "تعليق",
+      "submit": "إرسال التعليق",
+      "noAnalyses": "لا تتوفر تحليلات لصحة الماكينة.",
+      "viewFullAnalysis": "عرض التحليل الكامل",
+      "viewAnalysis": "عرض التحليل",
+      "viewAll": "عرض الكل",
+      "backToList": "العودة إلى صحة الماكينات",
+      "alreadyValidated": "تم التحقق من هذا التحليل بالفعل كـ {status}.",
+      "advisoryCopy": "هذه استشارة ذكاء اصطناعي مبنية على إعادة تشغيل مجموعة بيانات. استخدمها كدعم للقرار فقط.",
+      "widgetTitle": "صحة الماكينات",
+      "aiInsightTitle": "تحليل الذكاء الاصطناعي للماكينة",
+      "persistentShort": "مستمر",
+      "yes": "نعم",
+      "no": "لا",
+      "detectedBefore": "تم اكتشافه قبل التدخل",
+      "persistence": "مستمر ({current} من آخر {total})",
+      "modelVersion": "إصدار النموذج",
+      "analysisType": "نوع التحليل",
+      "zScore": "درجة Z",
+      "isolationForest": "Isolation Forest",
+      "validationStatus": "حالة التحقق",
+      "validatedBy": "تم التحقق بواسطة",
+      "source": {
+        "DATASET_REPLAY": "إعادة تشغيل مجموعة بيانات IMS",
+        "DEMO": "عرض توضيحي"
+      },
+      "validationStatuses": {
+        "PENDING": "قيد الانتظار",
+        "CONFIRMED": "مؤكدة",
+        "REJECTED": "مرفوضة"
+      },
+      "states": {
+        "loading": "جارٍ تحميل تحليلات صحة الماكينات...",
+        "error": "تعذر تحميل تحليلات صحة الماكينات.",
+        "errorTitle": "تعذر التحميل",
+        "unavailableTitle": "خدمة الذكاء الاصطناعي غير متاحة",
+        "retry": "إعادة المحاولة",
+        "retrying": "إعادة المحاولة..."
+      },
+      "validation": {
+        "saved": "تم حفظ التعليق",
+        "failed": "تعذر حفظ التعليق"
       }
     }
   },

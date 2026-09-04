@@ -22,6 +22,7 @@ import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
 import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
 import MachineHealthPanel from "@/components/predictive-maintenance/MachineHealthPanel";
+import MachineHealthInsightContainer from "@/components/technician/MachineHealthInsightContainer";
 import LiveStatusBadge from "@/components/device-monitoring/LiveStatusBadge";
 import { useLiveMonitoring } from "@/hooks/useLiveMonitoring";
 import type { LiveMachineStatus } from "@/hooks/useLiveMonitoring";
@@ -1015,6 +1016,11 @@ function TechnicianWorkOrderDetailInner({ id }: TechnicianWorkOrderDetailProps) 
             machineId={machine?._id}
             workOrderId={wo._id}
             faultCode={wo.code_panne}
+          />
+
+          <MachineHealthInsightContainer
+            machineId={machine?._id}
+            workOrderTimestamp={wo.date_created}
           />
 
           <MachineHealthPanel machineId={machine?._id} />

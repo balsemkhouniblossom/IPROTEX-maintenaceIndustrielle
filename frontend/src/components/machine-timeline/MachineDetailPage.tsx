@@ -19,6 +19,7 @@ import { Modal } from '@/components/Modal';
 import DocumentAttachmentViewer from '@/components/DocumentAttachmentViewer';
 import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
 import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
+import { MachineHealthWidget } from '@/components/technician/MachineHealthWidget';
 import {
   documentDateLabel,
   documentMachineLabel,
@@ -276,7 +277,9 @@ function TabOverview({ summary, context, locale, healthByMachine, machineId }: R
   const attentionDescription = formatDisplayValue(attention?.description ?? attention?.ot_id);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="space-y-5">
+      <MachineHealthWidget machineId={machineId} />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="panel">
         <h2 className="mb-4 text-lg font-semibold">{t('overview.machineStatus')}</h2>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -301,6 +304,7 @@ function TabOverview({ summary, context, locale, healthByMachine, machineId }: R
           <p className="text-sm text-amber-800">{t('overview.noAttention')}</p>
         )}
       </section>
+      </div>
     </div>
   );
 }
@@ -415,6 +419,11 @@ function TechnicianMachineWorkspace({
         <section className="panel">
           <h2 className="mb-4 text-lg font-semibold">{t('monitoring.title')}</h2>
           <div className="mb-4"><LiveStatusBadge machineId={machineId} status={statusByMachine[machineId]} onSubscribe={subscribeToMachine} /></div>
+          {context?.components.some((component) => component.sensors.length) ? (
+            <div className="mb-4">
+              <MachineHealthWidget machineId={machineId} />
+            </div>
+          ) : null}
           {context?.components.some((component) => component.sensors.length) ? (
             <div className="grid gap-3 md:grid-cols-2">
               {context.components.flatMap((component) => component.sensors).map((sensor) => (

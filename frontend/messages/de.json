@@ -1884,7 +1884,8 @@
       "reportProblem": "Report Problem",
       "startCorrectiveMaintenance": "Corrective Maintenance",
       "startPreventiveMaintenance": "Preventive Maintenance",
-      "aiAnomalyMonitoring": "KI-Anomalie?berwachung"
+      "aiAnomalyMonitoring": "KI-Anomalie?berwachung",
+      "aiAnalytics": "KI-Analysen"
     }
   },
   "machines": {
@@ -3116,6 +3117,86 @@
         "corrective": "Korrigierend",
         "inspection": "Inspektion",
         "predictive": "Vorhersagend"
+      }
+    },
+    "machineHealth": {
+      "title": "Maschinenzustand",
+      "heading": "Maschinenzustand",
+      "subtitle": "Operative Sicht auf KI-Anomalie-Erkenntnisse. Prüfen Sie erhöhte Maschinenrisiken und empfohlene Kontrollen vor dem Eingriff.",
+      "filters": {
+        "all": "Alle",
+        "attention": "Beobachtung",
+        "highRisk": "Hohes Risiko",
+        "critical": "Kritisch"
+      },
+      "searchPlaceholder": "Maschine suchen...",
+      "machineModel": "Modell",
+      "riskScore": "Risikobewertung",
+      "persistentAnomaly": "Anhaltende Anomalie erkannt",
+      "noPersistentAnomaly": "Keine anhaltende Anomalie",
+      "lastAnalysis": "Letzte Analyse",
+      "lastAnalysisToday": "Heute",
+      "investigate": "Untersuchen",
+      "view": "Ansehen",
+      "normal": "Normal",
+      "monitor": "Beobachtung",
+      "high": "Hohes Risiko",
+      "critical": "Kritisch",
+      "riskLevels": {
+        "NORMAL": "Normal",
+        "MONITOR": "Beobachtung",
+        "HIGH": "Hohes Risiko",
+        "CRITICAL": "Kritisch"
+      },
+      "suggestedChecks": "Vorgeschlagene Prüfungen",
+      "defaultSuggestion": "Aktuelle Wartung und Sensorwerte prüfen",
+      "technicalDetails": "Technische Details",
+      "confirmAnomaly": "Anomalie bestätigen",
+      "rejectAnomaly": "Anomalie ablehnen",
+      "wasUseful": "War diese KI-Warnung hilfreich?",
+      "reason": "Grund",
+      "comment": "Kommentar",
+      "submit": "Rückmeldung senden",
+      "noAnalyses": "Keine Maschinenzustands-Analysen verfügbar.",
+      "viewFullAnalysis": "Vollständige Analyse anzeigen",
+      "viewAnalysis": "Analyse anzeigen",
+      "viewAll": "Alle anzeigen",
+      "backToList": "Zurück zum Maschinenzustand",
+      "alreadyValidated": "Diese Analyse wurde bereits als {status} validiert.",
+      "advisoryCopy": "Dies ist eine KI-Empfehlung auf Basis eines Datensatz-Replays. Nur als Entscheidungshilfe verwenden.",
+      "widgetTitle": "Maschinenzustand",
+      "aiInsightTitle": "KI-Maschineneinblick",
+      "persistentShort": "Anhaltend",
+      "yes": "Ja",
+      "no": "Nein",
+      "detectedBefore": "Vor dem Eingriff erkannt",
+      "persistence": "Anhaltend ({current} der letzten {total})",
+      "modelVersion": "Modellversion",
+      "analysisType": "Analyse-Typ",
+      "zScore": "Z-Score",
+      "isolationForest": "Isolation Forest",
+      "validationStatus": "Validierungsstatus",
+      "validatedBy": "Validiert von",
+      "source": {
+        "DATASET_REPLAY": "IMS-Datensatz-Wiedergabe",
+        "DEMO": "Demo"
+      },
+      "validationStatuses": {
+        "PENDING": "Ausstehend",
+        "CONFIRMED": "Bestätigt",
+        "REJECTED": "Abgelehnt"
+      },
+      "states": {
+        "loading": "Lade Maschinenzustands-Analysen...",
+        "error": "Maschinenzustands-Analysen konnten nicht geladen werden.",
+        "errorTitle": "Laden fehlgeschlagen",
+        "unavailableTitle": "KI-Dienst nicht verfügbar",
+        "retry": "Erneut versuchen",
+        "retrying": "Erneuter Versuch..."
+      },
+      "validation": {
+        "saved": "Rückmeldung gespeichert",
+        "failed": "Rückmeldung konnte nicht gespeichert werden"
       }
     }
   },

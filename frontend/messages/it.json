@@ -1713,7 +1713,8 @@
       "reportProblem": "Report Problem",
       "startCorrectiveMaintenance": "Corrective Maintenance",
       "startPreventiveMaintenance": "Preventive Maintenance",
-      "aiAnomalyMonitoring": "Monitoraggio anomalie IA"
+      "aiAnomalyMonitoring": "Monitoraggio anomalie IA",
+      "aiAnalytics": "Analisi IA"
     },
     "categories": {
       "catalogues": "Kataloge",
@@ -2962,6 +2963,86 @@
         "corrective": "Correttiva",
         "inspection": "Ispezione",
         "predictive": "Predittiva"
+      }
+    },
+    "machineHealth": {
+      "title": "Stato delle macchine",
+      "heading": "Stato delle macchine",
+      "subtitle": "Vista operativa delle analisi delle anomalie IA. Esamina il rischio elevato della macchina e i controlli suggeriti prima di intervenire.",
+      "filters": {
+        "all": "Tutti",
+        "attention": "Attenzione",
+        "highRisk": "Rischio elevato",
+        "critical": "Critico"
+      },
+      "searchPlaceholder": "Cerca macchina...",
+      "machineModel": "Modello",
+      "riskScore": "Punteggio di rischio",
+      "persistentAnomaly": "Anomalia persistente rilevata",
+      "noPersistentAnomaly": "Nessuna anomalia persistente",
+      "lastAnalysis": "Ultima analisi",
+      "lastAnalysisToday": "Oggi",
+      "investigate": "Indaga",
+      "view": "Visualizza",
+      "normal": "Normale",
+      "monitor": "Attenzione",
+      "high": "Rischio elevato",
+      "critical": "Critico",
+      "riskLevels": {
+        "NORMAL": "Normale",
+        "MONITOR": "Attenzione",
+        "HIGH": "Rischio elevato",
+        "CRITICAL": "Critico"
+      },
+      "suggestedChecks": "Controlli suggeriti",
+      "defaultSuggestion": "Esamina la manutenzione recente e le letture dei sensori",
+      "technicalDetails": "Dettagli tecnici",
+      "confirmAnomaly": "Conferma anomalia",
+      "rejectAnomaly": "Rifiuta anomalia",
+      "wasUseful": "Questo avviso IA è stato utile?",
+      "reason": "Motivo",
+      "comment": "Commento",
+      "submit": "Invia feedback",
+      "noAnalyses": "Nessuna analisi dello stato della macchina disponibile.",
+      "viewFullAnalysis": "Visualizza analisi completa",
+      "viewAnalysis": "Visualizza analisi",
+      "viewAll": "Visualizza tutto",
+      "backToList": "Torna allo stato delle macchine",
+      "alreadyValidated": "Questa analisi è già stata convalidata come {status}.",
+      "advisoryCopy": "Questo è un avviso IA basato sulla riproduzione di un dataset. Usalo solo come supporto alle decisioni.",
+      "widgetTitle": "Stato delle macchine",
+      "aiInsightTitle": "Analisi IA della macchina",
+      "persistentShort": "Persistente",
+      "yes": "Sì",
+      "no": "No",
+      "detectedBefore": "Rilevato prima dell'intervento",
+      "persistence": "Persistente ({current} delle ultime {total})",
+      "modelVersion": "Versione del modello",
+      "analysisType": "Tipo di analisi",
+      "zScore": "Punteggio Z",
+      "isolationForest": "Isolation Forest",
+      "validationStatus": "Stato di convalida",
+      "validatedBy": "Convalidato da",
+      "source": {
+        "DATASET_REPLAY": "Riproduzione del dataset IMS",
+        "DEMO": "Demo"
+      },
+      "validationStatuses": {
+        "PENDING": "In attesa",
+        "CONFIRMED": "Confermata",
+        "REJECTED": "Respinta"
+      },
+      "states": {
+        "loading": "Caricamento delle analisi dello stato delle macchine...",
+        "error": "Impossibile caricare le analisi dello stato delle macchine.",
+        "errorTitle": "Caricamento non riuscito",
+        "unavailableTitle": "Servizio IA non disponibile",
+        "retry": "Riprova",
+        "retrying": "Nuovo tentativo..."
+      },
+      "validation": {
+        "saved": "Feedback salvato",
+        "failed": "Impossibile salvare il feedback"
       }
     }
   },

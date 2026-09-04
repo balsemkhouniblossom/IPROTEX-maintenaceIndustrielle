@@ -43,6 +43,7 @@ import {
   DocumentTextIcon,
   BookOpenIcon,
   BeakerIcon,
+  HeartIcon,
 } from "@heroicons/react/24/outline";
 
 type DashboardLayoutProps = Readonly<{
@@ -218,6 +219,11 @@ function DashboardLayoutBody({
               href: "/machines",
               icon: CogIcon,
             },
+            {
+              name: t("navigation.machineHealth"),
+              href: "/technician/machine-health",
+              icon: HeartIcon,
+            },
           ],
         },
         {
@@ -238,11 +244,6 @@ function DashboardLayoutBody({
               name: t("navigation.knowledgeBase"),
               href: "/technician/knowledge-base",
               icon: BookOpenIcon,
-            },
-            {
-              name: t("navigation.aiAnomalyMonitoring"),
-              href: "/ai-anomaly",
-              icon: BeakerIcon,
             },
           ],
         },
@@ -434,7 +435,7 @@ function DashboardLayoutBody({
             ],
           },
           {
-            name: t("navigation.aiAnomalyMonitoring"),
+            name: t("navigation.aiAnalytics"),
             href: "/ai-anomaly",
             icon: BeakerIcon,
           },
