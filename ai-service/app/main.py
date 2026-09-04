@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import anomaly, health, models
 from app.core.config import settings
+from app.services.artifact_bootstrap import ArtifactBootstrapError, ensure_artifacts
 from app.services.inference_service import InferenceService
 from src.inference.ims_anomaly_inference import ImsInferenceError
 
@@ -24,7 +25,26 @@ logger = logging.getLogger("ims_anomaly_api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.inference_service = InferenceService(settings.artifact_path, settings.metadata_path)
+    logger.info(
+        "Resolving IMS anomaly artifact",
+        extra={
+            "configured_artifact_path": str(settings.artifact_path),
+            "configured_metadata_path": str(settings.metadata_path),
+        },
+    )
+    try:
+        artifact_path, metadata_path = ensure_artifacts(
+            artifact_path=settings.artifact_path,
+            metadata_path=settings.metadata_path,
+        )
+    except ArtifactBootstrapError as exc:
+        logger.error("Artifact bootstrap failed: %s", exc)
+        raise
+    logger.info(
+        "IMS anomaly artifact ready for inference",
+        extra={"artifact_path": str(artifact_path), "metadata_path": str(metadata_path)},
+    )
+    app.state.inference_service = InferenceService(artifact_path, metadata_path)
     yield
 
 
@@ -70,6 +90,15 @@ async def validation_error_handler(_: Request, exc: RequestValidationError) -> J
         status_code=422,
         content=error_payload("INVALID_REQUEST", "Request schema validation failed."),
         headers={"X-Validation-Error-Count": str(len(exc.errors()))},
+    )
+
+
+@app.exception_handler(ArtifactBootstrapError)
+async def artifact_bootstrap_error_handler(_: Request, exc: ArtifactBootstrapError) -> JSONResponse:
+    logger.error("Artifact bootstrap error surfaced to request: %s", exc)
+    return JSONResponse(
+        status_code=503,
+        content=error_payload("ARTIFACT_UNAVAILABLE", str(exc)),
     )
 
 
