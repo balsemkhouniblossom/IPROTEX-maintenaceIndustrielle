@@ -1,7 +1,7 @@
 export type TechnicianDocument = {
   _id?: string;
   document_id?: string;
-  machine_id?: DocumentMachineRef;
+  machine_id: DocumentMachineRef;
   maintenance_plan_id?: string;
   work_order_id?: string;
   intervention_report_id?: string;

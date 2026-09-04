@@ -1668,6 +1668,47 @@ export function TechnicianParts() {
   );
 }
 
+function completionTime(order: WorkOrder): number | null {
+  const value = order.date_end || order.date_closed;
+  return value ? new Date(value).getTime() : null;
+}
+
+function matchesMachine(order: WorkOrder, machineId: string): boolean {
+  return machineOptionValue(order) === machineId;
+}
+
+function matchesMaintenanceType(order: WorkOrder, type: string): boolean {
+  return order.type_maintenance === type;
+}
+
+function matchesDateRange(
+  time: number | null,
+  fromTime: number | null,
+  toTime: number | null,
+): boolean {
+  if (fromTime !== null && (time === null || time < fromTime)) return false;
+  if (toTime !== null) {
+    if (time === null) return false;
+    const endOfDay = toTime + 86400000 - 1;
+    if (time > endOfDay) return false;
+  }
+  return true;
+}
+
+function matchesSearchTerm(order: WorkOrder, term: string): boolean {
+  const haystack = [
+    order.ot_id,
+    machineName(order),
+    machineModel(order),
+    order.type_maintenance,
+    order.status,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(term);
+}
+
 export function TechnicianCompletedHistory() {
   const t = useTranslations("technician");
   const tEnums = useTranslations("common.enums");
@@ -1723,38 +1764,10 @@ export function TechnicianCompletedHistory() {
     const toTime = dateTo ? new Date(dateTo).getTime() : null;
 
     return items.filter((order) => {
-      if (machineId) {
-        const value = machineOptionValue(order);
-        if (value !== machineId) return false;
-      }
-      if (maintenanceType && order.type_maintenance !== maintenanceType) {
-        return false;
-      }
-      const completionValue = order.date_end || order.date_closed;
-      const completionTime = completionValue
-        ? new Date(completionValue).getTime()
-        : null;
-      if (fromTime !== null) {
-        if (completionTime === null || completionTime < fromTime) return false;
-      }
-      if (toTime !== null) {
-        if (completionTime === null) return false;
-        const endOfDay = toTime + 86400000 - 1;
-        if (completionTime > endOfDay) return false;
-      }
-      if (term) {
-        const haystack = [
-          order.ot_id,
-          machineName(order),
-          machineModel(order),
-          order.type_maintenance,
-          order.status,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(term)) return false;
-      }
+      if (machineId && !matchesMachine(order, machineId)) return false;
+      if (maintenanceType && !matchesMaintenanceType(order, maintenanceType)) return false;
+      if (!matchesDateRange(completionTime(order), fromTime, toTime)) return false;
+      if (term && !matchesSearchTerm(order, term)) return false;
       return true;
     });
   }, [dateFrom, dateTo, items, machineId, maintenanceType, search]);

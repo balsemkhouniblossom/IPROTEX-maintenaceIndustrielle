@@ -91,11 +91,11 @@ export default function TechnicianDocumentCard({
           </dd>
         </div>
       </dl>
-      {document.tags && document.tags.length ? (
+      {document.tags?.length ? (
         <div className="flex flex-wrap gap-1">
           {document.tags.slice(0, 5).map((tag) => (
             <span
-              key={`${document.document_id || document._id || document.file_name}-${tag}`}
+              key={`${document.document_id || String(document._id || "") || document.file_name}-${tag}`}
               className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600"
             >
               <TagIcon className="h-3 w-3" />

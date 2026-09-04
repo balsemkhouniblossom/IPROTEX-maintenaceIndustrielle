@@ -111,19 +111,23 @@ export function isPartRequestStatus(value: unknown): value is PartRequestStatusV
   );
 }
 
+function safeString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export function asPartRequestRecord(value: unknown): PartRequestRecord | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const status = record.status;
   if (!isPartRequestStatus(status)) return null;
   return {
-    _id: String(record._id || ""),
-    request_id: String(record.request_id || record._id || ""),
-    ot_id: String(record.ot_id || ""),
-    part_id: String(record.part_id || ""),
+    _id: safeString(record._id),
+    request_id: safeString(record.request_id) || safeString(record._id),
+    ot_id: safeString(record.ot_id),
+    part_id: safeString(record.part_id),
     quantity: Number(record.quantity) || 0,
     status,
-    requested_at: String(record.requested_at || ""),
+    requested_at: safeString(record.requested_at),
     part: record.part && typeof record.part === "object"
       ? (record.part as PartRequestRecord["part"])
       : undefined,
@@ -134,7 +138,7 @@ export function isRequestFulfilled(
   request: PartRequestRecord,
   usedPartIds: Set<string>,
 ): boolean {
-  return usedPartIds.has(String(request.part_id || ""));
+  return usedPartIds.has(request.part_id);
 }
 
 export function effectiveRequestStatus(

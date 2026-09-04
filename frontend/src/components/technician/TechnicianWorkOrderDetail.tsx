@@ -716,7 +716,6 @@ function ManualsSection({
   faultCode?: string;
   maintenancePlanId?: string;
 }>) {
-  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const filtered = useMemo(() => {
