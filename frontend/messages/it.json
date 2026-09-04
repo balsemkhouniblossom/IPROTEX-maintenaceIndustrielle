@@ -2935,6 +2935,34 @@
       "started": "Intervention started",
       "completed": "Intervention completed",
       "statusChanged": "Status changed"
+    },
+    "historyPage": {
+      "title": "Interventi completati",
+      "heading": "Interventi completati",
+      "subtitle": "Cronologia in sola lettura delle commesse di lavoro che hai chiuso, con collegamenti a rapporti e macchine.",
+      "readOnlyHint": "Sola lettura — la convalida e la riapertura sono riservate agli amministratori.",
+      "readOnlyBadge": "Sola lettura",
+      "searchPlaceholder": "Cerca per commessa, macchina, descrizione o rapporto",
+      "dateFrom": "Da",
+      "dateTo": "A",
+      "machineLabel": "Macchina",
+      "allMachines": "Tutte le macchine",
+      "maintenanceTypeLabel": "Tipo di manutenzione",
+      "allMaintenanceTypes": "Tutti i tipi di manutenzione",
+      "clearFilters": "Azzera filtri",
+      "completionDate": "Completata il",
+      "duration": "Durata",
+      "result": "Risultato",
+      "viewReport": "Vedi rapporto",
+      "viewMachine": "Vedi macchina",
+      "emptyAll": "Non hai ancora chiuso nessuna commessa di lavoro.",
+      "emptyFiltered": "Nessun intervento completato corrisponde ai filtri.",
+      "types": {
+        "preventive": "Preventiva",
+        "corrective": "Correttiva",
+        "inspection": "Ispezione",
+        "predictive": "Predittiva"
+      }
     }
   },
   "miniAvatar": {

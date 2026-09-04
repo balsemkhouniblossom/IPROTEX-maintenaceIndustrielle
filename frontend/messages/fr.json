@@ -3071,6 +3071,34 @@
       "started": "Intervention started",
       "completed": "Intervention completed",
       "statusChanged": "Status changed"
+    },
+    "historyPage": {
+      "title": "Interventions terminées",
+      "heading": "Interventions terminées",
+      "subtitle": "Historique en lecture seule des bons de travail que vous avez clôturés, avec liens vers les rapports et les machines.",
+      "readOnlyHint": "Lecture seule — la validation et la réouverture sont réservées aux administrateurs.",
+      "readOnlyBadge": "Lecture seule",
+      "searchPlaceholder": "Rechercher par bon de travail, machine, description ou rapport",
+      "dateFrom": "Du",
+      "dateTo": "Au",
+      "machineLabel": "Machine",
+      "allMachines": "Toutes les machines",
+      "maintenanceTypeLabel": "Type de maintenance",
+      "allMaintenanceTypes": "Tous les types de maintenance",
+      "clearFilters": "Réinitialiser les filtres",
+      "completionDate": "Terminée le",
+      "duration": "Durée",
+      "result": "Résultat",
+      "viewReport": "Voir le rapport",
+      "viewMachine": "Voir la machine",
+      "emptyAll": "Vous n'avez encore clôturé aucun bon de travail.",
+      "emptyFiltered": "Aucune intervention terminée ne correspond à vos filtres.",
+      "types": {
+        "preventive": "Préventive",
+        "corrective": "Corrective",
+        "inspection": "Inspection",
+        "predictive": "Prédictive"
+      }
     }
   },
   "miniAvatar": {

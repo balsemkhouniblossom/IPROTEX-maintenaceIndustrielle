@@ -1668,4 +1668,381 @@ export function TechnicianParts() {
   );
 }
 
+export function TechnicianCompletedHistory() {
+  const t = useTranslations("technician");
+  const tEnums = useTranslations("common.enums");
+  const locale = useLocale();
+  const [data, setData] = useState<PageData<WorkOrder>>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [machineId, setMachineId] = useState("");
+  const [maintenanceType, setMaintenanceType] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await apiService.getTechnicianWorkOrders({
+        status: "completed",
+        page: 1,
+        limit: 200,
+      });
+      setData(response.data);
+    } catch {
+      setError(t("errors.network"));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const machineOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const order of data?.items ?? []) {
+      const value = machineOptionValue(order);
+      const label = machineFilterLabel(order);
+      if (value && label) options.set(value, label);
+    }
+    return [...options.entries()].sort((left, right) =>
+      left[1].localeCompare(right[1]),
+    );
+  }, [data]);
+
+  const items = data?.items ?? [];
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : null;
+    const toTime = dateTo ? new Date(dateTo).getTime() : null;
+
+    return items.filter((order) => {
+      if (machineId) {
+        const value = machineOptionValue(order);
+        if (value !== machineId) return false;
+      }
+      if (maintenanceType && order.type_maintenance !== maintenanceType) {
+        return false;
+      }
+      const completionValue = order.date_end || order.date_closed;
+      const completionTime = completionValue
+        ? new Date(completionValue).getTime()
+        : null;
+      if (fromTime !== null) {
+        if (completionTime === null || completionTime < fromTime) return false;
+      }
+      if (toTime !== null) {
+        if (completionTime === null) return false;
+        const endOfDay = toTime + 86400000 - 1;
+        if (completionTime > endOfDay) return false;
+      }
+      if (term) {
+        const haystack = [
+          order.ot_id,
+          machineName(order),
+          machineModel(order),
+          order.type_maintenance,
+          order.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [dateFrom, dateTo, items, machineId, maintenanceType, search]);
+
+  const sorted = useMemo(
+    () =>
+      [...filtered].sort((left, right) => {
+        const leftValue = left.date_end || left.date_closed || left.date_start || "";
+        const rightValue = right.date_end || right.date_closed || right.date_start || "";
+        return rightValue.localeCompare(leftValue);
+      }),
+    [filtered],
+  );
+
+  const hasActiveFilter =
+    Boolean(search.trim()) ||
+    Boolean(machineId) ||
+    Boolean(maintenanceType) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
+
+  const pageSize = TECHNICIAN_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const pageItems = sorted.slice(start, start + pageSize);
+
+  return (
+    <ProtectedRoute requiredRole="technician">
+      <DashboardLayout title={t("historyPage.title")}>
+        <div className="space-y-5">
+          <section className="panel space-y-2">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t("historyPage.heading")}
+            </h2>
+            <p className="text-sm text-slate-600">
+              {t("historyPage.subtitle")}
+            </p>
+            <p className="text-xs text-slate-500">
+              {t("historyPage.readOnlyHint")}
+            </p>
+          </section>
+
+          <section className="panel space-y-4">
+            <label className="relative block">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                aria-label={t("historyPage.searchPlaceholder")}
+                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+                placeholder={t("historyPage.searchPlaceholder")}
+                value={search}
+                onChange={(event) => {
+                  setPage(1);
+                  setSearch(event.target.value);
+                }}
+              />
+            </label>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-semibold text-slate-600">
+                  {t("historyPage.dateFrom")}
+                </span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                  value={dateFrom}
+                  onChange={(event) => {
+                    setPage(1);
+                    setDateFrom(event.target.value);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-semibold text-slate-600">
+                  {t("historyPage.dateTo")}
+                </span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                  value={dateTo}
+                  onChange={(event) => {
+                    setPage(1);
+                    setDateTo(event.target.value);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-semibold text-slate-600">
+                  {t("historyPage.machineLabel")}
+                </span>
+                <select
+                  className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                  value={machineId}
+                  onChange={(event) => {
+                    setPage(1);
+                    setMachineId(event.target.value);
+                  }}
+                >
+                  <option value="">{t("historyPage.allMachines")}</option>
+                  {machineOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="font-semibold text-slate-600">
+                  {t("historyPage.maintenanceTypeLabel")}
+                </span>
+                <select
+                  className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+                  value={maintenanceType}
+                  onChange={(event) => {
+                    setPage(1);
+                    setMaintenanceType(event.target.value);
+                  }}
+                >
+                  <option value="">{t("historyPage.allMaintenanceTypes")}</option>
+                  <option value="preventive">{t("historyPage.types.preventive")}</option>
+                  <option value="corrective">{t("historyPage.types.corrective")}</option>
+                  <option value="inspection">{t("historyPage.types.inspection")}</option>
+                  <option value="predictive">{t("historyPage.types.predictive")}</option>
+                </select>
+              </label>
+            </div>
+            {hasActiveFilter ? (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-300"
+                  onClick={() => {
+                    setPage(1);
+                    setSearch("");
+                    setMachineId("");
+                    setMaintenanceType("");
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                >
+                  {t("historyPage.clearFilters")}
+                </button>
+              </div>
+            ) : null}
+          </section>
+
+          {loading && <div className="panel">{t("loading")}</div>}
+
+          {!loading && error && (
+            <ErrorBox
+              message={error}
+              retry={() => void load()}
+              label={t("actions.retry")}
+            />
+          )}
+
+          {!loading && !error && sorted.length === 0 ? (
+            <div className="panel border-s-4 border-s-emerald-500 bg-emerald-50/40 text-slate-600">
+              <CheckCircleIcon className="mb-3 h-6 w-6 text-emerald-600" />
+              {hasActiveFilter
+                ? t("historyPage.emptyFiltered")
+                : t("historyPage.emptyAll")}
+            </div>
+          ) : null}
+
+          {!loading && !error && pageItems.length > 0 ? (
+            <>
+              <div className="grid gap-4">
+                {pageItems.map((order) => {
+                  const completionDate = order.date_end || order.date_closed;
+                  const maintenanceLabel =
+                    translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) ||
+                    order.type_maintenance ||
+                    t("notAvailable");
+                  const statusLabel = t.has(`status.${order.status}`)
+                    ? t(`status.${order.status}`)
+                    : translateEnumValue(tEnums, "workOrderStatuses", order.status);
+                  return (
+                    <article
+                      className="panel border-s-4 border-s-emerald-500 p-5"
+                      key={order.ot_id}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-bold text-slate-950">
+                            {order.ot_id}
+                          </h3>
+                          <p className="mt-1 font-semibold text-slate-800">
+                            {machineName(order) || t("notAvailable")}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {machineModel(order) || t("notAvailable")}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-xs font-bold uppercase ${maintenanceBadgeClass(order.type_maintenance)}`}
+                        >
+                          {maintenanceLabel}
+                        </span>
+                      </div>
+                      <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                        <div>
+                          <dt className="text-xs uppercase text-slate-500">
+                            {t("historyPage.completionDate")}
+                          </dt>
+                          <dd className="mt-1 font-medium text-slate-800">
+                            {formatOrderDate(completionDate, locale)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase text-slate-500">
+                            {t("historyPage.duration")}
+                          </dt>
+                          <dd className="mt-1 font-medium text-slate-800">
+                            {formatDurationLabel(
+                              order.date_start,
+                              order.date_end,
+                              locale,
+                              t("notAvailable"),
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase text-slate-500">
+                            {t("historyPage.result")}
+                          </dt>
+                          <dd className="mt-1 font-medium text-slate-800">
+                            {statusLabel || t("notAvailable")}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        <Link
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400"
+                          href={`/${locale}/technician/work-orders/${order._id}`}
+                        >
+                          <EyeIcon className="h-4 w-4 text-blue-600" />
+                          {t("historyPage.viewReport")}
+                        </Link>
+                        {typeof order.machine_id === "object" && order.machine_id?._id ? (
+                          <Link
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400"
+                            href={`/${locale}/machines/${order.machine_id._id}`}
+                          >
+                            <WrenchScrewdriverIcon className="h-4 w-4 text-blue-600" />
+                            {t("historyPage.viewMachine")}
+                          </Link>
+                        ) : null}
+                        <span className="ms-auto inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                          <CheckCircleIcon className="h-3.5 w-3.5" />
+                          {t("historyPage.readOnlyBadge")}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <Pagination
+                page={safePage}
+                totalPages={totalPages}
+                totalItems={sorted.length}
+                limit={pageSize}
+                onPageChange={setPage}
+              />
+            </>
+          ) : null}
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+function formatDurationLabel(
+  startValue: string | undefined,
+  endValue: string | undefined,
+  locale: string,
+  fallback: string,
+): string {
+  if (!startValue || !endValue) return fallback;
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return fallback;
+  const diffMs = end.getTime() - start.getTime();
+  if (diffMs <= 0) return fallback;
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
+}
+
 export { terminal, review };

@@ -2935,6 +2935,34 @@
       "started": "Intervention started",
       "completed": "Intervention completed",
       "statusChanged": "Status changed"
+    },
+    "historyPage": {
+      "title": "Intervenciones completadas",
+      "heading": "Intervenciones completadas",
+      "subtitle": "Historial de solo lectura de las órdenes de trabajo que ha cerrado, con enlaces a informes y máquinas.",
+      "readOnlyHint": "Solo lectura — la validación y la reapertura son responsabilidad de los administradores.",
+      "readOnlyBadge": "Solo lectura",
+      "searchPlaceholder": "Buscar por orden de trabajo, máquina, descripción o informe",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
+      "machineLabel": "Máquina",
+      "allMachines": "Todas las máquinas",
+      "maintenanceTypeLabel": "Tipo de mantenimiento",
+      "allMaintenanceTypes": "Todos los tipos de mantenimiento",
+      "clearFilters": "Borrar filtros",
+      "completionDate": "Completada el",
+      "duration": "Duración",
+      "result": "Resultado",
+      "viewReport": "Ver informe",
+      "viewMachine": "Ver máquina",
+      "emptyAll": "Aún no ha cerrado ninguna orden de trabajo.",
+      "emptyFiltered": "Ninguna intervención completada coincide con sus filtros.",
+      "types": {
+        "preventive": "Preventiva",
+        "corrective": "Correctiva",
+        "inspection": "Inspección",
+        "predictive": "Predictiva"
+      }
     }
   },
   "miniAvatar": {

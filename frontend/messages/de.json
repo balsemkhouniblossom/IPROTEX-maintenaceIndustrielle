@@ -3089,6 +3089,34 @@
       "started": "Intervention started",
       "completed": "Intervention completed",
       "statusChanged": "Status changed"
+    },
+    "historyPage": {
+      "title": "Abgeschlossene Eingriffe",
+      "heading": "Abgeschlossene Eingriffe",
+      "subtitle": "Schreibgeschützter Verlauf der von Ihnen abgeschlossenen Arbeitsaufträge mit Links zu Berichten und Maschinen.",
+      "readOnlyHint": "Nur lesen — Validierung und Wiedereröffnung liegen bei Administratoren.",
+      "readOnlyBadge": "Nur lesen",
+      "searchPlaceholder": "Nach Arbeitsauftrag, Maschine, Beschreibung oder Bericht suchen",
+      "dateFrom": "Von",
+      "dateTo": "Bis",
+      "machineLabel": "Maschine",
+      "allMachines": "Alle Maschinen",
+      "maintenanceTypeLabel": "Wartungsart",
+      "allMaintenanceTypes": "Alle Wartungsarten",
+      "clearFilters": "Filter zurücksetzen",
+      "completionDate": "Abgeschlossen am",
+      "duration": "Dauer",
+      "result": "Ergebnis",
+      "viewReport": "Bericht ansehen",
+      "viewMachine": "Maschine ansehen",
+      "emptyAll": "Sie haben noch keine Arbeitsaufträge abgeschlossen.",
+      "emptyFiltered": "Keine abgeschlossenen Eingriffe passen zu Ihren Filtern.",
+      "types": {
+        "preventive": "Vorbeugend",
+        "corrective": "Korrigierend",
+        "inspection": "Inspektion",
+        "predictive": "Vorhersagend"
+      }
     }
   },
   "miniAvatar": {

@@ -2896,6 +2896,34 @@
       "started": "Intervention started",
       "completed": "Intervention completed",
       "statusChanged": "Status changed"
+    },
+    "historyPage": {
+      "title": "التدخلات المكتملة",
+      "heading": "التدخلات المكتملة",
+      "subtitle": "سجل للقراءة فقط لأوامر العمل التي أغلقتها، مع روابط إلى التقارير والآلات.",
+      "readOnlyHint": "للقراءة فقط — التحقق وإعادة الفتح من صلاحيات المسؤول.",
+      "readOnlyBadge": "للقراءة فقط",
+      "searchPlaceholder": "ابحث حسب أمر العمل أو الآلة أو الوصف أو التقرير",
+      "dateFrom": "من",
+      "dateTo": "إلى",
+      "machineLabel": "الآلة",
+      "allMachines": "كل الآلات",
+      "maintenanceTypeLabel": "نوع الصيانة",
+      "allMaintenanceTypes": "كل أنواع الصيانة",
+      "clearFilters": "مسح الفلاتر",
+      "completionDate": "أُكملت في",
+      "duration": "المدة",
+      "result": "النتيجة",
+      "viewReport": "عرض التقرير",
+      "viewMachine": "عرض الآلة",
+      "emptyAll": "لم تقم بإغلاق أي أمر عمل بعد.",
+      "emptyFiltered": "لا توجد تدخلات مكتملة تطابق الفلاتر.",
+      "types": {
+        "preventive": "وقائية",
+        "corrective": "تصحيحية",
+        "inspection": "فحص",
+        "predictive": "تنبؤية"
+      }
     }
   },
   "miniAvatar": {

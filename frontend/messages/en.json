@@ -3089,6 +3089,34 @@
       "started": "Intervention started",
       "completed": "Intervention completed",
       "statusChanged": "Status changed"
+    },
+    "historyPage": {
+      "title": "Completed interventions",
+      "heading": "Completed interventions",
+      "subtitle": "Read-only history of the work orders you have closed, with links to reports and machines.",
+      "readOnlyHint": "Read only — Admins own validation and reopening.",
+      "readOnlyBadge": "Read only",
+      "searchPlaceholder": "Search by work order, machine, description or report",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "machineLabel": "Machine",
+      "allMachines": "All machines",
+      "maintenanceTypeLabel": "Maintenance type",
+      "allMaintenanceTypes": "All maintenance types",
+      "clearFilters": "Clear filters",
+      "completionDate": "Completed on",
+      "duration": "Duration",
+      "result": "Result",
+      "viewReport": "View report",
+      "viewMachine": "View machine",
+      "emptyAll": "You have not closed any work orders yet.",
+      "emptyFiltered": "No completed interventions match your filters.",
+      "types": {
+        "preventive": "Preventive",
+        "corrective": "Corrective",
+        "inspection": "Inspection",
+        "predictive": "Predictive"
+      }
     }
   },
   "miniAvatar": {
