@@ -65,6 +65,7 @@ pnpm-debug.log*
 .vscode
 .idea
 .kilo/
+.claude/
 
 # =====================
 # TYPESCRIPT

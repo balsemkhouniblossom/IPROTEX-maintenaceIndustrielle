@@ -152,6 +152,16 @@ class ArtifactBootstrapTests(unittest.TestCase):
 
 
 class ReadyEndpointTests(unittest.TestCase):
+    def test_index_endpoint_returns_service_info(self) -> None:
+        with TestClient(app) as client:
+            response = client.get("/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["service"], settings.app_name)
+        self.assertEqual(payload["endpoints"]["docs"], "/docs")
+        self.assertEqual(payload["endpoints"]["health"], "/health")
+        self.assertEqual(payload["endpoints"]["ready"], "/ready")
+
     def test_ready_endpoint_succeeds_when_artifact_loaded(self) -> None:
         from app.services.inference_service import InferenceService
 
