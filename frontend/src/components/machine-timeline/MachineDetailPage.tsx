@@ -19,7 +19,6 @@ import { Modal } from '@/components/Modal';
 import DocumentAttachmentViewer from '@/components/DocumentAttachmentViewer';
 import LiveStatusBadge from '@/components/device-monitoring/LiveStatusBadge';
 import MachineHealthBadge from '@/components/predictive-maintenance/MachineHealthBadge';
-import TechnicianDocumentCard from '@/components/technician/TechnicianDocumentCard';
 import {
   documentDateLabel,
   documentMachineLabel,
