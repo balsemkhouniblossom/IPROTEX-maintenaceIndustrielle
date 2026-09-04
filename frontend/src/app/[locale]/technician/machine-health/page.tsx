@@ -57,8 +57,7 @@ function TechnicianMachineHealthContent() {
   const [retrying, setRetrying] = useState(false);
   const [toast, setToast] = useState<ToastNotificationState | null>(null);
 
-  const load = useCallback(async () => {
-    const controller = new AbortController();
+  const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     setServiceUnavailable(false);
@@ -71,7 +70,7 @@ function TechnicianMachineHealthContent() {
             risk_level: filterToRiskLevel(filter),
             input_source: "DATASET_REPLAY",
           },
-          { signal: controller.signal },
+          { signal },
         ),
         apiService
           .getMachines({ page: 1, limit: 100 }, quiet())
@@ -90,6 +89,7 @@ function TechnicianMachineHealthContent() {
         : [];
       setMachineRecords(records);
     } catch (err) {
+      if ((err as { name?: string })?.name === "CanceledError") return;
       const details = extractApiErrorDetails(err, t("technician.machineHealth.states.error"));
       setError(details.message);
       setServiceUnavailable(isAiServiceUnavailable(err));
@@ -97,11 +97,12 @@ function TechnicianMachineHealthContent() {
       setLoading(false);
       setRetrying(false);
     }
-    return () => controller.abort();
   }, [filter, t]);
 
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   const machines = useMemo(

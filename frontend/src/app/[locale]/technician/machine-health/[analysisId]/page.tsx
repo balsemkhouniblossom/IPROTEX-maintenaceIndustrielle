@@ -46,20 +46,19 @@ function TechnicianMachineHealthDetailContent() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<ToastNotificationState | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     if (!analysisId) return;
-    const controller = new AbortController();
     setLoading(true);
     setError(null);
     setServiceUnavailable(false);
     try {
-      const [analysisResponse, machinesResponse, historyResponse] = await Promise.all([
+      const [analysisResponse, machinesResponse] = await Promise.all([
         apiService.getAiAnomalyAnalysis(analysisId),
         apiService
           .getMachines({ page: 1, limit: 100 }, quiet())
           .catch(() => null),
         apiService
-          .getAiAnomalyMachineHistory("", { limit: 1 }, { signal: controller.signal })
+          .getAiAnomalyMachineHistory("", { limit: 1 }, { signal })
           .catch(() => null),
       ]);
       setAnalysis(analysisResponse.data as AiAnomalyAnalysis);
@@ -70,8 +69,8 @@ function TechnicianMachineHealthDetailContent() {
             []) as AiAnomalyMachineRecord[])
         : [];
       setMachineRecords(records);
-      void historyResponse;
     } catch (err) {
+      if ((err as { name?: string })?.name === "CanceledError") return;
       const details = extractApiErrorDetails(
         err,
         t("technician.machineHealth.states.error"),
@@ -85,7 +84,9 @@ function TechnicianMachineHealthDetailContent() {
   }, [analysisId, t]);
 
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   const machines = useMemo(() => {

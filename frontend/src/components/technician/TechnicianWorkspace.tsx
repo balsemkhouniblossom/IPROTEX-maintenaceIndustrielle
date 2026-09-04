@@ -887,7 +887,12 @@ export function TechnicianDashboard() {
     <ProtectedRoute requiredRole="technician">
       <DashboardLayout title={t("dashboard.title")}>
         {loading && (
-          <div className="panel">{t("loading")}</div>
+          <div className="panel flex min-h-32 items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600" />
+              <p className="mt-3 text-sm text-slate-600">{t("loading")}</p>
+            </div>
+          </div>
         )}
         {!loading && error && (
           <ErrorBox
@@ -1305,7 +1310,12 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
             </div>
           ) : null}
           {loading && (
-            <div className="panel">{t("loading")}</div>
+            <div className="panel flex min-h-32 items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600" />
+                <p className="mt-3 text-sm text-slate-600">{t("loading")}</p>
+              </div>
+            </div>
           )}
           {!loading && error && (
             <ErrorBox
@@ -1545,7 +1555,7 @@ export function TechnicianParts() {
             </div>
           </section>
 
-          {loading && <div className="panel">{t("loading")}</div>}
+          {loading && <div className="panel flex min-h-32 items-center justify-center"><div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600" /><p className="mt-3 text-sm text-slate-600">{t("loading")}</p></div></div>}
 
           {!loading && error && (
             <ErrorBox
@@ -1914,7 +1924,7 @@ export function TechnicianCompletedHistory() {
             ) : null}
           </section>
 
-          {loading && <div className="panel">{t("loading")}</div>}
+          {loading && <div className="panel flex min-h-32 items-center justify-center"><div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-blue-600" /><p className="mt-3 text-sm text-slate-600">{t("loading")}</p></div></div>}
 
           {!loading && error && (
             <ErrorBox
