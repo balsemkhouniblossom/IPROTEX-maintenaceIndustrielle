@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 export type MachineHealthFilter = "ALL" | "ATTENTION" | "HIGH_RISK" | "CRITICAL";
 
 export type MachineHealthTranslator = ReturnType<typeof useTranslations>;
-export type MachineHealthLocaleTranslator = MachineHealthTranslator;
 
 const RISK_LABEL_KEYS: Record<AiAnomalyRiskLevel, string> = {
   NORMAL: "normal",
@@ -19,7 +18,7 @@ export function riskLevelLabelKey(level: AiAnomalyRiskLevel): string {
 
 export function riskLevelLabel(
   level: AiAnomalyRiskLevel,
-  t: MachineHealthLocaleTranslator,
+  t: MachineHealthTranslator,
 ): string {
   const key = `technician.machineHealth.riskLevels.${level}`;
   if (t.has(key)) return t(key);

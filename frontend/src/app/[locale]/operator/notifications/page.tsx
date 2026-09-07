@@ -54,7 +54,6 @@ function notificationTarget(item: NotificationItem, locale: string): string | nu
 }
 
 export default function OperatorNotificationsPage() {
-  const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
   const tNotification = useTranslations("notificationCenter");
   const router = useRouter();

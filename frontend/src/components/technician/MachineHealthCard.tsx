@@ -20,7 +20,7 @@ import {
   riskLevelLabel,
   riskLevelTone,
 } from "@/components/technician/machineHealthPresentation";
-import type { MachineHealthLocaleTranslator } from "@/components/technician/machineHealthPresentation";
+import type { MachineHealthTranslator } from "@/components/technician/machineHealthPresentation";
 
 const RISK_ICONS = {
   NORMAL: CheckCircleIcon,
@@ -33,7 +33,7 @@ export type MachineHealthCardProps = Readonly<{
   analysis: AiAnomalyAnalysis;
   machines: AiAnomalyMachineOption[];
   locale: string;
-  t: MachineHealthLocaleTranslator;
+  t: MachineHealthTranslator;
   detailHref: string;
 }>;
 
@@ -112,18 +112,12 @@ export default function MachineHealthCard({
             </span>
           </span>
         </div>
-        <div
-          className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100"
-          role="progressbar"
-          aria-valuenow={riskScore}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div
-            className={`h-full ${tone.bar}`}
-            style={{ width: `${Math.max(0, Math.min(100, riskScore))}%` }}
-          />
-        </div>
+        <progress
+          className={`mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100 ${tone.bar}`}
+          max={100}
+          value={Math.max(0, Math.min(100, riskScore))}
+          aria-label={t("riskScore")}
+        />
       </div>
 
       <p

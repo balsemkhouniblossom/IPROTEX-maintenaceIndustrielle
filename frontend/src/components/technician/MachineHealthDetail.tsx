@@ -26,7 +26,7 @@ import {
   riskLevelTone,
   suggestedChecksForCodes,
 } from "@/components/technician/machineHealthPresentation";
-import type { MachineHealthLocaleTranslator } from "@/components/technician/machineHealthPresentation";
+import type { MachineHealthTranslator } from "@/components/technician/machineHealthPresentation";
 
 const RISK_DOT: Record<AiAnomalyRiskLevel, string> = {
   NORMAL: "bg-green-500",
@@ -39,7 +39,7 @@ export type MachineHealthDetailProps = Readonly<{
   analysis: AiAnomalyAnalysis;
   machines: AiAnomalyMachineOption[];
   locale: string;
-  t: MachineHealthLocaleTranslator;
+  t: MachineHealthTranslator;
   userRole: string | undefined;
   backHref: string;
   onSubmitValidation: (
@@ -142,18 +142,12 @@ export default function MachineHealthDetail({
         </header>
 
         <div className="mt-4">
-          <div
-            className="h-3 w-full overflow-hidden rounded-full bg-slate-100"
-            role="progressbar"
-            aria-valuenow={riskScore}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className={`h-full ${tone.bar}`}
-              style={{ width: `${Math.max(0, Math.min(100, riskScore))}%` }}
-            />
-          </div>
+          <progress
+            className={`h-3 w-full overflow-hidden rounded-full bg-slate-100 ${tone.bar}`}
+            max={100}
+            value={Math.max(0, Math.min(100, riskScore))}
+            aria-label={t("riskScore")}
+          />
         </div>
 
         <p

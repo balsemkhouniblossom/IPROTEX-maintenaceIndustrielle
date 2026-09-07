@@ -44,7 +44,12 @@ function notificationTarget(item: NotificationItem, locale: string): string | nu
   const machineId = value("machineId", "machine_id");
   const encoded = (id: string) => encodeURIComponent(id);
   const kind = `${item.type} ${item.translationKey || ""}`.toLowerCase();
-  if (reportId) return `/${locale}/operator/my-reports?reportId=${encoded(reportId)}${workOrderId ? `&workOrderId=${encoded(workOrderId)}` : ""}`;
+  if (reportId) {
+    const workOrderQuery = workOrderId
+      ? `&workOrderId=${encoded(workOrderId)}`
+      : "";
+    return `/${locale}/operator/my-reports?reportId=${encoded(reportId)}${workOrderQuery}`;
+  }
   if (workOrderId && /preventive|inspection|task/.test(kind)) return `/${locale}/operator/preventive?workOrder=${encoded(workOrderId)}`;
   if (workOrderId) return `/${locale}/operator/my-reports?workOrderId=${encoded(workOrderId)}`;
   if (machineId) return `/${locale}/operator/machines/${encoded(machineId)}`;

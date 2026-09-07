@@ -13,7 +13,7 @@ import {
   riskLevelTone,
   suggestedChecksForCodes,
 } from "@/components/technician/machineHealthPresentation";
-import type { MachineHealthLocaleTranslator } from "@/components/technician/machineHealthPresentation";
+import type { MachineHealthTranslator } from "@/components/technician/machineHealthPresentation";
 
 const RISK_ICON: Record<AiAnomalyRiskLevel, typeof ShieldExclamationIcon> = {
   NORMAL: CheckCircleIcon,
@@ -25,7 +25,7 @@ const RISK_ICON: Record<AiAnomalyRiskLevel, typeof ShieldExclamationIcon> = {
 export type MachineHealthInsightProps = Readonly<{
   analysis: AiAnomalyAnalysis;
   locale: string;
-  t: MachineHealthLocaleTranslator;
+  t: MachineHealthTranslator;
   detailHref: string;
 }>;
 
