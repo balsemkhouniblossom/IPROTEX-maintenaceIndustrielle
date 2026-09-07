@@ -3705,6 +3705,9 @@
     "timeline": "الجدول الزمني",
     "details": "التفاصيل",
     "noMachinesFound": "لم يتم العثور على آلات",
+    "filters": {
+      "all": "الكل"
+    },
     "status": {
       "operational": "تعمل",
       "maintenance": "قيد الصيانة",

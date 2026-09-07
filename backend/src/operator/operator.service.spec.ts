@@ -208,7 +208,10 @@ describe('OperatorService machine scoping', () => {
       assignedWorkOrderId.toString(),
     );
 
-    const query = reportModel.find.mock.calls.at(-1)?.[0] as Record<string, any>;
+    const query = reportModel.find.mock.calls.at(-1)?.[0] as Record<
+      string,
+      any
+    >;
     expect(query.ot_id).toBe(assignedWorkOrderId.toString());
     expect(query.technician_id.$in).toContain(operatorId.toString());
     expect(query.$or).toEqual([
@@ -248,13 +251,9 @@ describe('OperatorService machine scoping', () => {
     const moduleId = new Types.ObjectId();
     moduleModel.find.mockReturnValue(queryResult([{ _id: moduleId }]));
 
-    await service.getPreventiveTaskChecklist(
-      operatorId.toString(),
-      1,
-      10,
-      0,
-      { machineId: assignedMachineId.toString() },
-    );
+    await service.getPreventiveTaskChecklist(operatorId.toString(), 1, 10, 0, {
+      machineId: assignedMachineId.toString(),
+    });
 
     expect(preventiveTasksService.syncPlansForModuleIds).not.toHaveBeenCalled();
     expect(preventiveTaskModel.find).toHaveBeenCalled();

@@ -3705,6 +3705,9 @@
     "timeline": "Línea de tiempo",
     "details": "Detalles",
     "noMachinesFound": "No se encontraron máquinas",
+    "filters": {
+      "all": "Todas"
+    },
     "status": {
       "operational": "Operativa",
       "maintenance": "En mantenimiento",

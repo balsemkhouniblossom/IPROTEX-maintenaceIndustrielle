@@ -166,13 +166,13 @@ test("frontend never references backend-only Gemini secret names", () => {
   }
 });
 
-test("Operator corrective page renders the AI assistant panel alongside Knowledge Base suggestions", () => {
+test("Operator corrective page renders contextual Knowledge Base suggestions", () => {
   const source = readSource(CORRECTIVE_PAGE);
 
   assert.match(
     source,
-    /<AiAssistantPanel\s+machineId=\{selectedMachine \|\| undefined\}\s+faultCode=\{selectedFault\?\.code_panne\}/,
-    "the corrective page must pass the selected machine/fault into AiAssistantPanel",
+    /<KnowledgeSuggestions\s+machineId=\{selectedMachine \|\| undefined\}\s+faultCode=\{selectedFault\?\.code_panne\}/,
+    "the corrective page must pass the selected machine/fault into KnowledgeSuggestions",
   );
 });
 

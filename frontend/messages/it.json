@@ -3705,6 +3705,9 @@
     "timeline": "Cronologia",
     "details": "Dettagli",
     "noMachinesFound": "Nessuna macchina trovata",
+    "filters": {
+      "all": "Tutte"
+    },
     "status": {
       "operational": "Operativa",
       "maintenance": "Manutenzione",

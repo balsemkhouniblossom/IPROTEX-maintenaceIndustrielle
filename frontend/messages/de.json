@@ -1910,6 +1910,9 @@
     "timeline": "Zeitleiste",
     "details": "Details",
     "noMachinesFound": "Keine Maschinen gefunden",
+    "filters": {
+      "all": "Alle"
+    },
     "status": {
       "operational": "Betriebsbereit",
       "maintenance": "Wartung",

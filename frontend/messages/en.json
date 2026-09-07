@@ -2333,6 +2333,9 @@
     "timeline": "Timeline",
     "details": "Details",
     "noMachinesFound": "No machines found",
+    "filters": {
+      "all": "All"
+    },
     "status": {
       "operational": "Operational",
       "maintenance": "Maintenance",
