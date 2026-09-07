@@ -25,6 +25,12 @@ interface OperatorKpiCounts {
   completedTodayCount: number;
 }
 
+interface OperatorStats {
+  assigned: number;
+  inProgress: number;
+  completed: number;
+}
+
 const emptyKpiCounts: OperatorKpiCounts = {
   overdueCount: 0,
   dueTodayCount: 0,
@@ -209,6 +215,11 @@ export default function OperatorDashboard() {
   const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
   const [reports, setReports] = useState<InterventionReportItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
+  const [stats, setStats] = useState<OperatorStats>({
+    assigned: 0,
+    inProgress: 0,
+    completed: 0,
+  });
   const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
   const [loading, setLoading] = useState(true);
   const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
@@ -284,6 +295,7 @@ export default function OperatorDashboard() {
       });
   }, [activeWorkOrders, eventByWorkOrderId, now]);
 
+  const overdueTasksCount = kpiCounts.overdueCount;
 
   const recentReports = useMemo(() => {
     return reports
@@ -315,6 +327,21 @@ export default function OperatorDashboard() {
       ).length,
     [recentReports],
   );
+
+  const analyticsCards = [
+    {
+      label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount,
+      icon: ClockIcon,
+      accent: "from-cyan-700 via-sky-700 to-blue-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+    {
+      label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount,
+      icon: CheckCircleIcon,
+      accent: "from-cyan-700 via-sky-700 to-indigo-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+  ];
 
   const summaryCards = [
     {
@@ -440,12 +467,21 @@ export default function OperatorDashboard() {
           );
         } else failures.notifications = true;
         if (dashboardResult.status === "fulfilled") {
-          const dashboard = dashboardResult.value.data as OperatorKpiCounts;
+          const dashboard = dashboardResult.value.data as OperatorKpiCounts & {
+            assignedCount: number;
+            inProgressCount: number;
+            completedCount: number;
+          };
           setKpiCounts({
             overdueCount: dashboard.overdueCount,
             dueTodayCount: dashboard.dueTodayCount,
             waitingValidationCount: dashboard.waitingValidationCount,
             completedTodayCount: dashboard.completedTodayCount,
+          });
+          setStats({
+            assigned: dashboard.assignedCount,
+            inProgress: dashboard.inProgressCount,
+            completed: dashboard.completedCount,
           });
         } else {
           failures.stats = true;
