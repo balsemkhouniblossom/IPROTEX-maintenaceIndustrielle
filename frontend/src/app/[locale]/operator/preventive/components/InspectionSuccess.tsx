@@ -24,7 +24,7 @@ export function InspectionSuccess({
   reportId,
   onViewResults,
   onBack,
-}: SuccessProps) {
+}: Readonly<SuccessProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
 
   return (

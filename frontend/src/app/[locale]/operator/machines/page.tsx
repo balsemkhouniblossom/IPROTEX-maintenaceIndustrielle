@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter, useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { apiService } from "@/services/api";
-import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
+import { fetchAllPaginated } from "@/services/pagination";
 import { useTranslations } from "next-intl";
 
 interface Machine {
@@ -70,7 +70,6 @@ function matchesStatusFilter(machine: Machine, filter: StatusFilter): boolean {
 function OperatorMachinesPageContent() {
   const router = useRouter();
   const params = useParams<{ locale?: string }>();
-  const searchParams = useSearchParams();
   const tMachines = useTranslations("operatorMachines");
   const tCommon = useTranslations("common");
   const locale = params?.locale ?? "en";

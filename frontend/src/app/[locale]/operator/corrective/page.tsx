@@ -1,26 +1,18 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
 import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
 import { apiService } from "@/services/api";
-import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
+import { fetchAllPaginated } from "@/services/pagination";
 import { extractApiErrorMessage } from "@/services/apiErrors";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
-import { Modal } from "@/components/Modal";
 
 type Step = "machine" | "problem" | "description" | "urgency" | "review" | "success";
-
-interface MachineType {
-  _id: string;
-  type_id?: number;
-  name: string;
-}
 
 interface Machine {
   _id: string;
@@ -112,7 +104,6 @@ function ReportProblemFlow() {
   const [photo, setPhoto] = useState<File | null>(null);
 
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
   const [faults, setFaults] = useState<Panne[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
 
@@ -188,12 +179,10 @@ function ReportProblemFlow() {
     async function load() {
       try {
         setLoading(true);
-        const [machineTypeItems, machineItems, workOrderItems] = await Promise.all([
-          fetchAllPaginated<MachineType>((p) => apiService.getOperatorMachineTypes(p)),
+        const [machineItems, workOrderItems] = await Promise.all([
           fetchAllPaginated<Machine>((p) => apiService.getMyMachines(p)),
           fetchAllPaginated<WorkOrder>((p) => apiService.getMyWorkOrders(p)),
         ]);
-        setMachineTypes(machineTypeItems);
         setMachines(machineItems);
         setWorkOrders(workOrderItems);
       } catch (e) {

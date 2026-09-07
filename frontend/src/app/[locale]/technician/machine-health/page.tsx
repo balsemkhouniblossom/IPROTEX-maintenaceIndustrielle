@@ -21,10 +21,8 @@ import {
   type AiAnomalyMachineRecord,
 } from "@/services/aiAnomaly";
 import {
-  analysisAgeLabel,
   filterLabelKey,
   filterToRiskLevel,
-  riskLevelLabel,
   type MachineHealthFilter,
 } from "@/components/technician/machineHealthPresentation";
 

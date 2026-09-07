@@ -28,7 +28,6 @@ import {
   UsersIcon,
   CogIcon,
   ClipboardDocumentListIcon,
-  CalendarDaysIcon,
   Bars3Icon,
   XMarkIcon,
   CpuChipIcon,

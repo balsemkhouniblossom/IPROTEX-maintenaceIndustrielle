@@ -18,12 +18,6 @@ import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 
-interface OperatorStats {
-  assigned: number;
-  inProgress: number;
-  completed: number;
-}
-
 interface OperatorKpiCounts {
   overdueCount: number;
   dueTodayCount: number;
@@ -215,14 +209,8 @@ export default function OperatorDashboard() {
   const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
   const [reports, setReports] = useState<InterventionReportItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
-  const [stats, setStats] = useState<OperatorStats>({
-    assigned: 0,
-    inProgress: 0,
-    completed: 0,
-  });
   const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
   const [loading, setLoading] = useState(true);
-  const [statsError, setStatsError] = useState(false);
   const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
   const now = useMemo(() => new Date(), []);
 
@@ -296,8 +284,6 @@ export default function OperatorDashboard() {
       });
   }, [activeWorkOrders, eventByWorkOrderId, now]);
 
-  const nextTask = operatorTasks[0] || null;
-  const overdueTasksCount = kpiCounts.overdueCount;
 
   const recentReports = useMemo(() => {
     return reports
@@ -329,21 +315,6 @@ export default function OperatorDashboard() {
       ).length,
     [recentReports],
   );
-
-  const analyticsCards = [
-    {
-      label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount,
-      icon: ClockIcon,
-      accent: "from-cyan-700 via-sky-700 to-blue-800",
-      textTone: "text-[var(--text-primary)]",
-    },
-    {
-      label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount,
-      icon: CheckCircleIcon,
-      accent: "from-cyan-700 via-sky-700 to-indigo-800",
-      textTone: "text-[var(--text-primary)]",
-    },
-  ];
 
   const summaryCards = [
     {
@@ -379,7 +350,6 @@ export default function OperatorDashboard() {
 
   const softCardClassName = "operator-frost-card";
   const centeredMetricCardClassName = `${softCardClassName} rounded-3xl p-5 text-center`;
-  const rowCardClassName = `${softCardClassName} rounded-3xl p-4`;
   const actionButtonClassName =
     "inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-700/55 bg-linear-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#155E75] px-4 py-2.5 text-sm font-semibold text-slate-50 shadow-[0_14px_30px_rgba(6,78,59,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(6,78,59,0.45)]";
   const secondaryButtonClassName =
@@ -470,31 +440,20 @@ export default function OperatorDashboard() {
           );
         } else failures.notifications = true;
         if (dashboardResult.status === "fulfilled") {
-          const dashboard = dashboardResult.value.data as OperatorKpiCounts & {
-            assignedCount: number;
-            inProgressCount: number;
-            completedCount: number;
-          };
+          const dashboard = dashboardResult.value.data as OperatorKpiCounts;
           setKpiCounts({
             overdueCount: dashboard.overdueCount,
             dueTodayCount: dashboard.dueTodayCount,
             waitingValidationCount: dashboard.waitingValidationCount,
             completedTodayCount: dashboard.completedTodayCount,
           });
-          setStats({
-            assigned: dashboard.assignedCount,
-            inProgress: dashboard.inProgressCount,
-            completed: dashboard.completedCount,
-          });
         } else {
           failures.stats = true;
-          setStatsError(true);
         }
         setSectionErrors(failures);
 
       } catch (error) {
         console.error("Error loading operator dashboard", error);
-        setStatsError(true);
       } finally {
         if (!cancelled) {
           setLoading(false);

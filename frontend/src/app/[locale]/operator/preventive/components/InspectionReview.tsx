@@ -26,7 +26,7 @@ export function InspectionReview({
   onBack,
   onSubmit,
   submitting,
-}: ReviewProps) {
+}: Readonly<ReviewProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
 
   return (

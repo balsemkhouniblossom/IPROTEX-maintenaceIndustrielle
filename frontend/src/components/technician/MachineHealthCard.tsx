@@ -8,8 +8,11 @@ import {
   EyeIcon,
   ShieldExclamationIcon,
 } from "@heroicons/react/24/outline";
-import type { AiAnomalyAnalysis, AiAnomalyRiskLevel } from "@/services/aiAnomaly";
-import { machineDisplayName, type AiAnomalyMachineOption } from "@/services/aiAnomaly";
+import {
+  machineDisplayName,
+  type AiAnomalyAnalysis,
+  type AiAnomalyMachineOption,
+} from "@/services/aiAnomaly";
 import {
   analysisAgeLabel,
   formatAnalysisDateTime,

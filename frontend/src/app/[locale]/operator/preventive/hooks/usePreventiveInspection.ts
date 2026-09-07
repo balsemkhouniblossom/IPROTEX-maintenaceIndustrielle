@@ -144,7 +144,7 @@ export function usePreventiveInspection(
           .filter((item) => itemResults[item._id] !== undefined)
           .map((item) => item.instruction);
 
-        const hasProblem = Object.values(itemResults).some((r) => r === "problem");
+        const hasProblem = Object.values(itemResults).includes("problem");
         const condition = hasProblem ? "Problem detected" : "OK";
 
         const targetWorkOrderId = occurrenceId || workOrderId;

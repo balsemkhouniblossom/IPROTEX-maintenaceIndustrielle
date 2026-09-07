@@ -7,8 +7,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useTranslations } from "next-intl";
 import {
   ArrowPathIcon,
-  ClipboardDocumentListIcon,
-  ExclamationTriangleIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
@@ -139,7 +137,6 @@ function isCompletedStatus(status?: string): boolean {
 export default function OperatorMachineDetailPage() {
   const t = useTranslations("operatorMachines");
   const tCommon = useTranslations("common");
-  const tNotification = useTranslations("notificationCenter");
   const router = useRouter();
   const params = useParams();
   const locale = Array.isArray(params?.locale)
@@ -155,7 +152,6 @@ export default function OperatorMachineDetailPage() {
   const [timeline, setTimeline] = useState<TimelineEventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
   const [currentIssueWorkOrderId, setCurrentIssueWorkOrderId] = useState<string | null>(null);
   const [currentIssueStatus, setCurrentIssueStatus] = useState<string | null>(null);
 

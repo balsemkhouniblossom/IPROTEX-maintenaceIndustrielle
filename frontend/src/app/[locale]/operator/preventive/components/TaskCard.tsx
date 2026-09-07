@@ -12,18 +12,22 @@ interface TaskCardProps {
   onOpen: () => void;
 }
 
-export function TaskCard({ planName, planCode, machineName, machineCode, checkCount, completedCount, dueDate, tab, onOpen }: TaskCardProps) {
+export function TaskCard({ planName, planCode, machineName, machineCode, checkCount, completedCount, dueDate, tab, onOpen }: Readonly<TaskCardProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
 
-  const statusLabel =
-    tab === "today" ? t("statusDueToday") : tab === "upcoming" ? t("statusUpcoming") : t("statusCompleted");
+  const statusLabelByTab = {
+    today: t("statusDueToday"),
+    upcoming: t("statusUpcoming"),
+    completed: t("statusCompleted"),
+  } as const;
+  const statusLabel = statusLabelByTab[tab];
 
-  const statusClass =
-    tab === "today"
-      ? "border-amber-200 bg-amber-50 text-amber-800"
-      : tab === "upcoming"
-        ? "border-blue-200 bg-blue-50 text-blue-800"
-        : "border-emerald-200 bg-emerald-50 text-emerald-800";
+  const statusClassByTab = {
+    today: "border-amber-200 bg-amber-50 text-amber-800",
+    upcoming: "border-blue-200 bg-blue-50 text-blue-800",
+    completed: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  } as const;
+  const statusClass = statusClassByTab[tab];
 
   return (
     <button

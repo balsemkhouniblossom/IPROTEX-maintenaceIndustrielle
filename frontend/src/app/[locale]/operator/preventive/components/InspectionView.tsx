@@ -38,7 +38,7 @@ export function InspectionView({
   okCount,
   problemCount,
   readOnly = false,
-}: InspectionViewProps) {
+}: Readonly<InspectionViewProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
 
   if (loading) {
@@ -82,17 +82,16 @@ export function InspectionView({
 
       <div className="space-y-4">
         {items.map((item, index) => {
-          const result = itemResults[item._id];
+            const result = itemResults[item._id];
+            const resultClass = result === "ok"
+              ? "border-emerald-200 bg-emerald-50"
+              : result === "problem"
+                ? "border-amber-200 bg-amber-50"
+                : "border-slate-200 bg-white";
           return (
             <div
               key={item._id}
-              className={`rounded-2xl border p-5 ${
-                result === "ok"
-                  ? "border-emerald-200 bg-emerald-50"
-                  : result === "problem"
-                    ? "border-amber-200 bg-amber-50"
-                    : "border-slate-200 bg-white"
-              }`}
+              className={`rounded-2xl border p-5 ${resultClass}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
