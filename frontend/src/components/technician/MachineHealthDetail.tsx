@@ -179,132 +179,8 @@ export default function MachineHealthDetail({
         </ul>
       </section>
 
-      <section className="rounded-lg border bg-white shadow-sm">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left"
-          onClick={() => setShowTechnical((current) => !current)}
-          aria-expanded={showTechnical}
-        >
-          <span className="text-sm font-semibold text-slate-900">
-            {t("technicalDetails")}
-          </span>
-          {showTechnical ? (
-            <ChevronDownIcon className="h-4 w-4 text-slate-500" />
-          ) : (
-            <ChevronRightIcon className="h-4 w-4 text-slate-500" />
-          )}
-        </button>
-        {showTechnical ? (
-          <dl className="grid gap-3 border-t px-5 py-4 text-sm md:grid-cols-2">
-            <DetailField label={t("modelVersion")} value={analysis.model_version} />
-            <DetailField
-              label={t("analysisType")}
-              value={t(`source.${analysis.input_source}`)}
-            />
-            <DetailField
-              label={t("persistence")}
-              value={persistenceText}
-            />
-            <DetailField label={t("riskScore")} value={`${riskScore}/100`} />
-            <DetailField
-              label={t("zScore")}
-              value={analysis.component_scores.zScore.toFixed(3)}
-            />
-            <DetailField
-              label={t("isolationForest")}
-              value={analysis.component_scores.isolationForest.toFixed(3)}
-            />
-            {analysis.validation_status !== "PENDING" ? (
-              <DetailField
-                label={t("validationStatus")}
-                value={t(
-                  `validationStatuses.${VALIDATION_STATUS_LABEL[analysis.validation_status]}`,
-                )}
-              />
-            ) : null}
-            {analysis.validated_by ? (
-              <DetailField
-                label={t("validatedBy")}
-                value={analysis.validated_by}
-              />
-            ) : null}
-            {analysis.validation_comment ? (
-              <DetailField
-                label={t("comment")}
-                value={analysis.validation_comment}
-                fullWidth
-              />
-            ) : null}
-          </dl>
-        ) : null}
-      </section>
-
-      <section className="rounded-lg border bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900">
-          {t("wasUseful")}
-        </h2>
-        {canValidate ? (
-          <div className="mt-3 space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                  validationStatus === "CONFIRMED"
-                    ? "border-green-500 bg-green-50 text-green-800 ring-2 ring-green-200"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-                onClick={() => setValidationStatus("CONFIRMED")}
-              >
-                <CheckCircleIcon className="h-4 w-4" />
-                {t("confirmAnomaly")}
-              </button>
-              <button
-                type="button"
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                  validationStatus === "REJECTED"
-                    ? "border-red-500 bg-red-50 text-red-800 ring-2 ring-red-200"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-                onClick={() => setValidationStatus("REJECTED")}
-              >
-                <XCircleIcon className="h-4 w-4" />
-                {t("rejectAnomaly")}
-              </button>
-            </div>
-            <label className="block text-sm font-medium text-slate-700">
-              {t("reason")}
-              <textarea
-                className="mt-1 min-h-24 w-full rounded-lg border border-slate-300 p-2 text-sm"
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                maxLength={1000}
-              />
-            </label>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              disabled={submitting}
-              onClick={() => void onConfirm()}
-            >
-              {submitting ? (
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <ShieldExclamationIcon className="h-4 w-4" />
-              )}
-              {t("submit")}
-            </button>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-slate-600">
-            {t("alreadyValidated", {
-              status: t(
-                `validationStatuses.${VALIDATION_STATUS_LABEL[analysis.validation_status]}`,
-              ),
-            })}
-          </p>
-        )}
-      </section>
+      <TechnicalDetails analysis={analysis} t={t} persistenceText={persistenceText} riskScore={riskScore} show={showTechnical} onToggle={() => setShowTechnical((current) => !current)} />
+      <ValidationSection analysis={analysis} t={t} canValidate={canValidate} status={validationStatus} setStatus={setValidationStatus} comment={comment} setComment={setComment} submitting={submitting} onConfirm={onConfirm} />
 
       {analysis.persistent_alert || analysis.risk_level !== "NORMAL" ? (
         <output
@@ -333,4 +209,37 @@ function DetailField({
       <dd className="mt-1 text-sm font-medium text-slate-800">{value}</dd>
     </div>
   );
+}
+
+function TechnicalDetails({ analysis, t, persistenceText, riskScore, show, onToggle }: Readonly<{ analysis: AiAnomalyAnalysis; t: MachineHealthTranslator; persistenceText: string; riskScore: number; show: boolean; onToggle: () => void }>) {
+  return <section className="rounded-lg border bg-white shadow-sm">
+    <button type="button" className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left" onClick={onToggle} aria-expanded={show}>
+      <span className="text-sm font-semibold text-slate-900">{t("technicalDetails")}</span>
+      {show ? <ChevronDownIcon className="h-4 w-4 text-slate-500" /> : <ChevronRightIcon className="h-4 w-4 text-slate-500" />}
+    </button>
+    {show ? <dl className="grid gap-3 border-t px-5 py-4 text-sm md:grid-cols-2">
+      <DetailField label={t("modelVersion")} value={analysis.model_version} />
+      <DetailField label={t("analysisType")} value={t(`source.${analysis.input_source}`)} />
+      <DetailField label={t("persistence")} value={persistenceText} />
+      <DetailField label={t("riskScore")} value={`${riskScore}/100`} />
+      <DetailField label={t("zScore")} value={analysis.component_scores.zScore.toFixed(3)} />
+      <DetailField label={t("isolationForest")} value={analysis.component_scores.isolationForest.toFixed(3)} />
+      {analysis.validation_status !== "PENDING" ? <DetailField label={t("validationStatus")} value={t(`validationStatuses.${VALIDATION_STATUS_LABEL[analysis.validation_status]}`)} /> : null}
+      {analysis.validated_by ? <DetailField label={t("validatedBy")} value={analysis.validated_by} /> : null}
+      {analysis.validation_comment ? <DetailField label={t("comment")} value={analysis.validation_comment} fullWidth /> : null}
+    </dl> : null}
+  </section>;
+}
+
+function ValidationSection({ analysis, t, canValidate, status, setStatus, comment, setComment, submitting, onConfirm }: Readonly<{ analysis: AiAnomalyAnalysis; t: MachineHealthTranslator; canValidate: boolean; status: "CONFIRMED" | "REJECTED"; setStatus: (status: "CONFIRMED" | "REJECTED") => void; comment: string; setComment: (comment: string) => void; submitting: boolean; onConfirm: () => Promise<void> }>) {
+  if (!canValidate) return <section className="rounded-lg border bg-white p-5 shadow-sm"><h2 className="text-base font-semibold text-slate-900">{t("wasUseful")}</h2><p className="mt-3 text-sm text-slate-600">{t("alreadyValidated", { status: t(`validationStatuses.${VALIDATION_STATUS_LABEL[analysis.validation_status]}`) })}</p></section>;
+  const buttonClass = (selected: boolean, active: string, inactive: string) => `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${selected ? active : inactive}`;
+  return <section className="rounded-lg border bg-white p-5 shadow-sm"><h2 className="text-base font-semibold text-slate-900">{t("wasUseful")}</h2><div className="mt-3 space-y-3">
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className={buttonClass(status === "CONFIRMED", "border-green-500 bg-green-50 text-green-800 ring-2 ring-green-200", "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")} onClick={() => setStatus("CONFIRMED")}><CheckCircleIcon className="h-4 w-4" />{t("confirmAnomaly")}</button>
+      <button type="button" className={buttonClass(status === "REJECTED", "border-red-500 bg-red-50 text-red-800 ring-2 ring-red-200", "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")} onClick={() => setStatus("REJECTED")}><XCircleIcon className="h-4 w-4" />{t("rejectAnomaly")}</button>
+    </div>
+    <label className="block text-sm font-medium text-slate-700">{t("reason")}<textarea className="mt-1 min-h-24 w-full rounded-lg border border-slate-300 p-2 text-sm" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} /></label>
+    <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={submitting} onClick={() => void onConfirm()}>{submitting ? <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <ShieldExclamationIcon className="h-4 w-4" />}{t("submit")}</button>
+  </div></section>;
 }

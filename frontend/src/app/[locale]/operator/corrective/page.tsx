@@ -123,6 +123,23 @@ async function uploadFaultPhoto({
   return true;
 }
 
+function SuccessScreen({ result, machine, selectedFault, otherProblem, urgency, observation, photo, retryingPhoto, t, tCommon, onRetryPhoto, onViewStatus, onBack }: any) {
+  const { workOrder, attachmentFailed, duplicate } = result as SubmissionResult;
+  const problem = selectedFault?.description || otherProblem || tCommon("notAvailable");
+  const statusTitle = attachmentFailed ? t("partialSuccessTitle") : t("successTitle");
+  const statusMessage = attachmentFailed ? t("partialSuccessMessage") : t("successMessage");
+  return <ProtectedRoute requiredRole="operator"><DashboardLayout title={statusTitle}><div className="mx-auto max-w-xl space-y-6">
+    <div className={`rounded-2xl border p-6 text-center ${attachmentFailed ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}><div className="text-3xl font-bold">✓</div><h2 className="mt-2 text-xl font-semibold">{statusTitle}</h2><p className="mt-1 text-sm">{statusMessage}</p></div>
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6"><div className="grid grid-cols-2 gap-4"><SummaryField label={t("machineLabel")} value={machine?.machine_id || tCommon("notAvailable")} detail={machine?.model} /><SummaryField label={t("reference")} value={workOrder.ot_id || workOrder._id} /><SummaryField label={t("problemLabel")} value={problem} /><SummaryField label={t("urgencyLabel")} value={urgency ? t(urgency) : t("normal")} /></div>{observation ? <SummaryField label={t("descriptionLabel")} value={observation} /> : null}{photo ? <SummaryField label={t("photoUpload")} value={photo.name} /> : null}
+      {attachmentFailed ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><div className="font-semibold">{t("partialSuccessTitle")}</div><button type="button" onClick={onRetryPhoto} disabled={retryingPhoto} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">{retryingPhoto ? t("retryingPhoto") : t("retryPhoto")}</button></div> : <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">{duplicate ? t("existingReportReused") : t("reportedStatus")}</span>}
+    </div><div className="flex gap-3"><button type="button" onClick={onViewStatus} className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white">{t("viewStatus")}</button><button type="button" onClick={onBack} className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700">{t("backToMachines")}</button></div>
+  </div></DashboardLayout></ProtectedRoute>;
+}
+
+function SummaryField({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return <div><div className="text-xs font-semibold uppercase text-slate-500">{label}</div><div className="mt-1 text-base font-semibold text-slate-900">{value}</div>{detail ? <div className="text-sm text-slate-500">{detail}</div> : null}</div>;
+}
+
 function ReportProblemFlow() {
   const t = useTranslations("dashboard.operator.reportProblemFlow");
   const tCommon = useTranslations("common");
@@ -397,9 +414,15 @@ function ReportProblemFlow() {
   }
 
   if (step === "success" && result) {
-    const wo = result.workOrder;
-    const machine = selectedMachineData;
-    return (
+    return <SuccessScreen result={result} machine={selectedMachineData} selectedFault={selectedFault} otherProblem={otherProblem} urgency={urgency} observation={observation} photo={photo} retryingPhoto={retryingPhoto} t={t} tCommon={tCommon} onRetryPhoto={retryPhotoUpload} onViewStatus={() => {
+      const reportId = result.report._id || result.report.report_id;
+      router.push(`../my-reports?reportId=${encodeURIComponent(reportId)}&workOrderId=${encodeURIComponent(result.workOrder._id)}`);
+    }} onBack={resetAndGoBack} />;
+    /*
+      The success panel is rendered by SuccessScreen. Keeping it separate prevents
+      the workflow controller from owning both transition logic and presentation.
+    */
+    /*
       <ProtectedRoute requiredRole="operator">
         <DashboardLayout title={t("successTitle")}>
           <div className="mx-auto max-w-xl space-y-6">
@@ -494,7 +517,7 @@ function ReportProblemFlow() {
           </div>
         </DashboardLayout>
       </ProtectedRoute>
-    );
+    );*/
   }
 
   const steps = [

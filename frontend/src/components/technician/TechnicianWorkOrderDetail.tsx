@@ -1068,6 +1068,30 @@ async function fetchTechnicianAvailableParts(fallbackStock: AvailablePart[]): Pr
   }
 }
 
+function partRequestInfo(available: AvailablePart[], requestedPartId: string) {
+  return available
+    .map((stock) => {
+      const part = stock.part_id;
+      const stockPartId = typeof part === "string" ? part : part?._id;
+      if (!stockPartId || String(stockPartId) !== requestedPartId) return null;
+      const summary = partSummary(part, "");
+      return {
+        _id: summary.id,
+        part_id: summary.id,
+        nom_piece: summary.name,
+        ref_constructeur: summary.ref,
+        fabricant: summary.fabricant,
+        categorie_piece: summary.category,
+      };
+    })
+    .find((entry): entry is NonNullable<typeof entry> => entry !== null);
+}
+
+function selectedPartQuantity(available: AvailablePart[], partId: string): number {
+  const stock = available.find((entry) => partSummary(entry.part_id, "").id === partId);
+  return stock ? presentStock(stock).available : 0;
+}
+
 function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
   const tEnums = useTranslations("common.enums");
@@ -1143,22 +1167,7 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
       apiService.requestTechnicianPart(id, { part_id: partId, quantity }).then((response) => {
         const record = asPartRequestRecord(response.data);
         if (record) {
-          const partInfo = available
-            .map((stock) => {
-              const part = stock.part_id;
-              const stockPartId = typeof part === "string" ? part : part?._id;
-              if (!stockPartId || String(stockPartId) !== record.part_id) return null;
-              const summary = partSummary(part, "");
-              return {
-                _id: summary.id,
-                part_id: summary.id,
-                nom_piece: summary.name,
-                ref_constructeur: summary.ref,
-                fabricant: summary.fabricant,
-                categorie_piece: summary.category,
-              };
-            })
-            .find((entry): entry is NonNullable<typeof entry> => entry !== null);
+          const partInfo = partRequestInfo(available, record.part_id);
           partRequests.addOrUpdate({ ...record, part: partInfo });
         }
       }),
@@ -1202,14 +1211,7 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
   const hasAssignedTechnician = Boolean(wo.technician_id);
   const reportOwner = operatorReportOwner(detail.report);
   const description = dynamicTranslations.textFor(wo._id, "description", wo.description);
-  const selectedStock = available.find((stock) => {
-    const summary = partSummary(stock.part_id, "");
-    return summary.id === partId;
-  });
-  const availableQuantity = (() => {
-    if (!selectedStock) return 0;
-    return presentStock(selectedStock).available;
-  })();
+  const availableQuantity = selectedPartQuantity(available, partId);
   const startedAt = firstDateValue(wo.date_start, detail.report?.date_debut);
   const endedAt = firstDateValue(wo.date_end, wo.date_closed, detail.report?.date_fin);
   const duration = durationLabel(startedAt, endedAt ?? new Date(), locale, t("notAvailable"));
