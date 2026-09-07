@@ -554,18 +554,20 @@ export default function OperatorDashboard() {
               </button>
             </div>
 
-            {sectionErrors.machines ? (
+            {sectionErrors.machines && (
               <div className={`${centeredMetricCardClassName} py-10`}>
                 <div className="text-sm font-semibold text-rose-700">{tCommon("loadFailed", { defaultValue: "Machines could not be loaded." })}</div>
                 <div className="mt-1 text-xs text-text-secondary">{tCommon("retryLater", { defaultValue: "Try again shortly." })}</div>
               </div>
-            ) : machines.length === 0 ? (
+            )}
+            {!sectionErrors.machines && machines.length === 0 && (
               <div className={`${centeredMetricCardClassName} py-10`}>
                 <div className="text-sm text-text-secondary">
                   {tOperator("dashboard.noMachinesAvailable")}
                 </div>
               </div>
-            ) : (
+            )}
+            {!sectionErrors.machines && machines.length > 0 && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {machines.slice(0, 6).map((machine) => (
                   <div
@@ -623,9 +625,10 @@ export default function OperatorDashboard() {
               </button>
             </div>
 
-            {sectionErrors.tasks ? (
+            {sectionErrors.tasks && (
               <div className={`${centeredMetricCardClassName} py-10 text-sm text-rose-700`}>{tCommon("loadFailed", { defaultValue: "Preventive tasks could not be loaded." })}</div>
-            ) : operatorTasks.length === 0 ? (
+            )}
+            {!sectionErrors.tasks && operatorTasks.length === 0 && (
               <div className={`${centeredMetricCardClassName} py-10`}>
                 <div className="text-sm font-semibold text-text-primary">
                   {tOperator("dashboard.noPreventiveTasksTitle")}
@@ -634,7 +637,8 @@ export default function OperatorDashboard() {
                   {tOperator("dashboard.noPreventiveTasksDescription")}
                 </div>
               </div>
-            ) : (
+            )}
+            {!sectionErrors.tasks && operatorTasks.length > 0 && (
               <div className="space-y-3">
                 {operatorTasks.slice(0, 5).map((task) => {
                   const dueDate = new Date(task.dueDate);
@@ -713,9 +717,10 @@ export default function OperatorDashboard() {
                 </button>
               </div>
 
-              {sectionErrors.reports ? (
+              {sectionErrors.reports && (
                 <div className={`${centeredMetricCardClassName} py-10 text-sm text-rose-700`}>{tCommon("loadFailed", { defaultValue: "Reports could not be loaded." })}</div>
-              ) : recentReports.length === 0 ? (
+              )}
+              {!sectionErrors.reports && recentReports.length === 0 && (
                 <div className={`${centeredMetricCardClassName} py-10`}>
                   <div className="text-sm font-semibold text-text-primary">
                     {tOperator("dashboard.noReportsTitle")}
@@ -724,7 +729,8 @@ export default function OperatorDashboard() {
                     {tOperator("dashboard.noReportsDescription")}
                   </div>
                 </div>
-              ) : (
+              )}
+              {!sectionErrors.reports && recentReports.length > 0 && (
                 <div className="space-y-3">
                   {recentReports.slice(0, 4).map((report) => {
                     const workOrder = workOrders.find(

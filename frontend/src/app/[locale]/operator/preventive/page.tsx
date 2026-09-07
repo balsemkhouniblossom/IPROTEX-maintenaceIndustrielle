@@ -261,17 +261,19 @@ function PreventiveTasksFlow() {
                 ))}
               </div>
 
-              {loading ? (
+              {loading && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
                   <div className="text-sm text-slate-500">{t("loading")}</div>
                 </div>
-              ) : currentTasks.length === 0 ? (
+              )}
+              {!loading && currentTasks.length === 0 && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center">
                   <div className="text-sm text-slate-500">
                     {t(emptyMessageKey)}
                   </div>
                 </div>
-              ) : (
+              )}
+              {!loading && currentTasks.length > 0 && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {currentTasks.map((task) => (
                     <TaskCard

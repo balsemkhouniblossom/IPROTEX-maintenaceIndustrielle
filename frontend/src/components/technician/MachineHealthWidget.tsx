@@ -72,15 +72,17 @@ export function MachineHealthWidget({ machineId }: Props) {
           {t("technician.machineHealth.viewAll")}
         </Link>
       </div>
-      {loading ? (
+      {loading && (
         <p className="text-sm text-slate-500">
           {t("technician.machineHealth.states.loading")}
         </p>
-      ) : !analysis ? (
+      )}
+      {!loading && !analysis && (
         <p className="text-sm text-slate-500">
           {t("technician.machineHealth.noAnalyses")}
         </p>
-      ) : (
+      )}
+      {!loading && analysis && (
         <MachineHealthWidgetContent
           analysis={analysis}
           locale={locale}

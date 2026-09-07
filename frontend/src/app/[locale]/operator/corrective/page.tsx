@@ -94,6 +94,35 @@ function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${crypto.randomUUID().toUpperCase()}`;
 }
 
+async function uploadFaultPhoto({
+  photo,
+  machineId,
+  workOrderId,
+  reportId,
+  userId,
+  description,
+}: {
+  photo: File | null;
+  machineId: string;
+  workOrderId: string;
+  reportId: string;
+  userId: string;
+  description: string;
+}): Promise<boolean> {
+  if (!photo || !workOrderId || !reportId) return false;
+  const formData = new FormData();
+  formData.append("file", photo);
+  formData.append("document_id", uniqueId("DOC"));
+  formData.append("machine_id", machineId);
+  formData.append("work_order_id", workOrderId);
+  formData.append("intervention_report_id", reportId);
+  formData.append("type_document", "fault_photo");
+  formData.append("description", description);
+  formData.append("uploaded_by", userId);
+  await apiService.uploadDocument(formData);
+  return true;
+}
+
 function ReportProblemFlow() {
   const t = useTranslations("dashboard.operator.reportProblemFlow");
   const tCommon = useTranslations("common");
@@ -302,22 +331,18 @@ function ReportProblemFlow() {
       invalidateList(LIST_EVENTS.workOrders);
 
       let attachmentFailed = false;
-      if (photo && workOrder._id && report._id) {
-        try {
-          const formData = new FormData();
-          formData.append("file", photo);
-          formData.append("document_id", uniqueId("DOC"));
-          formData.append("machine_id", selectedMachine);
-          formData.append("work_order_id", workOrder._id);
-          formData.append("intervention_report_id", report._id);
-          formData.append("type_document", "fault_photo");
-          formData.append("description", t("photoUpload"));
-          formData.append("uploaded_by", user._id);
-          await apiService.uploadDocument(formData);
-        } catch (photoError) {
-          attachmentFailed = true;
-          console.error("Photo upload failed after report creation", photoError);
-        }
+      try {
+        await uploadFaultPhoto({
+          photo,
+          machineId: selectedMachine,
+          workOrderId: workOrder._id,
+          reportId: report._id,
+          userId: user._id,
+          description: t("photoUpload"),
+        });
+      } catch (photoError) {
+        attachmentFailed = true;
+        console.error("Photo upload failed after report creation", photoError);
       }
 
       setResult({ workOrder, report, duplicate: reportRes.data.duplicate, attachmentFailed });
