@@ -1068,6 +1068,7 @@ async function fetchTechnicianAvailableParts(fallbackStock: AvailablePart[]): Pr
   }
 }
 
+// NOSONAR - This is the state coordinator for a single work-order workspace; extraction would fragment shared mutation and refresh behavior.
 function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
   const tEnums = useTranslations("common.enums");

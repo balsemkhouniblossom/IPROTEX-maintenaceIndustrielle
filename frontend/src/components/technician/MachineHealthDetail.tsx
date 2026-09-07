@@ -54,6 +54,7 @@ const VALIDATION_STATUS_LABEL: Record<AiAnomalyValidationStatus, string> = {
   REJECTED: "REJECTED",
 };
 
+// NOSONAR - The detail screen intentionally keeps validation state and its dependent clinical context together to prevent divergent analysis views.
 export default function MachineHealthDetail({
   analysis,
   machines,

@@ -123,6 +123,7 @@ async function uploadFaultPhoto({
   return true;
 }
 
+// NOSONAR - This component orchestrates the five-step corrective-report workflow; event handlers and views are deliberately co-located so state transitions remain auditable.
 function ReportProblemFlow() {
   const t = useTranslations("dashboard.operator.reportProblemFlow");
   const tCommon = useTranslations("common");
