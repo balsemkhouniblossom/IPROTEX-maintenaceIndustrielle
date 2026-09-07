@@ -28,14 +28,17 @@ export function TaskCard({ planName, planCode, machineName, machineCode, checkCo
     completed: "border-emerald-200 bg-emerald-50 text-emerald-800",
   } as const;
   const statusClass = statusClassByTab[tab];
+  const cardClass = tab === "today"
+    ? "border-amber-200 bg-white"
+    : tab === "upcoming"
+      ? "border-slate-200 bg-white"
+      : "border-slate-200 bg-slate-50";
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`w-full rounded-2xl border p-5 text-left transition hover:-translate-y-1 hover:shadow-lg ${
-        tab === "today" ? "border-amber-200 bg-white" : tab === "upcoming" ? "border-slate-200 bg-white" : "border-slate-200 bg-slate-50"
-      }`}
+      className={`w-full rounded-2xl border p-5 text-left transition hover:-translate-y-1 hover:shadow-lg ${cardClass}`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">

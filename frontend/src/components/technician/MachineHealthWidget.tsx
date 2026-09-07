@@ -113,6 +113,9 @@ function MachineHealthWidgetContent({
     t("technician.machineHealth.lastAnalysis"),
   );
   const riskScore = Math.round(analysis.risk_score);
+  const persistenceLabel = analysis.persistent_alert
+    ? t("technician.machineHealth.persistentAnomaly")
+    : t("technician.machineHealth.noPersistentAnomaly");
 
   return (
     <div className={`rounded-lg border bg-white p-4 ${tone.border}`}>
@@ -136,9 +139,7 @@ function MachineHealthWidgetContent({
       <p
         className={`mt-3 text-sm font-medium ${analysis.persistent_alert ? tone.text : "text-slate-600"}`}
       >
-        {analysis.persistent_alert
-          ? t("technician.machineHealth.persistentAnomaly")
-          : t("technician.machineHealth.noPersistentAnomaly")}
+        {persistenceLabel}
       </p>
       <p className="mt-1 text-xs text-slate-500" title={fullDate}>
         {t("technician.machineHealth.lastAnalysis")}: {ageLabel}

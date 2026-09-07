@@ -121,6 +121,12 @@ function PreventiveTasksFlow() {
   };
 
   const currentTasks = groupedTasks[activeTab];
+  const isCompletedTab = activeTab === "completed";
+  const emptyMessageKey = activeTab === "today"
+    ? "noToday"
+    : activeTab === "upcoming"
+      ? "noUpcoming"
+      : "noCompleted";
 
   return (
     <ProtectedRoute requiredRole="operator">
@@ -261,9 +267,7 @@ function PreventiveTasksFlow() {
               ) : currentTasks.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center">
                   <div className="text-sm text-slate-500">
-                    {activeTab === "today" && t("noToday")}
-                    {activeTab === "upcoming" && t("noUpcoming")}
-                    {activeTab === "completed" && t("noCompleted")}
+                    {t(emptyMessageKey)}
                   </div>
                 </div>
               ) : (
