@@ -12,6 +12,7 @@ import {
   machineDisplayName,
   type AiAnomalyAnalysis,
   type AiAnomalyMachineOption,
+  type AiAnomalyRiskLevel,
 } from "@/services/aiAnomaly";
 import {
   analysisAgeLabel,
