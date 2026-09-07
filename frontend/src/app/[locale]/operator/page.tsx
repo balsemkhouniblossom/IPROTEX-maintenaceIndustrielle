@@ -25,6 +25,12 @@ interface OperatorKpiCounts {
   completedTodayCount: number;
 }
 
+interface OperatorStats {
+  assigned: number;
+  inProgress: number;
+  completed: number;
+}
+
 const emptyKpiCounts: OperatorKpiCounts = {
   overdueCount: 0,
   dueTodayCount: 0,
@@ -215,6 +221,7 @@ export default function OperatorDashboard() {
   const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
   const [reports, setReports] = useState<InterventionReportItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
+  const [stats, setStats] = useState<OperatorStats>({ assigned: 0, inProgress: 0, completed: 0 });
   const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
   const [loading, setLoading] = useState(true);
   const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
@@ -321,6 +328,22 @@ export default function OperatorDashboard() {
     [recentReports],
   );
 
+  const overdueTasksCount = kpiCounts.overdueCount;
+  const analyticsCards = [
+    {
+      label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount,
+      icon: ClockIcon,
+      accent: "from-cyan-700 via-sky-700 to-blue-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+    {
+      label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount,
+      icon: CheckCircleIcon,
+      accent: "from-cyan-700 via-sky-700 to-indigo-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+  ];
+
   const summaryCards = [
     {
       label: tOperator("dashboard.machinesAvailable"),
@@ -329,13 +352,7 @@ export default function OperatorDashboard() {
       accent: "from-cyan-700 via-sky-700 to-blue-800",
       textTone: "text-[var(--text-primary)]",
     },
-    {
-      label: tOperator("stats.dueToday"),
-      value: kpiCounts.dueTodayCount,
-      icon: ClockIcon,
-      accent: "from-cyan-700 via-sky-700 to-blue-800",
-      textTone: "text-[var(--text-primary)]",
-    },
+    ...analyticsCards,
     {
       label: tOperator("dashboard.openReports"),
       value: openReportsCount,
@@ -456,6 +473,11 @@ export default function OperatorDashboard() {
             waitingValidationCount: dashboard.waitingValidationCount,
             completedTodayCount: dashboard.completedTodayCount,
           });
+          setStats({
+            assigned: dashboard.assignedCount,
+            inProgress: dashboard.inProgressCount,
+            completed: dashboard.completedCount,
+          });
         } else {
           failures.stats = true;
         }
@@ -494,7 +516,7 @@ export default function OperatorDashboard() {
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={tOperator("title")}>
         <div className="operator-dashboard-theme space-y-6 p-4 md:p-6 lg:p-8">
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <section className="grid grid-cols-2 gap-4 md:grid-cols-4" data-work-order-count={stats.assigned + stats.inProgress + stats.completed} data-overdue-count={overdueTasksCount}>
             {summaryCards.map((card) => {
               const Icon = card.icon;
               return (

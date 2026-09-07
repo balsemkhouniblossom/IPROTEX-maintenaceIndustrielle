@@ -121,8 +121,13 @@ function PreventiveTasksFlow() {
   };
 
   const currentTasks = groupedTasks[activeTab];
+  const isTodayTab = activeTab === "today";
+  const isUpcomingTab = activeTab === "upcoming";
+  const isCompletedTab = activeTab === "completed";
   const emptyMessageKeyByTab = { today: "noToday", upcoming: "noUpcoming", completed: "noCompleted" } as const;
-  const emptyMessageKey = emptyMessageKeyByTab[activeTab];
+  const activeTabChecks: Record<Tab, boolean> = { today: isTodayTab, upcoming: isUpcomingTab, completed: isCompletedTab };
+  const selectedTab = (Object.keys(activeTabChecks) as Tab[]).find((tab) => activeTabChecks[tab]) || activeTab;
+  const emptyMessageKey = emptyMessageKeyByTab[selectedTab];
 
   return (
     <ProtectedRoute requiredRole="operator">
