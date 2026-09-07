@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import axios from "axios";
 import { useTranslations } from "next-intl";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
@@ -72,7 +73,9 @@ export default function NotificationBell() {
       const response = await apiService.getUnreadNotificationCount();
       setUnreadCount((response.data?.count as number) ?? 0);
     } catch (error) {
-      console.error("Failed to load unread notification count", error);
+      if (!axios.isAxiosError(error) || error.response) {
+        console.error("Failed to load unread notification count", error);
+      }
     }
   }, [isAuthenticated]);
 
@@ -90,7 +93,9 @@ export default function NotificationBell() {
       });
       setItems((response.data?.items || []) as NotificationItem[]);
     } catch (error) {
-      console.error("Failed to load notifications", error);
+      if (!axios.isAxiosError(error) || error.response) {
+        console.error("Failed to load notifications", error);
+      }
     } finally {
       setLoading(false);
     }
