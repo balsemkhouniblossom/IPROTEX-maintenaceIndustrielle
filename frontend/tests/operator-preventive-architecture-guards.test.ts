@@ -67,7 +67,7 @@ test("presentational components never import apiService directly — they only r
   }
 });
 
-test("usePreventiveSubmission is the sole caller of submitOperatorPreventiveMaintenance", () => {
+test("usePreventiveSubmission and usePreventiveInspection are the callers of submitOperatorPreventiveMaintenance", () => {
   const allFiles = [
     PAGE,
     ...listFiles(path.join(FEATURE_DIR, "hooks"), /\.ts$/),
@@ -76,13 +76,13 @@ test("usePreventiveSubmission is the sole caller of submitOperatorPreventiveMain
   ];
   const callers = allFiles.filter((file) => /apiService\.submitOperatorPreventiveMaintenance\(/.test(fs.readFileSync(file, "utf8")));
   assert.deepEqual(
-    callers.map((file) => path.basename(file)),
-    ["usePreventiveSubmission.ts"],
-    "only usePreventiveSubmission.ts may call apiService.submitOperatorPreventiveMaintenance",
+    callers.map((file) => path.basename(file)).sort(),
+    ["usePreventiveInspection.ts", "usePreventiveSubmission.ts"].sort(),
+    "only usePreventiveInspection.ts and usePreventiveSubmission.ts may call apiService.submitOperatorPreventiveMaintenance",
   );
 });
 
-test("usePreventiveChecklist is the sole caller of updateOperatorPreventiveTaskChecklist", () => {
+test("usePreventiveChecklist and usePreventiveInspection are the callers of updateOperatorPreventiveTaskChecklist", () => {
   const allFiles = [
     PAGE,
     ...listFiles(path.join(FEATURE_DIR, "hooks"), /\.ts$/),
@@ -91,9 +91,9 @@ test("usePreventiveChecklist is the sole caller of updateOperatorPreventiveTaskC
   ];
   const callers = allFiles.filter((file) => /apiService\.updateOperatorPreventiveTaskChecklist\(/.test(fs.readFileSync(file, "utf8")));
   assert.deepEqual(
-    callers.map((file) => path.basename(file)),
-    ["usePreventiveChecklist.ts"],
-    "only usePreventiveChecklist.ts may call apiService.updateOperatorPreventiveTaskChecklist",
+    callers.map((file) => path.basename(file)).sort(),
+    ["usePreventiveChecklist.ts", "usePreventiveInspection.ts"].sort(),
+    "only usePreventiveChecklist.ts and usePreventiveInspection.ts may call apiService.updateOperatorPreventiveTaskChecklist",
   );
 });
 

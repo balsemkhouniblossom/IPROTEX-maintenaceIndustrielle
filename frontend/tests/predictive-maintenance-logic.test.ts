@@ -154,13 +154,13 @@ test("MachineHealthPanel keeps measured facts, model output, and uncertainty in 
   assert.equal(sectionCalls.length, 3, "expected exactly 3 separate explanation sections");
 });
 
-test("Admin and Operator machine dashboards, and the Maintenance Plans page, all surface the health badge", () => {
+test("Admin and Maintenance Plans dashboards surface the health badge, Operator machines page does not", () => {
   const adminMachines = readSource(ADMIN_MACHINES_PAGE);
   const operatorMachines = readSource(OPERATOR_MACHINES_PAGE);
   const maintenancePlans = readSource(MAINTENANCE_PLANS_PAGE);
 
   assert.match(adminMachines, /<MachineHealthBadge status=\{healthByMachine\[machine\.\_id\]\}/);
-  assert.match(operatorMachines, /<MachineHealthBadge status=\{healthByMachine\[machine\.\_id\]\}/);
+  assert.doesNotMatch(operatorMachines, /<MachineHealthBadge/);
   assert.match(maintenancePlans, /<MachineHealthBadge status=\{planHealth\[plan\.\_id\]\}/);
 });
 

@@ -197,6 +197,26 @@ describe('OperatorService machine scoping', () => {
     );
   });
 
+  it('supports authorized deep lookup by report and work-order identifiers', async () => {
+    const reportId = new Types.ObjectId();
+    await service.getMyReports(
+      operatorId.toString(),
+      1,
+      1,
+      0,
+      reportId.toString(),
+      assignedWorkOrderId.toString(),
+    );
+
+    const query = reportModel.find.mock.calls.at(-1)?.[0] as Record<string, any>;
+    expect(query.ot_id).toBe(assignedWorkOrderId.toString());
+    expect(query.technician_id.$in).toContain(operatorId.toString());
+    expect(query.$or).toEqual([
+      { _id: reportId.toString() },
+      { report_id: reportId.toString() },
+    ]);
+  });
+
   it('denies preventive state access for unassigned machines before workflow service calls', async () => {
     await expect(
       service.getPreventiveStates(
@@ -222,6 +242,23 @@ describe('OperatorService machine scoping', () => {
         operatorId: operatorId.toString(),
       }),
     );
+  });
+
+  it('keeps the Operator preventive checklist GET read-only and does not sync task rows', async () => {
+    const moduleId = new Types.ObjectId();
+    moduleModel.find.mockReturnValue(queryResult([{ _id: moduleId }]));
+
+    await service.getPreventiveTaskChecklist(
+      operatorId.toString(),
+      1,
+      10,
+      0,
+      { machineId: assignedMachineId.toString() },
+    );
+
+    expect(preventiveTasksService.syncPlansForModuleIds).not.toHaveBeenCalled();
+    expect(preventiveTaskModel.find).toHaveBeenCalled();
+    expect(preventiveTaskModel.countDocuments).toHaveBeenCalled();
   });
 
   it('denies calendar filters that target an unassigned machine', async () => {

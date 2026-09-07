@@ -1,23 +1,20 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiService } from "@/services/api";
 import { useTranslations } from "next-intl";
+import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
+import { apiService } from "@/services/api";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 import { extractApiErrorMessage } from "@/services/apiErrors";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
-import { CORRECTIVE_REQUIRED_FIELDS, validateCorrectiveWorkflow } from "@/services/correctiveMaintenanceWorkflow";
 import { Modal } from "@/components/Modal";
-import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
-import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
-import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
-import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 
-type EntityRef = string | { _id?: string; id?: string };
+type Step = "machine" | "problem" | "description" | "urgency" | "review" | "success";
 
 interface MachineType {
   _id: string;
@@ -28,8 +25,9 @@ interface MachineType {
 interface Machine {
   _id: string;
   machine_id: string;
-  type_id: EntityRef;
+  type_id?: string | { _id?: string };
   model?: string;
+  status?: string;
 }
 
 interface Panne {
@@ -39,1166 +37,826 @@ interface Panne {
   gravite?: string;
 }
 
-interface PanneSolution {
-  _id: string;
-  panne_id: EntityRef;
-  cause_probable?: string;
-  solution_recommandee?: string;
-}
-
 interface WorkOrder {
   _id: string;
   type_maintenance?: string;
   status?: string;
-  machine_id?: { _id?: string; id?: string; machine_id?: string } | string;
+  machine_id?: string | { _id?: string; machine_id?: string };
   date_created?: string;
+  ot_id?: string;
 }
 
-interface InterventionReport {
-  _id: string;
-  ot_id: EntityRef;
-  description_action?: string;
-  validation_responsable?: string;
-  date_debut?: string;
-  date_fin?: string;
+interface SubmissionResult {
+  workOrder: WorkOrder;
+  report: { _id: string; report_id: string; ot_id: string | WorkOrder };
+  duplicate: boolean;
+  attachmentFailed: boolean;
 }
 
-interface ReportPhotoDocument {
-  _id?: string;
-  id?: string;
-  machine_id?: EntityRef;
-  work_order_id?: EntityRef;
-  intervention_report_id?: EntityRef;
-  type_document?: string;
-  file_path?: string;
-  file_url?: string;
-  preview_path?: string;
-  file_name?: string;
-  mime_type?: string;
-  content_type?: string;
-  date_ajout?: string;
-  createdAt?: string;
-}
-
-interface GeneratedReportRow {
-  id: string;
-  type: "preventive" | "corrective";
-  workOrderId: string;
-  reportId: string;
-  machine: string;
-  summary: string;
-  createdAt: string;
-  status: string;
-  photoDocument?: ReportPhotoDocument;
-}
-
-function refId(value: EntityRef | undefined): string {
+function refId(value: string | { _id?: string } | undefined): string {
   if (!value) return "";
-  return typeof value === "string" ? value : value._id ?? value.id ?? "";
+  return typeof value === "string" ? value : value._id || "";
 }
 
-function tokenize(input: string | undefined): string[] {
-  if (!input) return [];
-  return input
-    .split(/\r?\n|[;,]/g)
-    .map((item) => item.replace(/^[-*\u2022\s]+/, "").trim())
-    .filter(Boolean);
+const CLOSED_WORK_ORDER_STATUSES = new Set([
+  "completed",
+  "validated",
+  "cancelled",
+  "canceled",
+  "CLOTURE",
+  "ANNULE",
+]);
+
+const URGENCY_PRIORITY_MAP: Record<string, string> = {
+  normal: "medium",
+  high: "high",
+  machineStopped: "urgent",
+};
+
+function getFaultCategory(description: string): string {
+  const lower = description.toLowerCase();
+  if (/\b(vibration|noise|sound|bearing|belt|shaft|gear|knock|mechanical|grinding|rattle|brush)\b/.test(lower)) return "mechanical";
+  if (/\b(electrical|power|circuit|fuse|wiring|electric|short|overload|voltage|spark|burn)\b/.test(lower)) return "electrical";
+  if (/\b(overheat|heat|temperature|cooling|thermal|hot|warm|boil|steam)\b/.test(lower)) return "thermal";
+  if (/\b(leak|oil|water|fluid|hydraulic|air|gas|spill|drip|seep)\b/.test(lower)) return "leakage";
+  if (/\b(blocked|stop|jam|stuck|start|startup|switch|press|seize)\b/.test(lower)) return "blockage";
+  return "other";
 }
+
+const FAULT_CATEGORY_LABELS: Record<string, string> = {
+  mechanical: "Mechanical",
+  electrical: "Electrical",
+  thermal: "Thermal",
+  leakage: "Leakage",
+  blockage: "Blockage / Start",
+  other: "Other",
+};
 
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${crypto.randomUUID().toUpperCase()}`;
 }
 
-type CorrectiveResult = "solved" | "notSolved" | "technicianRequired" | "custom";
-const REPORTS_STORAGE_KEY = "operator_generated_reports_history";
-
-function correctiveReportElementId(reportId: string): string {
-  return `corrective-report-${reportId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-}
-
-function normalizeReportPhotoDocument(document: ReportPhotoDocument): ReportPhotoDocument {
-  const inferredMimeType =
-    document.mime_type ||
-    document.content_type ||
-    (document.type_document?.toLowerCase().includes("photo") ? "image/webp" : undefined);
-
-  return {
-    ...document,
-    mime_type: inferredMimeType,
-  };
-}
-
-function reportRowKey(report: GeneratedReportRow): string {
-  return report.reportId || report.workOrderId || report.id;
-}
-
-function reportRowsReferToSameRecord(
-  left: GeneratedReportRow,
-  right: GeneratedReportRow,
-): boolean {
-  return Boolean(
-    (left.reportId && left.reportId === right.reportId) ||
-      (left.workOrderId && left.workOrderId === right.workOrderId) ||
-      left.id === right.id,
-  );
-}
-
-function isPhotoNearReport(document: ReportPhotoDocument, reportDate: string): boolean {
-  if (!reportDate) return false;
-  const documentTime = new Date(document.createdAt || document.date_ajout || "").getTime();
-  const reportTime = new Date(reportDate).getTime();
-  if (!Number.isFinite(documentTime) || !Number.isFinite(reportTime)) return false;
-  return Math.abs(documentTime - reportTime) <= 10 * 60 * 1000;
-}
-
-function formatReportDate(value: string | undefined, fallback: string): string {
-  if (!value) return fallback;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toLocaleString();
-}
-
-function reportStatusClasses(status: string): string {
-  switch (status) {
-    case "validated":
-    case "completed":
-      return "border-emerald-200 bg-emerald-50 text-emerald-800";
-    case "returned":
-      return "border-amber-200 bg-amber-50 text-amber-800";
-    case "technician_required":
-      return "border-blue-200 bg-blue-50 text-blue-800";
-    case "waiting_validation":
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
-  }
-}
-
-function findReportPhotoDocument(
-  reportPhotoDocuments: ReportPhotoDocument[],
-  report: InterventionReport,
-  workOrder: WorkOrder,
-  machineId: string,
-  createdAt: string,
-): ReportPhotoDocument | undefined {
-  return (
-    reportPhotoDocuments.find(
-      (document) =>
-        refId(document.intervention_report_id) === report._id ||
-        refId(document.work_order_id) === workOrder._id,
-    ) ??
-    reportPhotoDocuments.find(
-      (document) =>
-        machineId &&
-        refId(document.machine_id) === machineId &&
-        isPhotoNearReport(document, createdAt),
-    )
-  );
-}
-
-function mergeCorrectiveReports(
-  generatedReports: GeneratedReportRow[],
-  backendCorrectiveReports: GeneratedReportRow[],
-): GeneratedReportRow[] {
-  const localReports = generatedReports.filter((item) => item.type === "corrective");
-  const backendByKey = new Map<string, GeneratedReportRow>();
-  backendCorrectiveReports.forEach((item) => {
-    backendByKey.set(reportRowKey(item), item);
-  });
-
-  const seen = new Set<string>();
-  return [...localReports, ...backendCorrectiveReports]
-    .map((item) => {
-      const backendMatch =
-        backendByKey.get(reportRowKey(item)) ||
-        backendCorrectiveReports.find((backendItem) =>
-          reportRowsReferToSameRecord(item, backendItem),
-        );
-      return {
-        ...item,
-        photoDocument: item.photoDocument || backendMatch?.photoDocument,
-        status: backendMatch?.status || item.status,
-      };
-    })
-    .filter((item) => {
-      const key = reportRowKey(item);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-}
-
-function OperatorCorrectivePageContent() {
-  const t = useTranslations("dashboard.operator");
+function ReportProblemFlow() {
+  const t = useTranslations("dashboard.operator.reportProblemFlow");
   const tCommon = useTranslations("common");
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [step, setStep] = useState<Step>("machine");
+  const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
+  const [selectedFault, setSelectedFault] = useState<Panne | null>(null);
+  const [otherProblem, setOtherProblem] = useState("");
+  const [observation, setObservation] = useState("");
+  const [urgency, setUrgency] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
+  const [faults, setFaults] = useState<Panne[]>([]);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
-  const [machines, setMachines] = useState<Machine[]>([]);
-  const [pannes, setPannes] = useState<Panne[]>([]);
-  const [panneSolutions, setPanneSolutions] = useState<PanneSolution[]>([]);
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [interventionReports, setInterventionReports] = useState<InterventionReport[]>([]);
-  const [reportPhotoDocuments, setReportPhotoDocuments] = useState<ReportPhotoDocument[]>([]);
-
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedMachine, setSelectedMachine] = useState("");
-  const [selectedPanne, setSelectedPanne] = useState("");
-  const [selectedSymptoms, setSelectedSymptoms] = useState<Record<string, boolean>>({});
-  const [showMoreSymptoms, setShowMoreSymptoms] = useState(false);
+  const [machineSearch, setMachineSearch] = useState("");
   const [faultSearch, setFaultSearch] = useState("");
+  const [result, setResult] = useState<SubmissionResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retryingPhoto, setRetryingPhoto] = useState(false);
 
-  const [checkedActions, setCheckedActions] = useState<Record<string, boolean>>({});
-  const [customActions, setCustomActions] = useState<string[]>([]);
-
-  const [result, setResult] = useState<CorrectiveResult>("solved");
-  const [customResult, setCustomResult] = useState("");
-  const [comments, setComments] = useState("");
-
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [submitValidationReason, setSubmitValidationReason] = useState("");
-  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [faultsLoading, setFaultsLoading] = useState(false);
-  const [generatedReports, setGeneratedReports] = useState<GeneratedReportRow[]>([]);
-  const [selectedGeneratedReport, setSelectedGeneratedReport] = useState<GeneratedReportRow | null>(null);
-  const [highlightedReportId, setHighlightedReportId] = useState("");
-
-  const submitValidationMessage = useMemo(() => {
-    if (!submitValidationReason) return "";
-
-    switch (submitValidationReason) {
-      case "missing-user-machine-or-fault":
-        return t("notifications.validationFailed");
-      case "no-actions-selected":
-        return t("actionsPerformed");
-      case "submit-failed":
-        return tCommon("error");
-      default:
-        return submitValidationReason;
-    }
-  }, [submitValidationReason, t, tCommon]);
-
-  const initialTypeId = searchParams.get("type") || "";
   const initialMachineId = searchParams.get("machine") || "";
-  const initialView = searchParams.get("view") || "";
-  const intent = searchParams.get("intent") || "";
 
-  useEffect(() => {
-    if (!notification) return;
+  const selectedMachineData = useMemo(
+    () => machines.find((m) => m._id === selectedMachine) || null,
+    [machines, selectedMachine],
+  );
 
-    const timeout = setTimeout(() => {
-      setNotification(null);
-    }, 5000);
+  const activeIssue = useMemo(() => {
+    if (!selectedMachine || workOrders.length === 0) return null;
+    return (
+      workOrders.find((wo) => {
+        const machineId = refId(wo.machine_id);
+        if (machineId !== selectedMachine) return false;
+        if (wo.type_maintenance !== "corrective") return false;
+        if (CLOSED_WORK_ORDER_STATUSES.has(wo.status || "")) return false;
+        return true;
+      }) || null
+    );
+  }, [selectedMachine, workOrders]);
 
-    return () => clearTimeout(timeout);
-  }, [notification]);
+  const filteredMachines = useMemo(() => {
+    if (!machineSearch.trim()) return machines;
+    const q = machineSearch.trim().toLowerCase();
+    return machines.filter(
+      (m) =>
+        m.machine_id.toLowerCase().includes(q) ||
+        m.model?.toLowerCase().includes(q) ||
+        m.status?.toLowerCase().includes(q),
+    );
+  }, [machines, machineSearch]);
 
-  function showNotification(type: "success" | "error", message: string): void {
-    setNotification({ type, message });
-  }
+  const filteredFaults = useMemo(() => {
+    if (!faultSearch.trim()) return faults;
+    const q = faultSearch.trim().toLowerCase();
+    return faults.filter(
+      (f) =>
+        f.description.toLowerCase().includes(q) ||
+        f.code_panne.toLowerCase().includes(q),
+    );
+  }, [faults, faultSearch]);
 
-  function resetCorrectiveState(): void {
-    setSelectedPanne("");
-    setFaultSearch("");
-    setSelectedSymptoms({});
-    setShowMoreSymptoms(false);
-    setCheckedActions({});
-    setCustomActions([]);
-    setResult("solved");
-    setCustomResult("");
-    setComments("");
-    setPhoto(null);
-    setSubmitValidationReason("");
-  }
-
-  function resetFaultSpecificState(): void {
-    setSelectedSymptoms({});
-    setShowMoreSymptoms(false);
-    setCheckedActions({});
-    setCustomActions([]);
-    setResult("solved");
-    setCustomResult("");
-    setComments("");
-    setPhoto(null);
-    setSubmitValidationReason("");
-  }
-
-  function addGeneratedReport(report: GeneratedReportRow): void {
-    setGeneratedReports((prev) => {
-      const next = [report, ...prev].slice(0, 30);
-      localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(next));
-      return next;
+  const faultGroups = useMemo(() => {
+    const groups: Record<string, Panne[]> = {};
+    filteredFaults.forEach((f) => {
+      const cat = getFaultCategory(f.description);
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(f);
     });
-  }
+    return groups;
+  }, [filteredFaults]);
+
+  const canProceedFromProblem = useMemo(() => {
+    return Boolean(selectedFault || otherProblem.trim());
+  }, [selectedFault, otherProblem]);
+
+  const canSubmitReview = useMemo(() => {
+    if (!selectedMachine) return false;
+    return canProceedFromProblem;
+  }, [selectedMachine, canProceedFromProblem]);
 
   useEffect(() => {
-    async function loadAll() {
+    async function load() {
       try {
         setLoading(true);
-        const [machineTypeItems, machineItems, workOrderItems, reportItems, documentItems] = await Promise.all([
-          fetchAllPaginated<MachineType>((pagination) => apiService.getOperatorMachineTypes(pagination)),
-          fetchAllPaginated<Machine>((pagination) => apiService.getMyMachines(pagination)),
-          fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
-          fetchAllPaginated<InterventionReport>((pagination) => apiService.getMyInterventionReports(pagination)),
-          fetchAllPaginated<ReportPhotoDocument>((pagination) => apiService.getDocuments(pagination)),
+        const [machineTypeItems, machineItems, workOrderItems] = await Promise.all([
+          fetchAllPaginated<MachineType>((p) => apiService.getOperatorMachineTypes(p)),
+          fetchAllPaginated<Machine>((p) => apiService.getMyMachines(p)),
+          fetchAllPaginated<WorkOrder>((p) => apiService.getMyWorkOrders(p)),
         ]);
-
         setMachineTypes(machineTypeItems);
         setMachines(machineItems);
         setWorkOrders(workOrderItems);
-        setInterventionReports(reportItems);
-        setReportPhotoDocuments(
-          documentItems.filter((item) =>
-            item.type_document?.toLowerCase().includes("photo"),
-          ).map(normalizeReportPhotoDocument),
-        );
-        setPannes([]);
-        setPanneSolutions([]);
-      } catch (error) {
-        console.error("Failed to load corrective workflow data", error);
+      } catch (e) {
+        console.error("Failed to load data", e);
       } finally {
         setLoading(false);
       }
     }
-
-    void loadAll();
+    void load();
   }, []);
-
-  useEffect(() => {
-    async function loadScopedFaults() {
-      if (!selectedMachine && !selectedCategory) {
-        setPannes([]);
-        setPanneSolutions([]);
-        return;
-      }
-
-      try {
-        setFaultsLoading(true);
-        const faultItems = await fetchAllPaginated<Panne>((pagination) =>
-          apiService.getOperatorFaults({
-            ...pagination,
-            machineId: selectedMachine || undefined,
-            machineTypeId: selectedCategory || undefined,
-            search: faultSearch || undefined,
-          }),
-        );
-        setPannes(faultItems);
-      } catch (error) {
-        console.error("Failed to load scoped faults", error);
-        setPannes([]);
-      } finally {
-        setFaultsLoading(false);
-      }
-    }
-
-    void loadScopedFaults();
-  }, [selectedCategory, selectedMachine, faultSearch]);
-
-  useEffect(() => {
-    async function loadFaultSolutions() {
-      if (!selectedPanne) {
-        setPanneSolutions([]);
-        return;
-      }
-
-      try {
-        const response = await apiService.getOperatorFaultSolutions({
-          page: 1,
-          limit: 100,
-          panneId: selectedPanne,
-          machineId: selectedMachine || undefined,
-          machineTypeId: selectedCategory || undefined,
-        });
-        setPanneSolutions(normalizeApiItems<PanneSolution>(response.data));
-      } catch (error) {
-        console.error("Failed to load fault solutions", error);
-        setPanneSolutions([]);
-      }
-    }
-
-    void loadFaultSolutions();
-  }, [selectedCategory, selectedMachine, selectedPanne]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(REPORTS_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as GeneratedReportRow[];
-      if (Array.isArray(parsed)) {
-        setGeneratedReports(parsed);
-      }
-    } catch {
-      setGeneratedReports([]);
-    }
-  }, []);
-
-  const machinesForCategory = useMemo(
-    () => machines.filter((machine) => refId(machine.type_id) === selectedCategory),
-    [machines, selectedCategory],
-  );
-
-  // machineTypes is already scoped server-side (getOperatorMachineTypes) to the
-  // categories the operator can access, with no client-side re-filtering needed.
-  const visibleMachineTypes = machineTypes;
-
-  useEffect(() => {
-    if (!machines.length) return;
-    if (!initialMachineId && !initialTypeId) return;
-
-    const preselectedMachine = machines.find((machine) => machine._id === initialMachineId);
-
-    if (preselectedMachine) {
-      const preselectedType = refId(preselectedMachine.type_id);
-      setSelectedCategory(preselectedType);
-      setSelectedMachine(preselectedMachine._id);
-      return;
-    }
-
-    if (initialTypeId) {
-      setSelectedCategory(initialTypeId);
-    }
-  }, [initialMachineId, initialTypeId, machines]);
 
   useEffect(() => {
     if (loading) return;
-    if (initialView !== "history") return;
-
-    const historySection = document.getElementById("machine-history");
-    historySection?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [initialView, loading]);
-
-  const selectedFault = useMemo(
-    () => pannes.find((item) => item._id === selectedPanne) ?? null,
-    [pannes, selectedPanne],
-  );
-
-  const selectedMachineLabel = useMemo(
-    () => machines.find((item) => item._id === selectedMachine)?.machine_id || tCommon("notAvailable"),
-    [machines, selectedMachine, tCommon],
-  );
-
-  const selectedFaultSolutions = useMemo(
-    () => panneSolutions.filter((solution) => refId(solution.panne_id) === selectedPanne),
-    [panneSolutions, selectedPanne],
-  );
-
-  const visiblePannes = useMemo(() => {
-    if (!faultSearch.trim()) {
-      return pannes;
+    if (!initialMachineId) return;
+    const preselected = machines.find((m) => m._id === initialMachineId);
+    if (preselected) {
+      setSelectedMachine(preselected._id);
+      setStep("problem");
     }
+  }, [loading, initialMachineId, machines]);
 
-    const query = faultSearch.trim().toLowerCase();
-    return pannes.filter((panne) =>
-      panne.code_panne.toLowerCase().includes(query)
-      || panne.description.toLowerCase().includes(query),
-    );
-  }, [faultSearch, pannes]);
-
-  const symptomOptions = useMemo(
-    () => [
-      t("symptoms.machineStopped"),
-      t("symptoms.noise"),
-      t("symptoms.smoke"),
-      t("symptoms.overheating"),
-      t("symptoms.alarm"),
-      t("symptoms.motorBlocked"),
-      t("symptoms.noMovement"),
-      t("symptoms.oilLeak"),
-      t("symptoms.airLeak"),
-      t("symptoms.electricalSmell"),
-      t("symptoms.other"),
-    ],
-    [t],
-  );
-
-  const primarySymptomOptions = useMemo(() => symptomOptions.slice(0, 5), [symptomOptions]);
-  const extraSymptomOptions = useMemo(() => symptomOptions.slice(5), [symptomOptions]);
-  const visibleSymptomOptions = showMoreSymptoms ? symptomOptions : primarySymptomOptions;
-
-  const correctiveTasks = useMemo(() => {
-    const matching = selectedFaultSolutions.flatMap((solution) => tokenize(solution.solution_recommandee));
-    return Array.from(new Set(matching));
-  }, [selectedFaultSolutions]);
-
-  const allTasks = useMemo(() => [...correctiveTasks, ...customActions], [correctiveTasks, customActions]);
-
-  const selectedActionLabels = useMemo(
-    () => allTasks.filter((task) => checkedActions[task]),
-    [allTasks, checkedActions],
-  );
-
-  const selectedSymptomLabels = useMemo(
-    () => symptomOptions.filter((symptom) => selectedSymptoms[symptom]),
-    [selectedSymptoms, symptomOptions],
-  );
-
-  const resultLabel = result === "custom" ? customResult.trim() : t(result);
-  const correctiveValidation = useMemo(
-    () =>
-      validateCorrectiveWorkflow({
-        machineId: selectedMachine,
-        faultCode: selectedFault?.code_panne,
-        selectedActions: selectedActionLabels,
-        selectedSymptoms: selectedSymptomLabels,
-        comments,
-        resultLabel,
-      }),
-    [comments, resultLabel, selectedActionLabels, selectedFault?.code_panne, selectedMachine, selectedSymptomLabels],
-  );
-  const reportActionLabels = correctiveValidation.actions;
-  const canSubmitCorrective = correctiveValidation.canSubmit && !submitting;
-  const correctiveProgress = correctiveValidation.progress;
-  const correctiveSubmitHint = correctiveValidation.missingFields
-    .map((field) => {
-      if (field === CORRECTIVE_REQUIRED_FIELDS.machine) return t("machine");
-      if (field === CORRECTIVE_REQUIRED_FIELDS.faultOrSymptoms) return `${t("fault")} / ${t("symptoms.title")}`;
-      return `${t("symptoms.title")} / ${t("comments")} / ${t("actionsPerformed")}`;
-    })
-    .join(", ");
-  const selectedFaultLabel = selectedFault ? `${selectedFault.code_panne} - ${selectedFault.description}` : t("fault");
-  const backendCorrectiveReports = useMemo(() => {
-    return interventionReports
-      .map((report) => {
-        const workOrder = workOrders.find((item) => item._id === refId(report.ot_id));
-        if (!workOrder || !isCorrectiveMaintenanceType(workOrder.type_maintenance)) {
-          return null;
-        }
-
-        const machineId = refId(workOrder.machine_id);
-        const machine =
-          typeof workOrder.machine_id === "string"
-            ? workOrder.machine_id
-            : workOrder.machine_id?.machine_id || tCommon("notAvailable");
-        const createdAt = report.date_fin || report.date_debut || workOrder.date_created || "";
-        const photoDocument = findReportPhotoDocument(
-          reportPhotoDocuments,
-          report,
-          workOrder,
-          machineId,
-          createdAt,
+  useEffect(() => {
+    setFaults([]);
+    if (!selectedMachine) {
+      return;
+    }
+    let cancelled = false;
+    async function loadFaults() {
+      try {
+        const faultItems = await fetchAllPaginated<Panne>((pagination) =>
+          apiService.getOperatorFaults({
+            ...pagination,
+            machineId: selectedMachine,
+          }),
         );
-
-        return {
-          id: `backend-${report._id}`,
-          type: "corrective" as const,
-          workOrderId: workOrder._id,
-          reportId: report._id,
-          machine,
-          summary: report.description_action || tCommon("notAvailable"),
-          createdAt,
-          status: workOrder.status || report.validation_responsable || "waiting_validation",
-          photoDocument,
-        };
-      })
-      .filter(Boolean) as GeneratedReportRow[];
-  }, [interventionReports, reportPhotoDocuments, tCommon, workOrders]);
-
-  const correctiveGeneratedReports = useMemo(() => {
-    return mergeCorrectiveReports(generatedReports, backendCorrectiveReports);
-  }, [backendCorrectiveReports, generatedReports]);
-
-  useEffect(() => {
-    if (!selectedGeneratedReport) return;
-    const refreshedReport = correctiveGeneratedReports.find((item) =>
-      reportRowsReferToSameRecord(item, selectedGeneratedReport),
-    );
-    if (refreshedReport?.photoDocument && !selectedGeneratedReport.photoDocument) {
-      setSelectedGeneratedReport(refreshedReport);
+        if (!cancelled) {
+          setFaults(faultItems);
+        }
+      } catch (e) {
+        console.error("Failed to load faults", e);
+        if (!cancelled) setFaults([]);
+      }
     }
-  }, [correctiveGeneratedReports, selectedGeneratedReport]);
-
-  useEffect(() => {
-    if (!highlightedReportId) return;
-
-    const scrollTimeout = setTimeout(() => {
-      document
-        .getElementById(correctiveReportElementId(highlightedReportId))
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
-    const clearHighlightTimeout = setTimeout(() => {
-      setHighlightedReportId((current) =>
-        current === highlightedReportId ? "" : current,
-      );
-    }, 6000);
-
+    void loadFaults();
     return () => {
-      clearTimeout(scrollTimeout);
-      clearTimeout(clearHighlightTimeout);
+      cancelled = true;
     };
-  }, [correctiveGeneratedReports.length, highlightedReportId]);
+  }, [selectedMachine]);
 
-  function formatReportStatus(status: string): string {
-    switch (status) {
-      case "waiting_validation":
-        return t("waitingValidation");
-      case "validated":
-      case "completed":
-        return t("validated");
-      case "returned":
-        return t("returned");
-      case "technician_required":
-        return t("technicianRequired");
-      default:
-        return status || tCommon("notAvailable");
+  function resetMachineSpecificDraft() {
+    setSelectedFault(null);
+    setOtherProblem("");
+    setObservation("");
+    setUrgency("");
+    setPhoto(null);
+    setFaultSearch("");
+    setFaults([]);
+  }
+
+  function handleMachineSelect(machineId: string) {
+    resetMachineSpecificDraft();
+    setSelectedMachine(machineId);
+    setStep("problem");
+  }
+
+  function handleFaultSelect(fault: Panne | null) {
+    setSelectedFault(fault);
+    if (fault) setOtherProblem("");
+  }
+
+  function handleBack() {
+    switch (step) {
+      case "problem":
+        setStep("machine");
+        break;
+      case "description":
+        setStep("problem");
+        break;
+      case "urgency":
+        setStep("description");
+        break;
+      case "review":
+        setStep("urgency");
+        break;
     }
   }
 
-  function toggleTask(task: string): void {
-    setCheckedActions((prev) => ({ ...prev, [task]: !prev[task] }));
-  }
+  async function handleSubmit() {
+    if (!selectedMachine || !user?._id) return;
+    if (!selectedFault && !otherProblem.trim()) return;
 
-  async function uploadPhotoIfPresent(
-    machineId: string,
-    workOrderId: string,
-    reportId?: string,
-  ): Promise<ReportPhotoDocument | undefined> {
-    if (!photo || !user?._id) return undefined;
-
-    const formData = new FormData();
-    formData.append("file", photo);
-    formData.append("document_id", uniqueId("DOC"));
-    formData.append("machine_id", machineId);
-    formData.append("work_order_id", workOrderId);
-    if (reportId) {
-      formData.append("intervention_report_id", reportId);
-    }
-    formData.append("type_document", "fault_photo");
-    formData.append("description", t("photoUpload"));
-    formData.append("uploaded_by", user._id);
-
-    const response = await apiService.uploadDocument(formData);
-    return normalizeReportPhotoDocument(response.data as ReportPhotoDocument);
-  }
-
-  async function submitCorrectiveMaintenance(): Promise<void> {
-    if (!user?._id || !selectedMachine) {
-      setSubmitValidationReason("missing-user-machine-or-fault");
-      showNotification("error", t("notifications.validationFailed"));
-      return;
-    }
-
-    if (correctiveValidation.missingFields.includes(CORRECTIVE_REQUIRED_FIELDS.faultOrSymptoms)) {
-      setSubmitValidationReason("missing-user-machine-or-fault");
-      showNotification("error", t("notifications.validationFailed"));
-      return;
-    }
-
-    if (reportActionLabels.length === 0) {
-      setSubmitValidationReason("no-actions-selected");
-      showNotification("error", t("notifications.validationFailed"));
-      return;
-    }
-
-    const resultValue = result === "custom" ? customResult.trim() : result;
-    const faultDescription = [
-      selectedFault?.description,
-      selectedSymptomLabels.length > 0 ? `${t("symptoms.title")}: ${selectedSymptomLabels.join(" | ")}` : "",
-      comments.trim(),
-      resultValue ? `${t("actionsPerformed")}: ${resultValue}` : "",
-    ]
-      .filter(Boolean)
-      .join(" | ")
-      .slice(0, 2000);
-
-    setSubmitValidationReason("");
     setSubmitting(true);
+    setError(null);
     try {
+      const codePanne = selectedFault?.code_panne || "OBSERVED_SYMPTOMS";
+      const problemLabel = selectedFault?.description || otherProblem.trim();
+      const actions = [problemLabel];
+      const faultDescription = [observation.trim(), problemLabel].filter(Boolean).join(" | ").slice(0, 2000);
+
       const reportRes = await apiService.createOperatorCorrectiveReport({
         machine_id: selectedMachine,
-        code_panne: selectedFault?.code_panne || "OBSERVED_SYMPTOMS",
-        fault_description: faultDescription,
-        actions: reportActionLabels,
-        priority: "high",
+        code_panne: codePanne,
+        fault_description: faultDescription || undefined,
+        actions,
+        priority: urgency ? URGENCY_PRIORITY_MAP[urgency] : undefined,
       });
 
-      const workOrderId = reportRes?.data?.workOrder?._id as string | undefined;
-      if (!workOrderId) {
-        throw new Error("Corrective report creation failed");
-      }
+      const workOrder = reportRes.data.workOrder;
+      const report = reportRes.data.report;
 
-      const reportId = reportRes?.data?.report?._id as string | undefined;
-      const photoDocument = await uploadPhotoIfPresent(
-        selectedMachine,
-        workOrderId,
-        reportId,
-      );
-      if (photoDocument) {
-        setReportPhotoDocuments((prev) => [photoDocument, ...prev]);
-      }
       invalidateList(LIST_EVENTS.workOrders);
-      const newReport: GeneratedReportRow = {
-        id: `${workOrderId}-${reportId || Date.now()}`,
-        type: "corrective",
-        workOrderId,
-        reportId: reportId || "",
-        machine: selectedMachineLabel,
-        summary: faultDescription || reportActionLabels.join(" | "),
-        createdAt: new Date().toISOString(),
-        status: "waiting_validation",
-        photoDocument,
-      };
-      addGeneratedReport(newReport);
-      setHighlightedReportId(newReport.id);
 
-      showNotification("success", t("notifications.submitSuccess"));
-      resetCorrectiveState();
-    } catch (error) {
-      console.error("Failed to submit corrective maintenance", error);
-      setSubmitValidationReason("submit-failed");
-      showNotification("error", extractApiErrorMessage(error, tCommon("error")));
+      let attachmentFailed = false;
+      if (photo && workOrder._id && report._id) {
+        try {
+          const formData = new FormData();
+          formData.append("file", photo);
+          formData.append("document_id", uniqueId("DOC"));
+          formData.append("machine_id", selectedMachine);
+          formData.append("work_order_id", workOrder._id);
+          formData.append("intervention_report_id", report._id);
+          formData.append("type_document", "fault_photo");
+          formData.append("description", t("photoUpload"));
+          formData.append("uploaded_by", user._id);
+          await apiService.uploadDocument(formData);
+        } catch (photoError) {
+          attachmentFailed = true;
+          console.error("Photo upload failed after report creation", photoError);
+        }
+      }
+
+      setResult({ workOrder, report, duplicate: reportRes.data.duplicate, attachmentFailed });
+      setStep("success");
+    } catch (e) {
+      setError(extractApiErrorMessage(e, tCommon("error")));
     } finally {
       setSubmitting(false);
     }
   }
 
-  function renderNotification(): React.ReactNode {
-    if (!notification) return null;
-
-    return (
-      <div
-        className={`col-span-full panel border ${
-          notification.type === "success"
-            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-            : "border-red-200 bg-red-50 text-red-800"
-        }`}
-      >
-        {notification.message}
-      </div>
-    );
+  async function retryPhotoUpload() {
+    if (!result || !photo || !selectedMachine || !user?._id) return;
+    setRetryingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", photo);
+      formData.append("document_id", uniqueId("DOC"));
+      formData.append("machine_id", selectedMachine);
+      formData.append("work_order_id", result.workOrder._id);
+      formData.append("intervention_report_id", result.report._id);
+      formData.append("type_document", "fault_photo");
+      formData.append("description", t("photoUpload"));
+      formData.append("uploaded_by", user._id);
+      await apiService.uploadDocument(formData);
+      setResult((current) => current ? { ...current, attachmentFailed: false } : current);
+    } catch (photoError) {
+      console.error("Photo retry failed after report creation", photoError);
+    } finally {
+      setRetryingPhoto(false);
+    }
   }
 
-  function renderIntentNote(): React.ReactNode {
-    if (intent !== "report-issue") return null;
-
-    return (
-      <div className="col-span-full panel border border-blue-200 bg-blue-50 text-blue-800 text-sm">
-        {t("correctiveWorkflowNote")}
-      </div>
-    );
+  function resetAndGoBack() {
+    setSelectedMachine(null);
+    resetMachineSpecificDraft();
+    setResult(null);
+    setError(null);
+    setStep("machine");
   }
 
-  function renderMachineSelectionPanel(): React.ReactNode {
-    return (
-      <div className="col-span-full panel">
-        <div className="mb-6">
-          <div className="mb-3 text-sm font-semibold text-slate-700">{t("machineCategory")}</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {visibleMachineTypes.map((type) => (
-              <button
-                key={type._id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategory(type._id);
-                  setSelectedMachine("");
-                  resetCorrectiveState();
-                }}
-                data-testid="corrective-category-select"
-                className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
-                  selectedCategory === type._id ? "border-blue-500 bg-blue-50 shadow-md" : "border-slate-200 bg-white"
-                }`}
-              >
-                <div className="text-lg font-semibold text-slate-900">{type.name}</div>
-                <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{t("viewMachines")}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <div className="mb-3 text-sm font-semibold text-slate-700">{t("machine")}</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {machinesForCategory.map((machine) => (
-              <button
-                key={machine._id}
-                type="button"
-                onClick={() => {
-                  setSelectedMachine(machine._id);
-                  resetCorrectiveState();
-                }}
-                data-testid="corrective-machine-select"
-                className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
-                  selectedMachine === machine._id ? "border-emerald-500 bg-emerald-50 shadow-md" : "border-slate-200 bg-white"
-                }`}
-              >
-                <div className="text-base font-semibold text-slate-900">{machine.machine_id}</div>
-                <div className="mt-1 text-sm text-slate-500">{machine.model || tCommon("notAvailable")}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-slate-700">{t("progress")}</div>
-              <div className="text-xs text-slate-500">
-                {selectedMachine ? selectedMachineLabel : tCommon("table.noData")}
-              </div>
-            </div>
-            <div className="text-sm font-semibold text-slate-900">{correctiveProgress}%</div>
-          </div>
-          <div className="mt-3 h-2 rounded-full bg-slate-200">
-            <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${correctiveProgress}%` }} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderAssistantPanels(): React.ReactNode {
-    if (!selectedMachine) return null;
-
-    return (
-      <div className="col-span-full grid gap-4 xl:grid-cols-2">
-        <KnowledgeSuggestions
-          machineId={selectedMachine || undefined}
-          faultCode={selectedFault?.code_panne}
-        />
-        <AiAssistantPanel
-          machineId={selectedMachine || undefined}
-          faultCode={selectedFault?.code_panne}
-        />
-      </div>
-    );
-  }
-
-  function renderCorrectiveTasksPanel(): React.ReactNode {
-    if (!selectedMachine) return null;
-
-    return (
-      <div className="col-span-full panel">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="card-title">{t("correctiveTasks")}</div>
-            <div className="mt-1 text-sm text-slate-500">{selectedFaultLabel}</div>
-          </div>
-          {faultsLoading ? <span className="text-sm text-slate-500">{tCommon("loading")}</span> : null}
-        </div>
-
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          <input
-            value={faultSearch}
-            onChange={(event) => setFaultSearch(event.target.value)}
-            className="min-w-52 shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            placeholder={tCommon("actions.search")}
-          />
-          {visiblePannes.map((panne) => (
-            <button
-              key={panne._id}
-              type="button"
-              onClick={() => {
-                setSelectedPanne(panne._id);
-                resetFaultSpecificState();
-              }}
-              data-testid="corrective-fault-select"
-              className={`shrink-0 rounded-lg border px-4 py-2 text-left text-sm ${
-                selectedPanne === panne._id
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                  : "border-slate-200 bg-white text-slate-700"
-              }`}
-            >
-              <div className="font-semibold">{panne.code_panne}</div>
-              <div className="max-w-48 truncate text-xs">{panne.description}</div>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-lg font-bold text-slate-900">{selectedFault?.code_panne || t("fault")}</div>
-                <div className="mt-1 text-sm text-slate-500">{selectedFault?.description || t("symptoms.title")}</div>
-              </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
-                {selectedFault?.gravite || t("corrective")}
-              </span>
-            </div>
-
-            <div className="mt-4 rounded-xl bg-slate-50 p-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-slate-700">{t("progress")}</span>
-                <span className="font-semibold text-slate-900">{correctiveProgress}%</span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-emerald-500 transition-all" style={{ width: `${correctiveProgress}%` }} />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <div className="mb-3 text-sm font-semibold text-slate-700">{t("symptoms.title")}</div>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {visibleSymptomOptions.map((symptom, index) => (
-                  <label
-                    key={symptom}
-                    className={`flex items-center gap-3 rounded-xl border p-3 text-sm transition-colors ${
-                      selectedSymptoms[symptom] ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedSymptoms[symptom])}
-                      onChange={() => setSelectedSymptoms((prev) => ({ ...prev, [symptom]: !prev[symptom] }))}
-                      data-testid={`corrective-symptom-checkbox-${index}`}
-                    />
-                    <span>{symptom}</span>
-                  </label>
-                ))}
-              </div>
-              {extraSymptomOptions.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowMoreSymptoms((value) => !value)}
-                  className="mt-3 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-                >
-                  {showMoreSymptoms ? "Less" : "More"}
-                </button>
-              ) : null}
-            </div>
-
-            {selectedFault && selectedFaultSolutions.length > 0 ? (
-              <div className="mt-4 rounded-xl bg-emerald-50 p-3">
-                <div className="text-sm font-semibold text-emerald-900">{t("solution")}</div>
-                <div className="mt-2 space-y-2 text-sm text-emerald-950">
-                  {selectedFaultSolutions.slice(0, 2).map((solution) => (
-                    <div key={solution._id} className="rounded-lg bg-white p-3">
-                      {solution.cause_probable ? <div className="font-semibold">Cause: {solution.cause_probable}</div> : null}
-                      {solution.solution_recommandee ? <div className="mt-1">{solution.solution_recommandee}</div> : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {allTasks.length > 0 ? (
-              <div className="mt-4 max-h-65 space-y-2 overflow-y-auto pr-1">
-                {allTasks.slice(0, 6).map((task, index) => (
-                  <label
-                    key={task}
-                    className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${
-                      checkedActions[task] ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={Boolean(checkedActions[task])}
-                      onChange={() => toggleTask(task)}
-                      data-testid={`corrective-task-checkbox-${index}`}
-                    />
-                    <span>{task}</span>
-                  </label>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700">{t("actionsPerformed")}</label>
-              <select
-                value={result}
-                onChange={(event) => setResult(event.target.value as CorrectiveResult)}
-                title={t("actionsPerformed")}
-                aria-label={t("actionsPerformed")}
-                className="mt-2 w-full rounded-lg border px-3 py-2"
-              >
-                <option value="solved">{t("solved")}</option>
-                <option value="notSolved">{t("notSolved")}</option>
-                <option value="technicianRequired">{t("technicianRequired")}</option>
-                <option value="custom">{t("custom")}</option>
-              </select>
-              {result === "custom" ? (
-                <input
-                  value={customResult}
-                  onChange={(event) => setCustomResult(event.target.value)}
-                  className="mt-2 w-full rounded-lg border px-3 py-2"
-                  placeholder={t("comments")}
-                />
-              ) : null}
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700">{t("comments")}</label>
-              <textarea
-                value={comments}
-                onChange={(event) => setComments(event.target.value.slice(0, 500))}
-                data-testid="corrective-comments-input"
-                className="mt-2 min-h-28 w-full resize-none rounded-lg border px-3 py-2 text-sm"
-                placeholder={t("comments")}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700">{t("photoUpload")}</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
-                title={t("photoUpload")}
-                aria-label={t("photoUpload")}
-                className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
-              />
-            </div>
-
-            <button
-              type="button"
-              disabled={!canSubmitCorrective}
-              onClick={() => void submitCorrectiveMaintenance()}
-              data-testid="corrective-submit-button"
-              className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {submitting ? tCommon("saving") : t("generateReport")}
-            </button>
-            {!canSubmitCorrective && correctiveSubmitHint ? (
-              <div className="text-xs text-slate-500">
-                Required: {correctiveSubmitHint}
-              </div>
-            ) : null}
-
-            {submitValidationReason ? (
-              <div data-testid="corrective-submit-validation" className="text-sm text-red-600">
-                {submitValidationMessage}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const stepIndex = ["machine", "problem", "description", "urgency", "review"].indexOf(step);
 
   if (loading) {
     return (
       <ProtectedRoute requiredRole="operator">
-        <DashboardLayout title={t("correctiveMaintenance")}>
+        <DashboardLayout title={t("title")}>
           <div className="operator-dashboard-theme panel">{tCommon("loading")}</div>
         </DashboardLayout>
       </ProtectedRoute>
     );
   }
 
+  if (step === "success" && result) {
+    const wo = result.workOrder;
+    const machine = selectedMachineData;
+    return (
+      <ProtectedRoute requiredRole="operator">
+        <DashboardLayout title={t("successTitle")}>
+          <div className="mx-auto max-w-xl space-y-6">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
+              <div className={`text-3xl font-bold ${result.attachmentFailed ? "text-amber-700" : "text-emerald-700"}`}>✓</div>
+              <h2 className={`mt-2 text-xl font-semibold ${result.attachmentFailed ? "text-amber-900" : "text-emerald-900"}`}>
+                {result.attachmentFailed ? t("partialSuccessTitle") : t("successTitle")}
+              </h2>
+              <p className={`mt-1 text-sm ${result.attachmentFailed ? "text-amber-800" : "text-emerald-800"}`}>
+                {result.attachmentFailed ? t("partialSuccessMessage") : t("successMessage")}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("machineLabel")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {machine?.machine_id || tCommon("notAvailable")}
+                  </div>
+                  {machine?.model && <div className="text-sm text-slate-500">{machine.model}</div>}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("reference")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">{wo.ot_id || wo._id}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("problemLabel")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {selectedFault?.description || otherProblem || tCommon("notAvailable")}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("urgencyLabel")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {urgency ? t(urgency) : t("normal")}
+                  </div>
+                </div>
+              </div>
+              {observation && (
+                <div>
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("descriptionLabel")}</div>
+                  <div className="mt-1 text-sm text-slate-700">{observation}</div>
+                </div>
+              )}
+              <div>
+                {result.duplicate && (
+                  <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                    {t("existingReportReused")}
+                  </div>
+                )}
+                {result.attachmentFailed ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <div className="font-semibold">{t("partialSuccessTitle")}</div>
+                    <div className="mt-1">{t("partialSuccessMessage")}</div>
+                    <button
+                      type="button"
+                      onClick={retryPhotoUpload}
+                      disabled={retryingPhoto}
+                      className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
+                    >
+                      {retryingPhoto ? t("retryingPhoto") : t("retryPhoto")}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    {result.duplicate ? t("existingReportReused") : t("reportedStatus")}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const reportId = result.report._id || result.report.report_id;
+                  router.push(`../my-reports?reportId=${encodeURIComponent(reportId)}&workOrderId=${encodeURIComponent(wo._id)}`);
+                }}
+                className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                {t("viewStatus")}
+              </button>
+              <button
+                type="button"
+                onClick={resetAndGoBack}
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {t("backToMachines")}
+              </button>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  const steps = [
+    { key: "machine", label: t("step1Title") },
+    { key: "problem", label: t("step2Title") },
+    { key: "description", label: t("step3Title") },
+    { key: "urgency", label: t("step4Title") },
+    { key: "review", label: t("reviewTitle") },
+  ];
+
   return (
     <ProtectedRoute requiredRole="operator">
-      <DashboardLayout title={t("correctiveMaintenance")}>
-        <div className="operator-dashboard-theme bento-grid">
-          {renderNotification()}
-          {renderIntentNote()}
-          {renderMachineSelectionPanel()}
-          {renderAssistantPanels()}
-
-          {renderCorrectiveTasksPanel()}
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-3">{t("myReports")}</div>
-            {correctiveGeneratedReports.length === 0 ? (
-              <div className="text-sm text-slate-500">{tCommon("table.noData")}</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                {correctiveGeneratedReports.map((item, index) => (
-                  <article
-                    key={item.id}
-                    id={correctiveReportElementId(item.id)}
-                    data-testid={`corrective-report-card-${index}`}
-                    className={`w-full rounded-xl border p-4 shadow-sm transition-all duration-500 ${
-                      highlightedReportId === item.id
-                        ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300"
-                        : "border-slate-200 bg-white"
-                    }`}
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="text-base font-semibold text-slate-900">{item.machine || tCommon("notAvailable")}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                          <span>{t("corrective")}</span>
-                          <span aria-hidden="true">|</span>
-                          <span>{formatReportDate(item.createdAt, tCommon("notAvailable"))}</span>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 flex-wrap items-center gap-2">
-                        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusClasses(item.status)}`}>
-                          {formatReportStatus(item.status)}
-                        </span>
-                        <button
-                          type="button"
-                          data-testid={`corrective-report-details-${index}`}
-                          onClick={() => setSelectedGeneratedReport(item)}
-                          className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                        >
-                          {t("smartCalendar.maintenanceDetails")}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <Modal
-          isOpen={Boolean(selectedGeneratedReport)}
-          onClose={() => setSelectedGeneratedReport(null)}
-          title={t("smartCalendar.maintenanceDetails")}
-          size="lg"
-        >
-          {selectedGeneratedReport ? (
-            <div className="operator-dashboard-theme space-y-5">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase text-slate-500">{t("machine")}</div>
-                  <div className="mt-1 text-base font-semibold text-slate-900">
-                    {selectedGeneratedReport.machine || tCommon("notAvailable")}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase text-slate-500">{t("smartCalendar.maintenanceType")}</div>
-                  <div className="mt-1 text-base font-semibold text-slate-900">{t("corrective")}</div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase text-slate-500">{t("dashboard.submissionDate")}</div>
-                  <div className="mt-1 text-base font-semibold text-slate-900">
-                    {formatReportDate(selectedGeneratedReport.createdAt, tCommon("notAvailable"))}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-semibold uppercase text-slate-500">{t("validation")}</div>
-                  <div className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusClasses(selectedGeneratedReport.status)}`}>
-                    {formatReportStatus(selectedGeneratedReport.status)}
-                  </div>
+      <DashboardLayout title={t("title")}>
+        <div className="mx-auto max-w-3xl">
+          {selectedMachineData && step !== "machine" && (
+            <div className="mb-6 flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <div>
+                <div className="text-xs font-semibold uppercase text-blue-500">{t("reportingFor")}</div>
+                <div className="text-base font-semibold text-blue-900">
+                  {selectedMachineData.machine_id}
+                  {selectedMachineData.model && (
+                    <span className="ml-2 text-sm text-blue-700">{selectedMachineData.model}</span>
+                  )}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  resetMachineSpecificDraft();
+                  setSelectedMachine(null);
+                  setStep("machine");
+                }}
+                className="text-sm font-semibold text-blue-700 hover:text-blue-900"
+              >
+                {t("changeMachine")}
+              </button>
+            </div>
+          )}
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="text-sm font-semibold text-slate-700">{t("actionsPerformed")}</div>
-                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {selectedGeneratedReport.summary || tCommon("notAvailable")}
-                </div>
+          {activeIssue && step !== "success" && (
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-sm font-semibold text-amber-900">{t("activeIssueWarning")}</div>
+              <div className="mt-1 text-sm text-amber-800">
+                {t("reference")}: {activeIssue.ot_id || activeIssue._id} | {activeIssue.status}
               </div>
-
-              {selectedGeneratedReport.photoDocument ? (
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="mb-3 text-sm font-semibold text-slate-700">{t("photoUpload")}</div>
-                  <DocumentAttachmentViewer
-                    document={selectedGeneratedReport.photoDocument}
-                    title={selectedGeneratedReport.photoDocument.file_name || t("photoUpload")}
-                  />
-                </div>
-              ) : null}
-
-              <div className="flex justify-end">
+              <div className="mt-3 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedGeneratedReport(null)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                  onClick={() => {
+                    router.push(`../my-reports?workOrderId=${encodeURIComponent(activeIssue._id)}`);
+                  }}
+                  className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-200"
                 >
-                  {tCommon("close")}
+                  {t("viewExistingIssue")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("problem")}
+                  className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-50"
+                >
+                  {t("reportAnother")}
                 </button>
               </div>
             </div>
-          ) : null}
-        </Modal>
+          )}
+
+          {error && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
+          )}
+
+          <div className="mb-8">
+            <div className="flex items-center">
+              {steps.map((s, i) => (
+                <div key={s.key} className="flex flex-1 items-center">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                        i <= stepIndex ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {i + 1}
+                    </div>
+                    <div
+                      className={`mt-1 text-xs ${
+                        i <= stepIndex ? "text-slate-900" : "text-slate-500"
+                      }`}
+                    >
+                      {s.label}
+                    </div>
+                  </div>
+                  {i < steps.length - 1 && (
+                    <div
+                      className={`mx-2 h-0.5 flex-1 ${
+                        i < stepIndex ? "bg-slate-900" : "bg-slate-200"
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {step === "machine" && (
+            <div className="space-y-6">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">{t("searchMachine")}</label>
+                <input
+                  type="text"
+                  value={machineSearch}
+                  onChange={(e) => setMachineSearch(e.target.value)}
+                  placeholder={t("searchPlaceholder")}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredMachines.map((machine) => (
+                  <button
+                    key={machine._id}
+                    type="button"
+                    onClick={() => handleMachineSelect(machine._id)}
+                    className={`rounded-2xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                      selectedMachine === machine._id
+                        ? "border-blue-500 bg-blue-50 shadow-md"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="text-base font-semibold text-slate-900">{machine.machine_id}</div>
+                    <div className="mt-1 text-sm text-slate-500">{machine.model || tCommon("notAvailable")}</div>
+                    <div className="mt-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          machine.status === "Operational" || machine.status === "operational"
+                            ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : machine.status === "Maintenance" || machine.status === "maintenance"
+                            ? "border border-amber-200 bg-amber-50 text-amber-800"
+                            : "border border-slate-200 bg-slate-50 text-slate-700"
+                        }`}
+                      >
+                        {machine.status || t("operationalStatus")}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {filteredMachines.length === 0 && (
+                <div className="text-center text-sm text-slate-500">{t("noMachines")}</div>
+              )}
+            </div>
+          )}
+
+          {step === "problem" && (
+            <div className="space-y-6">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">{t("selectProblemCategory")}</label>
+                <input
+                  type="text"
+                  value={faultSearch}
+                  onChange={(e) => setFaultSearch(e.target.value)}
+                  placeholder={tCommon("actions.search")}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                />
+              </div>
+
+              {filteredFaults.length > 0 ? (
+                <div className="space-y-6">
+                  {Object.entries(faultGroups).map(([category, categoryFaults]) => (
+                    <div key={category}>
+                      <div className="mb-3 text-sm font-semibold text-slate-700">
+                        {FAULT_CATEGORY_LABELS[category] || category}
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {categoryFaults.map((fault) => (
+                          <button
+                            key={fault._id}
+                            type="button"
+                            onClick={() => handleFaultSelect(fault)}
+                            className={`rounded-xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                              selectedFault?._id === fault._id
+                                ? "border-blue-500 bg-blue-50 shadow-md"
+                                : "border-slate-200 bg-white"
+                            }`}
+                          >
+                            <div className="text-sm font-semibold text-slate-900">{fault.description}</div>
+                            {fault.gravite && (
+                              <div className="mt-1 text-xs text-slate-500">{fault.gravite}</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
+                  <div className="text-sm text-slate-600">{t("noFaults")}</div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleFaultSelect(null)}
+                className={`w-full rounded-xl border p-4 text-left transition ${
+                  !selectedFault ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                }`}
+              >
+                <div className="text-sm font-semibold text-slate-900">{t("other")}</div>
+                <div className="mt-1 text-xs text-slate-500">{t("describePlaceholder")}</div>
+              </button>
+
+              {!selectedFault && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <label htmlFor="other-problem" className="mb-2 block text-sm font-semibold text-slate-800">
+                    {t("other")}
+                  </label>
+                  <textarea
+                    id="other-problem"
+                    value={otherProblem}
+                    onChange={(e) => setOtherProblem(e.target.value.slice(0, 500))}
+                    placeholder={t("describePlaceholder")}
+                    required
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-amber-300 bg-white px-4 py-3 text-sm"
+                    aria-describedby="other-problem-help"
+                  />
+                  <div id="other-problem-help" className="mt-1 text-xs text-amber-800">
+                    {otherProblem.trim().length}/500
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === "description" && (
+            <div className="space-y-6">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">{t("descriptionLabel")}</label>
+                <textarea
+                  value={observation}
+                  onChange={(e) => setObservation(e.target.value.slice(0, 500))}
+                  placeholder={t("describePlaceholder")}
+                  rows={4}
+                  className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                />
+                <div className="mt-1 text-xs text-slate-500">{observation.length}/500</div>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">{t("photoUpload")}</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                />
+                {photo && <div className="mt-2 text-xs text-slate-600">{photo.name}</div>}
+              </div>
+              <KnowledgeSuggestions machineId={selectedMachine || undefined} faultCode={selectedFault?.code_panne} />
+            </div>
+          )}
+
+          {step === "urgency" && (
+            <div className="space-y-4">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">{t("selectUrgency")}</label>
+              {(["normal", "high", "machineStopped"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setUrgency(option)}
+                  className={`w-full rounded-xl border p-4 text-left transition ${
+                    urgency === option ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="text-sm font-semibold text-slate-900">{t(option)}</div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {step === "review" && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-slate-500">{t("machineLabel")}</div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">
+                      {selectedMachineData?.machine_id || tCommon("notAvailable")}
+                    </div>
+                    {selectedMachineData?.model && (
+                      <div className="text-sm text-slate-500">{selectedMachineData.model}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-slate-500">{t("problemLabel")}</div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">
+                      {selectedFault?.description || otherProblem || tCommon("notAvailable")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-slate-500">{t("descriptionLabel")}</div>
+                    <div className="mt-1 text-sm text-slate-700">
+                      {observation || tCommon("notAvailable")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-slate-500">{t("urgencyLabel")}</div>
+                    <div className="mt-1 text-base font-semibold text-slate-900">
+                      {urgency ? t(urgency) : t("normal")}
+                    </div>
+                  </div>
+                </div>
+                {photo && (
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-slate-500">{t("photoUpload")}</div>
+                    <div className="mt-1 text-sm text-slate-700">{photo.name}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 flex items-center justify-between">
+            <div>
+              {step !== "machine" && step !== "success" && (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {t("back")}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {step !== "machine" && step !== "success" && (
+                <button
+                  type="button"
+                  onClick={resetAndGoBack}
+                  className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  {t("cancel")}
+                </button>
+              )}
+              {step === "problem" && selectedMachine && (
+                <button
+                  type="button"
+                  onClick={() => setStep("description")}
+                  disabled={!canProceedFromProblem}
+                  className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {tCommon("next")}
+                </button>
+              )}
+              {step === "description" && (
+                <button
+                  type="button"
+                  onClick={() => setStep("urgency")}
+                  className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
+                >
+                  {tCommon("next")}
+                </button>
+              )}
+              {step === "urgency" && (
+                <button
+                  type="button"
+                  onClick={() => setStep("review")}
+                  className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
+                >
+                  {tCommon("next")}
+                </button>
+              )}
+              {step === "review" && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!canSubmitReview || submitting}
+                  className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {submitting ? t("submitting") : t("submitReport")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </DashboardLayout>
     </ProtectedRoute>
   );
@@ -1207,7 +865,7 @@ function OperatorCorrectivePageContent() {
 export default function OperatorCorrectivePage() {
   return (
     <Suspense fallback={<div className="operator-dashboard-theme min-h-screen bg-white" />}>
-      <OperatorCorrectivePageContent />
+      <ReportProblemFlow />
     </Suspense>
   );
 }

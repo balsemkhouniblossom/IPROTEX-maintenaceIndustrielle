@@ -213,6 +213,8 @@ type PaginationParams = {
   search?: string;
   approvalStatus?: "pending" | "approved" | "rejected";
   sort?: string;
+  reportId?: string;
+  workOrderId?: string;
 };
 type FilterPaginationParams = PaginationParams &
   Record<string, string | number | undefined>;
@@ -226,6 +228,8 @@ function withPagination(params?: PaginationParams) {
       search: params.search,
       approvalStatus: params.approvalStatus,
       sort: params.sort,
+      reportId: params.reportId,
+      workOrderId: params.workOrderId,
     },
   };
 }

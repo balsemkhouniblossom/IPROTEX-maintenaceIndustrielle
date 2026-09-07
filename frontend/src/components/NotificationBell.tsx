@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
@@ -34,9 +35,27 @@ function notificationTranslationParams(
   ) as Record<string, string | number>;
 }
 
+function notificationTarget(item: NotificationItem, locale: string): string | null {
+  const params = item.translationParams || {};
+  const value = (...keys: string[]) => keys.map((key) => params[key]).find((entry) => typeof entry === "string" && entry.trim()) as string | undefined;
+  const reportId = value("reportId", "report_id");
+  const workOrderId = value("workOrderId", "work_order_id", "otId", "ot_id");
+  const machineId = value("machineId", "machine_id");
+  const encoded = (id: string) => encodeURIComponent(id);
+  const kind = `${item.type} ${item.translationKey || ""}`.toLowerCase();
+  if (reportId) return `/${locale}/operator/my-reports?reportId=${encoded(reportId)}${workOrderId ? `&workOrderId=${encoded(workOrderId)}` : ""}`;
+  if (workOrderId && /preventive|inspection|task/.test(kind)) return `/${locale}/operator/preventive?workOrder=${encoded(workOrderId)}`;
+  if (workOrderId) return `/${locale}/operator/my-reports?workOrderId=${encoded(workOrderId)}`;
+  if (machineId) return `/${locale}/operator/machines/${encoded(machineId)}`;
+  return null;
+}
+
 export default function NotificationBell() {
   const t = useTranslations("notificationCenter");
   const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const locale = Array.isArray(params?.locale) ? params.locale[0] : params?.locale || "en";
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -239,9 +258,18 @@ export default function NotificationBell() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium text-text-primary">
-                      {renderNotificationTitle(item)}
-                    </span>
+                    {notificationTarget(item, String(locale)) ? (
+                      <button
+                        type="button"
+                        onClick={() => router.push(notificationTarget(item, String(locale)) as string)}
+                        className="text-start font-medium text-text-primary underline-offset-2 hover:underline"
+                        aria-label={renderNotificationTitle(item)}
+                      >
+                        {renderNotificationTitle(item)}
+                      </button>
+                    ) : (
+                      <span className="font-medium text-text-primary">{renderNotificationTitle(item)}</span>
+                    )}
                     <span className="shrink-0 text-[10px] text-text-secondary">
                       {new Date(item.createdAt).toLocaleString()}
                     </span>

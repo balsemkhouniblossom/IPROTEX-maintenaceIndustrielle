@@ -147,15 +147,10 @@ test("Admin Machines page does not render or subscribe to Live Status", () => {
   assert.doesNotMatch(machinesPage, /useLiveMonitoring\(\)|LiveStatusBadge|liveStatus/);
 });
 
-test("Operator Machines page calls useLiveMonitoring once and passes shared state to each row", () => {
+test("Operator Machines page does not render or subscribe to Live Status", () => {
   const operatorMachinesPage = readSource("src/app/[locale]/operator/machines/page.tsx");
-  const hookCalls = operatorMachinesPage.match(/useLiveMonitoring\(\)/g) ?? [];
 
-  assert.equal(hookCalls.length, 1);
-  assert.match(
-    operatorMachinesPage,
-    /<LiveStatusBadge\s+machineId=\{machine\._id\}\s+status=\{statusByMachine\[machine\._id\]\}\s+onSubscribe=\{subscribeToMachine\}/,
-  );
+  assert.doesNotMatch(operatorMachinesPage, /useLiveMonitoring\(\)|LiveStatusBadge|liveStatus/);
 });
 
 test("the Devices admin page reveals a newly registered or rotated API key exactly once and never re-displays it", () => {

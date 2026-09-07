@@ -150,17 +150,52 @@ test("deriveCorrectiveReportActions prefers explicit actions, then symptoms, the
   assert.deepEqual(deriveCorrectiveReportActions({ resultLabel: "Solved" }), ["Solved"]);
 });
 
-test("corrective page derives progress, button state, hint, and submit payload from the same validation result", () => {
+test("corrective page uses the existing operator report-problem API and step-based flow", () => {
   const source = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
     "utf8",
   );
 
-  assert.match(source, /const correctiveValidation = useMemo\(/);
-  assert.match(source, /const reportActionLabels = correctiveValidation\.actions/);
-  assert.match(source, /const canSubmitCorrective = correctiveValidation\.canSubmit && !submitting/);
-  assert.match(source, /const correctiveProgress = correctiveValidation\.progress/);
-  assert.match(source, /correctiveValidation\.missingFields/);
-  assert.match(source, /code_panne: selectedFault\?\.code_panne \|\| "OBSERVED_SYMPTOMS"/);
-  assert.match(source, /actions: reportActionLabels/);
+  assert.match(source, /apiService\.createOperatorCorrectiveReport/);
+  assert.match(source, /machine_id: selectedMachine/);
+  assert.match(source, /selectedFault\?\.code_panne \|\| "OBSERVED_SYMPTOMS"/);
+  assert.match(source, /actions/);
+  assert.match(source, /priority:/);
+  assert.match(source, /useSearchParams/);
+  assert.match(source, /fetchAllPaginated/);
+  assert.match(source, /step === "machine"/);
+  assert.match(source, /step === "problem"/);
+  assert.match(source, /step === "success"/);
+});
+
+test("corrective reporting preserves Other text, resets machine drafts, and ignores stale fault responses", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /const problemLabel = selectedFault\?\.description \|\| otherProblem\.trim\(\)/);
+  assert.match(source, /fault_description: faultDescription/);
+  assert.match(source, /function resetMachineSpecificDraft\(\)/);
+  for (const setter of ["setSelectedFault(null)", "setOtherProblem(\"\")", "setObservation(\"\")", "setUrgency(\"\")", "setPhoto(null)", "setFaultSearch(\"\")", "setFaults([])"]) {
+    assert.ok(source.includes(setter), `missing machine draft reset: ${setter}`);
+  }
+  assert.match(source, /let cancelled = false/);
+  assert.match(source, /if \(!cancelled\) \{\s*setFaults\(faultItems\)/);
+  assert.match(source, /cancelled = true/);
+});
+
+test("corrective submission distinguishes partial photo failure, retries by existing ids, and links View Status to the returned report", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /attachmentFailed = true/);
+  assert.match(source, /setResult\(\{ workOrder, report, duplicate: reportRes\.data\.duplicate, attachmentFailed \}\)/);
+  assert.match(source, /function retryPhotoUpload\(\)/);
+  assert.match(source, /work_order_id\", result\.workOrder\._id/);
+  assert.match(source, /intervention_report_id\", result\.report\._id/);
+  assert.match(source, /router\.push\(`\.\.\/my-reports\?reportId=/);
+  assert.match(source, /result\.duplicate \? t\("existingReportReused"\)/);
 });

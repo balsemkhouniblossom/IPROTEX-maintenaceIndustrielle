@@ -224,15 +224,11 @@ test("Operator corrective/preventive submissions and Technician work-order actio
   assert.match(corrective, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);
   assert.match(corrective, /invalidateList\(LIST_EVENTS\.workOrders\);/);
 
-  // The preventive page's submission flow (and its invalidateList call) was
-  // extracted into usePreventiveSubmission.ts as part of the page's
-  // decomposition — it's the sole owner of the submission payload/side
-  // effects now, so this is where the invalidation call actually lives.
-  const preventiveSubmissionHook = readSource(
-    "src/app/[locale]/operator/preventive/hooks/usePreventiveSubmission.ts",
+  const preventiveInspectionHook = readSource(
+    "src/app/[locale]/operator/preventive/hooks/usePreventiveInspection.ts",
   );
-  assert.match(preventiveSubmissionHook, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);
-  assert.match(preventiveSubmissionHook, /invalidateList\(LIST_EVENTS\.workOrders\);/);
+  assert.match(preventiveInspectionHook, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);
+  assert.match(preventiveInspectionHook, /invalidateList\(LIST_EVENTS\.workOrders\);/);
 
   const technicianDetail = readSource("src/components/technician/TechnicianWorkOrderDetail.tsx");
   assert.match(technicianDetail, /import \{ invalidateList, LIST_EVENTS \} from "@\/services\/listInvalidation";/);

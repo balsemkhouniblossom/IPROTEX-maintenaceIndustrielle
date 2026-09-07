@@ -44,6 +44,7 @@ import {
   BookOpenIcon,
   BeakerIcon,
   HeartIcon,
+  BellAlertIcon,
 } from "@heroicons/react/24/outline";
 
 type DashboardLayoutProps = Readonly<{
@@ -81,6 +82,34 @@ function DashboardLayoutBody({
   };
 
   const role = user?.role;
+  const operatorBlockedPrefixes = [
+    "/machines",
+    "/devices",
+    "/capteurs",
+    "/catalogues",
+    "/documents",
+    "/intervention-reports",
+    "/maintenance-plans",
+    "/pannes",
+    "/panne-solutions",
+    "/stocks",
+    "/work-orders",
+    "/knowledge-base",
+    "/lubrifiants",
+    "/lubrification-logs",
+    "/ot-pieces",
+    "/digital-twin",
+    "/reports",
+    "/ai-anomaly",
+    "/preventive-task-checklist",
+    "/users",
+  ];
+  const operatorBlocked =
+    role === "operator" &&
+    operatorBlockedPrefixes.some((prefix) =>
+      pathname === `${localePrefix}${prefix}` ||
+      pathname.startsWith(`${localePrefix}${prefix}/`),
+    );
 
   useEffect(() => {
     if (user?.profile_completed === false) {
@@ -97,6 +126,14 @@ function DashboardLayoutBody({
     // withLocale is derived from the stable locale for this mounted layout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated, router, user]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user?.role === "operator" && operatorBlocked) {
+      router.replace(withLocale("/operator"));
+    }
+    // withLocale and the route list are stable for this mounted layout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated, operatorBlocked, router, user?.role]);
 
   useEffect(() => {
     let active = true;
@@ -141,6 +178,17 @@ function DashboardLayoutBody({
           <p className="mt-4 text-sm font-medium text-slate-700">
             {tProtected("loading")}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (operatorBlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
+          <p className="text-lg font-semibold text-amber-900">{tProtected("accessDeniedTitle")}</p>
+          <p className="mt-2 text-sm text-amber-800">{tProtected("accessDeniedDescription")}</p>
         </div>
       </div>
     );
@@ -275,53 +323,39 @@ function DashboardLayoutBody({
           ],
         },
         {
-          domain: "maintenance",
-          domainKey: "domains.maintenance",
+          domain: "operations",
+          domainKey: "domains.operations",
           items: [
-            {
-              name: t("navigation.maintenance"),
-              href: "/operator/preventive",
-              icon: ClipboardDocumentListIcon,
-              children: [
-                {
-                  name: t("navigation.startCorrectiveMaintenance"),
-                  href: "/operator/corrective",
-                  icon: ExclamationTriangleIcon,
-                },
-                {
-                  name: t("navigation.smartMaintenanceCalendar"),
-                  href: "/operator/smart-maintenance-calendar",
-                  icon: CalendarDaysIcon,
-                },
-                {
-                  name: t("navigation.myReports"),
-                  href: "/operator/my-reports",
-                  icon: ClipboardDocumentListIcon,
-                },
-              ],
-            },
             {
               name: t("navigation.machines"),
               href: "/operator/machines",
               icon: CogIcon,
             },
+            {
+              name: t("navigation.reportProblem"),
+              href: "/operator/corrective",
+              icon: ExclamationTriangleIcon,
+            },
+            {
+              name: t("navigation.preventiveTasks"),
+              href: "/operator/preventive",
+              icon: ClipboardDocumentListIcon,
+            },
           ],
         },
         {
-          domain: "insights",
-          domainKey: "domains.insights",
+          domain: "followUp",
+          domainKey: "domains.followUp",
           items: [
             {
-              name: t("navigation.documents"),
-              href: "/operator/manuals",
-              icon: DocumentTextIcon,
-              children: [
-                {
-                  name: t("navigation.knowledgeBase"),
-                  href: "/operator/knowledge-base",
-                  icon: BookOpenIcon,
-                },
-              ],
+              name: t("navigation.myReports"),
+              href: "/operator/my-reports",
+              icon: ClipboardDocumentListIcon,
+            },
+            {
+              name: t("navigation.notifications"),
+              href: "/operator/notifications",
+              icon: BellAlertIcon,
             },
           ],
         },
@@ -579,19 +613,24 @@ function DashboardLayoutBody({
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const hasChildren = Boolean(item.children?.length);
+                    const itemPath = withLocale(item.href);
+                    const isActive =
+                      pathname === itemPath ||
+                      (item.href !== "/" && pathname.startsWith(`${itemPath}/`));
                     const isExpanded =
                       expandedNavItems.has(item.href) ||
                       item.children?.some(
-                        (child) => pathname === withLocale(child.href),
+                        (child) => pathname === withLocale(child.href) || pathname.startsWith(`${withLocale(child.href)}/`),
                       );
                     return (
                       <div key={item.href}>
                         <div className="flex items-center">
                           <Link
                             href={withLocale(item.href)}
-                            className={`nav-link-modern flex-1 ${pathname === withLocale(item.href) ? "active" : ""}`}
+                            className={`nav-link-modern flex-1 ${isActive ? "active" : ""}`}
                             onClick={() => setSidebarOpen(false)}
                             title={item.name}
+                            aria-current={isActive ? "page" : undefined}
                           >
                             <Icon className="h-5 w-5 shrink-0" />
                             <span className="min-w-0 flex-1 truncate">
@@ -644,18 +683,25 @@ function DashboardLayoutBody({
                             {item.children!.map((child) => {
                               const ChildIcon = child.icon;
                               return (
+                                (() => {
+                                  const childPath = withLocale(child.href);
+                                  const childActive = pathname === childPath || pathname.startsWith(`${childPath}/`);
+                                  return (
                                 <Link
                                   key={child.href}
                                   href={withLocale(child.href)}
-                                  className={`nav-link-modern ${pathname === withLocale(child.href) ? "active" : ""}`}
+                                  className={`nav-link-modern ${childActive ? "active" : ""}`}
                                   onClick={() => setSidebarOpen(false)}
                                   title={child.name}
+                                  aria-current={childActive ? "page" : undefined}
                                 >
                                   <ChildIcon className="h-4 w-4 shrink-0" />
                                   <span className="min-w-0 flex-1 truncate text-sm">
                                     {child.name}
                                   </span>
                                 </Link>
+                                  );
+                                })()
                               );
                             })}
                           </div>

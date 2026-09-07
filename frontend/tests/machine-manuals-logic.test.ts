@@ -135,16 +135,16 @@ test("admin Machines page opens manuals by fetching documents for the clicked ma
   assert.doesNotMatch(source, /operator\/manuals\?machine=/);
 });
 
-test("operator Machines page opens an in-place viewer from the exact clicked machine id", () => {
+test("operator Machines page keeps operational actions simple without manual viewer", () => {
   const source = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/machines/page.tsx"),
     "utf8",
   );
 
-  assert.match(source, /apiService\.getDocumentsByMachine\(machine\._id\)/);
-  assert.match(source, /sortMachineDocumentsForMachine\(machine\._id, Array\.isArray\(response\.data\) \? response\.data : \[\]\)/);
-  assert.match(source, /<span className="truncate">\{machine\.machine_id\}<\/span>/);
-  assert.match(source, /<DocumentAttachmentViewer[\s\S]*document=\{previewManual\}/);
-  assert.match(source, /No available document for this machine\./);
+  assert.doesNotMatch(source, /apiService\.getDocumentsByMachine\(/);
+  assert.doesNotMatch(source, /sortMachineDocumentsForMachine/);
+  assert.doesNotMatch(source, /DocumentAttachmentViewer/);
   assert.doesNotMatch(source, /operator\/manuals\?machine=/);
+  assert.match(source, /handleViewMachine\(machine\._id\)/);
+  assert.match(source, /handleReportProblem\(machine\._id\)/);
 });

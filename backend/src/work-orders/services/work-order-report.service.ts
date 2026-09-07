@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -87,6 +88,7 @@ const SUBMITTABLE_PREVENTIVE_STATUSES = ['scheduled', 'overdue'];
  */
 @Injectable()
 export class WorkOrderReportService {
+  private readonly logger = new Logger(WorkOrderReportService.name);
   private static readonly CORRECTIVE_REPORT_DEDUPE_WINDOW_MS = 2 * 60 * 1000;
 
   constructor(
@@ -237,12 +239,19 @@ export class WorkOrderReportService {
       await session.endSession();
     }
 
-    await this.notificationService.notifyCorrectiveAwaitingValidation({
-      workOrderId: result.workOrder._id.toString(),
-      otId: result.workOrder.ot_id,
-      machineId: machine._id.toString(),
-      reportId: result.report._id.toString(),
-    });
+    try {
+      await this.notificationService.notifyCorrectiveAwaitingValidation({
+        workOrderId: result.workOrder._id.toString(),
+        otId: result.workOrder.ot_id,
+        machineId: machine._id.toString(),
+        reportId: result.report._id.toString(),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Corrective report notification failed after report creation (workOrder=${result.workOrder._id.toString()}, report=${result.report._id.toString()})`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
 
     return result;
   }

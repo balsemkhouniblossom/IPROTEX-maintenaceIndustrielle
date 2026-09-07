@@ -413,12 +413,8 @@ export class OperatorService {
 
     const moduleObjectIds = modules.map((module) => module._id);
     const moduleIds = moduleObjectIds.map((id) => id.toString());
-    // Checklist rows only exist once someone has run the sync — normally an
-    // admin action on the /preventive-task-checklist page. Operators have no
-    // access to that admin-only endpoint, so lazily materialize rows for
-    // just their own scope here rather than showing a permanently empty
-    // list until an admin happens to visit that page first.
-    await this.preventiveTasksService.syncPlansForModuleIds(moduleObjectIds);
+    // This is a read-only Operator GET. Checklist synchronization performs
+    // upserts and belongs to the scheduling/admin boundary, never page load.
 
     const query: Record<string, unknown> = {
       deleted_at: { $exists: false },
@@ -604,8 +600,22 @@ export class OperatorService {
     page: number,
     limit: number,
     skip: number,
+    reportId?: string,
+    workOrderId?: string,
   ): Promise<PaginatedResponse<InterventionReportResponse>> {
-    const query = { technician_id: this.technicianScopeFilter(userId) };
+    const query: Record<string, unknown> = {
+      technician_id: this.technicianScopeFilter(userId),
+    };
+    if (reportId?.trim()) {
+      const trimmed = reportId.trim();
+      query.$or = [
+        ...(Types.ObjectId.isValid(trimmed) ? [{ _id: trimmed }] : []),
+        { report_id: trimmed },
+      ];
+    }
+    if (workOrderId?.trim() && Types.ObjectId.isValid(workOrderId.trim())) {
+      query.ot_id = workOrderId.trim();
+    }
 
     const [items, totalItems] = await Promise.all([
       this.reportModel

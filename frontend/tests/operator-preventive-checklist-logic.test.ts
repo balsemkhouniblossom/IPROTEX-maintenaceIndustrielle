@@ -459,50 +459,64 @@ test("submission derives tasks_completed from persisted checklist items for each
   assert.match(validationSource, /const planItems = groupedChecklistItems\.filter\(\(item\) => checklistPlanId\(item\) === planId\)/);
 });
 
-test("the focused workflow exposes Start, Complete, Next, and final Submit as gated actions", () => {
-  const workflowSource = readSource(PLAN_WORKFLOW_HOOK);
-  const groupsUtilsSource = readSource(PLAN_GROUPS_UTILS);
-  const actionsSource = readSource(SUBMISSION_ACTIONS_COMPONENT);
+test("the preventive page exposes Today, Upcoming, and Completed tabs with task cards and a checklist flow", () => {
   const pageSource = readSource();
+  const inspectionSource = readSource(`${FEATURE_DIR}/hooks/usePreventiveInspection.ts`);
 
-  assert.match(workflowSource, /const \[taskStarted,\s*setTaskStarted\] = useState\(false\)/);
-  assert.match(workflowSource, /const \[activePlanStepIndex,\s*setActivePlanStepIndex\] = useState\(0\)/);
-  assert.match(workflowSource, /const startSelectedTask = useCallback\(async \(\): Promise<void> =>/);
-  assert.match(workflowSource, /function goToNextPlanStep\(\): void/);
-  assert.match(groupsUtilsSource, /const canGoToNextPlanStep = Boolean\(taskStarted && selectedTaskCompleted && !isLastPlanStep\)/);
-
-  assert.match(pageSource, /onStart=\{\(\) => void planWorkflow\.startSelectedTask\(\)\}/);
-  assert.match(pageSource, /onComplete=\{\(\) => void handleCompleteSelectedTask\(\)\}/);
-  assert.match(actionsSource, /data-testid="preventive-next-step-button"/);
-  assert.match(actionsSource, /disabled=\{!canSubmitFocusedTask \|\| submitting \|\| !isLastPlanStep\}/);
-  assert.match(actionsSource, /data-testid="preventive-submit-button"/);
+  assert.match(pageSource, /type Tab = "today" | "upcoming" | "completed"/);
+  assert.match(pageSource, /activeTab === "today"/);
+  assert.match(pageSource, /activeTab === "upcoming"/);
+  assert.match(pageSource, /activeTab === "completed"/);
+  assert.match(pageSource, /<TaskCard/);
+  assert.match(pageSource, /<InspectionView/);
+  assert.match(pageSource, /<InspectionReview/);
+  assert.match(pageSource, /<InspectionSuccess/);
+  assert.match(pageSource, /toggleItem/);
+  assert.match(pageSource, /submit\(/);
+  assert.match(inspectionSource, /submitOperatorPreventiveMaintenance/);
+  assert.match(inspectionSource, /updateOperatorPreventiveTaskChecklist/);
 });
 
-test("the preventive page report history hides internal IDs and long summaries from the scan view", () => {
-  const pageSource = readSource();
-  const reportsSectionSource = readSource(REPORTS_SECTION_COMPONENT);
+test("the preventive page success view shows the completion result without exposing internal IDs", () => {
+  const successSource = readSource(`${FEATURE_DIR}/components/InspectionSuccess.tsx`);
 
-  assert.match(pageSource, /const \[selectedGeneratedReport,\s*setSelectedGeneratedReport\]/);
-  assert.match(pageSource, /const preventiveGeneratedReports = generatedReports\.filter\(\(item\) => item\.type === "preventive"\)/);
+  assert.match(successSource, /workOrderOtId/);
+  assert.match(successSource, /okCount/);
+  assert.match(successSource, /problemCount/);
+  assert.match(successSource, /completedAt/);
 
-  assert.match(reportsSectionSource, /item\.machine/);
-  assert.match(reportsSectionSource, /formatReportDate\(item\.createdAt\)/);
-  assert.match(reportsSectionSource, /formatReportStatus\(item\.status\)/);
-  assert.match(reportsSectionSource, /data-testid=\{`preventive-report-details-\$\{index\}`\}/);
-
-  for (const hiddenPattern of [/item\.reportId/, /item\.workOrderId/, /item\.summary/, /<table/, /<th/, /font-mono/]) {
+  for (const hiddenPattern of [/item\.reportId/, /item\.workOrderId/, /_id/, /mongodb/i]) {
     assert.doesNotMatch(
-      reportsSectionSource,
+      successSource,
       hiddenPattern,
-      "preventive report scan view must not expose IDs, table columns, or long task summaries",
+      "preventive success view must not expose internal identifiers",
     );
   }
+});
 
-  const detailsContentSource = fs.readFileSync(
-    path.join(process.cwd(), `${FEATURE_DIR}/components/ReportDetailsContent.tsx`),
-    "utf8",
-  );
-  assert.match(detailsContentSource, /report\.summary/);
+test("Operator preventive cards and checklist carry the exact occurrence and protect completed results", () => {
+  const page = readSource("src/app/[locale]/operator/preventive/page.tsx");
+  const taskHook = readSource("src/app/[locale]/operator/preventive/hooks/useOperatorPreventiveTasks.ts");
+  const inspection = readSource("src/app/[locale]/operator/preventive/hooks/usePreventiveInspection.ts");
+  const view = readSource("src/app/[locale]/operator/preventive/components/InspectionView.tsx");
+
+  assert.match(taskHook, /const key = wo\._id \|\| `\$\{planId\}:\$\{machineId\}`/);
+  assert.match(page, /t\.workOrderId === initialWorkOrderId/);
+  assert.match(page, /workOrderId: task\.workOrderId/);
+  assert.match(page, /readOnly: task\.tab === "completed"/);
+  assert.match(page, /my-reports\?reportId=/);
+  assert.match(page, /operator\/corrective\?machine=\$\{selectedTask\?\.machineId\}/);
+  assert.match(page, /setCompletedReportId\(result\.reportId\)/);
+  assert.match(inspection, /work_order_id: targetWorkOrderId/);
+  assert.doesNotMatch(inspection, /scheduleOperatorPreventive/);
+  assert.match(view, /disabled=\{readOnly\}/);
+  assert.match(view, /readOnly=\{readOnly\}/);
+});
+
+test("preventive navigation preserves the checklist draft when returning to the task list", () => {
+  const page = readSource("src/app/[locale]/operator/preventive/page.tsx");
+  assert.doesNotMatch(page, /useEffect\(\(\) => \{[\s\S]*?if \(step !== "list"\) return;[\s\S]*?inspection\.reset\(\)/);
+  assert.match(page, /if \(selectedTask\?\.workOrderId !== task\.workOrderId\) \{/);
 });
 
 test("all supported locales still define the preventiveTaskChecklist empty key used by the operator checklist", () => {

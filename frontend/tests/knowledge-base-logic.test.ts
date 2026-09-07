@@ -234,7 +234,7 @@ test("Corrective, preventive, and technician work-order pages surface KnowledgeS
   );
   assert.match(
     preventive,
-    /<KnowledgeSuggestions machineId=\{selectedMachine\} \/>/,
+    /<KnowledgeSuggestions machineId=\{selectedTask\.machineId\} \/>/,
     "the preventive page must surface suggestions scoped to the selected machine",
   );
   assert.match(

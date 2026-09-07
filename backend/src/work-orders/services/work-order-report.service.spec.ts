@@ -165,6 +165,24 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('keeps a created corrective report successful when notification creation fails', async () => {
+    notificationService.notifyCorrectiveAwaitingValidation.mockRejectedValue(
+      new Error('notification unavailable'),
+    );
+
+    const result = await service.createCorrectiveReportForOperator({
+      operatorId,
+      machineId: machineId.toHexString(),
+      codePanne: 'FAULT-1',
+      actions: ['Reset breaker'],
+    });
+
+    expect(result.duplicate).toBe(false);
+    expect(workOrderModel.create).toHaveBeenCalled();
+    expect(interventionReportModel.create).toHaveBeenCalled();
+    expect(session.endSession).toHaveBeenCalled();
+  });
+
   it('rolls back and rejects when the intervention report write fails, leaving no partial record behind', async () => {
     interventionReportModel.create.mockRejectedValue(
       new Error('report insert failed'),

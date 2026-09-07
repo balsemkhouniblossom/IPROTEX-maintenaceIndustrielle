@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
-import { MiniAvatarAssistant } from "@/components/avatar/MiniAvatarAssistant";
-import type { AvatarActionKey } from "@/components/avatar/avatar-types";
-import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations } from "next-intl";
@@ -14,7 +11,8 @@ import {
   ClockIcon,
   ArrowRightIcon,
   ClipboardDocumentListIcon,
-  WrenchScrewdriverIcon,
+  ExclamationTriangleIcon,
+  CogIcon,
 } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
@@ -87,6 +85,27 @@ interface OperatorTaskItem {
   isOverdue: boolean;
 }
 
+interface MachineItem {
+  _id: string;
+  machine_id: string;
+  serial_no: string;
+  model?: string;
+  status: string;
+  type_id?: string | { name?: string };
+}
+
+interface NotificationItem {
+  _id: string;
+  notification_id: string;
+  type: string;
+  title: string;
+  message?: string;
+  translationKey?: string;
+  translationParams?: Record<string, string | number | boolean | null>;
+  is_read: boolean;
+  createdAt: string;
+}
+
 function extractId(value: unknown): string {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -135,18 +154,57 @@ function formatReportStatus(
   status: string | undefined,
   tOperator: ReturnType<typeof useTranslations>,
 ): string {
-  if (status === "validated") {
-    return tOperator("validated");
+  const normalized = (status || "").toLowerCase();
+  if (normalized === "validated" || normalized === "completed") return tOperator("dashboard.statusCompleted");
+  if (normalized === "rejected" || normalized === "cancelled" || normalized === "canceled") return tOperator("dashboard.statusCancelled");
+  if (normalized === "in_progress" || normalized === "in-progress") return tOperator("dashboard.statusInProgress");
+  if (normalized === "waiting_parts" || normalized === "waiting-for-parts") return tOperator("dashboard.statusWaitingParts");
+  if (normalized === "waiting_validation" || normalized === "technician_required") return tOperator("dashboard.statusAwaitingReview");
+  return tOperator("dashboard.statusSubmitted");
+}
+
+function notificationTranslationParams(
+  params?: Record<string, string | number | boolean | null>,
+): Record<string, string | number> {
+  if (!params) return {};
+  return Object.fromEntries(
+    Object.entries(params)
+      .filter(([, value]) => value !== null)
+      .map(([key, value]) => [
+        key,
+        typeof value === "boolean" ? String(value) : value,
+      ]),
+  ) as Record<string, string | number>;
+}
+
+function machineStatusBadge(status: string): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "operational") {
+    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
   }
-  if (status === "rejected") {
-    return tOperator("dashboard.rejected");
+  if (normalized === "maintenance") {
+    return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
   }
-  return tOperator("dashboard.pendingTechnicianValidation");
+  return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300";
+}
+
+function renderNotificationTitle(
+  item: NotificationItem,
+  tNotification: ReturnType<typeof useTranslations>,
+): string {
+  const key = item.translationKey
+    ? `templates.${item.translationKey.replace(/^templates\./, "")}`
+    : "";
+  if (key && tNotification.has(key)) {
+    return tNotification(key, notificationTranslationParams(item.translationParams));
+  }
+  return item.title;
 }
 
 export default function OperatorDashboard() {
   const tOperator = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
+  const tNotification = useTranslations("notificationCenter");
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
@@ -165,18 +223,12 @@ export default function OperatorDashboard() {
   const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
   const [loading, setLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
+  const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
   const now = useMemo(() => new Date(), []);
 
-  const shiftLabel = useMemo(() => {
-    const hour = now.getHours();
-    if (hour >= 6 && hour < 14) {
-      return tOperator("shift.morning");
-    }
-    if (hour >= 14 && hour < 22) {
-      return tOperator("shift.afternoon");
-    }
-    return tOperator("shift.night");
-  }, [now, tOperator]);
+  const [machines, setMachines] = useState<MachineItem[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const activeWorkOrders = useMemo(
     () =>
@@ -186,36 +238,6 @@ export default function OperatorDashboard() {
       ),
     [user?._id, workOrders],
   );
-
-  const derivedMachineLabel = useMemo(() => {
-    const firstActive = activeWorkOrders.find(
-      (order) => order.status !== "completed",
-    );
-    return firstActive
-      ? extractMachineLabel(firstActive.machine_id)
-      : tOperator("dashboard.emptyValue");
-  }, [activeWorkOrders, tOperator]);
-
-  const recentReports = useMemo(() => {
-    return reports
-      .filter((report) => {
-        const workOrder = workOrders.find(
-          (order) => order._id === extractId(report.ot_id),
-        );
-        return (
-          !workOrder ||
-          !user?._id ||
-          extractId(workOrder.technician_id) === user._id
-        );
-      })
-      .slice()
-      .sort(
-        (left, right) =>
-          new Date(right.date_fin || right.date_debut || 0).getTime() -
-          new Date(left.date_fin || left.date_debut || 0).getTime(),
-      )
-      .slice(0, 4);
-  }, [reports, workOrders, user?._id]);
 
   const eventByWorkOrderId = useMemo(() => {
     return new Map(
@@ -227,6 +249,12 @@ export default function OperatorDashboard() {
 
   const operatorTasks = useMemo<OperatorTaskItem[]>(() => {
     return activeWorkOrders
+      .filter((order) => {
+        const event = eventByWorkOrderId.get(order._id);
+        return ![order.type_maintenance, event?.type]
+          .filter(Boolean)
+          .some((type) => String(type).toLowerCase().includes("correct"));
+      })
       .map((order) => {
         const event = eventByWorkOrderId.get(order._id);
         const dueDate =
@@ -269,56 +297,45 @@ export default function OperatorDashboard() {
   }, [activeWorkOrders, eventByWorkOrderId, now]);
 
   const nextTask = operatorTasks[0] || null;
-  // The overdue *count* shown as a KPI badge always comes from the
-  // server (`GET /operator/dashboard`, business-timezone-aware) rather
-  // than from filtering the on-screen task list — the two lists can
-  // legitimately differ (this page only loads a week of calendar
-  // events), so recomputing the badge locally could silently disagree
-  // with every other overdue count in the app.
   const overdueTasksCount = kpiCounts.overdueCount;
 
-  const latestReport = recentReports[0] || null;
-  const waitingValidationCount = reports.filter(
-    (report) =>
-      !report.validation_responsable ||
-      report.validation_responsable === "pending",
-  ).length;
+  const recentReports = useMemo(() => {
+    return reports
+      .filter((report) => {
+        const workOrder = workOrders.find(
+          (order) => order._id === extractId(report.ot_id),
+        );
+        return (
+          !workOrder ||
+          !user?._id ||
+          extractId(workOrder.technician_id) === user._id
+        );
+      })
+      .slice()
+      .sort(
+        (left, right) =>
+          new Date(right.date_fin || right.date_debut || 0).getTime() -
+          new Date(left.date_fin || left.date_debut || 0).getTime(),
+      )
+      .slice(0, 5);
+  }, [reports, workOrders, user?._id]);
+
+  const openReportsCount = useMemo(
+    () =>
+      reports.filter(
+        (report) =>
+          !isCompletedStatus(report.validation_responsable) &&
+          report.validation_responsable !== "rejected",
+      ).length,
+    [recentReports],
+  );
 
   const analyticsCards = [
-    {
-      label: tOperator("dashboard.todayTasks"),
-      value: operatorTasks.length,
-      icon: ClipboardDocumentListIcon,
-      accent: "from-cyan-700 via-sky-700 to-blue-800",
-      textTone: "text-[var(--text-primary)]",
-    },
-    {
-      label: tOperator("stats.assignedToYou"),
-      value: stats.assigned,
-      icon: ClipboardDocumentListIcon,
-      accent: "from-cyan-700 via-sky-700 to-blue-800",
-      textTone: "text-[var(--text-primary)]",
-    },
-    {
-      label: tOperator("stats.inProgress"),
-      value: stats.inProgress,
-      icon: WrenchScrewdriverIcon,
-      accent: "from-cyan-700 via-sky-700 to-indigo-800",
-      textTone: "text-[var(--text-primary)]",
-    },
     {
       label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount,
       icon: ClockIcon,
       accent: "from-cyan-700 via-sky-700 to-blue-800",
       textTone: "text-[var(--text-primary)]",
-    },
-    {
-      label: tOperator("dashboard.overdueTasks"),
-      value: overdueTasksCount,
-      icon: ClockIcon,
-      accent: "from-cyan-700 via-sky-700 to-blue-800",
-      textTone:
-        overdueTasksCount > 0 ? "text-rose-500" : "text-[var(--text-primary)]",
     },
     {
       label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount,
@@ -328,11 +345,45 @@ export default function OperatorDashboard() {
     },
   ];
 
-  const shellClassName = "p-4 md:p-6 xl:p-8";
+  const summaryCards = [
+    {
+      label: tOperator("dashboard.machinesAvailable"),
+      value: machines.length,
+      icon: CogIcon,
+      accent: "from-cyan-700 via-sky-700 to-blue-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+    {
+      label: tOperator("stats.dueToday"),
+      value: kpiCounts.dueTodayCount,
+      icon: ClockIcon,
+      accent: "from-cyan-700 via-sky-700 to-blue-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+    {
+      label: tOperator("dashboard.openReports"),
+      value: openReportsCount,
+      icon: ClipboardDocumentListIcon,
+      accent: "from-cyan-700 via-sky-700 to-indigo-800",
+      textTone: "text-[var(--text-primary)]",
+    },
+    {
+      label: tOperator("dashboard.unreadNotifications"),
+      value: unreadCount,
+      icon: ExclamationTriangleIcon,
+      accent: "from-cyan-700 via-sky-700 to-blue-800",
+      textTone:
+        unreadCount > 0 ? "text-rose-500" : "text-[var(--text-primary)]",
+    },
+  ];
+
   const softCardClassName = "operator-frost-card";
-  const centeredMetricCardClassName = `${softCardClassName} rounded-3xl p-6 text-center`;
+  const centeredMetricCardClassName = `${softCardClassName} rounded-3xl p-5 text-center`;
+  const rowCardClassName = `${softCardClassName} rounded-3xl p-4`;
   const actionButtonClassName =
-    "inline-flex items-center justify-center gap-3 rounded-2xl border border-cyan-700/55 bg-linear-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#155E75] px-6 py-4 text-sm font-semibold text-slate-50 shadow-[0_14px_30px_rgba(6,78,59,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(6,78,59,0.45)]";
+    "inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-700/55 bg-linear-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#155E75] px-4 py-2.5 text-sm font-semibold text-slate-50 shadow-[0_14px_30px_rgba(6,78,59,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(6,78,59,0.45)]";
+  const secondaryButtonClassName =
+    "inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-(--surface-elevated) px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:border-cyan-700/55";
 
   const getTaskRoute = (maintenanceType: string) => {
     return maintenanceType.toLowerCase().includes("correct")
@@ -340,43 +391,20 @@ export default function OperatorDashboard() {
       : `/${locale}/operator/preventive`;
   };
 
-  const handleStartWorking = () => {
-    const chooseSection = document.getElementById("operator-maintenance-entry");
-    if (chooseSection) {
-      chooseSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-
-    if (nextTask) {
-      const machineQuery = nextTask.machineId
-        ? `?machine=${nextTask.machineId}`
-        : "";
-      router.push(`${getTaskRoute(nextTask.maintenanceType)}${machineQuery}`);
-      return;
-    }
-
-    router.push(`/${locale}/operator/preventive`);
-  };
-
   const handleStartTask = (task: OperatorTaskItem) => {
-    const machineQuery = task.machineId ? `?machine=${task.machineId}` : "";
-    router.push(`${getTaskRoute(task.maintenanceType)}${machineQuery}`);
+    const params = new URLSearchParams();
+    if (task.workOrderId) params.set("workOrder", task.workOrderId);
+    if (task.machineId) params.set("machine", task.machineId);
+    router.push(`${getTaskRoute(task.maintenanceType)}?${params.toString()}`);
   };
 
-  const handleAvatarAction = (action: AvatarActionKey) => {
-    if (action === "viewReports") {
-      router.push(`/${locale}/operator/my-reports`);
-      return;
-    }
-    if (action === "viewCalendar") {
-      router.push(`/${locale}/operator/smart-maintenance-calendar`);
-      return;
-    }
-    if (nextTask) {
-      handleStartTask(nextTask);
-      return;
-    }
-    handleStartWorking();
+  const handleViewMachine = (machineId: string) => {
+    router.push(`/${locale}/operator/machines/${machineId}`);
+  };
+
+  const handleReportProblem = (machineId?: string) => {
+    const query = machineId ? `?machine=${machineId}` : "";
+    router.push(`/${locale}/operator/corrective${query}`);
   };
 
   useEffect(() => {
@@ -389,14 +417,16 @@ export default function OperatorDashboard() {
 
     let cancelled = false;
 
-    const loadOperatorStats = async () => {
+    const loadOperatorData = async () => {
       try {
         const [
-          workOrdersResponse,
-          reportsResponse,
-          calendarResponse,
-          dashboardResponse,
-        ] = await Promise.all([
+          workOrdersResult,
+          reportsResult,
+          calendarResult,
+          dashboardResult,
+          machinesResult,
+          notificationsResult,
+        ] = await Promise.allSettled([
           fetchAllPaginated<WorkOrderItem>((pagination) =>
             apiService.getMyWorkOrders(pagination),
           ),
@@ -408,52 +438,62 @@ export default function OperatorDashboard() {
             date: new Date().toISOString().slice(0, 10),
           }),
           apiService.getOperatorDashboard(),
+          fetchAllPaginated<MachineItem>((pagination) =>
+            apiService.getMyMachines(pagination),
+          ),
+          apiService.getNotifications({ page: 1, limit: 5 }),
         ]);
 
         if (cancelled) {
           return;
         }
 
-        const normalizedWorkOrders = workOrdersResponse;
-        const reportItems = reportsResponse;
-        const calendarPayload =
-          (calendarResponse.data as { items?: unknown } | undefined)?.items ??
-          calendarResponse.data;
-        const calendarItems =
-          normalizeApiItems<CalendarEventItem>(calendarPayload);
+        const failures: Record<string, boolean> = {};
+        if (workOrdersResult.status === "fulfilled") setWorkOrders(workOrdersResult.value);
+        else failures.tasks = true;
+        if (reportsResult.status === "fulfilled") setReports(reportsResult.value);
+        else failures.reports = true;
+        if (calendarResult.status === "fulfilled") {
+          const calendarPayload =
+            (calendarResult.value.data as { items?: unknown } | undefined)?.items ??
+            calendarResult.value.data;
+          setCalendarEvents(normalizeApiItems<CalendarEventItem>(calendarPayload));
+        } else failures.tasks = true;
+        if (machinesResult.status === "fulfilled") setMachines(machinesResult.value);
+        else failures.machines = true;
+        if (notificationsResult.status === "fulfilled") {
+          const fetchedNotifications = normalizeApiItems<NotificationItem>(notificationsResult.value.data);
+          setRecentNotifications(fetchedNotifications.slice(0, 5));
+          setUnreadCount(
+            (notificationsResult.value.data as { unreadCount?: number } | undefined)?.unreadCount ??
+              fetchedNotifications.filter((item) => !item.is_read).length,
+          );
+        } else failures.notifications = true;
+        if (dashboardResult.status === "fulfilled") {
+          const dashboard = dashboardResult.value.data as OperatorKpiCounts & {
+            assignedCount: number;
+            inProgressCount: number;
+            completedCount: number;
+          };
+          setKpiCounts({
+            overdueCount: dashboard.overdueCount,
+            dueTodayCount: dashboard.dueTodayCount,
+            waitingValidationCount: dashboard.waitingValidationCount,
+            completedTodayCount: dashboard.completedTodayCount,
+          });
+          setStats({
+            assigned: dashboard.assignedCount,
+            inProgress: dashboard.inProgressCount,
+            completed: dashboard.completedCount,
+          });
+        } else {
+          failures.stats = true;
+          setStatsError(true);
+        }
+        setSectionErrors(failures);
 
-        setWorkOrders(normalizedWorkOrders);
-        setReports(reportItems);
-        setCalendarEvents(calendarItems);
-
-        // Every counter/badge on this page comes from the shared
-        // KpiService via GET /operator/dashboard — never recomputed
-        // client-side from the (necessarily partial, week-scoped)
-        // lists fetched above, which exist only to render the task
-        // list and recent-activity cards.
-        const dashboard = dashboardResponse.data as {
-          overdueCount: number;
-          dueTodayCount: number;
-          waitingValidationCount: number;
-          completedTodayCount: number;
-          assignedCount: number;
-          inProgressCount: number;
-          completedCount: number;
-        };
-
-        setKpiCounts({
-          overdueCount: dashboard.overdueCount,
-          dueTodayCount: dashboard.dueTodayCount,
-          waitingValidationCount: dashboard.waitingValidationCount,
-          completedTodayCount: dashboard.completedTodayCount,
-        });
-        setStats({
-          assigned: dashboard.assignedCount,
-          inProgress: dashboard.inProgressCount,
-          completed: dashboard.completedCount,
-        });
       } catch (error) {
-        console.error("Error loading operator stats", error);
+        console.error("Error loading operator dashboard", error);
         setStatsError(true);
       } finally {
         if (!cancelled) {
@@ -462,7 +502,7 @@ export default function OperatorDashboard() {
       }
     };
 
-    void loadOperatorStats();
+    void loadOperatorData();
 
     return () => {
       cancelled = true;
@@ -485,307 +525,286 @@ export default function OperatorDashboard() {
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={tOperator("title")}>
-        <div className={`operator-dashboard-theme ${shellClassName}`}>
-          <div className="bento-grid gap-6">
-            <section
-              className={`col-span-full rounded-[28px] p-5 md:p-8 ${softCardClassName}`}
-            >
-              <div className="operator-welcome-stage grid gap-6 rounded-[26px] p-4 sm:p-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-center xl:p-6">
-                <div className="flex min-w-0 flex-col justify-center">
-                  <MiniAvatarAssistant
-                    userName={user?.nom_complet}
-                    role={user?.role}
-                    status={statsError ? "error" : "ready"}
-                    stats={{
-                      assigned: stats.assigned,
-                      dueToday: operatorTasks.filter((task) => !task.isOverdue)
-                        .length,
-                      overdue: overdueTasksCount,
-                      waitingValidation: waitingValidationCount,
-                      inProgress: stats.inProgress,
-                    }}
-                    onAction={handleAvatarAction}
-                    variant="embedded"
-                  />
+        <div className="operator-dashboard-theme space-y-6 p-4 md:p-6 lg:p-8">
+          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {summaryCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.label}
+                  className={`${centeredMetricCardClassName} flex min-h-28 flex-col items-center justify-center`}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                    {card.label}
+                  </div>
+                  <div
+                    className={`mt-1 text-2xl font-semibold tracking-[-0.03em] ${card.textTone}`}
+                  >
+                    {card.value}
+                  </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div
-                    className={`operator-context-card ${softCardClassName} flex min-h-36 items-center gap-4 rounded-3xl p-5 text-start`}
-                  >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 to-blue-700 text-white shadow-[0_10px_24px_rgba(14,116,144,0.24)]">
-                      <ClockIcon className="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
-                        {tOperator("dashboard.currentShift")}
-                      </div>
-                      <div className="mt-1.5 truncate text-xl font-semibold tracking-[-0.02em] text-text-primary">
-                        {shiftLabel}
-                      </div>
-                      <div className="mt-1 text-xs text-text-secondary">
-                        {tOperator("dashboard.todayTasks")}
-                      </div>
-                    </div>
-                  </div>
+              );
+            })}
+          </section>
 
-                  <div
-                    className={`operator-context-card ${softCardClassName} flex min-h-36 items-center gap-4 rounded-3xl p-5 text-start`}
-                  >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-blue-600 to-indigo-800 text-white shadow-[0_10px_24px_rgba(30,64,175,0.24)]">
-                      <WrenchScrewdriverIcon
-                        className="h-5 w-5"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
-                        {tOperator("dashboard.machineAssigned")}
-                      </div>
-                      <div className="mt-1.5 truncate text-xl font-semibold tracking-[-0.02em] text-text-primary">
-                        {derivedMachineLabel}
-                      </div>
-                      <div className="mt-1 text-xs text-text-secondary">
-                        {tOperator("machine")}
-                      </div>
-                    </div>
-                  </div>
+          <section className={`rounded-3xl p-5 md:p-6 ${softCardClassName}`}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-text-primary">
+                {tOperator("dashboard.machinesAvailable")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => router.push(`/${locale}/operator/machines`)}
+                className={secondaryButtonClassName}
+              >
+                {tOperator("dashboard.viewAllMachines")}
+              </button>
+            </div>
+
+            {sectionErrors.machines ? (
+              <div className={`${centeredMetricCardClassName} py-10`}>
+                <div className="text-sm font-semibold text-rose-700">{tCommon("loadFailed", { defaultValue: "Machines could not be loaded." })}</div>
+                <div className="mt-1 text-xs text-text-secondary">{tCommon("retryLater", { defaultValue: "Try again shortly." })}</div>
+              </div>
+            ) : machines.length === 0 ? (
+              <div className={`${centeredMetricCardClassName} py-10`}>
+                <div className="text-sm text-text-secondary">
+                  {tOperator("dashboard.noMachinesAvailable")}
                 </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {machines.slice(0, 6).map((machine) => (
+                  <div
+                    key={machine._id}
+                    className={`rounded-2xl border border-border bg-(--surface-secondary) p-4`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-text-primary">
+                          {machine.machine_id || displayText(machine._id, "-")}
+                        </div>
+                        <div className="mt-1 text-xs text-text-secondary">
+                          {machine.model || machine.serial_no || ""}
+                        </div>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semib capitalize ${machineStatusBadge(machine.status)}`}
+                      >
+                        {machine.status || tOperator("dashboard.unknownStatus")}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleViewMachine(machine._id)}
+                        className={secondaryButtonClassName}
+                      >
+                        {tOperator("dashboard.viewMachine")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReportProblem(machine._id)}
+                        className={actionButtonClassName}
+                      >
+                        {tOperator("dashboard.reportProblem")}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
-              <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                {analyticsCards.map((card) => {
-                  const Icon = card.icon;
+          <section className={`rounded-3xl p-5 md:p-6 ${softCardClassName}`}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-text-primary">
+                {tOperator("dashboard.todaysPreventiveTasks")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => router.push(`/${locale}/operator/preventive`)}
+                className={secondaryButtonClassName}
+              >
+                {tOperator("dashboard.viewAllTasks")}
+              </button>
+            </div>
+
+            {sectionErrors.tasks ? (
+              <div className={`${centeredMetricCardClassName} py-10 text-sm text-rose-700`}>{tCommon("loadFailed", { defaultValue: "Preventive tasks could not be loaded." })}</div>
+            ) : operatorTasks.length === 0 ? (
+              <div className={`${centeredMetricCardClassName} py-10`}>
+                <div className="text-sm font-semibold text-text-primary">
+                  {tOperator("dashboard.noPreventiveTasksTitle")}
+                </div>
+                <div className="mt-1 text-xs text-text-secondary">
+                  {tOperator("dashboard.noPreventiveTasksDescription")}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {operatorTasks.slice(0, 5).map((task) => {
+                  const dueDate = new Date(task.dueDate);
+                  const dueLabel = task.isOverdue
+                    ? tCommon("now")
+                    : new Intl.DateTimeFormat(locale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(dueDate);
 
                   return (
                     <div
-                      key={card.label}
-                      className={`${centeredMetricCardClassName} flex min-h-44 flex-col items-center justify-center`}
+                      key={task.id}
+                      className={`flex flex-col gap-3 rounded-2xl border border-border bg-(--surface-secondary) p-4 md:flex-row md:items-center md:justify-between`}
                     >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
-                        <Icon className="h-5 w-5" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-text-primary">
+                          {task.machineCode}
+                        </div>
+                        <div className="mt-1 text-xs text-text-secondary">
+                          {formatMaintenanceType(task.maintenanceType, tOperator)}
+                          <span className="mx-2 text-text-muted">•</span>
+                          {tOperator("dashboard.due")}: {dueLabel}
+                          <span className="mx-2 text-text-muted">•</span>
+                          {tOperator("dashboard.status")}: {formatReportStatus(task.status, tOperator)}
+                        </div>
                       </div>
-                      <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-                        {card.label}
-                      </div>
-                      <div
-                        className={`mt-3 text-4xl font-semibold tracking-[-0.03em] ${card.textTone}`}
+                      <button
+                        type="button"
+                        onClick={() => handleStartTask(task)}
+                        className={`shrink-0 ${actionButtonClassName}`}
                       >
-                        {card.value}
-                      </div>
-                      <div
-                        className={`mt-4 h-1.5 w-16 rounded-full bg-linear-to-r ${card.accent}`}
-                      ></div>
+                        {tOperator("dashboard.openTask")}
+                        <ArrowRightIcon className="h-4 w-4" />
+                      </button>
                     </div>
                   );
                 })}
-
-                <div
-                  className={`${centeredMetricCardClassName} flex min-h-44 flex-col items-center justify-center`}
-                >
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-                    {tOperator("dashboard.startMaintenance")}
-                  </div>
-                  <div className="mt-4 max-w-55 text-center text-sm leading-6 text-text-secondary">
-                    {nextTask
-                      ? `${nextTask.machineCode} • ${formatMaintenanceType(nextTask.maintenanceType, tOperator)}`
-                      : tOperator("dashboard.todaysTasksDescription")}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleStartWorking}
-                    className={`mt-5 w-full max-w-55 ${actionButtonClassName}`}
-                  >
-                    {tOperator("dashboard.startMaintenance")}
-                    <ArrowRightIcon className="h-4 w-4" />
-                  </button>
-                </div>
               </div>
-            </section>
+            )}
+          </section>
 
-            <section
-              className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}
-            >
-              <div className="mb-6 text-center">
-                <div className="mb-2 text-xl font-semibold text-text-primary md:text-2xl">
-                  {tOperator("dashboard.aiAssistantTitle")}
-                </div>
-                <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">
-                  {tOperator("dashboard.aiAssistantSubtitle")}
+          <section className={`rounded-3xl p-5 md:p-6 ${softCardClassName}`}>
+            <div className="flex flex-col items-center justify-center gap-4 text-center md:flex-row md:justify-between md:text-start">
+              <div className="max-w-xl">
+                <h2 className="text-lg font-semibold text-text-primary">
+                  {tOperator("dashboard.quickActionTitle")}
+                </h2>
+                <p className="mt-1 text-sm text-text-secondary">
+                  {tOperator("dashboard.quickActionDescription")}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => handleReportProblem()}
+                className={`shrink-0 ${actionButtonClassName}`}
+              >
+                {tOperator("dashboard.reportProblem")}
+                <ArrowRightIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </section>
 
-              <AiAssistantPanel
-                machineId={nextTask?.machineId || undefined}
-                workOrderId={nextTask?.workOrderId || undefined}
-                faultCode={
-                  nextTask?.maintenanceType.toLowerCase().includes("correct")
-                    ? ""
-                    : undefined
-                }
-              />
-            </section>
-
-            <section
-              id="operator-maintenance-entry"
-              className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}
-            >
-              <div className="mb-6 text-center">
-                <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">
-                  {tOperator("dashboard.chooseMaintenance")}
-                </div>
-                <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">
-                  {tOperator("dashboard.todaysTasksDescription")}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 auto-rows-fr items-stretch">
-                <button type="button"
-                  onClick={() => router.push(`/${locale}/operator/preventive`)}
-                  className={`group h-full rounded-3xl p-6 text-center transition hover:-translate-y-1 ${softCardClassName}`}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <section className={`rounded-3xl p-5 md:p-6 ${softCardClassName}`}>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">
+                  {tOperator("dashboard.recentReports")}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/${locale}/operator/my-reports`)}
+                  className={secondaryButtonClassName}
                 >
-                  <div className="flex h-full flex-col items-center justify-center gap-5">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-cyan-700/30 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
-                      <ClipboardDocumentListIcon className="h-7 w-7" />
-                    </div>
-                    <div>
-                      <div className="text-xl font-semibold text-text-primary">
-                        {tOperator("preventiveMaintenance")}
-                      </div>
-                      <p className="mt-3 max-w-md text-sm leading-7 text-text-secondary">
-                        {tOperator("dashboard.preventiveFlow")}
-                      </p>
-                    </div>
-                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-500">
-                      {tOperator("dashboard.startWorking")}
-                      <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
-                    </div>
-                  </div>
-                </button>
-
-                <button type="button"
-                  onClick={() => router.push(`/${locale}/operator/corrective`)}
-                  className={`group h-full rounded-3xl p-6 text-center transition hover:-translate-y-1 ${softCardClassName}`}
-                >
-                  <div className="flex h-full flex-col items-center justify-center gap-5">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border border-cyan-700/30 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
-                      <WrenchScrewdriverIcon className="h-7 w-7" />
-                    </div>
-                    <div>
-                      <div className="text-xl font-semibold text-text-primary">
-                        {tOperator("correctiveMaintenance")}
-                      </div>
-                      <p className="mt-3 max-w-md text-sm leading-7 text-text-secondary">
-                        {tOperator("dashboard.correctiveFlow")}
-                      </p>
-                    </div>
-                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-500">
-                      {tOperator("dashboard.startWorking")}
-                      <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
-                    </div>
-                  </div>
+                  {tOperator("dashboard.viewAllReports")}
                 </button>
               </div>
-            </section>
 
-            <section
-              className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}
-            >
-              <div className="mb-6 flex flex-col items-center justify-center gap-3 text-center">
-                <div>
-                  <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">
-                    {tOperator("dashboard.todaysTasks")}
+              {sectionErrors.reports ? (
+                <div className={`${centeredMetricCardClassName} py-10 text-sm text-rose-700`}>{tCommon("loadFailed", { defaultValue: "Reports could not be loaded." })}</div>
+              ) : recentReports.length === 0 ? (
+                <div className={`${centeredMetricCardClassName} py-10`}>
+                  <div className="text-sm font-semibold text-text-primary">
+                    {tOperator("dashboard.noReportsTitle")}
                   </div>
-                  <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">
-                    {operatorTasks.length === 0
-                      ? tOperator("dashboard.noTasksDescription")
-                      : tOperator("dashboard.todaysTasksDescription")}
-                  </p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
-                  <ClockIcon className="h-5 w-5" />
-                </div>
-              </div>
-
-              {operatorTasks.length === 0 ? (
-                <div className={`${centeredMetricCardClassName} px-6 py-12`}>
-                  <div className="text-lg font-semibold text-text-primary">
-                    {tOperator("dashboard.noTasksTitle")}
-                  </div>
-                  <div className="mt-3 text-sm leading-7 text-text-secondary">
-                    {tOperator("dashboard.noTasksDescription")}
+                  <div className="mt-1 text-xs text-text-secondary">
+                    {tOperator("dashboard.noReportsDescription")}
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="hidden grid-cols-[1.3fr_1fr_0.9fr_0.9fr_0.9fr] gap-4 rounded-[20px] border border-border bg-(--surface-secondary) px-5 py-4 text-center text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:grid">
-                    <div>{tOperator("machine")}</div>
-                    <div>{tOperator("smartCalendar.maintenanceType")}</div>
-                    <div>{tCommon("priority")}</div>
-                    <div>{tOperator("smartCalendar.due")}</div>
-                    <div>{tOperator("smartCalendar.start")}</div>
-                  </div>
-
-                  {operatorTasks.map((task) => {
-                    const dueDate = new Date(task.dueDate);
-                    const dueLabel = task.isOverdue
-                      ? tCommon("now")
-                      : new Intl.DateTimeFormat(locale, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(dueDate);
+                <div className="space-y-3">
+                  {recentReports.slice(0, 4).map((report) => {
+                    const workOrder = workOrders.find(
+                      (order) => order._id === extractId(report.ot_id),
+                    );
+                    const machineLabel = workOrder
+                      ? extractMachineLabel(workOrder.machine_id)
+                      : tOperator("dashboard.emptyValue");
+                    const maintenanceType = formatMaintenanceType(
+                      workOrder?.type_maintenance,
+                      tOperator,
+                    );
+                    const submittedAt =
+                      report.date_fin || report.date_debut;
 
                     return (
                       <div
-                        key={task.id}
-                        className={`grid gap-4 rounded-3xl px-5 py-5 md:grid-cols-[1.3fr_1fr_0.9fr_0.9fr_0.9fr] md:items-center ${softCardClassName}`}
+                        key={report._id}
+                        className={`rounded-2xl border border-border bg-(--surface-secondary) p-4`}
                       >
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">
-                            {tOperator("machine")}
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-text-primary">
+                              {workOrder?.ot_id || report.report_id || report._id}
+                            </div>
+                            <div className="mt-1 text-xs text-text-secondary">
+                              {machineLabel}
+                              <span className="mx-2 text-text-muted">•</span>
+                              {report.description_action || maintenanceType || ""}
+                            </div>
                           </div>
-                          <div className="mt-1 text-base font-semibold text-text-primary">
-                            {task.machineCode}
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                                report.validation_responsable === "validated"
+                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  : report.validation_responsable === "rejected"
+                                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                                    : "border-amber-200 bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {formatReportStatus(report.validation_responsable, tOperator)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const reportId = report._id || report.report_id;
+                                const workOrderId = workOrder?._id || "";
+                                const query = reportId
+                                  ? `?reportId=${encodeURIComponent(reportId)}${workOrderId ? `&workOrderId=${encodeURIComponent(workOrderId)}` : ""}`
+                                  : "";
+                                router.push(`/${locale}/operator/my-reports${query}`);
+                              }}
+                              className={secondaryButtonClassName}
+                            >
+                              {tOperator("dashboard.viewStatus")}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">
-                            {tOperator("smartCalendar.maintenanceType")}
+                        {submittedAt ? (
+                          <div className="mt-2 text-[10px] text-text-muted">
+                            {new Intl.DateTimeFormat(locale, {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }).format(new Date(submittedAt))}
                           </div>
-                          <div className="mt-1 text-sm font-medium text-text-secondary">
-                            {formatMaintenanceType(
-                              task.maintenanceType,
-                              tOperator,
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">
-                            {tCommon("priority")}
-                          </div>
-                          <div
-                            className={`mt-1 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${task.isOverdue ? "border-rose-400/35 bg-rose-500/12 text-rose-200" : "border-cyan-700/40 bg-cyan-900/18 text-cyan-700 dark:text-cyan-300"}`}
-                          >
-                            {formatPriority(task.priority)}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted md:hidden">
-                            {tOperator("smartCalendar.due")}
-                          </div>
-                          <div className="mt-1 text-sm font-medium text-text-secondary">
-                            {dueLabel}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => handleStartTask(task)}
-                            className={`w-full ${actionButtonClassName}`}
-                          >
-                            {tOperator("smartCalendar.start")}
-                            <ArrowRightIcon className="h-4 w-4" />
-                          </button>
-                        </div>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -793,106 +812,57 @@ export default function OperatorDashboard() {
               )}
             </section>
 
-            <section
-              className={`col-span-full rounded-[28px] p-6 md:p-8 ${softCardClassName}`}
-            >
-              <div className="mb-6 flex flex-col items-center justify-center gap-3 text-center">
-                <div>
-                  <div className="mb-2 text-2xl font-semibold text-text-primary md:text-3xl">
-                    {tOperator("recentActivity.title")}
-                  </div>
-                  <p className="mx-auto mt-1 max-w-2xl text-sm leading-7 text-text-secondary">
-                    {tOperator("dashboard.recentActivityDescription")}
-                  </p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-700/25 bg-cyan-900/12 text-cyan-700 dark:text-cyan-500">
-                  <ClipboardDocumentListIcon className="h-5 w-5" />
-                </div>
+            <section className={`rounded-3xl p-5 md:p-6 ${softCardClassName}`}>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">
+                  {tOperator("dashboard.recentNotifications")}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/${locale}/operator/notifications`)}
+                  className={secondaryButtonClassName}
+                >
+                  {tOperator("dashboard.viewAllNotifications")}
+                </button>
               </div>
 
-              {latestReport ? (
-                (() => {
-                  const workOrder = workOrders.find(
-                    (order) => order._id === extractId(latestReport.ot_id),
-                  );
-                  const machineLabel = workOrder
-                    ? extractMachineLabel(workOrder.machine_id)
-                    : tOperator("dashboard.emptyValue");
-                  const maintenanceType = formatMaintenanceType(
-                    workOrder?.type_maintenance,
-                    tOperator,
-                  );
-                  const submittedAt =
-                    latestReport.date_fin || latestReport.date_debut;
-
-                  return (
-                    <div className={`rounded-3xl p-6 ${softCardClassName}`}>
-                      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr] xl:items-center">
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                            {tOperator("dashboard.lastSubmittedReport")}
-                          </div>
-                          <div className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-text-primary">
-                            {maintenanceType}
-                          </div>
-                          <div className="mt-2 text-sm text-text-secondary">
-                            {machineLabel}
-                          </div>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div
-                            className={`${centeredMetricCardClassName} flex min-h-36.5 flex-col items-center justify-center`}
-                          >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-                              {tOperator("smartCalendar.status")}
-                            </div>
-                            <div className="mt-3 text-sm font-semibold text-text-primary">
-                              {formatReportStatus(
-                                latestReport.validation_responsable,
-                                tOperator,
-                              )}
-                            </div>
-                          </div>
-                          <div
-                            className={`${centeredMetricCardClassName} flex min-h-36.5 flex-col items-center justify-center`}
-                          >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-                              {tOperator("dashboard.submissionDate")}
-                            </div>
-                            <div className="mt-3 text-sm font-semibold text-text-primary">
-                              {submittedAt
-                                ? new Intl.DateTimeFormat(locale, {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  }).format(new Date(submittedAt))
-                                : tOperator("dashboard.emptyValue")}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-center pt-2 xl:col-span-full">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              router.push(`/${locale}/operator/my-reports`)
-                            }
-                            className={actionButtonClassName}
-                          >
-                            {tOperator("smartCalendar.viewHistory")}
-                            <ArrowRightIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()
+              {recentNotifications.length === 0 ? (
+                <div className={`${centeredMetricCardClassName} py-10`}>
+                  <div className="text-sm text-text-secondary">
+                    {tNotification("empty")}
+                  </div>
+                </div>
               ) : (
-                <div
-                  className={`${centeredMetricCardClassName} px-6 py-12 text-sm text-text-secondary`}
-                >
-                  {tOperator("dashboard.noRecentReports")}
+                <div className="space-y-3">
+                  {recentNotifications.map((item) => (
+                    <div
+                      key={item._id}
+                      className={`rounded-2xl border px-4 py-3 text-sm ${
+                        item.is_read
+                          ? "border-border bg-(--surface-secondary)"
+                          : "border-cyan-700/40 bg-cyan-900/10"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="font-medium text-text-primary">
+                          {renderNotificationTitle(item, tNotification)}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-text-muted">
+                          {new Date(item.createdAt).toLocaleString(locale, {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      {item.message ? (
+                        <div className="mt-1 text-xs text-text-secondary">
+                          {item.message}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
               )}
             </section>

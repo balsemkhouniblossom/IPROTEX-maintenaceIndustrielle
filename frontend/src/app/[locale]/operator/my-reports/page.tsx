@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   DocumentTextIcon,
   EyeIcon,
@@ -70,6 +71,9 @@ function notificationClasses(type: NotificationType): string {
 export default function OperatorMyReportsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
+  const searchParams = useSearchParams();
+  const requestedReportId = searchParams.get("reportId") || "";
+  const requestedWorkOrderId = searchParams.get("workOrderId") || "";
 
   const [notification, setNotification] = useState<{
     type: NotificationType;
@@ -133,6 +137,38 @@ export default function OperatorMyReportsPage() {
     void loadData();
   }, [limit, page, t]);
 
+  useEffect(() => {
+    if (!requestedReportId && !requestedWorkOrderId) return;
+    async function loadRequestedReport() {
+      try {
+        const response = await apiService.getMyInterventionReports({ reportId: requestedReportId || undefined, workOrderId: requestedWorkOrderId || undefined, page: 1, limit: 1 });
+        const requested = normalizeApiItems<InterventionReport>(response.data);
+        if (requested.length > 0) {
+          setReports((current) => {
+            const existing = current.filter((item) => item._id !== requested[0]._id);
+            return [...requested, ...existing];
+          });
+          setSelectedReportId(requested[0]._id);
+          setEditorOpen(true);
+        }
+      } catch (error) {
+        console.error("Failed to load requested report", error);
+      }
+    }
+    void loadRequestedReport();
+  }, [requestedReportId, requestedWorkOrderId]);
+
+  useEffect(() => {
+    if (loading || !requestedReportId) return;
+    const report = reports.find(
+      (item) => item._id === requestedReportId || item.report_id === requestedReportId,
+    );
+    if (report) {
+      setSelectedReportId(report._id);
+      setEditorOpen(true);
+    }
+  }, [loading, reports, requestedReportId]);
+
   const myReports = useMemo(() => {
     return reports
       .map((report) => {
@@ -170,15 +206,24 @@ export default function OperatorMyReportsPage() {
     switch (status) {
       case "waiting_validation":
         return t("waitingValidation");
+      case "in_progress":
+      case "in-progress":
+        return t("dashboard.statusInProgress");
+      case "waiting_parts":
+      case "waiting-for-parts":
+        return t("dashboard.statusWaitingParts");
       case "completed":
       case "validated":
         return t("validated");
+      case "cancelled":
+      case "canceled":
+        return t("dashboard.statusCancelled");
       case "returned":
         return t("returned");
       case "technician_required":
         return t("technicianRequired");
       default:
-        return status || tCommon("notAvailable");
+        return status ? t("dashboard.statusSubmitted") : tCommon("notAvailable");
     }
   }
 

@@ -1,440 +1,301 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslations } from "next-intl";
-import { Modal } from "@/components/Modal";
+import { useLocale, useTranslations } from "next-intl";
 import KnowledgeSuggestions from "@/components/knowledge-base/KnowledgeSuggestions";
-import { DocumentEntity, GeneratedReportRow, refId } from "./types";
-import { useOperatorPreventiveBootstrap } from "./hooks/useOperatorPreventiveBootstrap";
-import { useOperatorPreventiveState } from "./hooks/useOperatorPreventiveState";
-import { usePreventiveChecklist } from "./hooks/usePreventiveChecklist";
-import { usePreventivePlanWorkflow } from "./hooks/usePreventivePlanWorkflow";
-import { usePreventiveSubmission } from "./hooks/usePreventiveSubmission";
-import { useGeneratedReports } from "./hooks/useGeneratedReports";
-import { useAutoDismissNotification } from "./hooks/useAutoDismissNotification";
-import { ReportDetailsContent } from "./components/ReportDetailsContent";
-import { ManualPreviewModal } from "./components/ManualPreviewModal";
-import { PreventiveMachineSelector } from "./components/PreventiveMachineSelector";
-import { PreventivePlanTabs } from "./components/PreventivePlanTabs";
-import { PreventiveStepHeader } from "./components/PreventiveStepHeader";
-import { PreventiveChecklist } from "./components/PreventiveChecklist";
-import { PreventiveSubmissionActions } from "./components/PreventiveSubmissionActions";
-import { PreventiveExecutionForm } from "./components/PreventiveExecutionForm";
-import { PreventiveReportsSection } from "./components/PreventiveReportsSection";
+import { useOperatorPreventiveTasks } from "./hooks/useOperatorPreventiveTasks";
+import { usePreventiveInspection } from "./hooks/usePreventiveInspection";
+import { TaskCard } from "./components/TaskCard";
+import { InspectionView } from "./components/InspectionView";
+import { InspectionReview } from "./components/InspectionReview";
+import { InspectionSuccess } from "./components/InspectionSuccess";
 
-const PLAN_STATE_LABEL_KEYS: Record<string, string> = {
-  not_scheduled: "notScheduled",
-  due_today: "dueToday",
-  due_soon: "dueSoon",
-  waiting_validation: "waitingValidation",
-  in_progress: "inProgress",
-};
+type Tab = "today" | "upcoming" | "completed";
+type Step = "list" | "checklist" | "review" | "success";
 
-function formatPlanStateLabel(state: string, t: ReturnType<typeof useTranslations>): string {
-  const key = PLAN_STATE_LABEL_KEYS[state] ?? state;
-  try {
-    return t(`lifecycle.${key}`);
-  } catch {
-    return state;
-  }
-}
-
-function formatDateLabel(value: string | null | undefined, t: ReturnType<typeof useTranslations>): string {
-  if (!value) return t("lifecycle.noDueDate");
-  return new Date(value).toLocaleDateString();
-}
-
-function formatReportDate(value: string | undefined, tCommon: ReturnType<typeof useTranslations>): string {
-  if (!value) return tCommon("notAvailable");
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? tCommon("notAvailable") : parsed.toLocaleString();
-}
-
-function formatReportStatus(status: string, t: ReturnType<typeof useTranslations>, tCommon: ReturnType<typeof useTranslations>): string {
-  switch (status) {
-    case "waiting_validation":
-      return t("waitingValidation");
-    case "validated":
-    case "completed":
-      return t("validated");
-    case "returned":
-      return t("returned");
-    case "technician_required":
-      return t("technicianRequired");
-    default:
-      return status || tCommon("notAvailable");
-  }
-}
-
-function reportStatusClasses(status: string): string {
-  switch (status) {
-    case "validated":
-    case "completed":
-      return "border-emerald-200 bg-emerald-50 text-emerald-800";
-    case "returned":
-      return "border-amber-200 bg-amber-50 text-amber-800";
-    case "technician_required":
-      return "border-blue-200 bg-blue-50 text-blue-800";
-    case "waiting_validation":
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-700";
-  }
-}
-
-export default function OperatorPreventivePage() {
-  const t = useTranslations("dashboard.operator");
-  const tCommon = useTranslations("common");
-  const tChecklist = useTranslations("preventiveTaskChecklist");
+function PreventiveTasksFlow() {
+  const t = useTranslations("dashboard.operator.preventiveTasksFlow");
+  const locale = useLocale();
+  const router = useRouter();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
 
-  const { notification, notify } = useAutoDismissNotification();
+  const [activeTab, setActiveTab] = useState<Tab>("today");
+  const [step, setStep] = useState<Step>("list");
+  const [selectedTask, setSelectedTask] = useState<{
+    planId: string;
+    machineId: string;
+    planName: string;
+    machineName: string;
+    machineCode: string;
+    workOrderId: string | null;
+    readOnly: boolean;
+  } | null>(null);
+  const [observation, setObservation] = useState("");
+  const [correctiveWo, setCorrectiveWo] = useState<string | null>(null);
+  const [completedReportId, setCompletedReportId] = useState<string | null>(null);
 
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedMachine, setSelectedMachine] = useState("");
-  const [previewDocument, setPreviewDocument] = useState<DocumentEntity | null>(null);
-  const [selectedGeneratedReport, setSelectedGeneratedReport] = useState<GeneratedReportRow | null>(null);
-
-  const { machineTypes, machines, modules, plans, documents, lubrifiants, kpis, loading } =
-    useOperatorPreventiveBootstrap();
-
-  const { preventiveState, stateLoading, refreshPreventiveState, clearPreventiveState } =
-    useOperatorPreventiveState(selectedMachine);
-
-  const checklist = usePreventiveChecklist(selectedMachine, selectedCategory);
-
-  const planWorkflow = usePreventivePlanWorkflow({
-    selectedMachine,
-    modules,
-    plans,
-    preventiveState,
-    checklistItems: checklist.checklistItems,
-    refreshPreventiveState,
-    notify,
-  });
-
-  const { generatedReports, addGeneratedReport } = useGeneratedReports();
-
-  const submission = usePreventiveSubmission({
-    userId: user?._id,
-    selectedMachine,
-    selectedCategory,
-    machines,
-    checklistItems: checklist.checklistItems,
-    selectedPlanIds: planWorkflow.selectedPlanIds,
-    selectedPlanGroup: planWorkflow.selectedPlanGroup,
-    groupedChecklistItems: planWorkflow.groupedChecklistItems,
-    completedChecklistLabels: planWorkflow.completedChecklistLabels,
-    selectedOccurrenceIdsByPlan: planWorkflow.selectedOccurrenceIdsByPlan,
-    addGeneratedReport,
-    refreshPreventiveState,
-    resetAfterSubmission: planWorkflow.resetAfterSubmission,
-    notify,
-  });
-
-  // machineTypes is already scoped server-side (getOperatorMachineTypes) to the
-  // categories the operator can access, with no client-side re-filtering needed.
-  const visibleMachineTypes = machineTypes;
-
-  const machinesForCategory = useMemo(
-    () => machines.filter((machine) => refId(machine.type_id) === selectedCategory),
-    [machines, selectedCategory],
+  const { tasks, groupedTasks, loading, error, refresh } = useOperatorPreventiveTasks(user?._id);
+  const inspection = usePreventiveInspection(
+    selectedTask?.planId || null,
+    selectedTask?.machineId || null,
+    selectedTask?.workOrderId || null,
+    selectedTask?.readOnly || false,
   );
 
-  const manualDocument = useMemo(() => {
-    const selectedCategoryMachineIds = new Set(
-      machines.filter((machine) => refId(machine.type_id) === selectedCategory).map((machine) => machine._id),
+  const initialPlanId = searchParams.get("plan");
+  const initialMachineId = searchParams.get("machine");
+
+  useEffect(() => {
+    if (loading) return;
+    const initialWorkOrderId = searchParams.get("workOrder") || searchParams.get("workOrderId");
+    if (!initialWorkOrderId) return;
+    const match = tasks.find((t) =>
+      initialWorkOrderId
+        ? t.workOrderId === initialWorkOrderId
+        : t.planId === initialPlanId && t.machineId === initialMachineId,
     );
-
-    return (
-      documents.find((doc) => {
-        const documentMachineId = refId(doc.machine_id);
-        const type = (doc.type_document ?? "").toLowerCase();
-        const name = (doc.file_name ?? "").toLowerCase();
-        const isManualType =
-          type.includes("manual") ||
-          type.includes("procedure") ||
-          type.includes("pdf") ||
-          type.includes("excel") ||
-          type.includes("xlsx") ||
-          type.includes("xls") ||
-          type.includes("spreadsheet") ||
-          name.endsWith(".xlsx") ||
-          name.endsWith(".xls");
-
-        if (!isManualType) return false;
-        if (selectedMachine) return documentMachineId === selectedMachine;
-        if (selectedCategory) return selectedCategoryMachineIds.has(documentMachineId);
-        return false;
-      }) ?? null
-    );
-  }, [documents, machines, selectedCategory, selectedMachine]);
-
-  const selectedMachineKpi = useMemo(
-    () => kpis.find((item) => refId(item.machine_id) === selectedMachine) ?? null,
-    [kpis, selectedMachine],
-  );
-
-  const preventiveGeneratedReports = generatedReports.filter((item) => item.type === "preventive");
-
-  function handleSelectCategory(machineTypeId: string): void {
-    setSelectedCategory(machineTypeId);
-    setSelectedMachine("");
-    submission.resetExecutionForm();
-    planWorkflow.resetWorkflowState();
-    clearPreventiveState();
-  }
-
-  function handleSelectMachine(machineId: string): void {
-    submission.resetExecutionForm();
-    planWorkflow.resetWorkflowState();
-    setSelectedMachine(machineId);
-  }
-
-  function handleGoToNextPlanStep(): void {
-    planWorkflow.goToNextPlanStep();
-    submission.clearValidationReason();
-  }
-
-  async function handleToggleChecklistItem(item: Parameters<typeof checklist.toggleChecklistItem>[0]): Promise<void> {
-    const result = await checklist.toggleChecklistItem(item);
-    if (result.message) notify(result.ok ? "success" : "error", result.message);
-  }
-
-  async function handleSaveChecklistNotes(item: Parameters<typeof checklist.saveChecklistNotes>[0]): Promise<void> {
-    const result = await checklist.saveChecklistNotes(item);
-    if (result?.message) notify(result.ok ? "success" : "error", result.message);
-  }
-
-  async function handleCompleteSelectedTask(): Promise<void> {
-    if (!planWorkflow.selectedChecklistItems.length) {
-      submission.setValidationReason("no-tasks-selected");
-      return;
+    if (match) {
+      setSelectedTask({
+        planId: match.planId,
+        machineId: match.machineId,
+        planName: match.planName,
+        machineName: match.machineName,
+        machineCode: match.machineCode,
+        workOrderId: match.workOrderId,
+        readOnly: match.tab === "completed",
+      });
+      setStep("checklist");
     }
-    const result = await checklist.completeChecklistItems(planWorkflow.selectedChecklistItems);
-    if (result.message) notify(result.ok ? "success" : "error", result.message);
+  }, [loading, initialPlanId, initialMachineId, tasks]);
+
+  function handleOpenTask(task: typeof groupedTasks.today[0]) {
+    if (selectedTask?.workOrderId !== task.workOrderId) {
+      inspection.reset();
+      setObservation("");
+      setCorrectiveWo(null);
+    }
+    setSelectedTask({
+      planId: task.planId,
+      machineId: task.machineId,
+      planName: task.planName,
+      machineName: task.machineName,
+      machineCode: task.machineCode,
+      workOrderId: task.workOrderId,
+      readOnly: task.tab === "completed",
+    });
+    setStep("checklist");
   }
 
-  if (loading) {
-    return (
-      <ProtectedRoute requiredRole="operator">
-        <DashboardLayout title={t("preventiveMaintenance")}>
-          <div className="operator-dashboard-theme panel">{tCommon("loading")}</div>
-        </DashboardLayout>
-      </ProtectedRoute>
+  function handleProblemDetected(itemId: string, instruction: string) {
+    const confirmed = window.confirm(
+      `${t("problemDetectedTitle")}\n\n${t("problemDetectedMessage")} "${instruction}"\n\n${t("continueChecklistQuestion")}`,
     );
+    if (confirmed) {
+      window.open(
+        `/${locale}/operator/corrective?machine=${selectedTask?.machineId}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+    }
   }
+
+  async function handleReviewSubmit() {
+    const result = await inspection.submit(observation);
+    if (result) {
+      setCorrectiveWo(result.workOrderOtId);
+      setCompletedReportId(result.reportId);
+      setStep("success");
+      await refresh();
+    }
+  }
+
+  const tabCounts = {
+    today: groupedTasks.today.length,
+    upcoming: groupedTasks.upcoming.length,
+    completed: groupedTasks.completed.length,
+  };
+
+  const currentTasks = groupedTasks[activeTab];
 
   return (
     <ProtectedRoute requiredRole="operator">
-      <DashboardLayout title={t("preventiveMaintenance")}>
-        <div className="operator-dashboard-theme bento-grid">
-          {notification ? (
-            <div
-              className={`col-span-full panel border ${
-                notification.type === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-red-200 bg-red-50 text-red-800"
-              }`}
-            >
-              {notification.message}
-            </div>
-          ) : null}
-
-          <div className="col-span-full panel">
-            <div className="card-title mb-4">{t("preventiveMaintenance")}</div>
-
-            <PreventiveMachineSelector
-              visibleMachineTypes={visibleMachineTypes}
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleSelectCategory}
-              machinesForCategory={machinesForCategory}
-              selectedMachine={selectedMachine}
-              onSelectMachine={handleSelectMachine}
-              t={t}
-              tCommon={tCommon}
-            />
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-700">{t("progress")}</div>
-                  <div className="text-xs text-slate-500">
-                    {planWorkflow.selectedPlanState
-                      ? `${planWorkflow.currentCompletedChecklistLabels.length}/${planWorkflow.selectedChecklistItems.length || 1} ${t("completed")}`
-                      : tCommon("table.noData")}
-                  </div>
-                </div>
-                <div className="text-sm font-semibold text-slate-900">{planWorkflow.focusedProgress}%</div>
-              </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-200">
-                <div
-                  className="h-2 rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${planWorkflow.focusedProgress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {selectedMachine ? (
-            <div className="col-span-full">
-              <KnowledgeSuggestions machineId={selectedMachine} />
-            </div>
-          ) : null}
-
-          {selectedMachine ? (
-            <div className="col-span-full panel">
-              <PreventiveStepHeader
-                selectedPlanState={planWorkflow.selectedPlanState}
-                selectedPlanLabel={planWorkflow.selectedPlanLabel}
-                selectedPlanStateLabel={
-                  planWorkflow.selectedPlanState
-                    ? formatPlanStateLabel(planWorkflow.selectedPlanState.currentState, t)
-                    : tCommon("notAvailable")
+      <DashboardLayout title={t("title")}>
+        <div className="operator-dashboard-theme mx-auto max-w-4xl">
+          {step === "success" && selectedTask && inspection.checklistItems.length > 0 && (
+            <InspectionSuccess
+              planName={selectedTask.planName}
+              machineName={selectedTask.machineName}
+              machineCode={selectedTask.machineCode}
+              completedAt={new Date().toLocaleString()}
+              okCount={inspection.okCount}
+              problemCount={inspection.problemCount}
+              workOrderOtId={correctiveWo || inspection.workOrderId || ""}
+              reportId={completedReportId || ""}
+              onViewResults={() => {
+                if (completedReportId) {
+                  router.push(`/${locale}/operator/my-reports?reportId=${encodeURIComponent(completedReportId)}&workOrderId=${encodeURIComponent(inspection.workOrderId || "")}`);
                 }
-                manualDocument={manualDocument}
-                onPreviewManual={setPreviewDocument}
-                t={t}
-                tCommon={tCommon}
-                tChecklist={tChecklist}
-              />
-
-              <PreventivePlanTabs
-                groups={planWorkflow.preventivePlanGroups}
-                selectedPlanIdsSet={planWorkflow.selectedPlanIdsSet}
-                onSelectGroup={planWorkflow.selectPlanGroup}
-                formatPlanStateLabel={(state) => formatPlanStateLabel(state, t)}
-              />
-
-              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-lg font-bold text-slate-900">
-                        {planWorkflow.selectedPlanLabel || t("lifecycle.preventivePlan")}
-                      </div>
-                      <div className="mt-1 text-sm text-slate-500">
-                        {t("lifecycle.nextDue")}: {formatDateLabel(planWorkflow.selectedPlanState?.nextDueDate, t)}
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">
-                      {planWorkflow.selectedPlanState
-                        ? formatPlanStateLabel(planWorkflow.selectedPlanState.currentState, t)
-                        : tCommon("notAvailable")}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 rounded-xl bg-slate-50 p-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-slate-700">
-                        {t("progress")}{" "}
-                        {planWorkflow.totalPlanSteps > 1
-                          ? `${planWorkflow.activePlanStepNumber}/${planWorkflow.totalPlanSteps}`
-                          : ""}
-                      </span>
-                      <span className="font-semibold text-slate-900">{planWorkflow.focusedProgress}%</span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-200">
-                      <div
-                        className="h-2 rounded-full bg-emerald-500 transition-all"
-                        style={{ width: `${planWorkflow.focusedProgress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <PreventiveChecklist
-                    checklistLoading={checklist.checklistLoading}
-                    stateLoading={stateLoading}
-                    checklistError={checklist.checklistError}
-                    items={planWorkflow.selectedChecklistItems}
-                    checklistNotesDraft={checklist.checklistNotesDraft}
-                    checklistSavingId={checklist.checklistSavingId}
-                    taskStarted={planWorkflow.taskStarted}
-                    onToggleItem={(item) => void handleToggleChecklistItem(item)}
-                    onNoteChange={checklist.updateNoteDraft}
-                    onNoteBlur={(item) => void handleSaveChecklistNotes(item)}
-                    tCommon={tCommon}
-                    tChecklist={tChecklist}
-                  />
-
-                  <PreventiveSubmissionActions
-                    selectedPlanState={planWorkflow.selectedPlanState}
-                    actionSaving={planWorkflow.actionSaving}
-                    taskStarted={planWorkflow.taskStarted}
-                    isBulkCompleting={checklist.isBulkCompleting}
-                    selectedTaskCompleted={planWorkflow.selectedTaskCompleted}
-                    canGoToNextPlanStep={planWorkflow.canGoToNextPlanStep}
-                    canSubmitFocusedTask={planWorkflow.canSubmitFocusedTask}
-                    isLastPlanStep={planWorkflow.isLastPlanStep}
-                    submitting={submission.submitting}
-                    submitValidationReason={submission.submitValidationReason}
-                    submitValidationMessage={submission.submitValidationMessage}
-                    onStart={() => void planWorkflow.startSelectedTask()}
-                    onComplete={() => void handleCompleteSelectedTask()}
-                    onNext={handleGoToNextPlanStep}
-                    onSubmit={() => void submission.submitPreventiveMaintenance()}
-                    t={t}
-                    tCommon={tCommon}
-                  />
-                </div>
-
-                <PreventiveExecutionForm
-                  condition={submission.condition}
-                  onConditionChange={submission.setCondition}
-                  customCondition={submission.customCondition}
-                  onCustomConditionChange={submission.setCustomCondition}
-                  comments={submission.comments}
-                  onCommentsChange={submission.setComments}
-                  lubrifiants={lubrifiants}
-                  selectedLubrifiant={submission.selectedLubrifiant}
-                  onSelectedLubrifiantChange={submission.setSelectedLubrifiant}
-                  selectedLubrificationQtyMode={submission.selectedLubrificationQtyMode}
-                  onSelectedLubrificationQtyModeChange={submission.setSelectedLubrificationQtyMode}
-                  lubrificationQty={submission.lubrificationQty}
-                  onLubrificationQtyChange={submission.setLubrificationQty}
-                  onPhotoChange={submission.setPhoto}
-                  selectedMachineKpi={selectedMachineKpi}
-                  t={t}
-                  tCommon={tCommon}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          <PreventiveReportsSection
-            reports={preventiveGeneratedReports}
-            onSelectReport={setSelectedGeneratedReport}
-            formatReportDate={(value) => formatReportDate(value, tCommon)}
-            formatReportStatus={(status) => formatReportStatus(status, t, tCommon)}
-            reportStatusClasses={reportStatusClasses}
-            t={t}
-            tCommon={tCommon}
-          />
-        </div>
-
-        <Modal
-          isOpen={Boolean(selectedGeneratedReport)}
-          onClose={() => setSelectedGeneratedReport(null)}
-          title={t("smartCalendar.maintenanceDetails")}
-          size="lg"
-        >
-          {selectedGeneratedReport ? (
-            <ReportDetailsContent
-              report={selectedGeneratedReport}
-              onClose={() => setSelectedGeneratedReport(null)}
-              formatReportDate={(value) => formatReportDate(value, tCommon)}
-              formatReportStatus={(status) => formatReportStatus(status, t, tCommon)}
-              reportStatusClasses={reportStatusClasses}
-              t={t}
-              tCommon={tCommon}
+              }}
+              onBack={() => {
+                setStep("list");
+                setSelectedTask(null);
+                setObservation("");
+                setCorrectiveWo(null);
+                setCompletedReportId(null);
+                inspection.reset();
+              }}
             />
-          ) : null}
-        </Modal>
+          )}
 
-        <ManualPreviewModal document={previewDocument} onClose={() => setPreviewDocument(null)} t={t} />
+          {step === "review" && selectedTask && (
+            <InspectionReview
+              planName={selectedTask.planName}
+              machineName={selectedTask.machineName}
+              machineCode={selectedTask.machineCode}
+              okCount={inspection.okCount}
+              problemCount={inspection.problemCount}
+              problems={inspection.problems}
+              observation={observation}
+              correctiveWo={correctiveWo}
+              onBack={() => setStep("checklist")}
+              onSubmit={handleReviewSubmit}
+              submitting={inspection.submitting}
+            />
+          )}
+
+          {step === "checklist" && selectedTask && (
+            <div className="space-y-6">
+              <div className="mb-4 flex items-center justify-between">
+                <button
+                  type="button"
+                onClick={() => {
+                  setStep("list");
+                }}
+                  className="text-sm font-semibold text-slate-600 hover:text-slate-900"
+                >
+                  ← {t("backToTasks")}
+                </button>
+                <KnowledgeSuggestions machineId={selectedTask.machineId} />
+              </div>
+
+              {inspection.error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{inspection.error}</div>
+              )}
+
+              <InspectionView
+                planName={selectedTask.planName}
+                machineName={selectedTask.machineName}
+                machineCode={selectedTask.machineCode}
+                items={inspection.checklistItems.map((item) => ({ _id: item._id, instruction: item.instruction }))}
+                itemResults={inspection.itemResults}
+                loading={inspection.loading}
+                onToggle={inspection.toggleItem}
+                onProblemClick={handleProblemDetected}
+                onSubmit={(obs) => {
+                  setObservation(obs || "");
+                  if (!selectedTask.readOnly && inspection.allAnswered) {
+                    setStep("review");
+                  }
+                }}
+                onBack={() => {
+                  setStep("list");
+                }}
+                submitting={inspection.submitting}
+                observation={observation}
+                onObservationChange={setObservation}
+                allAnswered={inspection.allAnswered}
+                okCount={inspection.okCount}
+                problemCount={inspection.problemCount}
+                readOnly={selectedTask.readOnly}
+              />
+            </div>
+          )}
+
+          {step === "list" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+                <p className="mt-1 text-sm text-slate-500">{t("description")}</p>
+              </div>
+
+              {error && (
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
+              )}
+
+              <div className="flex gap-2 border-b border-slate-200">
+                {(["today", "upcoming", "completed"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`relative px-4 py-3 text-sm font-semibold transition ${
+                      activeTab === tab
+                        ? "text-slate-900"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {t(tab)}
+                    {tabCounts[tab] > 0 && (
+                      <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                        activeTab === tab ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                      }`}>
+                        {tabCounts[tab]}
+                      </span>
+                    )}
+                    {activeTab === tab && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {loading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
+                  <div className="text-sm text-slate-500">{t("loading")}</div>
+                </div>
+              ) : currentTasks.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-12 text-center">
+                  <div className="text-sm text-slate-500">
+                    {activeTab === "today" && t("noToday")}
+                    {activeTab === "upcoming" && t("noUpcoming")}
+                    {activeTab === "completed" && t("noCompleted")}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {currentTasks.map((task) => (
+                    <TaskCard
+                      key={task.workOrderId || `${task.planId}:${task.machineId}`}
+                      planName={task.planName}
+                      planCode={task.planCode}
+                      machineName={task.machineName}
+                      machineCode={task.machineCode}
+                      checkCount={task.checkCount}
+                      completedCount={task.completedCount}
+                      dueDate={task.dueDate}
+                      tab={task.tab}
+                      onOpen={() => handleOpenTask(task)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+export default function OperatorPreventivePage() {
+  return (
+    <Suspense fallback={<div className="operator-dashboard-theme min-h-screen bg-white" />}>
+      <PreventiveTasksFlow />
+    </Suspense>
   );
 }

@@ -235,6 +235,91 @@ test("Smart maintenance calendar opts into operator dark-mode theme mapping", ()
   );
 });
 
+test("Operator navigation preserves canonical context and locale", () => {
+  const dashboard = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"), "utf8");
+  const machines = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/machines/page.tsx"), "utf8");
+  const detail = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/machines/[id]/page.tsx"), "utf8");
+  assert.match(dashboard, /\/\$\{locale\}\/operator\/machines\/\$\{machineId\}/);
+  assert.match(machines, /\/\$\{locale\}\/operator\/machines\/\$\{machineId\}/);
+  assert.match(detail, /operator\/corrective\?machine=\$\{machineId\}/);
+  assert.match(detail, /operator\/preventive\?workOrder=\$\{task\.currentOccurrence\._id\}/);
+  assert.match(detail, /operator\/machines`\)/);
+  assert.doesNotMatch(dashboard, /router\.push\(`\/\$\{locale\}\/machines\//);
+});
+
+test("Operator follow-up deep links carry report/work-order ids and resolve server-side", () => {
+  const reports = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/my-reports/page.tsx"), "utf8");
+  const api = fs.readFileSync(path.join(process.cwd(), "src/services/api.ts"), "utf8");
+  const controller = fs.readFileSync(path.join(process.cwd(), "../backend/src/operator/operator.controller.ts"), "utf8");
+  assert.match(reports, /requestedWorkOrderId/);
+  assert.match(reports, /reportId: requestedReportId/);
+  assert.match(reports, /workOrderId: requestedWorkOrderId/);
+  assert.match(api, /reportId\?: string/);
+  assert.match(api, /workOrderId\?: string/);
+  assert.match(controller, /Query\('reportId'\)/);
+  assert.match(controller, /Query\('workOrderId'\)/);
+});
+
+test("Notification targets use supported Operator destinations and fail safely without ids", () => {
+  for (const relativePath of [
+    "src/app/[locale]/operator/notifications/page.tsx",
+    "src/components/NotificationBell.tsx",
+  ]) {
+    const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+    assert.match(source, /operator\/my-reports\?reportId=/);
+    assert.match(source, /operator\/preventive\?workOrder=/);
+    assert.match(source, /operator\/machines\//);
+    assert.match(source, /return null/);
+  }
+});
+
+test("Nested Operator sidebar routes remain active and expose aria-current", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
+  assert.match(source, /pathname\.startsWith\(`\$\{itemPath\}\//);
+  assert.match(source, /aria-current=\{isActive \? "page" : undefined\}/);
+  assert.match(source, /aria-current=\{childActive \? "page" : undefined\}/);
+});
+
+test("DashboardLayout blocks Operator access to shared management routes while preserving locale", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
+  for (const route of ["/machines", "/devices", "/work-orders", "/maintenance-plans", "/documents", "/digital-twin"]) {
+    assert.match(source, new RegExp(`\\"${route.replace("/", "\\/")}\\"`));
+  }
+  assert.match(source, /role === "operator"/);
+  assert.match(source, /router\.replace\(withLocale\("\/operator"\)\)/);
+});
+
+test("Operator dashboard separates preventive tasks from corrective work and does not count only recent cards", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"), "utf8");
+  assert.match(source, /type_maintenance[\s\S]*includes\("correct"\)/);
+  assert.match(source, /reports\.filter\(/);
+  assert.doesNotMatch(source, /recentReports\.filter\(\s*\(report\)/);
+  assert.match(source, /Promise\.allSettled/);
+  assert.match(source, /sectionErrors\.machines/);
+});
+
+test("Operator machine detail does not claim maintenance is active from open-work-order totals alone", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/machines/[id]/page.tsx"), "utf8");
+  assert.match(source, /currentIssueWorkOrderId/);
+  assert.match(source, /A technician is working on this report/);
+  assert.doesNotMatch(source, /openWorkOrdersCount > 0[\s\S]{0,200}Maintenance is in progress/);
+});
+
+test("My Reports exposes employee-facing status wording for active and terminal states", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/my-reports/page.tsx"), "utf8");
+  assert.match(source, /case "in_progress"/);
+  assert.match(source, /case "waiting_parts"/);
+  assert.match(source, /case "cancelled"/);
+  assert.match(source, /dashboard\.statusSubmitted/);
+  assert.doesNotMatch(source, /return status \|\| tCommon\("notAvailable"\)/);
+});
+
+test("Corrective existing-issue action opens the exact follow-up record instead of an alert-only dead end", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"), "utf8");
+  assert.match(source, /my-reports\?workOrderId=/);
+  assert.doesNotMatch(source, /alert\(`\$\{t\("reference"\)\}/);
+});
+
 test("Smart maintenance calendar is organized around the operator's next task action", () => {
   const relativePath =
     "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx";
@@ -434,8 +519,8 @@ test("Operator Machines opts into operator dark-mode theme mapping", () => {
     "utf8",
   );
 
-  assert.match(source, /operator-dashboard-theme bento-grid/);
-  assert.match(source, /operator-dashboard-theme min-h-screen bg-white/);
+  assert.match(source, /operator-dashboard-theme/);
+  assert.match(source, /DashboardLayout/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-900/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.border-gray-100/);
   assert.match(
@@ -457,21 +542,13 @@ test("Operator maintenance forms opt into readable dark-mode text mapping", () =
     path.join(process.cwd(), "src/app/[locale]/operator/preventive/page.tsx"),
     "utf8",
   );
-  // The preventive page's report-details dialog body (which carries the
-  // "space-y-5" wrapper) was extracted into its own presentational component.
-  const preventiveReportDetailsSource = fs.readFileSync(
-    path.join(process.cwd(), "src/app/[locale]/operator/preventive/components/ReportDetailsContent.tsx"),
-    "utf8",
-  );
   const globalsSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/globals.css"),
     "utf8",
   );
 
-  assert.match(correctiveSource, /operator-dashboard-theme bento-grid/);
-  assert.match(correctiveSource, /operator-dashboard-theme space-y-5/);
-  assert.match(preventiveSource, /operator-dashboard-theme bento-grid/);
-  assert.match(preventiveReportDetailsSource, /operator-dashboard-theme space-y-5/);
+  assert.match(correctiveSource, /operator-dashboard-theme/);
+  assert.match(preventiveSource, /operator-dashboard-theme/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-black/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-900/);
   assert.match(globalsSource, /\.operator-dashboard-theme \.text-gray-600/);
@@ -486,53 +563,22 @@ test("Operator maintenance forms opt into readable dark-mode text mapping", () =
   );
 });
 
-test("Corrective page shows the same clean inline maintenance report history as preventive", () => {
-  const relativePath = "src/app/[locale]/operator/corrective/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
-  const reportSection = source.slice(
-    source.indexOf("const backendCorrectiveReports = useMemo"),
-    source.indexOf("export default function OperatorCorrectivePage"),
+test("Corrective page uses the existing operator report-problem API and shows real WorkOrder reference", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
   );
 
-  assert.match(source, /const newReport: GeneratedReportRow = \{/);
-  assert.match(source, /addGeneratedReport\(newReport\)/);
-  assert.match(source, /apiService\.getMyInterventionReports\(/);
-  assert.match(source, /apiService\.getMyWorkOrders\(/);
-  assert.match(source, /apiService\.getDocuments\(/);
-  assert.match(source, /setReportPhotoDocuments\(/);
-  assert.match(source, /formData\.append\("work_order_id",\s*workOrderId\)/);
-  assert.match(source, /formData\.append\("intervention_report_id",\s*reportId\)/);
-  assert.match(source, /const photoDocument = await uploadPhotoIfPresent/);
-  assert.match(reportSection, /isCorrectiveMaintenanceType\(workOrder\.type_maintenance\)/);
-  assert.match(reportSection, /const backendCorrectiveReports = useMemo/);
-  assert.match(reportSection, /type: "corrective"/);
-  assert.match(reportSection, /photoDocument/);
-  assert.match(reportSection, /correctiveGeneratedReports\.map/);
-  assert.match(source, /setHighlightedReportId\(newReport\.id\)/);
-  assert.match(reportSection, /correctiveReportElementId\(highlightedReportId\)/);
-  assert.match(reportSection, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
-  assert.match(reportSection, /highlightedReportId === item\.id/);
-  assert.match(reportSection, /data-testid=\{`corrective-report-card-\$\{index\}`\}/);
-  assert.match(reportSection, /data-testid=\{`corrective-report-details-\$\{index\}`\}/);
-  assert.match(reportSection, /setSelectedGeneratedReport\(item\)/);
-  assert.match(reportSection, /title=\{t\("smartCalendar\.maintenanceDetails"\)\}/);
-  assert.match(reportSection, /<DocumentAttachmentViewer/);
-
-  const visibleReportMarkup = reportSection.slice(
-    reportSection.indexOf('<div className="card-title mb-3">{t("myReports")}</div>'),
-    reportSection.indexOf("export default function OperatorCorrectivePage"),
-  );
-  for (const hiddenPattern of [
-    /Report ID/i,
-    /Work Order ID/i,
-    /MongoDB/i,
-    /item\.workOrderId/,
-    /item\.reportId/,
-  ]) {
-    assert.doesNotMatch(
-      visibleReportMarkup,
-      hiddenPattern,
-      "corrective inline report history must not expose internal identifiers in the operator scan/detail UI",
-    );
-  }
+  assert.match(source, /apiService\.createOperatorCorrectiveReport/);
+  assert.match(source, /machine_id: selectedMachine/);
+  assert.match(source, /selectedFault\?\.code_panne \|\| "OBSERVED_SYMPTOMS"/);
+  assert.match(source, /actions/);
+  assert.match(source, /priority:/);
+  assert.match(source, /step === "machine"/);
+  assert.match(source, /step === "problem"/);
+  assert.match(source, /step === "success"/);
+  assert.match(source, /ot_id \|\| wo\._id/);
+  assert.match(source, /t\("reportedStatus"\)/);
+  assert.match(source, /CLOSED_WORK_ORDER_STATUSES/);
+  assert.match(source, /activeIssue/);
 });

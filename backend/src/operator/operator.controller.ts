@@ -91,6 +91,8 @@ export class OperatorController {
     @Req() req: AuthenticatedRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('reportId') reportId?: string,
+    @Query('workOrderId') workOrderId?: string,
   ): Promise<PaginatedResponse<InterventionReportResponse>> {
     const userId = this.ensureOperator(req);
     const pagination = normalizePagination(page, limit);
@@ -99,6 +101,8 @@ export class OperatorController {
       pagination.page,
       pagination.limit,
       pagination.skip,
+      reportId,
+      workOrderId,
     );
   }
 
