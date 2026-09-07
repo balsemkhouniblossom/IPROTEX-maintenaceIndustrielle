@@ -3691,6 +3691,7 @@
   },
   "operatorMachines": {
     "pageTitle": "Machines",
+    "backToMachines": "Retour aux machines",
     "subtitle": "Recherchez et gérez vos machines assignées.",
     "searchPlaceholder": "Rechercher par nom de machine ou numéro de série...",
     "allMachines": "Toutes les machines",
@@ -3734,6 +3735,7 @@
       "reportProblem": "Signaler un problème",
       "currentIssue": "Problème actuel",
       "issueInProgress": "Une maintenance est en cours sur cette machine.",
+      "issueReported": "Ce rapport est ouvert et attend la prochaine mise à jour de la maintenance.",
       "viewStatus": "Voir le statut"
     },
     "preventive": {

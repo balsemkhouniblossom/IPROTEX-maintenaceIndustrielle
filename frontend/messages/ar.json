@@ -3691,6 +3691,7 @@
   },
   "operatorMachines": {
     "pageTitle": "الآلات",
+    "backToMachines": "العودة إلى الآلات",
     "subtitle": "ابحث عن الآلات المعينة إليك وأديرها.",
     "searchPlaceholder": "البحث باسم الآلة أو الرقم التسلسلي...",
     "allMachines": "جميع الآلات",
@@ -3734,6 +3735,7 @@
       "reportProblem": "الإبلاغ عن مشكلة",
       "currentIssue": "المشكلة الحالية",
       "issueInProgress": "الصيانة جارية لهذه الآلة.",
+      "issueReported": "هذا البلاغ مفتوح وينتظر تحديث الصيانة التالي.",
       "viewStatus": "عرض الحالة"
     },
     "preventive": {

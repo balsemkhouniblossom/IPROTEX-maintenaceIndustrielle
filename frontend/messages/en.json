@@ -2319,6 +2319,7 @@
   },
   "operatorMachines": {
     "pageTitle": "Machines",
+    "backToMachines": "Back to Machines",
     "subtitle": "Search and manage your assigned machines.",
     "searchPlaceholder": "Search machine name or serial number...",
     "allMachines": "All Machines",
@@ -2362,6 +2363,7 @@
       "reportProblem": "Report a Problem",
       "currentIssue": "Current Issue",
       "issueInProgress": "Maintenance is in progress for this machine.",
+      "issueReported": "This report is open and awaiting the next maintenance update.",
       "viewStatus": "View Status"
     },
     "preventive": {

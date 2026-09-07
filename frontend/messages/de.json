@@ -1896,6 +1896,7 @@
   },
   "operatorMachines": {
     "pageTitle": "Maschinen",
+    "backToMachines": "Zurück zu Maschinen",
     "subtitle": "Suchen und verwalten Sie Ihre zugewiesenen Maschinen.",
     "searchPlaceholder": "Nach Maschinenname oder Seriennummer suchen...",
     "allMachines": "Alle Maschinen",
@@ -1939,6 +1940,7 @@
       "reportProblem": "Problem melden",
       "currentIssue": "Aktuelles Problem",
       "issueInProgress": "Wartung läuft für diese Maschine.",
+      "issueReported": "Dieser Bericht ist geöffnet und wartet auf die nächste Wartungsaktualisierung.",
       "viewStatus": "Status anzeigen"
     },
     "preventive": {
