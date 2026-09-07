@@ -119,6 +119,9 @@ function OperatorMachinesPageContent() {
       return matchesSearch && matchesStatus;
     });
   }, [machines, search, statusFilter]);
+  const noMachinesMessage = search || statusFilter !== "all"
+    ? tMachines("noMachinesMatchFilters", { defaultValue: "No machines match your filters." })
+    : tMachines("noMachinesFound");
 
   const handleViewMachine = (machineId: string) => {
     router.push(`/${locale}/operator/machines/${machineId}`);
@@ -188,24 +191,25 @@ function OperatorMachinesPageContent() {
             </div>
           </section>
 
-          {loading ? (
+          {loading && (
             <div className="rounded-3xl border border-border bg-(--surface-elevated) px-4 py-12 text-center text-sm text-text-secondary">
               {tCommon("loading")}
             </div>
-          ) : loadError ? (
+          )}
+          {!loading && loadError && (
             <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-12 text-center text-sm text-red-800">
               <div>{tMachines("loadFailed", { defaultValue: "Unable to load machines." })}</div>
               <button type="button" onClick={() => void loadMachines()} className="mt-3 rounded-xl border border-red-300 bg-white px-4 py-2 font-semibold text-red-800">
                 {tCommon("retry", { defaultValue: "Retry" })}
               </button>
             </div>
-          ) : filteredMachines.length === 0 ? (
+          )}
+          {!loading && !loadError && filteredMachines.length === 0 && (
             <div className="rounded-3xl border border-border bg-(--surface-elevated) px-4 py-12 text-center text-sm text-text-secondary">
-              {search || statusFilter !== "all"
-                ? tMachines("noMachinesMatchFilters", { defaultValue: "No machines match your filters." })
-                : tMachines("noMachinesFound")}
+              {noMachinesMessage}
             </div>
-          ) : (
+          )}
+          {!loading && !loadError && filteredMachines.length > 0 && (
             <div className="space-y-3">
               {filteredMachines.map((machine) => (
                 <div

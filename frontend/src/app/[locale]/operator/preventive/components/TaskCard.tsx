@@ -28,11 +28,12 @@ export function TaskCard({ planName, planCode, machineName, machineCode, checkCo
     completed: "border-emerald-200 bg-emerald-50 text-emerald-800",
   } as const;
   const statusClass = statusClassByTab[tab];
-  const cardClass = tab === "today"
-    ? "border-amber-200 bg-white"
-    : tab === "upcoming"
-      ? "border-slate-200 bg-white"
-      : "border-slate-200 bg-slate-50";
+  const cardClassByTab = {
+    today: "border-amber-200 bg-white",
+    upcoming: "border-slate-200 bg-white",
+    completed: "border-slate-200 bg-slate-50",
+  } as const;
+  const cardClass = cardClassByTab[tab];
 
   return (
     <button

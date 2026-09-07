@@ -84,6 +84,12 @@ const FAULT_CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+function machineStatusClass(status: string | undefined): string {
+  if (status === "Operational" || status === "operational") return "border border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "Maintenance" || status === "maintenance") return "border border-amber-200 bg-amber-50 text-amber-800";
+  return "border border-slate-200 bg-slate-50 text-slate-700";
+}
+
 function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${crypto.randomUUID().toUpperCase()}`;
 }
@@ -594,13 +600,7 @@ function ReportProblemFlow() {
                     <div className="mt-1 text-sm text-slate-500">{machine.model || tCommon("notAvailable")}</div>
                     <div className="mt-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          machine.status === "Operational" || machine.status === "operational"
-                            ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-                            : machine.status === "Maintenance" || machine.status === "maintenance"
-                            ? "border border-amber-200 bg-amber-50 text-amber-800"
-                            : "border border-slate-200 bg-slate-50 text-slate-700"
-                        }`}
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${machineStatusClass(machine.status)}`}
                       >
                         {machine.status || t("operationalStatus")}
                       </span>

@@ -46,7 +46,10 @@ function notificationTarget(item: NotificationItem, locale: string): string | nu
   const machineId = value("machineId", "machine_id");
   const encoded = (id: string) => encodeURIComponent(id);
   const kind = `${item.type} ${item.translationKey || ""}`.toLowerCase();
-  if (reportId) return `/${locale}/operator/my-reports?reportId=${encoded(reportId)}${workOrderId ? `&workOrderId=${encoded(workOrderId)}` : ""}`;
+  if (reportId) {
+    const workOrderQuery = workOrderId ? `&workOrderId=${encoded(workOrderId)}` : "";
+    return `/${locale}/operator/my-reports?reportId=${encoded(reportId)}${workOrderQuery}`;
+  }
   if (workOrderId && /preventive|inspection|task/.test(kind)) return `/${locale}/operator/preventive?workOrder=${encoded(workOrderId)}`;
   if (workOrderId) return `/${locale}/operator/my-reports?workOrderId=${encoded(workOrderId)}`;
   if (machineId) return `/${locale}/operator/machines/${encoded(machineId)}`;
@@ -199,22 +202,25 @@ export default function OperatorNotificationsPage() {
               </div>
             </div>
 
-            {loading ? (
+            {loading && (
               <div className="rounded-3xl border border-border bg-(--surface-secondary) px-4 py-12 text-center text-sm text-text-secondary">
                 {tCommon("loading")}
               </div>
-            ) : loadError ? (
+            )}
+            {!loading && loadError && (
               <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-12 text-center text-sm text-red-800">
                 <div>{tCommon("loadFailed", { defaultValue: "Unable to load notifications." })}</div>
                 <button type="button" onClick={() => void loadNotifications()} className="mt-3 rounded-xl border border-red-300 bg-white px-4 py-2 font-semibold text-red-800">
                   {tCommon("retry", { defaultValue: "Retry" })}
                 </button>
               </div>
-            ) : items.length === 0 ? (
+            )}
+            {!loading && !loadError && items.length === 0 && (
               <div className="rounded-3xl border border-border bg-(--surface-secondary) px-4 py-12 text-center text-sm text-text-secondary">
                 {tNotification("empty")}
               </div>
-            ) : (
+            )}
+            {!loading && !loadError && items.length > 0 && (
               <div className="space-y-3">
                 {items.map((item) => (
                   <div

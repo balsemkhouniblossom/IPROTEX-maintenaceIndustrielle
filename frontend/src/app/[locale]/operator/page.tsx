@@ -25,12 +25,6 @@ interface OperatorKpiCounts {
   completedTodayCount: number;
 }
 
-interface OperatorStats {
-  assigned: number;
-  inProgress: number;
-  completed: number;
-}
-
 const emptyKpiCounts: OperatorKpiCounts = {
   overdueCount: 0,
   dueTodayCount: 0,
@@ -163,6 +157,12 @@ function formatReportStatus(
   return tOperator("dashboard.statusSubmitted");
 }
 
+function reportValidationBadge(status: string | undefined): string {
+  if (status === "validated") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "rejected") return "border-rose-200 bg-rose-50 text-rose-700";
+  return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
 function notificationTranslationParams(
   params?: Record<string, string | number | boolean | null>,
 ): Record<string, string | number> {
@@ -215,11 +215,6 @@ export default function OperatorDashboard() {
   const [workOrders, setWorkOrders] = useState<WorkOrderItem[]>([]);
   const [reports, setReports] = useState<InterventionReportItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
-  const [stats, setStats] = useState<OperatorStats>({
-    assigned: 0,
-    inProgress: 0,
-    completed: 0,
-  });
   const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
   const [loading, setLoading] = useState(true);
   const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
@@ -295,8 +290,6 @@ export default function OperatorDashboard() {
       });
   }, [activeWorkOrders, eventByWorkOrderId, now]);
 
-  const overdueTasksCount = kpiCounts.overdueCount;
-
   const recentReports = useMemo(() => {
     return reports
       .filter((report) => {
@@ -327,21 +320,6 @@ export default function OperatorDashboard() {
       ).length,
     [recentReports],
   );
-
-  const analyticsCards = [
-    {
-      label: tOperator("stats.dueToday"), value: kpiCounts.dueTodayCount,
-      icon: ClockIcon,
-      accent: "from-cyan-700 via-sky-700 to-blue-800",
-      textTone: "text-[var(--text-primary)]",
-    },
-    {
-      label: tOperator("stats.completedToday"), value: kpiCounts.completedTodayCount,
-      icon: CheckCircleIcon,
-      accent: "from-cyan-700 via-sky-700 to-indigo-800",
-      textTone: "text-[var(--text-primary)]",
-    },
-  ];
 
   const summaryCards = [
     {
@@ -477,11 +455,6 @@ export default function OperatorDashboard() {
             dueTodayCount: dashboard.dueTodayCount,
             waitingValidationCount: dashboard.waitingValidationCount,
             completedTodayCount: dashboard.completedTodayCount,
-          });
-          setStats({
-            assigned: dashboard.assignedCount,
-            inProgress: dashboard.inProgressCount,
-            completed: dashboard.completedCount,
           });
         } else {
           failures.stats = true;
@@ -763,13 +736,7 @@ export default function OperatorDashboard() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span
-                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                                report.validation_responsable === "validated"
-                                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                  : report.validation_responsable === "rejected"
-                                    ? "border-rose-200 bg-rose-50 text-rose-700"
-                                    : "border-amber-200 bg-amber-50 text-amber-700"
-                              }`}
+                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${reportValidationBadge(report.validation_responsable)}`}
                             >
                               {formatReportStatus(report.validation_responsable, tOperator)}
                             </span>
@@ -778,9 +745,8 @@ export default function OperatorDashboard() {
                               onClick={() => {
                                 const reportId = report._id || report.report_id;
                                 const workOrderId = workOrder?._id || "";
-                                const query = reportId
-                                  ? `?reportId=${encodeURIComponent(reportId)}${workOrderId ? `&workOrderId=${encodeURIComponent(workOrderId)}` : ""}`
-                                  : "";
+                                const workOrderQuery = workOrderId ? `&workOrderId=${encodeURIComponent(workOrderId)}` : "";
+                                const query = reportId ? `?reportId=${encodeURIComponent(reportId)}${workOrderQuery}` : "";
                                 router.push(`/${locale}/operator/my-reports${query}`);
                               }}
                               className={secondaryButtonClassName}

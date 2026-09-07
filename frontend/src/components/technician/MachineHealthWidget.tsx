@@ -95,11 +95,11 @@ function MachineHealthWidgetContent({
   analysis,
   locale,
   t,
-}: {
+}: Readonly<{
   analysis: AiAnomalyAnalysis;
   locale: string;
   t: ReturnType<typeof useTranslations>;
-}) {
+}>) {
   const tone = riskLevelTone(analysis.risk_level);
   const ageLabel = analysisAgeLabel(
     analysis.measurement_timestamp,

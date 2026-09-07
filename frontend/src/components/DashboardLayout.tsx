@@ -681,11 +681,9 @@ function DashboardLayoutBody({
                           <div className="ms-6 space-y-1 border-s ps-2">
                             {item.children!.map((child) => {
                               const ChildIcon = child.icon;
+                              const childPath = withLocale(child.href);
+                              const childActive = pathname === childPath || pathname.startsWith(`${childPath}/`);
                               return (
-                                (() => {
-                                  const childPath = withLocale(child.href);
-                                  const childActive = pathname === childPath || pathname.startsWith(`${childPath}/`);
-                                  return (
                                 <Link
                                   key={child.href}
                                   href={withLocale(child.href)}
@@ -699,8 +697,6 @@ function DashboardLayoutBody({
                                     {child.name}
                                   </span>
                                 </Link>
-                                  );
-                                })()
                               );
                             })}
                           </div>
