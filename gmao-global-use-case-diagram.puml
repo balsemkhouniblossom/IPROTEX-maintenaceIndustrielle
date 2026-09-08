@@ -148,6 +148,7 @@ rectangle "Systeme GMAO" {
     usecase "Publier / archiver article" as UC_PublishKnowledge
     usecase "Reviser article" as UC_ReviseKnowledge
     usecase "Consulter suggestions connaissance" as UC_KnowledgeSuggestions
+    usecase "Traduire contenu dynamique avec cache" as UC_DynamicTranslation
   }
 
   package "Notifications et messagerie" {
@@ -220,6 +221,7 @@ User --> UC_DeleteNotifications
 User --> UC_SavedViews
 User --> UC_ManageKnowledge
 User --> UC_KnowledgeSuggestions
+User --> UC_DynamicTranslation
 User --> UC_RequestGeneratedReport
 User --> UC_DownloadReports
 User --> UC_ScheduledReports

@@ -862,6 +862,21 @@ package "Lubrification, pannes & notifications" {
 ' RAPPORTS, VUES & AUTOMATISATION
 ' =============================
 package "Rapports, vues & automatisation" {
+  class TranslationCache {
+    +_id: ObjectId <<PK>>
+    +entityType: String <<UK composite>>
+    +entityId: String <<UK composite>>
+    +field: String <<UK composite>>
+    +sourceLocale: String
+    +targetLocale: String <<UK composite>>
+    +sourceHash: String <<UK composite>>
+    +translatedText: String
+    +provider: String
+    +model: String
+    +createdAt: Date
+    +updatedAt: Date
+  }
+
   class GeneratedReport {
     +_id: ObjectId <<PK>>
     +report_id: String <<UK>>
@@ -1080,6 +1095,10 @@ package "Services metier backend" {
     +clearAll(...)
   }
 
+  class DynamicContentTranslationService <<service>> {
+    +batch(...)
+  }
+
   class AutomationSchedulerService <<service>> {
     +runNightlyJobs()
     +runHourlyJobs()
@@ -1254,6 +1273,7 @@ ReportsService ..> GeneratedReport
 ReportSchedulerService ..> ScheduledReport
 ReportSchedulerService ..> GeneratedReport
 NotificationCenterService ..> Notification
+DynamicContentTranslationService ..> TranslationCache
 AutomationSchedulerService ..> AutomationJobLock
 AutomationSchedulerService ..> WorkOrdersService
 AutomationSchedulerService ..> ReportSchedulerService

@@ -33,6 +33,12 @@ enum PartRequestStatus {
   CANCELLED
 }
 
+enum AiAnomalyValidationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
 ' =============================
 ' IDENTITE & ACCES
 ' =============================
@@ -208,12 +214,6 @@ package "Alertes & Pilotage" {
     +runHourlyJobs()
     +runTenMinuteJobs()
   }
-}
-
-enum AiAnomalyValidationStatus {
-  PENDING
-  CONFIRMED
-  REJECTED
 }
 
 ' =============================
