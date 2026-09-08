@@ -123,8 +123,24 @@ async function uploadFaultPhoto({
   return true;
 }
 
-function SuccessScreen({ result, machine, selectedFault, otherProblem, urgency, observation, photo, retryingPhoto, t, tCommon, onRetryPhoto, onViewStatus, onBack }: any) {
-  const { workOrder, attachmentFailed, duplicate } = result as SubmissionResult;
+type SuccessScreenProps = Readonly<{
+  result: SubmissionResult;
+  machine: Machine | null;
+  selectedFault: Panne | null;
+  otherProblem: string;
+  urgency: string;
+  observation: string;
+  photo: File | null;
+  retryingPhoto: boolean;
+  t: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
+  onRetryPhoto: () => Promise<void>;
+  onViewStatus: () => void;
+  onBack: () => void;
+}>;
+
+function SuccessScreen({ result, machine, selectedFault, otherProblem, urgency, observation, photo, retryingPhoto, t, tCommon, onRetryPhoto, onViewStatus, onBack }: SuccessScreenProps) {
+  const { workOrder, attachmentFailed, duplicate } = result;
   const problem = selectedFault?.description || otherProblem || tCommon("notAvailable");
   const statusTitle = attachmentFailed ? t("partialSuccessTitle") : t("successTitle");
   const statusMessage = attachmentFailed ? t("partialSuccessMessage") : t("successMessage");
@@ -136,7 +152,7 @@ function SuccessScreen({ result, machine, selectedFault, otherProblem, urgency, 
   </div></DashboardLayout></ProtectedRoute>;
 }
 
-function SummaryField({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function SummaryField({ label, value, detail }: Readonly<{ label: string; value: string; detail?: string }>) {
   return <div><div className="text-xs font-semibold uppercase text-slate-500">{label}</div><div className="mt-1 text-base font-semibold text-slate-900">{value}</div>{detail ? <div className="text-sm text-slate-500">{detail}</div> : null}</div>;
 }
 

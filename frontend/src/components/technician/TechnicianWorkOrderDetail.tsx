@@ -1092,6 +1092,32 @@ function selectedPartQuantity(available: AvailablePart[], partId: string): numbe
   return stock ? presentStock(stock).available : 0;
 }
 
+function usePartActions({ id, partId, quantity, available, act, partRequests }: Readonly<{
+  id: string;
+  partId: string;
+  quantity: number;
+  available: AvailablePart[];
+  act: ReturnType<typeof useWorkOrderAct>;
+  partRequests: ReturnType<typeof useTechnicianPartRequests>;
+}>) {
+  const addPart = useCallback(() => {
+    if (!partId) return;
+    return act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }));
+  }, [act, id, partId, quantity]);
+
+  const submitRequest = useCallback(() => {
+    if (!partId) return Promise.resolve();
+    return act(() =>
+      apiService.requestTechnicianPart(id, { part_id: partId, quantity }).then((response) => {
+        const record = asPartRequestRecord(response.data);
+        if (record) partRequests.addOrUpdate({ ...record, part: partRequestInfo(available, record.part_id) });
+      }),
+    );
+  }, [act, available, id, partId, partRequests, quantity]);
+
+  return { addPart, submitRequest };
+}
+
 function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
   const tEnums = useTranslations("common.enums");
@@ -1156,23 +1182,14 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
     fallbackError: t("errors.update"),
   });
 
-  const handleAddPart = useCallback(() => {
-    if (!partId) return;
-    return act(() => apiService.setTechnicianPartQuantity(id, { partId, quantity }));
-  }, [act, id, partId, quantity]);
-
-  const handleSubmitRequest = useCallback(() => {
-    if (!partId) return Promise.resolve();
-    return act(() =>
-      apiService.requestTechnicianPart(id, { part_id: partId, quantity }).then((response) => {
-        const record = asPartRequestRecord(response.data);
-        if (record) {
-          const partInfo = partRequestInfo(available, record.part_id);
-          partRequests.addOrUpdate({ ...record, part: partInfo });
-        }
-      }),
-    );
-  }, [act, available, id, partId, partRequests, quantity]);
+  const { addPart: handleAddPart, submitRequest: handleSubmitRequest } = usePartActions({
+    id,
+    partId,
+    quantity,
+    available,
+    act,
+    partRequests,
+  });
 
   if (loading) {
     return (
