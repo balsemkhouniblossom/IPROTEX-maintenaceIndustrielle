@@ -10,6 +10,7 @@ GMAO means "Gestion de Maintenance Assistee par Ordinateur", also known as Compu
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Repository Structure](#repository-structure)
+- [Architecture Diagrams](#architecture-diagrams)
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
 - [Environment Variables](#environment-variables)
@@ -75,7 +76,10 @@ The application is designed around three main roles:
 - Scheduled reports
 - PDF, Excel, and CSV report rendering
 - Optional Gemini-powered AI assistant
-- IMS bearing anomaly detection served by the standalone `ai-service` FastAPI app, integrated through the backend's `ai-anomaly` module
+- IMS bearing anomaly detection served by the standalone `ai-service` FastAPI app and orchestrated by the backend's `ai-anomaly` module
+- Stateful single-timestamp and deterministic batch anomaly inference
+- Persisted anomaly scores, risk levels, reason codes, persistent-alert notifications, and machine history
+- Admin/technician review with pending, confirmed, and rejected validation states
 - Predictive maintenance health scoring and history
 - SonarCloud quality and coverage configuration
 - Playwright browser tests enforced in CI
@@ -179,22 +183,35 @@ GMAO/
 |   |   |-- schemas/
 |   |   `-- services/
 |   |-- src/
-|   |   |-- preprocessing/
-|   |   |-- features/
-|   |   |-- models/
-|   |   `-- evaluation/
+|   |   |-- evaluation/
+|   |   `-- inference/
 |   |-- notebooks/
 |   |-- data/
 |   |-- artifacts/
 |   |-- tests/
-|   `-- requirements.txt
+|   |-- requirements-runtime.txt
+|   `-- requirements-dev.txt
 |-- scripts/
+|-- monitoring/
+|-- docker-compose.yml
 |-- sonar-project.properties
 |-- render.yaml
 |-- DEPLOYMENT.md
-|-- DEPLOYMENT_GUIDE.md
+|-- gmao-global-use-case-diagram.puml
+|-- gmao-detailed-class-diagram.puml
+|-- gmao-executive-class-diagram.puml
 `-- README.md
 ```
+
+## Architecture Diagrams
+
+The PlantUML sources are synchronized with the implementation :
+
+- [`gmao-global-use-case-diagram.puml`](gmao-global-use-case-diagram.puml) describes actors, role-scoped workflows, external systems, and the IMS anomaly-analysis lifecycle.
+- [`gmao-detailed-class-diagram.puml`](gmao-detailed-class-diagram.puml) represents all backend Mongoose schema classes, key relationships, business services, and the FastAPI inference boundary.
+- [`gmao-executive-class-diagram.puml`](gmao-executive-class-diagram.puml) is the compact, presentation-oriented view of the primary entities and services.
+
+The detailed diagram is the reference model; the executive diagram intentionally omits secondary entities.
 
 ## Requirements
 
@@ -214,6 +231,8 @@ Optional integrations:
 - MQTT broker
 - SonarCloud project token
 - Standalone `ai-service` for IMS anomaly-detection inference
+
+The IMS model is currently a deterministic prototype validated against the IMS `1st_test` public test-rig data. Generalization to other IMS tests and IPROTEX production machinery has not been established, so its output must not be treated as a certified industrial safety threshold.
 
 ## Quick Start
 
@@ -268,7 +287,7 @@ Optionally run the AI service in a third terminal (only needed if `AI_SERVICE_EN
 cd ai-service
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-runtime.txt
 uvicorn app.main:app --reload --port 8011
 ```
 
@@ -420,6 +439,10 @@ pytest                                       # Run AI service tests
 jupyter notebook                             # Explore data-audit and training notebooks
 ```
 
+The FastAPI service exposes liveness/readiness probes, model metadata, stateful single-timestamp inference, and stateless batch inference. Requests from the NestJS backend are authenticated with the shared `AI_SERVICE_TOKEN`. Application users access anomaly results through the backend API; the browser does not call model endpoints directly.
+
+The backend persists each analysis against its machine and optional sensor, creates notifications for new persistent alerts, and limits anomaly history and validation operations to administrators and technicians with machine access.
+
 ## Testing And Quality
 
 Recommended checks before opening or merging a pull request:
@@ -450,17 +473,14 @@ The SonarCloud configuration imports both LCOV reports and applies coverage excl
 
 ## Deployment
 
-Deployment documentation is available in:
-
-- [DEPLOYMENT.md](DEPLOYMENT.md)
-- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
-- [DEPLOYMENT_REPORT.md](DEPLOYMENT_REPORT.md)
+The canonical deployment documentation is [DEPLOYMENT.md](DEPLOYMENT.md).
 
 The repository includes:
 
 - `render.yaml` for backend deployment on Render
 - `frontend/vercel.json` for frontend deployment on Vercel
 - `monitoring/` for Render-deployed Prometheus/Grafana config
+- `docker-compose.yml` for a local containerized backend/frontend stack using `.env.production`
 
 Typical production build commands:
 
