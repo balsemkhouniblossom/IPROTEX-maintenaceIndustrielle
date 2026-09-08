@@ -207,6 +207,15 @@ export class AiAnomalyFastApiClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const rowCount = options.payload?.rows.length ?? 0;
+    const serviceToken = this.configService
+      .get<string>('AI_SERVICE_TOKEN')
+      ?.trim();
+    if (!serviceToken) {
+      clearTimeout(timeout);
+      throw new ServiceUnavailableException(
+        'AI anomaly service authentication is not configured',
+      );
+    }
 
     try {
       this.logger.log(
@@ -214,7 +223,10 @@ export class AiAnomalyFastApiClient {
       );
       const response = await fetch(`${baseUrl}${path}`, {
         method: options.method,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-ai-service-token': serviceToken,
+        },
         body: options.payload ? JSON.stringify(options.payload) : undefined,
         signal: controller.signal,
       });

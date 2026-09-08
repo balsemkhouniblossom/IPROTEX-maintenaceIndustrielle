@@ -203,6 +203,8 @@ services:
         sync: false
       - key: AI_SERVICE_TIMEOUT_MS
         value: "12000"
+      - key: AI_SERVICE_TOKEN
+        sync: false
   - type: web
     name: gmao-ai-service
     runtime: python
@@ -226,6 +228,8 @@ services:
         value: "1048576"
       - key: AI_SERVICE_MAX_BATCH_ROWS
         value: "512"
+      - key: AI_SERVICE_TOKEN
+        sync: false
       - key: IMS_ANOMALY_ARTIFACT_PATH
         value: /var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.joblib
       - key: IMS_ANOMALY_METADATA_PATH

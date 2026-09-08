@@ -47,6 +47,7 @@ class ImsFeatureRow(BaseModel):
 class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    stream_id: str = Field(min_length=1, max_length=200, description="Stable platform machine/sensor stream identity.")
     rows: list[ImsFeatureRow] = Field(
         min_length=1,
         description="IMS feature rows for exactly one timestamp. For 1st_test, submit all relevant sensor channels for that timestamp.",

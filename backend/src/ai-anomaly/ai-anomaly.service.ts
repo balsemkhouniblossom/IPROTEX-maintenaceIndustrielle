@@ -199,7 +199,10 @@ export class AiAnomalyService {
 
     const response = statelessBatch
       ? await this.fastApiClient.analyzeBatch({ rows: dto.rows })
-      : await this.fastApiClient.analyze({ rows: dto.rows });
+      : await this.fastApiClient.analyze({
+          stream_id: `${dto.machine_id}:${dto.capteur_id ?? 'machine'}`,
+          rows: dto.rows,
+        });
 
     const persisted = await Promise.all(
       response.results.map((result) =>

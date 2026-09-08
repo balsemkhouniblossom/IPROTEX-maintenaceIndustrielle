@@ -159,7 +159,10 @@ describe('AiAnomalyService', () => {
 
     const response = await service.createAnalysis(dto, actor);
 
-    expect(fastApiClient.analyze).toHaveBeenCalledWith({ rows: dto.rows });
+    expect(fastApiClient.analyze).toHaveBeenCalledWith({
+      stream_id: `${dto.machine_id}:${dto.capteur_id ?? 'machine'}`,
+      rows: dto.rows,
+    });
     expect(analysisModel.exists).toHaveBeenCalledWith(
       expect.objectContaining({
         machine_id: new Types.ObjectId(machineId),

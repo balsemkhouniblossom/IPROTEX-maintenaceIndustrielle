@@ -259,6 +259,9 @@ function validateAiAnomalyService(): {
   if (enabled && !rawUrl) {
     throw new Error('AI_SERVICE_URL is required when AI_SERVICE_ENABLED=true');
   }
+  if (enabled && !process.env.AI_SERVICE_TOKEN?.trim()) {
+    throw new Error('AI_SERVICE_TOKEN is required when AI_SERVICE_ENABLED=true');
+  }
 
   return {
     enabled,

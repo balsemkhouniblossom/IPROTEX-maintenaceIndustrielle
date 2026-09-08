@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import logging
+import secrets
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -21,6 +22,11 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 logger = logging.getLogger("ims_anomaly_api")
+
+
+def has_valid_service_token(request: Request) -> bool:
+    supplied = request.headers.get("x-ai-service-token", "")
+    return bool(settings.service_token) and secrets.compare_digest(supplied, settings.service_token)
 
 
 @asynccontextmanager
@@ -69,12 +75,18 @@ app.add_middleware(
     allow_origins=list(settings.cors_origins),
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Content-Type", "X-AI-Service-Token"],
 )
 
 
 @app.middleware("http")
 async def request_size_limit(request: Request, call_next):
+    if request.url.path.startswith("/v1/") and not has_valid_service_token(request):
+        return JSONResponse(
+            status_code=401,
+            content=error_payload("UNAUTHORIZED", "Valid service authentication is required."),
+            headers={"WWW-Authenticate": "ServiceToken"},
+        )
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > settings.max_request_bytes:
         return JSONResponse(

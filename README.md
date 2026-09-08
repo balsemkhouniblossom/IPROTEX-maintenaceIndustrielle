@@ -343,6 +343,7 @@ TRUST_PROXY=false
 AI_SERVICE_ENABLED=false
 AI_SERVICE_URL=http://127.0.0.1:8011
 AI_SERVICE_TIMEOUT_MS=12000
+AI_SERVICE_TOKEN=replace-with-the-same-random-32-plus-character-token-used-by-fastapi
 ```
 
 ### AI Service Environment
@@ -354,6 +355,7 @@ IMS_ANOMALY_METADATA_PATH=
 AI_SERVICE_CORS_ORIGINS=http://localhost:3000
 AI_SERVICE_MAX_REQUEST_BYTES=1048576
 AI_SERVICE_MAX_BATCH_ROWS=512
+AI_SERVICE_TOKEN=replace-with-the-same-random-32-plus-character-token-used-by-backend
 ```
 
 ### Frontend Environment

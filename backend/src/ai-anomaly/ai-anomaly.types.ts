@@ -22,6 +22,7 @@ export type ImsAnomalyFeatureRow = {
 };
 
 export type AiAnomalyFastApiPayload = {
+  stream_id?: string;
   rows: ImsAnomalyFeatureRow[];
 };
 

@@ -1,8 +1,0 @@
-- [ ] Inspect existing Users page implementation
-- [ ] Inspect frontend apiService users endpoints (already checked)
-- [ ] Implement Users table in `frontend/src/app/[locale]/users/page.tsx`:
-  - [ ] Fetch users via `apiService.getUsers()`
-  - [ ] Add loading state
-  - [ ] Render a table (user_id, first_name, last_name, email, role)
-  - [ ] Add empty state message
-- [ ] Run frontend lint/build (fix any TS/React errors)

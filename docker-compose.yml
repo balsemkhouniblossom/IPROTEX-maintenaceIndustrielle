@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -7,9 +5,13 @@ services:
       dockerfile: Dockerfile
     container_name: backend
     ports:
-      - "3000:3000"
+      - "3001:3001"
+    env_file:
+      - .env.production
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      PORT: "3001"
+      AI_SERVICE_ENABLED: "false"
     restart: unless-stopped
     networks:
       - app-network
@@ -18,11 +20,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
     container_name: frontend
     ports:
-      - "3001:3000"
+      - "3000:3000"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
     restart: unless-stopped
     depends_on:
       - backend

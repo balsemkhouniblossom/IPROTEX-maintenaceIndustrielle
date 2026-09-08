@@ -12,7 +12,11 @@ describe('AiAnomalyFastApiClient', () => {
 
   const config = (values: Record<string, string | undefined>) =>
     ({
-      get: jest.fn((key: string) => values[key]),
+      get: jest.fn((key: string) =>
+        key === 'AI_SERVICE_TOKEN' && values[key] === undefined
+          ? 'test-service-token'
+          : values[key],
+      ),
     }) as unknown as ConfigService;
 
   const jsonResponse = (body: unknown, status = 200) =>
@@ -65,6 +69,25 @@ describe('AiAnomalyFastApiClient', () => {
       'http://ai:8011/v1/anomaly/analyze',
       expect.objectContaining({ method: 'POST' }),
     );
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-ai-service-token': 'test-service-token',
+        }),
+      }),
+    );
+  });
+
+  it('fails closed when service authentication is not configured', async () => {
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true', AI_SERVICE_TOKEN: '' }),
+    );
+
+    await expect(client.analyze({ rows: [] })).rejects.toThrow(
+      'AI anomaly service authentication is not configured',
+    );
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('maps FastAPI 4xx responses to client-safe bad requests', async () => {

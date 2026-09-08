@@ -33,6 +33,7 @@ class Settings:
     cors_origins: tuple[str, ...] = tuple(_csv_env("AI_SERVICE_CORS_ORIGINS", "http://localhost:3000"))
     max_request_bytes: int = int(os.getenv("AI_SERVICE_MAX_REQUEST_BYTES", "1048576"))
     max_batch_rows: int = int(os.getenv("AI_SERVICE_MAX_BATCH_ROWS", "512"))
+    service_token: str = os.getenv("AI_SERVICE_TOKEN", "").strip()
 
     def validate(self) -> None:
         if self.environment == "production" and "*" in self.cors_origins:
@@ -41,6 +42,8 @@ class Settings:
             raise ValueError("AI_SERVICE_MAX_REQUEST_BYTES must be positive.")
         if self.max_batch_rows <= 0:
             raise ValueError("AI_SERVICE_MAX_BATCH_ROWS must be positive.")
+        if self.environment == "production" and len(self.service_token) < 32:
+            raise ValueError("AI_SERVICE_TOKEN must contain at least 32 characters in production.")
 
 
 settings = Settings()

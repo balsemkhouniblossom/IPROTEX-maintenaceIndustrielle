@@ -495,6 +495,7 @@ Environment variables:
 - `AI_SERVICE_CORS_ORIGINS`: comma-separated allowed origins, default `http://localhost:3000`.
 - `AI_SERVICE_MAX_REQUEST_BYTES`: request body limit, default `1048576`.
 - `AI_SERVICE_MAX_BATCH_ROWS`: maximum rows accepted by either anomaly endpoint, default `512`.
+- `AI_SERVICE_TOKEN`: shared service credential required for every `/v1/*` request; production startup rejects values shorter than 32 characters. Send it only as `X-AI-Service-Token` from the backend and rotate both services together.
 - `IMS_ANOMALY_ARTIFACT_PATH`: override path for the v0.1.0 joblib artifact.
 - `IMS_ANOMALY_METADATA_PATH`: override path for the v0.1.0 metadata JSON.
 

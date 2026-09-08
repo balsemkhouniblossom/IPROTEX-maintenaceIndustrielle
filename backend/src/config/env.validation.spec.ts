@@ -546,12 +546,24 @@ describe('validateEnvironment', () => {
     process.env.AI_SERVICE_ENABLED = 'true';
     process.env.AI_SERVICE_URL = 'http://127.0.0.1:8011/';
     process.env.AI_SERVICE_TIMEOUT_MS = '9000';
+    process.env.AI_SERVICE_TOKEN = 'test-service-token';
 
     const env = validateEnvironment();
 
     expect(env.aiServiceEnabled).toBe(true);
     expect(env.aiServiceUrl).toBe('http://127.0.0.1:8011');
     expect(env.aiServiceTimeoutMs).toBe(9000);
+  });
+
+  it('requires AI_SERVICE_TOKEN when the IMS anomaly integration is enabled', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.AI_SERVICE_ENABLED = 'true';
+    process.env.AI_SERVICE_URL = 'http://127.0.0.1:8011';
+    delete process.env.AI_SERVICE_TOKEN;
+
+    expect(() => validateEnvironment()).toThrow(
+      'AI_SERVICE_TOKEN is required when AI_SERVICE_ENABLED=true',
+    );
   });
 
   it('rejects a non-positive AI_SERVICE_TIMEOUT_MS', () => {

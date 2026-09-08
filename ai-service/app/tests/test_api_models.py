@@ -5,8 +5,9 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_model_metadata_exposes_validation_scope_and_runtime_versions() -> None:
-    with TestClient(app) as client:
+def test_model_metadata_exposes_validation_scope_and_runtime_versions(monkeypatch) -> None:
+    monkeypatch.setattr("app.main.settings.service_token", "test-service-token")
+    with TestClient(app, headers={"x-ai-service-token": "test-service-token"}) as client:
         response = client.get("/v1/models")
 
     assert response.status_code == 200

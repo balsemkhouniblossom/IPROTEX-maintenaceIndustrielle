@@ -21,7 +21,7 @@ router = APIRouter(prefix="/v1/anomaly", tags=["anomaly"])
 def analyze(payload: AnalyzeRequest, request: Request) -> AnalyzeResponse:
     if len(payload.rows) > settings.max_batch_rows:
         raise ValueError(f"Request exceeds maximum row limit of {settings.max_batch_rows}.")
-    results = request.app.state.inference_service.analyze(payload.rows)
+    results = request.app.state.inference_service.analyze(payload.stream_id, payload.rows)
     return AnalyzeResponse(results=results)
 
 

@@ -26,7 +26,8 @@ class InferenceService:
     def __init__(self, artifact_path: Path, metadata_path: Path) -> None:
         self.pipeline = ImsAnomalyInferencePipeline(artifact_path, metadata_path)
         self._lock = Lock()
-        self._last_timestamp_by_stream: dict[tuple[str, int], pd.Timestamp] = {}
+        self._last_timestamp_by_stream: dict[tuple[str, str, int], pd.Timestamp] = {}
+        self._pipelines_by_stream: dict[str, ImsAnomalyInferencePipeline] = {}
         self._runtime_versions = {
             "python": platform.python_version(),
             "numpy": np.__version__,
@@ -50,14 +51,15 @@ class InferenceService:
     def ready(self) -> bool:
         return self.pipeline.version == "0.1.0"
 
-    def analyze(self, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
+    def analyze(self, stream_id: str, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
         frame = self._rows_to_frame(rows)
         self._log_request("analyze", rows)
         with self._lock:
-            self._reject_out_of_order_stream(frame)
-            output = self.pipeline.predict_timestamp(frame)
-            self._record_stream_timestamps(frame)
-        return self.pipeline.to_json_records(output)
+            self._reject_out_of_order_stream(stream_id, frame)
+            stream_pipeline = self._pipelines_by_stream.setdefault(stream_id, self._new_replay_pipeline())
+            output = stream_pipeline.predict_timestamp(frame)
+            self._record_stream_timestamps(stream_id, frame)
+        return stream_pipeline.to_json_records(output)
 
     def analyze_batch(self, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
         frame = self._rows_to_frame(rows)
@@ -116,20 +118,20 @@ class InferenceService:
     def _rows_to_frame(rows: list[ImsFeatureRow]) -> pd.DataFrame:
         return pd.DataFrame([row.model_dump(mode="python") for row in rows])
 
-    def _reject_out_of_order_stream(self, frame: pd.DataFrame) -> None:
+    def _reject_out_of_order_stream(self, stream_id: str, frame: pd.DataFrame) -> None:
         timestamps = pd.to_datetime(frame["timestamp"], errors="coerce")
         for row, timestamp in zip(frame.itertuples(index=False), timestamps, strict=True):
-            key = (str(row.experiment), int(row.sensor_channel))
+            key = (stream_id, str(row.experiment), int(row.sensor_channel))
             previous = self._last_timestamp_by_stream.get(key)
             if previous is not None and timestamp <= previous:
                 raise ValueError(
                     "Streaming input must be strictly chronological for each experiment and sensor channel."
                 )
 
-    def _record_stream_timestamps(self, frame: pd.DataFrame) -> None:
+    def _record_stream_timestamps(self, stream_id: str, frame: pd.DataFrame) -> None:
         timestamps = pd.to_datetime(frame["timestamp"], errors="coerce")
         for row, timestamp in zip(frame.itertuples(index=False), timestamps, strict=True):
-            key = (str(row.experiment), int(row.sensor_channel))
+            key = (stream_id, str(row.experiment), int(row.sensor_channel))
             self._last_timestamp_by_stream[key] = timestamp
 
     @staticmethod

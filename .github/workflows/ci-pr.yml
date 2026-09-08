@@ -273,6 +273,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Audit production npm dependencies
+        run: |
+          npm audit --omit=dev --audit-level=moderate --prefix frontend
+          npm audit --omit=dev --audit-level=moderate --prefix backend
+
       - name: Run Trivy diagnostic table scan
         uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # master on 2026-08-14
         with:
@@ -280,7 +289,7 @@ jobs:
           scan-ref: .
           format: table
           severity: HIGH,CRITICAL
-          exit-code: "0"
+          exit-code: "1"
           skip-dirs: node_modules,frontend/node_modules,backend/node_modules,.next,frontend/.next,dist,backend/dist,coverage,frontend/coverage,backend/coverage,backend/uploads,backend/quarantine,backups
 
       - name: Run Trivy SARIF scan (non-blocking)

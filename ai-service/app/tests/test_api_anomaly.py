@@ -18,6 +18,12 @@ ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT_PATH = ROOT / "artifacts" / "models" / "ims_selected_anomaly_model_v0_1_0.joblib"
 METADATA_PATH = ROOT / "artifacts" / "models" / "ims_selected_anomaly_model_v0_1_0.json"
 FEATURE_PATH = ROOT / "data" / "processed" / "ims_features.csv"
+AUTH_HEADERS = {"x-ai-service-token": "test-service-token"}
+
+
+@pytest.fixture(autouse=True)
+def service_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.main.settings.service_token", AUTH_HEADERS["x-ai-service-token"])
 
 
 def feature_rows(timestamp_count: int = 1) -> list[dict[str, Any]]:
@@ -53,10 +59,14 @@ def post_batch(client: TestClient, rows: list[dict[str, Any]]):
     return client.post("/v1/anomaly/analyze-batch", json={"rows": rows})
 
 
+def post_stream(client: TestClient, rows: list[dict[str, Any]], stream_id: str = "machine-1:sensor-1"):
+    return client.post("/v1/anomaly/analyze", json={"stream_id": stream_id, "rows": rows})
+
+
 def test_valid_single_inference_and_direct_pipeline_parity() -> None:
     rows = feature_rows(1)
-    with TestClient(app) as client:
-        response = client.post("/v1/anomaly/analyze", json={"rows": rows})
+    with TestClient(app, headers=AUTH_HEADERS) as client:
+        response = post_stream(client, rows)
 
     assert response.status_code == 200
     payload = response.json()
@@ -79,7 +89,7 @@ def test_valid_single_inference_and_direct_pipeline_parity() -> None:
 
 def test_valid_chronological_batch_and_deterministic_replay() -> None:
     rows = feature_rows(3)
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         first = post_batch(client, rows)
         second = post_batch(client, rows)
 
@@ -93,9 +103,9 @@ def test_invalid_schema_and_missing_features_are_rejected() -> None:
     rows = feature_rows(1)
     missing = dict(rows[0])
     missing.pop("rms")
-    with TestClient(app) as client:
-        assert client.post("/v1/anomaly/analyze", json={"rows": []}).status_code == 422
-        response = client.post("/v1/anomaly/analyze", json={"rows": [missing]})
+    with TestClient(app, headers=AUTH_HEADERS) as client:
+        assert post_stream(client, []).status_code == 422
+        response = post_stream(client, [missing])
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
@@ -103,8 +113,8 @@ def test_invalid_schema_and_missing_features_are_rejected() -> None:
 
 def test_duplicate_rows_are_rejected() -> None:
     rows = feature_rows(1)
-    with TestClient(app) as client:
-        response = client.post("/v1/anomaly/analyze", json={"rows": rows + [rows[0]]})
+    with TestClient(app, headers=AUTH_HEADERS) as client:
+        response = post_stream(client, rows + [rows[0]])
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
@@ -113,8 +123,8 @@ def test_duplicate_rows_are_rejected() -> None:
 def test_non_finite_features_are_rejected() -> None:
     rows = feature_rows(1)
     rows[0]["rms"] = "NaN"
-    with TestClient(app) as client:
-        response = client.post("/v1/anomaly/analyze", json={"rows": rows})
+    with TestClient(app, headers=AUTH_HEADERS) as client:
+        response = post_stream(client, rows)
 
     assert response.status_code == 422
 
@@ -133,7 +143,7 @@ def test_unknown_experiment_bearing_and_sensor_mappings_are_rejected(
 ) -> None:
     rows = feature_rows(1)
     rows[0][field] = value
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = post_batch(client, rows)
 
     assert response.status_code == 400
@@ -143,10 +153,10 @@ def test_unknown_experiment_bearing_and_sensor_mappings_are_rejected(
 def test_out_of_order_timestamps_are_rejected() -> None:
     rows = feature_rows(2)
     reversed_rows = rows[8:] + rows[:8]
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         batch_response = post_batch(client, reversed_rows)
-        stream_ok = client.post("/v1/anomaly/analyze", json={"rows": rows[8:]})
-        stream_bad = client.post("/v1/anomaly/analyze", json={"rows": rows[:8]})
+        stream_ok = post_stream(client, rows[8:])
+        stream_bad = post_stream(client, rows[:8])
 
     assert batch_response.status_code == 400
     assert "chronological" in batch_response.json()["error"]["message"]
@@ -157,10 +167,10 @@ def test_out_of_order_timestamps_are_rejected() -> None:
 
 def test_persistence_state_is_separated_from_stateless_batch_replay() -> None:
     rows = feature_rows(5)
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         baseline = post_batch(client, rows).json()
         for index in range(5):
-            response = client.post("/v1/anomaly/analyze", json={"rows": rows[index * 8 : (index + 1) * 8]})
+            response = post_stream(client, rows[index * 8 : (index + 1) * 8])
             assert response.status_code == 200
         replay = post_batch(client, rows).json()
 
@@ -170,12 +180,12 @@ def test_persistence_state_is_separated_from_stateless_batch_replay() -> None:
 def test_concurrency_safety_for_disjoint_streams() -> None:
     rows = feature_rows(1)
     payloads = [
-        {"rows": rows[:2]},
-        {"rows": rows[2:4]},
-        {"rows": rows[4:6]},
-        {"rows": rows[6:8]},
+        {"stream_id": "machine-1", "rows": rows[:2]},
+        {"stream_id": "machine-2", "rows": rows[2:4]},
+        {"stream_id": "machine-3", "rows": rows[4:6]},
+        {"stream_id": "machine-4", "rows": rows[6:8]},
     ]
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         with ThreadPoolExecutor(max_workers=4) as executor:
             responses = list(executor.map(lambda body: client.post("/v1/anomaly/analyze", json=body), payloads))
 
@@ -186,7 +196,7 @@ def test_batch_size_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.api.routes import anomaly
 
     monkeypatch.setattr(anomaly.settings, "max_batch_rows", 2)
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = post_batch(client, feature_rows(1))
 
     assert response.status_code == 400
@@ -194,7 +204,7 @@ def test_batch_size_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_json_serialization_is_strict() -> None:
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = post_batch(client, feature_rows(1))
 
     assert response.status_code == 200
@@ -202,7 +212,7 @@ def test_json_serialization_is_strict() -> None:
 
 
 def test_no_retraining_during_requests() -> None:
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         service = client.app.state.inference_service
 
         def fail_fit(*args: object, **kwargs: object) -> None:
@@ -216,7 +226,7 @@ def test_no_retraining_during_requests() -> None:
 
 
 def test_request_size_limit() -> None:
-    with TestClient(app) as client:
+    with TestClient(app, headers=AUTH_HEADERS) as client:
         response = client.post(
             "/v1/anomaly/analyze-batch",
             content=json.dumps({"rows": feature_rows(1)}),
@@ -224,3 +234,25 @@ def test_request_size_limit() -> None:
         )
 
     assert response.status_code == 413
+
+
+def test_anonymous_and_invalid_service_tokens_are_rejected_before_validation() -> None:
+    with TestClient(app) as client:
+        anonymous = client.post("/v1/anomaly/analyze", content="not-json")
+        invalid = client.post(
+            "/v1/anomaly/analyze",
+            content="not-json",
+            headers={"x-ai-service-token": "wrong"},
+        )
+
+    assert anonymous.status_code == 401
+    assert invalid.status_code == 401
+    assert anonymous.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_stream_state_is_partitioned_by_platform_identity() -> None:
+    rows = feature_rows(2)
+    with TestClient(app, headers=AUTH_HEADERS) as client:
+        assert post_stream(client, rows[8:], "machine-a").status_code == 200
+        assert post_stream(client, rows[:8], "machine-b").status_code == 200
+        assert post_stream(client, rows[:8], "machine-a").status_code == 400

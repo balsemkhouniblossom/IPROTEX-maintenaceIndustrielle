@@ -194,6 +194,7 @@ AI_ASSISTANT_RATE_LIMIT_PER_HOUR=20
 AI_SERVICE_ENABLED=true
 AI_SERVICE_URL=https://your-ai-service.onrender.com
 AI_SERVICE_TIMEOUT_MS=12000
+AI_SERVICE_TOKEN=<shared-random-32-plus-character-service-token>
 
 # Optional operations/device/predictive settings — all have safe code-level
 # defaults if unset (see backend/.env.example for the exact default of each).
@@ -261,6 +262,7 @@ AI_SERVICE_ENV=production
 AI_SERVICE_CORS_ORIGINS=https://your-backend.onrender.com
 AI_SERVICE_MAX_REQUEST_BYTES=1048576
 AI_SERVICE_MAX_BATCH_ROWS=512
+AI_SERVICE_TOKEN=<same-shared-random-32-plus-character-service-token>
 IMS_ANOMALY_ARTIFACT_PATH=/var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.joblib
 IMS_ANOMALY_METADATA_PATH=/var/data/ims-anomaly/artifacts/models/ims_selected_anomaly_model_v0_1_0.json
 ```
