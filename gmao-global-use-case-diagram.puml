@@ -9,7 +9,7 @@ skinparam usecase {
   ArrowColor #334155
 }
 
-title Diagramme global des cas d'utilisation - GMAO industrielle
+title Diagramme global des cas d'utilisation - GMAO industrielle (audit 2026-09-08)
 
 actor "Visiteur" as Visitor
 actor "Utilisateur authentifie" as User
@@ -19,7 +19,8 @@ actor "Technicien" as Technician
 actor "Equipement IoT / Machine" as DeviceActor
 actor "Service de messagerie" as Messaging
 actor "Stockage fichiers" as FileStorage
-actor "Module IA" as AI
+actor "Assistant IA Gemini" as AI
+actor "Service IA anomalies IMS / FastAPI" as AnomalyAI
 actor "Planificateur automatique" as Scheduler
 actor "Passerelle temps reel" as RealtimeGateway
 
@@ -185,6 +186,17 @@ rectangle "Systeme GMAO" {
     usecase "Gerer rapports planifies" as UC_ScheduledReports
     usecase "Executer rapports planifies" as UC_RunScheduledReports
   }
+
+  package "Analyse anomalies IMS" {
+    usecase "Consulter metadonnees modele IMS" as UC_AnomalyModels
+    usecase "Lancer analyse IMS ponctuelle" as UC_CreateAnomaly
+    usecase "Lancer analyse IMS batch" as UC_BatchAnomaly
+    usecase "Consulter analyses et historique machine" as UC_ViewAnomalies
+    usecase "Filtrer risques et validations" as UC_FilterAnomalies
+    usecase "Confirmer / rejeter une analyse" as UC_ValidateAnomaly
+    usecase "Generer alerte persistante" as UC_AnomalyAlert
+    usecase "Executer inference deterministe" as UC_AnomalyInference
+  }
 }
 
 Visitor --> UC_Register
@@ -253,6 +265,12 @@ Admin --> UC_PredictiveMachine
 Admin --> UC_RefreshPrediction
 Admin --> UC_TrainPredictionModel
 Admin --> UC_CorrectiveAssistant
+Admin --> UC_AnomalyModels
+Admin --> UC_CreateAnomaly
+Admin --> UC_BatchAnomaly
+Admin --> UC_ViewAnomalies
+Admin --> UC_FilterAnomalies
+Admin --> UC_ValidateAnomaly
 
 Operator --> UC_OperatorDashboard
 Operator --> UC_OperatorMachines
@@ -287,6 +305,12 @@ Technician --> UC_ViewManuals
 Technician --> UC_ViewInterventionReports
 Technician --> UC_ManagePreventiveTasks
 Technician --> UC_KnowledgeSuggestions
+Technician --> UC_AnomalyModels
+Technician --> UC_CreateAnomaly
+Technician --> UC_BatchAnomaly
+Technician --> UC_ViewAnomalies
+Technician --> UC_FilterAnomalies
+Technician --> UC_ValidateAnomaly
 
 DeviceActor --> UC_DeviceHeartbeat
 DeviceActor --> UC_DeviceTelemetry
@@ -298,6 +322,7 @@ FileStorage --> UC_ViewDocument
 AI --> UC_AIRecommendations
 AI --> UC_RefreshPrediction
 AI --> UC_TrainPredictionModel
+AnomalyAI --> UC_AnomalyInference
 RealtimeGateway --> UC_RealtimeEvents
 Scheduler --> UC_GenerateNextDue
 Scheduler --> UC_AutoNotifications
@@ -382,6 +407,12 @@ UC_PredictiveMachine ..> UC_RefreshPrediction : <<extend>>
 UC_PredictiveFleet ..> UC_PredictiveMachine : <<include>>
 UC_RequestGeneratedReport ..> UC_DownloadReports : <<extend>>
 UC_ScheduledReports ..> UC_RunScheduledReports : <<include>>
+UC_CreateAnomaly ..> UC_AnomalyInference : <<include>>
+UC_BatchAnomaly ..> UC_AnomalyInference : <<include>>
+UC_CreateAnomaly ..> UC_AnomalyAlert : <<extend>>
+UC_BatchAnomaly ..> UC_AnomalyAlert : <<extend>>
+UC_ViewAnomalies ..> UC_FilterAnomalies : <<extend>>
+UC_ValidateAnomaly ..> UC_ViewAnomalies : <<include>>
 
 note right of UC_PreventiveFlow
 Flux preventif implemente:
@@ -402,6 +433,13 @@ note right of UC_DeviceTelemetry
 Les devices utilisent une authentification
 independante de la session utilisateur,
 puis diffusent les changements en temps reel.
+end note
+
+note right of UC_AnomalyInference
+Modele IMS v0.1.0 charge depuis un artefact versionne.
+Inference streaming ponctuelle ou batch deterministe,
+authentifiee par jeton de service. Validation actuelle:
+IMS 1st_test uniquement; generalisation IPROTEX non etablie.
 end note
 
 @enduml

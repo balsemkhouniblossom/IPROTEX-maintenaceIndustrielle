@@ -1,5 +1,5 @@
 @startuml
-title GMAO Industrielle - Diagramme de classes compact (executif)
+title GMAO Industrielle - Diagramme de classes compact (audit executif 2026-09-08)
 
 left to right direction
 hide empty members
@@ -210,6 +210,12 @@ package "Alertes & Pilotage" {
   }
 }
 
+enum AiAnomalyValidationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
 ' =============================
 ' IA & MAINTENANCE PREDICTIVE
 ' =============================
@@ -232,6 +238,19 @@ package "IA & Maintenance predictive" {
     +generated_at: Date
   }
 
+  class AiAnomalyAnalysis {
+    +analysis_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +capteur_id: ObjectId? <<FK Capteur>>
+    +requested_by: ObjectId <<FK User>>
+    +model_version: String
+    +risk_score: Number
+    +risk_level: String
+    +persistent_alert: Boolean
+    +validation_status: AiAnomalyValidationStatus
+    +validated_by: ObjectId? <<FK User>>
+  }
+
   class AiAssistantService <<service>> {
     +recommend(...)
     +buildContext(...)
@@ -242,6 +261,19 @@ package "IA & Maintenance predictive" {
     +predictForMachine(...)
     +predictAllMachines(...)
     +getLatestForMachine(...)
+  }
+
+  class AiAnomalyService <<service>> {
+    +analyze(...)
+    +analyzeBatch(...)
+    +listHistory(...)
+    +validate(...)
+  }
+
+  class ImsFastApiService <<external service>> {
+    +modelMetadata()
+    +streamInference()
+    +batchInference()
   }
 }
 
@@ -277,6 +309,10 @@ User "1" -- "0..*" AiInteraction
 Machine "0..1" <-- "0..*" AiInteraction
 WorkOrder "0..1" <-- "0..*" AiInteraction
 Machine "1" -- "0..*" MachineHealthPrediction
+Machine "1" -- "0..*" AiAnomalyAnalysis
+Capteur "0..1" <-- "0..*" AiAnomalyAnalysis
+User "1" -- "0..*" AiAnomalyAnalysis : requested by
+User "0..1" <-- "0..*" AiAnomalyAnalysis : validated by
 
 AutomationSchedulerService ..> WorkOrdersService
 WorkOrdersService ..> WorkOrder
@@ -289,6 +325,9 @@ AiAssistantService ..> Machine
 AiAssistantService ..> WorkOrder
 PredictiveMaintenanceService ..> MachineHealthPrediction
 PredictiveMaintenanceService ..> Machine
+AiAnomalyService ..> AiAnomalyAnalysis
+AiAnomalyService ..> ImsFastApiService : authenticated HTTP
+AiAnomalyService ..> Notification : persistent alert
 
 legend right
   <<PK>> Cle primaire
@@ -299,7 +338,10 @@ end legend
 
 note bottom
   Version compacte executive pour slide PFE.
-  Basee sur les entites et flux implementes dans le backend actuel.
+  Basee sur l'audit des entites, routes et flux implementes dans
+  le backend NestJS, le frontend Next.js et le service IA FastAPI.
+  Le modele IMS est un prototype valide sur 1st_test uniquement;
+  sa generalisation aux machines IPROTEX n'est pas etablie.
 end note
 
 @enduml

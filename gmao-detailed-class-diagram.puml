@@ -1,5 +1,5 @@
 @startuml
-title GMAO Industrielle - Diagramme de classes detaille (implementation reelle)
+title GMAO Industrielle - Diagramme de classes detaille (audit implementation 2026-09-08)
 
 hide empty members
 hide circle
@@ -136,6 +136,24 @@ enum AiInteractionStatus {
   rate_limited
   timeout
   error
+}
+
+enum AiAnomalyValidationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum AiAnomalyInputSource {
+  DATASET_REPLAY
+  DEMO
+}
+
+enum AiAnomalyRiskLevel {
+  NORMAL
+  MONITOR
+  HIGH
+  CRITICAL
 }
 
 enum ReportType {
@@ -729,6 +747,57 @@ package "Maintenance predictive & assistant IA" {
     +safetyWarnings: String[]
     +uncertainty: String
   }
+
+  class AiAnomalyAnalysis {
+    +_id: ObjectId <<PK>>
+    +analysis_id: String <<UK>>
+    +machine_id: ObjectId <<FK Machine>>
+    +capteur_id: ObjectId? <<FK Capteur>>
+    +requested_by: ObjectId <<FK User>>
+    +model_version: String
+    +input_source: AiAnomalyInputSource
+    +experiment: String
+    +measurement_timestamp: Date
+    +bearing: Number
+    +anomaly_score: Number
+    +risk_score: Number
+    +risk_level: AiAnomalyRiskLevel
+    +raw_anomaly: Boolean
+    +persistent_alert: Boolean
+    +component_scores: AiAnomalyComponentScores
+    +reason_codes: String[]
+    +prototype_result: Boolean
+    +model_response: AiAnomalyModelResponse
+    +dataset_origin: IMS_PUBLIC_TEST_RIG
+    +validation_scope: IMS_1ST_TEST_ONLY
+    +generalization_status: NOT_ESTABLISHED_FOR_IPROTEX
+    +validation_status: AiAnomalyValidationStatus
+    +validated_by: ObjectId? <<FK User>>
+    +validation_comment: String?
+    +validated_at: Date?
+    +created_at: Date
+    +updated_at: Date
+  }
+
+  class AiAnomalyComponentScores {
+    +zScore: Number
+    +isolationForest: Number
+  }
+
+  class AiAnomalyModelResponse {
+    +modelVersion: String
+    +experiment: String
+    +timestamp: String
+    +bearing: Number
+    +anomalyScore: Number
+    +riskScore: Number
+    +riskLevel: String
+    +rawAnomaly: Boolean
+    +persistentAlert: Boolean
+    +componentScores: AiAnomalyComponentScores
+    +reasonCodes: String[]
+    +prototypeResult: Boolean
+  }
 }
 
 ' =============================
@@ -963,6 +1032,31 @@ package "Services metier backend" {
     +recordInteraction(...)
   }
 
+  class AiAnomalyService <<service>> {
+    +getModelMetadata(...)
+    +createAnalysis(...)
+    +createBatch(...)
+    +listAnalyses(...)
+    +getAnalysis(...)
+    +getMachineHistory(...)
+    +validateAnalysis(...)
+  }
+
+  class AiAnomalyFastApiClient <<service>> {
+    +isEnabled(): Boolean
+    +getModels(...)
+    +analyze(...)
+    +analyzeBatch(...)
+  }
+
+  class ImsInferenceService <<external service>> {
+    +GET /health
+    +GET /ready
+    +GET /v1/models
+    +POST /v1/anomaly/analyze
+    +POST /v1/anomaly/analyze-batch
+  }
+
   class ReportsService <<service>> {
     +requestReport(...)
     +generateReport(...)
@@ -1096,6 +1190,12 @@ Machine "0..1" <-- "0..*" AiInteraction : machine_id
 WorkOrder "0..1" <-- "0..*" AiInteraction : work_order_id
 AiInteraction "0..1" *-- "0..1" AiAssistantAnswer : answer
 Panne "0..*" .. "0..*" AiInteraction : fault_code/code_panne
+Machine "1" -- "0..*" AiAnomalyAnalysis : machine_id
+Capteur "0..1" <-- "0..*" AiAnomalyAnalysis : capteur_id
+User "1" -- "0..*" AiAnomalyAnalysis : requested_by
+User "0..1" <-- "0..*" AiAnomalyAnalysis : validated_by
+AiAnomalyAnalysis "1" *-- "1" AiAnomalyComponentScores : component_scores
+AiAnomalyAnalysis "1" *-- "1" AiAnomalyModelResponse : model_response
 
 ' Lubrification, pannes, notifications
 Module "1" -- "0..*" LubrificationLog : module_id
@@ -1143,6 +1243,13 @@ PredictiveMaintenanceService ..> PredictionModelVersion
 PredictiveMaintenanceService ..> MachineHealthPrediction
 AiAssistantService ..> AiInteraction
 AiAssistantService ..> KnowledgeArticle
+AiAnomalyService ..> AiAnomalyAnalysis
+AiAnomalyService ..> Machine
+AiAnomalyService ..> Capteur
+AiAnomalyService ..> NotificationCenterService : persistent alerts
+AiAnomalyService ..> DocumentsService : machine access scope
+AiAnomalyService ..> AiAnomalyFastApiClient
+AiAnomalyFastApiClient ..> ImsInferenceService : service token + HTTP
 ReportsService ..> GeneratedReport
 ReportSchedulerService ..> ScheduledReport
 ReportSchedulerService ..> GeneratedReport
@@ -1166,7 +1273,8 @@ note bottom
   Source: schemas NestJS + Mongoose de backend/src/schemas/*.schema.ts,
   backend/src/auth/schemas/google-login-exchange.schema.ts,
   backend/src/counters/counter.schema.ts et services backend principaux.
-  Ce diagramme est volontairement detaille; utiliser uml-compact-executive.puml
+  Audit: modules/controllers, schemas Mongoose, routes Next.js et API FastAPI.
+  Ce diagramme est volontairement detaille; utiliser gmao-executive-class-diagram.puml
   pour une slide courte.
 end note
 

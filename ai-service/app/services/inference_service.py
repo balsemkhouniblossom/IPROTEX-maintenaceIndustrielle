@@ -56,7 +56,10 @@ class InferenceService:
         self._log_request("analyze", rows)
         with self._lock:
             self._reject_out_of_order_stream(stream_id, frame)
-            stream_pipeline = self._pipelines_by_stream.setdefault(stream_id, self._new_replay_pipeline())
+            stream_pipeline = self._pipelines_by_stream.get(stream_id)
+            if stream_pipeline is None:
+                stream_pipeline = self._new_replay_pipeline()
+                self._pipelines_by_stream[stream_id] = stream_pipeline
             output = stream_pipeline.predict_timestamp(frame)
             self._record_stream_timestamps(stream_id, frame)
         return stream_pipeline.to_json_records(output)

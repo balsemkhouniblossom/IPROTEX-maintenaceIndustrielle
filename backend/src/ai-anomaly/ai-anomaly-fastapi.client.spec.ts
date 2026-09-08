@@ -80,6 +80,7 @@ describe('AiAnomalyFastApiClient', () => {
   });
 
   it('fails closed when service authentication is not configured', async () => {
+    global.fetch = jest.fn();
     const client = new AiAnomalyFastApiClient(
       config({ AI_SERVICE_ENABLED: 'true', AI_SERVICE_TOKEN: '' }),
     );
