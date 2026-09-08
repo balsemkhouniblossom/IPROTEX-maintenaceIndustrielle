@@ -380,6 +380,10 @@ source of truth instead of two files that can silently drift apart.
 
 ## Staging environment
 
+Repository-side staging variables, guarded synthetic seeding, index checks and
+recurrence acceptance are maintained in [`STAGING_SETUP.md`](STAGING_SETUP.md)
+and [`STAGING_SMOKE_TEST_CHECKLIST.md`](STAGING_SMOKE_TEST_CHECKLIST.md).
+
 There is currently no staging environment — every deploy from `main` goes
 straight to production. Standing one up:
 
