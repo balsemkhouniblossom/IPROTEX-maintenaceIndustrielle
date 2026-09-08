@@ -1118,6 +1118,18 @@ function usePartActions({ id, partId, quantity, available, act, partRequests }: 
   return { addPart, submitRequest };
 }
 
+function WorkOrderTabs(props: any) {
+  const { activeTab } = props;
+  switch (activeTab) {
+    case "overview": return <OverviewTab {...props} />;
+    case "intervention": return <InterventionTab {...props} />;
+    case "parts": return <PartsTab {...props} onAddPart={() => void props.handleAddPart()} onSubmitRequest={() => void props.handleSubmitRequest()} requests={props.partRequests.records} />;
+    case "documents": return <div className="space-y-5"><ManualsSection manuals={props.detail.manuals} previewManual={props.previewManual} setPreviewManual={props.setPreviewManual} t={props.t} machineId={typeof props.machine?._id === "string" ? props.machine._id : undefined} faultCode={props.wo.code_panne} maintenancePlanId={maintenancePlanId(props.wo)} /></div>;
+    case "history": return <HistoryTab {...props} />;
+    default: return null;
+  }
+}
+
 function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDetailProps) {
   const t = useTranslations("technician");
   const tEnums = useTranslations("common.enums");
@@ -1320,89 +1332,47 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
             setActiveTab={setActiveTab}
           />
 
-          {activeTab === "overview" ? (
-            <OverviewTab
-              t={t}
-              tEnums={tEnums}
-              locale={locale}
-              wo={wo}
-              machine={machine}
-              description={description}
-              reportOwner={reportOwner}
-              status={status}
-              isTerminal={isTerminal}
-              detail={detail}
-              statusByMachine={statusByMachine}
-              subscribeToMachine={subscribeToMachine}
-              showTechnicalAnalysis={showTechnicalAnalysis}
-              setShowTechnicalAnalysis={setShowTechnicalAnalysis}
-            />
-          ) : null}
-
-          {activeTab === "intervention" ? (
-            <InterventionTab
-              t={t}
-              locale={locale}
-              saving={saving}
-              act={act}
-              id={id}
-              status={status}
-              hasAssignedTechnician={hasAssignedTechnician}
-              isTerminal={isTerminal}
-              waitingForValidation={waitingForValidation}
-              report={report}
-              setReport={setReport}
-              canEditIntervention={canEditIntervention}
-              setActiveTab={setActiveTab}
-              setCompleteOpen={setCompleteOpen}
-              startedAt={startedAt}
-            />
-          ) : null}
-
-          {activeTab === "parts" ? (
-            <PartsTab
-              t={t}
-              detail={detail}
-              available={available}
-              partId={partId}
-              setPartId={setPartId}
-              quantity={quantity}
-              setQuantity={setQuantity}
-              availableQuantity={availableQuantity}
-              saving={saving}
-              canEditIntervention={canEditIntervention}
-              onAddPart={() => void handleAddPart()}
-              onSubmitRequest={() => void handleSubmitRequest()}
-              id={id}
-              status={status}
-              requests={partRequests.records}
-            />
-          ) : null}
-
-          {activeTab === "documents" ? (
-            <div className="space-y-5">
-              <ManualsSection
-                manuals={detail.manuals}
-                previewManual={previewManual}
-                setPreviewManual={setPreviewManual}
-                t={t}
-                machineId={typeof machine?._id === "string" ? machine._id : undefined}
-                faultCode={wo.code_panne}
-                maintenancePlanId={maintenancePlanId(wo)}
-              />
-            </div>
-          ) : null}
-
-          {activeTab === "history" ? (
-            <HistoryTab
-              t={t}
-              locale={locale}
-              wo={wo}
-              startedAt={startedAt}
-              endedAt={endedAt}
-              lifecycleHistory={lifecycleHistory}
-            />
-          ) : null}
+          <WorkOrderTabs
+            activeTab={activeTab}
+            t={t}
+            tEnums={tEnums}
+            locale={locale}
+            wo={wo}
+            machine={machine}
+            description={description}
+            reportOwner={reportOwner}
+            status={status}
+            isTerminal={isTerminal}
+            detail={detail}
+            statusByMachine={statusByMachine}
+            subscribeToMachine={subscribeToMachine}
+            showTechnicalAnalysis={showTechnicalAnalysis}
+            setShowTechnicalAnalysis={setShowTechnicalAnalysis}
+            saving={saving}
+            act={act}
+            id={id}
+            hasAssignedTechnician={hasAssignedTechnician}
+            waitingForValidation={waitingForValidation}
+            report={report}
+            setReport={setReport}
+            canEditIntervention={canEditIntervention}
+            setActiveTab={setActiveTab}
+            setCompleteOpen={setCompleteOpen}
+            startedAt={startedAt}
+            endedAt={endedAt}
+            lifecycleHistory={lifecycleHistory}
+            available={available}
+            partId={partId}
+            setPartId={setPartId}
+            quantity={quantity}
+            setQuantity={setQuantity}
+            availableQuantity={availableQuantity}
+            partRequests={partRequests}
+            handleAddPart={handleAddPart}
+            handleSubmitRequest={handleSubmitRequest}
+            previewManual={previewManual}
+            setPreviewManual={setPreviewManual}
+          />
 
           <CompletionModal
             t={t}
