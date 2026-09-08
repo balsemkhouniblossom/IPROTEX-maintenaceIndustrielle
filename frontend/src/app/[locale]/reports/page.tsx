@@ -694,9 +694,9 @@ function ReportsPageContent() {
 
       {/* Reusable summary charts, computed from the currently visible reports list */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <BarChartCard title={t('charts.byType')} data={reportsByType} emptyLabel={t('empty.default')} />
+        <BarChartCard title={`${t('charts.byType')} · ${t('charts.visibleResults')}`} data={reportsByType} emptyLabel={t('empty.default')} />
         <BarChartCard
-          title={t('charts.byStatus')}
+          title={`${t('charts.byStatus')} · ${t('charts.visibleResults')}`}
           data={reportsByStatus}
           color="var(--secondary)"
           emptyLabel={t('empty.default')}

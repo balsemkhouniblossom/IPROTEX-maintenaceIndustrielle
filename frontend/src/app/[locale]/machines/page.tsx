@@ -729,6 +729,7 @@ export default function MachinesPage() {
   }
 
   return (
+    <ProtectedRoute requiredRole="admin">
     <DashboardLayout title={tMachines("pageTitle")}>
       {/* Notification */}
       <ToastNotification
@@ -1173,5 +1174,6 @@ export default function MachinesPage() {
         ) : null}
       </Modal>
     </DashboardLayout>
+    </ProtectedRoute>
   );
 }

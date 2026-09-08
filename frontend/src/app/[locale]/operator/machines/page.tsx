@@ -19,19 +19,6 @@ interface Machine {
   fabricant?: string;
 }
 
-interface MachineType {
-  _id: string;
-  name: string;
-}
-
-function stringId(value: unknown): string {
-  if (typeof value === "string" || typeof value === "number") return String(value);
-  if (value && typeof value === "object" && "_id" in value) {
-    return stringId((value as { _id?: unknown })._id);
-  }
-  return "";
-}
-
 function getMachineTypeName(machine: Machine): string {
   if (!machine.type_id) return "";
   if (typeof machine.type_id === "string") return "";

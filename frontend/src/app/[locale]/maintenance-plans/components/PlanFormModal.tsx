@@ -72,6 +72,9 @@ function PlanFormModalInner({
   t,
   tCommon,
 }: PlanFormModalProps) {
+  const hasLegacyFrequencyUnit =
+    Boolean(formData.unite_frequence) &&
+    !FREQUENCE_UNIT_OPTIONS.includes(formData.unite_frequence);
   let submitLabel = t('actions.create');
   if (submitting) {
     submitLabel = tCommon('saving');
@@ -226,18 +229,10 @@ function PlanFormModalInner({
                 {option}
               </option>
             ))}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
+            {hasLegacyFrequencyUnit && (
+              <option value={CUSTOM_OPTION}>{formData.unite_frequence}</option>
+            )}
           </select>
-          {getSelectValue(FREQUENCE_UNIT_OPTIONS, formData.unite_frequence) === CUSTOM_OPTION && (
-            <input
-              type="text"
-              value={formData.unite_frequence}
-              onChange={(event) => setFormData((prev) => ({ ...prev, unite_frequence: event.target.value }))}
-              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.frequencyUnit')}
-              required
-            />
-          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">

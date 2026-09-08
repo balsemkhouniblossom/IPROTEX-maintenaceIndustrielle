@@ -8,7 +8,6 @@ interface SuccessProps {
   okCount: number;
   problemCount: number;
   workOrderOtId: string;
-  reportId: string;
   onViewResults?: () => void;
   onBack: () => void;
 }
@@ -21,7 +20,6 @@ export function InspectionSuccess({
   okCount,
   problemCount,
   workOrderOtId,
-  reportId,
   onViewResults,
   onBack,
 }: Readonly<SuccessProps>) {

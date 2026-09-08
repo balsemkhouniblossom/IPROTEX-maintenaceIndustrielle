@@ -37,18 +37,40 @@ test("the machines/[id] route renders MachineDetailPage from the machine-timelin
   );
 });
 
-test("MachineDetailPage gates access to admin/technician/operator and wires header, stats, and feed", () => {
+test("shared machine routes allow admin and technician while keeping operators on their canonical route", () => {
   const source = readSource("src/components/machine-timeline/MachineDetailPage.tsx");
+  const listSource = readSource("src/app/[locale]/machines/page.tsx");
+  const operatorSource = readSource("src/app/[locale]/operator/machines/[id]/page.tsx");
 
   assert.match(
     source,
-    /allowedRoles=\{\['admin',\s*'technician',\s*'operator'\]\}/,
-    "MachineDetailPage must allow all three roles, each scoped server-side by DocumentAccessService",
+    /allowedRoles=\{\['admin',\s*'technician'\]\}/,
+    "shared machine details must be available to admin and technician",
   );
+  assert.doesNotMatch(source, /'operator'/, "operators must use the dedicated operator machine route");
+  assert.match(listSource, /requiredRole="admin"/);
+  assert.match(listSource, /requiredRole="technician"/);
+  assert.match(operatorSource, /requiredRole="operator"/);
   assert.match(source, /apiService\.getMachineTimelineSummary\(/, "must fetch the machine summary");
   assert.match(source, /<MachineHeader\b/, "must render the machine header");
   assert.match(source, /<MachineStatsCards\b/, "must render the stats cards");
   assert.match(source, /<MachineTimelineFeed\b/, "must render the timeline feed");
+});
+
+test("Admin dashboard navigation uses the locale-aware Link for en, fr, and ar", () => {
+  const dashboard = readSource("src/app/Dashboard.tsx");
+  const navigation = readSource("src/i18n/navigation.ts");
+
+  assert.match(dashboard, /import \{ Link \} from ['"]@\/i18n\/navigation['"]/);
+  assert.match(navigation, /createNavigation\(\{\s*locales:/);
+  for (const locale of ["en", "fr", "ar"]) {
+    assert.match(
+      readSource(`messages/${locale}.json`),
+      /"operatorMachines"/,
+      `${locale} must remain a configured localized application language`,
+    );
+  }
+  assert.doesNotMatch(dashboard, /from ['"]next\/link['"]/);
 });
 
 test("MachineTimelineFeed implements infinite scroll via IntersectionObserver and windowed rendering via TanStack Virtual", () => {

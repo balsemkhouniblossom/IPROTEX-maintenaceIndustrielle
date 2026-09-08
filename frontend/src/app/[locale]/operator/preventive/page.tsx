@@ -46,32 +46,39 @@ function PreventiveTasksFlow() {
     selectedTask?.workOrderId || null,
     selectedTask?.readOnly || false,
   );
+  const resetInspection = inspection.reset;
 
-  const initialPlanId = searchParams.get("plan");
-  const initialMachineId = searchParams.get("machine");
+  const initialWorkOrderId =
+    searchParams.get("occurrenceId") ||
+    searchParams.get("workOrder") ||
+    searchParams.get("workOrderId");
 
   useEffect(() => {
-    if (loading) return;
-    const initialWorkOrderId = searchParams.get("workOrder") || searchParams.get("workOrderId");
-    if (!initialWorkOrderId) return;
-    const match = tasks.find((t) =>
-      initialWorkOrderId
-        ? t.workOrderId === initialWorkOrderId
-        : t.planId === initialPlanId && t.machineId === initialMachineId,
-    );
-    if (match) {
-      setSelectedTask({
-        planId: match.planId,
-        machineId: match.machineId,
-        planName: match.planName,
-        machineName: match.machineName,
-        machineCode: match.machineCode,
-        workOrderId: match.workOrderId,
-        readOnly: match.tab === "completed",
-      });
-      setStep("checklist");
-    }
-  }, [loading, initialPlanId, initialMachineId, tasks]);
+    if (loading || !initialWorkOrderId) return;
+    const match = tasks.find((task) => task.workOrderId === initialWorkOrderId);
+    if (!match || selectedTask?.workOrderId === match.workOrderId) return;
+
+    resetInspection();
+    setObservation("");
+    setCorrectiveWo(null);
+    setCompletedReportId(null);
+    setSelectedTask({
+      planId: match.planId,
+      machineId: match.machineId,
+      planName: match.planName,
+      machineName: match.machineName,
+      machineCode: match.machineCode,
+      workOrderId: match.workOrderId,
+      readOnly: match.tab === "completed",
+    });
+    setStep("checklist");
+  }, [
+    initialWorkOrderId,
+    resetInspection,
+    loading,
+    selectedTask?.workOrderId,
+    tasks,
+  ]);
 
   function handleOpenTask(task: typeof groupedTasks.today[0]) {
     if (selectedTask?.workOrderId !== task.workOrderId) {
@@ -142,7 +149,6 @@ function PreventiveTasksFlow() {
               okCount={inspection.okCount}
               problemCount={inspection.problemCount}
               workOrderOtId={correctiveWo || inspection.workOrderId || ""}
-              reportId={completedReportId || ""}
               onViewResults={() => {
                 if (completedReportId) {
                   router.push(`/${locale}/operator/my-reports?reportId=${encodeURIComponent(completedReportId)}&workOrderId=${encodeURIComponent(inspection.workOrderId || "")}`);
@@ -279,7 +285,6 @@ function PreventiveTasksFlow() {
                     <TaskCard
                       key={task.workOrderId || `${task.planId}:${task.machineId}`}
                       planName={task.planName}
-                      planCode={task.planCode}
                       machineName={task.machineName}
                       machineCode={task.machineCode}
                       checkCount={task.checkCount}

@@ -19,6 +19,29 @@ export type ProtectedRouteDecision =
 
 const KNOWN_ROLES = new Set<SessionRole>(['admin', 'technician', 'operator']);
 const SUPPORTED_LOCALES = new Set(['ar', 'de', 'en', 'es', 'fr', 'it']);
+const ADMIN_ROUTE_ROOTS = new Set([
+  'capteurs',
+  'catalogues',
+  'devices',
+  'digital-twin',
+  'documents',
+  'intervention-reports',
+  'knowledge-base',
+  'lubrifiants',
+  'lubrification-logs',
+  'machine-types',
+  'maintenance-plans',
+  'mesures',
+  'module-pieces',
+  'module-types',
+  'ot-pieces',
+  'panne-solutions',
+  'pannes',
+  'reports',
+  'stocks',
+  'users',
+  'work-orders',
+]);
 
 export function normalizeRole(role?: string | null): SessionRole | null {
   const normalized = role?.trim().toLowerCase();
@@ -44,6 +67,7 @@ export function inferRequiredRoleFromPath(
 
   if (routeRoot === 'operator') return 'operator';
   if (routeRoot === 'technician') return 'technician';
+  if (ADMIN_ROUTE_ROOTS.has(routeRoot)) return 'admin';
   return null;
 }
 

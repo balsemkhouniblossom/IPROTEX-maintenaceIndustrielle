@@ -163,3 +163,19 @@ test("PlanFormModal associates every field label with its control via matching h
     );
   }
 });
+
+test("maintenance frequency units are constrained to scheduler-supported values while legacy values remain visible", () => {
+  const utils = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/maintenance-plans/utils.ts"),
+    "utf8",
+  );
+  const modal = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/maintenance-plans/components/PlanFormModal.tsx"),
+    "utf8",
+  );
+
+  assert.match(utils, /FREQUENCE_UNIT_OPTIONS = \['jour', 'semaine', 'mois', 'an'\]/);
+  assert.doesNotMatch(utils, /FREQUENCE_UNIT_OPTIONS[^\n]*trimestre|FREQUENCE_UNIT_OPTIONS[^\n]*semestre/);
+  assert.match(modal, /hasLegacyFrequencyUnit/);
+  assert.doesNotMatch(modal, /onChange=\{\(event\)[\s\S]{0,160}unite_frequence: event\.target\.value/);
+});

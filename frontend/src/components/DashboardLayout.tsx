@@ -15,6 +15,7 @@ import NotificationBell from "@/components/NotificationBell";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import GlobalAiAssistantLauncher from "@/components/ai-assistant/GlobalAiAssistantLauncher";
 import { getPendingApprovalCount } from "@/services/userApprovals";
+import { evaluateProtectedRouteAccess } from "@/services/sessionGuard";
 
 // Architecture markers kept for source-level regression tests:
 // import { OfflineBanner } from '@/components/OfflineBanner';
@@ -81,34 +82,8 @@ function DashboardLayoutBody({
   };
 
   const role = user?.role;
-  const operatorBlockedPrefixes = [
-    "/machines",
-    "/devices",
-    "/capteurs",
-    "/catalogues",
-    "/documents",
-    "/intervention-reports",
-    "/maintenance-plans",
-    "/pannes",
-    "/panne-solutions",
-    "/stocks",
-    "/work-orders",
-    "/knowledge-base",
-    "/lubrifiants",
-    "/lubrification-logs",
-    "/ot-pieces",
-    "/digital-twin",
-    "/reports",
-    "/ai-anomaly",
-    "/preventive-task-checklist",
-    "/users",
-  ];
-  const operatorBlocked =
-    role === "operator" &&
-    operatorBlockedPrefixes.some((prefix) =>
-      pathname === `${localePrefix}${prefix}` ||
-      pathname.startsWith(`${localePrefix}${prefix}/`),
-    );
+  const routeAccess = evaluateProtectedRouteAccess({ user, pathname });
+  const routeDestination = routeAccess.status === "allow" ? null : routeAccess.to;
 
   useEffect(() => {
     if (user?.profile_completed === false) {
@@ -127,12 +102,11 @@ function DashboardLayoutBody({
   }, [authLoading, isAuthenticated, router, user]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user?.role === "operator" && operatorBlocked) {
-      router.replace(withLocale("/operator"));
+    if (!authLoading && isAuthenticated && routeDestination) {
+      router.replace(routeDestination);
     }
     // withLocale and the route list are stable for this mounted layout.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isAuthenticated, operatorBlocked, router, user?.role]);
+  }, [authLoading, isAuthenticated, routeDestination, router]);
 
   useEffect(() => {
     let active = true;
@@ -177,17 +151,6 @@ function DashboardLayoutBody({
           <p className="mt-4 text-sm font-medium text-slate-700">
             {tProtected("loading")}
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (operatorBlocked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
-          <p className="text-lg font-semibold text-amber-900">{tProtected("accessDeniedTitle")}</p>
-          <p className="mt-2 text-sm text-amber-800">{tProtected("accessDeniedDescription")}</p>
         </div>
       </div>
     );
@@ -520,6 +483,16 @@ function DashboardLayoutBody({
   const navigation = getNavigation();
   const maintenanceStatusLabel = pendingMaintenanceLabel();
   const percentageStatusLabel = percentageChangeLabel();
+
+  if (!authLoading && isAuthenticated && routeAccess.status !== "allow") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <p className="text-sm font-medium text-slate-700">
+          {tProtected("redirectingDescription")}
+        </p>
+      </div>
+    );
+  }
 
   // Get translated navigation items based on role
 

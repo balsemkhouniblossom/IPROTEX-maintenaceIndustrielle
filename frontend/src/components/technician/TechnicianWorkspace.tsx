@@ -1766,7 +1766,7 @@ export function TechnicianCompletedHistory() {
     );
   }, [data]);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();

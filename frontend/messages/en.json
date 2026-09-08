@@ -159,6 +159,8 @@
   },
   "common": {
     "allFields": "All fields",
+    "loadFailed": "Unable to load this information.",
+    "retryLater": "Try again shortly.",
     "actions": {
       "actions": "Actions",
       "edit": "Edit",
@@ -966,6 +968,8 @@
         "problemDetectedTitle": "Problem detected",
         "problemDetectedMessage": "You marked:",
         "continueChecklist": "Continue Checklist",
+        "continueChecklistQuestion": "Do you want to report this problem now and continue the checklist?",
+        "reference": "Reference",
         "reportProblem": "Report Problem",
         "cancel": "Cancel",
         "loading": "Loading..."
@@ -2319,6 +2323,7 @@
   },
   "operatorMachines": {
     "pageTitle": "Machines",
+    "loadFailed": "Unable to load your machines.",
     "backToMachines": "Back to Machines",
     "subtitle": "Search and manage your assigned machines.",
     "searchPlaceholder": "Search machine name or serial number...",
@@ -3676,7 +3681,8 @@
     },
     "charts": {
       "byType": "Reports by type",
-      "byStatus": "Reports by status"
+      "byStatus": "Reports by status",
+      "visibleResults": "Visible results"
     },
     "history": {
       "title": "Generated reports",

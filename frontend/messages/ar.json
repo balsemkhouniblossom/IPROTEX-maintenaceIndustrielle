@@ -159,6 +159,8 @@
   },
   "common": {
     "allFields": "كل الحقول",
+    "loadFailed": "تعذر تحميل هذه المعلومات.",
+    "retryLater": "حاول مرة أخرى بعد قليل.",
     "actions": {
       "cancel": "إلغاء",
       "saving": "جارٍ الحفظ...",
@@ -978,6 +980,8 @@
         "problemDetectedTitle": "Problem detected",
         "problemDetectedMessage": "You marked:",
         "continueChecklist": "Continue Checklist",
+        "continueChecklistQuestion": "هل تريد الإبلاغ عن هذه المشكلة الآن ومتابعة قائمة التحقق؟",
+        "reference": "المرجع",
         "reportProblem": "Report Problem",
         "cancel": "Cancel",
         "loading": "Loading..."
@@ -3435,7 +3439,8 @@
     },
     "charts": {
       "byType": "التقارير حسب النوع",
-      "byStatus": "التقارير حسب الحالة"
+      "byStatus": "التقارير حسب الحالة",
+      "visibleResults": "النتائج الظاهرة"
     },
     "history": {
       "title": "التقارير المُنشأة",
@@ -3691,6 +3696,7 @@
   },
   "operatorMachines": {
     "pageTitle": "الآلات",
+    "loadFailed": "تعذر تحميل آلاتك.",
     "backToMachines": "العودة إلى الآلات",
     "subtitle": "ابحث عن الآلات المعينة إليك وأديرها.",
     "searchPlaceholder": "البحث باسم الآلة أو الرقم التسلسلي...",

@@ -106,18 +106,6 @@ function formatDate(value: string | null | undefined, locale: string): string {
   }
 }
 
-function formatTime(value: string | null | undefined, locale: string): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleTimeString(locale, {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return value;
-  }
-}
-
 function machineStatusBadge(status: string): string {
   const normalized = status.toLowerCase();
   if (normalized === "operational") {

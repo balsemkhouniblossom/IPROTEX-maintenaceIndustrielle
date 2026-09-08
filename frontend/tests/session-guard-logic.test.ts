@@ -112,7 +112,43 @@ test("valid role access is allowed using current backend user role", () => {
 test("route role inference protects dashboards without explicit props", () => {
   assert.equal(inferRequiredRoleFromPath("/en/operator/machines"), "operator");
   assert.equal(inferRequiredRoleFromPath("/en/technician/work-orders"), "technician");
-  assert.equal(inferRequiredRoleFromPath("/en/documents"), null);
+  assert.equal(inferRequiredRoleFromPath("/en/documents"), "admin");
+});
+
+test("management routes require admin while explicitly shared routes remain shared", () => {
+  for (const route of [
+    "capteurs",
+    "devices",
+    "documents",
+    "maintenance-plans",
+    "stocks",
+    "work-orders",
+  ]) {
+    assert.equal(inferRequiredRoleFromPath(`/fr/${route}`), "admin");
+  }
+  assert.equal(inferRequiredRoleFromPath("/ar/machines"), null);
+  assert.equal(inferRequiredRoleFromPath("/en/ai-anomaly"), null);
+  assert.equal(inferRequiredRoleFromPath("/en/preventive-task-checklist"), null);
+
+  assert.equal(
+    evaluateProtectedRouteAccess({
+      user: { ...approvedOperator, role: "technician" },
+      pathname: "/en/documents",
+    }).status,
+    "deny",
+  );
+});
+
+test("not-found recovery returns each authenticated role to its localized workspace", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/not-found.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /role === "operator"[\s\S]*`\/\$\{locale\}\/operator`/);
+  assert.match(source, /role === "technician"[\s\S]*`\/\$\{locale\}\/technician`/);
+  assert.match(source, /role === "admin"[\s\S]*`\/\$\{locale\}`/);
+  assert.match(source, /`\/\$\{locale\}\/auth\/login`/);
 });
 
 test("refresh-session recovery depends on backend-returned user state", () => {

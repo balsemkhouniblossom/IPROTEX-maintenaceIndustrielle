@@ -354,9 +354,9 @@ export default function CataloguesPage() {
                       <td className="font-medium">{part.part_id}</td>
                       <td>{part.nom_piece}</td>
                       <td>{part.ref_constructeur}</td>
-                      <td>{part.fabricant || t("common.notAvailable")}</td>
+                      <td>{part.fabricant || common("notAvailable")}</td>
                       <td>
-                        {part.categorie_piece || t("common.notAvailable")}
+                        {part.categorie_piece || common("notAvailable")}
                       </td>
                       <td>
                         <div className="flex gap-2">

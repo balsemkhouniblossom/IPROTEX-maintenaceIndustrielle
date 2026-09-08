@@ -775,6 +775,8 @@
         "problemDetectedTitle": "Problem detected",
         "problemDetectedMessage": "You marked:",
         "continueChecklist": "Continue Checklist",
+        "continueChecklistQuestion": "Do you want to report this problem now and continue the checklist?",
+        "reference": "Reference",
         "reportProblem": "Report Problem",
         "cancel": "Cancel",
         "loading": "Loading..."
@@ -960,6 +962,8 @@
     }
   },
   "common": {
+    "loadFailed": "Unable to load this information.",
+    "retryLater": "Try again shortly.",
     "loading": "Loading...",
     "error": "Fehler",
     "success": "Erfolg",
@@ -1895,6 +1899,7 @@
     }
   },
   "operatorMachines": {
+    "loadFailed": "Unable to load your machines.",
     "pageTitle": "Maschinen",
     "backToMachines": "Zurück zu Maschinen",
     "subtitle": "Suchen und verwalten Sie Ihre zugewiesenen Maschinen.",
@@ -3676,7 +3681,8 @@
     },
     "charts": {
       "byType": "Berichte nach Typ",
-      "byStatus": "Berichte nach Status"
+      "byStatus": "Berichte nach Status",
+      "visibleResults": "Sichtbare Ergebnisse"
     },
     "history": {
       "title": "Erstellte Berichte",

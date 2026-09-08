@@ -13,7 +13,7 @@ export const CUSTOM_OPTION = '__custom__';
 
 export const MAINTENANCE_TYPE_OPTIONS = ['preventive', 'corrective', 'inspection', 'lubrication'];
 export const FREQUENCE_OPTIONS = ['1', '2', '3', '4', '6', '12'];
-export const FREQUENCE_UNIT_OPTIONS = ['jour', 'semaine', 'mois', 'trimestre', 'semestre', 'an'];
+export const FREQUENCE_UNIT_OPTIONS = ['jour', 'semaine', 'mois', 'an'];
 export const RESPONSABLE_OPTIONS = ['Maintenance', 'Operator', 'Supervisor', 'Quality'];
 export const HUILE_GRAISSE_OPTIONS = ['Huile', 'Graisse', 'Aucune'];
 export const DOCUMENTATION_OPTIONS = ['Maintenance plan', 'Machine maintenance plan', 'SOP', 'Checklist'];

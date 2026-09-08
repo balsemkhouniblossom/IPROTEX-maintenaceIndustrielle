@@ -282,11 +282,13 @@ test("Nested Operator sidebar routes remain active and expose aria-current", () 
 
 test("DashboardLayout blocks Operator access to shared management routes while preserving locale", () => {
   const source = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
-  for (const route of ["/machines", "/devices", "/work-orders", "/maintenance-plans", "/documents", "/digital-twin"]) {
-    assert.match(source, new RegExp(`\\"${route.replace("/", "\\/")}\\"`));
+  const guard = fs.readFileSync(path.join(process.cwd(), "src/services/sessionGuard.ts"), "utf8");
+  assert.match(source, /evaluateProtectedRouteAccess\(\{ user, pathname \}\)/);
+  assert.match(source, /router\.replace\(routeDestination\)/);
+  for (const route of ["devices", "work-orders", "maintenance-plans", "documents", "digital-twin"]) {
+    assert.match(guard, new RegExp(`[\\"']${route}[\\"']`));
   }
-  assert.match(source, /role === "operator"/);
-  assert.match(source, /router\.replace\(withLocale\("\/operator"\)\)/);
+  assert.match(guard, /getDashboardPath\(locale, role\)/);
 });
 
 test("Operator dashboard separates preventive tasks from corrective work and does not count only recent cards", () => {

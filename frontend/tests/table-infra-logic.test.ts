@@ -170,6 +170,13 @@ test("ResourceCrudPage's create/edit form fields associate every label with its 
   );
 });
 
+test("ResourceCrudPage uses the accessible shared modal for destructive confirmation", () => {
+  const source = readSource(RESOURCE_CRUD_PAGE);
+  assert.doesNotMatch(source, /window\.confirm|\bconfirm\(/);
+  assert.match(source, /isOpen=\{pendingDeleteId !== null\}/);
+  assert.match(source, /setPendingDeleteId\(getItemId\(item\)\)/);
+});
+
 test("the Reports page lazy-loads BarChartCard via next/dynamic instead of a static import", () => {
   const source = readSource("src/app/[locale]/reports/page.tsx");
   assert.match(source, /import dynamic from 'next\/dynamic';/);

@@ -775,6 +775,8 @@
         "problemDetectedTitle": "Problem detected",
         "problemDetectedMessage": "You marked:",
         "continueChecklist": "Continue Checklist",
+        "continueChecklistQuestion": "Do you want to report this problem now and continue the checklist?",
+        "reference": "Reference",
         "reportProblem": "Report Problem",
         "cancel": "Cancel",
         "loading": "Loading..."
@@ -846,6 +848,8 @@
     "waitingValidation": "في انتظار التحقق"
   },
   "common": {
+    "loadFailed": "Unable to load this information.",
+    "retryLater": "Try again shortly.",
     "machineStatus": {
       "operational": "Operativo",
       "online": "En línea",
@@ -3474,7 +3478,8 @@
     },
     "charts": {
       "byType": "Informes por tipo",
-      "byStatus": "Informes por estado"
+      "byStatus": "Informes por estado",
+      "visibleResults": "Resultados visibles"
     },
     "history": {
       "title": "Informes generados",
@@ -3690,6 +3695,7 @@
     "totalTypes": "Total Module Types"
   },
   "operatorMachines": {
+    "loadFailed": "Unable to load your machines.",
     "pageTitle": "Máquinas",
     "backToMachines": "Volver a máquinas",
     "subtitle": "Busque y gestione sus máquinas asignadas.",

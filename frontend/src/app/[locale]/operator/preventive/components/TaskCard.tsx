@@ -2,7 +2,6 @@ import { useTranslations } from "next-intl";
 
 interface TaskCardProps {
   planName: string;
-  planCode: string;
   machineName: string;
   machineCode: string;
   checkCount: number;
@@ -12,7 +11,7 @@ interface TaskCardProps {
   onOpen: () => void;
 }
 
-export function TaskCard({ planName, planCode, machineName, machineCode, checkCount, completedCount, dueDate, tab, onOpen }: Readonly<TaskCardProps>) {
+export function TaskCard({ planName, machineName, machineCode, checkCount, completedCount, dueDate, tab, onOpen }: Readonly<TaskCardProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
 
   const statusLabelByTab = {

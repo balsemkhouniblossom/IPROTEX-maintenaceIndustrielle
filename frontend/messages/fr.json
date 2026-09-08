@@ -159,6 +159,8 @@
   },
   "common": {
     "allFields": "Tous les champs",
+    "loadFailed": "Impossible de charger ces informations.",
+    "retryLater": "Réessayez dans quelques instants.",
     "loading": "Chargement...",
     "error": "Erreur",
     "success": "Succès",
@@ -966,6 +968,8 @@
         "problemDetectedTitle": "Problem detected",
         "problemDetectedMessage": "You marked:",
         "continueChecklist": "Continue Checklist",
+        "continueChecklistQuestion": "Voulez-vous signaler ce problème maintenant et continuer la checklist ?",
+        "reference": "Référence",
         "reportProblem": "Report Problem",
         "cancel": "Cancel",
         "loading": "Loading..."
@@ -3610,7 +3614,8 @@
     },
     "charts": {
       "byType": "Rapports par type",
-      "byStatus": "Rapports par statut"
+      "byStatus": "Rapports par statut",
+      "visibleResults": "Résultats visibles"
     },
     "history": {
       "title": "Rapports generes",
@@ -3691,6 +3696,7 @@
   },
   "operatorMachines": {
     "pageTitle": "Machines",
+    "loadFailed": "Impossible de charger vos machines.",
     "backToMachines": "Retour aux machines",
     "subtitle": "Recherchez et gérez vos machines assignées.",
     "searchPlaceholder": "Rechercher par nom de machine ou numéro de série...",

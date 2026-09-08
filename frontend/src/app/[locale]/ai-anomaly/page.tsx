@@ -335,9 +335,7 @@ function AiAnomalyMonitoringContent() {
           machineLabel={t("filters.machine")}
           allMachinesLabel={t("filters.allMachines")}
           riskLevelLabel={t("filters.riskLevel")}
-          allRiskLevelsLabel={t("filters.allRiskLevels")}
           validationStatusLabel={t("filters.validationStatus")}
-          allValidationStatusesLabel={t("filters.allValidationStatuses")}
           riskLevelOptionLabel={(level) =>
             level === "ALL" ? t("filters.allRiskLevels") : t(`riskLevels.${level}`)
           }
@@ -851,9 +849,7 @@ function AiAnomalyFiltersSection({
   machineLabel,
   allMachinesLabel,
   riskLevelLabel,
-  allRiskLevelsLabel,
   validationStatusLabel,
-  allValidationStatusesLabel,
   riskLevelOptionLabel,
   validationOptionLabel,
   dateFromLabel,
@@ -865,9 +861,7 @@ function AiAnomalyFiltersSection({
   machineLabel: string;
   allMachinesLabel: string;
   riskLevelLabel: string;
-  allRiskLevelsLabel: string;
   validationStatusLabel: string;
-  allValidationStatusesLabel: string;
   riskLevelOptionLabel: (level: "ALL" | AiAnomalyRiskLevel) => string;
   validationOptionLabel: (status: "ALL" | AiAnomalyValidationStatus) => string;
   dateFromLabel: string;

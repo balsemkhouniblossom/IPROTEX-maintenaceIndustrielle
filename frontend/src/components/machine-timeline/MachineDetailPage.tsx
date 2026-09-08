@@ -211,7 +211,7 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
     : t('pageTitle');
 
   return (
-    <ProtectedRoute allowedRoles={['admin', 'technician', 'operator']}>
+    <ProtectedRoute allowedRoles={['admin', 'technician']}>
       <DashboardLayout title={pageTitle}>
         <div className="mx-auto max-w-7xl space-y-5">
           {error && (

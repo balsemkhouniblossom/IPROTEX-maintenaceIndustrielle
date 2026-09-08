@@ -167,3 +167,42 @@ test("Arabic locale uses RTL document direction through the locale layout", () =
   assert.match(layout, /<div dir=\{isRtl \? "rtl" : "ltr"\}>/);
   assert.match(rootLayout, /dir=\{isRtlLocale\(locale\) \? 'rtl' : 'ltr'\}/);
 });
+
+test("literal translation keys referenced by source exist in the canonical locale", () => {
+  const messages = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "messages", "en.json"), "utf8"),
+  ) as Record<string, unknown>;
+  const sourceRoot = path.join(process.cwd(), "src");
+  const failures: string[] = [];
+
+  function hasPath(root: unknown, dottedPath: string): boolean {
+    let current = root;
+    for (const segment of dottedPath.split(".")) {
+      if (!current || typeof current !== "object" || !(segment in current)) return false;
+      current = (current as Record<string, unknown>)[segment];
+    }
+    return typeof current !== "object" || current === null;
+  }
+
+  for (const relative of fs.readdirSync(sourceRoot, { recursive: true }) as string[]) {
+    if (!/\.[jt]sx?$/.test(relative)) continue;
+    const source = fs.readFileSync(path.join(sourceRoot, relative), "utf8");
+    const translators = new Map<string, Set<string>>();
+    for (const match of source.matchAll(/const\s+(\w+)\s*=\s*useTranslations\(["']([^"']+)["']\)/g)) {
+      const namespaces = translators.get(match[1]) ?? new Set<string>();
+      namespaces.add(match[2]);
+      translators.set(match[1], namespaces);
+    }
+    for (const [variable, namespaces] of translators) {
+      const calls = new RegExp(`\\b${variable}\\(\\s*["']([^"']+)["']`, "g");
+      for (const match of source.matchAll(calls)) {
+        const fullKeys = [...namespaces].map((namespace) => `${namespace}.${match[1]}`);
+        if (!fullKeys.some((fullKey) => hasPath(messages, fullKey))) {
+          failures.push(`${relative}: ${fullKeys.join(" or ")}`);
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(failures, [], `Missing literal translation keys:\n${failures.join("\n")}`);
+});

@@ -144,12 +144,6 @@ function formatMaintenanceType(
     : tOperator("preventiveMaintenance");
 }
 
-function formatPriority(priority: string | undefined): string {
-  if (!priority) return "Medium";
-  const normalized = priority.toLowerCase();
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
 function formatReportStatus(
   status: string | undefined,
   tOperator: ReturnType<typeof useTranslations>,
@@ -325,7 +319,7 @@ export default function OperatorDashboard() {
           !isCompletedStatus(report.validation_responsable) &&
           report.validation_responsable !== "rejected",
       ).length,
-    [recentReports],
+    [reports],
   );
 
   const overdueTasksCount = kpiCounts.overdueCount;

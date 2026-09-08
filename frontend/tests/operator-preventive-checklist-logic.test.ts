@@ -31,8 +31,6 @@ const PLAN_GROUPS_UTILS = `${FEATURE_DIR}/utils/preventive-plan-groups.ts`;
 const PLAN_TABS_COMPONENT = `${FEATURE_DIR}/components/PreventivePlanTabs.tsx`;
 const CHECKLIST_COMPONENT = `${FEATURE_DIR}/components/PreventiveChecklist.tsx`;
 const STEP_HEADER_COMPONENT = `${FEATURE_DIR}/components/PreventiveStepHeader.tsx`;
-const SUBMISSION_ACTIONS_COMPONENT = `${FEATURE_DIR}/components/PreventiveSubmissionActions.tsx`;
-const REPORTS_SECTION_COMPONENT = `${FEATURE_DIR}/components/PreventiveReportsSection.tsx`;
 
 function readSource(relativePath: string = PAGE): string {
   return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
@@ -501,7 +499,7 @@ test("Operator preventive cards and checklist carry the exact occurrence and pro
   const view = readSource("src/app/[locale]/operator/preventive/components/InspectionView.tsx");
 
   assert.match(taskHook, /const key = wo\._id \|\| `\$\{planId\}:\$\{machineId\}`/);
-  assert.match(page, /t\.workOrderId === initialWorkOrderId/);
+  assert.match(page, /task\.workOrderId === initialWorkOrderId/);
   assert.match(page, /workOrderId: task\.workOrderId/);
   assert.match(page, /readOnly: task\.tab === "completed"/);
   assert.match(page, /my-reports\?reportId=/);

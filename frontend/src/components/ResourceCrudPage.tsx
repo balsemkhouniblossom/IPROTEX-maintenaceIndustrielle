@@ -111,6 +111,7 @@ function ResourceCrudPageInner({
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
@@ -184,10 +185,10 @@ function ResourceCrudPageInner({
     }
   };
   const remove = async (id: string) => {
-    if (!window.confirm(labels.confirmDelete)) return;
     try {
       await deleteItem(id);
       notify('success', labels.deleteSuccess);
+      setPendingDeleteId(null);
       await loadItems();
     } catch {
       setError(labels.deleteFailed);
@@ -208,7 +209,14 @@ function ResourceCrudPageInner({
         <button type="button" onClick={() => setNotification(null)} className="ms-2 text-gray-500 hover:text-gray-700" aria-label={labels.cancel}>x</button>
       </div>
     )}
-    {error && <div className="notification error mb-4">{error}</div>}
+    {error && (
+      <div className="notification error mb-4 flex flex-wrap items-center justify-between gap-3">
+        <span>{error}</span>
+        <button type="button" className="btn-secondary" onClick={() => void loadItems()} disabled={loading}>
+          {labels.loading}
+        </button>
+      </div>
+    )}
     {(heading || description || totalLabel) && (
       <div className="bento-grid mb-6">
         <div className="panel col-span-full bento-item">
@@ -282,7 +290,7 @@ function ResourceCrudPageInner({
                     <button type="button" className="btn-secondary p-2" onClick={() => startEdit(item)} title={labels.edit} aria-label={labels.edit}>
                       <PencilIcon className="h-4 w-4 shrink-0" />
                     </button>
-                    <button type="button" className="btn-danger p-2" onClick={() => void remove(getItemId(item))} title={labels.delete} aria-label={labels.delete}>
+                    <button type="button" className="btn-danger p-2" onClick={() => setPendingDeleteId(getItemId(item))} title={labels.delete} aria-label={labels.delete}>
                       <TrashIcon className="h-4 w-4 shrink-0" />
                     </button>
                   </div>
@@ -354,6 +362,26 @@ function ResourceCrudPageInner({
           </button>
         </div>
       </form>
+    </Modal>
+    <Modal
+      isOpen={pendingDeleteId !== null}
+      onClose={() => setPendingDeleteId(null)}
+      title={labels.delete}
+      size="sm"
+    >
+      <p className="text-sm text-slate-700">{labels.confirmDelete}</p>
+      <div className="mt-6 flex flex-wrap justify-end gap-3">
+        <button type="button" className="btn-secondary" onClick={() => setPendingDeleteId(null)}>
+          {labels.cancel}
+        </button>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={() => pendingDeleteId && void remove(pendingDeleteId)}
+        >
+          {labels.delete}
+        </button>
+      </div>
     </Modal>
   </DashboardLayout></ProtectedRoute>;
 }
