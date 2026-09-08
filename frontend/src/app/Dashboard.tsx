@@ -6,7 +6,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardStatistics } from "@/hooks/useDashboardStatistics";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   CheckCircleIcon,
   ClipboardDocumentListIcon,
@@ -57,6 +57,7 @@ function normalizeArray<T>(value: unknown): T[] {
 }
 
 export default function Dashboard() {
+  const locale = useLocale();
   const tAdmin = useTranslations("dashboard.admin");
   const tEnums = useTranslations("common.enums");
 
@@ -117,8 +118,8 @@ export default function Dashboard() {
     .filter(({ machine, health }) => health?.riskLevel === 'high' || health?.riskLevel === 'critical' || (machine._id ? (statusByMachine[machine._id]?.activeAlarmCount ?? 0) > 0 : false))
     .sort((left, right) => (left.health?.healthScore ?? 100) - (right.health?.healthScore ?? 100))
     .slice(0, 3);
-  const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
-  const activityDateFormatter = new Intl.DateTimeFormat(undefined, {
+  const todayLabel = new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
+  const activityDateFormatter = new Intl.DateTimeFormat(locale, {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
