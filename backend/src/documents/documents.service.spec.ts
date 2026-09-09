@@ -193,7 +193,13 @@ describe('DocumentsService storage URL resolution', () => {
     documentModel.findById = jest.fn().mockReturnValue({
       exec: jest
         .fn()
-        .mockResolvedValue(freshDraft({ document_id: 'DOC-DELETE' })),
+        .mockResolvedValue(
+          freshDraft({
+            document_id: 'DOC-DELETE',
+            file_path: 'uploads/photo.webp',
+            storage_path: 'uploads/photo.webp',
+          }),
+        ),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -215,7 +221,12 @@ describe('DocumentsService storage URL resolution', () => {
     documentModel.findById = jest.fn().mockReturnValue({
       exec: jest
         .fn()
-        .mockResolvedValue(freshDraft({ document_id: 'DOC-LOCAL-DELETE' })),
+        .mockResolvedValue(
+          freshDraft({
+            document_id: 'DOC-LOCAL-DELETE',
+            file_path: '/uploads/local.webp',
+          }),
+        ),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -270,14 +281,18 @@ describe('DocumentsService storage URL resolution', () => {
     expect(documentModel.findByIdAndDelete).not.toHaveBeenCalled();
   });
 
-  it('keeps the Mongo deletion result when managed file deletion fails', async () => {
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation();
+  it('retains Mongo metadata and reports failure when managed storage deletion fails', async () => {
     storage.ownsFile.mockReturnValue(true);
     storage.delete.mockRejectedValue(new Error('storage unavailable'));
     documentModel.findById = jest.fn().mockReturnValue({
       exec: jest
         .fn()
-        .mockResolvedValue(freshDraft({ document_id: 'DOC-MISSING' })),
+        .mockResolvedValue(
+          freshDraft({
+            document_id: 'DOC-MISSING',
+            file_path: 'uploads/missing.webp',
+          }),
+        ),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -288,12 +303,10 @@ describe('DocumentsService storage URL resolution', () => {
       ),
     });
 
-    const result = await service.remove('doc-id');
-
-    expect(result.toObject().document_id).toBe('DOC-MISSING');
-    expect(warnSpy).toHaveBeenCalledWith(
-      'Failed to delete managed document file after record removal',
+    await expect(service.remove('doc-id')).rejects.toThrow(
+      'storage unavailable',
     );
+    expect(documentModel.findByIdAndDelete).not.toHaveBeenCalled();
   });
 });
 

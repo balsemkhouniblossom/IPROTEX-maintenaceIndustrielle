@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { DocumentAccessService } from './document-access.service';
 import { Role } from '../schemas/user.schema';
@@ -301,4 +301,72 @@ describe('DocumentAccessService technician authorization consistency', () => {
       ).resolves.toBeUndefined();
     }
   });
+});
+
+describe('DocumentAccessService lifecycle visibility', () => {
+  const machineId = new Types.ObjectId();
+  const userId = new Types.ObjectId().toHexString();
+
+  function lifecycleService(status: string, superseded = false) {
+    const documentModel = {
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: new Types.ObjectId(),
+          machine_id: machineId,
+          status,
+          superseded_by_document_id: superseded
+            ? new Types.ObjectId()
+            : undefined,
+        }),
+      }),
+    };
+    return new DocumentAccessService(
+      documentModel as never,
+      createMachineModel() as never,
+      createUserModel([machineId]) as never,
+      createWorkOrderModel([]) as never,
+    );
+  }
+
+  for (const role of [Role.OPERATOR, Role.TECHNICIAN]) {
+    it(`${role} can resolve a current published document`, async () => {
+      await expect(
+        lifecycleService('published').resolveAccessibleDocument(
+          { userId, role },
+          new Types.ObjectId().toHexString(),
+        ),
+      ).resolves.toMatchObject({ status: 'published' });
+    });
+
+    for (const status of ['draft', 'archived', 'superseded']) {
+      it(`${role} cannot resolve a ${status} document`, async () => {
+        await expect(
+          lifecycleService(status).resolveAccessibleDocument(
+            { userId, role },
+            new Types.ObjectId().toHexString(),
+          ),
+        ).rejects.toThrow(NotFoundException);
+      });
+    }
+
+    it(`${role} cannot resolve an obsolete published revision`, async () => {
+      await expect(
+        lifecycleService('published', true).resolveAccessibleDocument(
+          { userId, role },
+          new Types.ObjectId().toHexString(),
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+  }
+
+  for (const status of ['draft', 'published', 'archived', 'superseded']) {
+    it(`Admin retains management access to ${status} documents`, async () => {
+      await expect(
+        lifecycleService(status).resolveAccessibleDocument(
+          { userId, role: Role.ADMIN },
+          new Types.ObjectId().toHexString(),
+        ),
+      ).resolves.toMatchObject({ status });
+    });
+  }
 });

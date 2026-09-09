@@ -1413,6 +1413,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         document_id: `DOC-PROTECTED-${Date.now()}`,
         machine_id: machineA._id,
         type_document: 'manual',
+        status: 'published',
         file_path: `/uploads/${fileName}`,
         storage_path: `/uploads/${fileName}`,
         file_name: fileName,
@@ -1422,6 +1423,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         document_id: `DOC-PROTECTED-UNASSIGNED-${Date.now()}`,
         machine_id: unassignedMachine._id,
         type_document: 'manual',
+        status: 'published',
         file_path: `/uploads/${unassignedFileName}`,
         storage_path: `/uploads/${unassignedFileName}`,
         file_name: unassignedFileName,
@@ -1511,7 +1513,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         .field('machine_id', unassignedMachine._id.toString())
         .field('type_document', 'manual')
         .attach('file', Buffer.from('%PDF-1.7'), 'manual.pdf')
-        .expect(201);
+        .expect(403);
 
       await request(app.getHttpServer())
         .post('/documents/upload')

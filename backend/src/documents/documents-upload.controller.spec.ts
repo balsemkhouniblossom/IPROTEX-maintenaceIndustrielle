@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
@@ -25,6 +26,18 @@ describe('DocumentsUploadController', () => {
     user: {
       userId: new Types.ObjectId().toString(),
       role: Role.OPERATOR,
+    },
+  } as AuthenticatedRequest;
+  const adminRequest = {
+    user: {
+      userId: new Types.ObjectId().toString(),
+      role: Role.ADMIN,
+    },
+  } as AuthenticatedRequest;
+  const technicianRequest = {
+    user: {
+      userId: new Types.ObjectId().toString(),
+      role: Role.TECHNICIAN,
     },
   } as AuthenticatedRequest;
 
@@ -138,6 +151,38 @@ describe('DocumentsUploadController', () => {
       request.user?.userId,
     );
     expect(fileStorageService.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects an Operator attempting a generic document-management upload', async () => {
+    await expect(
+      controller.uploadFile(
+        pngUpload(),
+        {
+          document_id: 'DOC-OPERATOR-MANUAL',
+          machine_id: machineId,
+          type_document: 'manual',
+        },
+        request,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(fileStorageService.save).not.toHaveBeenCalled();
+    expect(documentsService.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects all Technician uploads through the generic document endpoint', async () => {
+    await expect(
+      controller.uploadFile(
+        pngUpload(),
+        {
+          document_id: 'DOC-TECHNICIAN-UPLOAD',
+          machine_id: machineId,
+          type_document: 'fault_photo',
+        },
+        technicianRequest,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(fileStorageService.save).not.toHaveBeenCalled();
+    expect(documentsService.create).not.toHaveBeenCalled();
   });
 
   it('uses EXIF rotation, bounded resizing, metadata stripping, and WebP conversion', async () => {
@@ -260,7 +305,7 @@ describe('DocumentsUploadController', () => {
       {
         document_id: 'DOC-PUBLIC',
         machine_id: machineId,
-        type_document: 'operator_photo',
+        type_document: 'maintenance_photo',
       },
       request,
     );
@@ -291,7 +336,7 @@ describe('DocumentsUploadController', () => {
       {
         document_id: 'DOC-PRIVATE',
         machine_id: machineId,
-        type_document: 'operator_photo',
+        type_document: 'maintenance_photo',
       },
       request,
     );
@@ -325,7 +370,7 @@ describe('DocumentsUploadController', () => {
         {
           document_id: 'DOC-ROLLBACK',
           machine_id: machineId,
-          type_document: 'operator_photo',
+          type_document: 'maintenance_photo',
         },
         request,
       ),
@@ -352,7 +397,7 @@ describe('DocumentsUploadController', () => {
         machine_id: machineId,
         type_document: 'manual',
       },
-      request,
+      adminRequest,
     );
 
     expect(mockedSharp).not.toHaveBeenCalled();
@@ -371,7 +416,7 @@ describe('DocumentsUploadController', () => {
         ),
         file_name: 'manual.pdf',
       }),
-      request.user?.userId,
+      adminRequest.user?.userId,
     );
   });
 
@@ -394,7 +439,7 @@ describe('DocumentsUploadController', () => {
             machine_id: machineId,
             type_document: 'manual',
           },
-          request,
+          adminRequest,
         ),
       ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
 
@@ -406,7 +451,7 @@ describe('DocumentsUploadController', () => {
           machineId,
           originalFileName: 'renamed.pdf',
           reason: expect.stringContaining('does not match its declared type'),
-          rejectedBy: request.user?.userId,
+          rejectedBy: adminRequest.user?.userId,
         }),
       );
       expect(documentsService.create).not.toHaveBeenCalled();
@@ -428,7 +473,7 @@ describe('DocumentsUploadController', () => {
             machine_id: machineId,
             type_document: 'manual',
           },
-          request,
+          adminRequest,
         ),
       ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
 
@@ -451,7 +496,7 @@ describe('DocumentsUploadController', () => {
             machine_id: machineId,
             type_document: 'manual',
           },
-          request,
+          adminRequest,
         ),
       ).rejects.toBeInstanceOf(PayloadTooLargeException);
 
@@ -479,7 +524,7 @@ describe('DocumentsUploadController', () => {
             machine_id: machineId,
             type_document: 'manual',
           },
-          request,
+          adminRequest,
         ),
       ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
 

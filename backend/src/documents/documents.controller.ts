@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { Role } from '../schemas/user.schema';
 import { AuthenticatedRoles } from '../auth/decorators/roles.decorator';
+import { documentReadFilter } from './document-query';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
@@ -84,6 +85,7 @@ export class DocumentsController {
       pagination.limit,
       pagination.skip,
       machineIds,
+      documentReadFilter(req.user?.role === Role.ADMIN),
     );
   }
 
@@ -97,7 +99,10 @@ export class DocumentsController {
       req.user ?? {},
       machineId,
     );
-    return this.documentsService.findByMachine(machineId);
+    return this.documentsService.findByMachine(
+      machineId,
+      documentReadFilter(req.user?.role === Role.ADMIN),
+    );
   }
 
   @Get('rejections')
@@ -180,7 +185,7 @@ export class DocumentsController {
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
-    this.ensureDocumentReader(req);
+    this.ensureDocumentManager(req);
     await this.documentAccessService.resolveAccessibleDocument(
       req.user ?? {},
       id,

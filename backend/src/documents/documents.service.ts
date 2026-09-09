@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as fs from 'node:fs/promises';
-import { Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import PDFDocument from 'pdfkit';
 import * as XLSX from 'xlsx';
 import { resolve } from 'node:path';
@@ -152,11 +152,13 @@ export class DocumentsService {
     limit: number,
     skip: number,
     machineIds?: Types.ObjectId[] | null,
+    visibilityFilter: FilterQuery<DocumentDocument> = {},
   ): Promise<PaginatedResponse<Record<string, unknown>>> {
-    const query =
+    const machineFilter =
       machineIds === null || machineIds === undefined
         ? {}
         : { machine_id: { $in: machineIds } };
+    const query = { ...machineFilter, ...visibilityFilter };
     const [items, totalItems] = await Promise.all([
       this.documentModel
         .find(query)
@@ -183,12 +185,15 @@ export class DocumentsService {
     return this.resolveDocumentFileUrl(doc);
   }
 
-  async findByMachine(machineId: string) {
+  async findByMachine(
+    machineId: string,
+    visibilityFilter: FilterQuery<DocumentDocument> = {},
+  ) {
     if (!Types.ObjectId.isValid(machineId)) {
       throw new BadRequestException('Invalid machine_id');
     }
     const docs = await this.documentModel
-      .find({ machine_id: new Types.ObjectId(machineId) })
+      .find({ machine_id: new Types.ObjectId(machineId), ...visibilityFilter })
       .populate('machine_id')
       .exec();
     return Promise.all(docs.map((doc) => this.resolveDocumentFileUrl(doc)));
@@ -413,9 +418,16 @@ export class DocumentsService {
       );
     }
 
+    // Delete owned storage first. If storage is unavailable, preserve MongoDB
+    // metadata so the operation can be retried and the object is not orphaned.
+    // Providers treat an already-missing object as success, making retries
+    // idempotent. True cross-system atomicity is impossible here: if MongoDB
+    // fails after storage succeeds, the retained draft points to a missing
+    // object until the same delete request is retried.
+    await this.deleteManagedDocumentFile(doc);
+
     const deleted = await this.documentModel.findByIdAndDelete(id).exec();
     if (!deleted) throw new NotFoundException('Document not found');
-    await this.deleteManagedDocumentFile(deleted);
     return deleted;
   }
 
@@ -613,13 +625,7 @@ export class DocumentsService {
       return;
     }
 
-    try {
-      await this.fileStorageService.delete(storageReference);
-    } catch {
-      this.logger.warn(
-        'Failed to delete managed document file after record removal',
-      );
-    }
+    await this.fileStorageService.delete(storageReference);
   }
 
   private async resolveDocumentFileUrl(

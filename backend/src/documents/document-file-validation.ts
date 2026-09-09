@@ -19,14 +19,110 @@ function hasPrefix(buffer: Buffer, bytes: number[]): boolean {
 }
 
 const OLE2_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
-const ZIP_SIGNATURES = [
-  [0x50, 0x4b, 0x03, 0x04],
-  [0x50, 0x4b, 0x05, 0x06],
-  [0x50, 0x4b, 0x07, 0x08],
-];
+const ZIP_LOCAL_HEADER = [0x50, 0x4b, 0x03, 0x04];
+const MAX_ZIP_ENTRIES = 2_048;
+const MAX_ZIP_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+const MAX_ZIP_COMPRESSION_RATIO = 200;
 
-function isZip(buffer: Buffer): boolean {
-  return ZIP_SIGNATURES.some((signature) => hasPrefix(buffer, signature));
+type OoxmlKind = 'word' | 'xl' | 'ppt';
+
+function findEndOfCentralDirectory(buffer: Buffer): number {
+  const minimumOffset = Math.max(0, buffer.length - 65_557);
+  for (let offset = buffer.length - 22; offset >= minimumOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) return offset;
+  }
+  return -1;
+}
+
+function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
+  if (!hasPrefix(buffer, ZIP_LOCAL_HEADER) || buffer.length < 22) return false;
+
+  try {
+    const eocdOffset = findEndOfCentralDirectory(buffer);
+    if (eocdOffset < 0) return false;
+    const diskNumber = buffer.readUInt16LE(eocdOffset + 4);
+    const centralDisk = buffer.readUInt16LE(eocdOffset + 6);
+    const diskEntries = buffer.readUInt16LE(eocdOffset + 8);
+    const totalEntries = buffer.readUInt16LE(eocdOffset + 10);
+    const centralSize = buffer.readUInt32LE(eocdOffset + 12);
+    const centralOffset = buffer.readUInt32LE(eocdOffset + 16);
+    const commentLength = buffer.readUInt16LE(eocdOffset + 20);
+
+    if (
+      diskNumber !== 0 ||
+      centralDisk !== 0 ||
+      diskEntries !== totalEntries ||
+      totalEntries === 0 ||
+      totalEntries > MAX_ZIP_ENTRIES ||
+      eocdOffset + 22 + commentLength > buffer.length ||
+      centralOffset + centralSize > eocdOffset
+    ) {
+      return false;
+    }
+
+    let offset = centralOffset;
+    let totalCompressed = 0;
+    let totalUncompressed = 0;
+    let hasContentTypes = false;
+    let hasExpectedDirectory = false;
+
+    for (let index = 0; index < totalEntries; index += 1) {
+      if (
+        offset + 46 > eocdOffset ||
+        buffer.readUInt32LE(offset) !== 0x02014b50
+      ) {
+        return false;
+      }
+      const flags = buffer.readUInt16LE(offset + 8);
+      const method = buffer.readUInt16LE(offset + 10);
+      const compressedSize = buffer.readUInt32LE(offset + 20);
+      const uncompressedSize = buffer.readUInt32LE(offset + 24);
+      const nameLength = buffer.readUInt16LE(offset + 28);
+      const extraLength = buffer.readUInt16LE(offset + 30);
+      const entryCommentLength = buffer.readUInt16LE(offset + 32);
+      const nextOffset =
+        offset + 46 + nameLength + extraLength + entryCommentLength;
+      if (
+        nextOffset > eocdOffset ||
+        (flags & 0x1) !== 0 ||
+        ![0, 8].includes(method)
+      ) {
+        return false;
+      }
+
+      const name = buffer.toString(
+        'utf8',
+        offset + 46,
+        offset + 46 + nameLength,
+      );
+      if (
+        !name ||
+        name.includes('\\') ||
+        name.startsWith('/') ||
+        name.split('/').includes('..')
+      ) {
+        return false;
+      }
+      hasContentTypes ||= name === '[Content_Types].xml';
+      hasExpectedDirectory ||= name.startsWith(`${expectedKind}/`);
+      totalCompressed += compressedSize;
+      totalUncompressed += uncompressedSize;
+      if (totalUncompressed > MAX_ZIP_UNCOMPRESSED_BYTES) return false;
+      offset = nextOffset;
+    }
+
+    if (offset !== centralOffset + centralSize) return false;
+    if (
+      totalUncompressed > 1024 * 1024 &&
+      totalUncompressed / Math.max(1, totalCompressed) >
+        MAX_ZIP_COMPRESSION_RATIO
+    ) {
+      return false;
+    }
+    return hasContentTypes && hasExpectedDirectory;
+  } catch {
+    return false;
+  }
 }
 
 function isOle2(buffer: Buffer): boolean {
@@ -64,19 +160,19 @@ const DOCUMENT_EXTENSION_RULES: Record<string, DocumentKindRule> = {
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ],
-    matchesMagicBytes: isZip,
+    matchesMagicBytes: (buffer) => isOoxmlContainer(buffer, 'word'),
   },
   '.xlsx': {
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ],
-    matchesMagicBytes: isZip,
+    matchesMagicBytes: (buffer) => isOoxmlContainer(buffer, 'xl'),
   },
   '.pptx': {
     mimeTypes: [
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     ],
-    matchesMagicBytes: isZip,
+    matchesMagicBytes: (buffer) => isOoxmlContainer(buffer, 'ppt'),
   },
 };
 

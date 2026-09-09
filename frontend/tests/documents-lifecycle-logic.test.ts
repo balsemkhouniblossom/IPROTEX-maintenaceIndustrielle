@@ -161,6 +161,16 @@ test("Documents page restricts the file picker to PDF and Office document extens
   );
 });
 
+test("Documents page loads every paginated machine for document selectors", () => {
+  const source = readPage();
+
+  assert.match(
+    source,
+    /fetchAllPaginated<Machine>\(\(pagination\) =>\s*apiService\.getMachines\(pagination\)/,
+    `${PAGE_PATH} must load all machine pages so upload and edit selectors stay complete`,
+  );
+});
+
 test("all supported locales contain the new document lifecycle translation keys", () => {
   const locales = ["en", "fr", "ar", "es", "de", "it"];
   const requiredStatusKeys = ["draft", "published", "archived", "superseded"];

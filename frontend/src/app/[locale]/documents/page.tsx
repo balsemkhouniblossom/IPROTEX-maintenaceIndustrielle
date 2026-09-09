@@ -26,7 +26,7 @@ import {
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { extractApiErrorDetails as extractApiErrorMessage } from "@/services/apiErrors";
-import { normalizeApiItems } from "@/services/pagination";
+import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 import { StatusBadge } from "@/components/StatusBadge";
 
 type MachineRef = string | { _id: string; machine_id?: string };
@@ -182,13 +182,15 @@ export default function DocumentsPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const [docsRes, machinesRes] = await Promise.all([
+      const [docsRes, machineItems] = await Promise.all([
         apiService.getDocuments(),
-        apiService.getMachines(),
+        fetchAllPaginated<Machine>((pagination) =>
+          apiService.getMachines(pagination),
+        ),
       ]);
 
       setDocuments(normalizeApiItems<DocumentType>(docsRes.data));
-      setMachines(normalizeApiItems<Machine>(machinesRes.data));
+      setMachines(machineItems);
     } catch (error) {
       console.error("Error loading documents:", error);
       showNotification("error", t("notifications.saveFailed"));

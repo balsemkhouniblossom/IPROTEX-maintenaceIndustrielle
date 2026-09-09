@@ -101,20 +101,31 @@ export class DocumentsUploadController {
     private readonly documentAccessService: DocumentAccessService,
   ) {}
 
-  private ensureDocumentUploader(req: AuthenticatedRequest): string {
+  private ensureUploadAuthorized(
+    req: AuthenticatedRequest,
+    body: ValidUploadDocumentBody,
+  ): string {
     const userId = req.user?.userId;
     const role = req.user?.role;
 
-    if (
-      !userId ||
-      (role !== Role.ADMIN &&
-        role !== Role.TECHNICIAN &&
-        role !== Role.OPERATOR)
-    ) {
+    if (!userId) {
       throw new ForbiddenException('Document upload access required');
     }
 
-    return userId;
+    if (role === Role.ADMIN) return userId;
+
+    // The generic endpoint is not a Technician document-management surface.
+    // Operators retain only the two existing photo-evidence workflows; their
+    // bytes are separately constrained to JPEG/PNG/WebP by prepareUploadFile.
+    const operatorEvidenceTypes = new Set(['fault_photo', 'maintenance_photo']);
+    if (
+      role === Role.OPERATOR &&
+      operatorEvidenceTypes.has(body.type_document.trim().toLowerCase())
+    ) {
+      return userId;
+    }
+
+    throw new ForbiddenException('Generic document upload requires Admin role');
   }
 
   private ensureDocumentManager(req: AuthenticatedRequest): string {
@@ -385,9 +396,9 @@ export class DocumentsUploadController {
     @Body() body: UploadDocumentBody,
     @Req() req: AuthenticatedRequest,
   ) {
-    const uploaderId = this.ensureDocumentUploader(req);
     this.assertUploadFile(file);
     this.assertUploadBody(body);
+    const uploaderId = this.ensureUploadAuthorized(req, body);
 
     await this.documentAccessService.assertCanAccessMachine(
       req.user ?? {},

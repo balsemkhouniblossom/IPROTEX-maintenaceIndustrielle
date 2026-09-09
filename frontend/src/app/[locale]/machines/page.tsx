@@ -572,12 +572,13 @@ export default function MachinesPage() {
           <td className="font-medium">
             <button
               type="button"
-              onClick={() => router.push(machineDetailPath(machine._id))}
-              aria-label={tMachines("actions.viewTimeline", {
-                default: "View machine",
+              onClick={() => void handleOpenManual(machine)}
+              disabled={loadingManualMachineId === machine._id}
+              aria-label={tMachines("actions.openManual", {
+                default: "Open manual",
               })}
-              title={tMachines("actions.viewTimeline", {
-                default: "View machine",
+              title={tMachines("actions.openManual", {
+                default: "Open manual",
               })}
               className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900"
             >
@@ -1367,11 +1368,54 @@ export default function MachinesPage() {
         size="xl"
       >
         {previewManual ? (
-          <DocumentAttachmentViewer
-            document={previewManual}
-            title={previewManual.file_name}
-            onError={handleManualLoadError}
-          />
+          <div className="space-y-4">
+            {previewManualQueueRef.current.length > 1 ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="mb-2 text-sm font-semibold text-slate-700">
+                  {tMachines("actions.chooseDocument", {
+                    default: "Choose a document to preview",
+                  })}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {previewManualQueueRef.current.map((document, index) => {
+                    const isSelected = document._id === previewManual._id;
+                    return (
+                      <button
+                        key={document._id || `${document.file_name}-${index}`}
+                        type="button"
+                        onClick={() => setPreviewManual(document)}
+                        aria-pressed={isSelected}
+                        className={
+                          isSelected
+                            ? "rounded-md bg-blue-700 px-3 py-2 text-left text-sm font-semibold text-white"
+                            : "rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 hover:border-blue-500 hover:text-blue-700"
+                        }
+                      >
+                        <span className="block max-w-64 truncate">
+                          {document.file_name ||
+                            tMachines("actions.unnamedDocument", {
+                              default: `Document ${index + 1}`,
+                            })}
+                        </span>
+                        {document.type_document ? (
+                          <span
+                            className={`block text-xs ${isSelected ? "text-blue-100" : "text-slate-500"}`}
+                          >
+                            {document.type_document}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <DocumentAttachmentViewer
+              document={previewManual}
+              title={previewManual.file_name}
+              onError={handleManualLoadError}
+            />
+          </div>
         ) : null}
       </Modal>
     </DashboardLayout>

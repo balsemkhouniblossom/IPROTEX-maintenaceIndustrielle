@@ -9,8 +9,8 @@ import { useTranslations } from "next-intl";
 import { fetchAllPaginated } from "@/services/pagination";
 import { Modal } from "@/components/Modal";
 import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
-import { resolveAttachmentViewerUrl } from "@/services/documentViewer";
 import { isMachineManualDocument, sortMachineManuals } from "@/services/machineManuals";
+import { downloadAuthenticatedDocument } from "@/services/authenticatedDownload";
 
 type EntityRef = string | { _id?: string; id?: string };
 
@@ -52,6 +52,8 @@ export default function OperatorManualsPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [documents, setDocuments] = useState<DocumentEntity[]>([]);
   const [previewDocument, setPreviewDocument] = useState<DocumentEntity | null>(null);
+  const [downloadingId, setDownloadingId] = useState("");
+  const [downloadError, setDownloadError] = useState("");
 
   const [selectedType, setSelectedType] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
@@ -113,6 +115,20 @@ export default function OperatorManualsPage() {
     setPreviewDocument(null);
   }
 
+  async function downloadManual(doc: DocumentEntity) {
+    setDownloadingId(doc._id);
+    setDownloadError("");
+    try {
+      await downloadAuthenticatedDocument(doc._id, doc.file_name);
+    } catch {
+      setDownloadError(
+        t("downloadFailed", { default: "Download failed. Please try again." }),
+      );
+    } finally {
+      setDownloadingId("");
+    }
+  }
+
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("machineManuals")}>
@@ -165,6 +181,11 @@ export default function OperatorManualsPage() {
 
           <section className="col-span-full panel">
             <div className="card-title mb-4">{t("openManual")}</div>
+            {downloadError ? (
+              <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                {downloadError}
+              </div>
+            ) : null}
 
             {loading && (
               <div className="text-sm text-slate-500">{tCommon("loading")}</div>
@@ -187,13 +208,14 @@ export default function OperatorManualsPage() {
                       >
                         {t("openManual")}
                       </button>
-                      <a
-                        href={resolveAttachmentViewerUrl(doc)}
-                        download
+                      <button
+                        type="button"
+                        onClick={() => void downloadManual(doc)}
+                        disabled={downloadingId === doc._id}
                         className="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold"
                       >
-                        {t("download")}
-                      </a>
+                        {downloadingId === doc._id ? tCommon("loading") : t("download")}
+                      </button>
                     </div>
                   </div>
                 ))}

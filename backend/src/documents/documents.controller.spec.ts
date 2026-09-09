@@ -4,7 +4,12 @@ import { Role } from '../schemas/user.schema';
 import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 describe('DocumentsController authorization', () => {
-  let documentsService: { remove: jest.Mock; readProtectedFile: jest.Mock };
+  let documentsService: {
+    remove: jest.Mock;
+    readProtectedFile: jest.Mock;
+    findAll: jest.Mock;
+    findByMachine: jest.Mock;
+  };
   let documentAccessService: {
     resolveAccessibleDocument: jest.Mock;
     listAccessibleMachineIds: jest.Mock;
@@ -15,6 +20,8 @@ describe('DocumentsController authorization', () => {
   beforeEach(() => {
     documentsService = {
       remove: jest.fn(),
+      findAll: jest.fn().mockResolvedValue({ items: [] }),
+      findByMachine: jest.fn().mockResolvedValue([]),
       readProtectedFile: jest.fn().mockResolvedValue({
         buffer: Buffer.from('file'),
         contentType: 'application/pdf',
@@ -91,5 +98,44 @@ describe('DocumentsController authorization', () => {
       } as never),
     ).rejects.toThrow(ForbiddenException);
     expect(documentsService.readProtectedFile).not.toHaveBeenCalled();
+  });
+
+  it.each([Role.OPERATOR, Role.TECHNICIAN])(
+    'applies current-published visibility to %s list reads',
+    async (role) => {
+      const req = { user: { userId: 'user-1', role } } as AuthenticatedRequest;
+      documentAccessService.listAccessibleMachineIds.mockResolvedValue([]);
+
+      await controller.findAll(req, '1', '10');
+
+      expect(documentsService.findAll).toHaveBeenCalledWith(
+        1,
+        10,
+        0,
+        [],
+        expect.objectContaining({ status: 'published' }),
+      );
+    },
+  );
+
+  it('does not constrain Admin management list reads to published documents', async () => {
+    const req = {
+      user: { userId: 'admin-1', role: Role.ADMIN },
+    } as AuthenticatedRequest;
+
+    await controller.findAll(req, '1', '10');
+
+    expect(documentsService.findAll).toHaveBeenCalledWith(1, 10, 0, null, {});
+  });
+
+  it('restricts version history to Admin', async () => {
+    const req = {
+      user: { userId: 'user-1', role: Role.TECHNICIAN },
+    } as AuthenticatedRequest;
+
+    await expect(controller.listVersions('doc-id', req)).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(documentAccessService.resolveAccessibleDocument).not.toHaveBeenCalled();
   });
 });

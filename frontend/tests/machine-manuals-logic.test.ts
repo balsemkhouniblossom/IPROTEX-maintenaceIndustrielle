@@ -135,6 +135,18 @@ test("admin Machines page opens manuals by fetching documents for the clicked ma
   assert.doesNotMatch(source, /operator\/manuals\?machine=/);
 });
 
+test("admin Machines page lets the user choose between multiple machine documents", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/machines/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /previewManualQueueRef\.current\.length > 1/);
+  assert.match(source, /previewManualQueueRef\.current\.map/);
+  assert.match(source, /onClick=\{\(\) => setPreviewManual\(document\)\}/);
+  assert.match(source, /aria-pressed=\{isSelected\}/);
+});
+
 test("operator Machines page keeps operational actions simple without manual viewer", () => {
   const source = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/machines/page.tsx"),
@@ -147,4 +159,25 @@ test("operator Machines page keeps operational actions simple without manual vie
   assert.doesNotMatch(source, /operator\/manuals\?machine=/);
   assert.match(source, /handleViewMachine\(machine\._id\)/);
   assert.match(source, /handleReportProblem\(machine\._id\)/);
+});
+
+test("operator manual downloads use authenticated blobs with safe cleanup", () => {
+  const pageSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/manuals/page.tsx"),
+    "utf8",
+  );
+  const helperSource = fs.readFileSync(
+    path.join(process.cwd(), "src/services/authenticatedDownload.ts"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(pageSource, /<a[\s\S]*?download/);
+  assert.match(pageSource, /downloadAuthenticatedDocument\(doc\._id, doc\.file_name\)/);
+  assert.match(pageSource, /downloadingId === doc\._id/);
+  assert.match(pageSource, /role="alert"/);
+  assert.match(helperSource, /api\.get\(`\/documents\/\$\{encodeURIComponent\(documentId\)\}\/file`/);
+  assert.match(helperSource, /responseType:\s*"blob"/);
+  assert.match(helperSource, /response\.headers\["content-type"\]/);
+  assert.match(helperSource, /anchor\.download = safeDownloadName\(originalFileName\)/);
+  assert.match(helperSource, /URL\.revokeObjectURL\(objectUrl\)/);
 });

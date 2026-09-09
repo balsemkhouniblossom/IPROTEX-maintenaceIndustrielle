@@ -28,6 +28,10 @@ import {
   MaintenancePlanDocument,
 } from '../schemas/maintenance-plan.schema';
 import { DocumentEntity, DocumentDocument } from '../schemas/document.schema';
+import {
+  CURRENT_PUBLISHED_DOCUMENT_FILTER,
+  MANUAL_DOCUMENT_FILTER,
+} from '../documents/document-query';
 import { OTPieces, OTPiecesDocument } from '../schemas/ot-pieces.schema';
 import { Catalogue, CatalogueDocument } from '../schemas/catalogue.schema';
 import { Stock, StockDocument } from '../schemas/stock.schema';
@@ -92,18 +96,6 @@ const STATUS_FILTERS: Record<string, string[]> = {
   completed: COMPLETED_WORK_ORDER_STATUSES,
   cancelled: ['cancelled', 'canceled', 'ANNULE'],
 };
-const MANUAL_DOCUMENT_FILTER: FilterQuery<DocumentDocument> = {
-  $or: [
-    {
-      type_document: {
-        $regex: /(manual|pdf|procedure|diagram|excel|xlsx|xls|spreadsheet)/i,
-      },
-    },
-    { file_name: { $regex: /\.(pdf|xlsx?|xls)$/i } },
-    { tags: { $regex: /(manual|maintenance-plan|procedure|diagram)/i } },
-  ],
-};
-
 interface TechnicianFilters {
   status?: string;
   search?: string;
@@ -538,7 +530,10 @@ export class TechnicianService {
       await Promise.all([
         this.machinesModel.findById(machineObjectId).populate('type_id').exec(),
         this.modulesModel
-          .find({ machine_id: machineObjectId })
+          .find({
+            machine_id: machineObjectId,
+            ...CURRENT_PUBLISHED_DOCUMENT_FILTER,
+          })
           .populate('mod_type_id')
           .populate('parent_module_id')
           .sort({ module_id: 1 })
@@ -970,6 +965,7 @@ export class TechnicianService {
         {
           $match: {
             ...MANUAL_DOCUMENT_FILTER,
+            ...CURRENT_PUBLISHED_DOCUMENT_FILTER,
             ...(await this.accessibleManualMachineFilter(technicianId)),
           },
         },
@@ -1034,6 +1030,7 @@ export class TechnicianService {
     const manualQuery: FilterQuery<DocumentDocument> | null = machineId
       ? {
           ...MANUAL_DOCUMENT_FILTER,
+          ...CURRENT_PUBLISHED_DOCUMENT_FILTER,
           $and: [{ machine_id: machineId }, manualScope],
         }
       : null;
@@ -1074,6 +1071,7 @@ export class TechnicianService {
     this.objectId(technicianId, 'technician');
     const query: FilterQuery<DocumentDocument> = {
       ...MANUAL_DOCUMENT_FILTER,
+      ...CURRENT_PUBLISHED_DOCUMENT_FILTER,
       ...(await this.accessibleManualMachineFilter(technicianId)),
     };
     if (machineId) {

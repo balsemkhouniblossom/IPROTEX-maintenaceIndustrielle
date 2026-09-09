@@ -28,6 +28,10 @@ import { Catalogue, CatalogueDocument } from '../schemas/catalogue.schema';
 import { Stock, StockDocument } from '../schemas/stock.schema';
 import { User, UserDocument } from '../schemas/user.schema';
 import { DocumentEntity, DocumentDocument } from '../schemas/document.schema';
+import {
+  CURRENT_PUBLISHED_DOCUMENT_FILTER,
+  MANUAL_DOCUMENT_FILTER,
+} from '../documents/document-query';
 import { Panne, PanneDocument } from '../schemas/panne.schema';
 import {
   PanneSolution,
@@ -948,11 +952,10 @@ export class OperatorService {
       return toPaginatedResponse([], 0, page, limit);
     }
 
-    const typeRegex =
-      /(manual|procedure|pdf|diagram|excel|xlsx|xls|spreadsheet)/i;
     const query = {
       machine_id: { $in: this.toObjectIdList(scopedMachineIds) },
-      type_document: { $regex: typeRegex },
+      ...MANUAL_DOCUMENT_FILTER,
+      ...CURRENT_PUBLISHED_DOCUMENT_FILTER,
     };
 
     const [items, totalItems] = await Promise.all([

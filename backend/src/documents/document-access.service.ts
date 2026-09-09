@@ -11,6 +11,7 @@ import { Machine, MachineDocument } from '../schemas/machine.schema';
 import { User, UserDocument, Role } from '../schemas/user.schema';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
 import { CLOSED_WORK_ORDER_STATUSES } from '../common/work-order-status';
+import { DocumentStatus } from '../schemas/document.schema';
 
 export type DocumentActor = {
   userId?: string;
@@ -37,6 +38,14 @@ export class DocumentAccessService {
     this.assertObjectId(documentId, 'document_id');
     const document = await this.documentModel.findById(documentId).exec();
     if (!document) throw new NotFoundException('Document not found');
+
+    if (
+      actor.role !== Role.ADMIN &&
+      (document.status !== DocumentStatus.PUBLISHED ||
+        Boolean(document.superseded_by_document_id))
+    ) {
+      throw new NotFoundException('Document not found');
+    }
 
     await this.assertCanAccessMachine(
       actor,
