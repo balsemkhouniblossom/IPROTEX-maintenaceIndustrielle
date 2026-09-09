@@ -1411,11 +1411,14 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
 
   .sidebar-modern {
     position: fixed;
-    inset-block: 0;
+    top: 0;
+    bottom: 0;
     inset-inline-start: 0;
     z-index: 60;
-    height: 100vh;
-    height: 100dvh;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
     overflow-y: auto;
     visibility: hidden;
     pointer-events: none;
@@ -1440,10 +1443,11 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
 
 @media (min-width: 1024px) {
   .sidebar-modern {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
+    position: relative;
+    align-self: stretch;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 100vh;
   }
 }
 

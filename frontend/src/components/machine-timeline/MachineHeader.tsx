@@ -9,7 +9,6 @@ import {
   MapPinIcon,
   ShieldCheckIcon,
   SparklesIcon,
-  UserCircleIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
@@ -41,16 +40,18 @@ type MachineHeaderProps = Readonly<{
   machine: MachineTimelineSummary['machine'] | undefined;
   stats: MachineTimelineSummary['stats'] | undefined;
   loading: boolean;
+  returnTo?: string;
 }>;
 
 function quickActionsForRole(
   role: string | undefined,
   locale: string,
+  machineId: string,
   label: (key: string, fallback: string) => string,
 ): QuickAction[] {
   if (role === 'technician') {
     return [
-      { href: `/${locale}/technician/work-orders`, label: label('actions.workOrders', 'Work orders'), icon: ClipboardDocumentListIcon },
+      { href: `/${locale}/technician/work-orders?machineId=${encodeURIComponent(machineId)}`, label: label('actions.workOrders', 'Work orders'), icon: ClipboardDocumentListIcon },
     ];
   }
 
@@ -79,7 +80,7 @@ export default function MachineHeader(props: MachineHeaderProps) {
   );
 }
 
-function MachineHeaderInner({ machineId, machine, stats, loading }: MachineHeaderProps) {
+function MachineHeaderInner({ machineId, machine, stats, loading, returnTo }: MachineHeaderProps) {
   const t = useTranslations('machineTimeline');
   const locale = useLocale();
   const { user } = useAuth();
@@ -99,14 +100,15 @@ function MachineHeaderInner({ machineId, machine, stats, loading }: MachineHeade
   const statusClass = STATUS_BADGE_CLASSES[machine.status] ?? DEFAULT_STATUS_BADGE_CLASS;
   const label = (key: string, fallback: string) => (t.has(key) ? t(key) : fallback);
   const machineDetails = [machine.type?.name, machine.fabricant, machine.model].filter(Boolean).join(' / ');
-  const quickActions = quickActionsForRole(user?.role, locale, label);
+  const quickActions = quickActionsForRole(user?.role, locale, machineId, label);
+  const safeReturnTo = returnTo?.startsWith(`/${locale}/machines`) ? returnTo : `/${locale}/machines`;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-(--border) bg-(--surface) shadow-(--shadow-sm)">
       <div className="grid gap-0 lg:grid-cols-[minmax(18rem,24rem)_1fr]">
         <div className="relative min-h-56 border-b border-(--border) bg-(--surface-secondary) p-4 lg:border-b-0 lg:border-e">
           <Link
-            href={`/${locale}/machines`}
+            href={safeReturnTo}
             className="absolute start-4 top-4 z-10 inline-flex min-h-11 items-center gap-2 rounded-full border border-(--border) bg-(--surface)/90 px-3 text-sm font-semibold text-(--text-primary) shadow-(--shadow-sm) transition hover:border-(--border-hover) focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--primary)"
           >
             <ArrowLeftIcon className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
@@ -127,7 +129,7 @@ function MachineHeaderInner({ machineId, machine, stats, loading }: MachineHeade
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold ${statusClass}`}
                 >
                   <ShieldCheckIcon className="h-4 w-4" aria-hidden="true" />
-                  {t.has(`status.${machine.status}`) ? t(`status.${machine.status}`) : machine.status}
+                  {t.has(`status.${machine.status}`) ? t(`status.${machine.status}`) : t('header.none')}
                 </span>
                 <LiveStatusBadge
                   machineId={machineId}
@@ -204,11 +206,6 @@ function MachineHeaderInner({ machineId, machine, stats, loading }: MachineHeade
             />
           </dl>
 
-          <div className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-(--border) bg-(--surface-secondary) px-3 text-sm text-(--text-secondary)">
-            <UserCircleIcon className="h-4 w-4" aria-hidden="true" />
-            <span>{label('header.currentTechnician', 'Current technician')}</span>
-            <span className="font-semibold text-(--text-primary)">{t('header.none')}</span>
-          </div>
         </div>
       </div>
     </section>

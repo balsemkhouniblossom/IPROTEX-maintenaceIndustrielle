@@ -309,7 +309,7 @@ function initialWorkOrderFilters(fixedStatus?: string) {
     search: params.get("search") || "",
     maintenanceType: "",
     priority: params.get("priority") || "",
-    machineId: "",
+    machineId: params.get("machineId") || "",
     dueDate: "",
     dateFrom: "",
     dateTo: "",

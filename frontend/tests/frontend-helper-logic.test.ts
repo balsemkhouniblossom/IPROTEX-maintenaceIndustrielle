@@ -28,6 +28,38 @@ import {
   isTranslatableGroupKey,
 } from "../src/components/machine-timeline/groupByDate.ts";
 import { invalidateList, LIST_EVENTS } from "../src/services/listInvalidation.ts";
+import {
+  buildMachinePayload,
+  machineTextOrNotAvailable,
+} from "../src/services/machineForm.ts";
+
+test("blank optional machine fields are normalized to N/A", () => {
+  assert.equal(machineTextOrNotAvailable("   "), "N/A");
+
+  const payload = buildMachinePayload({
+    machine_id: " M-100 ",
+    serial_no: "",
+    type_id: "type-1",
+    status: "operational",
+    installation_date: "",
+    poids_kg: "",
+    fabricant: " ",
+    model: "",
+    location: "  ",
+  });
+
+  assert.deepEqual(payload, {
+    machine_id: "M-100",
+    serial_no: "N/A",
+    type_id: "type-1",
+    status: "operational",
+    installation_date: undefined,
+    poids_kg: undefined,
+    fabricant: "N/A",
+    model: "N/A",
+    location: "N/A",
+  });
+});
 
 test("displayText hides raw technical identifiers and formats safe scalar values", () => {
   assert.equal(isRawTechnicalId("64f0d61b4e0f7c1b3c9a1234"), true);

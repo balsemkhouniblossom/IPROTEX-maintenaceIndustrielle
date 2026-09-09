@@ -1880,6 +1880,7 @@
     "addMachine": "Aggiungi macchina",
     "allMachines": "Tutte le macchine",
     "searchPlaceholder": "Cerca macchine per codice, numero di serie, produttore, modello o posizione...",
+    "searchScopeCurrentPage": "La ricerca e i filtri si applicano alla pagina corrente.",
     "table": {
       "machineId": "ID macchina",
       "serialNumber": "Numero di serie",
@@ -1891,7 +1892,10 @@
       "machineCode": "Codice macchina",
       "manufacturer": "Produttore",
       "model": "Modello",
-      "location": "Posizione"
+      "location": "Posizione",
+      "sortBy": "Ordina per",
+      "name": "Nome",
+      "floor": "Piano"
     },
     "empty": {
       "search": "Nessuna macchina corrisponde alla ricerca.",
@@ -1988,6 +1992,7 @@
     "endOfTimeline": "Hai raggiunto l'inizio della cronologia di questa macchina.",
     "errors": {
       "loadSummary": "Impossibile caricare i dettagli della macchina",
+      "notFound": "Macchina non trovata.",
       "loadTimeline": "Impossibile caricare gli eventi",
       "loadDocument": "Impossibile caricare il documento"
     },

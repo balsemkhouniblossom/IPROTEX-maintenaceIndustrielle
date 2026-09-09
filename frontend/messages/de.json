@@ -2084,6 +2084,7 @@
     "addMachine": "Maschine hinzufügen",
     "allMachines": "Alle Maschinen",
     "searchPlaceholder": "Maschinen nach ID, Seriennummer, Hersteller, Modell oder Standort suchen...",
+    "searchScopeCurrentPage": "Suche und Filter gelten für die aktuelle Seite.",
     "description": "Maschinen und Anlagen im System verwalten und uberwachen",
     "table": {
       "machineId": "Maschinen-ID",
@@ -2096,7 +2097,10 @@
       "manufacturer": "Hersteller",
       "model": "Modell",
       "location": "Standort",
-      "machineCode": "Maschinencode"
+      "machineCode": "Maschinencode",
+      "sortBy": "Sortieren nach",
+      "name": "Name",
+      "floor": "Etage"
     },
     "empty": {
       "search": "Keine Maschinen gefunden, die Ihrer Suche entsprechen.",
@@ -2191,6 +2195,7 @@
     "endOfTimeline": "Sie haben den Anfang der Historie dieser Maschine erreicht.",
     "errors": {
       "loadSummary": "Maschinendetails konnten nicht geladen werden",
+      "notFound": "Maschine nicht gefunden.",
       "loadTimeline": "Ereignisse konnten nicht geladen werden",
       "loadDocument": "Dokument konnte nicht geladen werden"
     },

@@ -2017,6 +2017,7 @@
     "addMachine": "Ajouter une machine",
     "allMachines": "Toutes les machines",
     "searchPlaceholder": "Rechercher des machines par ID, numéro de série, fabricant, modèle ou emplacement...",
+    "searchScopeCurrentPage": "La recherche et les filtres s’appliquent à la page actuelle.",
     "table": {
       "machineId": "ID machine",
       "serialNumber": "Numéro de série",
@@ -2028,7 +2029,10 @@
       "manufacturer": "Fabricant",
       "model": "Modele",
       "location": "Emplacement",
-      "machineCode": "Code machine"
+      "machineCode": "Code machine",
+      "sortBy": "Trier par",
+      "name": "Nom",
+      "floor": "Étage"
     },
     "empty": {
       "search": "Aucune machine ne correspond à votre recherche.",
@@ -2124,6 +2128,7 @@
     "endOfTimeline": "Vous avez atteint le début de l'historique de cette machine.",
     "errors": {
       "loadSummary": "Échec du chargement des informations de la machine",
+      "notFound": "Machine introuvable.",
       "loadTimeline": "Échec du chargement des événements",
       "loadDocument": "Échec du chargement du document"
     },

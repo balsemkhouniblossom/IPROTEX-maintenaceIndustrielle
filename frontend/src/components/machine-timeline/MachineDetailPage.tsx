@@ -111,7 +111,7 @@ type WorkspaceProps = Readonly<{
   setPreviewDocument: (document: WorkOrderRecord | null) => void;
 }>;
 
-export default function MachineDetailPage({ machineId }: Readonly<{ machineId: string }>) {
+export default function MachineDetailPage({ machineId, returnTo }: Readonly<{ machineId: string; returnTo?: string }>) {
   const t = useTranslations('machineTimeline');
   const locale = useLocale();
   const { user, isLoading: authLoading } = useAuth();
@@ -121,6 +121,7 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
   const [context, setContext] = useState<TechnicianMachineContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<MachineTab>('overview');
   const [previewDocument, setPreviewDocument] = useState<WorkOrderRecord | null>(null);
 
@@ -161,6 +162,7 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
       try {
         setLoading(true);
         setError('');
+        setNotFound(false);
         const response = await apiService.getMachineTimelineSummary(machineId, { signal });
         setSummary(response.data as MachineTimelineSummary);
       } catch (err: unknown) {
@@ -168,7 +170,9 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
         const code = (err as { name?: string; code?: string })?.code;
         if (name === 'CanceledError' || name === 'AbortError' || code === 'ERR_CANCELED') return;
         const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-        setError(message || t('errors.loadSummary'));
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        setNotFound(status === 404);
+        setError(status === 404 ? t('errors.notFound') : message || t('errors.loadSummary'));
       } finally {
         setLoading(false);
       }
@@ -181,13 +185,16 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
     try {
       setLoading(true);
       setError('');
+      setNotFound(false);
       const response = await apiService.getTechnicianMachineContext(machineId);
       const data = response.data as TechnicianMachineContext;
       setContext(data);
       setSummary(buildTechnicianSummary(data));
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || t('errors.loadSummary'));
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setNotFound(status === 404);
+      setError(status === 404 ? t('errors.notFound') : message || t('errors.loadSummary'));
       setContext(null);
       setSummary(null);
     } finally {
@@ -217,12 +224,18 @@ export default function MachineDetailPage({ machineId }: Readonly<{ machineId: s
           {error && (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">
               <span>{error}</span>
-              <button type="button" className="underline" onClick={() => void loadSummary()}>
-                {t('actions.retry')}
-              </button>
+              {!notFound && (
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => void (user?.role === 'technician' ? loadTechnicianContext() : loadSummary())}
+                >
+                  {t('actions.retry')}
+                </button>
+              )}
             </div>
           )}
-          <MachineHeader machineId={machineId} machine={summary?.machine} stats={summary?.stats} loading={loading} />
+          <MachineHeader machineId={machineId} machine={summary?.machine} stats={summary?.stats} loading={loading} returnTo={returnTo} />
           {user?.role === 'technician' ? (
             <TechnicianMachineWorkspace
               machineId={machineId}

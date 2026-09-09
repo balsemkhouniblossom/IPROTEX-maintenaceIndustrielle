@@ -6,11 +6,16 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Skeleton } from "@/components/Skeleton";
 import { apiService } from "@/services/api";
+import {
+  DIGITAL_TWIN_MACHINES_CHANGED_EVENT,
+  DIGITAL_TWIN_MACHINES_CHANGED_STORAGE_KEY,
+} from "@/services/digitalTwinMachines";
 import { fetchAllPaginated } from "@/services/pagination";
 
 type TwinStatus = "running" | "stopped" | "fault" | "offline";
 type TwinFloor = "first" | "second";
 type FactoryViewMode = "complete" | "first" | "second";
+type MachineSort = "name" | "floor";
 
 type MachineRecord = {
   _id: string;
@@ -178,29 +183,61 @@ function toTwinStatus(status?: string): TwinStatus {
   return "running";
 }
 
-function toSecondFloorMachine(record: MachineRecord, index: number): TwinMachine {
-  const columns = 5;
-  const spacingX = 2.05;
-  const spacingZ = 1.35;
+function floorFromLocation(location?: string): TwinFloor | null {
+  const normalized = location?.trim().toLowerCase() ?? "";
+  if (/\b(first|1st|floor 1|level 1|ground)\b/.test(normalized)) {
+    return "first";
+  }
+  if (/\b(second|2nd|floor 2|level 2)\b/.test(normalized)) {
+    return "second";
+  }
+  return null;
+}
+
+function toFactoryMachine(
+  record: MachineRecord,
+  index: number,
+  totalMachines: number,
+  floor: TwinFloor,
+): TwinMachine {
+  const usableWidth = FACTORY_WIDTH - 1.8;
+  const usableDepth = FACTORY_DEPTH - 1.6;
+  const columns = Math.max(
+    1,
+    Math.min(
+      totalMachines,
+      Math.ceil(
+        Math.sqrt(totalMachines * (usableWidth / usableDepth)),
+      ),
+    ),
+  );
+  const rows = Math.max(1, Math.ceil(totalMachines / columns));
+  const spacingX = columns > 1 ? usableWidth / (columns - 1) : 0;
+  const spacingZ = rows > 1 ? usableDepth / (rows - 1) : 0;
   const row = Math.floor(index / columns);
   const column = index % columns;
   const status = toTwinStatus(record.status);
+  const targetSize = Math.max(
+    0.45,
+    Math.min(1, Math.min(spacingX || 1, spacingZ || 1) * 0.62),
+  );
 
   return {
     id: `machine-${record._id}`,
     name: record.machine_id || `Machine ${index + 1}`,
     backendMachineId: record._id,
     assetUrl: null,
-    floor: "second",
+    floor,
     position: [
-      (column - (columns - 1) / 2) * spacingX,
-      FLOOR_HEIGHT,
-      -2.1 + row * spacingZ,
+      columns > 1 ? -usableWidth / 2 + column * spacingX : 0,
+      floor === "second" ? FLOOR_HEIGHT : 0,
+      rows > 1 ? -usableDepth / 2 + row * spacingZ : 0,
     ],
     rotationY: column % 2 === 0 ? Math.PI / 2 : -Math.PI / 2,
-    targetSize: 1,
+    targetSize,
     status,
-    location: record.location || "Second Floor",
+    location:
+      record.location || (floor === "first" ? "First Floor" : "Second Floor"),
     health: healthByStatus[status],
     manufacturer: record.fabricant,
     model: record.model,
@@ -286,36 +323,41 @@ function createPlaceholderMachine(machine: TwinMachine) {
   group.rotation.y = machine.rotationY;
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(1.15, 0.7, 0.86),
+    new THREE.BoxGeometry(0.72, 0.42, 0.56),
     new THREE.MeshStandardMaterial({
       color: "#c7d2fe",
       metalness: 0.15,
       roughness: 0.55,
     }),
   );
-  body.position.y = 0.38;
+  body.position.y = 0.23;
   body.castShadow = true;
   body.receiveShadow = true;
 
   const top = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.32, 0.62),
+    new THREE.BoxGeometry(0.46, 0.16, 0.36),
     new THREE.MeshStandardMaterial({ color: "#64748b", roughness: 0.6 }),
   );
-  top.position.y = 0.92;
+  top.position.y = 0.52;
   top.castShadow = true;
 
   const panel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.38, 0.42),
+    new THREE.BoxGeometry(0.04, 0.24, 0.3),
     new THREE.MeshStandardMaterial({
       color: statusStyle[machine.status].color,
       emissive: statusStyle[machine.status].color,
       emissiveIntensity: 0.2,
     }),
   );
-  panel.position.set(0.61, 0.48, 0);
+  panel.position.set(0.38, 0.29, 0);
   panel.name = "status-panel";
 
-  group.add(body, top, panel, createStatusRing(machine), createLabelSprite(machine.name));
+  const label = createLabelSprite(machine.name);
+  label.scale.set(1.05, 0.26, 1);
+  label.position.y = 0.78;
+
+  group.add(body, top, panel, createStatusRing(machine), label);
+  group.scale.setScalar(machine.targetSize);
   return group;
 }
 
@@ -651,32 +693,79 @@ export default function FactoryTwinScene() {
   const [machines, setMachines] = useState<TwinMachine[]>(firstFloorAssetMachines);
   const [selectedMachineId, setSelectedMachineId] = useState(firstFloorAssetMachines[0].id);
   const [viewMode, setViewMode] = useState<FactoryViewMode>("complete");
+  const [machineSort, setMachineSort] = useState<MachineSort>("name");
   const [resetCameraTick, setResetCameraTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let refreshInProgress = false;
 
     async function loadMachineTable() {
+      if (refreshInProgress) return;
+      refreshInProgress = true;
+
       try {
         const rows = await fetchAllPaginated<MachineRecord>(
           (params) => apiService.getMachines(params),
           100,
         );
-        if (cancelled || rows.length === 0) return;
+        if (cancelled) return;
 
-        const secondFloorMachines = rows.map((row, index) => toSecondFloorMachine(row, index));
-        setMachines([...firstFloorAssetMachines, ...secondFloorMachines]);
+        const assignedRows: Record<TwinFloor, MachineRecord[]> = {
+          first: [],
+          second: [],
+        };
+
+        rows.forEach((row) => {
+          const explicitFloor = floorFromLocation(row.location);
+          const fallbackFloor =
+            assignedRows.first.length + firstFloorAssetMachines.length <=
+            assignedRows.second.length
+              ? "first"
+              : "second";
+          assignedRows[explicitFloor ?? fallbackFloor].push(row);
+        });
+
+        const inventoryMachines = (["first", "second"] as const).flatMap(
+          (floor) =>
+            assignedRows[floor].map((row, index) =>
+              toFactoryMachine(row, index, assignedRows[floor].length, floor),
+            ),
+        );
+        setMachines([...firstFloorAssetMachines, ...inventoryMachines]);
       } catch (loadError) {
         console.error("Unable to load IPROTEX machine table for digital twin:", loadError);
+      } finally {
+        refreshInProgress = false;
       }
     }
 
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadMachineTable();
+    };
+
+    const refreshFromStorage = (event: StorageEvent) => {
+      if (event.key === DIGITAL_TWIN_MACHINES_CHANGED_STORAGE_KEY) {
+        void loadMachineTable();
+      }
+    };
+
     void loadMachineTable();
+    const refreshInterval = window.setInterval(() => void loadMachineTable(), 10_000);
+    window.addEventListener(DIGITAL_TWIN_MACHINES_CHANGED_EVENT, loadMachineTable);
+    window.addEventListener("storage", refreshFromStorage);
+    window.addEventListener("focus", loadMachineTable);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       cancelled = true;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener(DIGITAL_TWIN_MACHINES_CHANGED_EVENT, loadMachineTable);
+      window.removeEventListener("storage", refreshFromStorage);
+      window.removeEventListener("focus", loadMachineTable);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, []);
 
@@ -700,6 +789,20 @@ export default function FactoryTwinScene() {
     }),
     [machines],
   );
+
+  const sortedMachines = useMemo(() => {
+    return [...machines].sort((left, right) => {
+      if (machineSort === "floor") {
+        const floorComparison = left.floor.localeCompare(right.floor);
+        if (floorComparison !== 0) return floorComparison;
+      }
+
+      return left.name.localeCompare(right.name, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    });
+  }, [machineSort, machines]);
 
   const sceneKey = machines.map((machine) => machine.id).join("|");
 
@@ -805,8 +908,22 @@ export default function FactoryTwinScene() {
         </div>
 
         <div className="mt-6 space-y-4">
+          <label className="block text-sm font-medium text-slate-700">
+            Sort machines
+            <select
+              value={machineSort}
+              onChange={(event) =>
+                setMachineSort(event.target.value as MachineSort)
+              }
+              className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="name">Name</option>
+              <option value="floor">Floor</option>
+            </select>
+          </label>
+
           <div className="grid max-h-80 gap-2 overflow-y-auto pr-1">
-            {machines.map((machine) => (
+            {sortedMachines.map((machine) => (
               <button
                 key={machine.id}
                 type="button"

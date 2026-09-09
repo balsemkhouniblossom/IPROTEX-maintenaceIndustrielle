@@ -628,9 +628,6 @@ export const apiService = {
   uploadDocument: (formData: FormData) =>
     api.post("/documents/upload", formData, {
       timeout: UPLOAD_REQUEST_TIMEOUT_MS,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
     }),
 
   deleteDocument: (id: string) => api.delete(`/documents/${id}`),
@@ -650,9 +647,6 @@ export const apiService = {
   replaceDocument: (id: string, formData: FormData) =>
     api.post(`/documents/${id}/replace`, formData, {
       timeout: UPLOAD_REQUEST_TIMEOUT_MS,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
     }),
 
   // Knowledge Base

@@ -16,10 +16,11 @@ import { usePredictiveHealth } from "@/hooks/usePredictiveHealth";
 import { apiService } from "@/services/api";
 import {
   ALL_FIELDS_TOKEN,
-  getSearchableFields,
   matchesDynamicSearch,
 } from "@/services/dynamicSearch";
 import { sortMachineDocumentsForMachine } from "@/services/machineManuals";
+import { buildMachinePayload } from "@/services/machineForm";
+import { notifyDigitalTwinMachinesChanged } from "@/services/digitalTwinMachines";
 import { normalizeApiItems } from "@/services/pagination";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -124,6 +125,18 @@ function isNotFoundError(error: unknown): boolean {
 
 const PAGE_LIMIT = 10;
 type TechnicianMachineFilter = "all" | "attention" | "maintenance" | "operational";
+type MachineSortKey = "name" | "floor";
+const MACHINE_TABLE_SEARCH_FIELDS = [
+  "machine_id",
+  "serial_no",
+  "fabricant",
+  "model",
+  "machine_type_name",
+  "status",
+  "installation_date",
+  "poids_kg",
+  "location",
+];
 
 export default function MachinesPage() {
   const tMachines = useTranslations("machines");
@@ -140,6 +153,7 @@ export default function MachinesPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(
     null,
@@ -156,7 +170,11 @@ export default function MachinesPage() {
   >(null);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingMachineId, setDeletingMachineId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Machine | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [machineSortKey, setMachineSortKey] =
+    useState<MachineSortKey>("name");
   const [technicianFilter, setTechnicianFilter] =
     useState<TechnicianMachineFilter>("all");
   const [selectedSearchField, setSelectedSearchField] =
@@ -174,10 +192,17 @@ export default function MachinesPage() {
     model: "",
     location: "",
   });
+  const urlStateReadyRef = useRef(false);
 
   const loadMachines = useCallback(async () => {
     if (authLoading || !user?.role) return;
+    if (user.role !== "admin" && user.role !== "technician") {
+      setLoading(false);
+      return;
+    }
     try {
+      setLoading(true);
+      setLoadError("");
       const isTechnician = user?.role === "technician";
       const [machinesRes, typesRes] = await Promise.all([
         isTechnician
@@ -211,33 +236,7 @@ export default function MachinesPage() {
         );
       }
 
-      if (isTechnician) {
-        setManualsByMachine({});
-      } else {
-        const manualEntries = await Promise.all(
-          normalized.map(async (machine: Machine) => {
-            try {
-              const response = await apiService.getDocumentsByMachine(
-                machine._id,
-              );
-              return [
-                machine._id,
-                sortMachineDocumentsForMachine(machine._id, Array.isArray(response.data) ? response.data : []),
-              ] as const;
-            } catch (error) {
-              if (!isNotFoundError(error)) {
-                console.error(
-                  `Error loading manuals for machine ${machine._id}:`,
-                  error,
-                );
-              }
-              return [machine._id, []] as const;
-            }
-          }),
-        );
-
-        setManualsByMachine(Object.fromEntries(manualEntries));
-      }
+      setManualsByMachine({});
 
       const types = normalizeApiItems<MachineType>(typesRes.data);
 
@@ -247,7 +246,7 @@ export default function MachinesPage() {
       setTotalPages(machinesRes.data?.totalPages ?? 1);
     } catch (error) {
       console.error("Error loading machines:", error);
-      showNotification("error", tMachines("notifications.loadFailed"));
+      setLoadError(tMachines("notifications.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -268,9 +267,14 @@ export default function MachinesPage() {
     loadMachines();
   }, [authLoading, loadMachines, user?.role]);
 
+  const loadMachinesRef = useRef(loadMachines);
+  useEffect(() => {
+    loadMachinesRef.current = loadMachines;
+  }, [loadMachines]);
+
   useEffect(() => {
     const handleMachinesChanged = () => {
-      loadMachines();
+      void loadMachinesRef.current();
     };
 
     window.addEventListener("machines:changed", handleMachinesChanged);
@@ -280,9 +284,57 @@ export default function MachinesPage() {
       window.removeEventListener("machines:changed", handleMachinesChanged);
       window.removeEventListener("focus", handleMachinesChanged);
     };
-    // keep the existing event listener lifecycle stable; loadMachines reads current state when the event fires.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedPage = Number(params.get("page"));
+    const requestedFilter = params.get("filter") as TechnicianMachineFilter | null;
+    const requestedSort = params.get("sort") as MachineSortKey | null;
+    if (Number.isInteger(requestedPage) && requestedPage > 0) setPage(requestedPage);
+    setSearchTerm(params.get("search") ?? "");
+    if (["all", "attention", "maintenance", "operational"].includes(requestedFilter ?? "")) {
+      setTechnicianFilter(requestedFilter!);
+    }
+    if (["name", "floor"].includes(requestedSort ?? "")) setMachineSortKey(requestedSort!);
+    urlStateReadyRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!urlStateReadyRef.current) return;
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (searchTerm.trim()) params.set("search", searchTerm.trim());
+    if (machineSortKey !== "name") params.set("sort", machineSortKey);
+    if (user?.role === "technician" && technicianFilter !== "all") {
+      params.set("filter", technicianFilter);
+    }
+    const query = params.toString();
+    window.history.replaceState(null, "", `/${locale}/machines${query ? `?${query}` : ""}`);
+  }, [locale, machineSortKey, page, searchTerm, technicianFilter, user?.role]);
+
+  useEffect(() => {
+    if (!urlStateReadyRef.current) return;
+    setPage(1);
+  }, [searchTerm, technicianFilter]);
+
+  const listReturnPath = useMemo(() => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (searchTerm.trim()) params.set("search", searchTerm.trim());
+    if (machineSortKey !== "name") params.set("sort", machineSortKey);
+    if (user?.role === "technician" && technicianFilter !== "all") {
+      params.set("filter", technicianFilter);
+    }
+    const query = params.toString();
+    return `/${locale}/machines${query ? `?${query}` : ""}`;
+  }, [locale, machineSortKey, page, searchTerm, technicianFilter, user?.role]);
+
+  const machineDetailPath = useCallback(
+    (machineId: string) =>
+      `/${locale}/machines/${machineId}?returnTo=${encodeURIComponent(listReturnPath)}`,
+    [listReturnPath, locale],
+  );
 
   const machineTypeMap = useMemo(() => {
     const map: Record<string, MachineType> = {};
@@ -307,19 +359,15 @@ export default function MachinesPage() {
     }));
   }, [machines, machineTypeMap]);
 
-  const searchableFields = useMemo(() => {
-    if (searchableMachines.length === 0) {
-      return [];
-    }
-
-    return getSearchableFields(searchableMachines);
-  }, [searchableMachines]);
+  const searchableFields = MACHINE_TABLE_SEARCH_FIELDS;
 
   const filtered = useMemo(
     () =>
       searchableMachines
         .filter((machine) =>
-          matchesDynamicSearch(machine, searchTerm, selectedSearchField),
+          matchesDynamicSearch(machine, searchTerm, selectedSearchField, 3, {
+            fields: MACHINE_TABLE_SEARCH_FIELDS,
+          }),
         )
         .filter((machine) => {
           if (technicianFilter === "all") return true;
@@ -336,6 +384,21 @@ export default function MachinesPage() {
             (summary?.stats.openWorkOrders ?? 0) > 0 ||
             (health?.riskLevel && !["low", "insufficient_data"].includes(health.riskLevel))
           );
+        })
+        .sort((left, right) => {
+          const leftValue =
+            machineSortKey === "name" ? left.machine_id : left.location;
+          const rightValue =
+            machineSortKey === "name" ? right.machine_id : right.location;
+
+          if (!leftValue && !rightValue) return 0;
+          if (!leftValue) return 1;
+          if (!rightValue) return -1;
+
+          return leftValue.localeCompare(rightValue, locale, {
+            numeric: true,
+            sensitivity: "base",
+          });
         }),
     [
       searchableMachines,
@@ -344,6 +407,8 @@ export default function MachinesPage() {
       technicianFilter,
       summaryByMachine,
       healthByMachine,
+      machineSortKey,
+      locale,
     ],
   );
 
@@ -357,26 +422,8 @@ export default function MachinesPage() {
       );
       return false;
     }
-    if (!formData.serial_no.trim()) {
-      showNotification("error", tMachines("notifications.serialRequired"));
-      return false;
-    }
-    if (!formData.fabricant.trim()) {
-      showNotification(
-        "error",
-        tMachines("notifications.manufacturerRequired"),
-      );
-      return false;
-    }
-    if (!formData.model.trim()) {
-      showNotification("error", tMachines("notifications.modelRequired"));
-      return false;
-    }
-    if (!formData.installation_date) {
-      showNotification(
-        "error",
-        tMachines("notifications.installationRequired"),
-      );
+    if (!formData.type_id) {
+      showNotification("error", tMachines("placeholders.selectType"));
       return false;
     }
     return true;
@@ -507,16 +554,19 @@ export default function MachinesPage() {
     }
   };
 
-  const handleDelete = async (machineId: string) => {
-    if (confirm(tMachines("notifications.confirmDelete"))) {
-      try {
-        await apiService.deleteMachine(machineId);
-        await refreshMachines();
-        showNotification("success", tMachines("notifications.deleted"));
-      } catch (error) {
-        console.error("Error deleting machine:", error);
-        showNotification("error", tMachines("notifications.deleteFailed"));
-      }
+  const handleDelete = async () => {
+    if (!pendingDelete || deletingMachineId) return;
+    setDeletingMachineId(pendingDelete._id);
+    try {
+      await apiService.deleteMachine(pendingDelete._id);
+      setPendingDelete(null);
+      await refreshMachines();
+      showNotification("success", tMachines("notifications.deleted"));
+    } catch (error) {
+      console.error("Error deleting machine:", error);
+      showNotification("error", tMachines("notifications.deleteFailed"));
+    } finally {
+      setDeletingMachineId(null);
     }
   };
 
@@ -525,17 +575,14 @@ export default function MachinesPage() {
     if (!validateForm()) return;
     setSubmitting(true);
     try {
-      const data = {
-        ...formData,
-        type_id: formData.type_id || null,
-        poids_kg: formData.poids_kg ? Number.parseFloat(formData.poids_kg) : 0,
-      };
+      const data = buildMachinePayload(formData);
 
       if (editingMachine) {
         await apiService.updateMachine(editingMachine._id, data);
         showNotification("success", tMachines("notifications.updated"));
       } else {
         await apiService.createMachine(data);
+        notifyDigitalTwinMachinesChanged();
         showNotification("success", tMachines("notifications.created"));
       }
 
@@ -581,6 +628,15 @@ export default function MachinesPage() {
             closeLabel={tCommon("close")}
           />
 
+          {loadError && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800" role="alert">
+              <span>{loadError}</span>
+              <button type="button" className="btn-secondary" onClick={() => void loadMachines()}>
+                {tCommon("retry")}
+              </button>
+            </div>
+          )}
+
           <div className="mx-auto max-w-6xl space-y-5">
             <section className="rounded-lg border border-slate-200 bg-white p-5">
               <div className="flex flex-wrap items-end justify-between gap-4">
@@ -602,6 +658,7 @@ export default function MachinesPage() {
                 </div>
               </div>
               <label className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
+                <span className="text-sm font-semibold text-slate-700">{tCommon("actions.search")}</span>
                 <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
                 <input
                   value={searchTerm}
@@ -610,6 +667,7 @@ export default function MachinesPage() {
                   className="w-full bg-transparent text-sm outline-none"
                 />
               </label>
+              <p className="mt-2 text-xs text-slate-500">{tMachines("searchScopeCurrentPage")}</p>
               <div className="mt-4 flex flex-wrap gap-2" role="tablist">
                 {filters.map((filter) => (
                   <button
@@ -631,11 +689,11 @@ export default function MachinesPage() {
             </section>
 
             <section className="space-y-3">
-              {filtered.length === 0 ? (
+              {!loadError && filtered.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
                   {searchTerm ? tMachines("empty.search") : tMachines("empty.default")}
                 </div>
-              ) : (
+              ) : !loadError ? (
                 filtered.map((machine) => {
                   const summary = summaryByMachine[machine._id];
                   const machineType =
@@ -645,9 +703,25 @@ export default function MachinesPage() {
                   const statusTranslationKey = machineStatusTranslationKey(
                     machine.status,
                   );
+                  const health = healthByMachine[machine._id];
+                  const hasHealthWarning = Boolean(
+                    health?.riskLevel &&
+                    !["low", "insufficient_data"].includes(health.riskLevel),
+                  );
                   const isAttention =
                     machine.status !== "operational" ||
-                    (summary?.stats.openWorkOrders ?? 0) > 0;
+                    (summary?.stats.openWorkOrders ?? 0) > 0 ||
+                    hasHealthWarning;
+                  let attentionReason = "";
+                  if (machine.status !== "operational") {
+                    attentionReason = statusTranslationKey
+                      ? tMachines(statusTranslationKey)
+                      : tCommon("notAvailable");
+                  } else if ((summary?.stats.openWorkOrders ?? 0) > 0) {
+                    attentionReason = tMachines("technician.openWorkOrders");
+                  } else if (hasHealthWarning) {
+                    attentionReason = tPredictiveMaintenance("table.health");
+                  }
                   return (
                     <article
                       key={machine._id}
@@ -675,11 +749,16 @@ export default function MachinesPage() {
                           <p className="mt-1 text-sm text-slate-500">
                             {machine.serial_no || tCommon("notAvailable")}
                           </p>
+                          {attentionReason && (
+                            <p className="mt-2 text-sm font-medium text-amber-800">
+                              {attentionReason}
+                            </p>
+                          )}
                         </div>
                         <div className="flex md:justify-end">
                           <button
                             type="button"
-                            onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
+                            onClick={() => router.push(machineDetailPath(machine._id))}
                             className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-3 text-sm font-semibold text-white"
                           >
                             <WrenchScrewdriverIcon className="h-4 w-4" />
@@ -712,7 +791,7 @@ export default function MachinesPage() {
                     </article>
                   );
                 })
-              )}
+              ) : null}
             </section>
 
             <Pagination
@@ -737,6 +816,15 @@ export default function MachinesPage() {
         onClose={() => setNotification(null)}
         closeLabel={tCommon("close")}
       />
+
+      {loadError && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800" role="alert">
+          <span>{loadError}</span>
+          <button type="button" className="btn-secondary" onClick={() => void loadMachines()}>
+            {tCommon("retry")}
+          </button>
+        </div>
+      )}
 
       <div className="bento-grid">
         {/* Header */}
@@ -782,13 +870,41 @@ export default function MachinesPage() {
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
               searchPlaceholder={tMachines("searchPlaceholder")}
+              highlightRootId="machines-table-region"
+              showFieldSelector={false}
             />
+            <p className="mt-2 text-xs text-slate-500">{tMachines("searchScopeCurrentPage")}</p>
           </div>
         </div>
 
         {/* Machines Table */}
-        <div className="col-span-full bento-item panel">
-          <div className="card-title">{tMachines("allMachines")}</div>
+        <div
+          id="machines-table-region"
+          className="col-span-full bento-item panel"
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="card-title mb-0">{tMachines("allMachines")}</div>
+            <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium text-slate-700">
+              <span>
+                {tMachines("table.sortBy", { default: "Sort by" })}
+              </span>
+              <select
+                value={machineSortKey}
+                onChange={(event) =>
+                  setMachineSortKey(event.target.value as MachineSortKey)
+                }
+                className="input-field !w-auto min-w-36 py-2"
+                aria-label={tMachines("table.sortBy", { default: "Sort by" })}
+              >
+                <option value="name">
+                  {tMachines("table.name", { default: "Name" })}
+                </option>
+                <option value="floor">
+                  {tMachines("table.floor", { default: "Floor" })}
+                </option>
+              </select>
+            </label>
+          </div>
           <div className="wide-table-scroll">
             <table className="table wide-table">
               <colgroup>
@@ -824,7 +940,7 @@ export default function MachinesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {!loadError && filtered.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="text-center py-8 text-gray-500">
                       {searchTerm
@@ -832,7 +948,7 @@ export default function MachinesPage() {
                         : tMachines("empty.default")}
                     </td>
                   </tr>
-                ) : (
+                ) : !loadError ? (
                   filtered.map((machine: Machine) => {
                     const machineType = machineTypeMap[String(machine.type_id)];
                     const statusTranslationKey = machineStatusTranslationKey(
@@ -843,26 +959,24 @@ export default function MachinesPage() {
                         <td className="font-medium">
                           <button
                             type="button"
-                            onClick={() => handleOpenManual(machine)}
-                            disabled={loadingManualMachineId === machine._id}
-                            aria-label={tMachines("actions.openManual", {
-                              default: "Open manual",
+                            onClick={() => router.push(machineDetailPath(machine._id))}
+                            aria-label={tMachines("actions.viewTimeline", {
+                              default: "View machine",
                             })}
-                            title={tMachines("actions.openManual", {
-                              default: "Open manual",
+                            title={tMachines("actions.viewTimeline", {
+                              default: "View machine",
                             })}
-                            className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900 disabled:cursor-wait disabled:text-slate-400"
+                            className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900"
                           >
-                            <DocumentTextIcon className="h-4 w-4 shrink-0" />
                             <span className="truncate">
                               {machine.machine_id || tCommon("notAvailable")}
                             </span>
                           </button>
                         </td>
-                        <td>{machine.serial_no}</td>
+                        <td>{machine.serial_no || tCommon("notAvailable")}</td>
                         <td>{machine.fabricant || tCommon("notAvailable")}</td>
                         <td>{machine.model || tCommon("notAvailable")}</td>
-                        <td>{machineType?.name || tCommon("notAvailable")}</td>
+                        <td>{machine.machine_type_name || machineType?.name || tCommon("notAvailable")}</td>
                         <td>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold ${machineStatusClassName(machine.status)}`}
@@ -892,7 +1006,7 @@ export default function MachinesPage() {
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => router.push(`/${locale}/machines/${machine._id}`)}
+                              onClick={() => router.push(machineDetailPath(machine._id))}
                               aria-label={tMachines("actions.viewTimeline", {
                                 default: "View timeline",
                               })}
@@ -910,6 +1024,17 @@ export default function MachinesPage() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => void handleOpenManual(machine)}
+                              disabled={loadingManualMachineId === machine._id}
+                              aria-label={tMachines("actions.openManual", { default: "Open manual" })}
+                              title={tMachines("actions.openManual", { default: "Open manual" })}
+                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                            >
+                              <DocumentTextIcon className="h-4 w-4 shrink-0" />
+                              <span>{tMachines("actions.openManual", { default: "Manual" })}</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleEdit(machine)}
                               aria-label={tCommon("edit")}
                               title={tCommon("edit")}
@@ -920,7 +1045,7 @@ export default function MachinesPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(machine._id)}
+                              onClick={() => setPendingDelete(machine)}
                               aria-label={tCommon("delete")}
                               title={tCommon("delete")}
                               className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
@@ -933,7 +1058,7 @@ export default function MachinesPage() {
                       </tr>
                     );
                   })
-                )}
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -950,6 +1075,29 @@ export default function MachinesPage() {
       </div>
 
       <Modal
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!deletingMachineId) setPendingDelete(null);
+        }}
+        title={tCommon("delete")}
+        size="sm"
+      >
+        <p className="text-sm text-slate-700">
+          {tMachines("notifications.confirmDelete")}
+        </p>
+        <p className="mt-3 font-semibold text-slate-900">
+          {pendingDelete?.machine_id}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" className="btn-secondary" onClick={() => setPendingDelete(null)} disabled={Boolean(deletingMachineId)}>
+            {tCommon("cancel")}
+          </button>
+          <button type="button" className="btn-danger" onClick={() => void handleDelete()} disabled={Boolean(deletingMachineId)}>
+            {deletingMachineId ? tCommon("saving") : tCommon("delete")}
+          </button>
+        </div>
+      </Modal>
+      <Modal
         isOpen={showModal}
         onClose={() => {
           setShowModal(false);
@@ -961,12 +1109,13 @@ export default function MachinesPage() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {tMachines("form.machineCode", { default: "Machine Code" })}
+              <label htmlFor="machine-form-code" className="block text-sm font-medium text-gray-dark mb-1">
+                {tMachines("form.machineCode", { default: "Machine Code" })} <span aria-hidden="true">*</span>
               </label>
               <input
+                id="machine-form-code"
                 type="text"
                 value={formData.machine_id}
                 onChange={(e) =>
@@ -980,10 +1129,11 @@ export default function MachinesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
+              <label htmlFor="machine-form-serial" className="block text-sm font-medium text-gray-dark mb-1">
                 {tMachines("form.serialNumber")}
               </label>
               <input
+                id="machine-form-serial"
                 type="text"
                 value={formData.serial_no}
                 onChange={(e) =>
@@ -991,17 +1141,17 @@ export default function MachinesPage() {
                 }
                 className="input-field"
                 title={tMachines("form.serialNumber")}
-                required
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
+              <label htmlFor="machine-form-manufacturer" className="block text-sm font-medium text-gray-dark mb-1">
                 {tMachines("form.manufacturer")}
               </label>
               <input
+                id="machine-form-manufacturer"
                 type="text"
                 value={formData.fabricant}
                 onChange={(e) =>
@@ -1009,14 +1159,14 @@ export default function MachinesPage() {
                 }
                 className="input-field"
                 title={tMachines("form.manufacturer")}
-                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
+              <label htmlFor="machine-form-model" className="block text-sm font-medium text-gray-dark mb-1">
                 {tMachines("form.model")}
               </label>
               <input
+                id="machine-form-model"
                 type="text"
                 value={formData.model}
                 onChange={(e) =>
@@ -1024,17 +1174,17 @@ export default function MachinesPage() {
                 }
                 className="input-field"
                 title={tMachines("form.model")}
-                required
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {tMachines("form.machineType")}
+              <label htmlFor="machine-form-type" className="block text-sm font-medium text-gray-dark mb-1">
+                {tMachines("form.machineType")} <span aria-hidden="true">*</span>
               </label>
               <select
+                id="machine-form-type"
                 value={formData.type_id}
                 onChange={(e) =>
                   setFormData({ ...formData, type_id: e.target.value })
@@ -1053,10 +1203,11 @@ export default function MachinesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
+              <label htmlFor="machine-form-status" className="block text-sm font-medium text-gray-dark mb-1">
                 {tMachines("form.status")}
               </label>
               <select
+                id="machine-form-status"
                 value={formData.status}
                 onChange={(e) =>
                   setFormData({ ...formData, status: e.target.value })
@@ -1078,12 +1229,13 @@ export default function MachinesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
+              <label htmlFor="machine-form-installation" className="block text-sm font-medium text-gray-dark mb-1">
                 {tMachines("form.installationDate")}
               </label>
               <input
+                id="machine-form-installation"
                 type="date"
                 value={formData.installation_date}
                 onChange={(e) =>
@@ -1097,10 +1249,11 @@ export default function MachinesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
+              <label htmlFor="machine-form-weight" className="block text-sm font-medium text-gray-dark mb-1">
                 {tMachines("form.weight")}
               </label>
               <input
+                id="machine-form-weight"
                 type="number"
                 value={formData.poids_kg}
                 onChange={(e) =>
@@ -1115,10 +1268,11 @@ export default function MachinesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-dark mb-1">
+            <label htmlFor="machine-form-location" className="block text-sm font-medium text-gray-dark mb-1">
               {tMachines("form.location")}
             </label>
             <input
+              id="machine-form-location"
               type="text"
               value={formData.location}
               onChange={(e) =>

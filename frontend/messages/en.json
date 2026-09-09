@@ -2018,6 +2018,7 @@
     "addMachine": "Add Machine",
     "allMachines": "All Machines",
     "searchPlaceholder": "Search machines by ID, serial number, manufacturer, model, or location...",
+    "searchScopeCurrentPage": "Search and filters apply to the current page.",
     "table": {
       "machineId": "Machine ID",
       "serialNumber": "Serial Number",
@@ -2029,7 +2030,10 @@
       "weight": "Weight (kg)",
       "location": "Location",
       "actions": "Actions",
-      "machineCode": "Machine Code"
+      "machineCode": "Machine Code",
+      "sortBy": "Sort by",
+      "name": "Name",
+      "floor": "Floor"
     },
     "empty": {
       "search": "No machines found matching your search.",
@@ -2124,6 +2128,7 @@
     "endOfTimeline": "You've reached the beginning of this machine's history.",
     "errors": {
       "loadSummary": "Failed to load machine details",
+      "notFound": "Machine not found.",
       "loadTimeline": "Failed to load timeline events",
       "loadDocument": "Failed to load document"
     },

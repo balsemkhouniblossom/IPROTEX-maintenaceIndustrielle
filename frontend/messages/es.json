@@ -1880,6 +1880,7 @@
     "addMachine": "Agregar maquina",
     "allMachines": "Todas las maquinas",
     "searchPlaceholder": "Buscar maquinas por codigo, numero de serie, fabricante, modelo o ubicacion...",
+    "searchScopeCurrentPage": "La búsqueda y los filtros se aplican a la página actual.",
     "table": {
       "machineId": "ID de maquina",
       "serialNumber": "Numero de serie",
@@ -1891,7 +1892,10 @@
       "machineCode": "Codigo de maquina",
       "manufacturer": "Fabricante",
       "model": "Modelo",
-      "location": "Ubicacion"
+      "location": "Ubicacion",
+      "sortBy": "Ordenar por",
+      "name": "Nombre",
+      "floor": "Planta"
     },
     "empty": {
       "search": "No se encontraron maquinas que coincidan con la busqueda.",
@@ -1988,6 +1992,7 @@
     "endOfTimeline": "Ha llegado al comienzo del historial de esta máquina.",
     "errors": {
       "loadSummary": "No se pudo cargar la información de la máquina",
+      "notFound": "Máquina no encontrada.",
       "loadTimeline": "No se pudieron cargar los eventos",
       "loadDocument": "No se pudo cargar el documento"
     },

@@ -31,8 +31,14 @@ function buildSearchExpression(searchTerm: string): RegExp | null {
   return new RegExp(pattern, 'gi');
 }
 
-function clearSearchHighlights(): void {
-  const highlights = document.querySelectorAll(`mark[${SEARCH_HIGHLIGHT_ATTR}]`);
+function searchRoot(rootId?: string): Document | HTMLElement {
+  return (rootId && document.getElementById(rootId)) || document;
+}
+
+function clearSearchHighlights(rootId?: string): void {
+  const highlights = searchRoot(rootId).querySelectorAll(
+    `mark[${SEARCH_HIGHLIGHT_ATTR}]`,
+  );
 
   highlights.forEach((highlight) => {
     const parent = highlight.parentNode;
@@ -91,12 +97,12 @@ function applyHighlightToTextNode(textNode: Text, expression: RegExp): void {
   textNode.replaceWith(fragment);
 }
 
-function highlightTableText(searchTerm: string): void {
+function highlightTableText(searchTerm: string, rootId?: string): void {
   const expression = buildSearchExpression(searchTerm);
   if (!expression) {
     return;
   }
-  const tableCells = document.querySelectorAll('table tbody td');
+  const tableCells = searchRoot(rootId).querySelectorAll('table tbody td');
 
   tableCells.forEach((cell) => {
     const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, {
@@ -145,6 +151,8 @@ type DynamicSearchControlsProps = Readonly<{
   className?: string;
   selectClassName?: string;
   inputClassName?: string;
+  highlightRootId?: string;
+  showFieldSelector?: boolean;
 }>;
 
 function toDisplayLabel(field: string): string {
@@ -170,36 +178,46 @@ export default function DynamicSearchControls({
   searchPlaceholder,
   className = 'mt-4',
   selectClassName = 'input-field',
-  inputClassName = 'input-field pl-10 w-full',
+  inputClassName = 'input-field w-full',
+  highlightRootId,
+  showFieldSelector = true,
 }: DynamicSearchControlsProps) {
   useEffect(() => {
-    clearSearchHighlights();
-    highlightTableText(searchTerm);
+    clearSearchHighlights(highlightRootId);
+    highlightTableText(searchTerm, highlightRootId);
 
     return () => {
-      clearSearchHighlights();
+      clearSearchHighlights(highlightRootId);
     };
-  }, [searchTerm, selectedField]);
+  }, [highlightRootId, searchTerm, selectedField]);
 
   return (
-    <div className={`${className} grid min-w-0 gap-3 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]`}>
-      <select
-        value={selectedField}
-        onChange={(e) => onSelectedFieldChange(e.target.value)}
-        aria-label={allFieldsLabel}
-        title={allFieldsLabel}
-        className={selectClassName}
-      >
-        <option value={ALL_FIELDS_TOKEN}>{allFieldsLabel}</option>
-        {searchableFields.map((field) => (
-          <option key={field} value={field}>
-            {toDisplayLabel(field)}
-          </option>
-        ))}
-      </select>
+    <div
+      className={`${className} grid min-w-0 gap-3 ${
+        showFieldSelector
+          ? 'md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]'
+          : 'grid-cols-1'
+      }`}
+    >
+      {showFieldSelector && (
+        <select
+          value={selectedField}
+          onChange={(e) => onSelectedFieldChange(e.target.value)}
+          aria-label={allFieldsLabel}
+          title={allFieldsLabel}
+          className={selectClassName}
+        >
+          <option value={ALL_FIELDS_TOKEN}>{allFieldsLabel}</option>
+          {searchableFields.map((field) => (
+            <option key={field} value={field}>
+              {toDisplayLabel(field)}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div className="relative min-w-0">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
           <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
         </div>
         <input
@@ -209,6 +227,7 @@ export default function DynamicSearchControls({
           placeholder={searchPlaceholder}
           title={searchPlaceholder}
           className={inputClassName}
+          style={{ paddingInlineStart: '3rem' }}
         />
       </div>
     </div>

@@ -241,7 +241,7 @@ export function matchesDynamicSearch<T>(
   searchTerm: string,
   selectedField?: string,
   maxDepth?: number,
-  options?: { include?: string[] },
+  options?: { include?: string[]; fields?: string[] },
 ): boolean {
   const effectiveSelectedField = selectedField ?? ALL_FIELDS_TOKEN;
   const effectiveMaxDepth = maxDepth ?? DEFAULT_MAX_DEPTH;
@@ -249,12 +249,14 @@ export function matchesDynamicSearch<T>(
   if (!normalizedTerm) return true;
 
   if (effectiveSelectedField === ALL_FIELDS_TOKEN) {
-    const scopedFields = getSearchableFields([item], {
-      maxDepth: effectiveMaxDepth,
-      sampleSize: 1,
-      maxFields: DEFAULT_MAX_FIELDS,
-      include: options?.include,
-    });
+    const scopedFields =
+      options?.fields ??
+      getSearchableFields([item], {
+        maxDepth: effectiveMaxDepth,
+        sampleSize: 1,
+        maxFields: DEFAULT_MAX_FIELDS,
+        include: options?.include,
+      });
 
     if (scopedFields.length === 0) {
       return stringifyValue(item, 0, effectiveMaxDepth).includes(normalizedTerm);

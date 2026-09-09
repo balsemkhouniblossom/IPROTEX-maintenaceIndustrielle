@@ -155,7 +155,6 @@ export default function DocumentsPage() {
     type_document: "",
     description: "",
     tags_text: "",
-    uploaded_by: "",
   });
 
   const [editForm, setEditForm] = useState({
@@ -163,7 +162,6 @@ export default function DocumentsPage() {
     type_document: "",
     description: "",
     tags_text: "",
-    uploaded_by: "",
   });
 
   function showNotification(type: "success" | "error", message: string) {
@@ -178,7 +176,6 @@ export default function DocumentsPage() {
       type_document: "",
       description: "",
       tags_text: "",
-      uploaded_by: "",
     });
   }
 
@@ -265,7 +262,6 @@ export default function DocumentsPage() {
       formData.append("type_document", uploadForm.type_document.trim());
       formData.append("description", uploadForm.description.trim());
       formData.append("tags", JSON.stringify(parseTags(uploadForm.tags_text)));
-      formData.append("uploaded_by", uploadForm.uploaded_by.trim());
 
       await apiService.uploadDocument(formData);
       showNotification("success", t("notifications.created"));
@@ -290,7 +286,6 @@ export default function DocumentsPage() {
       type_document: doc.type_document || "",
       description: doc.description || "",
       tags_text: tagsToText(doc.tags),
-      uploaded_by: doc.uploaded_by || "",
     });
     setEditOpen(true);
   }
@@ -306,7 +301,6 @@ export default function DocumentsPage() {
         type_document: editForm.type_document.trim(),
         description: editForm.description.trim(),
         tags: parseTags(editForm.tags_text),
-        uploaded_by: editForm.uploaded_by.trim(),
         expected_version: selectedDoc.version,
       };
 
@@ -566,12 +560,6 @@ export default function DocumentsPage() {
                   </div>
                   <div>
                     <span className="font-medium">
-                      {t("table.uploadedBy")}:{" "}
-                    </span>
-                    {doc.uploaded_by || tCommon("notAvailable")}
-                  </div>
-                  <div>
-                    <span className="font-medium">
                       {t("table.dateAdded")}:{" "}
                     </span>
                     {doc.date_ajout
@@ -749,35 +737,19 @@ export default function DocumentsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.tags")}
-              </label>
-              <input
-                className="input-field"
-                value={uploadForm.tags_text}
-                onChange={(e) =>
-                  setUploadForm({ ...uploadForm, tags_text: e.target.value })
-                }
-                placeholder={t("placeholders.tags")}
-                title={t("form.tags")}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.uploadedBy")}
-              </label>
-              <input
-                className="input-field"
-                value={uploadForm.uploaded_by}
-                onChange={(e) =>
-                  setUploadForm({ ...uploadForm, uploaded_by: e.target.value })
-                }
-                placeholder={t("placeholders.uploadedBy")}
-                title={t("form.uploadedBy")}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.tags")}
+            </label>
+            <input
+              className="input-field"
+              value={uploadForm.tags_text}
+              onChange={(e) =>
+                setUploadForm({ ...uploadForm, tags_text: e.target.value })
+              }
+              placeholder={t("placeholders.tags")}
+              title={t("form.tags")}
+            />
           </div>
 
           <div className="flex justify-end gap-3">
@@ -864,35 +836,19 @@ export default function DocumentsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.tags")}
-              </label>
-              <input
-                className="input-field"
-                value={editForm.tags_text}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, tags_text: e.target.value })
-                }
-                placeholder={t("placeholders.tags")}
-                title={t("form.tags")}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-dark mb-1">
-                {t("form.uploadedBy")}
-              </label>
-              <input
-                className="input-field"
-                value={editForm.uploaded_by}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, uploaded_by: e.target.value })
-                }
-                placeholder={t("placeholders.uploadedBy")}
-                title={t("form.uploadedBy")}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-dark mb-1">
+              {t("form.tags")}
+            </label>
+            <input
+              className="input-field"
+              value={editForm.tags_text}
+              onChange={(e) =>
+                setEditForm({ ...editForm, tags_text: e.target.value })
+              }
+              placeholder={t("placeholders.tags")}
+              title={t("form.tags")}
+            />
           </div>
 
           <div className="flex justify-end gap-3">

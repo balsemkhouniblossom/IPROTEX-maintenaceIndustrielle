@@ -145,7 +145,7 @@ test("the admin machines list and technician work order detail link into the new
   const machinesPageSource = readSource("src/app/[locale]/machines/page.tsx");
   assert.match(
     machinesPageSource,
-    /router\.push\(`\/\$\{locale\}\/machines\/\$\{machine\._id\}`\)/,
+    /router\.push\(machineDetailPath\(machine\._id\)\)/,
     "admin machines list must link each row into /machines/:id",
   );
 
@@ -155,6 +155,54 @@ test("the admin machines list and technician work order detail link into the new
     /href=\{`\/\$\{locale\}\/machines\/\$\{machine\._id\}`\}/,
     "technician work order detail must link to the machine timeline for the work order's machine",
   );
+});
+
+test("machine detail retry and shortcuts remain role-aware", () => {
+  const detail = readSource("src/components/machine-timeline/MachineDetailPage.tsx");
+  const header = readSource("src/components/machine-timeline/MachineHeader.tsx");
+  const technician = readSource("src/components/technician/TechnicianWorkspace.tsx");
+
+  assert.match(detail, /user\?\.role === 'technician' \? loadTechnicianContext\(\) : loadSummary\(\)/);
+  assert.match(detail, /status === 404 \? t\('errors\.notFound'\)/);
+  assert.match(header, /safeReturnTo = returnTo\?\.startsWith\(`\/\$\{locale\}\/machines`\)/);
+  assert.match(header, /technician\/work-orders\?machineId=\$\{encodeURIComponent\(machineId\)\}/);
+  assert.match(technician, /machineId: params\.get\("machineId"\) \|\| ""/);
+  assert.doesNotMatch(header, /header\.currentTechnician/);
+});
+
+test("machines list preserves context and avoids unauthorized or stale loads", () => {
+  const source = readSource("src/app/[locale]/machines/page.tsx");
+
+  assert.match(source, /user\.role !== "admin" && user\.role !== "technician"/);
+  assert.match(source, /const loadMachinesRef = useRef\(loadMachines\)/);
+  assert.match(source, /loadMachinesRef\.current = loadMachines/);
+  assert.match(source, /void loadMachinesRef\.current\(\)/);
+  assert.match(source, /params\.set\("page", String\(page\)\)/);
+  assert.match(source, /params\.set\("search", searchTerm\.trim\(\)\)/);
+  assert.match(source, /params\.set\("filter", technicianFilter\)/);
+  assert.match(source, /returnTo=\$\{encodeURIComponent\(listReturnPath\)\}/);
+});
+
+test("machines list exposes persistent recovery and correct machine values", () => {
+  const source = readSource("src/app/[locale]/machines/page.tsx");
+
+  assert.match(source, /const \[loadError, setLoadError\]/);
+  assert.match(source, /role="alert"/);
+  assert.match(source, /onClick=\{\(\) => void loadMachines\(\)\}/);
+  assert.match(source, /machine\.machine_type_name \|\| machineType\?\.name \|\| tCommon\("notAvailable"\)/);
+  assert.match(source, /machine\.poids_kg != null[\s\S]{0,100}tCommon\("notAvailable"\)/);
+  assert.match(source, /setPendingDelete\(machine\)/);
+  assert.match(source, /if \(!pendingDelete \|\| deletingMachineId\) return/);
+  assert.doesNotMatch(source, /\bconfirm\(/);
+});
+
+test("machine management form and search are accessible on narrow screens", () => {
+  const source = readSource("src/app/[locale]/machines/page.tsx");
+  assert.match(source, /grid grid-cols-1 gap-4 sm:grid-cols-2/);
+  assert.match(source, /htmlFor="machine-form-code"/);
+  assert.match(source, /id="machine-form-code"/);
+  assert.match(source, /htmlFor="machine-form-type"/);
+  assert.match(source, /searchScopeCurrentPage/);
 });
 
 test("machine timeline translation keys exist for every supported locale", () => {
