@@ -213,6 +213,14 @@ export default function MachineDetailPage({ machineId, returnTo }: Readonly<{ ma
     void loadTechnicianContext();
   }, [loadTechnicianContext]);
 
+  const handleRetry = async () => {
+    if (user?.role === 'technician') {
+      await loadTechnicianContext();
+      return;
+    }
+    await loadSummary();
+  };
+
   const pageTitle = summary?.machine.machineId
     ? `${t('pageTitle')} / ${summary.machine.machineId}`
     : t('pageTitle');
@@ -228,7 +236,7 @@ export default function MachineDetailPage({ machineId, returnTo }: Readonly<{ ma
                 <button
                   type="button"
                   className="underline"
-                  onClick={() => void (user?.role === 'technician' ? loadTechnicianContext() : loadSummary())}
+                  onClick={handleRetry}
                 >
                   {t('actions.retry')}
                 </button>

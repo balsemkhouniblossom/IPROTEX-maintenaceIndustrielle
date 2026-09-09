@@ -111,7 +111,8 @@ function DashboardLayoutBody({
       if (focusable.length === 0) return;
 
       const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+      const last = focusable.at(-1);
+      if (!last) return;
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -575,8 +576,6 @@ function DashboardLayoutBody({
         ref={sidebarRef}
         id="dashboard-navigation"
         aria-label={tCommon("openMenu")}
-        aria-modal={sidebarOpen ? true : undefined}
-        role={sidebarOpen ? "dialog" : undefined}
         className={`sidebar-modern ${sidebarOpen ? "sidebar-open" : ""}`}
       >
         <div className="sidebar-header-modern">

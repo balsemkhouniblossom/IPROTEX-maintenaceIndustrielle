@@ -82,7 +82,6 @@ export function SavedViewsBar({
       {creating ? (
         <span className="inline-flex items-center gap-1">
           <input
-            autoFocus
             className="input-field h-8 w-40 text-xs"
             placeholder={namePlaceholder}
             value={newName}

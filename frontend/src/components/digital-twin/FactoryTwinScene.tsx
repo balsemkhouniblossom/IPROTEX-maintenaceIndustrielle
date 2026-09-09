@@ -909,7 +909,7 @@ export default function FactoryTwinScene() {
 
         <div className="mt-6 space-y-4">
           <label className="block text-sm font-medium text-slate-700">
-            Sort machines
+            <span>Sort machines</span>
             <select
               value={machineSort}
               onChange={(event) =>

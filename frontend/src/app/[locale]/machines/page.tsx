@@ -127,6 +127,14 @@ function appendQuery(path: string, query: string): string {
   return query ? `${path}?${query}` : path;
 }
 
+function machineFormSubmitLabel(
+  editingMachine: Machine | null,
+  createLabel: string,
+  updateLabel: string,
+): string {
+  return editingMachine ? updateLabel : createLabel;
+}
+
 const PAGE_LIMIT = 10;
 type TechnicianMachineFilter = "all" | "attention" | "maintenance" | "operational";
 type MachineSortKey = "name" | "floor";
@@ -609,7 +617,63 @@ export default function MachinesPage() {
               : tCommon("notAvailable")}
           </td>
           <td>{machine.location || tCommon("notAvailable")}</td>
-          <td>{renderMachineActions(machine)}</td>
+          <td>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => router.push(machineDetailPath(machine._id))}
+                aria-label={tMachines("actions.viewTimeline", {
+                  default: "View timeline",
+                })}
+                title={tMachines("actions.viewTimeline", {
+                  default: "View timeline",
+                })}
+                className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+              >
+                <ClockIcon className="h-4 w-4 shrink-0" />
+                <span>
+                  {tMachines("actions.viewTimeline", { default: "Timeline" })}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenManual(machine)}
+                disabled={loadingManualMachineId === machine._id}
+                aria-label={tMachines("actions.openManual", {
+                  default: "Open manual",
+                })}
+                title={tMachines("actions.openManual", {
+                  default: "Open manual",
+                })}
+                className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+              >
+                <DocumentTextIcon className="h-4 w-4 shrink-0" />
+                <span>
+                  {tMachines("actions.openManual", { default: "Manual" })}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleEdit(machine)}
+                aria-label={tCommon("edit")}
+                title={tCommon("edit")}
+                className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+              >
+                <PencilIcon className="h-4 w-4 shrink-0" />
+                <span>{tCommon("edit")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingDelete(machine)}
+                aria-label={tCommon("delete")}
+                title={tCommon("delete")}
+                className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+              >
+                <TrashIcon className="h-4 w-4 shrink-0" />
+                <span>{tCommon("delete")}</span>
+              </button>
+            </div>
+          </td>
         </tr>
       );
     });
@@ -810,9 +874,11 @@ export default function MachinesPage() {
     );
   }
 
-  const submitButtonLabel = editingMachine
-    ? tMachines("button.update")
-    : tMachines("button.create");
+  const submitButtonLabel = machineFormSubmitLabel(
+    editingMachine,
+    tMachines("button.create"),
+    tMachines("button.update"),
+  );
 
   if (user?.role === "technician") {
     const filters: Array<{ key: TechnicianMachineFilter; label: string }> = [
@@ -892,109 +958,7 @@ export default function MachinesPage() {
             </section>
 
             <section className="space-y-3">
-              {!loadError && filtered.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
-                  {searchTerm ? tMachines("empty.search") : tMachines("empty.default")}
-                </div>
-              ) : !loadError ? (
-                filtered.map((machine) => {
-                  const summary = summaryByMachine[machine._id];
-                  const machineType =
-                    machine.machine_type_name ||
-                    machineTypeMap[String(machine.type_id)]?.name ||
-                    tCommon("notAvailable");
-                  const statusTranslationKey = machineStatusTranslationKey(
-                    machine.status,
-                  );
-                  const health = healthByMachine[machine._id];
-                  const hasHealthWarning = Boolean(
-                    health?.riskLevel &&
-                    !["low", "insufficient_data"].includes(health.riskLevel),
-                  );
-                  const isAttention =
-                    machine.status !== "operational" ||
-                    (summary?.stats.openWorkOrders ?? 0) > 0 ||
-                    hasHealthWarning;
-                  let attentionReason = "";
-                  if (machine.status !== "operational") {
-                    attentionReason = statusTranslationKey
-                      ? tMachines(statusTranslationKey)
-                      : tCommon("notAvailable");
-                  } else if ((summary?.stats.openWorkOrders ?? 0) > 0) {
-                    attentionReason = tMachines("technician.openWorkOrders");
-                  } else if (hasHealthWarning) {
-                    attentionReason = tPredictiveMaintenance("table.health");
-                  }
-                  return (
-                    <article
-                      key={machine._id}
-                      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-                    >
-                      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
-                        <div>
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <h2 className="text-xl font-bold text-slate-950">
-                              {machine.machine_id}
-                            </h2>
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${machineStatusClassName(machine.status)}`}
-                            >
-                              {isAttention ? "● " : ""}
-                              {statusTranslationKey
-                                ? tMachines(statusTranslationKey)
-                                : machine.status}
-                            </span>
-                            <MachineHealthBadge status={healthByMachine[machine._id]} />
-                          </div>
-                          <p className="text-sm font-medium text-slate-700">
-                            {machineType}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {machine.serial_no || tCommon("notAvailable")}
-                          </p>
-                          {attentionReason && (
-                            <p className="mt-2 text-sm font-medium text-amber-800">
-                              {attentionReason}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex md:justify-end">
-                          <button
-                            type="button"
-                            onClick={() => router.push(machineDetailPath(machine._id))}
-                            className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-3 text-sm font-semibold text-white"
-                          >
-                            <WrenchScrewdriverIcon className="h-4 w-4" />
-                            {tMachines("technician.viewMachine")}
-                          </button>
-                        </div>
-                      </div>
-                      <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
-                        <div className="flex justify-between gap-4 sm:block">
-                          <dt className="text-slate-500">{tMachines("technician.openWorkOrders")}</dt>
-                          <dd className="font-semibold text-slate-900">{summary?.stats.openWorkOrders ?? 0}</dd>
-                        </div>
-                        <div className="flex justify-between gap-4 sm:block">
-                          <dt className="text-slate-500">{tMachines("technician.nextMaintenance")}</dt>
-                          <dd className="font-semibold text-slate-900">
-                            {summary?.stats.nextMaintenanceAt
-                              ? new Date(summary.stats.nextMaintenanceAt).toLocaleDateString(locale, { day: "2-digit", month: "short" })
-                              : tCommon("notAvailable")}
-                          </dd>
-                        </div>
-                        <div className="flex justify-between gap-4 sm:block">
-                          <dt className="text-slate-500">{tMachines("technician.lastMaintenance")}</dt>
-                          <dd className="font-semibold text-slate-900">
-                            {summary?.stats.lastMaintenanceAt
-                              ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(locale, { day: "2-digit", month: "short" })
-                              : tCommon("notAvailable")}
-                          </dd>
-                        </div>
-                      </dl>
-                    </article>
-                  );
-                })
-              ) : null}
+              {renderTechnicianMachineList()}
             </section>
 
             <Pagination
@@ -1142,127 +1106,7 @@ export default function MachinesPage() {
                   <th>{tCommon("table.actions")}</th>
                 </tr>
               </thead>
-              <tbody>
-                {!loadError && filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="text-center py-8 text-gray-500">
-                      {searchTerm
-                        ? tMachines("empty.search")
-                        : tMachines("empty.default")}
-                    </td>
-                  </tr>
-                ) : !loadError ? (
-                  filtered.map((machine: Machine) => {
-                    const machineType = machineTypeMap[String(machine.type_id)];
-                    const statusTranslationKey = machineStatusTranslationKey(
-                      machine.status,
-                    );
-                    return (
-                      <tr key={machine._id}>
-                        <td className="font-medium">
-                          <button
-                            type="button"
-                            onClick={() => router.push(machineDetailPath(machine._id))}
-                            aria-label={tMachines("actions.viewTimeline", {
-                              default: "View machine",
-                            })}
-                            title={tMachines("actions.viewTimeline", {
-                              default: "View machine",
-                            })}
-                            className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900"
-                          >
-                            <span className="truncate">
-                              {machine.machine_id || tCommon("notAvailable")}
-                            </span>
-                          </button>
-                        </td>
-                        <td>{machine.serial_no || tCommon("notAvailable")}</td>
-                        <td>{machine.fabricant || tCommon("notAvailable")}</td>
-                        <td>{machine.model || tCommon("notAvailable")}</td>
-                        <td>{machine.machine_type_name || machineType?.name || tCommon("notAvailable")}</td>
-                        <td>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-semibold ${machineStatusClassName(machine.status)}`}
-                          >
-                            {statusTranslationKey
-                              ? tMachines(statusTranslationKey)
-                              : tCommon("notAvailable")}
-                          </span>
-                        </td>
-                        <td>
-                          <MachineHealthBadge status={healthByMachine[machine._id]} />
-                        </td>
-                        <td>
-                          {machine.installation_date
-                            ? new Date(machine.installation_date).getFullYear()
-                            : tCommon("notAvailable")}
-                        </td>
-                        <td>
-                          {machine.poids_kg != null
-                            ? `${machine.poids_kg} kg`
-                            : tCommon("notAvailable")}
-                        </td>
-
-                        <td>{machine.location || tCommon("notAvailable")}</td>
-
-                        <td>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => router.push(machineDetailPath(machine._id))}
-                              aria-label={tMachines("actions.viewTimeline", {
-                                default: "View timeline",
-                              })}
-                              title={tMachines("actions.viewTimeline", {
-                                default: "View timeline",
-                              })}
-                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                            >
-                              <ClockIcon className="h-4 w-4 shrink-0" />
-                              <span>
-                                {tMachines("actions.viewTimeline", {
-                                  default: "Timeline",
-                                })}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleOpenManual(machine)}
-                              disabled={loadingManualMachineId === machine._id}
-                              aria-label={tMachines("actions.openManual", { default: "Open manual" })}
-                              title={tMachines("actions.openManual", { default: "Open manual" })}
-                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                            >
-                              <DocumentTextIcon className="h-4 w-4 shrink-0" />
-                              <span>{tMachines("actions.openManual", { default: "Manual" })}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(machine)}
-                              aria-label={tCommon("edit")}
-                              title={tCommon("edit")}
-                              className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                            >
-                              <PencilIcon className="h-4 w-4 shrink-0" />
-                              <span>{tCommon("edit")}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPendingDelete(machine)}
-                              aria-label={tCommon("delete")}
-                              title={tCommon("delete")}
-                              className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-                            >
-                              <TrashIcon className="h-4 w-4 shrink-0" />
-                              <span>{tCommon("delete")}</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : null}
-              </tbody>
+              <tbody>{renderAdminMachineRows()}</tbody>
             </table>
           </div>
           <div className="mt-6">

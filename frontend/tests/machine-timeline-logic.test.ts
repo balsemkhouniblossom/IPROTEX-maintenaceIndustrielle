@@ -162,7 +162,9 @@ test("machine detail retry and shortcuts remain role-aware", () => {
   const header = readSource("src/components/machine-timeline/MachineHeader.tsx");
   const technician = readSource("src/components/technician/TechnicianWorkspace.tsx");
 
-  assert.match(detail, /user\?\.role === 'technician' \? loadTechnicianContext\(\) : loadSummary\(\)/);
+  assert.match(detail, /const handleRetry = async \(\) =>/);
+  assert.match(detail, /if \(user\?\.role === 'technician'\)/);
+  assert.match(detail, /onClick=\{handleRetry\}/);
   assert.match(detail, /status === 404 \? t\('errors\.notFound'\)/);
   assert.match(header, /safeReturnTo = returnTo\?\.startsWith\(`\/\$\{locale\}\/machines`\)/);
   assert.match(header, /technician\/work-orders\?machineId=\$\{encodeURIComponent\(machineId\)\}/);
@@ -189,7 +191,10 @@ test("machines list exposes persistent recovery and correct machine values", () 
   assert.match(source, /const \[loadError, setLoadError\]/);
   assert.match(source, /role="alert"/);
   assert.match(source, /onClick=\{\(\) => void loadMachines\(\)\}/);
-  assert.match(source, /machine\.machine_type_name \|\| machineType\?\.name \|\| tCommon\("notAvailable"\)/);
+  assert.match(
+    source,
+    /machine\.machine_type_name\s*\|\|\s*machineType\?\.name\s*\|\|\s*tCommon\("notAvailable"\)/,
+  );
   assert.match(source, /machine\.poids_kg != null[\s\S]{0,100}tCommon\("notAvailable"\)/);
   assert.match(source, /setPendingDelete\(machine\)/);
   assert.match(source, /if \(!pendingDelete \|\| deletingMachineId\) return/);
