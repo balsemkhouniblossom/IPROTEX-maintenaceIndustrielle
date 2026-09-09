@@ -74,7 +74,7 @@
     "libphonenumber-js": "^1.13.7",
     "mongoose": "^8.24.2",
     "mqtt": "^5.15.2",
-    "multer": "^2.2.0",
+    "multer": "^2.3.0",
     "nodemailer": "^9.0.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
@@ -86,7 +86,7 @@
     "react-pdf": "^10.4.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "socket.io": "^4.8.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   },
@@ -97,7 +97,7 @@
     "@nestjs/cli": "^11.0.23",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
-    "@swc/cli": "^0.6.0",
+    "@swc/cli": "^0.8.1",
     "@swc/core": "^1.10.7",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.8.1",
@@ -131,6 +131,8 @@
   "overrides": {
     "qs": "^6.16.0",
     "uuid": "^11.1.1",
+    "multer": "^2.3.0",
+    "js-yaml": "^4.3.2",
     "ajv": {
       "fast-uri": "^3.1.5"
     },
@@ -153,10 +155,10 @@
       "brace-expansion": "^5.0.8"
     },
     "@eslint/eslintrc": {
-      "js-yaml": "4.3.1"
+      "js-yaml": "^4.3.2"
     },
     "@istanbuljs/load-nyc-config": {
-      "js-yaml": "3.15.1"
+      "js-yaml": "^4.3.2"
     }
   },
   "jest": {
