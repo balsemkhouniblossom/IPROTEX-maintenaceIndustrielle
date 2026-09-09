@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -66,6 +66,8 @@ function DashboardLayoutBody({
   const t = useTranslations("sidebar");
   const tProtected = useTranslations("auth.protected");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [expandedNavItems, setExpandedNavItems] = useState<Set<string>>(
     new Set(),
   );
@@ -84,6 +86,60 @@ function DashboardLayoutBody({
   const role = user?.role;
   const routeAccess = evaluateProtectedRouteAccess({ user, pathname });
   const routeDestination = routeAccess.status === "allow" ? null : routeAccess.to;
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const menuButton = menuButtonRef.current;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !sidebarRef.current) return;
+
+      const focusable = Array.from(
+        sidebarRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const handleDesktopResize = () => {
+      if (window.matchMedia("(min-width: 1024px)").matches) {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleDesktopResize);
+    sidebarRef.current
+      ?.querySelector<HTMLElement>("button, a[href]")
+      ?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleDesktopResize);
+      menuButton?.focus();
+    };
+  }, [sidebarOpen]);
 
   useEffect(() => {
     if (user?.profile_completed === false) {
@@ -515,11 +571,16 @@ function DashboardLayoutBody({
       />
 
       {/* Sidebar */}
-      <div
-        className={`sidebar-modern ${sidebarOpen ? "sidebar-open" : ""} relative z-10`}
+      <aside
+        ref={sidebarRef}
+        id="dashboard-navigation"
+        aria-label={tCommon("openMenu")}
+        aria-modal={sidebarOpen ? true : undefined}
+        role={sidebarOpen ? "dialog" : undefined}
+        className={`sidebar-modern ${sidebarOpen ? "sidebar-open" : ""}`}
       >
         <div className="sidebar-header-modern">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3">
             <Image
               src="/Iprotex logo.png"
               alt="IPROTEX Logo"
@@ -533,6 +594,14 @@ function DashboardLayoutBody({
                 e.currentTarget.style.display = "none";
               }}
             />
+            <button
+              type="button"
+              aria-label={tCommon("closeMenu")}
+              className="toolbar-action shrink-0 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
           </div>
         </div>
 
@@ -683,7 +752,7 @@ function DashboardLayoutBody({
         </nav>
 
         {/* User Info and Logout - Mobile Only */}
-        <div className="app-shell-border mt-auto pt-4 border-t md:hidden">
+        <div className="app-shell-border mt-auto pt-4 border-t lg:hidden">
           <div className="px-4 py-2">
             <div className="flex items-center gap-3 mb-3">
               <ProfileAvatar
@@ -712,14 +781,14 @@ function DashboardLayoutBody({
             </button>
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <button
           type="button"
           aria-label={tCommon("closeMenu")}
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -741,7 +810,7 @@ function DashboardLayoutBody({
               <ThemeToggle />
               <LanguageSwitcher />
 
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-3">
                 <div className="flex items-center gap-3">
                   <ProfileAvatar
                     name={user.nom_complet}
@@ -773,13 +842,15 @@ function DashboardLayoutBody({
               </div>
 
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 aria-label={
                   sidebarOpen ? tCommon("closeMenu") : tCommon("openMenu")
                 }
                 aria-expanded={sidebarOpen}
-                className="mobile-menu-btn toolbar-action md:hidden"
+                aria-controls="dashboard-navigation"
+                className="mobile-menu-btn toolbar-action lg:hidden"
               >
                 {sidebarOpen ? (
                   <XMarkIcon className="w-6 h-6" />

@@ -556,3 +556,18 @@ test("all supported locales define the new admin and operator dashboard KPI tran
     );
   }
 });
+
+test("DashboardLayout uses an accessible off-canvas sidebar on phones and small tablets", () => {
+  const layout = readSource("src/components/DashboardLayout.tsx");
+  const styles = readSource("src/app/globals.css");
+
+  assert.match(layout, /id="dashboard-navigation"/);
+  assert.match(layout, /aria-controls="dashboard-navigation"/);
+  assert.match(layout, /event\.key === "Escape"/);
+  assert.match(layout, /event\.key !== "Tab"/);
+  assert.match(layout, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(layout, /onClick=\{\(\) => setSidebarOpen\(false\)\}/);
+  assert.match(styles, /@media \(max-width: 1023px\)[\s\S]*?\.sidebar-modern \{/);
+  assert.match(styles, /\.sidebar-modern\.sidebar-open[\s\S]*?transform: translateX\(0\)/);
+  assert.match(styles, /@media \(min-width: 1024px\)[\s\S]*?\.sidebar-modern \{/);
+});
