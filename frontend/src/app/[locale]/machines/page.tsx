@@ -123,6 +123,10 @@ function isNotFoundError(error: unknown): boolean {
   );
 }
 
+function appendQuery(path: string, query: string): string {
+  return query ? `${path}?${query}` : path;
+}
+
 const PAGE_LIMIT = 10;
 type TechnicianMachineFilter = "all" | "attention" | "maintenance" | "operational";
 type MachineSortKey = "name" | "floor";
@@ -310,7 +314,11 @@ export default function MachinesPage() {
       params.set("filter", technicianFilter);
     }
     const query = params.toString();
-    window.history.replaceState(null, "", `/${locale}/machines${query ? `?${query}` : ""}`);
+    window.history.replaceState(
+      null,
+      "",
+      appendQuery(`/${locale}/machines`, query),
+    );
   }, [locale, machineSortKey, page, searchTerm, technicianFilter, user?.role]);
 
   useEffect(() => {
@@ -327,7 +335,7 @@ export default function MachinesPage() {
       params.set("filter", technicianFilter);
     }
     const query = params.toString();
-    return `/${locale}/machines${query ? `?${query}` : ""}`;
+    return appendQuery(`/${locale}/machines`, query);
   }, [locale, machineSortKey, page, searchTerm, technicianFilter, user?.role]);
 
   const machineDetailPath = useCallback(
@@ -411,6 +419,201 @@ export default function MachinesPage() {
       locale,
     ],
   );
+
+  const renderTechnicianMachineList = () => {
+    if (loadError) return null;
+    if (filtered.length === 0) {
+      return (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+          {searchTerm
+            ? tMachines("empty.search")
+            : tMachines("empty.default")}
+        </div>
+      );
+    }
+
+    return filtered.map((machine) => {
+      const summary = summaryByMachine[machine._id];
+      const machineType =
+        machine.machine_type_name ||
+        machineTypeMap[String(machine.type_id)]?.name ||
+        tCommon("notAvailable");
+      const statusTranslationKey = machineStatusTranslationKey(machine.status);
+      const health = healthByMachine[machine._id];
+      const hasHealthWarning = Boolean(
+        health?.riskLevel &&
+          !["low", "insufficient_data"].includes(health.riskLevel),
+      );
+      const isAttention =
+        machine.status !== "operational" ||
+        (summary?.stats.openWorkOrders ?? 0) > 0 ||
+        hasHealthWarning;
+      let attentionReason = "";
+      if (machine.status !== "operational") {
+        attentionReason = statusTranslationKey
+          ? tMachines(statusTranslationKey)
+          : tCommon("notAvailable");
+      } else if ((summary?.stats.openWorkOrders ?? 0) > 0) {
+        attentionReason = tMachines("technician.openWorkOrders");
+      } else if (hasHealthWarning) {
+        attentionReason = tPredictiveMaintenance("table.health");
+      }
+
+      return (
+        <article
+          key={machine._id}
+          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
+            <div>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-950">
+                  {machine.machine_id}
+                </h2>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${machineStatusClassName(machine.status)}`}
+                >
+                  {isAttention ? "● " : ""}
+                  {statusTranslationKey
+                    ? tMachines(statusTranslationKey)
+                    : machine.status}
+                </span>
+                <MachineHealthBadge status={healthByMachine[machine._id]} />
+              </div>
+              <p className="text-sm font-medium text-slate-700">{machineType}</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {machine.serial_no || tCommon("notAvailable")}
+              </p>
+              {attentionReason && (
+                <p className="mt-2 text-sm font-medium text-amber-800">
+                  {attentionReason}
+                </p>
+              )}
+            </div>
+            <div className="flex md:justify-end">
+              <button
+                type="button"
+                onClick={() => router.push(machineDetailPath(machine._id))}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-700 px-3 text-sm font-semibold text-white"
+              >
+                <WrenchScrewdriverIcon className="h-4 w-4" />
+                {tMachines("technician.viewMachine")}
+              </button>
+            </div>
+          </div>
+          <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
+            <div className="flex justify-between gap-4 sm:block">
+              <dt className="text-slate-500">
+                {tMachines("technician.openWorkOrders")}
+              </dt>
+              <dd className="font-semibold text-slate-900">
+                {summary?.stats.openWorkOrders ?? 0}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 sm:block">
+              <dt className="text-slate-500">
+                {tMachines("technician.nextMaintenance")}
+              </dt>
+              <dd className="font-semibold text-slate-900">
+                {summary?.stats.nextMaintenanceAt
+                  ? new Date(summary.stats.nextMaintenanceAt).toLocaleDateString(
+                      locale,
+                      { day: "2-digit", month: "short" },
+                    )
+                  : tCommon("notAvailable")}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 sm:block">
+              <dt className="text-slate-500">
+                {tMachines("technician.lastMaintenance")}
+              </dt>
+              <dd className="font-semibold text-slate-900">
+                {summary?.stats.lastMaintenanceAt
+                  ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(
+                      locale,
+                      { day: "2-digit", month: "short" },
+                    )
+                  : tCommon("notAvailable")}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      );
+    });
+  };
+
+  const renderAdminMachineRows = () => {
+    if (loadError) return null;
+    if (filtered.length === 0) {
+      return (
+        <tr>
+          <td colSpan={11} className="py-8 text-center text-gray-500">
+            {searchTerm
+              ? tMachines("empty.search")
+              : tMachines("empty.default")}
+          </td>
+        </tr>
+      );
+    }
+
+    return filtered.map((machine: Machine) => {
+      const machineType = machineTypeMap[String(machine.type_id)];
+      const statusTranslationKey = machineStatusTranslationKey(machine.status);
+      return (
+        <tr key={machine._id}>
+          <td className="font-medium">
+            <button
+              type="button"
+              onClick={() => router.push(machineDetailPath(machine._id))}
+              aria-label={tMachines("actions.viewTimeline", {
+                default: "View machine",
+              })}
+              title={tMachines("actions.viewTimeline", {
+                default: "View machine",
+              })}
+              className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900"
+            >
+              <span className="truncate">
+                {machine.machine_id || tCommon("notAvailable")}
+              </span>
+            </button>
+          </td>
+          <td>{machine.serial_no || tCommon("notAvailable")}</td>
+          <td>{machine.fabricant || tCommon("notAvailable")}</td>
+          <td>{machine.model || tCommon("notAvailable")}</td>
+          <td>
+            {machine.machine_type_name ||
+              machineType?.name ||
+              tCommon("notAvailable")}
+          </td>
+          <td>
+            <span
+              className={`rounded-full px-2 py-1 text-xs font-semibold ${machineStatusClassName(machine.status)}`}
+            >
+              {statusTranslationKey
+                ? tMachines(statusTranslationKey)
+                : tCommon("notAvailable")}
+            </span>
+          </td>
+          <td>
+            <MachineHealthBadge status={healthByMachine[machine._id]} />
+          </td>
+          <td>
+            {machine.installation_date
+              ? new Date(machine.installation_date).getFullYear()
+              : tCommon("notAvailable")}
+          </td>
+          <td>
+            {machine.poids_kg != null
+              ? `${machine.poids_kg} kg`
+              : tCommon("notAvailable")}
+          </td>
+          <td>{machine.location || tCommon("notAvailable")}</td>
+          <td>{renderMachineActions(machine)}</td>
+        </tr>
+      );
+    });
+  };
 
   const validateForm = () => {
     if (!formData.machine_id.trim()) {
