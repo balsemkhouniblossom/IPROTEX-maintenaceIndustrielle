@@ -263,11 +263,18 @@ export default function DocumentsPage() {
       formData.append("description", uploadForm.description.trim());
       formData.append("tags", JSON.stringify(parseTags(uploadForm.tags_text)));
 
-      await apiService.uploadDocument(formData);
+      const response = await apiService.uploadDocument(formData);
+      const createdDocument = response.data as DocumentType;
+      setDocuments((current) => [
+        createdDocument,
+        ...current.filter((document) => document._id !== createdDocument._id),
+      ]);
+      setSearch("");
+      setSelectedMachine("");
+      setSelectedStatus("");
       showNotification("success", t("notifications.created"));
       setUploadOpen(false);
       resetUploadForm();
-      await loadData();
     } catch (error) {
       console.error("Error uploading document:", error);
       showNotification(

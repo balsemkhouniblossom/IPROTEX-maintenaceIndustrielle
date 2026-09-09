@@ -120,6 +120,7 @@ describe('DocumentsService storage URL resolution', () => {
 
   it('preserves local document paths without requiring URL storage fields', async () => {
     const findResult = {
+      sort: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue([
@@ -136,6 +137,7 @@ describe('DocumentsService storage URL resolution', () => {
 
     const result = await service.findAll(1, 10, 0);
 
+    expect(findResult.sort).toHaveBeenCalledWith({ createdAt: -1, _id: -1 });
     expect(result.items[0]?.file_path).toBe('/uploads/photo.webp');
     expect(result.items[0]?.file_url).toBe('/uploads/photo.webp');
   });

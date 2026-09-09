@@ -989,12 +989,6 @@ export default function FactoryTwinScene() {
                 {selectedMachine.floor === "first" ? "First Floor" : "Second Floor"}
               </dd>
             </div>
-            <div className="rounded-md border border-slate-200 p-3">
-              <dt className="font-medium text-slate-500">Machine table ID</dt>
-              <dd className="mt-1 break-all font-semibold text-slate-900">
-                {selectedMachine.backendMachineId ?? "3D asset only"}
-              </dd>
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-md border border-slate-200 p-3">
                 <dt className="font-medium text-slate-500">Temperature</dt>

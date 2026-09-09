@@ -158,7 +158,12 @@ export class DocumentsService {
         ? {}
         : { machine_id: { $in: machineIds } };
     const [items, totalItems] = await Promise.all([
-      this.documentModel.find(query).skip(skip).limit(limit).exec(),
+      this.documentModel
+        .find(query)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.documentModel.countDocuments(query).exec(),
     ]);
 

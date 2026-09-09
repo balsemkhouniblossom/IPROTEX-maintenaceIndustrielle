@@ -34,6 +34,16 @@ const api = axios.create({
 // Request interceptor for auth tokens (if needed later)
 api.interceptors.request.use(
   (config) => {
+    // The instance defaults to JSON for ordinary API calls. FormData requests
+    // must not inherit that header: the browser needs to generate the
+    // multipart boundary itself or Multer receives no file/fields and returns
+    // a 400 response.
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      const headers = AxiosHeaders.from(config.headers);
+      headers.delete("Content-Type");
+      config.headers = headers;
+    }
+
     // Add auth token here if implemented
     const token = getAuthToken();
     if (token) {
