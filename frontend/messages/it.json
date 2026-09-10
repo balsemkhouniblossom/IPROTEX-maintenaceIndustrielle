@@ -2415,7 +2415,21 @@
       "downloadOnly": "L'anteprima non e disponibile per questo tipo di file. Puoi aprirlo o scaricarlo.",
       "open": "Apri",
       "download": "Scarica",
-      "unsupported": "Questo tipo di file non e supportato per l'anteprima."
+      "unsupported": "Questo tipo di file non e supportato per l'anteprima.",
+      "downloadOriginal": "Scarica originale",
+      "retry": "Riprova",
+      "rendering": "Rendering anteprima...",
+      "previousPage": "Pagina precedente",
+      "nextPage": "Pagina successiva",
+      "pageCount": "Pagina {page} di {count}",
+      "zoomIn": "Ingrandisci",
+      "zoomOut": "Riduci",
+      "pdfPage": "Pagina PDF {page}",
+      "docxDocument": "Documento Word",
+      "spreadsheetSheet": "Foglio {sheet}",
+      "workbookTooLarge": "Questa cartella di lavoro è troppo grande per un’anteprima sicura. Scarica il file originale.",
+      "workbookTruncated": "L’anteprima è limitata alle prime 10.000 righe e 200 colonne.",
+      "states": {"unsupported": "L’anteprima non è supportata per questo tipo di file.", "corrupt": "Il file è danneggiato o non può essere analizzato.", "unauthorized": "Non sei autorizzato ad accedere a questo file.", "notFound": "Il file non è stato trovato.", "storage": "L'archivio documenti è temporaneamente non disponibile.", "network": "Impossibile caricare il file a causa di un errore di rete.", "renderer": "Il renderer dell’anteprima non è riuscito. Il file originale resta disponibile."}
     },
     "notifications": {
       "fileRequired": "Seleziona un file",
@@ -2989,7 +3003,7 @@
       "completed": "Nessun intervento completato."
     },
     "errors": {
-      "network": "Impossibile caricare i dati del tecnico.",
+      "storage": "L'archivio documenti è temporaneamente non disponibile.", "network": "Impossibile caricare i dati del tecnico.",
       "load": "Impossibile caricare l'ordine.",
       "update": "Impossibile completare l'azione.",
       "notFound": "Ordine non trovato."

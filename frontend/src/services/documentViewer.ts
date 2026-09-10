@@ -8,6 +8,7 @@ export type AttachmentViewerKind =
   | "image"
   | "pdf"
   | "spreadsheet"
+  | "docx"
   | "text"
   | "download"
   | "unsupported";
@@ -29,8 +30,10 @@ export type ViewableDocument = {
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const DOWNLOAD_MIME_TYPES = new Set([
   "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ]);
+const DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const SPREADSHEET_MIME_TYPES = new Set([
@@ -41,7 +44,7 @@ const SPREADSHEET_MIME_TYPES = new Set([
 const SPREADSHEET_EXTENSIONS = new Set(["xls", "xlsx", "csv"]);
 const TEXT_MIME_TYPES = new Set(["text/plain"]);
 const TEXT_EXTENSIONS = new Set(["txt"]);
-const DOWNLOAD_EXTENSIONS = new Set(["doc", "docx"]);
+const DOWNLOAD_EXTENSIONS = new Set(["doc", "ppt", "pptx"]);
 
 function firstString(values: Array<string | null | undefined>): string {
   return values.find((value) => typeof value === "string" && value.trim())?.trim() ?? "";
@@ -69,6 +72,7 @@ export function getAttachmentViewerKind(doc: ViewableDocument): AttachmentViewer
   const mimeType = getTrustedDocumentMimeType(doc);
   if (IMAGE_MIME_TYPES.has(mimeType)) return "image";
   if (mimeType === "application/pdf") return "pdf";
+  if (mimeType === DOCX_MIME_TYPE) return "docx";
   if (SPREADSHEET_MIME_TYPES.has(mimeType)) return "spreadsheet";
   if (TEXT_MIME_TYPES.has(mimeType)) return "text";
   if (DOWNLOAD_MIME_TYPES.has(mimeType)) return "download";
@@ -76,6 +80,7 @@ export function getAttachmentViewerKind(doc: ViewableDocument): AttachmentViewer
   const extension = getNormalizedDocumentExtension(doc);
   if (IMAGE_EXTENSIONS.has(extension)) return "image";
   if (extension === "pdf") return "pdf";
+  if (extension === "docx") return "docx";
   if (SPREADSHEET_EXTENSIONS.has(extension)) return "spreadsheet";
   if (TEXT_EXTENSIONS.has(extension)) return "text";
   if (DOWNLOAD_EXTENSIONS.has(extension)) return "download";
@@ -91,6 +96,7 @@ export function getAttachmentViewerPath(doc: ViewableDocument): string {
 
   const extension = getNormalizedDocumentExtension(doc);
   const explicitPath = DOWNLOAD_EXTENSIONS.has(extension) ||
+    extension === "docx" ||
     SPREADSHEET_EXTENSIONS.has(extension) ||
     TEXT_EXTENSIONS.has(extension)
     ? firstString([doc.file_url, doc.file_path])
@@ -108,13 +114,5 @@ export function resolveAttachmentViewerUrl(doc: ViewableDocument): string {
 }
 
 export function resolveAttachmentPreviewUrl(doc: ViewableDocument): string {
-  const documentId = firstString([doc._id, doc.id]);
-  if (
-    getAttachmentViewerKind(doc) === "spreadsheet" &&
-    getNormalizedDocumentExtension(doc) === "xlsx" &&
-    documentId
-  ) {
-    return resolveManagedFileUrl(`/documents/${encodeURIComponent(documentId)}/preview`);
-  }
   return resolveAttachmentViewerUrl(doc);
 }

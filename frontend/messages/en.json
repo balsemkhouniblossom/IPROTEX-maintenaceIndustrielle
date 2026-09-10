@@ -2625,7 +2625,21 @@
       "downloadOnly": "Preview is not available for this file type. You can open or download it.",
       "open": "Open",
       "download": "Download",
-      "unsupported": "This file type is not supported for preview."
+      "unsupported": "This file type is not supported for preview.",
+      "downloadOriginal": "Download original",
+      "retry": "Retry",
+      "rendering": "Rendering preview...",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "pageCount": "Page {page} of {count}",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "pdfPage": "PDF page {page}",
+      "docxDocument": "Word document",
+      "spreadsheetSheet": "Spreadsheet sheet {sheet}",
+      "workbookTooLarge": "This workbook is too large to preview safely. Download the original file instead.",
+      "workbookTruncated": "The preview is limited to the first 10,000 rows and 200 columns.",
+      "states": {"unsupported": "Preview is not supported for this file type.", "corrupt": "The file is corrupt or cannot be parsed.", "unauthorized": "You are not authorized to access this file.", "notFound": "The file could not be found.", "storage": "Document storage is temporarily unavailable.", "network": "The file could not be loaded because of a network error.", "renderer": "The preview renderer failed. The original file is still available."}
     },
     "history": {
       "empty": "No version history available.",
@@ -3197,7 +3211,7 @@
       "completed": "No completed interventions yet."
     },
     "errors": {
-      "network": "Unable to load technician data. Check your connection and retry.",
+      "storage": "Document storage is temporarily unavailable.", "network": "Unable to load technician data. Check your connection and retry.",
       "load": "Unable to load this work order.",
       "update": "The action could not be completed.",
       "notFound": "Work order not found."

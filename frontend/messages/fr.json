@@ -2551,7 +2551,21 @@
       "downloadOnly": "L'apercu n'est pas disponible pour ce type de fichier. Vous pouvez l'ouvrir ou le telecharger.",
       "open": "Ouvrir",
       "download": "Telecharger",
-      "unsupported": "Ce type de fichier n'est pas pris en charge pour l'apercu."
+      "unsupported": "Ce type de fichier n'est pas pris en charge pour l'apercu.",
+      "downloadOriginal": "Télécharger le fichier original",
+      "retry": "Réessayer",
+      "rendering": "Génération de l’aperçu...",
+      "previousPage": "Page précédente",
+      "nextPage": "Page suivante",
+      "pageCount": "Page {page} sur {count}",
+      "zoomIn": "Agrandir",
+      "zoomOut": "Réduire",
+      "pdfPage": "Page PDF {page}",
+      "docxDocument": "Document Word",
+      "spreadsheetSheet": "Feuille {sheet}",
+      "workbookTooLarge": "Ce classeur est trop volumineux pour être prévisualisé en toute sécurité. Téléchargez le fichier original.",
+      "workbookTruncated": "L’aperçu est limité aux 10 000 premières lignes et 200 colonnes.",
+      "states": {"unsupported": "L’aperçu n’est pas pris en charge pour ce type de fichier.", "corrupt": "Le fichier est corrompu ou ne peut pas être analysé.", "unauthorized": "Vous n’êtes pas autorisé à accéder à ce fichier.", "notFound": "Le fichier est introuvable.", "storage": "Le stockage des documents est temporairement indisponible.", "network": "Le fichier n’a pas pu être chargé en raison d’une erreur réseau.", "renderer": "Le moteur d’aperçu a échoué. Le fichier original reste disponible."}
     },
     "notifications": {
       "fileRequired": "Veuillez selectionner un fichier",
@@ -3125,7 +3139,7 @@
       "completed": "Aucune intervention terminee pour le moment."
     },
     "errors": {
-      "network": "Impossible de charger les données technicien. Vérifiez la connexion.",
+      "storage": "Le stockage des documents est temporairement indisponible.", "network": "Impossible de charger les données technicien. Vérifiez la connexion.",
       "load": "Impossible de charger cet ordre.",
       "update": "L’action n’a pas pu être effectuée.",
       "notFound": "Ordre de travail introuvable."

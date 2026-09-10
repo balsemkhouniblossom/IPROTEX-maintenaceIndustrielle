@@ -1,16 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { Download, ExternalLink, FileWarning, ImageOff, Loader2 } from "lucide-react";
+import { Download, ExternalLink, FileWarning, Loader2, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
-import {
-  getAttachmentViewerKind,
-  getNormalizedDocumentExtension,
-  resolveAttachmentPreviewUrl,
-  type ViewableDocument,
-} from "@/services/documentViewer";
-import { resolveManagedFileUrl } from "@/services/managedFileUrls";
+import { isAxiosError } from "axios";
+import { getAttachmentViewerKind, resolveAttachmentViewerUrl, type AttachmentViewerKind, type ViewableDocument } from "@/services/documentViewer";
 import api, { quiet } from "@/services/api";
 import { getApiBaseUrl } from "@/config/api-base-url";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -22,249 +17,180 @@ type Props = {
   readonly onError?: () => void;
 };
 
-type ViewerContentProps = {
-  readonly viewerKind: string;
-  readonly isSpreadsheetPdfPreview: boolean;
-  readonly viewerUrl: string;
-  readonly fileUrl: string;
-  readonly displayUrl: string;
-  readonly objectUrl: string;
-  readonly fileLoading: boolean;
-  readonly fileBroken: boolean;
-  readonly label: string;
-  readonly loadingLabel: string;
-  readonly imageUnavailableLabel: string;
-  readonly downloadOnlyLabel: string;
-  readonly openLabel: string;
-  readonly downloadLabel: string;
-  readonly unsupportedLabel: string;
-  readonly onImageLoad: () => void;
-  readonly onImageError: () => void;
-};
+type ViewerFailure = "unauthorized" | "notFound" | "storage" | "network";
+type ContentFailure = "corrupt" | "renderer";
+type LoadState =
+  | { status: "loading" }
+  | { status: "ready"; blob: Blob | null; objectUrl: string }
+  | { status: "failure"; reason: ViewerFailure };
 
-const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), {
-  ssr: false,
-  loading: PdfViewerLoading,
-});
+const PdfViewer = dynamic(() => import("@/app/[locale]/documents/PdfViewer"), { ssr: false });
+const SpreadsheetViewer = dynamic(() => import("@/components/SpreadsheetViewer"), { ssr: false });
+const DocxViewer = dynamic(() => import("@/components/DocxViewer"), { ssr: false });
 
-function PdfViewerLoading() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-    </div>
-  );
-}
-
-function documentViewerFallback(_error: unknown, reset: () => void) {
+function rendererFallback(_error: unknown, reset: () => void) {
   return <WidgetErrorFallback onRetry={reset} bare />;
 }
 
-export default function DocumentAttachmentViewer(props: Readonly<Props>) {
-  return (
-    <ErrorBoundary
-      boundaryName="document-attachment-viewer"
-      fallback={documentViewerFallback}
-    >
-      <DocumentAttachmentViewerInner {...props} />
-    </ErrorBoundary>
-  );
-}
-
-function DocumentAttachmentViewerInner({ document, title, onError }: Readonly<Props>) {
+export default function DocumentAttachmentViewer({ document, title, onError }: Readonly<Props>) {
   const t = useTranslations("documents.viewer");
-  const [fileLoading, setFileLoading] = useState(false);
-  const [fileBroken, setFileBroken] = useState(false);
-  const [objectUrl, setObjectUrl] = useState("");
+  const onErrorRef = useRef(onError);
+  const [retryToken, setRetryToken] = useState(0);
+  const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [contentFailure, setContentFailure] = useState<ContentFailure | null>(null);
   const viewerKind = getAttachmentViewerKind(document);
-  const isSpreadsheetPdfPreview =
-    viewerKind === "spreadsheet" &&
-    getNormalizedDocumentExtension(document) === "xlsx";
-  const viewerUrl = useMemo(() => resolveAttachmentPreviewUrl(document), [document]);
-  const fileUrl = resolveManagedFileUrl(document.file_path);
+  const sourceUrl = useMemo(() => resolveAttachmentViewerUrl(document), [document]);
+  const protectedSource = isBackendDocumentFileUrl(sourceUrl);
   const label = title || document.file_name || t("title");
-  const shouldFetchWithAuth = isBackendDocumentFileUrl(viewerUrl);
-  const displayUrl = shouldFetchWithAuth ? objectUrl : objectUrl || viewerUrl;
 
   useEffect(() => {
-    setFileBroken(false);
-    setObjectUrl("");
+    onErrorRef.current = onError;
+  }, [onError]);
 
-    if (!viewerUrl || !shouldFetchWithAuth || viewerKind === "unsupported") {
-      setFileLoading(false);
+  useEffect(() => {
+    if (!sourceUrl) {
+      setState({ status: "failure", reason: "notFound" });
+      return;
+    }
+    if (!protectedSource) {
+      setState({ status: "ready", blob: null, objectUrl: sourceUrl });
       return;
     }
 
-    let active = true;
-    let nextObjectUrl = "";
-    setFileLoading(true);
-
-    api
-      .get(viewerUrl, quiet({
-        responseType: "blob",
-        timeout: 60000,
-      }))
+    const controller = new AbortController();
+    let objectUrl = "";
+    setContentFailure(null);
+    setState({ status: "loading" });
+    api.get(sourceUrl, quiet({ responseType: "blob", timeout: 60_000, signal: controller.signal }))
       .then((response) => {
-        if (!active) return;
-        nextObjectUrl = URL.createObjectURL(response.data);
-        setObjectUrl(nextObjectUrl);
+        if (controller.signal.aborted) return;
+        const blob = response.data as Blob;
+        objectUrl = URL.createObjectURL(blob);
+        setState({ status: "ready", blob, objectUrl });
       })
-      .catch(() => {
-        if (active) {
-          setFileBroken(true);
-          onError?.();
-        }
-      })
-      .finally(() => {
-        if (active) setFileLoading(false);
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "failure", reason: classifyFileLoadFailure(error) });
+        onErrorRef.current?.();
       });
 
     return () => {
-      active = false;
-      if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [onError, shouldFetchWithAuth, viewerKind, viewerUrl]);
+  }, [protectedSource, retryToken, sourceUrl]);
+
+  const handleContentFailure = useCallback((reason: ContentFailure) => {
+    setContentFailure(reason);
+    onErrorRef.current?.();
+  }, []);
+
+  const retry = () => setRetryToken((current) => current + 1);
+
+  if (state.status === "loading") {
+    return <ViewerMessage icon={<Loader2 className="h-6 w-6 animate-spin" />} message={t("loading")} />;
+  }
+
+  if (state.status === "failure") {
+    return (
+      <ViewerMessage
+        icon={<FileWarning className="h-7 w-7" />}
+        message={t(`states.${state.reason}`)}
+        action={state.reason === "unauthorized" ? undefined : (
+          <button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={retry}>
+            <RotateCcw className="h-4 w-4" />{t("retry")}
+          </button>
+        )}
+      />
+    );
+  }
+
+  const downloadAction = (
+    <a href={state.objectUrl} download={document.file_name || true} className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+      <Download className="me-2 h-4 w-4" aria-hidden="true" />{t("downloadOriginal")}
+    </a>
+  );
+
+  if (contentFailure) {
+    return (
+      <div className="space-y-3">
+        <div className="flex justify-end">{downloadAction}</div>
+        <ViewerMessage
+          icon={<FileWarning className="h-7 w-7" />}
+          message={t(`states.${contentFailure}`)}
+          action={<button type="button" className="btn-secondary inline-flex items-center gap-2" onClick={retry}><RotateCcw className="h-4 w-4" />{t("retry")}</button>}
+        />
+      </div>
+    );
+  }
 
   return (
-    <AttachmentViewerContent
-      viewerKind={viewerKind}
-      isSpreadsheetPdfPreview={isSpreadsheetPdfPreview}
-      viewerUrl={viewerUrl}
-      fileUrl={fileUrl}
-      displayUrl={displayUrl}
-      objectUrl={objectUrl}
-      fileLoading={fileLoading}
-      fileBroken={fileBroken}
-      label={label}
-      loadingLabel={t("loading")}
-      imageUnavailableLabel={t("imageUnavailable")}
-      downloadOnlyLabel={t("downloadOnly")}
-      openLabel={t("open")}
-      downloadLabel={t("download")}
-      unsupportedLabel={t("unsupported")}
-      onImageLoad={() => setFileLoading(false)}
-      onImageError={() => {
-        setFileLoading(false);
-        setFileBroken(true);
-      }}
-    />
+    <div className="space-y-3">
+      <div className="flex justify-end">{downloadAction}</div>
+      <ErrorBoundary boundaryName={`document-${viewerKind}-viewer`} fallback={rendererFallback}>
+        <FormatViewer
+          viewerKind={viewerKind}
+          blob={state.blob}
+          objectUrl={state.objectUrl}
+          label={label}
+          onCorrupt={() => handleContentFailure("corrupt")}
+          onRendererError={() => handleContentFailure("renderer")}
+          unsupportedMessage={t("states.unsupported")}
+          openLabel={t("open")}
+        />
+      </ErrorBoundary>
+    </div>
   );
 }
 
-function AttachmentViewerContent({
-  viewerKind,
-  isSpreadsheetPdfPreview,
-  viewerUrl,
-  fileUrl,
-  displayUrl,
-  objectUrl,
-  fileLoading,
-  fileBroken,
-  label,
-  loadingLabel,
-  imageUnavailableLabel,
-  downloadOnlyLabel,
-  openLabel,
-  downloadLabel,
-  unsupportedLabel,
-  onImageLoad,
-  onImageError,
-}: ViewerContentProps) {
-  if (viewerKind === "image" && viewerUrl && !fileBroken) {
-    return (
-      <div className="relative flex min-h-[40vh] max-h-[78vh] w-full items-center justify-center overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
-        {fileLoading ? (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            {loadingLabel}
-          </div>
-        ) : null}
-        {displayUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- blob/object URLs and protected file URLs are not compatible with next/image optimization.
-          <img
-            src={displayUrl}
-            alt={label}
-            className="max-h-[72vh] max-w-full object-contain"
-            onLoad={onImageLoad}
-            onError={onImageError}
-          />
-        ) : null}
-      </div>
-    );
+function FormatViewer({ viewerKind, blob, objectUrl, label, onCorrupt, onRendererError, unsupportedMessage, openLabel }: Readonly<{
+  viewerKind: AttachmentViewerKind;
+  blob: Blob | null;
+  objectUrl: string;
+  label: string;
+  onCorrupt: () => void;
+  onRendererError: () => void;
+  unsupportedMessage: string;
+  openLabel: string;
+}>) {
+  if (viewerKind === "pdf" && blob) {
+    return <PdfViewer file={blob} onCorrupt={onCorrupt} onRendererError={onRendererError} />;
   }
-
-  if ((viewerKind === "image" || viewerKind === "pdf") && fileBroken) {
-    return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-600">
-        <ImageOff className="mb-3 h-8 w-8" aria-hidden="true" />
-        <p className="text-sm font-medium">{imageUnavailableLabel}</p>
-      </div>
-    );
+  if (viewerKind === "spreadsheet" && blob) {
+    return <SpreadsheetViewer file={blob} onCorrupt={onCorrupt} onRendererError={onRendererError} />;
   }
-
-  if ((viewerKind === "pdf" || isSpreadsheetPdfPreview) && viewerUrl) {
-    return (
-      <div className="max-h-[78vh] w-full overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-2 sm:p-4">
-        {!displayUrl ? (
-          <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-            {loadingLabel}
-          </div>
-        ) : (
-          <PdfViewer key={displayUrl} file={displayUrl} />
-        )}
-      </div>
-    );
+  if (viewerKind === "docx" && blob) {
+    return <DocxViewer file={blob} onCorrupt={onCorrupt} onRendererError={onRendererError} />;
   }
-
-  if (isDownloadOnlyViewerKind(viewerKind) && viewerUrl) {
-    const actionUrl = objectUrl || viewerUrl || fileUrl;
-    return (
-      <div className="flex min-h-[32vh] flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-6 text-center">
-        <p className="mb-4 max-w-md text-sm text-slate-600">{downloadOnlyLabel}</p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <a
-            href={actionUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
-          >
-            <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
-            {openLabel}
-          </a>
-          <a
-            href={actionUrl}
-            download
-            className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
-          >
-            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-            {downloadLabel}
-          </a>
-        </div>
-      </div>
-    );
+  if (viewerKind === "image") {
+    // eslint-disable-next-line @next/next/no-img-element -- protected Blob URLs cannot use Next image optimization.
+    return <img src={objectUrl} alt={label} className="mx-auto max-h-[72vh] max-w-full rounded-lg object-contain" onError={onRendererError} />;
   }
+  if ((viewerKind === "pdf" || viewerKind === "spreadsheet" || viewerKind === "docx") && !blob) {
+    return <ViewerMessage icon={<FileWarning className="h-7 w-7" />} message={unsupportedMessage} />;
+  }
+  if (viewerKind === "download" || viewerKind === "text") {
+    return <ViewerMessage icon={<ExternalLink className="h-7 w-7" />} message={unsupportedMessage} action={<a href={objectUrl} target="_blank" rel="noreferrer" className="btn-secondary">{openLabel}</a>} />;
+  }
+  return <ViewerMessage icon={<FileWarning className="h-7 w-7" />} message={unsupportedMessage} />;
+}
 
-  return (
-    <div className="flex min-h-[32vh] flex-col items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-600">
-      <FileWarning className="mb-3 h-8 w-8" aria-hidden="true" />
-      <p className="text-sm font-medium">{unsupportedLabel}</p>
-    </div>
-  );
+function ViewerMessage({ icon, message, action }: Readonly<{ icon: ReactNode; message: string; action?: ReactNode }>) {
+  return <div className="flex min-h-[32vh] flex-col items-center justify-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-slate-600" role="status">{icon}<p className="text-sm font-medium">{message}</p>{action}</div>;
+}
+
+function classifyFileLoadFailure(error: unknown): ViewerFailure {
+  if (!isAxiosError(error)) return "network";
+  if (error.response?.status === 401 || error.response?.status === 403) return "unauthorized";
+  if (error.response?.status === 404) return "notFound";
+  if (error.response && error.response.status >= 500) return "storage";
+  return "network";
 }
 
 function isBackendDocumentFileUrl(url: string): boolean {
   if (!url) return false;
   const normalizedBase = getApiBaseUrl().replace(/\/$/, "");
   const normalizedUrl = url.replace(/\\/g, "/");
-  if (normalizedUrl.startsWith("/documents/")) return isProtectedDocumentUrl(normalizedUrl);
-  if (!normalizedUrl.startsWith(`${normalizedBase}/documents/`)) return false;
-  return isProtectedDocumentUrl(normalizedUrl.slice(normalizedBase.length));
-}
-
-function isProtectedDocumentUrl(url: string): boolean {
-  return /\/documents\/[^/]+\/(?:file|preview)$/.test(url);
-}
-
-function isDownloadOnlyViewerKind(viewerKind: string): boolean {
-  return ["download", "spreadsheet", "text"].includes(viewerKind);
+  if (normalizedUrl.startsWith("/documents/")) return /\/documents\/[^/]+\/file$/.test(normalizedUrl);
+  return normalizedUrl.startsWith(`${normalizedBase}/documents/`) && /\/documents\/[^/]+\/file$/.test(normalizedUrl.slice(normalizedBase.length));
 }

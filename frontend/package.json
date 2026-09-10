@@ -21,6 +21,7 @@
     "axios": "^1.15.2",
     "browserslist": "^4.28.8",
     "country-flag-icons": "^1.6.20",
+    "docx-preview": "^0.3.7",
     "libphonenumber-js": "^1.13.7",
     "lucide-react": "^1.14.0",
     "next": "^16.3.4",
@@ -29,11 +30,11 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-is": "^18.3.1",
-    "react-pdf": "^10.4.1",
     "recharts": "^3.8.1",
     "sharp": "^0.35.4",
     "socket.io-client": "^4.8.3",
-    "three": "^0.164.1"
+    "three": "^0.164.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

@@ -82,14 +82,6 @@ export default function TechnicianDocumentCard({
             {documentDateLabel(document.date_ajout, locale, t("notAvailable"))}
           </dd>
         </div>
-        <div>
-          <dt className="text-[10px] uppercase text-slate-400">
-            {t("manuals.documentIdLabel")}
-          </dt>
-          <dd className="font-mono text-[11px] font-medium text-slate-700">
-            {document.document_id || t("notAvailable")}
-          </dd>
-        </div>
       </dl>
       {document.tags?.length ? (
         <div className="flex flex-wrap gap-1">

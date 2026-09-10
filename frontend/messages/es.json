@@ -2415,7 +2415,21 @@
       "downloadOnly": "La vista previa no esta disponible para este tipo de archivo. Puedes abrirlo o descargarlo.",
       "open": "Abrir",
       "download": "Descargar",
-      "unsupported": "Este tipo de archivo no es compatible con la vista previa."
+      "unsupported": "Este tipo de archivo no es compatible con la vista previa.",
+      "downloadOriginal": "Descargar original",
+      "retry": "Reintentar",
+      "rendering": "Generando vista previa...",
+      "previousPage": "Página anterior",
+      "nextPage": "Página siguiente",
+      "pageCount": "Página {page} de {count}",
+      "zoomIn": "Ampliar",
+      "zoomOut": "Reducir",
+      "pdfPage": "Página PDF {page}",
+      "docxDocument": "Documento de Word",
+      "spreadsheetSheet": "Hoja {sheet}",
+      "workbookTooLarge": "Este libro es demasiado grande para obtener una vista previa segura. Descarga el archivo original.",
+      "workbookTruncated": "La vista previa se limita a las primeras 10.000 filas y 200 columnas.",
+      "states": {"unsupported": "La vista previa no es compatible con este tipo de archivo.", "corrupt": "El archivo está dañado o no se puede analizar.", "unauthorized": "No tienes autorización para acceder a este archivo.", "notFound": "No se pudo encontrar el archivo.", "storage": "El almacenamiento de documentos no está disponible temporalmente.", "network": "No se pudo cargar el archivo debido a un error de red.", "renderer": "El visor falló. El archivo original sigue disponible."}
     },
     "notifications": {
       "fileRequired": "Selecciona un archivo",
@@ -2989,7 +3003,7 @@
       "completed": "Aun no hay intervenciones completadas."
     },
     "errors": {
-      "network": "No se pudieron cargar los datos del técnico.",
+      "storage": "El almacenamiento de documentos no está disponible temporalmente.", "network": "No se pudieron cargar los datos del técnico.",
       "load": "No se pudo cargar la orden.",
       "update": "No se pudo completar la acción.",
       "notFound": "Orden no encontrada."
