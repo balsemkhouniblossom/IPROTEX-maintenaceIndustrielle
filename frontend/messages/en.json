@@ -499,7 +499,8 @@
         "waitingActions": "Waiting Actions",
         "machinesActive": "Active Machines"
       },
-      "machineInspection": "Machine Inspection",
+      "machineInspection": "Machine Inspection",      "downloadFailed": "Download failed. Please try again.",
+
       "viewAllReports": "View All Reports",
       "waitingValidation": "Waiting validation",
       "assigned": "Assigned",
@@ -2101,7 +2102,9 @@
     },
     "actions": {
       "viewTimeline": "Timeline",
-      "openManual": "Open manual"
+      "openManual": "Open manual",
+      "chooseDocument": "Choose a document to preview",
+      "unnamedDocument": "Unnamed document"
     },
     "technician": {
       "title": "Machines",

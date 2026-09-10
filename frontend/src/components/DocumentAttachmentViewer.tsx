@@ -61,7 +61,7 @@ export default function DocumentAttachmentViewer({ document, title, onError }: R
     let objectUrl = "";
     setContentFailure(null);
     setState({ status: "loading" });
-    api.get(sourceUrl, quiet({ responseType: "blob", timeout: 60_000, signal: controller.signal }))
+    api.get(sourceUrl, quiet({ responseType: "blob", timeout: 20_000, signal: controller.signal }))
       .then((response) => {
         if (controller.signal.aborted) return;
         const blob = response.data as Blob;

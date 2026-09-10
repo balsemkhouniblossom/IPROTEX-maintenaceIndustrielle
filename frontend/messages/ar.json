@@ -506,7 +506,8 @@
         "rolling": "دليل الدرفلة"
       },
       "validated": "تم التحقق",
-      "machineInspection": "فحص الآلة",
+      "machineInspection": "فحص الآلة",      "downloadFailed": "فشل التنزيل. يرجى المحاولة مرة أخرى.",
+
       "viewAllReports": "عرض جميع التقارير",
       "title": "لوحة تحكم المشغّل",
       "welcome": "مرحباً بعودتك، {name}!",
@@ -1925,7 +1926,9 @@
     },
     "actions": {
       "viewTimeline": "الجدول الزمني",
-      "openManual": "فتح الدليل"
+      "openManual": "فتح الدليل",
+      "chooseDocument": "اختر مستندًا للمعاينة",
+      "unnamedDocument": "مستند بلا اسم"
     },
     "singular": "Machine",
     "technician": {

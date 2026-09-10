@@ -659,7 +659,8 @@
         "waitingValidation": "Waiting validation"
       },
       "machineCategories": "Machine Categories",
-      "machineInspection": "Machine Inspection",
+      "machineInspection": "Machine Inspection",      "downloadFailed": "Download non riuscito. Riprova.",
+
       "machineManuals": "Machine Manuals",
       "manuals": {
         "braiding": "Braiding Manual",
@@ -1963,7 +1964,9 @@
     },
     "actions": {
       "viewTimeline": "Cronologia",
-      "openManual": "Apri manuale"
+      "openManual": "Apri manuale",
+      "chooseDocument": "Scegli un documento da visualizzare",
+      "unnamedDocument": "Documento senza nome"
     },
     "description": "Gestisci e monitora tutte le macchine del sistema",
     "singular": "Machine",

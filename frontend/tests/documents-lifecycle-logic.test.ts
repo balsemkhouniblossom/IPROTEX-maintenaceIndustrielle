@@ -171,6 +171,15 @@ test("Documents page loads every paginated machine for document selectors", () =
   );
 });
 
+test("a successful upload is immediately previewable from the Documents page", () => {
+  const source = readPage();
+
+  assert.match(source, /const createdDocument = response\.data as DocumentType/);
+  assert.match(source, /setDocuments\(\(current\) => \[\s*createdDocument,/);
+  assert.match(source, /setSelectedDoc\(doc\);\s*setViewerOpen\(true\)/);
+  assert.match(source, /<DocumentAttachmentViewer\s+document=\{selectedDoc\}/);
+});
+
 test("all supported locales contain the new document lifecycle translation keys", () => {
   const locales = ["en", "fr", "ar", "es", "de", "it"];
   const requiredStatusKeys = ["draft", "published", "archived", "superseded"];

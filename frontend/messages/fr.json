@@ -500,7 +500,8 @@
       "myReports": "Mes rapports",
       "validated": "Validées",
       "viewAllReports": "Voir tous les rapports",
-      "machineInspection": "Inspection de la machine",
+      "machineInspection": "Inspection de la machine",      "downloadFailed": "Échec du téléchargement. Veuillez réessayer.",
+
       "manuals": {
         "winding": "Manuel de bobinage",
         "braiding": "Manuel de tressage",
@@ -2100,7 +2101,9 @@
     },
     "actions": {
       "viewTimeline": "Chronologie",
-      "openManual": "Ouvrir le manuel"
+      "openManual": "Ouvrir le manuel",
+      "chooseDocument": "Choisir un document à prévisualiser",
+      "unnamedDocument": "Document sans nom"
     },
     "singular": "Machine",
     "technician": {

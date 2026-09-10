@@ -662,7 +662,8 @@
         "upcoming": "Upcoming",
         "waitingValidation": "Waiting validation"
       },
-      "machineInspection": "Machine Inspection",
+      "machineInspection": "Machine Inspection",      "downloadFailed": "La descarga falló. Inténtalo de nuevo.",
+
       "machineManuals": "Machine Manuals",
       "manuals": {
         "braiding": "Braiding Manual",
@@ -1963,7 +1964,9 @@
     },
     "actions": {
       "viewTimeline": "Cronologia",
-      "openManual": "Abrir manual"
+      "openManual": "Abrir manual",
+      "chooseDocument": "Elegir un documento para previsualizar",
+      "unnamedDocument": "Documento sin nombre"
     },
     "description": "Administra y supervisa todas las maquinas del sistema",
     "singular": "Machine",

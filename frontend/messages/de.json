@@ -306,7 +306,8 @@
         "waitingActions": "Ausstehende Aktionen",
         "machinesActive": "Aktive Maschinen"
       },
-      "machineInspection": "Maschineninspektion",
+      "machineInspection": "Maschineninspektion",      "downloadFailed": "Download fehlgeschlagen. Bitte erneut versuchen.",
+
       "viewAllReports": "Alle Berichte anzeigen",
       "title": "Bediener-Dashboard",
       "welcome": "Willkommen zurück, {name}!",
@@ -2168,7 +2169,9 @@
     },
     "actions": {
       "viewTimeline": "Zeitleiste",
-      "openManual": "Handbuch offnen"
+      "openManual": "Handbuch offnen",
+      "chooseDocument": "Dokument für die Vorschau auswählen",
+      "unnamedDocument": "Unbenanntes Dokument"
     },
     "technician": {
       "title": "Machines",

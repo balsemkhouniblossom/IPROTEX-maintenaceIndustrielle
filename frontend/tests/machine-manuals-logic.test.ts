@@ -104,13 +104,13 @@ test("machine document selector keeps only valid documents attached to the click
 
   assert.deepEqual(
     sorted.map((doc) => doc._id),
-    ["primary-manual", "image-fallback"],
+    ["primary-manual"],
   );
   assert.equal(documentBelongsToMachine(sorted[0], "machine-a"), true);
   assert.equal(isAvailableMachineDocument(sorted[0]), true);
 });
 
-test("image attachments are valid same-machine fallbacks even when they are not manuals", () => {
+test("maintenance evidence images are excluded from the machine document chooser", () => {
   assert.equal(
     isAvailableMachineDocument({
       machine_id: "machine-a",
@@ -119,7 +119,7 @@ test("image attachments are valid same-machine fallbacks even when they are not 
       file_name: "nameplate.webp",
       file_path: "/uploads/nameplate.webp",
     }),
-    true,
+    false,
   );
 });
 
@@ -141,10 +141,33 @@ test("admin Machines page lets the user choose between multiple machine document
     "utf8",
   );
 
-  assert.match(source, /previewManualQueueRef\.current\.length > 1/);
-  assert.match(source, /previewManualQueueRef\.current\.map/);
+  assert.match(source, /previewManualQueue\.length > 1/);
+  assert.match(source, /previewManualQueue\.map/);
   assert.match(source, /onClick=\{\(\) => setPreviewManual\(document\)\}/);
   assert.match(source, /aria-pressed=\{isSelected\}/);
+});
+
+test("admin Machines table can sort by the displayed machine type", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/machines/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /type MachineSortKey = "name" \| "type" \| "floor"/);
+  assert.match(source, /if \(sortKey === "type"\) return machine\.machine_type_name/);
+  assert.match(source, /<option value="type">/);
+  assert.match(source, /\["name", "type", "floor"\]/);
+});
+
+test("machine document load failure keeps the viewer open for retry", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/machines/page.tsx"),
+    "utf8",
+  );
+  const handler = source.match(/const handleManualLoadError = \(\) => \{[\s\S]*?\n  \};/);
+  assert.ok(handler);
+  assert.doesNotMatch(handler[0], /setPreviewManual\(null\)/);
+  assert.match(source, /onError=\{handleManualLoadError\}/);
 });
 
 test("operator Machines page keeps operational actions simple without manual viewer", () => {

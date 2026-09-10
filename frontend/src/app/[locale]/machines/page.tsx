@@ -137,7 +137,13 @@ function machineFormSubmitLabel(
 
 const PAGE_LIMIT = 10;
 type TechnicianMachineFilter = "all" | "attention" | "maintenance" | "operational";
-type MachineSortKey = "name" | "floor";
+type MachineSortKey = "name" | "type" | "floor";
+
+function machineSortValue(machine: Machine, sortKey: MachineSortKey): string {
+  if (sortKey === "type") return machine.machine_type_name || "";
+  if (sortKey === "floor") return machine.location || "";
+  return machine.machine_id || "";
+}
 const MACHINE_TABLE_SEARCH_FIELDS = [
   "machine_id",
   "serial_no",
@@ -170,7 +176,7 @@ export default function MachinesPage() {
   const [previewManual, setPreviewManual] = useState<DocumentEntity | null>(
     null,
   );
-  const previewManualQueueRef = useRef<DocumentEntity[]>([]);
+  const [previewManualQueue, setPreviewManualQueue] = useState<DocumentEntity[]>([]);
   const [manualsByMachine, setManualsByMachine] = useState<
     Record<string, DocumentEntity[]>
   >({});
@@ -308,7 +314,9 @@ export default function MachinesPage() {
     if (["all", "attention", "maintenance", "operational"].includes(requestedFilter ?? "")) {
       setTechnicianFilter(requestedFilter!);
     }
-    if (["name", "floor"].includes(requestedSort ?? "")) setMachineSortKey(requestedSort!);
+    if (["name", "type", "floor"].includes(requestedSort ?? "")) {
+      setMachineSortKey(requestedSort!);
+    }
     urlStateReadyRef.current = true;
   }, []);
 
@@ -402,10 +410,8 @@ export default function MachinesPage() {
           );
         })
         .sort((left, right) => {
-          const leftValue =
-            machineSortKey === "name" ? left.machine_id : left.location;
-          const rightValue =
-            machineSortKey === "name" ? right.machine_id : right.location;
+          const leftValue = machineSortValue(left, machineSortKey);
+          const rightValue = machineSortValue(right, machineSortKey);
 
           if (!leftValue && !rightValue) return 0;
           if (!leftValue) return 1;
@@ -736,7 +742,7 @@ export default function MachinesPage() {
   };
 
   const openManualQueue = (manuals: DocumentEntity[]) => {
-    previewManualQueueRef.current = manuals;
+    setPreviewManualQueue(manuals);
     setPreviewManual(manuals[0] ?? null);
   };
 
@@ -745,7 +751,7 @@ export default function MachinesPage() {
   // If the one we're showing fails to load, fall through to the next one
   // instead of leaving the user stuck on a broken preview.
   const handleManualLoadError = () => {
-    const queue = previewManualQueueRef.current;
+    const queue = previewManualQueue;
     const currentIndex = previewManual
       ? queue.findIndex((doc) => doc._id === previewManual._id)
       : -1;
@@ -755,8 +761,7 @@ export default function MachinesPage() {
       return;
     }
 
-    previewManualQueueRef.current = [];
-    setPreviewManual(null);
+    setPreviewManualQueue([]);
     showNotification(
       "error",
       tMachines("notifications.manualOpenFailed", {
@@ -1067,6 +1072,9 @@ export default function MachinesPage() {
                 <option value="name">
                   {tMachines("table.name", { default: "Name" })}
                 </option>
+                <option value="type">
+                  {tMachines("table.type", { default: "Type" })}
+                </option>
                 <option value="floor">
                   {tMachines("table.floor", { default: "Floor" })}
                 </option>
@@ -1358,7 +1366,7 @@ export default function MachinesPage() {
       <Modal
         isOpen={Boolean(previewManual)}
         onClose={() => {
-          previewManualQueueRef.current = [];
+          setPreviewManualQueue([]);
           setPreviewManual(null);
         }}
         title={
@@ -1369,7 +1377,7 @@ export default function MachinesPage() {
       >
         {previewManual ? (
           <div className="space-y-4">
-            {previewManualQueueRef.current.length > 1 ? (
+            {previewManualQueue.length > 1 ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <p className="mb-2 text-sm font-semibold text-slate-700">
                   {tMachines("actions.chooseDocument", {
@@ -1377,7 +1385,7 @@ export default function MachinesPage() {
                   })}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {previewManualQueueRef.current.map((document, index) => {
+                  {previewManualQueue.map((document, index) => {
                     const isSelected = document._id === previewManual._id;
                     return (
                       <button

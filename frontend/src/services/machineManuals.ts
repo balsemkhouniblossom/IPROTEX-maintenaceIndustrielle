@@ -24,7 +24,7 @@ export type ManualCandidateDocument = {
 };
 
 const MANUAL_TERMS = ["manual", "procedure", "diagram", "excel", "spreadsheet"];
-const MANUAL_EXTENSIONS = [".pdf", ".xlsx", ".xls"];
+const MANUAL_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"];
 const CURRENT_STATUSES = new Set(["", "published"]);
 
 function entityId(value: EntityRef | undefined): string {
@@ -68,7 +68,9 @@ export function isMachineManualDocument(doc: ManualCandidateDocument): boolean {
 
 export function isAvailableMachineDocument(doc: ManualCandidateDocument): boolean {
   const status = (doc.status || "").toLowerCase();
+  const type = (doc.type_document || "").toLowerCase();
   if (!CURRENT_STATUSES.has(status)) return false;
+  if (type.includes("photo") || type.includes("image")) return false;
   if (getAttachmentViewerKind(doc as ViewableDocument) === "unsupported") return false;
   return Boolean(resolveAttachmentViewerUrl(doc as ViewableDocument));
 }

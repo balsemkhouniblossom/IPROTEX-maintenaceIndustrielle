@@ -35,6 +35,7 @@ import { DocumentTransitionDto } from './dto/document-transition.dto';
 import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { FileStorageService } from '../storage/file-storage.service';
 import type { ProtectedStoredFile } from '../storage/file-storage.types';
+import { documentMachineFilter } from './document-query';
 
 interface LinkedRecordIds {
   machine_id?: string;
@@ -130,6 +131,7 @@ export class DocumentsService {
     const now = new Date();
     const created = new this.documentModel({
       ...dto,
+      ...this.normalizeLinkedRecordIds(dto),
       status: DocumentStatus.DRAFT,
       version: 1,
       revision: 1,
@@ -152,10 +154,10 @@ export class DocumentsService {
     machineIds?: Types.ObjectId[] | null,
     visibilityFilter: FilterQuery<DocumentDocument> = {},
   ): Promise<PaginatedResponse<Record<string, unknown>>> {
-    const machineFilter =
+    const machineFilter: FilterQuery<DocumentDocument> =
       machineIds === null || machineIds === undefined
         ? {}
-        : { machine_id: { $in: machineIds } };
+        : documentMachineFilter(machineIds);
     const query = { ...machineFilter, ...visibilityFilter };
     const [items, totalItems] = await Promise.all([
       this.documentModel
@@ -191,7 +193,7 @@ export class DocumentsService {
       throw new BadRequestException('Invalid machine_id');
     }
     const docs = await this.documentModel
-      .find({ machine_id: new Types.ObjectId(machineId), ...visibilityFilter })
+      .find({ ...documentMachineFilter([machineId]), ...visibilityFilter })
       .populate('machine_id')
       .exec();
     return Promise.all(docs.map((doc) => this.resolveDocumentFileUrl(doc)));
@@ -588,6 +590,19 @@ export class DocumentsService {
     return id && Types.ObjectId.isValid(id)
       ? new Types.ObjectId(id)
       : undefined;
+  }
+
+  private normalizeLinkedRecordIds(links: LinkedRecordIds) {
+    return {
+      machine_id: this.toObjectIdOrUndefined(links.machine_id),
+      maintenance_plan_id: this.toObjectIdOrUndefined(
+        links.maintenance_plan_id,
+      ),
+      work_order_id: this.toObjectIdOrUndefined(links.work_order_id),
+      intervention_report_id: this.toObjectIdOrUndefined(
+        links.intervention_report_id,
+      ),
+    };
   }
 
   private async deleteManagedDocumentFile(

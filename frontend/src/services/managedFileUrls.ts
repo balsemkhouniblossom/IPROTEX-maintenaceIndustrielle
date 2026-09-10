@@ -27,9 +27,10 @@ export function resolveManagedFileUrl(pathOrUrl?: string | null): string {
 
 export function isManagedRelativeUploadPath(pathOrUrl?: string | null): boolean {
   const normalized = normalizeManagedPath(pathOrUrl);
+  const rootedPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
   return (
-    normalized.startsWith(`${MANAGED_UPLOAD_ROUTE}/`) ||
-    normalized.startsWith(`${MANAGED_FILE_UPLOAD_ROUTE}/`)
+    rootedPath.startsWith(`${MANAGED_UPLOAD_ROUTE}/`) ||
+    rootedPath.startsWith(`${MANAGED_FILE_UPLOAD_ROUTE}/`)
   );
 }
 

@@ -33,6 +33,28 @@ test("managed documents use the protected original-file endpoint", () => {
   assert.equal(resolveAttachmentPreviewUrl(document), "http://localhost:3001/documents/doc-1/file");
 });
 
+test("new Supabase uploads use the protected endpoint even without a leading slash", () => {
+  const uploaded = {
+    _id: "new-document-id",
+    file_path: "uploads/2026-new-manual.pdf",
+    file_name: "new-manual.pdf",
+  };
+  assert.equal(
+    resolveAttachmentViewerUrl(uploaded),
+    "http://localhost:3001/documents/new-document-id/file",
+  );
+});
+
+test("an external document with an id keeps its explicit external URL", () => {
+  const external = {
+    _id: "external-document-id",
+    file_path: "https://docs.example.com/manual.pdf",
+    file_url: "https://docs.example.com/manual.pdf",
+    file_name: "manual.pdf",
+  };
+  assert.equal(resolveAttachmentViewerUrl(external), "https://docs.example.com/manual.pdf");
+});
+
 test("document viewer prefers API-provided protected file urls", () => {
   assert.equal(resolveAttachmentViewerUrl({
     _id: "doc-1",
@@ -53,6 +75,7 @@ test("shared attachment viewer loads authenticated bytes and isolates renderers"
   assert.match(source, /<SpreadsheetViewer file=\{blob\}/);
   assert.match(source, /<DocxViewer file=\{blob\}/);
   assert.match(source, /responseType:\s*"blob"/);
+  assert.match(source, /timeout:\s*20_000/);
   assert.match(source, /signal:\s*controller\.signal/);
   assert.match(source, /controller\.abort\(\)/);
   assert.match(source, /URL\.revokeObjectURL\(objectUrl\)/);

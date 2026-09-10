@@ -1,4 +1,8 @@
-import { MANUAL_DOCUMENT_FILTER } from './document-query';
+import { Types } from 'mongoose';
+import {
+  MANUAL_DOCUMENT_FILTER,
+  documentMachineFilter,
+} from './document-query';
 
 describe('MANUAL_DOCUMENT_FILTER', () => {
   const clauses = MANUAL_DOCUMENT_FILTER.$or as Array<
@@ -9,9 +13,9 @@ describe('MANUAL_DOCUMENT_FILTER', () => {
     'recognizes .%s from persisted file metadata',
     (extension) => {
       const fileClause = clauses.find((clause) => 'file_name' in clause);
-      expect(fileClause?.file_name.$regex.test(`machine-manual.${extension}`)).toBe(
-        true,
-      );
+      expect(
+        fileClause?.file_name.$regex.test(`machine-manual.${extension}`),
+      ).toBe(true);
     },
   );
 
@@ -22,4 +26,16 @@ describe('MANUAL_DOCUMENT_FILTER', () => {
       expect(typeClause?.type_document.$regex.test(type)).toBe(true);
     },
   );
+});
+
+describe('documentMachineFilter', () => {
+  it('compares normalized identifier strings so ObjectId and legacy string links both match', () => {
+    const machineId = new Types.ObjectId();
+
+    expect(documentMachineFilter([machineId])).toEqual({
+      $expr: {
+        $in: [{ $toString: '$machine_id' }, [machineId.toHexString()]],
+      },
+    });
+  });
 });

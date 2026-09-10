@@ -191,15 +191,13 @@ describe('DocumentsService storage URL resolution', () => {
   it('deletes Supabase managed files by stored storage path after record deletion', async () => {
     storage.ownsFile.mockReturnValue(true);
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest
-        .fn()
-        .mockResolvedValue(
-          freshDraft({
-            document_id: 'DOC-DELETE',
-            file_path: 'uploads/photo.webp',
-            storage_path: 'uploads/photo.webp',
-          }),
-        ),
+      exec: jest.fn().mockResolvedValue(
+        freshDraft({
+          document_id: 'DOC-DELETE',
+          file_path: 'uploads/photo.webp',
+          storage_path: 'uploads/photo.webp',
+        }),
+      ),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -219,14 +217,12 @@ describe('DocumentsService storage URL resolution', () => {
   it('deletes local managed files by existing stable path after record deletion', async () => {
     storage.ownsFile.mockReturnValue(true);
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest
-        .fn()
-        .mockResolvedValue(
-          freshDraft({
-            document_id: 'DOC-LOCAL-DELETE',
-            file_path: '/uploads/local.webp',
-          }),
-        ),
+      exec: jest.fn().mockResolvedValue(
+        freshDraft({
+          document_id: 'DOC-LOCAL-DELETE',
+          file_path: '/uploads/local.webp',
+        }),
+      ),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -285,14 +281,12 @@ describe('DocumentsService storage URL resolution', () => {
     storage.ownsFile.mockReturnValue(true);
     storage.delete.mockRejectedValue(new Error('storage unavailable'));
     documentModel.findById = jest.fn().mockReturnValue({
-      exec: jest
-        .fn()
-        .mockResolvedValue(
-          freshDraft({
-            document_id: 'DOC-MISSING',
-            file_path: 'uploads/missing.webp',
-          }),
-        ),
+      exec: jest.fn().mockResolvedValue(
+        freshDraft({
+          document_id: 'DOC-MISSING',
+          file_path: 'uploads/missing.webp',
+        }),
+      ),
     });
     documentModel.findByIdAndDelete = jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue(
@@ -470,6 +464,7 @@ describe('DocumentsService lifecycle transitions', () => {
       expect(result.version).toBe(1);
       expect(result.revision).toBe(1);
       expect(result.lifecycle_history as unknown[]).toHaveLength(1);
+      expect(result.machine_id).toBeInstanceOf(Types.ObjectId);
     });
   });
 
