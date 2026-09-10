@@ -888,6 +888,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       document_id: `DOC-UNASSIGNED-${Date.now()}`,
       machine_id: unassignedMachine._id,
       type_document: 'manual',
+      status: 'published',
       file_path: '/uploads/unassigned.pdf',
       file_name: 'unassigned.pdf',
       uploaded_by: admin._id.toString(),
@@ -896,6 +897,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       document_id: `DOC-ASSIGNED-${Date.now()}`,
       machine_id: machineA._id,
       type_document: 'manual',
+      status: 'published',
       file_path: '/uploads/assigned.pdf',
       file_name: 'assigned.pdf',
       uploaded_by: admin._id.toString(),
@@ -1213,6 +1215,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       document_id: `DOC-TECH-ASSIGNED-${Date.now()}`,
       machine_id: assignedTechMachine._id,
       type_document: 'manual',
+      status: 'published',
       file_path: '/uploads/tech-assigned.pdf',
       file_name: 'tech-assigned.pdf',
       uploaded_by: admin._id.toString(),
@@ -1221,6 +1224,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
       document_id: `DOC-TECH-UNRELATED-${Date.now()}`,
       machine_id: unrelatedTechMachine._id,
       type_document: 'manual',
+      status: 'published',
       file_path: '/uploads/tech-unrelated.pdf',
       file_name: 'tech-unrelated.pdf',
       uploaded_by: admin._id.toString(),
@@ -1512,8 +1516,8 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         .field('document_id', `DOC-ADMIN-UPLOAD-${Date.now()}`)
         .field('machine_id', unassignedMachine._id.toString())
         .field('type_document', 'manual')
-        .attach('file', Buffer.from('%PDF-1.7'), 'manual.pdf')
-        .expect(403);
+        .attach('file', Buffer.from('%PDF-1.7\n%%EOF'), 'manual.pdf')
+        .expect(201);
 
       await request(app.getHttpServer())
         .post('/documents/upload')
@@ -1522,7 +1526,7 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         .field('machine_id', machineA._id.toString())
         .field('type_document', 'manual')
         .attach('file', Buffer.from('%PDF-1.7'), 'manual.pdf')
-        .expect(201);
+        .expect(403);
     } finally {
       await fs.unlink(filePath).catch(() => undefined);
       await fs.unlink(unassignedFilePath).catch(() => undefined);

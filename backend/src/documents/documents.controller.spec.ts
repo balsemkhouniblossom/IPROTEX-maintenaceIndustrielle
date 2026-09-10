@@ -136,6 +136,8 @@ describe('DocumentsController authorization', () => {
     await expect(controller.listVersions('doc-id', req)).rejects.toThrow(
       ForbiddenException,
     );
-    expect(documentAccessService.resolveAccessibleDocument).not.toHaveBeenCalled();
+    expect(
+      documentAccessService.resolveAccessibleDocument,
+    ).not.toHaveBeenCalled();
   });
 });
