@@ -10,7 +10,11 @@ type Props = Readonly<{
   onRendererError: () => void;
 }>;
 
-export default function DocxViewer({ file, onCorrupt, onRendererError }: Props) {
+export default function DocxViewer({
+  file,
+  onCorrupt,
+  onRendererError,
+}: Props) {
   const t = useTranslations("documents.viewer");
   const bodyRef = useRef<HTMLDivElement>(null);
   const stylesRef = useRef<HTMLDivElement>(null);
@@ -67,23 +71,34 @@ export default function DocxViewer({ file, onCorrupt, onRendererError }: Props) 
   return (
     <div className="relative max-h-[72vh] min-h-[40vh] overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-2 sm:p-4">
       {!rendered ? (
-        <div className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-center text-sm text-slate-500" role="status">
-          <Loader2 className="me-2 h-4 w-4 animate-spin" />{t("rendering")}
-        </div>
+        <output className="pointer-events-none absolute inset-x-0 top-4 flex items-center justify-center text-sm text-slate-500">
+          <Loader2 className="me-2 h-4 w-4 animate-spin" />
+          {t("rendering")}
+        </output>
       ) : null}
       <div ref={stylesRef} />
-      <div ref={bodyRef} className="relative [&_.docx-wrapper]:bg-transparent [&_.docx-wrapper]:p-0 sm:[&_.docx-wrapper]:p-4" aria-label={t("docxDocument")} />
+      <div
+        ref={bodyRef}
+        className="relative [&_.docx-wrapper]:bg-transparent [&_.docx-wrapper]:p-0 sm:[&_.docx-wrapper]:p-4"
+        aria-label={t("docxDocument")}
+      />
     </div>
   );
 }
 
 export function sanitizeRenderedDocx(container: HTMLElement): void {
-  container.querySelectorAll("script, iframe, object, embed").forEach((element) => element.remove());
+  container
+    .querySelectorAll("script, iframe, object, embed")
+    .forEach((element) => element.remove());
   container.querySelectorAll<HTMLElement>("*").forEach((element) => {
     for (const attribute of Array.from(element.attributes)) {
-      if (attribute.name.toLowerCase().startsWith("on")) element.removeAttribute(attribute.name);
+      if (attribute.name.toLowerCase().startsWith("on"))
+        element.removeAttribute(attribute.name);
     }
-    if (element instanceof HTMLAnchorElement && !isSafeLink(element.getAttribute("href"))) {
+    if (
+      element instanceof HTMLAnchorElement &&
+      !isSafeLink(element.getAttribute("href"))
+    ) {
       element.removeAttribute("href");
     }
   });

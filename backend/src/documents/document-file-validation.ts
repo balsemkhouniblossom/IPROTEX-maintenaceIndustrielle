@@ -34,6 +34,28 @@ function findEndOfCentralDirectory(buffer: Buffer): number {
   return -1;
 }
 
+function isSafeCentralDirectoryEntry(
+  buffer: Buffer,
+  offset: number,
+  eocdOffset: number,
+): boolean {
+  if (offset + 46 > eocdOffset || buffer.readUInt32LE(offset) !== 0x02014b50) {
+    return false;
+  }
+  const flags = buffer.readUInt16LE(offset + 8);
+  const method = buffer.readUInt16LE(offset + 10);
+  return (flags & 0x1) === 0 && [0, 8].includes(method);
+}
+
+function isSafeZipEntryName(name: string): boolean {
+  return Boolean(
+    name &&
+    !name.includes('\\') &&
+    !name.startsWith('/') &&
+    !name.split('/').includes('..'),
+  );
+}
+
 function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
   if (!hasPrefix(buffer, ZIP_LOCAL_HEADER) || buffer.length < 22) return false;
 
@@ -67,14 +89,8 @@ function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
     let hasExpectedDirectory = false;
 
     for (let index = 0; index < totalEntries; index += 1) {
-      if (
-        offset + 46 > eocdOffset ||
-        buffer.readUInt32LE(offset) !== 0x02014b50
-      ) {
+      if (!isSafeCentralDirectoryEntry(buffer, offset, eocdOffset))
         return false;
-      }
-      const flags = buffer.readUInt16LE(offset + 8);
-      const method = buffer.readUInt16LE(offset + 10);
       const compressedSize = buffer.readUInt32LE(offset + 20);
       const uncompressedSize = buffer.readUInt32LE(offset + 24);
       const nameLength = buffer.readUInt16LE(offset + 28);
@@ -82,27 +98,14 @@ function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
       const entryCommentLength = buffer.readUInt16LE(offset + 32);
       const nextOffset =
         offset + 46 + nameLength + extraLength + entryCommentLength;
-      if (
-        nextOffset > eocdOffset ||
-        (flags & 0x1) !== 0 ||
-        ![0, 8].includes(method)
-      ) {
-        return false;
-      }
+      if (nextOffset > eocdOffset) return false;
 
       const name = buffer.toString(
         'utf8',
         offset + 46,
         offset + 46 + nameLength,
       );
-      if (
-        !name ||
-        name.includes('\\') ||
-        name.startsWith('/') ||
-        name.split('/').includes('..')
-      ) {
-        return false;
-      }
+      if (!isSafeZipEntryName(name)) return false;
       hasContentTypes ||= name === '[Content_Types].xml';
       hasExpectedDirectory ||= name.startsWith(`${expectedKind}/`);
       totalCompressed += compressedSize;

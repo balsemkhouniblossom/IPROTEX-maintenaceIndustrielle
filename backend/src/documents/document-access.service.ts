@@ -6,12 +6,15 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { DocumentEntity, DocumentDocument } from '../schemas/document.schema';
+import {
+  DocumentEntity,
+  DocumentDocument,
+  DocumentStatus,
+} from '../schemas/document.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
 import { User, UserDocument, Role } from '../schemas/user.schema';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
 import { CLOSED_WORK_ORDER_STATUSES } from '../common/work-order-status';
-import { DocumentStatus } from '../schemas/document.schema';
 
 export type DocumentActor = {
   userId?: string;

@@ -71,9 +71,9 @@ test("document viewer preserves absolute and unsupported files", () => {
 test("shared attachment viewer loads authenticated bytes and isolates renderers", () => {
   const source = readFileSync(new URL("../src/components/DocumentAttachmentViewer.tsx", import.meta.url), "utf8");
   assert.match(source, /viewerKind === "spreadsheet" && blob/);
-  assert.match(source, /<PdfViewer file=\{blob\}/);
-  assert.match(source, /<SpreadsheetViewer file=\{blob\}/);
-  assert.match(source, /<DocxViewer file=\{blob\}/);
+  assert.match(source, /<PdfViewer\s+file=\{blob\}/);
+  assert.match(source, /<SpreadsheetViewer\s+file=\{blob\}/);
+  assert.match(source, /<DocxViewer\s+file=\{blob\}/);
   assert.match(source, /responseType:\s*"blob"/);
   assert.match(source, /timeout:\s*20_000/);
   assert.match(source, /signal:\s*controller\.signal/);
