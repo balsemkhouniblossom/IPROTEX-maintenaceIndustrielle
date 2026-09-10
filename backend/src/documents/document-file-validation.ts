@@ -56,6 +56,28 @@ function isSafeZipEntryName(name: string): boolean {
   );
 }
 
+function hasValidCentralDirectoryMetadata(
+  bufferLength: number,
+  eocdOffset: number,
+  diskNumber: number,
+  centralDisk: number,
+  diskEntries: number,
+  totalEntries: number,
+  centralSize: number,
+  centralOffset: number,
+  commentLength: number,
+): boolean {
+  return (
+    diskNumber === 0 &&
+    centralDisk === 0 &&
+    diskEntries === totalEntries &&
+    totalEntries > 0 &&
+    totalEntries <= MAX_ZIP_ENTRIES &&
+    eocdOffset + 22 + commentLength <= bufferLength &&
+    centralOffset + centralSize <= eocdOffset
+  );
+}
+
 function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
   if (!hasPrefix(buffer, ZIP_LOCAL_HEADER) || buffer.length < 22) return false;
 
@@ -71,13 +93,17 @@ function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
     const commentLength = buffer.readUInt16LE(eocdOffset + 20);
 
     if (
-      diskNumber !== 0 ||
-      centralDisk !== 0 ||
-      diskEntries !== totalEntries ||
-      totalEntries === 0 ||
-      totalEntries > MAX_ZIP_ENTRIES ||
-      eocdOffset + 22 + commentLength > buffer.length ||
-      centralOffset + centralSize > eocdOffset
+      !hasValidCentralDirectoryMetadata(
+        buffer.length,
+        eocdOffset,
+        diskNumber,
+        centralDisk,
+        diskEntries,
+        totalEntries,
+        centralSize,
+        centralOffset,
+        commentLength,
+      )
     ) {
       return false;
     }

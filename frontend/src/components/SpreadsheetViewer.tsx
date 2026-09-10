@@ -108,11 +108,12 @@ export default function SpreadsheetViewer({
           </button>
         ))}
       </div>
-      {previewResult.error === "tooLarge" ? (
+      {previewResult.error === "tooLarge" && (
         <div className="flex min-h-[32vh] items-center justify-center bg-amber-50 p-6 text-center text-sm text-amber-900">
           {t("workbookTooLarge")}
         </div>
-      ) : preview ? (
+      )}
+      {previewResult.error !== "tooLarge" && preview && (
         <>
           {preview.truncated ? (
             <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -176,7 +177,7 @@ export default function SpreadsheetViewer({
             </div>
           </div>
         </>
-      ) : null}
+      )}
     </div>
   );
 }
