@@ -32,7 +32,9 @@ const POLL_INTERVAL_MS = 30000;
  */
 export function useLiveMonitoring() {
   const { user } = useAuth();
-  const [statusByMachine, setStatusByMachine] = useState<Record<string, LiveMachineStatus>>({});
+  const [statusByMachine, setStatusByMachine] = useState<
+    Record<string, LiveMachineStatus>
+  >({});
   const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const subscribedMachineIds = useRef<Set<string>>(new Set());
@@ -40,7 +42,9 @@ export function useLiveMonitoring() {
   const refresh = useCallback(async () => {
     try {
       const response = await apiService.getLiveMonitoringSummary();
-      const items: LiveMachineStatus[] = Array.isArray(response.data) ? response.data : [];
+      const items: LiveMachineStatus[] = Array.isArray(response.data)
+        ? response.data
+        : [];
       setStatusByMachine((prev) => {
         const next = { ...prev };
         for (const item of items) next[item.machineId] = item;
@@ -66,11 +70,13 @@ export function useLiveMonitoring() {
 
     const token = getAuthToken();
     let socket: Socket | null = null;
+    let connectTimer: number | undefined;
     if (token) {
       socket = io(`${getApiBaseUrl()}/live`, {
         auth: { token },
         transports: ["websocket"],
         reconnection: true,
+        autoConnect: false,
       });
       socketRef.current = socket;
 
@@ -88,21 +94,28 @@ export function useLiveMonitoring() {
       });
       socket.on("disconnect", () => setSocketConnected(false));
 
-      socket.on("status", (payload: { machineId?: string; status?: string; lastSeenAt?: string }) => {
-        if (!payload?.machineId) return;
-        setStatusByMachine((prev) => {
-          const existing = prev[payload.machineId!];
-          if (!existing) return prev;
-          return {
-            ...prev,
-            [payload.machineId!]: {
-              ...existing,
-              online: payload.status === "online",
-              lastSeenAt: payload.lastSeenAt ?? existing.lastSeenAt,
-            },
-          };
-        });
-      });
+      socket.on(
+        "status",
+        (payload: {
+          machineId?: string;
+          status?: string;
+          lastSeenAt?: string;
+        }) => {
+          if (!payload?.machineId) return;
+          setStatusByMachine((prev) => {
+            const existing = prev[payload.machineId!];
+            if (!existing) return prev;
+            return {
+              ...prev,
+              [payload.machineId!]: {
+                ...existing,
+                online: payload.status === "online",
+                lastSeenAt: payload.lastSeenAt ?? existing.lastSeenAt,
+              },
+            };
+          });
+        },
+      );
 
       socket.on("fault", (payload: { machineId?: string }) => {
         if (!payload?.machineId) return;
@@ -119,25 +132,34 @@ export function useLiveMonitoring() {
         });
       });
 
-      socket.on("telemetry", (payload: { machineId?: string; recordedAt?: string }) => {
-        if (!payload?.machineId) return;
-        setStatusByMachine((prev) => {
-          const existing = prev[payload.machineId!];
-          if (!existing) return prev;
-          return {
-            ...prev,
-            [payload.machineId!]: {
-              ...existing,
-              online: true,
-              lastSeenAt: payload.recordedAt ?? existing.lastSeenAt,
-            },
-          };
-        });
-      });
+      socket.on(
+        "telemetry",
+        (payload: { machineId?: string; recordedAt?: string }) => {
+          if (!payload?.machineId) return;
+          setStatusByMachine((prev) => {
+            const existing = prev[payload.machineId!];
+            if (!existing) return prev;
+            return {
+              ...prev,
+              [payload.machineId!]: {
+                ...existing,
+                online: true,
+                lastSeenAt: payload.recordedAt ?? existing.lastSeenAt,
+              },
+            };
+          });
+        },
+      );
+
+      // Defer the connection until after React's development-only Strict Mode
+      // setup/cleanup probe. This prevents closing a handshake that has only
+      // just started while preserving immediate connection in normal mounts.
+      connectTimer = window.setTimeout(() => socket?.connect(), 0);
     }
 
     return () => {
       window.clearInterval(interval);
+      if (connectTimer !== undefined) window.clearTimeout(connectTimer);
       socket?.disconnect();
       socketRef.current = null;
       currentSubscriptions.clear();

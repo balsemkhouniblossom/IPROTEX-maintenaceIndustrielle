@@ -85,7 +85,8 @@ function DashboardLayoutBody({
 
   const role = user?.role;
   const routeAccess = evaluateProtectedRouteAccess({ user, pathname });
-  const routeDestination = routeAccess.status === "allow" ? null : routeAccess.to;
+  const routeDestination =
+    routeAccess.status === "allow" ? null : routeAccess.to;
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -130,9 +131,7 @@ function DashboardLayoutBody({
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", handleDesktopResize);
-    sidebarRef.current
-      ?.querySelector<HTMLElement>("button, a[href]")
-      ?.focus();
+    sidebarRef.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
 
     return () => {
       document.body.style.overflow = previousOverflow;
@@ -584,8 +583,8 @@ function DashboardLayoutBody({
               src="/Iprotex logo.png"
               alt="IPROTEX Logo"
               width={200}
-              height={200}
-              className="w-50 h-50 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+              height={57}
+              className="h-auto w-50 object-contain cursor-pointer hover:opacity-80 transition-opacity"
               loading="eager"
               priority
               onClick={handleLogoClick}
@@ -656,11 +655,14 @@ function DashboardLayoutBody({
                     const itemPath = withLocale(item.href);
                     const isActive =
                       pathname === itemPath ||
-                      (item.href !== "/" && pathname.startsWith(`${itemPath}/`));
+                      (item.href !== "/" &&
+                        pathname.startsWith(`${itemPath}/`));
                     const isExpanded =
                       expandedNavItems.has(item.href) ||
                       item.children?.some(
-                        (child) => pathname === withLocale(child.href) || pathname.startsWith(`${withLocale(child.href)}/`),
+                        (child) =>
+                          pathname === withLocale(child.href) ||
+                          pathname.startsWith(`${withLocale(child.href)}/`),
                       );
                     return (
                       <div key={item.href}>
@@ -723,7 +725,9 @@ function DashboardLayoutBody({
                             {item.children!.map((child) => {
                               const ChildIcon = child.icon;
                               const childPath = withLocale(child.href);
-                              const childActive = pathname === childPath || pathname.startsWith(`${childPath}/`);
+                              const childActive =
+                                pathname === childPath ||
+                                pathname.startsWith(`${childPath}/`);
                               return (
                                 <Link
                                   key={child.href}
@@ -731,7 +735,9 @@ function DashboardLayoutBody({
                                   className={`nav-link-modern ${childActive ? "active" : ""}`}
                                   onClick={() => setSidebarOpen(false)}
                                   title={child.name}
-                                  aria-current={childActive ? "page" : undefined}
+                                  aria-current={
+                                    childActive ? "page" : undefined
+                                  }
                                 >
                                   <ChildIcon className="h-4 w-4 shrink-0" />
                                   <span className="min-w-0 flex-1 truncate text-sm">

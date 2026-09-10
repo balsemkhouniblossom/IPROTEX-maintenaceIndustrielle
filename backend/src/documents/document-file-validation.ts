@@ -56,17 +56,32 @@ function isSafeZipEntryName(name: string): boolean {
   );
 }
 
+interface CentralDirectoryMetadata {
+  bufferLength: number;
+  eocdOffset: number;
+  diskNumber: number;
+  centralDisk: number;
+  diskEntries: number;
+  totalEntries: number;
+  centralSize: number;
+  centralOffset: number;
+  commentLength: number;
+}
+
 function hasValidCentralDirectoryMetadata(
-  bufferLength: number,
-  eocdOffset: number,
-  diskNumber: number,
-  centralDisk: number,
-  diskEntries: number,
-  totalEntries: number,
-  centralSize: number,
-  centralOffset: number,
-  commentLength: number,
+  metadata: CentralDirectoryMetadata,
 ): boolean {
+  const {
+    bufferLength,
+    eocdOffset,
+    diskNumber,
+    centralDisk,
+    diskEntries,
+    totalEntries,
+    centralSize,
+    centralOffset,
+    commentLength,
+  } = metadata;
   return (
     diskNumber === 0 &&
     centralDisk === 0 &&
@@ -78,77 +93,72 @@ function hasValidCentralDirectoryMetadata(
   );
 }
 
+function hasValidOoxmlEntries(
+  buffer: Buffer,
+  metadata: CentralDirectoryMetadata,
+  expectedKind: OoxmlKind,
+): boolean {
+  const { centralOffset, centralSize, eocdOffset, totalEntries } = metadata;
+  let offset = centralOffset;
+  let totalCompressed = 0;
+  let totalUncompressed = 0;
+  let hasContentTypes = false;
+  let hasExpectedDirectory = false;
+
+  for (let index = 0; index < totalEntries; index += 1) {
+    if (!isSafeCentralDirectoryEntry(buffer, offset, eocdOffset)) return false;
+    const compressedSize = buffer.readUInt32LE(offset + 20);
+    const uncompressedSize = buffer.readUInt32LE(offset + 24);
+    const nameLength = buffer.readUInt16LE(offset + 28);
+    const extraLength = buffer.readUInt16LE(offset + 30);
+    const entryCommentLength = buffer.readUInt16LE(offset + 32);
+    const nextOffset =
+      offset + 46 + nameLength + extraLength + entryCommentLength;
+    if (nextOffset > eocdOffset) return false;
+
+    const name = buffer.toString('utf8', offset + 46, offset + 46 + nameLength);
+    if (!isSafeZipEntryName(name)) return false;
+    hasContentTypes ||= name === '[Content_Types].xml';
+    hasExpectedDirectory ||= name.startsWith(`${expectedKind}/`);
+    totalCompressed += compressedSize;
+    totalUncompressed += uncompressedSize;
+    if (totalUncompressed > MAX_ZIP_UNCOMPRESSED_BYTES) return false;
+    offset = nextOffset;
+  }
+
+  const hasSafeCompressionRatio =
+    totalUncompressed <= 1024 * 1024 ||
+    totalUncompressed / Math.max(1, totalCompressed) <=
+      MAX_ZIP_COMPRESSION_RATIO;
+  return (
+    offset === centralOffset + centralSize &&
+    hasSafeCompressionRatio &&
+    hasContentTypes &&
+    hasExpectedDirectory
+  );
+}
+
 function isOoxmlContainer(buffer: Buffer, expectedKind: OoxmlKind): boolean {
   if (!hasPrefix(buffer, ZIP_LOCAL_HEADER) || buffer.length < 22) return false;
 
   try {
     const eocdOffset = findEndOfCentralDirectory(buffer);
     if (eocdOffset < 0) return false;
-    const diskNumber = buffer.readUInt16LE(eocdOffset + 4);
-    const centralDisk = buffer.readUInt16LE(eocdOffset + 6);
-    const diskEntries = buffer.readUInt16LE(eocdOffset + 8);
-    const totalEntries = buffer.readUInt16LE(eocdOffset + 10);
-    const centralSize = buffer.readUInt32LE(eocdOffset + 12);
-    const centralOffset = buffer.readUInt32LE(eocdOffset + 16);
-    const commentLength = buffer.readUInt16LE(eocdOffset + 20);
-
-    if (
-      !hasValidCentralDirectoryMetadata(
-        buffer.length,
-        eocdOffset,
-        diskNumber,
-        centralDisk,
-        diskEntries,
-        totalEntries,
-        centralSize,
-        centralOffset,
-        commentLength,
-      )
-    ) {
-      return false;
-    }
-
-    let offset = centralOffset;
-    let totalCompressed = 0;
-    let totalUncompressed = 0;
-    let hasContentTypes = false;
-    let hasExpectedDirectory = false;
-
-    for (let index = 0; index < totalEntries; index += 1) {
-      if (!isSafeCentralDirectoryEntry(buffer, offset, eocdOffset))
-        return false;
-      const compressedSize = buffer.readUInt32LE(offset + 20);
-      const uncompressedSize = buffer.readUInt32LE(offset + 24);
-      const nameLength = buffer.readUInt16LE(offset + 28);
-      const extraLength = buffer.readUInt16LE(offset + 30);
-      const entryCommentLength = buffer.readUInt16LE(offset + 32);
-      const nextOffset =
-        offset + 46 + nameLength + extraLength + entryCommentLength;
-      if (nextOffset > eocdOffset) return false;
-
-      const name = buffer.toString(
-        'utf8',
-        offset + 46,
-        offset + 46 + nameLength,
-      );
-      if (!isSafeZipEntryName(name)) return false;
-      hasContentTypes ||= name === '[Content_Types].xml';
-      hasExpectedDirectory ||= name.startsWith(`${expectedKind}/`);
-      totalCompressed += compressedSize;
-      totalUncompressed += uncompressedSize;
-      if (totalUncompressed > MAX_ZIP_UNCOMPRESSED_BYTES) return false;
-      offset = nextOffset;
-    }
-
-    if (offset !== centralOffset + centralSize) return false;
-    if (
-      totalUncompressed > 1024 * 1024 &&
-      totalUncompressed / Math.max(1, totalCompressed) >
-        MAX_ZIP_COMPRESSION_RATIO
-    ) {
-      return false;
-    }
-    return hasContentTypes && hasExpectedDirectory;
+    const metadata: CentralDirectoryMetadata = {
+      bufferLength: buffer.length,
+      eocdOffset,
+      diskNumber: buffer.readUInt16LE(eocdOffset + 4),
+      centralDisk: buffer.readUInt16LE(eocdOffset + 6),
+      diskEntries: buffer.readUInt16LE(eocdOffset + 8),
+      totalEntries: buffer.readUInt16LE(eocdOffset + 10),
+      centralSize: buffer.readUInt32LE(eocdOffset + 12),
+      centralOffset: buffer.readUInt32LE(eocdOffset + 16),
+      commentLength: buffer.readUInt16LE(eocdOffset + 20),
+    };
+    return (
+      hasValidCentralDirectoryMetadata(metadata) &&
+      hasValidOoxmlEntries(buffer, metadata, expectedKind)
+    );
   } catch {
     return false;
   }
