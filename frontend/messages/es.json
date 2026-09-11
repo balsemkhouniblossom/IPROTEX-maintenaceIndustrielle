@@ -2350,6 +2350,23 @@
     }
   },
   "documents": {
+    "rag": {
+      "knowledgeStatus": "Estado del conocimiento",
+      "status": {
+        "NOT_INDEXED": "Sin indexar",
+        "PROCESSING": "Procesando",
+        "READY": "Listo",
+        "FAILED": "Fallido"
+      },
+      "index": "Indexar",
+      "reindex": "Reindexar",
+      "retry": "Reintentar",
+      "processing": "Procesando…",
+      "indexedSections": "{count, plural, one {# sección indexada} other {# secciones indexadas}}",
+      "indexedAt": "Indexado el",
+      "indexSuccess": "Índice de conocimiento actualizado.",
+      "indexFailed": "Falló la indexación del conocimiento."
+    },
     "title": "Gestion de documentos",
     "heading": "Documentos",
     "description": "Gestionar documentos tecnicos y manuales de las maquinas",
@@ -3394,6 +3411,15 @@
     "recommendedChecks": "Verificaciones recomendadas",
     "safetyWarnings": "Advertencias de seguridad",
     "uncertainty": "Incertidumbre",
+    "sources": "Fuentes documentales de la empresa",
+    "page": "Página",
+    "basedOnDocumentation": "Basado en la documentación de la empresa",
+    "machineContext": "Máquina",
+    "selectedMachine": "Máquina seleccionada",
+    "searchingDocumentation": "Buscando en la documentación de la empresa y preparando una respuesta…",
+    "sourceUnavailable": "Esta fuente no está disponible o ya no tienes acceso.",
+    "sourcePageHint": "El contenido relevante se encontró en la página {page}.",
+    "openSource": "Abrir fuente",
     "globalOpen": "Abrir asistente de IA",
     "globalClose": "Cerrar asistente de IA",
     "globalOpenShort": "Asistente IA",

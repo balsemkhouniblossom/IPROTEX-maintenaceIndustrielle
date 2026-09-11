@@ -40,9 +40,11 @@ export type RagIndexResult = {
 export type VectorSearchOptions = {
   role: Role;
   machineIds?: Array<string | Types.ObjectId>;
+  machineTypeIds?: Array<string | Types.ObjectId>;
   documentIds?: Array<string | Types.ObjectId>;
   documentTypes?: string[];
   limit?: number;
+  numCandidates?: number;
 };
 
 export type VectorSearchResult = {
@@ -237,7 +239,7 @@ export class DocumentIngestionService {
       index: RAG_VECTOR_INDEX_NAME,
       path: 'embedding',
       queryVector: vector,
-      numCandidates: Math.max(limit * 20, 100),
+      numCandidates: Math.max(options.numCandidates ?? limit * 20, limit),
       limit,
       filter,
     };
@@ -373,9 +375,13 @@ export class DocumentIngestionService {
     ];
     const machineIds = this.objectIds(options.machineIds);
     const documentIds = this.objectIds(options.documentIds);
+    const machineTypeIds = this.objectIds(options.machineTypeIds);
     if (machineIds.length) filters.push({ machineId: { $in: machineIds } });
     if (documentIds.length) {
       filters.push({ documentId: { $in: documentIds } });
+    }
+    if (machineTypeIds.length) {
+      filters.push({ machineTypeId: { $in: machineTypeIds } });
     }
     if (options.documentTypes?.length) {
       filters.push({ documentType: { $in: options.documentTypes } });

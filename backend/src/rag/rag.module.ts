@@ -12,6 +12,7 @@ import { DocumentIngestionService } from './services/document-ingestion.service'
 import { DocumentExtractionService } from './services/document-extraction.service';
 import { DocumentChunkingService } from './services/document-chunking.service';
 import { EmbeddingService } from './services/embedding.service';
+import { KnowledgeRetrievalService } from './services/knowledge-retrieval.service';
 import { RagController } from './rag.controller';
 
 @Module({
@@ -27,10 +28,15 @@ import { RagController } from './rag.controller';
   controllers: [RagController],
   providers: [
     DocumentIngestionService,
+    KnowledgeRetrievalService,
     DocumentExtractionService,
     DocumentChunkingService,
     EmbeddingService,
   ],
-  exports: [DocumentIngestionService, EmbeddingService],
+  exports: [
+    DocumentIngestionService,
+    EmbeddingService,
+    KnowledgeRetrievalService,
+  ],
 })
 export class RagModule {}

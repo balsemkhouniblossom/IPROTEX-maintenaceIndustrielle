@@ -40,6 +40,7 @@ export interface AiAssistantRequest {
   question: string;
   locale: string;
   context: AiGroundedContext;
+  ragContext?: string;
 }
 
 export interface AiAssistantAnswer {

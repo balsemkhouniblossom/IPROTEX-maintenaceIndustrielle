@@ -96,6 +96,12 @@ export class AiInteraction {
 
   @Prop()
   error_message?: string;
+
+  @Prop({ default: false })
+  grounded!: boolean;
+
+  @Prop({ type: [Types.ObjectId], ref: 'DocumentEntity', default: [] })
+  source_document_ids!: Types.ObjectId[];
 }
 
 export const AiInteractionSchema = SchemaFactory.createForClass(AiInteraction);

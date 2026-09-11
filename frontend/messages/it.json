@@ -2350,6 +2350,23 @@
     }
   },
   "documents": {
+    "rag": {
+      "knowledgeStatus": "Stato conoscenza",
+      "status": {
+        "NOT_INDEXED": "Non indicizzato",
+        "PROCESSING": "In elaborazione",
+        "READY": "Pronto",
+        "FAILED": "Non riuscito"
+      },
+      "index": "Indicizza",
+      "reindex": "Reindicizza",
+      "retry": "Riprova",
+      "processing": "In elaborazione…",
+      "indexedSections": "{count, plural, one {# sezione indicizzata} other {# sezioni indicizzate}}",
+      "indexedAt": "Indicizzato il",
+      "indexSuccess": "Indice della conoscenza aggiornato.",
+      "indexFailed": "Indicizzazione della conoscenza non riuscita."
+    },
     "title": "Gestione documenti",
     "heading": "Documenti",
     "description": "Gestisci i documenti tecnici e i manuali delle macchine",
@@ -3394,6 +3411,15 @@
     "recommendedChecks": "Controlli consigliati",
     "safetyWarnings": "Avvisi di sicurezza",
     "uncertainty": "Incertezza",
+    "sources": "Fonti documentali aziendali",
+    "page": "Pagina",
+    "basedOnDocumentation": "Basato sulla documentazione aziendale",
+    "machineContext": "Macchina",
+    "selectedMachine": "Macchina selezionata",
+    "searchingDocumentation": "Ricerca nella documentazione aziendale e preparazione della risposta…",
+    "sourceUnavailable": "Questa fonte non è disponibile o non hai più accesso.",
+    "sourcePageHint": "Il contenuto pertinente è stato trovato a pagina {page}.",
+    "openSource": "Apri fonte",
     "globalOpen": "Apri assistente IA",
     "globalClose": "Chiudi assistente IA",
     "globalOpenShort": "Assistente IA",

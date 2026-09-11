@@ -20,6 +20,7 @@ import {
 } from '../schemas/intervention-report.schema';
 import { DocumentsModule } from '../documents/documents.module';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
+import { RagModule } from '../rag/rag.module';
 import { AiAssistantController } from './ai-assistant.controller';
 import { AiAssistantService } from './ai-assistant.service';
 import { AiContextBuilderService } from './ai-context-builder.service';
@@ -56,6 +57,7 @@ const aiProviderLogger = new Logger('AiAssistantProvider');
     ]),
     DocumentsModule,
     KnowledgeBaseModule,
+    RagModule,
   ],
   controllers: [AiAssistantController],
   providers: [

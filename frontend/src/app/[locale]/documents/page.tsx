@@ -58,6 +58,10 @@ interface DocumentType {
   supersedes_document_id?: string;
   superseded_by_document_id?: string;
   lifecycle_history?: DocumentLifecycleEntry[];
+  rag_status?: "NOT_INDEXED" | "PROCESSING" | "READY" | "FAILED";
+  rag_indexed_at?: string;
+  rag_chunk_count?: number;
+  rag_error?: string;
 }
 
 interface Machine {
@@ -79,7 +83,9 @@ const STATUS_BADGE_CLASSES: Record<DocumentStatus, string> = {
 
 // Mirrors the backend's own transition table exactly, so the UI never
 // offers an action the server would reject.
-function getAvailableActions(status: DocumentStatus): Array<"publish" | "archive" | "replace"> {
+function getAvailableActions(
+  status: DocumentStatus,
+): Array<"publish" | "archive" | "replace"> {
   if (status === "draft") return ["publish", "archive", "replace"];
   if (status === "published") return ["archive", "replace"];
   return [];
@@ -135,6 +141,9 @@ export default function DocumentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [indexingDocumentId, setIndexingDocumentId] = useState<string | null>(
+    null,
+  );
 
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [replaceTarget, setReplaceTarget] = useState<DocumentType | null>(null);
@@ -345,11 +354,30 @@ export default function DocumentsPage() {
     }
   }
 
+  async function handleKnowledgeIndex(doc: DocumentType) {
+    if (indexingDocumentId) return;
+    setIndexingDocumentId(doc._id);
+    try {
+      await apiService.indexDocumentKnowledge(doc._id);
+      showNotification("success", t("rag.indexSuccess"));
+      await loadData();
+    } catch (error) {
+      showNotification(
+        "error",
+        extractApiErrorMessage(error, t("rag.indexFailed")).message,
+      );
+    } finally {
+      setIndexingDocumentId(null);
+    }
+  }
+
   async function handlePublish(doc: DocumentType) {
     if (!confirm(t("notifications.confirmPublish"))) return;
 
     try {
-      await apiService.publishDocument(doc._id, { expected_version: doc.version });
+      await apiService.publishDocument(doc._id, {
+        expected_version: doc.version,
+      });
       showNotification("success", t("notifications.publishSuccess"));
       await loadData();
     } catch (error) {
@@ -365,7 +393,9 @@ export default function DocumentsPage() {
     if (!confirm(t("notifications.confirmArchive"))) return;
 
     try {
-      await apiService.archiveDocument(doc._id, { expected_version: doc.version });
+      await apiService.archiveDocument(doc._id, {
+        expected_version: doc.version,
+      });
       showNotification("success", t("notifications.archiveSuccess"));
       await loadData();
     } catch (error) {
@@ -580,6 +610,46 @@ export default function DocumentsPage() {
                 <p className="text-sm text-gray-600 mt-2">
                   {doc.description || tCommon("notAvailable")}
                 </p>
+
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+                  <div className="font-semibold">
+                    {t("rag.knowledgeStatus")}:{" "}
+                    {t(`rag.status.${doc.rag_status ?? "NOT_INDEXED"}`)}
+                  </div>
+                  {doc.rag_status === "READY" ? (
+                    <div className="mt-1">
+                      {t("rag.indexedSections", {
+                        count: doc.rag_chunk_count ?? 0,
+                      })}
+                      {doc.rag_indexed_at
+                        ? ` · ${t("rag.indexedAt")} ${new Date(doc.rag_indexed_at).toLocaleString()}`
+                        : ""}
+                    </div>
+                  ) : null}
+                  {doc.rag_status === "FAILED" && doc.rag_error ? (
+                    <div className="mt-1 break-words text-red-700">
+                      {doc.rag_error}
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="mt-2 font-medium text-blue-700 disabled:cursor-wait disabled:opacity-50"
+                    disabled={
+                      Boolean(indexingDocumentId) ||
+                      doc.rag_status === "PROCESSING"
+                    }
+                    onClick={() => void handleKnowledgeIndex(doc)}
+                    aria-label={`${doc.rag_status === "READY" ? t("rag.reindex") : doc.rag_status === "FAILED" ? t("rag.retry") : t("rag.index")} ${doc.file_name}`}
+                  >
+                    {indexingDocumentId === doc._id
+                      ? t("rag.processing")
+                      : doc.rag_status === "READY"
+                        ? t("rag.reindex")
+                        : doc.rag_status === "FAILED"
+                          ? t("rag.retry")
+                          : t("rag.index")}
+                  </button>
+                </div>
 
                 <div className="flex flex-wrap gap-1 mt-2">
                   {(doc.tags || []).map((tag) => (

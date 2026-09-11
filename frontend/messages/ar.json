@@ -2311,6 +2311,23 @@
     }
   },
   "documents": {
+    "rag": {
+      "knowledgeStatus": "حالة المعرفة",
+      "status": {
+        "NOT_INDEXED": "غير مفهرس",
+        "PROCESSING": "قيد المعالجة",
+        "READY": "جاهز",
+        "FAILED": "فشل"
+      },
+      "index": "فهرسة",
+      "reindex": "إعادة الفهرسة",
+      "retry": "إعادة المحاولة",
+      "processing": "قيد المعالجة…",
+      "indexedSections": "{count} قسم مفهرس",
+      "indexedAt": "تاريخ الفهرسة",
+      "indexSuccess": "تم تحديث فهرس المعرفة.",
+      "indexFailed": "فشلت فهرسة المعرفة."
+    },
     "title": "إدارة الوثائق",
     "heading": "الوثائق",
     "description": "إدارة الوثائق التقنية والأدلة الخاصة بالآلات",
@@ -3355,6 +3372,15 @@
     "recommendedChecks": "الفحوصات الموصى بها",
     "safetyWarnings": "تحذيرات السلامة",
     "uncertainty": "عدم اليقين",
+    "sources": "مصادر وثائق الشركة",
+    "page": "الصفحة",
+    "basedOnDocumentation": "استنادًا إلى وثائق الشركة",
+    "machineContext": "الآلة",
+    "selectedMachine": "الآلة المحددة",
+    "searchingDocumentation": "جارٍ البحث في وثائق الشركة وإعداد الإجابة…",
+    "sourceUnavailable": "هذا المصدر غير متاح أو لم يعد لديك صلاحية الوصول إليه.",
+    "sourcePageHint": "تم العثور على المحتوى ذي الصلة في الصفحة {page}.",
+    "openSource": "فتح المصدر",
     "globalOpen": "افتح المساعد الذكي",
     "globalClose": "اغلق المساعد الذكي",
     "globalOpenShort": "المساعد الذكي",

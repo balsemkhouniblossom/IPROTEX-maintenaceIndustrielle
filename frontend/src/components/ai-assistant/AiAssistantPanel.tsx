@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { SparklesIcon, ShieldExclamationIcon } from "@heroicons/react/24/outline";
+import {
+  SparklesIcon,
+  ShieldExclamationIcon,
+} from "@heroicons/react/24/outline";
 import { useLocale, useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
+import { Modal } from "@/components/Modal";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
+import type { ViewableDocument } from "@/services/documentViewer";
 
 type AiAssistantAnswer = {
   knownFacts: string[];
@@ -40,6 +46,15 @@ type AiRecommendationResponse = {
     message: string;
   };
   answer?: AiAssistantAnswer;
+  grounded?: boolean;
+  sources?: Array<{
+    documentId: string;
+    documentName: string;
+    pageNumber?: number;
+    section?: string;
+    score: number;
+  }>;
+  retrieval?: { matched: number };
 };
 
 /**
@@ -54,11 +69,15 @@ type AiAssistantPanelProps = Readonly<{
   machineId?: string;
   workOrderId?: string;
   faultCode?: string;
+  machineLabel?: string;
 }>;
 
 export default function AiAssistantPanel(props: AiAssistantPanelProps) {
   return (
-    <ErrorBoundary boundaryName="ai-assistant-panel" fallback={renderWidgetErrorFallback}>
+    <ErrorBoundary
+      boundaryName="ai-assistant-panel"
+      fallback={renderWidgetErrorFallback}
+    >
       <AiAssistantPanelInner {...props} />
     </ErrorBoundary>
   );
@@ -68,6 +87,7 @@ function AiAssistantPanelInner({
   machineId,
   workOrderId,
   faultCode,
+  machineLabel,
 }: AiAssistantPanelProps) {
   const t = useTranslations("aiAssistant");
   const locale = useLocale();
@@ -75,6 +95,11 @@ function AiAssistantPanelInner({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiRecommendationResponse | null>(null);
   const [submitError, setSubmitError] = useState(false);
+  const [sourceDocument, setSourceDocument] = useState<ViewableDocument | null>(
+    null,
+  );
+  const [sourcePage, setSourcePage] = useState<number | undefined>();
+  const [sourceError, setSourceError] = useState(false);
 
   const canSubmit = question.trim().length > 0 && !loading;
 
@@ -101,6 +126,19 @@ function AiAssistantPanelInner({
     }
   }
 
+  async function openSource(
+    source: NonNullable<AiRecommendationResponse["sources"]>[number],
+  ) {
+    setSourceError(false);
+    try {
+      const response = await apiService.getDocument(source.documentId);
+      setSourceDocument(response.data as ViewableDocument);
+      setSourcePage(source.pageNumber);
+    } catch {
+      setSourceError(true);
+    }
+  }
+
   return (
     <div
       className="panel border border-purple-100 bg-purple-50"
@@ -115,6 +153,12 @@ function AiAssistantPanelInner({
         <ShieldExclamationIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
         <span data-testid="ai-assistant-disclaimer">{t("disclaimer")}</span>
       </p>
+      {machineId ? (
+        <div className="mb-3 rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-purple-900">
+          <span className="font-semibold">{t("machineContext")}: </span>
+          {machineLabel || t("selectedMachine")}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <textarea
@@ -137,12 +181,45 @@ function AiAssistantPanelInner({
       </div>
 
       {submitError ? (
-        <p className="mt-3 text-sm text-red-700" data-testid="ai-assistant-request-error">
+        <p
+          className="mt-3 text-sm text-red-700"
+          data-testid="ai-assistant-request-error"
+        >
           {t("requestFailed")}
         </p>
       ) : null}
 
-      {result ? <AiAssistantResult result={result} t={t} /> : null}
+      <div aria-live="polite">
+        {loading ? (
+          <p className="mt-3 text-sm text-purple-800">
+            {t("searchingDocumentation")}
+          </p>
+        ) : null}
+        {sourceError ? (
+          <p className="mt-3 text-sm text-red-700">{t("sourceUnavailable")}</p>
+        ) : null}
+        {result ? (
+          <AiAssistantResult result={result} t={t} openSource={openSource} />
+        ) : null}
+      </div>
+      <Modal
+        isOpen={Boolean(sourceDocument)}
+        onClose={() => setSourceDocument(null)}
+        title={sourceDocument?.file_name || t("sources")}
+        size="xl"
+      >
+        {sourcePage ? (
+          <p className="mb-2 text-sm text-slate-600">
+            {t("sourcePageHint", { page: sourcePage })}
+          </p>
+        ) : null}
+        {sourceDocument ? (
+          <DocumentAttachmentViewer
+            document={sourceDocument}
+            title={sourceDocument.file_name || undefined}
+          />
+        ) : null}
+      </Modal>
     </div>
   );
 }
@@ -150,9 +227,13 @@ function AiAssistantPanelInner({
 function AiAssistantResult({
   result,
   t,
+  openSource,
 }: Readonly<{
   result: AiRecommendationResponse;
   t: ReturnType<typeof useTranslations>;
+  openSource: (
+    source: NonNullable<AiRecommendationResponse["sources"]>[number],
+  ) => Promise<void>;
 }>) {
   if (result.status === "disabled") {
     return (
@@ -204,6 +285,14 @@ function AiAssistantResult({
 
   return (
     <div className="mt-4 space-y-3 text-sm" data-testid="ai-assistant-answer">
+      {result.grounded ? (
+        <p
+          className="rounded-md bg-emerald-50 px-3 py-2 font-medium text-emerald-800"
+          data-testid="ai-assistant-grounded"
+        >
+          {t("basedOnDocumentation")}
+        </p>
+      ) : null}
       <AnswerSection
         testId="ai-assistant-known-facts"
         label={t("knownFacts")}
@@ -224,7 +313,9 @@ function AiAssistantResult({
           className="rounded-lg border border-red-200 bg-red-50 p-3"
           data-testid="ai-assistant-safety-warnings"
         >
-          <p className="mb-1 font-semibold text-red-800">{t("safetyWarnings")}</p>
+          <p className="mb-1 font-semibold text-red-800">
+            {t("safetyWarnings")}
+          </p>
           <ul className="list-disc space-y-1 pl-5 text-red-800">
             {answer.safetyWarnings.map((item) => (
               <li key={item}>{item}</li>
@@ -233,10 +324,38 @@ function AiAssistantResult({
         </div>
       ) : null}
       {answer.uncertainty ? (
-        <p className="italic text-slate-600" data-testid="ai-assistant-uncertainty">
+        <p
+          className="italic text-slate-600"
+          data-testid="ai-assistant-uncertainty"
+        >
           <span className="font-semibold not-italic">{t("uncertainty")}: </span>
           {answer.uncertainty}
         </p>
+      ) : null}
+      {(result.sources?.length ?? 0) > 0 ? (
+        <div data-testid="ai-assistant-sources">
+          <p className="mb-1 font-semibold text-slate-800">{t("sources")}</p>
+          <ul className="space-y-1 text-slate-700">
+            {result.sources?.map((source) => (
+              <li
+                key={`${source.documentId}-${source.pageNumber ?? "document"}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => void openSource(source)}
+                  className="max-w-full text-left text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                  aria-label={`${t("openSource")} ${source.documentName}`}
+                >
+                  <span className="break-words">{source.documentName}</span>
+                  {source.pageNumber
+                    ? ` · ${t("page")} ${source.pageNumber}`
+                    : ""}
+                  {source.section ? ` · ${source.section}` : ""}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );
@@ -268,7 +387,7 @@ function StatusMessage({
           {t("debugDetails")}: status={result.status}; provider=
           {diagnostic.provider || result.provider}; configured=
           {String(diagnostic.configured)}; enabled={String(diagnostic.enabled)}
-          {diagnostic.model ? `; model=${diagnostic.model}` : ''}; reason=
+          {diagnostic.model ? `; model=${diagnostic.model}` : ""}; reason=
           {diagnostic.message}; interaction={result.interactionId}
         </p>
       ) : null}

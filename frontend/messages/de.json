@@ -2553,6 +2553,23 @@
     }
   },
   "documents": {
+    "rag": {
+      "knowledgeStatus": "Wissensstatus",
+      "status": {
+        "NOT_INDEXED": "Nicht indexiert",
+        "PROCESSING": "Wird verarbeitet",
+        "READY": "Bereit",
+        "FAILED": "Fehlgeschlagen"
+      },
+      "index": "Indexieren",
+      "reindex": "Neu indexieren",
+      "retry": "Erneut versuchen",
+      "processing": "Wird verarbeitet…",
+      "indexedSections": "{count, plural, one {# indexierter Abschnitt} other {# indexierte Abschnitte}}",
+      "indexedAt": "Indexiert am",
+      "indexSuccess": "Wissensindex aktualisiert.",
+      "indexFailed": "Wissensindexierung fehlgeschlagen."
+    },
     "title": "Dokumentenverwaltung",
     "heading": "Dokumente",
     "description": "Technische Dokumente und Handbuecher fuer Maschinen verwalten",
@@ -3597,6 +3614,15 @@
     "recommendedChecks": "Empfohlene Prüfungen",
     "safetyWarnings": "Sicherheitshinweise",
     "uncertainty": "Unsicherheit",
+    "sources": "Unternehmensdokumente",
+    "page": "Seite",
+    "basedOnDocumentation": "Basierend auf Unternehmensdokumentation",
+    "machineContext": "Maschine",
+    "selectedMachine": "Ausgewählte Maschine",
+    "searchingDocumentation": "Unternehmensdokumentation wird durchsucht und eine Antwort vorbereitet…",
+    "sourceUnavailable": "Diese Quelle ist nicht verfügbar oder Sie haben keinen Zugriff mehr.",
+    "sourcePageHint": "Relevante Inhalte wurden auf Seite {page} gefunden.",
+    "openSource": "Quelle öffnen",
     "globalOpen": "KI-Assistent öffnen",
     "globalClose": "KI-Assistent schließen",
     "globalOpenShort": "KI-Assistent",

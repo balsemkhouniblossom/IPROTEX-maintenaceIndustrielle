@@ -5,12 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useTranslations } from "next-intl";
-import {
-  ArrowPathIcon,
-  PlusIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
+import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
 
 type MachineTab = "overview" | "preventive" | "activity";
 
@@ -86,7 +84,8 @@ interface MachineSummary {
 }
 
 function stringId(value: unknown): string {
-  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "string" || typeof value === "number")
+    return String(value);
   if (value && typeof value === "object" && "_id" in value) {
     return stringId((value as { _id?: unknown })._id);
   }
@@ -130,18 +129,22 @@ export default function OperatorMachineDetailPage() {
   const locale = Array.isArray(params?.locale)
     ? params.locale[0]
     : params?.locale || "en";
-  const machineId = Array.isArray(params?.id)
-    ? params.id[0]
-    : params?.id;
+  const machineId = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
   const [activeTab, setActiveTab] = useState<MachineTab>("overview");
   const [summary, setSummary] = useState<MachineSummary | null>(null);
-  const [preventiveTasks, setPreventiveTasks] = useState<PreventiveTaskItem[]>([]);
+  const [preventiveTasks, setPreventiveTasks] = useState<PreventiveTaskItem[]>(
+    [],
+  );
   const [timeline, setTimeline] = useState<TimelineEventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentIssueWorkOrderId, setCurrentIssueWorkOrderId] = useState<string | null>(null);
-  const [currentIssueStatus, setCurrentIssueStatus] = useState<string | null>(null);
+  const [currentIssueWorkOrderId, setCurrentIssueWorkOrderId] = useState<
+    string | null
+  >(null);
+  const [currentIssueStatus, setCurrentIssueStatus] = useState<string | null>(
+    null,
+  );
 
   const loadSummary = useCallback(async () => {
     if (!machineId) return;
@@ -151,7 +154,10 @@ export default function OperatorMachineDetailPage() {
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || t("errors.loadSummary", { defaultValue: "Failed to load machine details" });
+          ?.message ||
+        t("errors.loadSummary", {
+          defaultValue: "Failed to load machine details",
+        });
       setError(message);
     }
   }, [machineId, t]);
@@ -196,10 +202,17 @@ export default function OperatorMachineDetailPage() {
   const loadCurrentIssue = useCallback(async () => {
     if (!machineId) return;
     try {
-      const workOrders = await fetchAllPaginated<OperatorWorkOrder>((params) => apiService.getMyWorkOrders(params));
+      const workOrders = await fetchAllPaginated<OperatorWorkOrder>((params) =>
+        apiService.getMyWorkOrders(params),
+      );
       const active = workOrders.find((workOrder) => {
-        const targetMachine = typeof workOrder.machine_id === "string" ? workOrder.machine_id : workOrder.machine_id?._id;
-        return targetMachine === machineId && !isCompletedStatus(workOrder.status);
+        const targetMachine =
+          typeof workOrder.machine_id === "string"
+            ? workOrder.machine_id
+            : workOrder.machine_id?._id;
+        return (
+          targetMachine === machineId && !isCompletedStatus(workOrder.status)
+        );
       });
       setCurrentIssueWorkOrderId(active?._id || null);
       setCurrentIssueStatus(active?.status || null);
@@ -235,7 +248,13 @@ export default function OperatorMachineDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [machineId, loadSummary, loadPreventiveTasks, loadTimeline, loadCurrentIssue]);
+  }, [
+    machineId,
+    loadSummary,
+    loadPreventiveTasks,
+    loadTimeline,
+    loadCurrentIssue,
+  ]);
 
   const hasCurrentIssue = Boolean(currentIssueWorkOrderId);
   const nextMaintenance = summary?.stats.nextMaintenanceAt
@@ -258,26 +277,41 @@ export default function OperatorMachineDetailPage() {
   }, [timeline]);
 
   const tabs: Array<{ key: MachineTab; label: string }> = [
-    { key: "overview", label: t("tabs.overview", { defaultValue: "Overview" }) },
-    { key: "preventive", label: t("tabs.preventive", { defaultValue: "Preventive Tasks" }) },
-    { key: "activity", label: t("tabs.activity", { defaultValue: "Recent Activity" }) },
+    {
+      key: "overview",
+      label: t("tabs.overview", { defaultValue: "Overview" }),
+    },
+    {
+      key: "preventive",
+      label: t("tabs.preventive", { defaultValue: "Preventive Tasks" }),
+    },
+    {
+      key: "activity",
+      label: t("tabs.activity", { defaultValue: "Recent Activity" }),
+    },
   ];
 
   const handleReportProblem = () => {
     if (machineId) {
-      router.push(`/${locale}/operator/corrective?machine=${machineId}&intent=report-issue`);
+      router.push(
+        `/${locale}/operator/corrective?machine=${machineId}&intent=report-issue`,
+      );
     }
   };
 
   const handleOpenTask = (task: PreventiveTaskItem) => {
     if (task.currentOccurrence?._id) {
-      router.push(`/${locale}/operator/preventive?workOrder=${task.currentOccurrence._id}`);
+      router.push(
+        `/${locale}/operator/preventive?workOrder=${task.currentOccurrence._id}`,
+      );
     }
   };
 
   const handleViewWorkOrder = (workOrderId: string) => {
     if (workOrderId) {
-      router.push(`/${locale}/operator/my-reports?workOrderId=${encodeURIComponent(workOrderId)}`);
+      router.push(
+        `/${locale}/operator/my-reports?workOrderId=${encodeURIComponent(workOrderId)}`,
+      );
     } else {
       router.push(`/${locale}/operator/my-reports`);
     }
@@ -295,7 +329,8 @@ export default function OperatorMachineDetailPage() {
     return (
       <DashboardLayout title={t("pageTitle")}>
         <div className="operator-dashboard-theme rounded-3xl border border-border bg-(--surface-elevated) px-4 py-12 text-center text-sm text-text-secondary">
-          {error || t("errors.notFound", { defaultValue: "Machine not found." })}
+          {error ||
+            t("errors.notFound", { defaultValue: "Machine not found." })}
         </div>
       </DashboardLayout>
     );
@@ -344,14 +379,17 @@ export default function OperatorMachineDetailPage() {
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      {t("overview.currentStatus", { defaultValue: "Current Status" })}
+                      {t("overview.currentStatus", {
+                        defaultValue: "Current Status",
+                      })}
                     </div>
                     <div className="mt-1">
                       <span
                         className={`inline-flex rounded-full border px-3 py-1 text-xs font-semib capitalize ${machineStatusBadge(summary?.machine.status || "")}`}
                       >
                         {t(`status.${summary?.machine.status}`, {
-                          defaultValue: summary?.machine.status || tCommon("notAvailable"),
+                          defaultValue:
+                            summary?.machine.status || tCommon("notAvailable"),
                         })}
                       </span>
                     </div>
@@ -369,12 +407,16 @@ export default function OperatorMachineDetailPage() {
                       {t("overview.type", { defaultValue: "Type" })}
                     </div>
                     <div className="mt-1 text-sm font-medium text-text-primary">
-                      {summary?.machine.type?.name || summary?.machine.model || "—"}
+                      {summary?.machine.type?.name ||
+                        summary?.machine.model ||
+                        "—"}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      {t("overview.serialNumber", { defaultValue: "Serial Number" })}
+                      {t("overview.serialNumber", {
+                        defaultValue: "Serial Number",
+                      })}
                     </div>
                     <div className="mt-1 text-sm font-medium text-text-primary">
                       {summary?.machine.serialNo || "—"}
@@ -385,7 +427,9 @@ export default function OperatorMachineDetailPage() {
 
               <section className="rounded-3xl border border-border bg-(--surface-secondary) p-5 md:p-6">
                 <h2 className="text-lg font-semibold text-text-primary">
-                  {t("overview.maintenanceState", { defaultValue: "Maintenance State" })}
+                  {t("overview.maintenanceState", {
+                    defaultValue: "Maintenance State",
+                  })}
                 </h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
@@ -394,13 +438,17 @@ export default function OperatorMachineDetailPage() {
                     </div>
                     <div className="mt-1 text-sm font-medium text-text-primary">
                       {hasCurrentIssue
-                        ? t("overview.hasOpenIssue", { defaultValue: "Open report" })
+                        ? t("overview.hasOpenIssue", {
+                            defaultValue: "Open report",
+                          })
                         : t("overview.noOpenIssue", { defaultValue: "None" })}
                     </div>
                   </div>
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      {t("overview.nextPreventiveTask", { defaultValue: "Next Preventive Task" })}
+                      {t("overview.nextPreventiveTask", {
+                        defaultValue: "Next Preventive Task",
+                      })}
                     </div>
                     <div className="mt-1 text-sm font-medium text-text-primary">
                       {nextMaintenance || "—"}
@@ -414,7 +462,9 @@ export default function OperatorMachineDetailPage() {
                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-700/55 bg-linear-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#155E75] px-5 py-2.5 text-sm font-semibold text-slate-50 shadow-[0_14px_30px_rgba(6,78,59,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(6,78,59,0.45)]"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    {t("overview.reportProblem", { defaultValue: "Report a Problem" })}
+                    {t("overview.reportProblem", {
+                      defaultValue: "Report a Problem",
+                    })}
                   </button>
                 </div>
               </section>
@@ -422,16 +472,26 @@ export default function OperatorMachineDetailPage() {
               {hasCurrentIssue && (
                 <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 md:p-6">
                   <h2 className="text-lg font-semibold text-amber-950">
-                    {t("overview.currentIssue", { defaultValue: "Current Issue" })}
+                    {t("overview.currentIssue", {
+                      defaultValue: "Current Issue",
+                    })}
                   </h2>
                   <p className="mt-2 text-sm text-amber-800">
                     {currentIssueStatus === "in_progress"
-                      ? t("overview.issueInProgress", { defaultValue: "A technician is working on this report." })
-                      : t("overview.issueReported", { defaultValue: "This report is open and awaiting the next maintenance update." })}
+                      ? t("overview.issueInProgress", {
+                          defaultValue:
+                            "A technician is working on this report.",
+                        })
+                      : t("overview.issueReported", {
+                          defaultValue:
+                            "This report is open and awaiting the next maintenance update.",
+                        })}
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleViewWorkOrder(currentIssueWorkOrderId || "")}
+                    onClick={() =>
+                      handleViewWorkOrder(currentIssueWorkOrderId || "")
+                    }
                     className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-700/40 bg-amber-900/10 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-900/20"
                   >
                     {t("overview.viewStatus", { defaultValue: "View Status" })}
@@ -448,7 +508,9 @@ export default function OperatorMachineDetailPage() {
               </h2>
               {preventiveTasks.length === 0 ? (
                 <div className="mt-6 rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-text-secondary">
-                  {t("preventive.empty", { defaultValue: "No preventive tasks available." })}
+                  {t("preventive.empty", {
+                    defaultValue: "No preventive tasks available.",
+                  })}
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">
@@ -467,7 +529,9 @@ export default function OperatorMachineDetailPage() {
                         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-text-primary">
-                              {task.plan.instruction || task.plan.maintenance_code || "—"}
+                              {task.plan.instruction ||
+                                task.plan.maintenance_code ||
+                                "—"}
                             </div>
                             <div className="mt-1 text-xs text-text-secondary">
                               {task.module?.name || ""}
@@ -477,7 +541,8 @@ export default function OperatorMachineDetailPage() {
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-text-muted">
                               <span>
-                                {t("preventive.due", { defaultValue: "Due" })}: {dueLabel}
+                                {t("preventive.due", { defaultValue: "Due" })}:{" "}
+                                {dueLabel}
                               </span>
                               <span
                                 className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semib ${
@@ -487,8 +552,12 @@ export default function OperatorMachineDetailPage() {
                                 }`}
                               >
                                 {isCompleted
-                                  ? t("preventive.completed", { defaultValue: "Completed" })
-                                  : t("preventive.pending", { defaultValue: "Pending" })}
+                                  ? t("preventive.completed", {
+                                      defaultValue: "Completed",
+                                    })
+                                  : t("preventive.pending", {
+                                      defaultValue: "Pending",
+                                    })}
                               </span>
                             </div>
                           </div>
@@ -498,7 +567,9 @@ export default function OperatorMachineDetailPage() {
                               onClick={() => handleOpenTask(task)}
                               className="shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-700/55 bg-linear-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#155E75] px-4 py-2 text-sm font-semibold text-slate-50 shadow-[0_14px_30px_rgba(6,78,59,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(6,78,59,0.45)]"
                             >
-                              {t("preventive.openTask", { defaultValue: "Open Task" })}
+                              {t("preventive.openTask", {
+                                defaultValue: "Open Task",
+                              })}
                               <ArrowPathIcon className="h-4 w-4" />
                             </button>
                           )}
@@ -569,6 +640,10 @@ export default function OperatorMachineDetailPage() {
               )}
             </section>
           )}
+          <AiAssistantPanel
+            machineId={machineId}
+            machineLabel={summary?.machine.machineId}
+          />
         </div>
       </DashboardLayout>
     </ProtectedRoute>

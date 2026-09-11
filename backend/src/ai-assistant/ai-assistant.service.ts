@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -20,8 +20,20 @@ import {
   AiProviderError,
 } from './ai-provider.interface';
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
+import {
+  KnowledgeRetrievalService,
+  KnowledgeSource,
+} from '../rag/services/knowledge-retrieval.service';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
+const NO_EVIDENCE_BY_LOCALE: Record<string, string> = {
+  en: 'I could not find sufficiently relevant information in the available company documentation.',
+  fr: "Je n'ai pas trouvé d'informations suffisamment pertinentes dans la documentation disponible de l'entreprise.",
+  es: 'No encontré información suficientemente relevante en la documentación disponible de la empresa.',
+  de: 'In der verfügbaren Unternehmensdokumentation wurden keine ausreichend relevanten Informationen gefunden.',
+  it: 'Non ho trovato informazioni sufficientemente pertinenti nella documentazione aziendale disponibile.',
+  ar: 'لم أجد معلومات ذات صلة كافية في وثائق الشركة المتاحة.',
+};
 const CLARIFICATION_MESSAGE_BY_LOCALE: Record<string, string> = {
   en: 'I need a clearer maintenance question before giving recommendations. Please describe the fault, symptom, alarm, noise, temperature, movement, or check you want help with.',
   fr: "J'ai besoin d'une question de maintenance plus claire avant de donner des recommandations. Veuillez decrire la panne, le symptome, l'alarme, le bruit, la temperature, le mouvement ou le controle souhaite.",
@@ -160,6 +172,9 @@ export type AiRecommendationResponse = {
   retryAfterSeconds?: number;
   diagnostic?: AiProviderDiagnostics;
   answer?: AiAssistantAnswer;
+  grounded: boolean;
+  sources: KnowledgeSource[];
+  retrieval: { matched: number };
 };
 
 type RecordParams = {
@@ -175,6 +190,8 @@ type RecordParams = {
   latencyMs?: number;
   retryAfterSeconds?: number;
   errorMessage?: string;
+  grounded?: boolean;
+  sources?: KnowledgeSource[];
 };
 
 /**
@@ -199,6 +216,8 @@ export class AiAssistantService {
     private readonly throttleService: AiAssistantThrottleService,
     private readonly configService: ConfigService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
+    @Optional()
+    private readonly knowledgeRetrieval?: KnowledgeRetrievalService,
   ) {}
 
   async getRecommendation(
@@ -269,6 +288,28 @@ export class AiAssistantService {
       machineId: dto.machineId,
       faultCode: dto.faultCode,
     });
+    const retrieval = this.knowledgeRetrieval
+      ? await this.knowledgeRetrieval.retrieve({
+          question: redactionResult.redacted,
+          userId: actor.userId,
+          role: actor.role,
+          machineId: dto.machineId,
+        })
+      : undefined;
+    if (retrieval && retrieval.matched === 0) {
+      return this.record({
+        actor,
+        dto,
+        status: AiInteractionStatus.OK,
+        provider: this.provider.name,
+        answer: this.buildNoEvidenceAnswer(dto.locale),
+        question: redactionResult.redacted,
+        redactionsApplied: redactionResult.count,
+        injectionFlags: injectionResult.flags,
+        grounded: false,
+        sources: [],
+      });
+    }
 
     const timeoutMs = this.getTimeoutMs();
     const controller = new AbortController();
@@ -294,7 +335,12 @@ export class AiAssistantService {
     try {
       const result = await Promise.race([
         this.provider.generate(
-          { question: redactionResult.redacted, locale: dto.locale, context },
+          {
+            question: redactionResult.redacted,
+            locale: dto.locale,
+            context,
+            ragContext: retrieval?.context,
+          },
           controller.signal,
         ),
         timeoutPromise,
@@ -310,6 +356,8 @@ export class AiAssistantService {
         question: redactionResult.redacted,
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
+        grounded: Boolean(retrieval?.matched),
+        sources: retrieval?.sources ?? [],
       });
     } catch (error) {
       const status = timedOut
@@ -439,6 +487,16 @@ export class AiAssistantService {
     };
   }
 
+  private buildNoEvidenceAnswer(locale: string): AiAssistantAnswer {
+    return {
+      knownFacts: [],
+      probableCauses: [],
+      recommendedChecks: [],
+      safetyWarnings: [],
+      uncertainty: NO_EVIDENCE_BY_LOCALE[locale] ?? NO_EVIDENCE_BY_LOCALE.en,
+    };
+  }
+
   private statusFromProviderError(error: unknown): AiInteractionStatus {
     if (!(error instanceof AiProviderError)) {
       return AiInteractionStatus.ERROR;
@@ -483,6 +541,10 @@ export class AiAssistantService {
       redactions_applied: params.redactionsApplied,
       injection_flags: params.injectionFlags,
       error_message: params.errorMessage,
+      grounded: params.grounded ?? false,
+      source_document_ids: (params.sources ?? []).map(
+        (source) => new Types.ObjectId(source.documentId),
+      ),
     });
 
     return {
@@ -492,6 +554,9 @@ export class AiAssistantService {
       retryAfterSeconds: params.retryAfterSeconds,
       diagnostic: this.diagnosticForStatus(params.status),
       answer: params.answer,
+      grounded: params.grounded ?? false,
+      sources: params.sources ?? [],
+      retrieval: { matched: params.sources?.length ?? 0 },
     };
   }
 

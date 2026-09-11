@@ -2486,6 +2486,23 @@
     }
   },
   "documents": {
+    "rag": {
+      "knowledgeStatus": "État des connaissances",
+      "status": {
+        "NOT_INDEXED": "Non indexé",
+        "PROCESSING": "Traitement",
+        "READY": "Prêt",
+        "FAILED": "Échec"
+      },
+      "index": "Indexer",
+      "reindex": "Réindexer",
+      "retry": "Réessayer",
+      "processing": "Traitement…",
+      "indexedSections": "{count, plural, one {# section indexée} other {# sections indexées}}",
+      "indexedAt": "Indexé le",
+      "indexSuccess": "L’index de connaissances a été mis à jour.",
+      "indexFailed": "L’indexation des connaissances a échoué."
+    },
     "title": "Gestion des documents",
     "heading": "Documents",
     "description": "Gerer les documents techniques et les manuels des machines",
@@ -3530,6 +3547,15 @@
     "recommendedChecks": "Verifications recommandees",
     "safetyWarnings": "Avertissements de securite",
     "uncertainty": "Incertitude",
+    "sources": "Sources documentaires de l’entreprise",
+    "page": "Page",
+    "basedOnDocumentation": "Basé sur la documentation de l’entreprise",
+    "machineContext": "Machine",
+    "selectedMachine": "Machine sélectionnée",
+    "searchingDocumentation": "Recherche dans la documentation de l’entreprise et préparation de la réponse…",
+    "sourceUnavailable": "Cette source est indisponible ou vous n’y avez plus accès.",
+    "sourcePageHint": "Le contenu pertinent se trouve à la page {page}.",
+    "openSource": "Ouvrir la source",
     "globalOpen": "Ouvrir l'assistant IA",
     "globalClose": "Fermer l'assistant IA",
     "globalOpenShort": "Assistant IA",

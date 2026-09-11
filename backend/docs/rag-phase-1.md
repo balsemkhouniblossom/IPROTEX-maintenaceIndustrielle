@@ -40,3 +40,15 @@ Chunks store lower-case application role values and machine metadata. Vector res
 - `FAILED` with extraction error: confirm the file is PDF, DOCX, or valid UTF-8 TXT and contains selectable text.
 - Vector index unavailable: create the Atlas index, wait for it to become Active, and confirm its name and dimensions.
 - Existing uploaded documents: invoke the Admin reindex operation once per supported document or add a controlled migration job before Phase 2 rollout.
+
+## Phase 2 retrieval and grounding
+
+The existing authenticated `POST /ai-assistant/recommendations` endpoint now performs permission-aware retrieval before Gemini generation. The server derives the user and role from JWT claims. For a machine-scoped request it searches the exact machine first, then falls back only to documents for the same machine type within the caller's authorized machines. Weak retrieval returns a localized, ungrounded no-evidence response and does not call Gemini.
+
+Optional retrieval configuration:
+
+- `RAG_TOP_K` defaults to `5` (range 1–20).
+- `RAG_NUM_CANDIDATES` defaults to `100` (up to 1000).
+- `RAG_MIN_SCORE` defaults to `0.55` (range 0–1); evaluate this value on representative manuals before production use.
+
+Responses include `grounded`, safe citation metadata in `sources`, and `retrieval.matched`. Embeddings, storage paths, role filters, and full chunk metadata are never returned. Retrieved text is marked as untrusted evidence in the Gemini system instruction so instructions embedded in documents cannot override assistant rules.

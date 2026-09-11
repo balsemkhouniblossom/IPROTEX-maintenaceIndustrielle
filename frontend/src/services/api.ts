@@ -660,6 +660,9 @@ export const apiService = {
       timeout: UPLOAD_REQUEST_TIMEOUT_MS,
     }),
 
+  indexDocumentKnowledge: (id: string) =>
+    api.post(`/rag/documents/${id}/index`),
+
   // Knowledge Base
   getKnowledgeArticles: (params?: AnyObject) =>
     api.get("/knowledge-base/articles", { params }),

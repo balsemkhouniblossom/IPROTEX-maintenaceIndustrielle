@@ -2553,6 +2553,23 @@
     }
   },
   "documents": {
+    "rag": {
+      "knowledgeStatus": "Knowledge status",
+      "status": {
+        "NOT_INDEXED": "Not indexed",
+        "PROCESSING": "Processing",
+        "READY": "Ready",
+        "FAILED": "Failed"
+      },
+      "index": "Index",
+      "reindex": "Reindex",
+      "retry": "Retry",
+      "processing": "Processing…",
+      "indexedSections": "{count, plural, one {# indexed section} other {# indexed sections}}",
+      "indexedAt": "Indexed at",
+      "indexSuccess": "Knowledge index updated.",
+      "indexFailed": "Knowledge indexing failed."
+    },
     "title": "Documents Management",
     "heading": "Documents",
     "description": "Manage technical documents and manuals for machines",
@@ -3597,6 +3614,15 @@
     "recommendedChecks": "Recommended checks",
     "safetyWarnings": "Safety warnings",
     "uncertainty": "Uncertainty",
+    "sources": "Company document sources",
+    "page": "Page",
+    "basedOnDocumentation": "Based on company documentation",
+    "machineContext": "Machine",
+    "selectedMachine": "Selected machine",
+    "searchingDocumentation": "Searching company documentation and preparing an answer…",
+    "sourceUnavailable": "This source is unavailable or you no longer have access.",
+    "sourcePageHint": "Relevant content was found on page {page}.",
+    "openSource": "Open source",
     "globalOpen": "Open AI assistant",
     "globalClose": "Close AI assistant",
     "globalOpenShort": "AI assistant",
