@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import AiDataProvenance from "@/components/ai-anomaly/AiDataProvenance";
 import Pagination from "@/components/Pagination";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { LineChartCard } from "@/components/charts/LineChartCard";
@@ -21,6 +22,7 @@ import {
   type AiAnomalyMachineRecord,
   type AiAnomalyRiskLevel,
   type AiAnomalyRuntimeModel,
+  type AiDatasetReplayCatalog,
   type AiAnomalyValidationStatus,
   buildAiAnomalyMachineOptions,
   buildRiskScoreChartData,
@@ -133,6 +135,11 @@ function AiAnomalyMonitoringContent() {
     useState<AiAnomalyRuntimeModel | null>(null);
   const [modelToDisable, setModelToDisable] =
     useState<AiAnomalyRuntimeModel | null>(null);
+  const [replayOpen, setReplayOpen] = useState(false);
+  const [replayCatalog, setReplayCatalog] = useState<AiDatasetReplayCatalog | null>(null);
+  const [replaySamples, setReplaySamples] = useState<string[]>([]);
+  const [replayForm, setReplayForm] = useState({ experiment: "", timestamp: "", machineId: "" });
+  const [replayLoading, setReplayLoading] = useState(false);
   const [machines, setMachines] = useState(
     [] as ReturnType<typeof buildAiAnomalyMachineOptions>,
   );
@@ -277,6 +284,49 @@ function AiAnomalyMonitoringContent() {
     }
   };
 
+  const openReplay = async () => {
+    setReplayOpen(true);
+    setReplayLoading(true);
+    try {
+      const response = await apiService.getAiDatasetReplayCatalog();
+      const catalog = response.data as AiDatasetReplayCatalog;
+      setReplayCatalog(catalog);
+      const experiment = catalog.experiments.find((item) => item.supported)?.id ?? "";
+      if (experiment) {
+        const samplesResponse = await apiService.getAiDatasetReplaySamples(experiment);
+        const samples = (samplesResponse.data?.samples ?? []) as string[];
+        setReplaySamples(samples);
+        setReplayForm((current) => ({ ...current, experiment, timestamp: samples[0] ?? "" }));
+      }
+    } catch (err) {
+      setToast({ type: "error", message: extractApiErrorDetails(err, t("replay.loadFailed")).message });
+      setReplayOpen(false);
+    } finally {
+      setReplayLoading(false);
+    }
+  };
+
+  const runReplay = async () => {
+    if (!replayForm.machineId || !replayForm.experiment || !replayForm.timestamp) return;
+    setReplayLoading(true);
+    try {
+      const response = await apiService.replayAiDatasetSample({
+        machine_id: replayForm.machineId,
+        experiment: replayForm.experiment,
+        timestamp: replayForm.timestamp,
+      });
+      const created = (response.data?.analyses ?? []) as AiAnomalyAnalysis[];
+      setReplayOpen(false);
+      await loadData();
+      if (created[0]) setSelectedAnalysis(created[0]);
+      setToast({ type: "success", message: t("replay.completed") });
+    } catch (err) {
+      setToast({ type: "error", message: extractApiErrorDetails(err, t("replay.failed")).message });
+    } finally {
+      setReplayLoading(false);
+    }
+  };
+
   const visibleAnalyses = analyses;
 
   const summary = useMemo(
@@ -346,13 +396,10 @@ function AiAnomalyMonitoringContent() {
                 {t("models.subtitle")}
               </p>
             </div>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => void loadModels()}
-            >
-              {t("models.refresh")}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {user?.role === "admin" ? <button type="button" className="btn-primary" onClick={() => void openReplay()}>{t("replay.open")}</button> : null}
+              <button type="button" className="btn-secondary" onClick={() => void loadModels()}>{t("models.refresh")}</button>
+            </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DetailField
@@ -438,9 +485,9 @@ function AiAnomalyMonitoringContent() {
                       className={model.enabled ? "btn-danger" : "btn-primary"}
                       disabled={changingModel === model.id}
                       onClick={() =>
-                          model.enabled
-                            ? setModelToDisable(model)
-                            : void changeModelState(model, true)
+                        model.enabled
+                          ? setModelToDisable(model)
+                          : void changeModelState(model, true)
                       }
                     >
                       {changingModel === model.id
@@ -624,11 +671,26 @@ function AiAnomalyMonitoringContent() {
               {t("models.confirmStop", { name: modelToDisable.name })}
             </p>
             <div className="flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setModelToDisable(null)}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setModelToDisable(null)}
+              >
                 {tCommon("cancel")}
               </button>
-              <button type="button" className="btn-danger" disabled={changingModel === modelToDisable.id} onClick={() => void changeModelState(modelToDisable, false).then(() => setModelToDisable(null))}>
-                {changingModel === modelToDisable.id ? t("models.changing") : t("models.stop")}
+              <button
+                type="button"
+                className="btn-danger"
+                disabled={changingModel === modelToDisable.id}
+                onClick={() =>
+                  void changeModelState(modelToDisable, false).then(() =>
+                    setModelToDisable(null),
+                  )
+                }
+              >
+                {changingModel === modelToDisable.id
+                  ? t("models.changing")
+                  : t("models.stop")}
               </button>
             </div>
           </div>
@@ -642,38 +704,131 @@ function AiAnomalyMonitoringContent() {
         size="xl"
       >
         {selectedModel ? (
-          <dl className="grid gap-3 md:grid-cols-2">
-            <DetailField
-              label={t("models.modelName")}
-              value={selectedModel.name}
-            />
-            <DetailField label={t("models.task")} value={selectedModel.task} />
-            <DetailField
-              label={t("models.framework")}
-              value={selectedModel.framework}
-            />
-            <DetailField
-              label={t("models.dataset")}
-              value={selectedModel.sourceDataset}
-            />
-            <DetailField
-              label={t("models.method")}
-              value={selectedModel.selectedMethod ?? tCommon("notAvailable")}
-            />
-            <DetailField
-              label={t("models.validationScope")}
-              value={selectedModel.validationScope}
-            />
-            <DetailField
-              label={t("models.features")}
-              value={selectedModel.featureOrder.join(", ")}
-            />
-            <DetailField
-              label={t("models.generalization")}
-              value={selectedModel.generalizationStatus}
-            />
-          </dl>
+          <div className="space-y-5">
+            <dl className="grid gap-3 md:grid-cols-2">
+              <DetailField
+                label={t("models.modelName")}
+                value={selectedModel.name}
+              />
+              <DetailField
+                label={t("models.task")}
+                value={selectedModel.task}
+              />
+              <DetailField
+                label={t("models.framework")}
+                value={selectedModel.framework}
+              />
+              <DetailField
+                label={t("models.dataset")}
+                value={selectedModel.sourceDataset}
+              />
+              <DetailField
+                label={t("models.method")}
+                value={selectedModel.selectedMethod ?? tCommon("notAvailable")}
+              />
+              <DetailField
+                label={t("models.validationScope")}
+                value={selectedModel.validationScope}
+              />
+              <DetailField
+                label={t("models.generalization")}
+                value={selectedModel.generalizationStatus}
+              />
+            </dl>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t("models.howItWorks")}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                {t("models.componentsExplanation")}
+              </p>
+            </section>
+            <section>
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t("models.validation")}
+              </h3>
+              <dl className="mt-2 grid gap-3 sm:grid-cols-2">
+                <DetailField
+                  label={t("models.meanPrecision")}
+                  value={formatOptionalMetric(
+                    selectedModel.validationMetrics.mean_precision,
+                  )}
+                />
+                <DetailField
+                  label={t("models.meanRecall")}
+                  value={formatOptionalMetric(
+                    selectedModel.validationMetrics.mean_recall,
+                  )}
+                />
+                <DetailField
+                  label={t("models.meanF1")}
+                  value={formatOptionalMetric(
+                    selectedModel.validationMetrics.mean_f1,
+                  )}
+                />
+                <DetailField
+                  label={t("models.meanPrAuc")}
+                  value={formatOptionalMetric(
+                    selectedModel.validationMetrics.mean_pr_auc,
+                  )}
+                />
+              </dl>
+            </section>
+            <details className="rounded-md border border-slate-200 p-3">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+                {t("models.technicalDetails")}
+              </summary>
+              <dl className="mt-3 grid gap-3 md:grid-cols-2">
+                <DetailField
+                  label={t("models.features")}
+                  value={selectedModel.featureOrder.join(", ")}
+                />
+                <DetailField
+                  label={t("models.runtimeId")}
+                  value={selectedModel.id}
+                />
+              </dl>
+            </details>
+          </div>
         ) : null}
+      </Modal>
+      <Modal isOpen={replayOpen} onClose={() => setReplayOpen(false)} title={t("replay.title")}>
+        <div className="space-y-4">
+          <AiDataProvenance
+            items={[
+              {
+                label: t("replay.source"),
+                value: replayCatalog?.dataset ?? "IMS Bearing",
+              },
+              {
+                label: t("table.source"),
+                value: t("sources.datasetReplay"),
+              },
+            ]}
+            notice={t("replay.notice")}
+          />
+          <label className="block text-sm font-medium text-slate-700">{t("replay.experiment")}
+            <select className="input mt-1 w-full" value={replayForm.experiment} disabled={replayLoading} onChange={(event) => setReplayForm((current) => ({ ...current, experiment: event.target.value }))}>
+              {(replayCatalog?.experiments ?? []).map((item) => <option key={item.id} value={item.id} disabled={!item.supported}>{item.id}{item.supported ? "" : ` — ${t("replay.notValidated")}`}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-slate-700">{t("replay.sample")}
+            <select className="input mt-1 w-full" value={replayForm.timestamp} disabled={replayLoading} onChange={(event) => setReplayForm((current) => ({ ...current, timestamp: event.target.value }))}>
+              {replaySamples.map((sample) => <option key={sample} value={sample}>{formatDateTime(sample)}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-slate-700">{t("replay.demoMachine")}
+            <select className="input mt-1 w-full" value={replayForm.machineId} disabled={replayLoading} onChange={(event) => setReplayForm((current) => ({ ...current, machineId: event.target.value }))}>
+              <option value="">{t("replay.selectMachine")}</option>
+              {machines.map((machine) => <option key={machine.id} value={machine.id}>{machine.label}</option>)}
+            </select>
+          </label>
+          <p className="text-xs text-slate-500">{t("replay.demoAssociationNotice")}</p>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={() => setReplayOpen(false)}>{tCommon("cancel")}</button>
+            <button type="button" className="btn-primary" disabled={replayLoading || !replayForm.machineId || !replayForm.timestamp} onClick={() => void runReplay()}>{replayLoading ? t("replay.running") : t("replay.run")}</button>
+          </div>
+        </div>
       </Modal>
 
       <Modal
@@ -1120,6 +1275,12 @@ function AiAnomalyResultsTable({
 
 function formatReasonCodes(codes: string[], notAvailableLabel: string): string {
   return codes.length ? codes.join(", ") : notAvailableLabel;
+}
+
+function formatOptionalMetric(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toFixed(3)
+    : "—";
 }
 
 type AiAnomalyFilters = {

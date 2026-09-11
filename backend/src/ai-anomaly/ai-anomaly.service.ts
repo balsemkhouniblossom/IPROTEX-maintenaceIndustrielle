@@ -30,6 +30,7 @@ import {
   CreateAiAnomalyBatchDto,
   AiAnomalyQueryDto,
   ValidateAiAnomalyAnalysisDto,
+  ReplayImsDatasetSampleDto,
 } from './dto/ai-anomaly.dto';
 import { AiAnomalyFastApiClient } from './ai-anomaly-fastapi.client';
 import {
@@ -103,6 +104,38 @@ export class AiAnomalyService {
   }
   async stopModel(modelId: string) {
     return this.fastApiClient.stopModel(modelId);
+  }
+
+  async getDatasetReplayCatalog() {
+    return this.fastApiClient.getDatasetReplayCatalog();
+  }
+
+  async getDatasetReplaySamples(experiment: string) {
+    return this.fastApiClient.getDatasetReplaySamples(experiment);
+  }
+
+  async replayDatasetSample(
+    dto: ReplayImsDatasetSampleDto,
+    actor: AiAnomalyActor,
+  ) {
+    const selected = await this.fastApiClient.getDatasetReplayRows(
+      dto.experiment,
+      dto.timestamp,
+    );
+    const analyses = await this.createAnalysis(
+      {
+        machine_id: dto.machine_id,
+        input_source: AiAnomalyInputSource.DATASET_REPLAY,
+        rows: selected.rows,
+      },
+      actor,
+    );
+    return {
+      dataset: selected.dataset,
+      mode: selected.mode,
+      demoAssociationMachineId: dto.machine_id,
+      analyses,
+    };
   }
 
   async createAnalysis(

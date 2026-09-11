@@ -3826,10 +3826,20 @@
       "validationScope": "Périmètre de validation",
       "features": "Caractéristiques attendues",
       "generalization": "Généralisation",
-      "disableTitle": "Désactiver le modèle"
+      "disableTitle": "Désactiver le modèle",
+      "howItWorks": "Fonctionnement",
+      "componentsExplanation": "Le score Z dynamique et Isolation Forest sont combinés, puis les détections répétées sont évaluées avant d’attribuer le niveau de risque.",
+      "validation": "Validation",
+      "meanPrecision": "Précision moyenne",
+      "meanRecall": "Rappel moyen",
+      "meanF1": "F1 moyen",
+      "meanPrAuc": "PR-AUC moyenne",
+      "technicalDetails": "Détails techniques",
+      "runtimeId": "Identifiant d’exécution",
+      "confirmStop": "Désactiver {name} ? Les nouvelles analyses n’utiliseront plus ce modèle jusqu’à sa réactivation. Toute analyse déjà en cours pourra se terminer."
     },
-    "title": "Surveillance IA des anomalies",
-    "heading": "Surveillance IA des anomalies",
+    "title": "Vue d’ensemble IA",
+    "heading": "Risque actuel des machines",
     "limitationNotice": "Prototype exp?rimental bas? sur le jeu de donn?es public IMS sur les roulements. La validation est actuellement limit?e ? 1st_test et ne prouve pas la g?n?ralisation aux machines IPROTEX.",
     "summary": {
       "latestRiskScore": "Latest risk score",
@@ -3922,6 +3932,23 @@
       "validationScope": "Validation scope",
       "reasonCodes": "Reason codes",
       "proposeWorkOrder": "Propose work order (future)"
+    },
+    "replay": {
+      "open": "Lancer une analyse de jeu de données",
+      "title": "Lancer une analyse IA",
+      "source": "Source",
+      "notice": "Cette analyse rejoue un échantillon du jeu de données de roulements IMS dans le pipeline IA déployé. Elle ne représente pas la télémétrie en direct d’une machine IPROTEX.",
+      "experiment": "Expérience",
+      "sample": "Échantillon",
+      "notValidated": "non validé",
+      "demoMachine": "Machine de démonstration associée",
+      "selectMachine": "Sélectionner une machine pour l’association de démonstration",
+      "demoAssociationNotice": "La machine choisie est une association de démonstration requise par le modèle de données actuel. La mesure ne provient pas de cette machine.",
+      "run": "Lancer l’analyse",
+      "running": "Analyse en cours…",
+      "completed": "Analyse du jeu de données terminée.",
+      "failed": "Échec de l’analyse du jeu de données.",
+      "loadFailed": "Impossible de charger les échantillons."
     }
   }
 }

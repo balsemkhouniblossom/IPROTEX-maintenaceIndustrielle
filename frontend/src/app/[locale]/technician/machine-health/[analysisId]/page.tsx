@@ -38,7 +38,9 @@ function TechnicianMachineHealthDetailContent() {
   const analysisId = String(params.analysisId || "");
 
   const [analysis, setAnalysis] = useState<AiAnomalyAnalysis | null>(null);
-  const [machineRecords, setMachineRecords] = useState<AiAnomalyMachineRecord[]>([]);
+  const [machineRecords, setMachineRecords] = useState<
+    AiAnomalyMachineRecord[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
@@ -46,39 +48,42 @@ function TechnicianMachineHealthDetailContent() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<ToastNotificationState | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    if (!analysisId) return;
-    setLoading(true);
-    setError(null);
-    setServiceUnavailable(false);
-    try {
-      const [analysisResponse, machinesResponse] = await Promise.all([
-        apiService.getAiAnomalyAnalysis(analysisId),
-        apiService
-          .getMachines({ page: 1, limit: 100 }, quiet())
-          .catch(() => null),
-      ]);
-      setAnalysis(analysisResponse.data as AiAnomalyAnalysis);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!analysisId) return;
+      setLoading(true);
+      setError(null);
+      setServiceUnavailable(false);
+      try {
+        const [analysisResponse, machinesResponse] = await Promise.all([
+          apiService.getAiAnomalyAnalysis(analysisId, { signal }),
+          apiService
+            .getMachines({ page: 1, limit: 100 }, quiet())
+            .catch(() => null),
+        ]);
+        setAnalysis(analysisResponse.data as AiAnomalyAnalysis);
 
-      const records = machinesResponse
-        ? ((machinesResponse.data?.items ||
-            machinesResponse.data ||
-            []) as AiAnomalyMachineRecord[])
-        : [];
-      setMachineRecords(records);
-    } catch (err) {
-      if ((err as { name?: string })?.name === "CanceledError") return;
-      const details = extractApiErrorDetails(
-        err,
-        t("technician.machineHealth.states.error"),
-      );
-      setError(details.message);
-      setServiceUnavailable(isAiServiceUnavailable(err));
-    } finally {
-      setLoading(false);
-      setRetrying(false);
-    }
-  }, [analysisId, t]);
+        const records = machinesResponse
+          ? ((machinesResponse.data?.items ||
+              machinesResponse.data ||
+              []) as AiAnomalyMachineRecord[])
+          : [];
+        setMachineRecords(records);
+      } catch (err) {
+        if ((err as { name?: string })?.name === "CanceledError") return;
+        const details = extractApiErrorDetails(
+          err,
+          t("technician.machineHealth.states.error"),
+        );
+        setError(details.message);
+        setServiceUnavailable(isAiServiceUnavailable(err));
+      } finally {
+        setLoading(false);
+        setRetrying(false);
+      }
+    },
+    [analysisId, t],
+  );
 
   useEffect(() => {
     const controller = new AbortController();

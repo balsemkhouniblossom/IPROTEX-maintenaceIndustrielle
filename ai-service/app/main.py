@@ -10,10 +10,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import anomaly, health, models
+from app.api.routes import anomaly, dataset_replay, health, models
 from app.core.config import settings
 from app.services.artifact_bootstrap import ArtifactBootstrapError, ensure_artifacts
 from app.services.inference_service import InferenceService
+from app.services.dataset_replay_service import DatasetReplayService
 from src.inference.ims_anomaly_inference import ImsInferenceError
 
 
@@ -51,6 +52,10 @@ async def lifespan(app: FastAPI):
         extra={"artifact_path": str(artifact_path), "metadata_path": str(metadata_path)},
     )
     app.state.inference_service = InferenceService(artifact_path, metadata_path)
+    app.state.dataset_replay_service = DatasetReplayService(
+        settings.dataset_features_path,
+        app.state.inference_service.pipeline.validated_experiments,
+    )
     yield
 
 
@@ -145,3 +150,4 @@ async def unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
 app.include_router(health.router)
 app.include_router(models.router)
 app.include_router(anomaly.router)
+app.include_router(dataset_replay.router)

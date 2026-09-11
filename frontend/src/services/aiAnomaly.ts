@@ -24,6 +24,7 @@ export type AiAnomalyRuntimeModel = {
   lastExecutionAt?: string;
   lastExecutionDurationMs?: number;
   lastError?: string;
+  validationMetrics: Record<string, unknown>;
 };
 
 export type AiAnomalyAnalysis = {
@@ -70,6 +71,18 @@ export type AiAnomalyMachineRecord = {
   machine_id?: string;
   serial_no?: string;
   model?: string;
+};
+
+export type AiDatasetReplayExperiment = {
+  id: string;
+  sampleCount: number;
+  supported: boolean;
+};
+
+export type AiDatasetReplayCatalog = {
+  dataset: "IMS Bearing";
+  mode: "DATASET_REPLAY";
+  experiments: AiDatasetReplayExperiment[];
 };
 
 export type AiAnomalyFilters = {

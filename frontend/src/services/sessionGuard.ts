@@ -1,8 +1,8 @@
-import { getDashboardPath } from './authRedirect.ts';
-import { getLoginRedirectForAuthFailure } from './authErrors.ts';
+import { getDashboardPath } from "./authRedirect.ts";
+import { getLoginRedirectForAuthFailure } from "./authErrors.ts";
 
-export type SessionRole = 'admin' | 'technician' | 'operator';
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type SessionRole = "admin" | "technician" | "operator";
+export type ApprovalStatus = "pending" | "approved" | "rejected";
 
 export type SessionUser = {
   role?: string | null;
@@ -13,34 +13,34 @@ export type SessionUser = {
 };
 
 export type ProtectedRouteDecision =
-  | { status: 'allow' }
-  | { status: 'redirect'; to: string; reason: string }
-  | { status: 'deny'; to: string; reason: string };
+  | { status: "allow" }
+  | { status: "redirect"; to: string; reason: string }
+  | { status: "deny"; to: string; reason: string };
 
-const KNOWN_ROLES = new Set<SessionRole>(['admin', 'technician', 'operator']);
-const SUPPORTED_LOCALES = new Set(['ar', 'de', 'en', 'es', 'fr', 'it']);
+const KNOWN_ROLES = new Set<SessionRole>(["admin", "technician", "operator"]);
+const SUPPORTED_LOCALES = new Set(["ar", "de", "en", "es", "fr", "it"]);
 const ADMIN_ROUTE_ROOTS = new Set([
-  'capteurs',
-  'catalogues',
-  'devices',
-  'digital-twin',
-  'documents',
-  'intervention-reports',
-  'knowledge-base',
-  'lubrifiants',
-  'lubrification-logs',
-  'machine-types',
-  'maintenance-plans',
-  'mesures',
-  'module-pieces',
-  'module-types',
-  'ot-pieces',
-  'panne-solutions',
-  'pannes',
-  'reports',
-  'stocks',
-  'users',
-  'work-orders',
+  "capteurs",
+  "catalogues",
+  "devices",
+  "digital-twin",
+  "documents",
+  "intervention-reports",
+  "knowledge-base",
+  "lubrifiants",
+  "lubrification-logs",
+  "machine-types",
+  "maintenance-plans",
+  "mesures",
+  "module-pieces",
+  "module-types",
+  "ot-pieces",
+  "panne-solutions",
+  "pannes",
+  "reports",
+  "stocks",
+  "users",
+  "work-orders",
 ]);
 
 export function normalizeRole(role?: string | null): SessionRole | null {
@@ -51,23 +51,25 @@ export function normalizeRole(role?: string | null): SessionRole | null {
 }
 
 export function normalizeLocale(locale?: string | null): string {
-  return locale && SUPPORTED_LOCALES.has(locale) ? locale : 'en';
+  return locale && SUPPORTED_LOCALES.has(locale) ? locale : "en";
 }
 
 export function getLocaleFromPath(pathname?: string | null): string {
-  const firstSegment = pathname?.split('/').find(Boolean);
+  const firstSegment = pathname?.split("/").find(Boolean);
   return normalizeLocale(firstSegment);
 }
 
 export function inferRequiredRoleFromPath(
   pathname?: string | null,
 ): SessionRole | null {
-  const segments = pathname?.split('/').filter(Boolean) ?? [];
+  const segments = pathname?.split("/").filter(Boolean) ?? [];
   const routeRoot = segments.length > 1 ? segments[1] : segments[0];
 
-  if (routeRoot === 'operator') return 'operator';
-  if (routeRoot === 'technician') return 'technician';
-  if (ADMIN_ROUTE_ROOTS.has(routeRoot)) return 'admin';
+  if (routeRoot === "operator") return "operator";
+  if (routeRoot === "technician" && segments[2] === "machine-health")
+    return null;
+  if (routeRoot === "technician") return "technician";
+  if (ADMIN_ROUTE_ROOTS.has(routeRoot)) return "admin";
   return null;
 }
 
@@ -80,56 +82,65 @@ export function getAccountStateRedirect(
   if (!user) {
     return {
       to: `/${safeLocale}/auth/login`,
-      reason: 'missing-session',
+      reason: "missing-session",
     };
   }
 
   if (user.profile_completed === false) {
     return {
       to: `/${safeLocale}/auth/complete-profile`,
-      reason: 'profile-incomplete',
+      reason: "profile-incomplete",
     };
   }
 
-  if (user.approval_status === 'pending') {
+  if (user.approval_status === "pending") {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_PENDING_APPROVAL'),
-      reason: 'approval-pending',
+      to: getLoginRedirectForAuthFailure(
+        safeLocale,
+        "ACCOUNT_PENDING_APPROVAL",
+      ),
+      reason: "approval-pending",
     };
   }
 
-  if (user.approval_status === 'rejected') {
+  if (user.approval_status === "rejected") {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_REJECTED'),
-      reason: 'approval-rejected',
+      to: getLoginRedirectForAuthFailure(safeLocale, "ACCOUNT_REJECTED"),
+      reason: "approval-rejected",
     };
   }
 
   if (user.is_active !== true) {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_INACTIVE'),
-      reason: 'inactive',
+      to: getLoginRedirectForAuthFailure(safeLocale, "ACCOUNT_INACTIVE"),
+      reason: "inactive",
     };
   }
 
   if (user.is_verified !== true) {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, 'EMAIL_NOT_VERIFIED'),
-      reason: 'email-unverified',
+      to: getLoginRedirectForAuthFailure(safeLocale, "EMAIL_NOT_VERIFIED"),
+      reason: "email-unverified",
     };
   }
 
-  if (user.approval_status && user.approval_status !== 'approved') {
+  if (user.approval_status && user.approval_status !== "approved") {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_PENDING_APPROVAL'),
-      reason: 'approval-unknown',
+      to: getLoginRedirectForAuthFailure(
+        safeLocale,
+        "ACCOUNT_PENDING_APPROVAL",
+      ),
+      reason: "approval-unknown",
     };
   }
 
   if (!normalizeRole(user.role)) {
     return {
-      to: getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_ROLE_NOT_ALLOWED'),
-      reason: 'role-invalid',
+      to: getLoginRedirectForAuthFailure(
+        safeLocale,
+        "ACCOUNT_ROLE_NOT_ALLOWED",
+      ),
+      reason: "role-invalid",
     };
   }
 
@@ -157,14 +168,14 @@ export function getAuthenticatedAccountDestination(
 
   return (
     getDashboardPath(safeLocale, user?.role) ??
-    getLoginRedirectForAuthFailure(safeLocale, 'ACCOUNT_ROLE_NOT_ALLOWED')
+    getLoginRedirectForAuthFailure(safeLocale, "ACCOUNT_ROLE_NOT_ALLOWED")
   );
 }
 
 export type CompleteProfileAccessDecision =
-  | { status: 'loading' }
-  | { status: 'redirect'; to: string }
-  | { status: 'show-form' };
+  | { status: "loading" }
+  | { status: "redirect"; to: string }
+  | { status: "show-form" };
 
 /**
  * Pure decision function behind the Complete Profile page's guard. Kept
@@ -183,19 +194,19 @@ export function evaluateCompleteProfileAccess(params: {
   const safeLocale = normalizeLocale(params.locale);
 
   if (isLoading) {
-    return { status: 'loading' };
+    return { status: "loading" };
   }
 
   if (!token || !user) {
-    return { status: 'redirect', to: `/${safeLocale}/auth/login` };
+    return { status: "redirect", to: `/${safeLocale}/auth/login` };
   }
 
   if (user.profile_completed === false) {
-    return { status: 'show-form' };
+    return { status: "show-form" };
   }
 
   return {
-    status: 'redirect',
+    status: "redirect",
     to: getAuthenticatedAccountDestination(safeLocale, user),
   };
 }
@@ -207,11 +218,13 @@ export function evaluateProtectedRouteAccess(params: {
   allowedRoles?: string[];
   locale?: string;
 }): ProtectedRouteDecision {
-  const locale = normalizeLocale(params.locale ?? getLocaleFromPath(params.pathname));
+  const locale = normalizeLocale(
+    params.locale ?? getLocaleFromPath(params.pathname),
+  );
   const accountRedirect = getAccountStateRedirect(locale, params.user);
 
   if (accountRedirect) {
-    return { status: 'redirect', ...accountRedirect };
+    return { status: "redirect", ...accountRedirect };
   }
 
   const role = normalizeRole(params.user?.role);
@@ -222,14 +235,14 @@ export function evaluateProtectedRouteAccess(params: {
     .filter((candidate): candidate is SessionRole => Boolean(candidate));
 
   if (requiredRole && role !== requiredRole) {
-    return redirectToOwnDashboard(locale, role, 'required-role-mismatch');
+    return redirectToOwnDashboard(locale, role, "required-role-mismatch");
   }
 
   if (allowedRoles?.length && (!role || !allowedRoles.includes(role))) {
-    return redirectToOwnDashboard(locale, role, 'allowed-role-mismatch');
+    return redirectToOwnDashboard(locale, role, "allowed-role-mismatch");
   }
 
-  return { status: 'allow' };
+  return { status: "allow" };
 }
 
 function redirectToOwnDashboard(
@@ -240,10 +253,10 @@ function redirectToOwnDashboard(
   const ownDashboard = getDashboardPath(locale, role);
 
   return ownDashboard
-    ? { status: 'deny', to: ownDashboard, reason }
+    ? { status: "deny", to: ownDashboard, reason }
     : {
-        status: 'redirect',
-        to: getLoginRedirectForAuthFailure(locale, 'ACCOUNT_ROLE_NOT_ALLOWED'),
+        status: "redirect",
+        to: getLoginRedirectForAuthFailure(locale, "ACCOUNT_ROLE_NOT_ALLOWED"),
         reason,
       };
 }

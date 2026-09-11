@@ -19,6 +19,9 @@ describe('AiAnomalyController', () => {
     validateAnalysis: jest.fn(),
     startModel: jest.fn(),
     stopModel: jest.fn(),
+    getDatasetReplayCatalog: jest.fn(),
+    getDatasetReplaySamples: jest.fn(),
+    replayDatasetSample: jest.fn(),
   };
 
   let controller: AiAnomalyController;
@@ -86,6 +89,24 @@ describe('AiAnomalyController', () => {
     ).toEqual([Role.ADMIN]);
     expect(
       Reflect.getMetadata(ROLES_KEY, controllerMethod('stopModel')),
+    ).toEqual([Role.ADMIN]);
+  });
+
+  it('restricts dataset replay selection and execution to administrators', () => {
+    expect(
+      Reflect.getMetadata(
+        ROLES_KEY,
+        controllerMethod('getDatasetReplayCatalog'),
+      ),
+    ).toEqual([Role.ADMIN]);
+    expect(
+      Reflect.getMetadata(
+        ROLES_KEY,
+        controllerMethod('getDatasetReplaySamples'),
+      ),
+    ).toEqual([Role.ADMIN]);
+    expect(
+      Reflect.getMetadata(ROLES_KEY, controllerMethod('replayDatasetSample')),
     ).toEqual([Role.ADMIN]);
   });
 

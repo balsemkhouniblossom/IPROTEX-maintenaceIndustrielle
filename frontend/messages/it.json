@@ -3826,10 +3826,20 @@
       "validationScope": "Ambito di validazione",
       "features": "Caratteristiche previste",
       "generalization": "Generalizzazione",
-      "disableTitle": "Disabilita modello"
+      "disableTitle": "Disabilita modello",
+      "howItWorks": "Come funziona",
+      "componentsExplanation": "Z-score dinamico e Isolation Forest vengono combinati; le rilevazioni ripetute determinano poi il rischio operativo.",
+      "validation": "Validazione",
+      "meanPrecision": "Precisione media",
+      "meanRecall": "Richiamo medio",
+      "meanF1": "F1 medio",
+      "meanPrAuc": "PR-AUC media",
+      "technicalDetails": "Dettagli tecnici",
+      "runtimeId": "Identificatore runtime",
+      "confirmStop": "Disabilitare {name}? Le nuove analisi non useranno questo modello finché non verrà riattivato. Le analisi già in corso potranno terminare."
     },
-    "title": "Monitoraggio anomalie IA",
-    "heading": "Monitoraggio anomalie IA",
+    "title": "Panoramica IA",
+    "heading": "Rischio attuale delle macchine",
     "limitationNotice": "Prototipo sperimentale basato sul dataset pubblico IMS sui cuscinetti. La validazione ? attualmente limitata a 1st_test e non dimostra la generalizzazione alle macchine IPROTEX.",
     "summary": {
       "latestRiskScore": "Latest risk score",
@@ -3922,6 +3932,23 @@
       "validationScope": "Validation scope",
       "reasonCodes": "Reason codes",
       "proposeWorkOrder": "Propose work order (future)"
+    },
+    "replay": {
+      "open": "Esegui analisi del dataset",
+      "title": "Esegui analisi IA",
+      "source": "Origine",
+      "notice": "Questa analisi riproduce un campione del dataset dei cuscinetti IMS nel sistema IA distribuito. Non rappresenta telemetria in tempo reale di una macchina IPROTEX.",
+      "experiment": "Esperimento",
+      "sample": "Campione",
+      "notValidated": "non convalidato",
+      "demoMachine": "Macchina demo associata",
+      "selectMachine": "Seleziona una macchina per l’associazione demo",
+      "demoAssociationNotice": "La macchina selezionata è un’associazione dimostrativa richiesta dal modello dati attuale. La misurazione non proviene da questa macchina.",
+      "run": "Esegui analisi",
+      "running": "Analisi in corso…",
+      "completed": "Analisi del dataset completata.",
+      "failed": "Analisi del dataset non riuscita.",
+      "loadFailed": "Impossibile caricare i campioni."
     }
   }
 }

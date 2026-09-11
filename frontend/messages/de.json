@@ -3826,10 +3826,20 @@
       "validationScope": "Validierungsumfang",
       "features": "Erwartete Merkmale",
       "generalization": "Übertragbarkeit",
-      "disableTitle": "Modell deaktivieren"
+      "disableTitle": "Modell deaktivieren",
+      "howItWorks": "Funktionsweise",
+      "componentsExplanation": "Dynamischer Z-Score und Isolation Forest werden kombiniert. Wiederholte Erkennungen bestimmen anschließend das Betriebsrisiko.",
+      "validation": "Validierung",
+      "meanPrecision": "Mittlere Präzision",
+      "meanRecall": "Mittlerer Recall",
+      "meanF1": "Mittlerer F1",
+      "meanPrAuc": "Mittlere PR-AUC",
+      "technicalDetails": "Technische Details",
+      "runtimeId": "Laufzeitkennung",
+      "confirmStop": "{name} deaktivieren? Neue Analysen verwenden dieses Modell erst wieder nach der Aktivierung. Bereits laufende Analysen dürfen abgeschlossen werden."
     },
-    "title": "KI-Anomalie?berwachung",
-    "heading": "KI-Anomalie?berwachung",
+    "title": "KI-Übersicht",
+    "heading": "Aktuelles Maschinenrisiko",
     "limitationNotice": "Experimenteller Prototyp auf Basis des ?ffentlichen IMS-Lagerdatensatzes. Die Validierung ist derzeit auf 1st_test begrenzt und belegt keine Generalisierung auf IPROTEX-Maschinen.",
     "summary": {
       "latestRiskScore": "Latest risk score",
@@ -3922,6 +3932,23 @@
       "validationScope": "Validation scope",
       "reasonCodes": "Reason codes",
       "proposeWorkOrder": "Propose work order (future)"
+    },
+    "replay": {
+      "open": "Datensatzanalyse ausführen",
+      "title": "KI-Analyse ausführen",
+      "source": "Quelle",
+      "notice": "Diese Analyse spielt eine Probe aus dem IMS-Lagerdatensatz über die bereitgestellte KI-Pipeline ab. Sie stellt keine Live-Telemetrie einer IPROTEX-Maschine dar.",
+      "experiment": "Experiment",
+      "sample": "Probe",
+      "notValidated": "nicht validiert",
+      "demoMachine": "Zugeordnete Demo-Maschine",
+      "selectMachine": "Maschine für die Demo-Zuordnung auswählen",
+      "demoAssociationNotice": "Die ausgewählte Maschine ist eine vom aktuellen Datenmodell benötigte Demo-Zuordnung. Die Messung stammt nicht von dieser Maschine.",
+      "run": "Analyse ausführen",
+      "running": "Analyse läuft…",
+      "completed": "Datensatzanalyse abgeschlossen.",
+      "failed": "Datensatzanalyse fehlgeschlagen.",
+      "loadFailed": "Datensatzproben konnten nicht geladen werden."
     }
   }
 }

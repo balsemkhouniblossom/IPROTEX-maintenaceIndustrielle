@@ -111,7 +111,14 @@ test("valid role access is allowed using current backend user role", () => {
 
 test("route role inference protects dashboards without explicit props", () => {
   assert.equal(inferRequiredRoleFromPath("/en/operator/machines"), "operator");
-  assert.equal(inferRequiredRoleFromPath("/en/technician/work-orders"), "technician");
+  assert.equal(
+    inferRequiredRoleFromPath("/en/technician/work-orders"),
+    "technician",
+  );
+  assert.equal(
+    inferRequiredRoleFromPath("/en/technician/machine-health"),
+    null,
+  );
   assert.equal(inferRequiredRoleFromPath("/en/documents"), "admin");
 });
 
@@ -128,7 +135,10 @@ test("management routes require admin while explicitly shared routes remain shar
   }
   assert.equal(inferRequiredRoleFromPath("/ar/machines"), null);
   assert.equal(inferRequiredRoleFromPath("/en/ai-anomaly"), null);
-  assert.equal(inferRequiredRoleFromPath("/en/preventive-task-checklist"), null);
+  assert.equal(
+    inferRequiredRoleFromPath("/en/preventive-task-checklist"),
+    null,
+  );
 
   assert.equal(
     evaluateProtectedRouteAccess({
@@ -146,7 +156,10 @@ test("not-found recovery returns each authenticated role to its localized worksp
   );
 
   assert.match(source, /role === "operator"[\s\S]*`\/\$\{locale\}\/operator`/);
-  assert.match(source, /role === "technician"[\s\S]*`\/\$\{locale\}\/technician`/);
+  assert.match(
+    source,
+    /role === "technician"[\s\S]*`\/\$\{locale\}\/technician`/,
+  );
   assert.match(source, /role === "admin"[\s\S]*`\/\$\{locale\}`/);
   assert.match(source, /`\/\$\{locale\}\/auth\/login`/);
 });
@@ -181,9 +194,15 @@ test("protected route status messages are translated in every supported locale",
 
     assert.equal(typeof messages.auth.protected.loading, "string");
     assert.equal(typeof messages.auth.protected.redirectingTitle, "string");
-    assert.equal(typeof messages.auth.protected.redirectingDescription, "string");
+    assert.equal(
+      typeof messages.auth.protected.redirectingDescription,
+      "string",
+    );
     assert.equal(typeof messages.auth.protected.accessDeniedTitle, "string");
-    assert.equal(typeof messages.auth.protected.accessDeniedDescription, "string");
+    assert.equal(
+      typeof messages.auth.protected.accessDeniedDescription,
+      "string",
+    );
   }
 });
 

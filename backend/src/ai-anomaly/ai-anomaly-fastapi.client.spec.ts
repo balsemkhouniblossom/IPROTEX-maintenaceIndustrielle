@@ -79,6 +79,56 @@ describe('AiAnomalyFastApiClient', () => {
     );
   });
 
+  it('loads dataset replay metadata and selected rows through authenticated endpoints', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          dataset: 'IMS Bearing',
+          mode: 'DATASET_REPLAY',
+          experiments: [],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          experiment: '1st_test',
+          samples: ['2003-10-22T12:06:24'],
+          total: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          dataset: 'IMS Bearing',
+          mode: 'DATASET_REPLAY',
+          rows: [],
+        }),
+      );
+    const client = new AiAnomalyFastApiClient(
+      config({ AI_SERVICE_ENABLED: 'true', AI_SERVICE_URL: 'http://ai:8011' }),
+    );
+
+    await client.getDatasetReplayCatalog();
+    await client.getDatasetReplaySamples('1st_test');
+    await client.getDatasetReplayRows('1st_test', '2003-10-22T12:06:24');
+
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      2,
+      'http://ai:8011/v1/dataset-replay/samples?experiment=1st_test',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      3,
+      'http://ai:8011/v1/dataset-replay/sample',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          experiment: '1st_test',
+          timestamp: '2003-10-22T12:06:24',
+        }),
+      }),
+    );
+  });
+
   it('fails closed when service authentication is not configured', async () => {
     global.fetch = jest.fn();
     const client = new AiAnomalyFastApiClient(

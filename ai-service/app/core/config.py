@@ -30,6 +30,12 @@ class Settings:
             str(ROOT_DIR / "artifacts" / "models" / "ims_selected_anomaly_model_v0_1_0.json"),
         )
     )
+    dataset_features_path: Path = Path(
+        os.getenv(
+            "IMS_FEATURES_PATH",
+            str(ROOT_DIR / "app" / "data" / "ims_replay_samples_v0_1_0.json"),
+        )
+    )
     cors_origins: tuple[str, ...] = tuple(_csv_env("AI_SERVICE_CORS_ORIGINS", "http://localhost:3000"))
     max_request_bytes: int = int(os.getenv("AI_SERVICE_MAX_REQUEST_BYTES", "1048576"))
     max_batch_rows: int = int(os.getenv("AI_SERVICE_MAX_BATCH_ROWS", "512"))

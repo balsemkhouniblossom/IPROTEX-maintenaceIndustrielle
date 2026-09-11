@@ -741,6 +741,14 @@ export const apiService = {
     api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/start`),
   stopAiAnomalyModel: (modelId: string) =>
     api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/stop`),
+  getAiDatasetReplayCatalog: () => api.get("/ai-anomaly/dataset-replay/catalog"),
+  getAiDatasetReplaySamples: (experiment: string) =>
+    api.get("/ai-anomaly/dataset-replay/samples", { params: { experiment } }),
+  replayAiDatasetSample: (data: {
+    machine_id: string;
+    experiment: string;
+    timestamp: string;
+  }) => api.post("/ai-anomaly/dataset-replay", data),
   getAiAnomalyAnalyses: (
     params?: {
       page?: number;
@@ -771,7 +779,8 @@ export const apiService = {
       params,
       signal: options?.signal,
     }),
-  getAiAnomalyAnalysis: (id: string) => api.get(`/ai-anomaly/analyses/${id}`),
+  getAiAnomalyAnalysis: (id: string, options?: { signal?: AbortSignal }) =>
+    api.get(`/ai-anomaly/analyses/${id}`, { signal: options?.signal }),
   validateAiAnomalyAnalysis: (
     id: string,
     data: {

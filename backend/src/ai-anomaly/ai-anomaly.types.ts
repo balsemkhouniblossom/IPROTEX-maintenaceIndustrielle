@@ -70,6 +70,25 @@ export type AiAnomalyRuntimeModel = {
   lastExecutionAt?: string;
   lastExecutionDurationMs?: number;
   lastError?: string;
+  validationMetrics: Record<string, unknown>;
 };
 
 export type AiAnomalyModelMetadata = { models: AiAnomalyRuntimeModel[] };
+
+export type AiDatasetReplayCatalog = {
+  dataset: 'IMS Bearing';
+  mode: 'DATASET_REPLAY';
+  experiments: Array<{ id: string; sampleCount: number; supported: boolean }>;
+};
+
+export type AiDatasetReplaySamples = {
+  experiment: string;
+  samples: string[];
+  total: number;
+};
+
+export type AiDatasetReplayRows = {
+  dataset: 'IMS Bearing';
+  mode: 'DATASET_REPLAY';
+  rows: ImsAnomalyFeatureRow[];
+};

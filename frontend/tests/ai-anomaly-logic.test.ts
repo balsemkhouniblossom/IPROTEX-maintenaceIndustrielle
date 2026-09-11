@@ -112,6 +112,38 @@ test("model runtime UI polls real backend state and limits controls to Admin", (
     readSource("messages/en.json"),
     /not live IPROTEX machine telemetry/i,
   );
+  assert.match(source, /setModelToDisable\(model\)/);
+  assert.doesNotMatch(source, /window\.confirm|alert\(/);
+});
+
+test("AI navigation separates Admin overview from machine health", () => {
+  const layout = readSource(LAYOUT);
+  assert.match(
+    layout,
+    /name: t\("navigation\.aiAnalytics"\),\s*href: "\/ai-anomaly"/,
+  );
+  assert.match(
+    layout,
+    /name: t\("navigation\.machineHealth"\),\s*href: "\/technician\/machine-health"/,
+  );
+  assert.match(
+    layout,
+    /name: t\("navigation\.sensors"\),\s*href: "\/capteurs"/,
+  );
+});
+
+test("Machine Health supports Admin and Technician and shows replay provenance", () => {
+  const list = readSource(
+    "src/app/[locale]/technician/machine-health/page.tsx",
+  );
+  const detail = readSource(
+    "src/app/[locale]/technician/machine-health/[analysisId]/page.tsx",
+  );
+  const card = readSource("src/components/technician/MachineHealthCard.tsx");
+  assert.match(list, /allowedRoles=\{\["admin", "technician"\]\}/);
+  assert.match(detail, /allowedRoles=\{\["admin", "technician"\]\}/);
+  assert.doesNotMatch(detail, /getAiAnomalyMachineHistory\(""/);
+  assert.match(card, /source\.DATASET_REPLAY/);
 });
 
 test("filters support machine, risk level, validation status, date range and pagination", () => {
@@ -210,6 +242,16 @@ test("dataset replay is labelled as IMS replay and never as live IPROTEX measure
   assert.equal(sourceLabelKey("DATASET_REPLAY"), "sources.datasetReplay");
   assert.equal(AI_ANOMALY_DATASET_REPLAY_LABEL, "IMS dataset replay");
   assert.doesNotMatch(readSource(PAGE), /live IPROTEX sensor measurements/i);
+});
+
+test("dataset replay selects protected server samples and labels machine mapping as demo-only", () => {
+  const source = readSource(PAGE);
+  assert.match(source, /getAiDatasetReplayCatalog/);
+  assert.match(source, /getAiDatasetReplaySamples\(experiment\)/);
+  assert.match(source, /replayAiDatasetSample/);
+  assert.match(source, /demoAssociationNotice/);
+  assert.match(source, /user\?\.role === "admin"/);
+  assert.doesNotMatch(source, /name=["'](?:rms|kurtosis|spectral_energy)["']/);
 });
 
 test("chart data is chronological", () => {

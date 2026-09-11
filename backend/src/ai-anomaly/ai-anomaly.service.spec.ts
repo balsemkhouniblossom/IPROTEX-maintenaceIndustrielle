@@ -120,6 +120,11 @@ describe('AiAnomalyService', () => {
     };
     const fastApiClient = {
       getModels: jest.fn().mockResolvedValue({ modelVersion: '0.1.0' }),
+      getDatasetReplayRows: jest.fn().mockResolvedValue({
+        dataset: 'IMS Bearing',
+        mode: 'DATASET_REPLAY',
+        rows: [row()],
+      }),
       analyze: jest.fn().mockResolvedValue({ results: [result] }),
       analyzeBatch: jest.fn().mockResolvedValue({ results: [result] }),
     };
@@ -152,6 +157,35 @@ describe('AiAnomalyService', () => {
     input_source: AiAnomalyInputSource.DATASET_REPLAY,
     rows: [row()],
   };
+
+  it('replays only server-selected IMS rows and preserves the demo machine association', async () => {
+    const { service, fastApiClient } = makeService();
+    const adminActor = { userId, role: Role.ADMIN };
+
+    const response = await service.replayDatasetSample(
+      {
+        machine_id: machineId,
+        experiment: '1st_test',
+        timestamp: row().timestamp,
+      },
+      adminActor,
+    );
+
+    expect(fastApiClient.getDatasetReplayRows).toHaveBeenCalledWith(
+      '1st_test',
+      row().timestamp,
+    );
+    expect(fastApiClient.analyze).toHaveBeenCalledWith({
+      stream_id: `${machineId}:machine`,
+      rows: [row()],
+    });
+    expect(response).toMatchObject({
+      dataset: 'IMS Bearing',
+      mode: 'DATASET_REPLAY',
+      demoAssociationMachineId: machineId,
+      analyses: [expect.objectContaining({ machine_id: machineId })],
+    });
+  });
 
   it('stores a valid single inference after a successful FastAPI response', async () => {
     const { service, analysisModel, fastApiClient, notificationCenterService } =

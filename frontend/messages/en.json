@@ -3826,10 +3826,20 @@
       "validationScope": "Validation scope",
       "features": "Expected features",
       "generalization": "Generalization",
-      "disableTitle": "Disable model"
+      "disableTitle": "Disable model",
+      "howItWorks": "How it works",
+      "componentsExplanation": "Dynamic Z-score and Isolation Forest are combined, then repeated detections are evaluated before assigning operational risk.",
+      "validation": "Validation",
+      "meanPrecision": "Mean precision",
+      "meanRecall": "Mean recall",
+      "meanF1": "Mean F1",
+      "meanPrAuc": "Mean PR-AUC",
+      "technicalDetails": "Technical details",
+      "runtimeId": "Runtime identifier",
+      "confirmStop": "Disable {name}? New analyses will not use this model until it is enabled again. Any analysis already running will be allowed to finish."
     },
-    "title": "AI Anomaly Monitoring",
-    "heading": "AI Anomaly Monitoring",
+    "title": "AI Overview",
+    "heading": "Current Machine Risk",
     "limitationNotice": "Experimental prototype based on the public IMS bearing dataset. Validation is currently limited to 1st_test and does not establish generalization to IPROTEX machines.",
     "summary": {
       "latestRiskScore": "Latest risk score",
@@ -3922,6 +3932,23 @@
       "validationScope": "Validation scope",
       "reasonCodes": "Reason codes",
       "proposeWorkOrder": "Propose work order (future)"
+    },
+    "replay": {
+      "open": "Run Dataset Analysis",
+      "title": "Run AI Analysis",
+      "source": "Source",
+      "notice": "This analysis replays a sample from the IMS bearing dataset through the deployed AI pipeline. It does not represent live IPROTEX machine telemetry.",
+      "experiment": "Experiment",
+      "sample": "Sample",
+      "notValidated": "not validated",
+      "demoMachine": "Associated demo machine",
+      "selectMachine": "Select a machine for demo association",
+      "demoAssociationNotice": "The selected machine is a demo association required by the current record model. The measurement did not come from that machine.",
+      "run": "Run Analysis",
+      "running": "Analysis running…",
+      "completed": "Dataset analysis completed.",
+      "failed": "Dataset analysis failed.",
+      "loadFailed": "Dataset samples could not be loaded."
     }
   }
 }

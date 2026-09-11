@@ -3826,10 +3826,20 @@
       "validationScope": "Ámbito de validación",
       "features": "Características esperadas",
       "generalization": "Generalización",
-      "disableTitle": "Desactivar modelo"
+      "disableTitle": "Desactivar modelo",
+      "howItWorks": "Cómo funciona",
+      "componentsExplanation": "El Z-score dinámico e Isolation Forest se combinan; después se evalúan las detecciones repetidas antes de asignar el riesgo.",
+      "validation": "Validación",
+      "meanPrecision": "Precisión media",
+      "meanRecall": "Exhaustividad media",
+      "meanF1": "F1 medio",
+      "meanPrAuc": "PR-AUC media",
+      "technicalDetails": "Detalles técnicos",
+      "runtimeId": "Identificador de ejecución",
+      "confirmStop": "¿Desactivar {name}? Los análisis nuevos no usarán este modelo hasta que se vuelva a activar. Los análisis que ya estén en curso podrán finalizar."
     },
-    "title": "Monitoreo de anomal?as con IA",
-    "heading": "Monitoreo de anomal?as con IA",
+    "title": "Resumen de IA",
+    "heading": "Riesgo actual de las máquinas",
     "limitationNotice": "Prototipo experimental basado en el conjunto p?blico IMS de rodamientos. La validaci?n est? limitada actualmente a 1st_test y no demuestra generalizaci?n a m?quinas IPROTEX.",
     "summary": {
       "latestRiskScore": "Latest risk score",
@@ -3922,6 +3932,23 @@
       "validationScope": "Validation scope",
       "reasonCodes": "Reason codes",
       "proposeWorkOrder": "Propose work order (future)"
+    },
+    "replay": {
+      "open": "Ejecutar análisis del conjunto de datos",
+      "title": "Ejecutar análisis de IA",
+      "source": "Fuente",
+      "notice": "Este análisis reproduce una muestra del conjunto de datos de rodamientos IMS mediante el sistema de IA desplegado. No representa telemetría en vivo de una máquina IPROTEX.",
+      "experiment": "Experimento",
+      "sample": "Muestra",
+      "notValidated": "no validado",
+      "demoMachine": "Máquina de demostración asociada",
+      "selectMachine": "Seleccione una máquina para la asociación de demostración",
+      "demoAssociationNotice": "La máquina seleccionada es una asociación de demostración requerida por el modelo de registro actual. La medición no procede de esa máquina.",
+      "run": "Ejecutar análisis",
+      "running": "Análisis en curso…",
+      "completed": "Análisis del conjunto de datos completado.",
+      "failed": "Falló el análisis del conjunto de datos.",
+      "loadFailed": "No se pudieron cargar las muestras."
     }
   }
 }

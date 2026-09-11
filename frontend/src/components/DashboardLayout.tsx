@@ -740,7 +740,9 @@ function DashboardLayoutBody({
                                   className={`nav-link-modern ${childActive ? "active" : ""}`}
                                   onClick={() => setSidebarOpen(false)}
                                   title={child.name}
-                                  aria-current={childActive ? "page" : undefined}
+                                  aria-current={
+                                    childActive ? "page" : undefined
+                                  }
                                 >
                                   <ChildIcon className="h-4 w-4 shrink-0" />
                                   <span className="min-w-0 flex-1 truncate text-sm">

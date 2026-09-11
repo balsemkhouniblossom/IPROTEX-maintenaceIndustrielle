@@ -12,6 +12,9 @@ import {
   AiAnomalyFastApiResult,
   AiAnomalyFastApiResults,
   AiAnomalyModelMetadata,
+  AiDatasetReplayCatalog,
+  AiDatasetReplayRows,
+  AiDatasetReplaySamples,
 } from './ai-anomaly.types';
 
 const DEFAULT_AI_SERVICE_URL = 'http://127.0.0.1:8011';
@@ -162,6 +165,9 @@ function validateModelMetadata(value: unknown): AiAnomalyModelMetadata {
           : undefined,
       lastError:
         typeof model.lastError === 'string' ? model.lastError : undefined,
+      validationMetrics: isObject(model.validationMetrics)
+        ? model.validationMetrics
+        : {},
     })),
   };
 }
@@ -223,11 +229,38 @@ export class AiAnomalyFastApiClient {
     return validateResults(response);
   }
 
+  async getDatasetReplayCatalog(): Promise<AiDatasetReplayCatalog> {
+    return (await this.request('/v1/dataset-replay/catalog', {
+      method: 'GET',
+      idempotent: true,
+    })) as AiDatasetReplayCatalog;
+  }
+
+  async getDatasetReplaySamples(
+    experiment: string,
+  ): Promise<AiDatasetReplaySamples> {
+    return (await this.request(
+      `/v1/dataset-replay/samples?experiment=${encodeURIComponent(experiment)}`,
+      { method: 'GET', idempotent: true },
+    )) as AiDatasetReplaySamples;
+  }
+
+  async getDatasetReplayRows(
+    experiment: string,
+    timestamp: string,
+  ): Promise<AiDatasetReplayRows> {
+    return (await this.request('/v1/dataset-replay/sample', {
+      method: 'POST',
+      payload: { experiment, timestamp },
+      idempotent: true,
+    })) as AiDatasetReplayRows;
+  }
+
   private async request(
     path: string,
     options: {
       method: 'GET' | 'POST';
-      payload?: AiAnomalyFastApiPayload;
+      payload?: unknown;
       idempotent: boolean;
     },
   ): Promise<unknown> {
@@ -241,7 +274,10 @@ export class AiAnomalyFastApiClient {
     const timeoutMs = this.resolveTimeoutMs();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const rowCount = options.payload?.rows.length ?? 0;
+    const rowCount =
+      isObject(options.payload) && Array.isArray(options.payload.rows)
+        ? options.payload.rows.length
+        : 0;
     const serviceToken = this.configService
       .get<string>('AI_SERVICE_TOKEN')
       ?.trim();

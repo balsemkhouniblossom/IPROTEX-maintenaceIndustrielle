@@ -139,6 +139,9 @@ class InferenceService:
             "lastExecutionAt": self._last_execution_at,
             "lastExecutionDurationMs": self._last_execution_duration_ms,
             "lastError": self._last_error,
+            "validationMetrics": deepcopy(
+                self.pipeline.metadata.get("selection", {}).get("selected", {})
+            ),
         }
 
     def start(self) -> dict[str, Any]:

@@ -134,7 +134,38 @@ class ModelMetadata(BaseModel):
     lastExecutionAt: str | None = None
     lastExecutionDurationMs: float | None = None
     lastError: str | None = None
+    validationMetrics: dict[str, object]
 
 
 class ModelsResponse(BaseModel):
     models: list[ModelMetadata]
+
+
+class DatasetReplayExperiment(BaseModel):
+    id: str
+    sampleCount: int
+    supported: bool
+
+
+class DatasetReplayCatalog(BaseModel):
+    dataset: Literal["IMS Bearing"]
+    mode: Literal["DATASET_REPLAY"]
+    experiments: list[DatasetReplayExperiment]
+
+
+class DatasetReplaySamples(BaseModel):
+    experiment: str
+    samples: list[str]
+    total: int
+
+
+class DatasetReplaySelection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    experiment: str = Field(min_length=1)
+    timestamp: datetime
+
+
+class DatasetReplayRows(BaseModel):
+    dataset: Literal["IMS Bearing"]
+    mode: Literal["DATASET_REPLAY"]
+    rows: list[ImsFeatureRow]

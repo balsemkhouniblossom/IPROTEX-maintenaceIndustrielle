@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
@@ -46,7 +44,9 @@ function TechnicianMachineHealthContent() {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const [analyses, setAnalyses] = useState<AiAnomalyAnalysis[]>([]);
-  const [machineRecords, setMachineRecords] = useState<AiAnomalyMachineRecord[]>([]);
+  const [machineRecords, setMachineRecords] = useState<
+    AiAnomalyMachineRecord[]
+  >([]);
   const [filter, setFilter] = useState<MachineHealthFilter>("ALL");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -55,46 +55,52 @@ function TechnicianMachineHealthContent() {
   const [retrying, setRetrying] = useState(false);
   const [toast, setToast] = useState<ToastNotificationState | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    setServiceUnavailable(false);
-    try {
-      const [analysesResponse, machinesResponse] = await Promise.all([
-        apiService.getAiAnomalyAnalyses(
-          {
-            page: 1,
-            limit: 200,
-            input_source: "DATASET_REPLAY",
-          },
-          { signal },
-        ),
-        apiService
-          .getMachines({ page: 1, limit: 100 }, quiet())
-          .catch(() => null),
-      ]);
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError(null);
+      setServiceUnavailable(false);
+      try {
+        const [analysesResponse, machinesResponse] = await Promise.all([
+          apiService.getAiAnomalyAnalyses(
+            {
+              page: 1,
+              limit: 200,
+              input_source: "DATASET_REPLAY",
+            },
+            { signal },
+          ),
+          apiService
+            .getMachines({ page: 1, limit: 100 }, quiet())
+            .catch(() => null),
+        ]);
 
-      const items = (analysesResponse.data?.items ||
-        analysesResponse.data ||
-        []) as AiAnomalyAnalysis[];
-      setAnalyses(items);
+        const items = (analysesResponse.data?.items ||
+          analysesResponse.data ||
+          []) as AiAnomalyAnalysis[];
+        setAnalyses(items);
 
-      const records = machinesResponse
-        ? ((machinesResponse.data?.items ||
-            machinesResponse.data ||
-            []) as AiAnomalyMachineRecord[])
-        : [];
-      setMachineRecords(records);
-    } catch (err) {
-      if ((err as { name?: string })?.name === "CanceledError") return;
-      const details = extractApiErrorDetails(err, t("technician.machineHealth.states.error"));
-      setError(details.message);
-      setServiceUnavailable(isAiServiceUnavailable(err));
-    } finally {
-      setLoading(false);
-      setRetrying(false);
-    }
-  }, [t]);
+        const records = machinesResponse
+          ? ((machinesResponse.data?.items ||
+              machinesResponse.data ||
+              []) as AiAnomalyMachineRecord[])
+          : [];
+        setMachineRecords(records);
+      } catch (err) {
+        if ((err as { name?: string })?.name === "CanceledError") return;
+        const details = extractApiErrorDetails(
+          err,
+          t("technician.machineHealth.states.error"),
+        );
+        setError(details.message);
+        setServiceUnavailable(isAiServiceUnavailable(err));
+      } finally {
+        setLoading(false);
+        setRetrying(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -183,7 +189,9 @@ function TechnicianMachineHealthContent() {
             {FILTERS.map((value) => {
               const isActive = filter === value;
               const count = filterCounts[value];
-              const label = t(`technician.machineHealth.${filterLabelKey(value)}`);
+              const label = t(
+                `technician.machineHealth.${filterLabelKey(value)}`,
+              );
               return (
                 <button
                   key={value}

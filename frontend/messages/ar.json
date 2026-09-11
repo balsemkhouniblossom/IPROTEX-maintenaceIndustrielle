@@ -3826,10 +3826,20 @@
       "validationScope": "نطاق التحقق",
       "features": "الخصائص المتوقعة",
       "generalization": "قابلية التعميم",
-      "disableTitle": "تعطيل النموذج"
+      "disableTitle": "تعطيل النموذج",
+      "howItWorks": "كيفية العمل",
+      "componentsExplanation": "يُجمع بين درجة Z الديناميكية وIsolation Forest، ثم تُقيّم الاكتشافات المتكررة قبل تحديد مستوى الخطر التشغيلي.",
+      "validation": "التحقق",
+      "meanPrecision": "متوسط الدقة",
+      "meanRecall": "متوسط الاستدعاء",
+      "meanF1": "متوسط F1",
+      "meanPrAuc": "متوسط PR-AUC",
+      "technicalDetails": "التفاصيل التقنية",
+      "runtimeId": "معرّف وقت التشغيل",
+      "confirmStop": "هل تريد تعطيل {name}؟ لن تستخدم التحليلات الجديدة هذا النموذج حتى تتم إعادة تفعيله. وسيُسمح لأي تحليل جارٍ بالاكتمال."
     },
-    "title": "?????? ?????? ??????? ?????????",
-    "heading": "?????? ?????? ??????? ?????????",
+    "title": "نظرة عامة على الذكاء الاصطناعي",
+    "heading": "مخاطر الآلات الحالية",
     "limitationNotice": "????? ???? ?????? ????? ??? ?????? ?????? IMS ?????? ???????. ????? ?????? ????? ??? 1st_test ??? ???? ??????? ??? ???? IPROTEX.",
     "summary": {
       "latestRiskScore": "Latest risk score",
@@ -3922,6 +3932,23 @@
       "validationScope": "Validation scope",
       "reasonCodes": "Reason codes",
       "proposeWorkOrder": "Propose work order (future)"
+    },
+    "replay": {
+      "open": "تشغيل تحليل مجموعة البيانات",
+      "title": "تشغيل تحليل الذكاء الاصطناعي",
+      "source": "المصدر",
+      "notice": "يعيد هذا التحليل تشغيل عينة من مجموعة بيانات محامل IMS عبر مسار الذكاء الاصطناعي المنشور. ولا يمثل قياسات مباشرة لآلة IPROTEX.",
+      "experiment": "التجربة",
+      "sample": "العينة",
+      "notValidated": "غير متحقق منها",
+      "demoMachine": "آلة تجريبية مرتبطة",
+      "selectMachine": "اختر آلة للربط التجريبي",
+      "demoAssociationNotice": "الآلة المختارة ارتباط تجريبي يفرضه نموذج السجل الحالي. لم تؤخذ القياسات من هذه الآلة.",
+      "run": "تشغيل التحليل",
+      "running": "التحليل قيد التشغيل…",
+      "completed": "اكتمل تحليل مجموعة البيانات.",
+      "failed": "فشل تحليل مجموعة البيانات.",
+      "loadFailed": "تعذر تحميل عينات مجموعة البيانات."
     }
   }
 }

@@ -84,6 +84,18 @@ export class CreateAiAnomalyAnalysisDto {
 
 export class CreateAiAnomalyBatchDto extends CreateAiAnomalyAnalysisDto {}
 
+export class ReplayImsDatasetSampleDto {
+  @IsMongoId()
+  machine_id: string;
+
+  @IsString()
+  @IsIn(['1st_test'])
+  experiment: string;
+
+  @IsISO8601({ strict: true })
+  timestamp: string;
+}
+
 export class AiAnomalyQueryDto {
   @IsOptional()
   page?: string;

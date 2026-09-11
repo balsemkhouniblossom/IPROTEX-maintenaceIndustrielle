@@ -17,6 +17,7 @@ import {
   CreateAiAnomalyAnalysisDto,
   CreateAiAnomalyBatchDto,
   ValidateAiAnomalyAnalysisDto,
+  ReplayImsDatasetSampleDto,
 } from './dto/ai-anomaly.dto';
 import { AiAnomalyActor } from './ai-anomaly.types';
 
@@ -40,6 +41,27 @@ export class AiAnomalyController {
   @Roles(Role.ADMIN)
   stopModel(@Param('modelId') modelId: string) {
     return this.aiAnomalyService.stopModel(modelId);
+  }
+
+  @Get('dataset-replay/catalog')
+  @Roles(Role.ADMIN)
+  getDatasetReplayCatalog() {
+    return this.aiAnomalyService.getDatasetReplayCatalog();
+  }
+
+  @Get('dataset-replay/samples')
+  @Roles(Role.ADMIN)
+  getDatasetReplaySamples(@Query('experiment') experiment: string) {
+    return this.aiAnomalyService.getDatasetReplaySamples(experiment);
+  }
+
+  @Post('dataset-replay')
+  @Roles(Role.ADMIN)
+  replayDatasetSample(
+    @Body() dto: ReplayImsDatasetSampleDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.aiAnomalyService.replayDatasetSample(dto, this.actorFrom(req));
   }
 
   @Post('analyses')
