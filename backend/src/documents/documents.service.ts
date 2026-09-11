@@ -152,7 +152,7 @@ export class DocumentsService {
       ],
     });
     const saved = await created.save();
-    if (/\.(pdf|docx|txt)$/i.test(saved.file_name)) {
+    if (this.supportsRagIndexing(saved.file_name)) {
       await this.documentIngestionService?.indexDocument(saved._id.toString());
     }
     return this.resolveDocumentFileUrl(saved);
@@ -252,11 +252,16 @@ export class DocumentsService {
         'This document has changed since you last loaded it; reload and retry',
       );
     }
+    if (this.supportsRagIndexing(updated.file_name)) {
+      await this.documentIngestionService?.indexDocument(
+        updated._id.toString(),
+      );
+    }
     return this.resolveDocumentFileUrl(updated);
   }
 
   async publish(id: string, dto: DocumentTransitionDto, actorId?: string) {
-    return this.applyTransition(
+    const result = await this.applyTransition(
       id,
       {
         allowedFrom: [DocumentStatus.DRAFT],
@@ -267,10 +272,12 @@ export class DocumentsService {
       dto,
       actorId,
     );
+    await this.reindexSupportedDocument(id);
+    return result;
   }
 
   async archive(id: string, dto: DocumentTransitionDto, actorId?: string) {
-    return this.applyTransition(
+    const result = await this.applyTransition(
       id,
       {
         allowedFrom: [DocumentStatus.DRAFT, DocumentStatus.PUBLISHED],
@@ -281,6 +288,8 @@ export class DocumentsService {
       dto,
       actorId,
     );
+    await this.reindexSupportedDocument(id);
+    return result;
   }
 
   /**
@@ -311,7 +320,7 @@ export class DocumentsService {
 
     const session = await this.documentModel.db.startSession();
     try {
-      return await session.withTransaction(async () => {
+      const result = await session.withTransaction(async () => {
         const now = new Date();
         const rootId = existing.root_document_id ?? existing._id;
         const nextRevision = (existing.revision ?? 1) + 1;
@@ -398,8 +407,32 @@ export class DocumentsService {
           superseded: await this.resolveDocumentFileUrl(supersededDoc),
         };
       });
+      if (!result) {
+        throw new ConflictException('Document replacement did not complete');
+      }
+
+      await this.documentIngestionService?.removeDocument(existing._id);
+      const replacement = result.document;
+      const replacementId = documentIdString(replacement._id);
+      const replacementFileName =
+        typeof replacement.file_name === 'string' ? replacement.file_name : '';
+      if (replacementId && this.supportsRagIndexing(replacementFileName)) {
+        await this.documentIngestionService?.indexDocument(replacementId);
+      }
+      return result;
     } finally {
       await session.endSession();
+    }
+  }
+
+  private supportsRagIndexing(fileName: string): boolean {
+    return /\.(pdf|docx|txt)$/i.test(fileName);
+  }
+
+  private async reindexSupportedDocument(id: string): Promise<void> {
+    const document = await this.documentModel.findById(id).exec();
+    if (document && this.supportsRagIndexing(document.file_name)) {
+      await this.documentIngestionService?.indexDocument(id, { force: true });
     }
   }
 

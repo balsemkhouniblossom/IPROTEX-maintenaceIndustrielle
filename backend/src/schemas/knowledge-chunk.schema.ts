@@ -1,11 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { Role } from './user.schema';
 
 export type KnowledgeChunkDocument = KnowledgeChunk & Document;
 
 @Schema({ timestamps: true, collection: 'knowledge_chunks' })
 export class KnowledgeChunk {
-  @Prop({ type: Types.ObjectId, ref: 'DocumentEntity', required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'DocumentEntity',
+    required: true,
+    index: true,
+  })
   documentId: Types.ObjectId;
 
   @Prop({ required: true })
@@ -38,8 +44,8 @@ export class KnowledgeChunk {
   @Prop({ type: Types.ObjectId, ref: 'MachineType' })
   machineTypeId?: Types.ObjectId;
 
-  @Prop({ type: [String], default: [] })
-  allowedRoles: string[];
+  @Prop({ type: [String], enum: Object.values(Role), default: [] })
+  allowedRoles: Role[];
 
   @Prop()
   originalFilename?: string;
@@ -55,11 +61,19 @@ export class KnowledgeChunk {
 
   @Prop({ required: true, index: true })
   sourceVersion: number;
+
+  /** Identifies one atomically installed ingestion generation. */
+  @Prop({ required: true, index: true })
+  ingestionKey: string;
 }
 
-export const KnowledgeChunkSchema = SchemaFactory.createForClass(KnowledgeChunk);
-KnowledgeChunkSchema.index({ documentId: 1, sourceVersion: 1, chunkIndex: 1 }, { unique: true });
+export const KnowledgeChunkSchema =
+  SchemaFactory.createForClass(KnowledgeChunk);
+KnowledgeChunkSchema.index(
+  { documentId: 1, ingestionKey: 1, chunkIndex: 1 },
+  { unique: true },
+);
 KnowledgeChunkSchema.index({ machineId: 1, documentType: 1 });
 KnowledgeChunkSchema.index({ machineTypeId: 1 });
 KnowledgeChunkSchema.index({ allowedRoles: 1 });
-
+KnowledgeChunkSchema.index({ documentId: 1, sourceVersion: 1 });

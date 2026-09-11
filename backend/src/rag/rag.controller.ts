@@ -1,19 +1,20 @@
 import { Controller, Param, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AuthenticatedRoles, Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../schemas/user.schema';
+import {
+  AdminOnly,
+  AuthenticatedRoles,
+} from '../auth/decorators/roles.decorator';
 import { DocumentIngestionService } from './services/document-ingestion.service';
 
 @Controller('rag')
 @UseGuards(JwtAuthGuard)
 @AuthenticatedRoles()
-@Roles(Role.ADMIN)
+@AdminOnly()
 export class RagController {
   constructor(private readonly ingestion: DocumentIngestionService) {}
 
   @Post('documents/:id/index')
   index(@Param('id') id: string) {
-    return this.ingestion.indexDocument(id);
+    return this.ingestion.indexDocument(id, { force: true });
   }
 }
-

@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import anomaly, dataset_replay, health, models
+from app.api.routes import anomaly, dataset_replay, diagnosis, health, models
 from app.core.config import settings
 from app.services.artifact_bootstrap import ArtifactBootstrapError, ensure_artifacts
 from app.services.inference_service import InferenceService
@@ -151,3 +151,7 @@ app.include_router(health.router)
 app.include_router(models.router)
 app.include_router(anomaly.router)
 app.include_router(dataset_replay.router)
+app.include_router(diagnosis.router)
+
+# Initialize CWRU diagnosis state
+app.state.cwru_diagnosis_enabled = True

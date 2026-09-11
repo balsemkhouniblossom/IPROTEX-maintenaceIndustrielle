@@ -156,7 +156,11 @@ export class DocumentEntity {
   @Prop({ type: [DocumentLifecycleEntrySchema], default: [] })
   lifecycle_history: DocumentLifecycleEntry[];
 
-  @Prop({ type: String, enum: Object.values(RagIndexStatus), default: RagIndexStatus.NOT_INDEXED })
+  @Prop({
+    type: String,
+    enum: Object.values(RagIndexStatus),
+    default: RagIndexStatus.NOT_INDEXED,
+  })
   rag_status?: RagIndexStatus;
 
   @Prop({ type: Date })
@@ -167,6 +171,15 @@ export class DocumentEntity {
 
   @Prop({ type: String })
   rag_error?: string;
+
+  @Prop()
+  rag_ingestion_key?: string;
+
+  @Prop()
+  rag_embedding_model?: string;
+
+  @Prop({ type: Number })
+  rag_source_version?: number;
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(DocumentEntity);

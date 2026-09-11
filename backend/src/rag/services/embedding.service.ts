@@ -1,7 +1,10 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
-import { RAG_EMBEDDING_DIMENSIONS, RAG_EMBEDDING_MODEL } from '../rag.constants';
+import {
+  RAG_EMBEDDING_DIMENSIONS,
+  RAG_EMBEDDING_MODEL,
+} from '../rag.constants';
 
 @Injectable()
 export class EmbeddingService {
@@ -9,7 +12,9 @@ export class EmbeddingService {
   private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
-    this.model = config.get<string>('GEMINI_EMBEDDING_MODEL')?.trim() || RAG_EMBEDDING_MODEL;
+    this.model =
+      config.get<string>('GEMINI_EMBEDDING_MODEL')?.trim() ||
+      RAG_EMBEDDING_MODEL;
     const key = config.get<string>('GEMINI_API_KEY')?.trim();
     if (key) this.client = new GoogleGenAI({ apiKey: key });
   }
@@ -24,23 +29,60 @@ export class EmbeddingService {
 
   async embedBatch(texts: string[]): Promise<number[][]> {
     if (!texts.length) return [];
-    return Promise.all(texts.map((text) => this.embedDocument(text)));
+    const vectors: number[][] = [];
+    const concurrency = 5;
+    for (let index = 0; index < texts.length; index += concurrency) {
+      vectors.push(
+        ...(await Promise.all(
+          texts
+            .slice(index, index + concurrency)
+            .map((text) => this.embedDocument(text)),
+        )),
+      );
+    }
+    return vectors;
   }
 
-  getModel(): string { return this.model; }
+  getModel(): string {
+    return this.model;
+  }
 
-  private async embed(text: string, taskType: string, title?: string): Promise<number[]> {
-    if (!text.trim()) throw new InternalServerErrorException('Cannot embed empty text');
-    if (!this.client) throw new InternalServerErrorException('Gemini embedding is not configured');
+  getDimensions(): number {
+    return RAG_EMBEDDING_DIMENSIONS;
+  }
+
+  private async embed(
+    text: string,
+    taskType: string,
+    title?: string,
+  ): Promise<number[]> {
+    if (!text.trim()) {
+      throw new InternalServerErrorException('Cannot embed empty text');
+    }
+    if (!this.client) {
+      throw new InternalServerErrorException(
+        'Gemini embedding is not configured',
+      );
+    }
     try {
       const response = await this.client.models.embedContent({
         model: this.model,
         contents: text,
-        config: { taskType, title, outputDimensionality: RAG_EMBEDDING_DIMENSIONS },
+        config: {
+          taskType,
+          title,
+          outputDimensionality: RAG_EMBEDDING_DIMENSIONS,
+        },
       });
       const values = response.embeddings?.[0]?.values;
-      if (!values?.length || values.length !== RAG_EMBEDDING_DIMENSIONS || values.some((value) => !Number.isFinite(value))) {
-        throw new Error(`Gemini returned an invalid ${RAG_EMBEDDING_DIMENSIONS}-dimension embedding`);
+      if (
+        !values?.length ||
+        values.length !== RAG_EMBEDDING_DIMENSIONS ||
+        values.some((value) => !Number.isFinite(value))
+      ) {
+        throw new Error(
+          `Gemini returned an invalid ${RAG_EMBEDDING_DIMENSIONS}-dimension embedding`,
+        );
       }
       return values;
     } catch (error) {
@@ -49,4 +91,3 @@ export class EmbeddingService {
     }
   }
 }
-

@@ -44,6 +44,10 @@ import {
 } from '../schemas/automation-job-lock.schema';
 import { DocumentEntity, DocumentSchema } from '../schemas/document.schema';
 import {
+  KnowledgeChunk,
+  KnowledgeChunkSchema,
+} from '../schemas/knowledge-chunk.schema';
+import {
   DocumentRejection,
   DocumentRejectionSchema,
 } from '../schemas/document-rejection.schema';
@@ -141,6 +145,7 @@ export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   { modelName: FaultEvent.name, schema: FaultEventSchema },
   { modelName: AutomationJobLock.name, schema: AutomationJobLockSchema },
   { modelName: DocumentEntity.name, schema: DocumentSchema },
+  { modelName: KnowledgeChunk.name, schema: KnowledgeChunkSchema },
   { modelName: DocumentRejection.name, schema: DocumentRejectionSchema },
   { modelName: KnowledgeArticle.name, schema: KnowledgeArticleSchema },
   { modelName: Device.name, schema: DeviceSchema },
