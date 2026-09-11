@@ -10,6 +10,13 @@ export enum DocumentStatus {
   SUPERSEDED = 'superseded',
 }
 
+export enum RagIndexStatus {
+  NOT_INDEXED = 'NOT_INDEXED',
+  PROCESSING = 'PROCESSING',
+  READY = 'READY',
+  FAILED = 'FAILED',
+}
+
 export type DocumentLifecycleAction =
   | 'created'
   | 'published'
@@ -148,6 +155,18 @@ export class DocumentEntity {
 
   @Prop({ type: [DocumentLifecycleEntrySchema], default: [] })
   lifecycle_history: DocumentLifecycleEntry[];
+
+  @Prop({ type: String, enum: Object.values(RagIndexStatus), default: RagIndexStatus.NOT_INDEXED })
+  rag_status?: RagIndexStatus;
+
+  @Prop({ type: Date })
+  rag_indexed_at?: Date;
+
+  @Prop({ type: Number, min: 0 })
+  rag_chunk_count?: number;
+
+  @Prop({ type: String })
+  rag_error?: string;
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(DocumentEntity);

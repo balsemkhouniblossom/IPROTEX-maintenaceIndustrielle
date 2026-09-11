@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { DocumentsController } from './documents.controller';
@@ -23,10 +23,12 @@ import {
   InterventionReport,
   InterventionReportSchema,
 } from '../schemas/intervention-report.schema';
+import { RagModule } from '../rag/rag.module';
 
 @Module({
   imports: [
     FileStorageModule,
+    forwardRef(() => RagModule),
     MongooseModule.forFeature([
       { name: DocumentEntity.name, schema: DocumentSchema },
       { name: DocumentRejection.name, schema: DocumentRejectionSchema },

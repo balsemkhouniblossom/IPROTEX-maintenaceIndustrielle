@@ -4,6 +4,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Inject,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as fs from 'node:fs/promises';
@@ -36,6 +39,7 @@ import { PaginatedResponse, toPaginatedResponse } from '../common/pagination';
 import { FileStorageService } from '../storage/file-storage.service';
 import type { ProtectedStoredFile } from '../storage/file-storage.types';
 import { documentMachineFilter } from './document-query';
+import { DocumentIngestionService } from '../rag/services/document-ingestion.service';
 
 interface LinkedRecordIds {
   machine_id?: string;
@@ -86,6 +90,9 @@ export class DocumentsService {
     @InjectModel(DocumentRejection.name)
     private readonly documentRejectionModel: Model<DocumentRejectionDocument>,
     private readonly fileStorageService: FileStorageService,
+    @Inject(forwardRef(() => DocumentIngestionService))
+    @Optional()
+    private readonly documentIngestionService?: DocumentIngestionService,
   ) {}
 
   async recordRejection(input: {
@@ -144,7 +151,11 @@ export class DocumentsService {
         },
       ],
     });
-    return this.resolveDocumentFileUrl(await created.save());
+    const saved = await created.save();
+    if (/\.(pdf|docx|txt)$/i.test(saved.file_name)) {
+      await this.documentIngestionService?.indexDocument(saved._id.toString());
+    }
+    return this.resolveDocumentFileUrl(saved);
   }
 
   async findAll(
@@ -424,6 +435,7 @@ export class DocumentsService {
     // idempotent. True cross-system atomicity is impossible here: if MongoDB
     // fails after storage succeeds, the retained draft points to a missing
     // object until the same delete request is retried.
+    await this.documentIngestionService?.removeDocument(doc._id);
     await this.deleteManagedDocumentFile(doc);
 
     const deleted = await this.documentModel.findByIdAndDelete(id).exec();

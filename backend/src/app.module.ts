@@ -98,6 +98,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
 import { MetricsModule } from './common/metrics/metrics.module';
+import { RagModule } from './rag/rag.module';
 const mongoLogger = new Logger('MongoDB');
 const SLOW_QUERY_THRESHOLD_MS =
   Number(process.env.SLOW_QUERY_THRESHOLD_MS) || 200;
@@ -251,6 +252,7 @@ const SLOW_QUERY_THRESHOLD_MS =
     MachineTimelineModule,
     DynamicContentTranslationModule,
     MetricsModule,
+    RagModule,
   ],
   controllers: [AppController],
   providers: [
