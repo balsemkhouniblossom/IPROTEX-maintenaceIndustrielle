@@ -659,8 +659,8 @@
         "waitingValidation": "Waiting validation"
       },
       "machineCategories": "Machine Categories",
-      "machineInspection": "Machine Inspection",      "downloadFailed": "Download non riuscito. Riprova.",
-
+      "machineInspection": "Machine Inspection",
+      "downloadFailed": "Download non riuscito. Riprova.",
       "machineManuals": "Machine Manuals",
       "manuals": {
         "braiding": "Braiding Manual",
@@ -1775,7 +1775,7 @@
       "inventory": "Inventario",
       "inventoryLubrication": "Inventario e lubrificazione",
       "documents": "Documenti",
-      "insights": "Analisi",
+      "insights": "IA e monitoraggio",
       "myWork": "Il mio lavoro",
       "equipment": "Attrezzature",
       "resources": "Risorse",
@@ -1852,7 +1852,7 @@
       "startCorrectiveMaintenance": "Corrective Maintenance",
       "startPreventiveMaintenance": "Preventive Maintenance",
       "aiAnomalyMonitoring": "Monitoraggio anomalie IA",
-      "aiAnalytics": "Analisi IA",
+      "aiAnalytics": "Panoramica IA",
       "preventiveTasks": "Attività preventive",
       "notifications": "Notifiche"
     },
@@ -2432,7 +2432,15 @@
       "spreadsheetSheet": "Foglio {sheet}",
       "workbookTooLarge": "Questa cartella di lavoro è troppo grande per un’anteprima sicura. Scarica il file originale.",
       "workbookTruncated": "L’anteprima è limitata alle prime 10.000 righe e 200 colonne.",
-      "states": {"unsupported": "L’anteprima non è supportata per questo tipo di file.", "corrupt": "Il file è danneggiato o non può essere analizzato.", "unauthorized": "Non sei autorizzato ad accedere a questo file.", "notFound": "Il file non è stato trovato.", "storage": "L'archivio documenti è temporaneamente non disponibile.", "network": "Impossibile caricare il file a causa di un errore di rete.", "renderer": "Il renderer dell’anteprima non è riuscito. Il file originale resta disponibile."}
+      "states": {
+        "unsupported": "L’anteprima non è supportata per questo tipo di file.",
+        "corrupt": "Il file è danneggiato o non può essere analizzato.",
+        "unauthorized": "Non sei autorizzato ad accedere a questo file.",
+        "notFound": "Il file non è stato trovato.",
+        "storage": "L'archivio documenti è temporaneamente non disponibile.",
+        "network": "Impossibile caricare il file a causa di un errore di rete.",
+        "renderer": "Il renderer dell’anteprima non è riuscito. Il file originale resta disponibile."
+      }
     },
     "notifications": {
       "fileRequired": "Seleziona un file",
@@ -3006,7 +3014,8 @@
       "completed": "Nessun intervento completato."
     },
     "errors": {
-      "storage": "L'archivio documenti è temporaneamente non disponibile.", "network": "Impossibile caricare i dati del tecnico.",
+      "storage": "L'archivio documenti è temporaneamente non disponibile.",
+      "network": "Impossibile caricare i dati del tecnico.",
       "load": "Impossibile caricare l'ordine.",
       "update": "Impossibile completare l'azione.",
       "notFound": "Ordine non trovato."
@@ -3784,6 +3793,41 @@
     }
   },
   "aiAnomaly": {
+    "models": {
+      "title": "Modelli IA",
+      "subtitle": "Monitora il servizio IA, i modelli distribuiti e le esecuzioni.",
+      "refresh": "Aggiorna",
+      "service": "Servizio IA",
+      "online": "Online",
+      "offline": "Offline",
+      "readiness": "Disponibilità",
+      "ready": "Pronto",
+      "loaded": "Modelli caricati",
+      "active": "Modelli attivi",
+      "unavailable": "Il servizio IA è temporaneamente non disponibile. I risultati storici restano accessibili.",
+      "started": "{name} is enabled for new analyses.",
+      "stopped": "{name} is stopped. Existing analyses are not affected.",
+      "actionFailed": "The model state could not be changed.",
+      "version": "Versione",
+      "loadedState": "Modello caricato",
+      "lastExecution": "Ultima analisi",
+      "duration": "Durata analisi",
+      "viewDetails": "Vedi dettagli",
+      "start": "Abilita modello",
+      "stop": "Disabilita modello",
+      "changing": "Aggiornamento…",
+      "inputNotice": "Le analisi usano dati importati dal banco prova IMS. Non sono telemetria IPROTEX in tempo reale.",
+      "detailsTitle": "Informazioni sul modello",
+      "modelName": "Modello",
+      "task": "Funzione",
+      "framework": "Tecnologia",
+      "dataset": "Set di dati",
+      "method": "Metodo di aggregazione",
+      "validationScope": "Ambito di validazione",
+      "features": "Caratteristiche previste",
+      "generalization": "Generalizzazione",
+      "disableTitle": "Disabilita modello"
+    },
     "title": "Monitoraggio anomalie IA",
     "heading": "Monitoraggio anomalie IA",
     "limitationNotice": "Prototipo sperimentale basato sul dataset pubblico IMS sui cuscinetti. La validazione ? attualmente limitata a 1st_test e non dimostra la generalizzazione alle macchine IPROTEX.",

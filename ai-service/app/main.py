@@ -126,6 +126,13 @@ async def value_error_handler(_: Request, exc: ValueError) -> JSONResponse:
     return JSONResponse(status_code=400, content=error_payload("INVALID_REQUEST", str(exc)))
 
 
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(_: Request, exc: RuntimeError) -> JSONResponse:
+    if str(exc) == "MODEL_DISABLED":
+        return JSONResponse(status_code=409, content=error_payload("MODEL_DISABLED", "The model is stopped."))
+    raise exc
+
+
 @app.exception_handler(Exception)
 async def unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled AI service error")

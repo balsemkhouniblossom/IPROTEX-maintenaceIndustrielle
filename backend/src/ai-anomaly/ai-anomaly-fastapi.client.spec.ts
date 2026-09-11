@@ -162,11 +162,24 @@ describe('AiAnomalyFastApiClient', () => {
       jsonResponse({
         models: [
           {
+            id: 'ims-selected-anomaly-model-v0-1-0',
+            name: 'IMS Selected Anomaly Pipeline',
+            task: 'anomaly_detection',
+            purpose: 'Bearing anomaly screening',
             modelVersion: '0.1.0',
             artifactVersion: 'v0_1_0',
             selectedMethod: 'weighted',
             validatedExperiments: ['1st_test'],
-            runtime: { python: '3.12.5' },
+            sourceDataset: 'IMS public test-rig data',
+            validationScope: 'IMS 1st_test only',
+            generalizationStatus: 'Not established for IPROTEX',
+            featureOrder: ['rms'],
+            framework: 'scikit-learn',
+            loaded: true,
+            enabled: true,
+            running: false,
+            status: 'ACTIVE',
+            activeExecutions: 0,
           },
         ],
       }),
@@ -176,13 +189,13 @@ describe('AiAnomalyFastApiClient', () => {
     );
 
     await expect(client.getModels()).resolves.toMatchObject({
-      datasetOrigin: 'IMS public test-rig data',
-      validatedExperiments: ['1st_test'],
-      generalization: {
-        secondTest: 'not established',
-        thirdTest: 'not established',
-        iprotex: 'not established',
-      },
+      models: [
+        {
+          sourceDataset: 'IMS public test-rig data',
+          validatedExperiments: ['1st_test'],
+          status: 'ACTIVE',
+        },
+      ],
     });
   });
 

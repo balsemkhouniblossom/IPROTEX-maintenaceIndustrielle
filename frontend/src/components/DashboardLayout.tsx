@@ -475,7 +475,7 @@ function DashboardLayoutBody({
         domainKey: "domains.insights",
         items: [
           {
-            name: t("navigation.machineHealth"),
+            name: t("navigation.sensors"),
             href: "/capteurs",
             icon: CpuChipIcon,
             children: [
@@ -490,6 +490,11 @@ function DashboardLayoutBody({
             name: t("navigation.aiAnalytics"),
             href: "/ai-anomaly",
             icon: BeakerIcon,
+          },
+          {
+            name: t("navigation.machineHealth"),
+            href: "/technician/machine-health",
+            icon: HeartIcon,
           },
           {
             name: t("navigation.analyticsAndReports"),
@@ -735,9 +740,7 @@ function DashboardLayoutBody({
                                   className={`nav-link-modern ${childActive ? "active" : ""}`}
                                   onClick={() => setSidebarOpen(false)}
                                   title={child.name}
-                                  aria-current={
-                                    childActive ? "page" : undefined
-                                  }
+                                  aria-current={childActive ? "page" : undefined}
                                 >
                                   <ChildIcon className="h-4 w-4 shrink-0" />
                                   <span className="min-w-0 flex-1 truncate text-sm">

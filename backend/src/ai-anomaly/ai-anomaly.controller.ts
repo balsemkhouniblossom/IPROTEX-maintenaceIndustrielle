@@ -30,6 +30,18 @@ export class AiAnomalyController {
     return this.aiAnomalyService.getModelMetadata();
   }
 
+  @Post('models/:modelId/start')
+  @Roles(Role.ADMIN)
+  startModel(@Param('modelId') modelId: string) {
+    return this.aiAnomalyService.startModel(modelId);
+  }
+
+  @Post('models/:modelId/stop')
+  @Roles(Role.ADMIN)
+  stopModel(@Param('modelId') modelId: string) {
+    return this.aiAnomalyService.stopModel(modelId);
+  }
+
   @Post('analyses')
   @AuthenticatedRoles()
   createAnalysis(

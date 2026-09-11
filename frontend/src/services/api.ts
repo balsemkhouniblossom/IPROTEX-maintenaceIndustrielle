@@ -108,7 +108,8 @@ api.interceptors.response.use(
     }
 
     const retryConfig = error.config as
-      (typeof error.config & { _getRetryCount?: number }) | undefined;
+      | (typeof error.config & { _getRetryCount?: number })
+      | undefined;
 
     if (
       retryConfig &&
@@ -736,6 +737,10 @@ export const apiService = {
 
   // IMS anomaly analysis (FastAPI-backed, advisory prototype only)
   getAiAnomalyModels: () => api.get("/ai-anomaly/models"),
+  startAiAnomalyModel: (modelId: string) =>
+    api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/start`),
+  stopAiAnomalyModel: (modelId: string) =>
+    api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/stop`),
   getAiAnomalyAnalyses: (
     params?: {
       page?: number;

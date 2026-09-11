@@ -500,8 +500,8 @@
       "myReports": "Mes rapports",
       "validated": "Validées",
       "viewAllReports": "Voir tous les rapports",
-      "machineInspection": "Inspection de la machine",      "downloadFailed": "Échec du téléchargement. Veuillez réessayer.",
-
+      "machineInspection": "Inspection de la machine",
+      "downloadFailed": "Échec du téléchargement. Veuillez réessayer.",
       "manuals": {
         "winding": "Manuel de bobinage",
         "braiding": "Manuel de tressage",
@@ -1928,7 +1928,7 @@
       "inventory": "Inventaire",
       "inventoryLubrication": "Inventaire & Lubrification",
       "documents": "Documents",
-      "insights": "Analyses",
+      "insights": "IA et surveillance",
       "myWork": "Mon travail",
       "equipment": "Equipement",
       "resources": "Ressources",
@@ -2005,7 +2005,7 @@
       "devices": "Appareils",
       "reports": "Rapports",
       "aiAnomalyMonitoring": "Surveillance IA des anomalies",
-      "aiAnalytics": "Analyses IA",
+      "aiAnalytics": "Vue d’ensemble IA",
       "preventiveTasks": "Tâches préventives",
       "notifications": "Notifications"
     }
@@ -2568,7 +2568,15 @@
       "spreadsheetSheet": "Feuille {sheet}",
       "workbookTooLarge": "Ce classeur est trop volumineux pour être prévisualisé en toute sécurité. Téléchargez le fichier original.",
       "workbookTruncated": "L’aperçu est limité aux 10 000 premières lignes et 200 colonnes.",
-      "states": {"unsupported": "L’aperçu n’est pas pris en charge pour ce type de fichier.", "corrupt": "Le fichier est corrompu ou ne peut pas être analysé.", "unauthorized": "Vous n’êtes pas autorisé à accéder à ce fichier.", "notFound": "Le fichier est introuvable.", "storage": "Le stockage des documents est temporairement indisponible.", "network": "Le fichier n’a pas pu être chargé en raison d’une erreur réseau.", "renderer": "Le moteur d’aperçu a échoué. Le fichier original reste disponible."}
+      "states": {
+        "unsupported": "L’aperçu n’est pas pris en charge pour ce type de fichier.",
+        "corrupt": "Le fichier est corrompu ou ne peut pas être analysé.",
+        "unauthorized": "Vous n’êtes pas autorisé à accéder à ce fichier.",
+        "notFound": "Le fichier est introuvable.",
+        "storage": "Le stockage des documents est temporairement indisponible.",
+        "network": "Le fichier n’a pas pu être chargé en raison d’une erreur réseau.",
+        "renderer": "Le moteur d’aperçu a échoué. Le fichier original reste disponible."
+      }
     },
     "notifications": {
       "fileRequired": "Veuillez selectionner un fichier",
@@ -3142,7 +3150,8 @@
       "completed": "Aucune intervention terminee pour le moment."
     },
     "errors": {
-      "storage": "Le stockage des documents est temporairement indisponible.", "network": "Impossible de charger les données technicien. Vérifiez la connexion.",
+      "storage": "Le stockage des documents est temporairement indisponible.",
+      "network": "Impossible de charger les données technicien. Vérifiez la connexion.",
       "load": "Impossible de charger cet ordre.",
       "update": "L’action n’a pas pu être effectuée.",
       "notFound": "Ordre de travail introuvable."
@@ -3784,6 +3793,41 @@
     }
   },
   "aiAnomaly": {
+    "models": {
+      "title": "Modèles IA",
+      "subtitle": "Surveillez l’état du service IA, les modèles déployés et les exécutions.",
+      "refresh": "Actualiser",
+      "service": "Service IA",
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "readiness": "Disponibilité",
+      "ready": "Prêt",
+      "loaded": "Modèles chargés",
+      "active": "Modèles actifs",
+      "unavailable": "Le service IA est temporairement indisponible. Les résultats historiques restent accessibles.",
+      "started": "{name} is enabled for new analyses.",
+      "stopped": "{name} is stopped. Existing analyses are not affected.",
+      "actionFailed": "The model state could not be changed.",
+      "version": "Version",
+      "loadedState": "Modèle chargé",
+      "lastExecution": "Dernière analyse",
+      "duration": "Durée d’analyse",
+      "viewDetails": "Voir les détails",
+      "start": "Activer le modèle",
+      "stop": "Désactiver le modèle",
+      "changing": "Mise à jour…",
+      "inputNotice": "Les analyses utilisent des données importées du banc d’essai IMS. Il ne s’agit pas de télémétrie IPROTEX en direct.",
+      "detailsTitle": "Informations sur le modèle",
+      "modelName": "Modèle",
+      "task": "Fonction",
+      "framework": "Technologie",
+      "dataset": "Jeu de données",
+      "method": "Méthode d’agrégation",
+      "validationScope": "Périmètre de validation",
+      "features": "Caractéristiques attendues",
+      "generalization": "Généralisation",
+      "disableTitle": "Désactiver le modèle"
+    },
     "title": "Surveillance IA des anomalies",
     "heading": "Surveillance IA des anomalies",
     "limitationNotice": "Prototype exp?rimental bas? sur le jeu de donn?es public IMS sur les roulements. La validation est actuellement limit?e ? 1st_test et ne prouve pas la g?n?ralisation aux machines IPROTEX.",

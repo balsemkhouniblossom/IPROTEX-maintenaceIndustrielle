@@ -499,8 +499,8 @@
         "waitingActions": "Waiting Actions",
         "machinesActive": "Active Machines"
       },
-      "machineInspection": "Machine Inspection",      "downloadFailed": "Download failed. Please try again.",
-
+      "machineInspection": "Machine Inspection",
+      "downloadFailed": "Download failed. Please try again.",
       "viewAllReports": "View All Reports",
       "waitingValidation": "Waiting validation",
       "assigned": "Assigned",
@@ -1928,7 +1928,7 @@
       "inventory": "Inventory",
       "inventoryLubrication": "Inventory & Lubrication",
       "documents": "Documents",
-      "insights": "Insights",
+      "insights": "AI & Monitoring",
       "myWork": "My Work",
       "equipment": "Equipment",
       "resources": "Resources",
@@ -2005,7 +2005,7 @@
       "devices": "Devices",
       "reports": "Reports",
       "aiAnomalyMonitoring": "AI Anomaly Monitoring",
-      "aiAnalytics": "AI Analytics",
+      "aiAnalytics": "AI Overview",
       "preventiveTasks": "Preventive Tasks",
       "notifications": "Notifications"
     }
@@ -2642,7 +2642,15 @@
       "spreadsheetSheet": "Spreadsheet sheet {sheet}",
       "workbookTooLarge": "This workbook is too large to preview safely. Download the original file instead.",
       "workbookTruncated": "The preview is limited to the first 10,000 rows and 200 columns.",
-      "states": {"unsupported": "Preview is not supported for this file type.", "corrupt": "The file is corrupt or cannot be parsed.", "unauthorized": "You are not authorized to access this file.", "notFound": "The file could not be found.", "storage": "Document storage is temporarily unavailable.", "network": "The file could not be loaded because of a network error.", "renderer": "The preview renderer failed. The original file is still available."}
+      "states": {
+        "unsupported": "Preview is not supported for this file type.",
+        "corrupt": "The file is corrupt or cannot be parsed.",
+        "unauthorized": "You are not authorized to access this file.",
+        "notFound": "The file could not be found.",
+        "storage": "Document storage is temporarily unavailable.",
+        "network": "The file could not be loaded because of a network error.",
+        "renderer": "The preview renderer failed. The original file is still available."
+      }
     },
     "history": {
       "empty": "No version history available.",
@@ -3214,7 +3222,8 @@
       "completed": "No completed interventions yet."
     },
     "errors": {
-      "storage": "Document storage is temporarily unavailable.", "network": "Unable to load technician data. Check your connection and retry.",
+      "storage": "Document storage is temporarily unavailable.",
+      "network": "Unable to load technician data. Check your connection and retry.",
       "load": "Unable to load this work order.",
       "update": "The action could not be completed.",
       "notFound": "Work order not found."
@@ -3784,6 +3793,41 @@
     }
   },
   "aiAnomaly": {
+    "models": {
+      "title": "AI Models",
+      "subtitle": "Monitor deployed model runtime state, health and execution information.",
+      "refresh": "Refresh",
+      "service": "AI service",
+      "online": "Online",
+      "offline": "Offline",
+      "readiness": "Readiness",
+      "ready": "Ready",
+      "loaded": "Loaded models",
+      "active": "Active models",
+      "unavailable": "AI analysis is temporarily unavailable. Historical results remain accessible.",
+      "started": "{name} is enabled for new analyses.",
+      "stopped": "{name} is stopped. Existing analyses are not affected.",
+      "actionFailed": "The model state could not be changed.",
+      "version": "Version",
+      "loadedState": "Loaded",
+      "lastExecution": "Latest execution",
+      "duration": "Inference duration",
+      "viewDetails": "View details",
+      "start": "Enable Model",
+      "stop": "Disable Model",
+      "changing": "Updating...",
+      "inputNotice": "Inference uses imported IMS public test-rig feature rows. It is not live IPROTEX machine telemetry.",
+      "detailsTitle": "Model information",
+      "modelName": "Model",
+      "task": "Task",
+      "framework": "Framework",
+      "dataset": "Dataset",
+      "method": "Aggregation method",
+      "validationScope": "Validation scope",
+      "features": "Expected features",
+      "generalization": "Generalization",
+      "disableTitle": "Disable model"
+    },
     "title": "AI Anomaly Monitoring",
     "heading": "AI Anomaly Monitoring",
     "limitationNotice": "Experimental prototype based on the public IMS bearing dataset. Validation is currently limited to 1st_test and does not establish generalization to IPROTEX machines.",

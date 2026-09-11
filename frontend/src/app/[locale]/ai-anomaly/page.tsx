@@ -20,6 +20,7 @@ import {
   type AiAnomalyInputSource,
   type AiAnomalyMachineRecord,
   type AiAnomalyRiskLevel,
+  type AiAnomalyRuntimeModel,
   type AiAnomalyValidationStatus,
   buildAiAnomalyMachineOptions,
   buildRiskScoreChartData,
@@ -125,6 +126,13 @@ function AiAnomalyMonitoringContent() {
   const locale = useLocale();
   const { user } = useAuth();
   const [analyses, setAnalyses] = useState<AiAnomalyAnalysis[]>([]);
+  const [models, setModels] = useState<AiAnomalyRuntimeModel[]>([]);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [changingModel, setChangingModel] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] =
+    useState<AiAnomalyRuntimeModel | null>(null);
+  const [modelToDisable, setModelToDisable] =
+    useState<AiAnomalyRuntimeModel | null>(null);
   const [machines, setMachines] = useState(
     [] as ReturnType<typeof buildAiAnomalyMachineOptions>,
   );
@@ -167,12 +175,21 @@ function AiAnomalyMonitoringContent() {
       machine_id: filters.machineId || undefined,
       risk_level: filters.riskLevel === "ALL" ? undefined : filters.riskLevel,
       validation_status:
-        filters.validationStatus === "ALL" ? undefined : filters.validationStatus,
+        filters.validationStatus === "ALL"
+          ? undefined
+          : filters.validationStatus,
       input_source: "DATASET_REPLAY" as const,
       dateFrom: filters.dateFrom || undefined,
       dateTo: filters.dateTo || undefined,
     }),
-    [filters.dateFrom, filters.dateTo, filters.machineId, filters.riskLevel, filters.validationStatus, page],
+    [
+      filters.dateFrom,
+      filters.dateTo,
+      filters.machineId,
+      filters.riskLevel,
+      filters.validationStatus,
+      page,
+    ],
   );
 
   const loadData = useCallback(async () => {
@@ -183,8 +200,12 @@ function AiAnomalyMonitoringContent() {
 
     try {
       const [analysesResponse, machinesResponse] = await Promise.all([
-        apiService.getAiAnomalyAnalyses(buildAnalysesQuery(), { signal: controller.signal }),
-        apiService.getMachines({ page: 1, limit: 100 }, quiet()).catch(() => null),
+        apiService.getAiAnomalyAnalyses(buildAnalysesQuery(), {
+          signal: controller.signal,
+        }),
+        apiService
+          .getMachines({ page: 1, limit: 100 }, quiet())
+          .catch(() => null),
       ]);
 
       const items = normalizeApiItems<AiAnomalyAnalysis>(analysesResponse.data);
@@ -211,6 +232,50 @@ function AiAnomalyMonitoringContent() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const loadModels = useCallback(async () => {
+    try {
+      const response = await apiService.getAiAnomalyModels();
+      setModels((response.data?.models ?? []) as AiAnomalyRuntimeModel[]);
+      setModelsError(null);
+    } catch (err) {
+      setModelsError(
+        extractApiErrorDetails(err, t("models.unavailable")).message,
+      );
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadModels();
+    const timer = window.setInterval(() => void loadModels(), 10000);
+    return () => window.clearInterval(timer);
+  }, [loadModels]);
+
+  const changeModelState = async (
+    model: AiAnomalyRuntimeModel,
+    enable: boolean,
+  ) => {
+    setChangingModel(model.id);
+    try {
+      await (enable
+        ? apiService.startAiAnomalyModel(model.id)
+        : apiService.stopAiAnomalyModel(model.id));
+      await loadModels();
+      setToast({
+        type: "success",
+        message: t(enable ? "models.started" : "models.stopped", {
+          name: model.name,
+        }),
+      });
+    } catch (err) {
+      setToast({
+        type: "error",
+        message: extractApiErrorDetails(err, t("models.actionFailed")).message,
+      });
+    } finally {
+      setChangingModel(null);
+    }
+  };
 
   const visibleAnalyses = analyses;
 
@@ -271,6 +336,126 @@ function AiAnomalyMonitoringContent() {
       />
 
       <div className="space-y-6">
+        <section className="panel">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {t("models.title")}
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                {t("models.subtitle")}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void loadModels()}
+            >
+              {t("models.refresh")}
+            </button>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <DetailField
+              label={t("models.service")}
+              value={modelsError ? t("models.offline") : t("models.online")}
+            />
+            <DetailField
+              label={t("models.readiness")}
+              value={
+                models.some((model) => model.loaded)
+                  ? t("models.ready")
+                  : tCommon("notAvailable")
+              }
+            />
+            <DetailField
+              label={t("models.loaded")}
+              value={models.filter((model) => model.loaded).length}
+            />
+            <DetailField
+              label={t("models.active")}
+              value={models.filter((model) => model.enabled).length}
+            />
+          </div>
+          {modelsError ? (
+            <p className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+              {modelsError}
+            </p>
+          ) : null}
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            {models.map((model) => (
+              <article
+                key={model.id}
+                className="rounded-xl border border-slate-200 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-bold text-slate-900">{model.name}</h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {model.purpose}
+                    </p>
+                  </div>
+                  <span className="rounded-full border px-2.5 py-1 text-xs font-semibold">
+                    {model.status}
+                  </span>
+                </div>
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <DetailField
+                    label={t("models.version")}
+                    value={model.modelVersion}
+                  />
+                  <DetailField
+                    label={t("models.loadedState")}
+                    value={model.loaded ? t("boolean.yes") : t("boolean.no")}
+                  />
+                  <DetailField
+                    label={t("models.lastExecution")}
+                    value={
+                      model.lastExecutionAt
+                        ? formatDateTime(model.lastExecutionAt)
+                        : tCommon("notAvailable")
+                    }
+                  />
+                  <DetailField
+                    label={t("models.duration")}
+                    value={
+                      model.lastExecutionDurationMs == null
+                        ? tCommon("notAvailable")
+                        : `${model.lastExecutionDurationMs} ms`
+                    }
+                  />
+                </dl>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setSelectedModel(model)}
+                  >
+                    {t("models.viewDetails")}
+                  </button>
+                  {user?.role === "admin" ? (
+                    <button
+                      type="button"
+                      className={model.enabled ? "btn-danger" : "btn-primary"}
+                      disabled={changingModel === model.id}
+                      onClick={() =>
+                          model.enabled
+                            ? setModelToDisable(model)
+                            : void changeModelState(model, true)
+                      }
+                    >
+                      {changingModel === model.id
+                        ? t("models.changing")
+                        : t(model.enabled ? "models.stop" : "models.start")}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            {t("models.inputNotice")}
+          </p>
+        </section>
         <section className="panel">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -337,7 +522,9 @@ function AiAnomalyMonitoringContent() {
           riskLevelLabel={t("filters.riskLevel")}
           validationStatusLabel={t("filters.validationStatus")}
           riskLevelOptionLabel={(level) =>
-            level === "ALL" ? t("filters.allRiskLevels") : t(`riskLevels.${level}`)
+            level === "ALL"
+              ? t("filters.allRiskLevels")
+              : t(`riskLevels.${level}`)
           }
           validationOptionLabel={(status) =>
             status === "ALL"
@@ -355,7 +542,11 @@ function AiAnomalyMonitoringContent() {
         {loading ? <LoadingPanel label={t("states.loading")} /> : null}
         {!loading && error ? (
           <ErrorPanel
-            title={serviceUnavailable ? t("states.unavailableTitle") : t("states.errorTitle")}
+            title={
+              serviceUnavailable
+                ? t("states.unavailableTitle")
+                : t("states.errorTitle")
+            }
             message={error}
             retryLabel={retrying ? t("states.retrying") : t("states.retry")}
             retrying={retrying}
@@ -402,7 +593,9 @@ function AiAnomalyMonitoringContent() {
               onOpenDetails={openDetails}
               formatDateTime={formatDateTime}
               riskLevelLabel={(level) => t(`riskLevels.${level}`)}
-              sourceLabel={(source) => t(sourceLabelKey(source as AiAnomalyInputSource))}
+              sourceLabel={(source) =>
+                t(sourceLabelKey(source as AiAnomalyInputSource))
+              }
               validationLabel={(status) => t(`validation.${status}`)}
               yesLabel={t("boolean.yes")}
               noLabel={t("boolean.no")}
@@ -418,6 +611,70 @@ function AiAnomalyMonitoringContent() {
           </>
         ) : null}
       </div>
+
+      <Modal
+        isOpen={Boolean(modelToDisable)}
+        onClose={() => setModelToDisable(null)}
+        title={t("models.disableTitle")}
+        size="sm"
+      >
+        {modelToDisable ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-700">
+              {t("models.confirmStop", { name: modelToDisable.name })}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setModelToDisable(null)}>
+                {tCommon("cancel")}
+              </button>
+              <button type="button" className="btn-danger" disabled={changingModel === modelToDisable.id} onClick={() => void changeModelState(modelToDisable, false).then(() => setModelToDisable(null))}>
+                {changingModel === modelToDisable.id ? t("models.changing") : t("models.stop")}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(selectedModel)}
+        onClose={() => setSelectedModel(null)}
+        title={t("models.detailsTitle")}
+        size="xl"
+      >
+        {selectedModel ? (
+          <dl className="grid gap-3 md:grid-cols-2">
+            <DetailField
+              label={t("models.modelName")}
+              value={selectedModel.name}
+            />
+            <DetailField label={t("models.task")} value={selectedModel.task} />
+            <DetailField
+              label={t("models.framework")}
+              value={selectedModel.framework}
+            />
+            <DetailField
+              label={t("models.dataset")}
+              value={selectedModel.sourceDataset}
+            />
+            <DetailField
+              label={t("models.method")}
+              value={selectedModel.selectedMethod ?? tCommon("notAvailable")}
+            />
+            <DetailField
+              label={t("models.validationScope")}
+              value={selectedModel.validationScope}
+            />
+            <DetailField
+              label={t("models.features")}
+              value={selectedModel.featureOrder.join(", ")}
+            />
+            <DetailField
+              label={t("models.generalization")}
+              value={selectedModel.generalizationStatus}
+            />
+          </dl>
+        ) : null}
+      </Modal>
 
       <Modal
         isOpen={Boolean(selectedAnalysis)}
@@ -476,7 +733,10 @@ function AiAnomalyDetailsPanel({
         {AI_ANOMALY_LIMITATION_NOTICE}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <DetailField label={t("table.machine")} value={machineDisplayName(analysis.machine_id, machines)} />
+        <DetailField
+          label={t("table.machine")}
+          value={machineDisplayName(analysis.machine_id, machines)}
+        />
         <DetailField
           label={t("table.timestamp")}
           value={formatDateTime(analysis.measurement_timestamp)}
@@ -489,14 +749,25 @@ function AiAnomalyDetailsPanel({
           label={t("details.componentIsolationForest")}
           value={analysis.component_scores.isolationForest.toFixed(3)}
         />
-        <DetailField label={t("table.modelVersion")} value={analysis.model_version} />
-        <DetailField label={t("table.source")} value={t(sourceLabelKey(analysis.input_source))} />
-        <DetailField label={t("details.datasetOrigin")} value={t("details.imsDataset")} />
+        <DetailField
+          label={t("table.modelVersion")}
+          value={analysis.model_version}
+        />
+        <DetailField
+          label={t("table.source")}
+          value={t(sourceLabelKey(analysis.input_source))}
+        />
+        <DetailField
+          label={t("details.datasetOrigin")}
+          value={t("details.imsDataset")}
+        />
         <DetailField label={t("details.validationScope")} value="1st_test" />
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-800">{t("details.reasonCodes")}</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800">
+          {t("details.reasonCodes")}
+        </h3>
         <div className="flex flex-wrap gap-2">
           {analysis.reason_codes.length ? (
             analysis.reason_codes.map((code) => (
@@ -508,13 +779,17 @@ function AiAnomalyDetailsPanel({
               </span>
             ))
           ) : (
-            <span className="text-sm text-slate-500">{tCommon("notAvailable")}</span>
+            <span className="text-sm text-slate-500">
+              {tCommon("notAvailable")}
+            </span>
           )}
         </div>
       </div>
 
       <div className="rounded-md border border-slate-200 p-3">
-        <h3 className="mb-3 text-sm font-semibold text-slate-800">{t("validation.title")}</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-800">
+          {t("validation.title")}
+        </h3>
         {canValidate ? (
           <AiAnomalyValidationForm
             t={t}
@@ -559,7 +834,12 @@ function AiAnomalyValidationForm({
         <button
           type="button"
           className={`btn-secondary ${validationForm.status === "CONFIRMED" ? "ring-2 ring-green-500" : ""}`}
-          onClick={() => setValidationForm((current) => ({ ...current, status: "CONFIRMED" }))}
+          onClick={() =>
+            setValidationForm((current) => ({
+              ...current,
+              status: "CONFIRMED",
+            }))
+          }
         >
           <CheckCircleIcon className="h-4 w-4" />
           {t("validation.confirm")}
@@ -567,7 +847,9 @@ function AiAnomalyValidationForm({
         <button
           type="button"
           className={`btn-secondary ${validationForm.status === "REJECTED" ? "ring-2 ring-red-500" : ""}`}
-          onClick={() => setValidationForm((current) => ({ ...current, status: "REJECTED" }))}
+          onClick={() =>
+            setValidationForm((current) => ({ ...current, status: "REJECTED" }))
+          }
         >
           <XCircleIcon className="h-4 w-4" />
           {t("validation.reject")}
@@ -579,7 +861,10 @@ function AiAnomalyValidationForm({
           className="input-field mt-1 min-h-24"
           value={validationForm.comment}
           onChange={(event) =>
-            setValidationForm((current) => ({ ...current, comment: event.target.value }))
+            setValidationForm((current) => ({
+              ...current,
+              comment: event.target.value,
+            }))
           }
           maxLength={1000}
         />
@@ -811,7 +1096,9 @@ function AiAnomalyResultsTable({
                 </td>
                 <td>{analysis.model_version}</td>
                 <td>{sourceLabel(analysis.input_source)}</td>
-                <td>{formatReasonCodes(analysis.reason_codes, notAvailableLabel)}</td>
+                <td>
+                  {formatReasonCodes(analysis.reason_codes, notAvailableLabel)}
+                </td>
                 <td>{validationLabel(analysis.validation_status)}</td>
               </tr>
             ))}
@@ -911,8 +1198,9 @@ function AiAnomalyFiltersSection({
             value={filters.validationStatus}
             onChange={(event) =>
               onChange({
-                validationStatus: event.target
-                  .value as "ALL" | AiAnomalyValidationStatus,
+                validationStatus: event.target.value as
+                  | "ALL"
+                  | AiAnomalyValidationStatus,
               })
             }
           >

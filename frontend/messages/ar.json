@@ -506,8 +506,8 @@
         "rolling": "دليل الدرفلة"
       },
       "validated": "تم التحقق",
-      "machineInspection": "فحص الآلة",      "downloadFailed": "فشل التنزيل. يرجى المحاولة مرة أخرى.",
-
+      "machineInspection": "فحص الآلة",
+      "downloadFailed": "فشل التنزيل. يرجى المحاولة مرة أخرى.",
       "viewAllReports": "عرض جميع التقارير",
       "title": "لوحة تحكم المشغّل",
       "welcome": "مرحباً بعودتك، {name}!",
@@ -1753,7 +1753,7 @@
       "inventory": "المخزون",
       "inventoryLubrication": "المخزون والتشحيم",
       "documents": "المستندات",
-      "insights": "الرؤى",
+      "insights": "الذكاء الاصطناعي والمراقبة",
       "myWork": "My Work",
       "equipment": "Equipment",
       "resources": "Resources",
@@ -1830,7 +1830,7 @@
       "startCorrectiveMaintenance": "Corrective Maintenance",
       "startPreventiveMaintenance": "Preventive Maintenance",
       "aiAnomalyMonitoring": "?????? ?????? ??????? ?????????",
-      "aiAnalytics": "تحليلات الذكاء الاصطناعي",
+      "aiAnalytics": "نظرة عامة على الذكاء الاصطناعي",
       "preventiveTasks": "المهام الوقائية",
       "notifications": "الإشعارات"
     }
@@ -2393,7 +2393,15 @@
       "spreadsheetSheet": "ورقة العمل {sheet}",
       "workbookTooLarge": "حجم المصنف كبير جدًا للمعاينة الآمنة. نزّل الملف الأصلي بدلًا من ذلك.",
       "workbookTruncated": "تقتصر المعاينة على أول 10000 صف و200 عمود.",
-      "states": {"unsupported": "المعاينة غير مدعومة لهذا النوع من الملفات.", "corrupt": "الملف تالف أو تعذرت قراءته.", "unauthorized": "غير مصرح لك بالوصول إلى هذا الملف.", "notFound": "تعذر العثور على الملف.", "storage": "تخزين المستندات غير متاح مؤقتًا.", "network": "تعذر تحميل الملف بسبب خطأ في الشبكة.", "renderer": "فشل عارض المعاينة. لا يزال الملف الأصلي متاحًا."}
+      "states": {
+        "unsupported": "المعاينة غير مدعومة لهذا النوع من الملفات.",
+        "corrupt": "الملف تالف أو تعذرت قراءته.",
+        "unauthorized": "غير مصرح لك بالوصول إلى هذا الملف.",
+        "notFound": "تعذر العثور على الملف.",
+        "storage": "تخزين المستندات غير متاح مؤقتًا.",
+        "network": "تعذر تحميل الملف بسبب خطأ في الشبكة.",
+        "renderer": "فشل عارض المعاينة. لا يزال الملف الأصلي متاحًا."
+      }
     },
     "notifications": {
       "fileRequired": "يرجى اختيار ملف",
@@ -2967,7 +2975,8 @@
       "completed": "No completed interventions yet."
     },
     "errors": {
-      "storage": "تخزين المستندات غير متاح مؤقتًا.", "network": "تعذر تحميل بيانات الفني.",
+      "storage": "تخزين المستندات غير متاح مؤقتًا.",
+      "network": "تعذر تحميل بيانات الفني.",
       "load": "تعذر تحميل أمر العمل.",
       "update": "تعذر إكمال الإجراء.",
       "notFound": "أمر العمل غير موجود."
@@ -3784,6 +3793,41 @@
     }
   },
   "aiAnomaly": {
+    "models": {
+      "title": "نماذج الذكاء الاصطناعي",
+      "subtitle": "راقب حالة خدمة الذكاء الاصطناعي والنماذج المنشورة وعمليات التنفيذ.",
+      "refresh": "تحديث",
+      "service": "خدمة الذكاء الاصطناعي",
+      "online": "متصلة",
+      "offline": "غير متصلة",
+      "readiness": "الجاهزية",
+      "ready": "جاهزة",
+      "loaded": "النماذج المحمّلة",
+      "active": "النماذج المفعلة",
+      "unavailable": "خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. تبقى النتائج السابقة متاحة.",
+      "started": "{name} is enabled for new analyses.",
+      "stopped": "{name} is stopped. Existing analyses are not affected.",
+      "actionFailed": "The model state could not be changed.",
+      "version": "الإصدار",
+      "loadedState": "النموذج محمّل",
+      "lastExecution": "آخر تحليل",
+      "duration": "مدة التحليل",
+      "viewDetails": "عرض التفاصيل",
+      "start": "تفعيل النموذج",
+      "stop": "تعطيل النموذج",
+      "changing": "جارٍ التحديث…",
+      "inputNotice": "تستخدم التحليلات بيانات مستوردة من منصة اختبار IMS، وليست بيانات مباشرة من آلات IPROTEX.",
+      "detailsTitle": "معلومات النموذج",
+      "modelName": "النموذج",
+      "task": "الوظيفة",
+      "framework": "التقنية",
+      "dataset": "مجموعة البيانات",
+      "method": "طريقة التجميع",
+      "validationScope": "نطاق التحقق",
+      "features": "الخصائص المتوقعة",
+      "generalization": "قابلية التعميم",
+      "disableTitle": "تعطيل النموذج"
+    },
     "title": "?????? ?????? ??????? ?????????",
     "heading": "?????? ?????? ??????? ?????????",
     "limitationNotice": "????? ???? ?????? ????? ??? ?????? ?????? IMS ?????? ???????. ????? ?????? ????? ??? 1st_test ??? ???? ??????? ??? ???? IPROTEX.",

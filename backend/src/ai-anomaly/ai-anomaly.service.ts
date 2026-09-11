@@ -98,6 +98,13 @@ export class AiAnomalyService {
     return this.fastApiClient.getModels();
   }
 
+  async startModel(modelId: string) {
+    return this.fastApiClient.startModel(modelId);
+  }
+  async stopModel(modelId: string) {
+    return this.fastApiClient.stopModel(modelId);
+  }
+
   async createAnalysis(
     dto: CreateAiAnomalyAnalysisDto,
     actor: AiAnomalyActor,

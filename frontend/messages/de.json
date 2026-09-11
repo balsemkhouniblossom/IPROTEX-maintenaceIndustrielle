@@ -306,8 +306,8 @@
         "waitingActions": "Ausstehende Aktionen",
         "machinesActive": "Aktive Maschinen"
       },
-      "machineInspection": "Maschineninspektion",      "downloadFailed": "Download fehlgeschlagen. Bitte erneut versuchen.",
-
+      "machineInspection": "Maschineninspektion",
+      "downloadFailed": "Download fehlgeschlagen. Bitte erneut versuchen.",
       "viewAllReports": "Alle Berichte anzeigen",
       "title": "Bediener-Dashboard",
       "welcome": "Willkommen zurück, {name}!",
@@ -1995,7 +1995,7 @@
       "inventory": "Bestand",
       "inventoryLubrication": "Bestand und Schmierung",
       "documents": "Dokumente",
-      "insights": "Einblicke",
+      "insights": "KI und Überwachung",
       "myWork": "Meine Arbeit",
       "equipment": "Ausrustung",
       "resources": "Ressourcen",
@@ -2072,7 +2072,7 @@
       "startCorrectiveMaintenance": "Corrective Maintenance",
       "startPreventiveMaintenance": "Preventive Maintenance",
       "aiAnomalyMonitoring": "KI-Anomalie?berwachung",
-      "aiAnalytics": "KI-Analysen",
+      "aiAnalytics": "KI-Übersicht",
       "preventiveTasks": "Präventivaufgaben",
       "notifications": "Benachrichtigungen"
     }
@@ -2635,7 +2635,15 @@
       "spreadsheetSheet": "Tabellenblatt {sheet}",
       "workbookTooLarge": "Diese Arbeitsmappe ist für eine sichere Vorschau zu groß. Laden Sie die Originaldatei herunter.",
       "workbookTruncated": "Die Vorschau ist auf die ersten 10.000 Zeilen und 200 Spalten begrenzt.",
-      "states": {"unsupported": "Dieser Dateityp wird für die Vorschau nicht unterstützt.", "corrupt": "Die Datei ist beschädigt oder kann nicht gelesen werden.", "unauthorized": "Sie sind nicht berechtigt, auf diese Datei zuzugreifen.", "notFound": "Die Datei wurde nicht gefunden.", "storage": "Der Dokumentenspeicher ist vorübergehend nicht verfügbar.", "network": "Die Datei konnte wegen eines Netzwerkfehlers nicht geladen werden.", "renderer": "Die Vorschau ist fehlgeschlagen. Die Originaldatei bleibt verfügbar."}
+      "states": {
+        "unsupported": "Dieser Dateityp wird für die Vorschau nicht unterstützt.",
+        "corrupt": "Die Datei ist beschädigt oder kann nicht gelesen werden.",
+        "unauthorized": "Sie sind nicht berechtigt, auf diese Datei zuzugreifen.",
+        "notFound": "Die Datei wurde nicht gefunden.",
+        "storage": "Der Dokumentenspeicher ist vorübergehend nicht verfügbar.",
+        "network": "Die Datei konnte wegen eines Netzwerkfehlers nicht geladen werden.",
+        "renderer": "Die Vorschau ist fehlgeschlagen. Die Originaldatei bleibt verfügbar."
+      }
     },
     "notifications": {
       "fileRequired": "Bitte waehlen Sie eine Datei aus",
@@ -3209,7 +3217,8 @@
       "completed": "Noch keine abgeschlossenen Einsaetze."
     },
     "errors": {
-      "storage": "Der Dokumentenspeicher ist vorübergehend nicht verfügbar.", "network": "Technikerdaten konnten nicht geladen werden.",
+      "storage": "Der Dokumentenspeicher ist vorübergehend nicht verfügbar.",
+      "network": "Technikerdaten konnten nicht geladen werden.",
       "load": "Auftrag konnte nicht geladen werden.",
       "update": "Aktion konnte nicht ausgeführt werden.",
       "notFound": "Arbeitsauftrag nicht gefunden."
@@ -3784,6 +3793,41 @@
     }
   },
   "aiAnomaly": {
+    "models": {
+      "title": "KI-Modelle",
+      "subtitle": "Überwachen Sie KI-Dienst, bereitgestellte Modelle und Ausführungen.",
+      "refresh": "Aktualisieren",
+      "service": "KI-Dienst",
+      "online": "Online",
+      "offline": "Offline",
+      "readiness": "Bereitschaft",
+      "ready": "Bereit",
+      "loaded": "Geladene Modelle",
+      "active": "Aktive Modelle",
+      "unavailable": "Der KI-Dienst ist vorübergehend nicht verfügbar. Historische Ergebnisse bleiben zugänglich.",
+      "started": "{name} is enabled for new analyses.",
+      "stopped": "{name} is stopped. Existing analyses are not affected.",
+      "actionFailed": "The model state could not be changed.",
+      "version": "Version",
+      "loadedState": "Modell geladen",
+      "lastExecution": "Letzte Analyse",
+      "duration": "Analysedauer",
+      "viewDetails": "Details anzeigen",
+      "start": "Modell aktivieren",
+      "stop": "Modell deaktivieren",
+      "changing": "Wird aktualisiert…",
+      "inputNotice": "Analysen verwenden importierte IMS-Prüfstandsdaten. Dies sind keine Live-Telemetriedaten von IPROTEX.",
+      "detailsTitle": "Modellinformationen",
+      "modelName": "Modell",
+      "task": "Aufgabe",
+      "framework": "Technologie",
+      "dataset": "Datensatz",
+      "method": "Aggregationsmethode",
+      "validationScope": "Validierungsumfang",
+      "features": "Erwartete Merkmale",
+      "generalization": "Übertragbarkeit",
+      "disableTitle": "Modell deaktivieren"
+    },
     "title": "KI-Anomalie?berwachung",
     "heading": "KI-Anomalie?berwachung",
     "limitationNotice": "Experimenteller Prototyp auf Basis des ?ffentlichen IMS-Lagerdatensatzes. Die Validierung ist derzeit auf 1st_test begrenzt und belegt keine Generalisierung auf IPROTEX-Maschinen.",

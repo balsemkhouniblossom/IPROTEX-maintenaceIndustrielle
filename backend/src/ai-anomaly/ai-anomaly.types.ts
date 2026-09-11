@@ -48,17 +48,28 @@ export type AiAnomalyFastApiResults = {
   results: AiAnomalyFastApiResult[];
 };
 
-export type AiAnomalyModelMetadata = {
+export type AiAnomalyRuntimeModel = {
+  id: string;
+  name: string;
+  task: string;
+  purpose: string;
   modelVersion: string;
   artifactVersion?: string;
   selectedMethod?: string;
-  datasetOrigin: string;
+  sourceDataset: string;
   validatedExperiments: string[];
-  generalization: {
-    secondTest: string;
-    thirdTest: string;
-    iprotex: string;
-  };
-  limitations: string[];
-  runtime?: Record<string, unknown>;
+  validationScope: string;
+  generalizationStatus: string;
+  featureOrder: string[];
+  framework: string;
+  loaded: boolean;
+  enabled: boolean;
+  running: boolean;
+  status: 'ACTIVE' | 'STOPPED' | 'RUNNING' | 'STOPPING' | 'ERROR';
+  activeExecutions: number;
+  lastExecutionAt?: string;
+  lastExecutionDurationMs?: number;
+  lastError?: string;
 };
+
+export type AiAnomalyModelMetadata = { models: AiAnomalyRuntimeModel[] };

@@ -98,6 +98,9 @@ export default function MachineHealthCard({
           {riskLevelLabel(analysis.risk_level, t)}
         </span>
       </header>
+      <span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800">
+        {t("source.DATASET_REPLAY")}
+      </span>
 
       <div>
         <div className="flex items-baseline justify-between gap-3">

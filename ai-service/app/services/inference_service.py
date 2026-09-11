@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+from time import perf_counter
 from typing import Any
 import logging
 import platform
@@ -26,6 +27,12 @@ class InferenceService:
     def __init__(self, artifact_path: Path, metadata_path: Path) -> None:
         self.pipeline = ImsAnomalyInferencePipeline(artifact_path, metadata_path)
         self._lock = Lock()
+        self._state_lock = Lock()
+        self._enabled = True
+        self._active_executions = 0
+        self._last_execution_at: str | None = None
+        self._last_execution_duration_ms: float | None = None
+        self._last_error: str | None = None
         self._last_timestamp_by_stream: dict[tuple[str, str, int], pd.Timestamp] = {}
         self._pipelines_by_stream: dict[str, ImsAnomalyInferencePipeline] = {}
         self._runtime_versions = {
@@ -52,6 +59,16 @@ class InferenceService:
         return self.pipeline.version == "0.1.0"
 
     def analyze(self, stream_id: str, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
+        started = self._begin_execution()
+        try:
+            return self._analyze(stream_id, rows)
+        except Exception as exc:
+            self._last_error = str(exc)
+            raise
+        finally:
+            self._finish_execution(started)
+
+    def _analyze(self, stream_id: str, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
         frame = self._rows_to_frame(rows)
         self._log_request("analyze", rows)
         with self._lock:
@@ -65,6 +82,16 @@ class InferenceService:
         return stream_pipeline.to_json_records(output)
 
     def analyze_batch(self, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
+        started = self._begin_execution()
+        try:
+            return self._analyze_batch(rows)
+        except Exception as exc:
+            self._last_error = str(exc)
+            raise
+        finally:
+            self._finish_execution(started)
+
+    def _analyze_batch(self, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
         frame = self._rows_to_frame(rows)
         self._log_request("analyze_batch", rows)
         replay_pipeline = self._new_replay_pipeline()
@@ -72,6 +99,10 @@ class InferenceService:
         return replay_pipeline.to_json_records(output)
 
     def metadata(self) -> dict[str, Any]:
+        with self._state_lock:
+            enabled = self._enabled
+            running = self._active_executions > 0
+            status = "RUNNING" if running else ("ACTIVE" if enabled else "STOPPED")
         return {
             "id": "ims-selected-anomaly-model-v0-1-0",
             "modelVersion": self.pipeline.version,
@@ -96,7 +127,43 @@ class InferenceService:
                 "The joblib artifact may emit NumPy/scikit-learn unpickle deprecation or version warnings when loaded.",
                 "Warnings are documented and are not globally suppressed by the API.",
             ],
+            "name": "IMS Selected Anomaly Pipeline",
+            "task": "anomaly_detection",
+            "purpose": "Aggregate Dynamic Z-score and Isolation Forest scores for bearing anomaly screening.",
+            "framework": "scikit-learn + deterministic Python pipeline",
+            "loaded": True,
+            "enabled": enabled,
+            "running": running,
+            "status": status,
+            "activeExecutions": self._active_executions,
+            "lastExecutionAt": self._last_execution_at,
+            "lastExecutionDurationMs": self._last_execution_duration_ms,
+            "lastError": self._last_error,
         }
+
+    def start(self) -> dict[str, Any]:
+        with self._state_lock:
+            self._enabled = True
+            self._last_error = None
+        return self.metadata()
+
+    def stop(self) -> dict[str, Any]:
+        with self._state_lock:
+            self._enabled = False
+        return self.metadata()
+
+    def _begin_execution(self) -> float:
+        with self._state_lock:
+            if not self._enabled:
+                raise RuntimeError("MODEL_DISABLED")
+            self._active_executions += 1
+        return perf_counter()
+
+    def _finish_execution(self, started: float) -> None:
+        with self._state_lock:
+            self._active_executions -= 1
+            self._last_execution_at = datetime.now().astimezone().isoformat()
+            self._last_execution_duration_ms = round((perf_counter() - started) * 1000, 2)
 
     def _new_replay_pipeline(self) -> ImsAnomalyInferencePipeline:
         clone = object.__new__(ImsAnomalyInferencePipeline)

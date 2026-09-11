@@ -122,6 +122,18 @@ class ModelMetadata(BaseModel):
     runtimeLoadedWith: dict[str, str]
     artifactProducedWith: dict[str, str]
     warnings: list[str]
+    name: str
+    task: str
+    purpose: str
+    framework: str
+    loaded: bool
+    enabled: bool
+    running: bool
+    status: Literal["ACTIVE", "STOPPED", "RUNNING", "STOPPING", "ERROR"]
+    activeExecutions: int
+    lastExecutionAt: str | None = None
+    lastExecutionDurationMs: float | None = None
+    lastError: str | None = None
 
 
 class ModelsResponse(BaseModel):

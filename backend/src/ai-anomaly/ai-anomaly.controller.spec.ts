@@ -17,6 +17,8 @@ describe('AiAnomalyController', () => {
     getAnalysis: jest.fn(),
     getMachineHistory: jest.fn(),
     validateAnalysis: jest.fn(),
+    startModel: jest.fn(),
+    stopModel: jest.fn(),
   };
 
   let controller: AiAnomalyController;
@@ -76,6 +78,15 @@ describe('AiAnomalyController', () => {
     expect(
       Reflect.getMetadata(ROLES_KEY, controllerMethod('validateAnalysis')),
     ).toEqual([Role.ADMIN, Role.TECHNICIAN]);
+  });
+
+  it('restricts model lifecycle controls to administrators', () => {
+    expect(
+      Reflect.getMetadata(ROLES_KEY, controllerMethod('startModel')),
+    ).toEqual([Role.ADMIN]);
+    expect(
+      Reflect.getMetadata(ROLES_KEY, controllerMethod('stopModel')),
+    ).toEqual([Role.ADMIN]);
   });
 
   it('forwards validation status without trusting body user identifiers', async () => {

@@ -90,6 +90,28 @@ test("apiService integrates only the existing /ai-anomaly backend endpoints", ()
   );
   assert.match(source, /dateFrom\?: string/);
   assert.match(source, /dateTo\?: string/);
+  assert.match(
+    source,
+    /startAiAnomalyModel:[\s\S]*\/ai-anomaly\/models\/\$\{encodeURIComponent\(modelId\)\}\/start/,
+  );
+  assert.match(
+    source,
+    /stopAiAnomalyModel:[\s\S]*\/ai-anomaly\/models\/\$\{encodeURIComponent\(modelId\)\}\/stop/,
+  );
+});
+
+test("model runtime UI polls real backend state and limits controls to Admin", () => {
+  const source = readSource(PAGE);
+  assert.match(source, /getAiAnomalyModels/);
+  assert.match(source, /window\.setInterval\([\s\S]*10000/);
+  assert.match(source, /user\?\.role === "admin"/);
+  assert.match(source, /startAiAnomalyModel/);
+  assert.match(source, /stopAiAnomalyModel/);
+  assert.match(source, /models\.inputNotice/);
+  assert.match(
+    readSource("messages/en.json"),
+    /not live IPROTEX machine telemetry/i,
+  );
 });
 
 test("filters support machine, risk level, validation status, date range and pagination", () => {
@@ -118,10 +140,7 @@ test("filters support machine, risk level, validation status, date range and pag
   assert.match(readSource(PAGE), /<Pagination/);
   assert.match(readSource(PAGE), /dateFrom: filters\.dateFrom \|\| undefined/);
   assert.match(readSource(PAGE), /dateTo: filters\.dateTo \|\| undefined/);
-  assert.doesNotMatch(
-    readSource(PAGE),
-    /filterAiAnomalyAnalyses\(analyses/,
-  );
+  assert.doesNotMatch(readSource(PAGE), /filterAiAnomalyAnalyses\(analyses/);
 });
 
 test("summary cards count persistent alerts and validation outcomes", () => {
@@ -230,12 +249,15 @@ test("anomaly page treats the admin machine catalog as optional enrichment", () 
   );
 
   assert.deepEqual(
-    buildAiAnomalyMachineOptions([baseAnalysis], [
-      {
-        _id: "machine-a",
-        machine_id: "BRD-01",
-      },
-    ]),
+    buildAiAnomalyMachineOptions(
+      [baseAnalysis],
+      [
+        {
+          _id: "machine-a",
+          machine_id: "BRD-01",
+        },
+      ],
+    ),
     [{ id: "machine-a", label: "BRD-01" }],
   );
 
@@ -252,9 +274,10 @@ test("UI omits automatic work-order creation", () => {
 
 test("machine options fall back to serial/model or the raw id when machine_id is missing", () => {
   assert.deepEqual(
-    buildAiAnomalyMachineOptions([], [
-      { _id: "machine-a", serial_no: "SN-1", model: "M-100" },
-    ]),
+    buildAiAnomalyMachineOptions(
+      [],
+      [{ _id: "machine-a", serial_no: "SN-1", model: "M-100" }],
+    ),
     [{ id: "machine-a", label: "SN-1 / M-100" }],
   );
   assert.deepEqual(buildAiAnomalyMachineOptions([], [{ _id: "machine-a" }]), [
@@ -267,22 +290,10 @@ test("demo input source labels use the demo translation key", () => {
 });
 
 test("AI service outage responses (502/503/504) are recognized as unavailable", () => {
-  assert.equal(
-    isAiServiceUnavailable({ response: { status: 503 } }),
-    true,
-  );
-  assert.equal(
-    isAiServiceUnavailable({ response: { status: 502 } }),
-    true,
-  );
-  assert.equal(
-    isAiServiceUnavailable({ response: { status: 504 } }),
-    true,
-  );
-  assert.equal(
-    isAiServiceUnavailable({ response: { status: 400 } }),
-    false,
-  );
+  assert.equal(isAiServiceUnavailable({ response: { status: 503 } }), true);
+  assert.equal(isAiServiceUnavailable({ response: { status: 502 } }), true);
+  assert.equal(isAiServiceUnavailable({ response: { status: 504 } }), true);
+  assert.equal(isAiServiceUnavailable({ response: { status: 400 } }), false);
   assert.equal(isAiServiceUnavailable(new Error("network")), false);
   assert.equal(isAiServiceUnavailable(undefined), false);
 });

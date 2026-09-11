@@ -108,40 +108,61 @@ function validateModelMetadata(value: unknown): AiAnomalyModelMetadata {
   }
 
   const models: unknown[] = value.models;
-  const firstModel = models[0];
-  if (!isObject(firstModel)) {
+  if (!models.length || !models.every(isObject)) {
     throw new BadGatewayException('AI service returned no model metadata');
   }
 
-  const validatedExperiments = Array.isArray(firstModel.validatedExperiments)
-    ? firstModel.validatedExperiments.filter(
-        (experiment): experiment is string => typeof experiment === 'string',
-      )
-    : [];
-
   return {
-    modelVersion: assertString(firstModel.modelVersion, 'modelVersion'),
-    artifactVersion:
-      typeof firstModel.artifactVersion === 'string'
-        ? firstModel.artifactVersion
-        : undefined,
-    selectedMethod:
-      typeof firstModel.selectedMethod === 'string'
-        ? firstModel.selectedMethod
-        : undefined,
-    datasetOrigin: 'IMS public test-rig data',
-    validatedExperiments,
-    generalization: {
-      secondTest: 'not established',
-      thirdTest: 'not established',
-      iprotex: 'not established',
-    },
-    limitations: [
-      'Validation currently covers only 1st_test.',
-      'Generalization to 2nd_test, 3rd_test, and IPROTEX is not established.',
-      'prototypeResult=true denotes a deterministic prototype, not a certified industrial safety threshold.',
-    ],
-    runtime: isObject(firstModel.runtime) ? firstModel.runtime : undefined,
+    models: models.map((model) => ({
+      id: assertString(model.id, 'id'),
+      name: assertString(model.name, 'name'),
+      task: assertString(model.task, 'task'),
+      purpose: assertString(model.purpose, 'purpose'),
+      modelVersion: assertString(model.modelVersion, 'modelVersion'),
+      artifactVersion:
+        typeof model.artifactVersion === 'string'
+          ? model.artifactVersion
+          : undefined,
+      selectedMethod:
+        typeof model.selectedMethod === 'string'
+          ? model.selectedMethod
+          : undefined,
+      sourceDataset: assertString(model.sourceDataset, 'sourceDataset'),
+      validatedExperiments: Array.isArray(model.validatedExperiments)
+        ? model.validatedExperiments.filter(
+            (item): item is string => typeof item === 'string',
+          )
+        : [],
+      validationScope: assertString(model.validationScope, 'validationScope'),
+      generalizationStatus: assertString(
+        model.generalizationStatus,
+        'generalizationStatus',
+      ),
+      featureOrder: Array.isArray(model.featureOrder)
+        ? model.featureOrder.filter(
+            (item): item is string => typeof item === 'string',
+          )
+        : [],
+      framework: assertString(model.framework, 'framework'),
+      loaded: assertBoolean(model.loaded, 'loaded'),
+      enabled: assertBoolean(model.enabled, 'enabled'),
+      running: assertBoolean(model.running, 'running'),
+      status: assertString(model.status, 'status') as never,
+      activeExecutions: assertFiniteNumber(
+        model.activeExecutions,
+        'activeExecutions',
+      ),
+      lastExecutionAt:
+        typeof model.lastExecutionAt === 'string'
+          ? model.lastExecutionAt
+          : undefined,
+      lastExecutionDurationMs:
+        typeof model.lastExecutionDurationMs === 'number'
+          ? model.lastExecutionDurationMs
+          : undefined,
+      lastError:
+        typeof model.lastError === 'string' ? model.lastError : undefined,
+    })),
   };
 }
 
@@ -164,6 +185,20 @@ export class AiAnomalyFastApiClient {
       idempotent: true,
     });
     return validateModelMetadata(response);
+  }
+
+  async startModel(modelId: string) {
+    return this.request(`/v1/models/${encodeURIComponent(modelId)}/start`, {
+      method: 'POST',
+      idempotent: true,
+    });
+  }
+
+  async stopModel(modelId: string) {
+    return this.request(`/v1/models/${encodeURIComponent(modelId)}/stop`, {
+      method: 'POST',
+      idempotent: true,
+    });
   }
 
   async analyze(

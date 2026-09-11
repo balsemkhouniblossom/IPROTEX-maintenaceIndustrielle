@@ -22,7 +22,7 @@ import {
 
 export default function TechnicianMachineHealthDetailPage() {
   return (
-    <ProtectedRoute requiredRole="technician">
+    <ProtectedRoute allowedRoles={["admin", "technician"]}>
       <TechnicianMachineHealthDetailContent />
     </ProtectedRoute>
   );
@@ -56,9 +56,6 @@ function TechnicianMachineHealthDetailContent() {
         apiService.getAiAnomalyAnalysis(analysisId),
         apiService
           .getMachines({ page: 1, limit: 100 }, quiet())
-          .catch(() => null),
-        apiService
-          .getAiAnomalyMachineHistory("", { limit: 1 }, { signal })
           .catch(() => null),
       ]);
       setAnalysis(analysisResponse.data as AiAnomalyAnalysis);

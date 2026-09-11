@@ -35,7 +35,7 @@ const FILTERS: MachineHealthFilter[] = [
 
 export default function TechnicianMachineHealthPage() {
   return (
-    <ProtectedRoute requiredRole="technician">
+    <ProtectedRoute allowedRoles={["admin", "technician"]}>
       <TechnicianMachineHealthContent />
     </ProtectedRoute>
   );
@@ -65,7 +65,6 @@ function TechnicianMachineHealthContent() {
           {
             page: 1,
             limit: 200,
-            risk_level: filterToRiskLevel(filter),
             input_source: "DATASET_REPLAY",
           },
           { signal },
@@ -95,7 +94,7 @@ function TechnicianMachineHealthContent() {
       setLoading(false);
       setRetrying(false);
     }
-  }, [filter, t]);
+  }, [t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,13 +131,16 @@ function TechnicianMachineHealthContent() {
 
   const visibleMachines = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return latestByMachine;
+    const selectedRisk = filterToRiskLevel(filter);
     return latestByMachine.filter((analysis) => {
-      const label = analysis.machine_id.toLowerCase();
-      const model = "";
-      return label.includes(query) || model.includes(query);
+      if (selectedRisk && analysis.risk_level !== selectedRisk) return false;
+      if (!query) return true;
+      const label =
+        machines.find((machine) => machine.id === analysis.machine_id)?.label ??
+        "";
+      return label.toLowerCase().includes(query);
     });
-  }, [latestByMachine, search]);
+  }, [filter, latestByMachine, machines, search]);
 
   const filterCounts = useMemo(() => {
     const counts: Record<MachineHealthFilter, number> = {

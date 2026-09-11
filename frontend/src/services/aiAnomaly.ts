@@ -2,6 +2,30 @@ export type AiAnomalyRiskLevel = "NORMAL" | "MONITOR" | "HIGH" | "CRITICAL";
 export type AiAnomalyValidationStatus = "PENDING" | "CONFIRMED" | "REJECTED";
 export type AiAnomalyInputSource = "DATASET_REPLAY" | "DEMO";
 
+export type AiAnomalyRuntimeModel = {
+  id: string;
+  name: string;
+  task: string;
+  purpose: string;
+  modelVersion: string;
+  artifactVersion?: string;
+  selectedMethod?: string;
+  sourceDataset: string;
+  validatedExperiments: string[];
+  validationScope: string;
+  generalizationStatus: string;
+  featureOrder: string[];
+  framework: string;
+  loaded: boolean;
+  enabled: boolean;
+  running: boolean;
+  status: "ACTIVE" | "STOPPED" | "RUNNING" | "STOPPING" | "ERROR";
+  activeExecutions: number;
+  lastExecutionAt?: string;
+  lastExecutionDurationMs?: number;
+  lastError?: string;
+};
+
 export type AiAnomalyAnalysis = {
   id?: string;
   analysis_id: string;
