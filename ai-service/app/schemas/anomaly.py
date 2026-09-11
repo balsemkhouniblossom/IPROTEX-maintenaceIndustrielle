@@ -135,6 +135,9 @@ class ModelMetadata(BaseModel):
     lastExecutionDurationMs: float | None = None
     lastError: str | None = None
     validationMetrics: dict[str, object]
+    acceptedForAdvisoryPilot: bool = False
+    riskMappingType: str = "heuristic"
+    knownLimitations: list[str] = Field(default_factory=list)
 
 
 class ModelsResponse(BaseModel):

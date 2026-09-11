@@ -58,8 +58,9 @@ def load_inference_metadata(path: str | Path) -> dict[str, Any]:
 
     with Path(path).open("r", encoding="utf-8") as handle:
         metadata = json.load(handle)
-    if metadata.get("version") != "0.1.0":
-        raise ImsInferenceError("Only IMS inference model version 0.1.0 is supported.")
+    version = metadata.get("version")
+    if not isinstance(version, str) or not version:
+        raise ImsInferenceError("IMS inference metadata must contain a version.")
     return metadata
 
 
@@ -91,7 +92,7 @@ def _json_value(value: Any) -> Any:
 
 
 class ImsAnomalyInferencePipeline:
-    """Deterministic IMS anomaly inference from the saved v0.1.0 artifact.
+    """Deterministic IMS anomaly inference from a versioned saved artifact.
 
     This class never trains or refits. It only loads persisted validation-time
     parameters and estimator state.
@@ -102,6 +103,8 @@ class ImsAnomalyInferencePipeline:
         self.artifact = load_inference_artifact(self.artifact_path)
         self.metadata = load_inference_metadata(metadata_path) if metadata_path else None
         self.version = str(self.artifact["version"])
+        if self.metadata and self.metadata.get("version") != self.version:
+            raise ImsInferenceError("Model artifact and metadata versions do not match.")
         self.feature_order = list(self.artifact["feature_order"])
         self.required_columns = list(self.artifact["required_columns"])
         self.validated_experiments = set(self.artifact.get("validated_experiments", []))
@@ -116,15 +119,23 @@ class ImsAnomalyInferencePipeline:
 
     def reset_state(self) -> None:
         self._z_history: dict[tuple[str, int], deque[np.ndarray]] = {}
-        baseline_experiment = str(self.dynamic_z_config["baseline_experiment"])
-        for channel, rows in self.dynamic_z_config["initial_history_by_sensor_channel"].items():
-            key = (baseline_experiment, int(channel))
-            self._z_history[key] = deque(
-                (np.array([row[feature] for feature in self.feature_order], dtype=float) for row in rows),
-                maxlen=int(self.dynamic_z_config["rolling_window"]),
-            )
+        histories = self.dynamic_z_config.get("initial_history_by_experiment_sensor_channel")
+        if histories:
+            for experiment, channel_histories in histories.items():
+                for channel, rows in channel_histories.items():
+                    self._z_history[(str(experiment), int(channel))] = self._history_deque(rows)
+        else:
+            baseline_experiment = str(self.dynamic_z_config["baseline_experiment"])
+            for channel, rows in self.dynamic_z_config["initial_history_by_sensor_channel"].items():
+                self._z_history[(baseline_experiment, int(channel))] = self._history_deque(rows)
         self._persistence_history: dict[tuple[str, int, str], deque[bool]] = defaultdict(
             lambda: deque(maxlen=int(self.persistence_config["window"]))
+        )
+
+    def _history_deque(self, rows: list[dict[str, Any]]) -> deque[np.ndarray]:
+        return deque(
+            (np.array([row[feature] for feature in self.feature_order], dtype=float) for row in rows),
+            maxlen=int(self.dynamic_z_config["rolling_window"]),
         )
 
     def validate_input(self, frame: pd.DataFrame) -> pd.DataFrame:
@@ -157,7 +168,7 @@ class ImsAnomalyInferencePipeline:
             unsupported = sorted(set(output["experiment"].astype(str)) - self.validated_experiments)
             if unsupported:
                 raise ImsInferenceError(
-                    "This v0.1.0 artifact was validated only for "
+                    f"This v{self.version} artifact was validated only for "
                     f"{sorted(self.validated_experiments)}; unsupported experiments: {unsupported}"
                 )
 
@@ -212,13 +223,11 @@ class ImsAnomalyInferencePipeline:
         matrix = np.vstack(history)
         mean = matrix.mean(axis=0)
         std = matrix.std(axis=0, ddof=1)
-        baseline_std = np.array(
-            [
-                self.dynamic_z_config["baseline_std_by_sensor_channel"][str(sensor_channel)][feature]
-                for feature in self.feature_order
-            ],
-            dtype=float,
-        )
+        by_experiment = self.dynamic_z_config.get("baseline_std_by_experiment_sensor_channel", {})
+        baseline_stats = by_experiment.get(experiment, {}).get(str(sensor_channel))
+        if baseline_stats is None:
+            baseline_stats = self.dynamic_z_config["baseline_std_by_sensor_channel"][str(sensor_channel)]
+        baseline_std = np.array([baseline_stats[feature] for feature in self.feature_order], dtype=float)
         std_floor = np.maximum(baseline_std, float(self.dynamic_z_config["epsilon"])) * float(
             self.dynamic_z_config["std_floor_fraction"]
         )
@@ -385,7 +394,9 @@ class ImsAnomalyInferencePipeline:
         if weighted_raw:
             codes.append("WEIGHTED_SCORE_THRESHOLD")
         if persistent_alert:
-            codes.append("PERSISTENCE_3_OF_5")
+            codes.append(
+                f"PERSISTENCE_{self.persistence_config['required']}_OF_{self.persistence_config['window']}"
+            )
         return codes
 
     def predict_batch(self, frame: pd.DataFrame, *, reset_state: bool = True) -> pd.DataFrame:

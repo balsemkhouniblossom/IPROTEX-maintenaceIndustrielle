@@ -56,7 +56,7 @@ class InferenceService:
 
     @property
     def ready(self) -> bool:
-        return self.pipeline.version == "0.1.0"
+        return bool(self.pipeline.version and self.pipeline.estimator is not None)
 
     def analyze(self, stream_id: str, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
         started = self._begin_execution()
@@ -104,18 +104,22 @@ class InferenceService:
             running = self._active_executions > 0
             status = "RUNNING" if running else ("ACTIVE" if enabled else "STOPPED")
         return {
-            "id": "ims-selected-anomaly-model-v0-1-0",
+            "id": f"ims-selected-anomaly-model-v{self.pipeline.version.replace('.', '-')}",
             "modelVersion": self.pipeline.version,
-            "artifactVersion": str(self.pipeline.metadata.get("artifact_version", "v0_1_0")),
+            "artifactVersion": str(self.pipeline.metadata.get("artifact_version", f"v{self.pipeline.version.replace('.', '_')}")),
             "selectedMethod": str(self.pipeline.artifact["selected_method"]),
             "sourceDataset": "IMS public bearing test-rig data",
             "validatedExperiments": sorted(self.pipeline.validated_experiments),
-            "validationScope": "Validated only on the later chronological portion of IMS 1st_test.",
+            "validationScope": str(self.pipeline.metadata.get("locked_test_scope", "Later chronological IMS 1st_test only.")),
             "generalizationStatus": (
-                "Generalization to IMS 2nd_test, IMS 3rd_test, and IPROTEX industrial machines "
-                "is not established."
+                "Cross-experiment results are experimental; generalization to IPROTEX industrial machines is not established."
+                if self.pipeline.artifact.get("cross_experiment_validation_performed")
+                else "Generalization beyond the artifact validation scope is not established."
             ),
-            "unsupportedGeneralizationTargets": ["2nd_test", "3rd_test", "IPROTEX"],
+            "unsupportedGeneralizationTargets": [
+                *sorted(set(self.pipeline.documentation) - self.pipeline.validated_experiments),
+                "IPROTEX",
+            ],
             "featureOrder": list(self.pipeline.feature_order),
             "requiredColumns": list(self.pipeline.required_columns),
             "riskLevels": deepcopy(self.pipeline.risk_levels),
@@ -140,8 +144,12 @@ class InferenceService:
             "lastExecutionDurationMs": self._last_execution_duration_ms,
             "lastError": self._last_error,
             "validationMetrics": deepcopy(
-                self.pipeline.metadata.get("selection", {}).get("selected", {})
+                self.pipeline.metadata.get("validation_metrics", {}).get("selected_test_metrics")
+                or self.pipeline.metadata.get("selection", {}).get("selected", {})
             ),
+            "acceptedForAdvisoryPilot": bool(self.pipeline.metadata.get("accepted_for_advisory_pilot", False)),
+            "riskMappingType": str(self.pipeline.metadata.get("risk_mapping_type", "heuristic")),
+            "knownLimitations": deepcopy(self.pipeline.metadata.get("limitations", [])),
         }
 
     def start(self) -> dict[str, Any]:

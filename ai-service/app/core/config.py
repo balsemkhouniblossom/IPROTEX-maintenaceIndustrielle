@@ -6,6 +6,20 @@ import os
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+SUPPORTED_MODEL_VERSIONS = {"0.1.0", "0.2.0"}
+
+
+def _model_file(version: str, extension: str) -> Path:
+    semantic_version = version.strip().lower().removeprefix("v")
+    if semantic_version not in SUPPORTED_MODEL_VERSIONS:
+        raise ValueError(
+            f"Unsupported ANOMALY_MODEL_VERSION {version!r}; expected one of "
+            f"{sorted(SUPPORTED_MODEL_VERSIONS)}."
+        )
+    if extension not in {"joblib", "json"}:
+        raise ValueError("Model extension must be 'joblib' or 'json'.")
+    normalized = semantic_version.replace(".", "_")
+    return ROOT_DIR / "artifacts" / "models" / f"ims_selected_anomaly_model_v{normalized}.{extension}"
 
 
 def _csv_env(name: str, default: str = "") -> list[str]:
@@ -18,16 +32,17 @@ class Settings:
     app_name: str = "IPROTEX IMS Anomaly Inference API"
     api_version: str = "v1"
     environment: str = os.getenv("AI_SERVICE_ENV", "development").lower()
+    model_version: str = os.getenv("ANOMALY_MODEL_VERSION", "0.1.0")
     artifact_path: Path = Path(
         os.getenv(
             "IMS_ANOMALY_ARTIFACT_PATH",
-            str(ROOT_DIR / "artifacts" / "models" / "ims_selected_anomaly_model_v0_1_0.joblib"),
+            str(_model_file(os.getenv("ANOMALY_MODEL_VERSION", "0.1.0"), "joblib")),
         )
     )
     metadata_path: Path = Path(
         os.getenv(
             "IMS_ANOMALY_METADATA_PATH",
-            str(ROOT_DIR / "artifacts" / "models" / "ims_selected_anomaly_model_v0_1_0.json"),
+            str(_model_file(os.getenv("ANOMALY_MODEL_VERSION", "0.1.0"), "json")),
         )
     )
     dataset_features_path: Path = Path(
@@ -42,6 +57,8 @@ class Settings:
     service_token: str = os.getenv("AI_SERVICE_TOKEN", "").strip()
 
     def validate(self) -> None:
+        if self.model_version.strip().lower().removeprefix("v") not in SUPPORTED_MODEL_VERSIONS:
+            raise ValueError("ANOMALY_MODEL_VERSION must select a supported immutable artifact.")
         if self.environment == "production" and "*" in self.cors_origins:
             raise ValueError("AI_SERVICE_CORS_ORIGINS cannot contain '*' in production.")
         if self.max_request_bytes <= 0:
