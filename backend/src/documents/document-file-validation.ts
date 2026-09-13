@@ -179,6 +179,18 @@ function isOle2(buffer: Buffer): boolean {
  * a document).
  */
 const DOCUMENT_EXTENSION_RULES: Record<string, DocumentKindRule> = {
+  '.txt': {
+    mimeTypes: ['text/plain'],
+    matchesMagicBytes: (buffer) => {
+      try {
+        const text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        // eslint-disable-next-line no-control-regex
+        return !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(text);
+      } catch {
+        return false;
+      }
+    },
+  },
   '.pdf': {
     mimeTypes: ['application/pdf'],
     matchesMagicBytes: (buffer) => hasPrefix(buffer, [0x25, 0x50, 0x44, 0x46]), // %PDF
@@ -256,7 +268,7 @@ export function isSafeFileName(fileName: string): boolean {
 }
 
 /**
- * Validates an uploaded PDF/Office file against size, safe-filename,
+ * Validates an uploaded TXT/PDF/Office file against size, safe-filename,
  * extension, declared MIME type, and magic-byte rules, in that order —
  * each check is cheap-to-expensive so a malformed request fails fast.
  * Returns a plain result object (rather than throwing) so callers decide
@@ -285,7 +297,7 @@ export function validateManagedDocumentUpload(
     return {
       ok: false,
       reason:
-        'Unsupported file type: only PDF and Office documents (Word, Excel, PowerPoint) are allowed',
+        'Unsupported file type: only TXT, PDF and Office documents (Word, Excel, PowerPoint) are allowed',
     };
   }
 

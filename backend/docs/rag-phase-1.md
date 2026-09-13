@@ -52,3 +52,19 @@ Optional retrieval configuration:
 - `RAG_MIN_SCORE` defaults to `0.55` (range 0–1); evaluate this value on representative manuals before production use.
 
 Responses include `grounded`, safe citation metadata in `sources`, and `retrieval.matched`. Embeddings, storage paths, role filters, and full chunk metadata are never returned. Retrieved text is marked as untrusted evidence in the Gemini system instruction so instructions embedded in documents cannot override assistant rules.
+
+## End-user and administration workflow
+
+The existing assistant displays a machine-context label, a documented-grounding badge, and clickable document/page/section sources. Source clicks use the existing authenticated document lookup and `DocumentAttachmentViewer`; the current PDF viewer does not expose an initial-page prop, so the modal displays the cited page as a navigation hint. Operator and Technician interfaces contain no indexing controls. The Admin Documents page displays `NOT_INDEXED`, `PROCESSING`, `READY`, and `FAILED`, chunk count and indexed time, with rate-limited Index/Reindex/Retry actions.
+
+Role responsibilities:
+
+- Operator consumes documentation for assigned machines and sees only accessible sources.
+- Technician consumes permitted technical documentation with machine/work-order context.
+- Admin manages document lifecycle and indexing.
+
+Resource protections include a 2,000-character assistant DTO limit, per-user assistant throttling, a 10 MB upload limit, safe filename/MIME/magic-byte validation, bounded text extraction and chunking, idempotent generation keys, batched embeddings, bounded top-K/context, Admin-only throttled reindexing, and provider timeouts. TXT, PDF, and DOCX are ingestible. Scanned PDFs require OCR; legacy Office formats may be previewed but are not indexed.
+
+## Soutenance summary
+
+The RAG feature grounds the maintenance assistant in company manuals and SOPs without retraining Gemini. NestJS extracts documents, creates Gemini embeddings, stores them in MongoDB, retrieves authorized passages with Atlas Vector Search, and asks Gemini to explain only that evidence with traceable sources. Machine learning remains separate: the FastAPI model detects anomalies; RAG retrieves company knowledge; Gemini explains and summarizes documented guidance. This separation prevents an LLM explanation from being presented as the anomaly computation itself.

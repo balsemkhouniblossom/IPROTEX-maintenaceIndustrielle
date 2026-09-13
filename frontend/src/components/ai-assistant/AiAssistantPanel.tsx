@@ -70,6 +70,7 @@ type AiAssistantPanelProps = Readonly<{
   workOrderId?: string;
   faultCode?: string;
   machineLabel?: string;
+  suggestedQuestion?: string;
 }>;
 
 export default function AiAssistantPanel(props: AiAssistantPanelProps) {
@@ -78,7 +79,10 @@ export default function AiAssistantPanel(props: AiAssistantPanelProps) {
       boundaryName="ai-assistant-panel"
       fallback={renderWidgetErrorFallback}
     >
-      <AiAssistantPanelInner {...props} />
+      <AiAssistantPanelInner
+        key={`${props.machineId ?? "global"}:${props.workOrderId ?? "none"}`}
+        {...props}
+      />
     </ErrorBoundary>
   );
 }
@@ -88,10 +92,11 @@ function AiAssistantPanelInner({
   workOrderId,
   faultCode,
   machineLabel,
+  suggestedQuestion,
 }: AiAssistantPanelProps) {
   const t = useTranslations("aiAssistant");
   const locale = useLocale();
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(suggestedQuestion ?? "");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiRecommendationResponse | null>(null);
   const [submitError, setSubmitError] = useState(false);

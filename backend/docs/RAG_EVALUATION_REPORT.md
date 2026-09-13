@@ -1,9 +1,27 @@
-# RAG evaluation report
+# RAG Evaluation Report
 
-The controlled fixture contains 20 questions covering factual retrieval, maintenance intervals, procedures, machine specificity, all six UI languages, deliberate no-answer questions, authorization boundaries, prompt injection, and page attribution. Expected facts refer only to named fixture documents; production manual facts are not invented.
+## Scope
 
-The automated contract suite validates permission filters, exact-machine preference, same-type fallback, thresholds, deduplication, abstention, source metadata, multilingual instructions, and prompt-injection isolation. Tests mock Gemini and Atlas so CI remains deterministic and free of provider cost.
+The project-controlled fixture contains 20 questions covering direct facts, maintenance intervals, procedures, exact-machine context, multilingual retrieval, intentional no-answer cases, role restrictions, source attribution, and malicious instructions embedded in documents. All facts use explicitly labelled controlled fixture identifiers, so the suite makes no claim about real IPROTEX procedures.
 
-A live quality score is intentionally not reported until the controlled documents have been indexed in an isolated Atlas environment. To complete that evaluation, create isolated fixture machines, upload the named documents, wait for `READY`, execute every case from `test/fixtures/rag-evaluation.json`, and record top-K source match, cited page, abstention, unsupported claims, and forbidden-source leakage. Calibrate `RAG_MIN_SCORE` on a validation subset and report an untouched test subset separately.
+## Method
 
-Release criteria are 100% authorization and injection safety, 100% intended no-answer abstention, and a measured retrieval/source-attribution result on the isolated fixture. These live measurements remain pending.
+Automated contract tests verify fixture integrity, locale/category coverage, grounding requirements, retrieval filtering, thresholding, same-machine-type fallback, source metadata, abstention, and prompt-injection boundaries. Gemini and Atlas calls are mocked in regular CI. A production-quality score must be generated later by loading the controlled fixture documents into an isolated Atlas database and running every question through the real embedding and generation models.
+
+## Current result
+
+| Check                                      | Result                           |
+| ------------------------------------------ | -------------------------------- |
+| Dataset integrity                          | 20/20 cases valid                |
+| Required categories                        | Covered                          |
+| Six application locales                    | Covered                          |
+| Grounded cases require evidence and source | Pass                             |
+| No-answer cases require abstention         | Pass                             |
+| Operator/Admin authorization contract      | Pass in focused service tests    |
+| Prompt-injection precedence                | Pass in focused prompt tests     |
+| Real Atlas top-K retrieval rate            | Not measured in this environment |
+| Real Gemini grounded-answer correctness    | Not measured in this environment |
+
+## Release gate
+
+Do not report a retrieval accuracy or grounded-answer accuracy percentage until the isolated live evaluation is run. Before production, create a test machine and controlled documents in a non-production database, index them using the configured Gemini embedding model, execute all 20 cases, and record expected-source top-K success, abstention, authorization leakage, source attribution, and reviewer-rated answer consistency.

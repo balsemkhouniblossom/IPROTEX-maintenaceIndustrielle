@@ -71,15 +71,40 @@ test("AiAssistantPanel always renders a visible advisory-only disclaimer regardl
   );
 });
 
-test("AiAssistantPanel never calls any endpoint other than the recommendation endpoint (advisory-only, no mutation path)", () => {
+test("AiAssistantPanel only calls the recommendation endpoint and read-only source lookup", () => {
   const source = readSource(PANEL);
 
   const apiCalls = source.match(/apiService\.\w+/g) ?? [];
   assert.deepEqual(
     [...new Set(apiCalls)],
-    ["apiService.requestAiAssistantRecommendation"],
-    "the panel must only ever call the read/advisory recommendation endpoint — never a work-order, stock, or machine-mutating endpoint",
+    [
+      "apiService.requestAiAssistantRecommendation",
+      "apiService.getDocument",
+    ],
+    "the panel must use only advisory generation and authorized read-only source lookup",
   );
+});
+
+test("grounded answers expose accessible source controls without internal scores or ids", () => {
+  const source = readSource(PANEL);
+  assert.match(source, /data-testid="ai-assistant-grounded"/);
+  assert.match(source, /data-testid="ai-assistant-sources"/);
+  assert.match(source, /apiService\.getDocument\(source\.documentId\)/);
+  assert.match(source, /<DocumentAttachmentViewer/);
+  assert.doesNotMatch(source, /source\.score/);
+  assert.doesNotMatch(source, /source\.chunkId/);
+});
+
+test("machine and anomaly contexts are passed without displaying internal ids", () => {
+  const panel = readSource(PANEL);
+  const detail = readSource(
+    "src/app/[locale]/technician/machine-health/[analysisId]/page.tsx",
+  );
+  assert.match(panel, /machineId:\s*machineId \|\| undefined/);
+  assert.match(panel, /machineLabel \|\| t\("selectedMachine"\)/);
+  assert.match(detail, /<AiAssistantPanel/);
+  assert.match(detail, /machineId=\{analysis\.machine_id\}/);
+  assert.match(detail, /suggestedQuestion=\{t\("aiAssistant\.explainAnomalyQuestion"\)\}/);
 });
 
 test("DashboardLayout exposes a global AI assistant launcher across protected interfaces", () => {

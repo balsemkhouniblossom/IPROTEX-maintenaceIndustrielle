@@ -10,6 +10,7 @@ import {
   type ToastNotificationState,
 } from "@/components/ToastNotification";
 import MachineHealthDetail from "@/components/technician/MachineHealthDetail";
+import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService, quiet } from "@/services/api";
 import { extractApiErrorDetails } from "@/services/apiErrors";
@@ -190,16 +191,32 @@ function TechnicianMachineHealthDetailContent() {
         ) : null}
 
         {!loading && !error && analysis ? (
-          <MachineHealthDetail
-            analysis={analysis}
-            machines={machines}
-            locale={locale}
-            t={t}
-            userRole={user?.role}
-            backHref={backHref}
-            onSubmitValidation={submitValidation}
-            submitting={submitting}
-          />
+          <>
+            <MachineHealthDetail
+              analysis={analysis}
+              machines={machines}
+              locale={locale}
+              t={t}
+              userRole={user?.role}
+              backHref={backHref}
+              onSubmitValidation={submitValidation}
+              submitting={submitting}
+            />
+            <section aria-labelledby="documented-recommendation-heading">
+              <h2
+                id="documented-recommendation-heading"
+                className="mb-2 text-lg font-semibold text-slate-900"
+              >
+                {t("aiAssistant.documentedRecommendation")}
+              </h2>
+              <AiAssistantPanel
+                key={analysis.analysis_id}
+                machineId={analysis.machine_id}
+                machineLabel={machines.find((machine) => machine.id === analysis.machine_id)?.label}
+                suggestedQuestion={t("aiAssistant.explainAnomalyQuestion")}
+              />
+            </section>
+          </>
         ) : null}
       </div>
     </DashboardLayout>

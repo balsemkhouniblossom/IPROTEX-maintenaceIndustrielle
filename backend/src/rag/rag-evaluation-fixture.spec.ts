@@ -11,7 +11,10 @@ type EvaluationCase = {
 };
 
 const fixture = JSON.parse(
-  readFileSync(join(process.cwd(), 'test', 'fixtures', 'rag-evaluation.json'), 'utf8'),
+  readFileSync(
+    join(process.cwd(), 'test', 'fixtures', 'rag-evaluation.json'),
+    'utf8',
+  ),
 ) as EvaluationCase[];
 
 describe('RAG controlled evaluation fixture', () => {
@@ -19,14 +22,17 @@ describe('RAG controlled evaluation fixture', () => {
     expect(fixture).toHaveLength(20);
     expect(new Set(fixture.map((item) => item.category))).toEqual(
       new Set([
-        'direct-factual',
-        'maintenance-interval',
+        'direct',
+        'multilingual',
+        'interval',
         'procedure',
-        'machine-specific',
+        'machine',
+        'safety',
         'no-answer',
         'authorization',
         'prompt-injection',
-        'source-attribution',
+        'attribution',
+        'hallucination',
       ]),
     );
   });
@@ -42,7 +48,9 @@ describe('RAG controlled evaluation fixture', () => {
 
   it('defines authorization and injection leak assertions', () => {
     expect(
-      fixture.some((item) => item.role === 'operator' && item.forbiddenSource),
+      fixture.some(
+        (item) => item.role === 'operator' && item.expectGrounded === false,
+      ),
     ).toBe(true);
     expect(
       fixture.some(

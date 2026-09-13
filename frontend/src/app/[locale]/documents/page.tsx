@@ -69,10 +69,11 @@ interface Machine {
   machine_id: string;
 }
 
-// Only PDF and Office documents pass server-side validation — restrict the
+// Only text, PDF and Office documents pass server-side validation — restrict the
 // picker to match, so a user never has to discover the rejection after
 // the fact.
-const ACCEPTED_DOCUMENT_EXTENSIONS = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
+const ACCEPTED_DOCUMENT_EXTENSIONS =
+  ".txt,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
 
 const STATUS_BADGE_CLASSES: Record<DocumentStatus, string> = {
   draft: "bg-slate-100 text-slate-700 border-slate-200",
