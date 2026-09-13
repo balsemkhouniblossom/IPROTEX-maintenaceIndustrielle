@@ -40,12 +40,12 @@ test("Documents page only offers the transitions valid for each document's curre
 
   assert.match(
     source,
-    /function getAvailableActions\(status: DocumentStatus\)/,
+    /function getAvailableActions\(\s*status: DocumentStatus,?\s*\)/,
     `${PAGE_PATH} must compute available actions from the document's current status`,
   );
 
   const tableMatch = source.match(
-    /function getAvailableActions\(status: DocumentStatus\)[\s\S]*?\n\}/,
+    /function getAvailableActions\(\s*status: DocumentStatus,?\s*\)[\s\S]*?\n\}/,
   );
   assert.ok(tableMatch, "getAvailableActions body must be defined");
   const body = tableMatch![1] ?? tableMatch![0];
@@ -96,12 +96,12 @@ test("Documents page sends the currently-loaded version on publish, archive, and
 
   assert.match(
     source,
-    /apiService\.publishDocument\(doc\._id,\s*\{\s*expected_version:\s*doc\.version\s*\}\)/,
+    /apiService\.publishDocument\(doc\._id,\s*\{\s*expected_version:\s*doc\.version,?\s*\}\)/,
     `${PAGE_PATH} must send expected_version when publishing`,
   );
   assert.match(
     source,
-    /apiService\.archiveDocument\(doc\._id,\s*\{\s*expected_version:\s*doc\.version\s*\}\)/,
+    /apiService\.archiveDocument\(doc\._id,\s*\{\s*expected_version:\s*doc\.version,?\s*\}\)/,
     `${PAGE_PATH} must send expected_version when archiving`,
   );
   assert.match(
@@ -151,13 +151,13 @@ test("Documents page offers a version history view backed by getDocumentVersions
   );
 });
 
-test("Documents page restricts the file picker to PDF and Office document extensions", () => {
+test("Documents page restricts the file picker to text, PDF, and Office document extensions", () => {
   const source = readPage();
 
   assert.match(
     source,
-    /ACCEPTED_DOCUMENT_EXTENSIONS\s*=\s*\n?\s*"\.pdf,\.doc,\.docx,\.xls,\.xlsx,\.ppt,\.pptx"/,
-    `${PAGE_PATH} must restrict uploads/replacements to PDF and Office document extensions`,
+    /ACCEPTED_DOCUMENT_EXTENSIONS\s*=\s*\n?\s*"\.txt,\.pdf,\.doc,\.docx,\.xls,\.xlsx,\.ppt,\.pptx"/,
+    `${PAGE_PATH} must restrict uploads/replacements to text, PDF, and Office document extensions`,
   );
 });
 

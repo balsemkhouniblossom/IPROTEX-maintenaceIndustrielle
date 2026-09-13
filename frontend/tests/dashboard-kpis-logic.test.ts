@@ -160,10 +160,10 @@ test("technician machines use a read-only maintenance workspace over shared mach
   ]) {
     assert.match(detailPage, new RegExp(tab), `shared machine detail must expose ${tab} for technicians`);
   }
-  assert.match(detailPage, /user\?\.role === 'technician'/);
+  assert.match(detailPage, /user\?\.role === ["']technician["']/);
   assert.match(
     detailPage,
-    /user\.role === 'technician'\) return;/,
+    /user\.role === ["']technician["']\) return;/,
     "technician machine detail must not call the shared timeline summary endpoint on page load",
   );
   assert.match(detailPage, /apiService[\s\S]*\.getTechnicianMachineContext\(machineId\)/);

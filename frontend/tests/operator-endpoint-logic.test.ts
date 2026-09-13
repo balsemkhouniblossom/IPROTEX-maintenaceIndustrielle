@@ -277,7 +277,10 @@ test("Nested Operator sidebar routes remain active and expose aria-current", () 
   const source = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
   assert.match(source, /pathname\.startsWith\(`\$\{itemPath\}\//);
   assert.match(source, /aria-current=\{isActive \? "page" : undefined\}/);
-  assert.match(source, /aria-current=\{childActive \? "page" : undefined\}/);
+  assert.match(
+    source,
+    /aria-current=\{\s*childActive\s*\?\s*"page"\s*:\s*undefined\s*\}/,
+  );
 });
 
 test("DashboardLayout blocks Operator access to shared management routes while preserving locale", () => {
