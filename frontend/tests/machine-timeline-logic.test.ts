@@ -44,10 +44,10 @@ test("shared machine routes allow admin and technician while keeping operators o
 
   assert.match(
     source,
-    /allowedRoles=\{\['admin',\s*'technician'\]\}/,
+    /allowedRoles=\{\[["']admin["'],\s*["']technician["']\]\}/,
     "shared machine details must be available to admin and technician",
   );
-  assert.doesNotMatch(source, /'operator'/, "operators must use the dedicated operator machine route");
+  assert.doesNotMatch(source, /["']operator["']/, "operators must use the dedicated operator machine route");
   assert.match(listSource, /requiredRole="admin"/);
   assert.match(listSource, /requiredRole="technician"/);
   assert.match(operatorSource, /requiredRole="operator"/);
@@ -163,9 +163,12 @@ test("machine detail retry and shortcuts remain role-aware", () => {
   const technician = readSource("src/components/technician/TechnicianWorkspace.tsx");
 
   assert.match(detail, /const handleRetry = async \(\) =>/);
-  assert.match(detail, /if \(user\?\.role === 'technician'\)/);
+  assert.match(detail, /if \(user\?\.role === ["']technician["']\)/);
   assert.match(detail, /onClick=\{handleRetry\}/);
-  assert.match(detail, /status === 404 \? t\('errors\.notFound'\)/);
+  assert.match(
+    detail,
+    /status === 404\s*\?\s*t\(["']errors\.notFound["']\)/,
+  );
   assert.match(header, /safeReturnTo = returnTo\?\.startsWith\(`\/\$\{locale\}\/machines`\)/);
   assert.match(header, /technician\/work-orders\?machineId=\$\{encodeURIComponent\(machineId\)\}/);
   assert.match(technician, /machineId: params\.get\("machineId"\) \|\| ""/);

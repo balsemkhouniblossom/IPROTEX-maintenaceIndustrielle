@@ -19,6 +19,7 @@ import {
   AI_PROVIDER,
   AiProvider,
 } from '../src/ai-assistant/ai-provider.interface';
+import { KnowledgeRetrievalService } from '../src/rag/services/knowledge-retrieval.service';
 
 /**
  * A deterministic mocked provider standing in for the real Gemini
@@ -111,6 +112,15 @@ describe('AI Assistant — mocked provider (e2e)', () => {
     })
       .overrideProvider(AI_PROVIDER)
       .useValue(fakeProvider)
+      .overrideProvider(KnowledgeRetrievalService)
+      .useValue({
+        retrieve: async () => ({
+          chunks: [],
+          sources: [],
+          context: 'Deterministic maintenance evidence for E2E tests.',
+          matched: 1,
+        }),
+      })
       .compile();
 
     app = moduleFixture.createNestApplication();
