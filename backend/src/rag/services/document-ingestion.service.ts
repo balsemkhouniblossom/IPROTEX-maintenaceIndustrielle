@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   ServiceUnavailableException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash, randomUUID } from 'node:crypto';
@@ -70,6 +72,7 @@ export class DocumentIngestionService {
     private readonly chunkModel: Model<KnowledgeChunkDocument>,
     @InjectModel(Machine.name)
     private readonly machineModel: Model<MachineDocument>,
+    @Inject(forwardRef(() => DocumentsService))
     private readonly documentsService: DocumentsService,
     private readonly extraction: DocumentExtractionService,
     private readonly chunking: DocumentChunkingService,
