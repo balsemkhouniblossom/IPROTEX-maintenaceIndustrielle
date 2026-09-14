@@ -114,6 +114,16 @@ function BooleanBadge({
   );
 }
 
+function getModelActionLabel(
+  isChanging: boolean,
+  isEnabled: boolean,
+  labels: { changing: string; start: string; stop: string },
+): string {
+  if (isChanging) return labels.changing;
+  if (isEnabled) return labels.stop;
+  return labels.start;
+}
+
 function ModelOverviewSection({
   models,
   error,
@@ -201,10 +211,15 @@ function ModelOverviewSection({
       ) : null}
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {models.map((model) => {
-          const actionLabel =
-            changingModel === model.id
-              ? t("models.changing")
-              : t(model.enabled ? "models.stop" : "models.start");
+          const actionLabel = getModelActionLabel(
+            changingModel === model.id,
+            model.enabled,
+            {
+              changing: t("models.changing"),
+              start: t("models.start"),
+              stop: t("models.stop"),
+            },
+          );
           return (
             <article
               key={model.id}
@@ -273,6 +288,103 @@ function ModelOverviewSection({
       </div>
       <p className="mt-4 text-sm text-slate-600">{t("models.inputNotice")}</p>
     </section>
+  );
+}
+
+function AnalysisResultsSection({
+  loading,
+  error,
+  serviceUnavailable,
+  retrying,
+  analyses,
+  machines,
+  chartData,
+  page,
+  totalPages,
+  totalItems,
+  formatDateTime,
+  onRetry,
+  onOpenDetails,
+  onPageChange,
+}: Readonly<{
+  loading: boolean;
+  error: string | null;
+  serviceUnavailable: boolean;
+  retrying: boolean;
+  analyses: AiAnomalyAnalysis[];
+  machines: ReturnType<typeof buildAiAnomalyMachineOptions>;
+  chartData: ReturnType<typeof buildRiskScoreChartData>;
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  formatDateTime: (value: string) => string;
+  onRetry: () => void;
+  onOpenDetails: (analysis: AiAnomalyAnalysis) => void;
+  onPageChange: (page: number) => void;
+}>) {
+  const t = useTranslations("aiAnomaly");
+  const tCommon = useTranslations("common");
+
+  if (loading) return <LoadingPanel label={t("states.loading")} />;
+  if (error) {
+    return (
+      <ErrorPanel
+        title={serviceUnavailable ? t("states.unavailableTitle") : t("states.errorTitle")}
+        message={error}
+        retryLabel={retrying ? t("states.retrying") : t("states.retry")}
+        retrying={retrying}
+        onRetry={onRetry}
+      />
+    );
+  }
+  if (analyses.length === 0) {
+    return <EmptyPanel title={t("states.emptyTitle")} description={t("states.emptyDescription")} />;
+  }
+
+  return (
+    <>
+      <LineChartCard
+        title={t("chart.title")}
+        data={chartData}
+        emptyLabel={t("chart.empty")}
+        color="var(--primary)"
+        valueFormatter={(value) => `${value}/100`}
+      />
+      <AiAnomalyResultsTable
+        title={t("table.title")}
+        chronologicalLabel={t("table.chronological")}
+        headerLabels={{
+          machine: t("table.machine"),
+          timestamp: t("table.timestamp"),
+          anomalyScore: t("table.anomalyScore"),
+          riskScore: t("table.riskScore"),
+          riskLevel: t("table.riskLevel"),
+          rawAnomaly: t("table.rawAnomaly"),
+          persistentAlert: t("table.persistentAlert"),
+          modelVersion: t("table.modelVersion"),
+          source: t("table.source"),
+          reasonCodes: t("table.reasonCodes"),
+          validationStatus: t("table.validationStatus"),
+        }}
+        analyses={analyses}
+        machines={machines}
+        onOpenDetails={onOpenDetails}
+        formatDateTime={formatDateTime}
+        riskLevelLabel={(level) => t(`riskLevels.${level}`)}
+        sourceLabel={(source) => t(sourceLabelKey(source as AiAnomalyInputSource))}
+        validationLabel={(status) => t(`validation.${status}`)}
+        yesLabel={t("boolean.yes")}
+        noLabel={t("boolean.no")}
+        activeLabel={t("persistentAlert.active")}
+        clearLabel={t("persistentAlert.clear")}
+        notAvailableLabel={tCommon("notAvailable")}
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        limit={PAGE_LIMIT}
+        onPageChange={onPageChange}
+      />
+    </>
   );
 }
 
@@ -665,77 +777,25 @@ function AiAnomalyMonitoringContent() {
           }}
         />
 
-        {loading ? <LoadingPanel label={t("states.loading")} /> : null}
-        {!loading && error ? (
-          <ErrorPanel
-            title={
-              serviceUnavailable
-                ? t("states.unavailableTitle")
-                : t("states.errorTitle")
-            }
-            message={error}
-            retryLabel={retrying ? t("states.retrying") : t("states.retry")}
-            retrying={retrying}
-            onRetry={() => {
-              setRetrying(true);
-              void loadData();
-            }}
-          />
-        ) : null}
-        {!loading && !error && visibleAnalyses.length === 0 ? (
-          <EmptyPanel
-            title={t("states.emptyTitle")}
-            description={t("states.emptyDescription")}
-          />
-        ) : null}
-        {!loading && !error && visibleAnalyses.length > 0 ? (
-          <>
-            <LineChartCard
-              title={t("chart.title")}
-              data={chartData}
-              emptyLabel={t("chart.empty")}
-              color="var(--primary)"
-              valueFormatter={(value) => `${value}/100`}
-            />
-
-            <AiAnomalyResultsTable
-              title={t("table.title")}
-              chronologicalLabel={t("table.chronological")}
-              headerLabels={{
-                machine: t("table.machine"),
-                timestamp: t("table.timestamp"),
-                anomalyScore: t("table.anomalyScore"),
-                riskScore: t("table.riskScore"),
-                riskLevel: t("table.riskLevel"),
-                rawAnomaly: t("table.rawAnomaly"),
-                persistentAlert: t("table.persistentAlert"),
-                modelVersion: t("table.modelVersion"),
-                source: t("table.source"),
-                reasonCodes: t("table.reasonCodes"),
-                validationStatus: t("table.validationStatus"),
-              }}
-              analyses={visibleAnalyses}
-              machines={machines}
-              onOpenDetails={openDetails}
-              formatDateTime={formatDateTime}
-              riskLevelLabel={(level) => t(`riskLevels.${level}`)}
-              sourceLabel={(source) =>
-                t(sourceLabelKey(source as AiAnomalyInputSource))
-              }
-              validationLabel={(status) => t(`validation.${status}`)}
-              yesLabel={t("boolean.yes")}
-              noLabel={t("boolean.no")}
-              activeLabel={t("persistentAlert.active")}
-              clearLabel={t("persistentAlert.clear")}
-              notAvailableLabel={tCommon("notAvailable")}
-              page={page}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              limit={PAGE_LIMIT}
-              onPageChange={setPage}
-            />
-          </>
-        ) : null}
+        <AnalysisResultsSection
+          loading={loading}
+          error={error}
+          serviceUnavailable={serviceUnavailable}
+          retrying={retrying}
+          analyses={visibleAnalyses}
+          machines={machines}
+          chartData={chartData}
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          formatDateTime={formatDateTime}
+          onRetry={() => {
+            setRetrying(true);
+            void loadData();
+          }}
+          onOpenDetails={openDetails}
+          onPageChange={setPage}
+        />
       </div>
 
       <Modal
