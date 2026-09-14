@@ -296,7 +296,7 @@ export class AiAssistantService {
           machineId: dto.machineId,
         })
       : undefined;
-    if (retrieval && retrieval.matched === 0) {
+    if (retrieval?.matched === 0) {
       return this.record({
         actor,
         dto,

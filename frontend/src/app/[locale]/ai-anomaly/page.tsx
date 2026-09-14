@@ -114,6 +114,168 @@ function BooleanBadge({
   );
 }
 
+function ModelOverviewSection({
+  models,
+  error,
+  changingModel,
+  isAdmin,
+  formatDateTime,
+  onOpenReplay,
+  onRefresh,
+  onSelect,
+  onStart,
+  onRequestStop,
+}: Readonly<{
+  models: AiAnomalyRuntimeModel[];
+  error: string | null;
+  changingModel: string | null;
+  isAdmin: boolean;
+  formatDateTime: (value: string) => string;
+  onOpenReplay: () => void;
+  onRefresh: () => void;
+  onSelect: (model: AiAnomalyRuntimeModel) => void;
+  onStart: (model: AiAnomalyRuntimeModel) => void;
+  onRequestStop: (model: AiAnomalyRuntimeModel) => void;
+}>) {
+  const t = useTranslations("aiAnomaly");
+  const tCommon = useTranslations("common");
+
+  const handleStateChange = (model: AiAnomalyRuntimeModel) => {
+    if (model.enabled) {
+      onRequestStop(model);
+      return;
+    }
+    onStart(model);
+  };
+
+  return (
+    <section className="panel">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {t("models.title")}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">{t("models.subtitle")}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {isAdmin ? (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onOpenReplay}
+            >
+              {t("replay.open")}
+            </button>
+          ) : null}
+          <button type="button" className="btn-secondary" onClick={onRefresh}>
+            {t("models.refresh")}
+          </button>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <DetailField
+          label={t("models.service")}
+          value={error ? t("models.offline") : t("models.online")}
+        />
+        <DetailField
+          label={t("models.readiness")}
+          value={
+            models.some((model) => model.loaded)
+              ? t("models.ready")
+              : tCommon("notAvailable")
+          }
+        />
+        <DetailField
+          label={t("models.loaded")}
+          value={models.filter((model) => model.loaded).length}
+        />
+        <DetailField
+          label={t("models.active")}
+          value={models.filter((model) => model.enabled).length}
+        />
+      </div>
+      {error ? (
+        <p className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          {error}
+        </p>
+      ) : null}
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        {models.map((model) => {
+          const actionLabel =
+            changingModel === model.id
+              ? t("models.changing")
+              : t(model.enabled ? "models.stop" : "models.start");
+          return (
+            <article
+              key={model.id}
+              className="rounded-xl border border-slate-200 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-bold text-slate-900">{model.name}</h2>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    {t(`models.tasks.${model.task}`)}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">{model.purpose}</p>
+                </div>
+                <span className="rounded-full border px-2.5 py-1 text-xs font-semibold">
+                  {model.status}
+                </span>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <DetailField
+                  label={t("models.version")}
+                  value={model.modelVersion}
+                />
+                <DetailField
+                  label={t("models.loadedState")}
+                  value={model.loaded ? t("boolean.yes") : t("boolean.no")}
+                />
+                <DetailField
+                  label={t("models.lastExecution")}
+                  value={
+                    model.lastExecutionAt
+                      ? formatDateTime(model.lastExecutionAt)
+                      : tCommon("notAvailable")
+                  }
+                />
+                <DetailField
+                  label={t("models.duration")}
+                  value={
+                    model.lastExecutionDurationMs == null
+                      ? tCommon("notAvailable")
+                      : `${model.lastExecutionDurationMs} ms`
+                  }
+                />
+              </dl>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => onSelect(model)}
+                >
+                  {t("models.viewDetails")}
+                </button>
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    className={model.enabled ? "btn-danger" : "btn-primary"}
+                    disabled={changingModel === model.id}
+                    onClick={() => handleStateChange(model)}
+                  >
+                    {actionLabel}
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <p className="mt-4 text-sm text-slate-600">{t("models.inputNotice")}</p>
+    </section>
+  );
+}
+
 export default function AiAnomalyMonitoringPage() {
   return (
     <ProtectedRoute allowedRoles={["admin", "technician"]}>
@@ -136,9 +298,14 @@ function AiAnomalyMonitoringContent() {
   const [modelToDisable, setModelToDisable] =
     useState<AiAnomalyRuntimeModel | null>(null);
   const [replayOpen, setReplayOpen] = useState(false);
-  const [replayCatalog, setReplayCatalog] = useState<AiDatasetReplayCatalog | null>(null);
+  const [replayCatalog, setReplayCatalog] =
+    useState<AiDatasetReplayCatalog | null>(null);
   const [replaySamples, setReplaySamples] = useState<string[]>([]);
-  const [replayForm, setReplayForm] = useState({ experiment: "", timestamp: "", machineId: "" });
+  const [replayForm, setReplayForm] = useState({
+    experiment: "",
+    timestamp: "",
+    machineId: "",
+  });
   const [replayLoading, setReplayLoading] = useState(false);
   const [machines, setMachines] = useState(
     [] as ReturnType<typeof buildAiAnomalyMachineOptions>,
@@ -291,15 +458,24 @@ function AiAnomalyMonitoringContent() {
       const response = await apiService.getAiDatasetReplayCatalog();
       const catalog = response.data as AiDatasetReplayCatalog;
       setReplayCatalog(catalog);
-      const experiment = catalog.experiments.find((item) => item.supported)?.id ?? "";
+      const experiment =
+        catalog.experiments.find((item) => item.supported)?.id ?? "";
       if (experiment) {
-        const samplesResponse = await apiService.getAiDatasetReplaySamples(experiment);
+        const samplesResponse =
+          await apiService.getAiDatasetReplaySamples(experiment);
         const samples = (samplesResponse.data?.samples ?? []) as string[];
         setReplaySamples(samples);
-        setReplayForm((current) => ({ ...current, experiment, timestamp: samples[0] ?? "" }));
+        setReplayForm((current) => ({
+          ...current,
+          experiment,
+          timestamp: samples[0] ?? "",
+        }));
       }
     } catch (err) {
-      setToast({ type: "error", message: extractApiErrorDetails(err, t("replay.loadFailed")).message });
+      setToast({
+        type: "error",
+        message: extractApiErrorDetails(err, t("replay.loadFailed")).message,
+      });
       setReplayOpen(false);
     } finally {
       setReplayLoading(false);
@@ -307,7 +483,12 @@ function AiAnomalyMonitoringContent() {
   };
 
   const runReplay = async () => {
-    if (!replayForm.machineId || !replayForm.experiment || !replayForm.timestamp) return;
+    if (
+      !replayForm.machineId ||
+      !replayForm.experiment ||
+      !replayForm.timestamp
+    )
+      return;
     setReplayLoading(true);
     try {
       const response = await apiService.replayAiDatasetSample({
@@ -321,7 +502,10 @@ function AiAnomalyMonitoringContent() {
       if (created[0]) setSelectedAnalysis(created[0]);
       setToast({ type: "success", message: t("replay.completed") });
     } catch (err) {
-      setToast({ type: "error", message: extractApiErrorDetails(err, t("replay.failed")).message });
+      setToast({
+        type: "error",
+        message: extractApiErrorDetails(err, t("replay.failed")).message,
+      });
     } finally {
       setReplayLoading(false);
     }
@@ -386,126 +570,18 @@ function AiAnomalyMonitoringContent() {
       />
 
       <div className="space-y-6">
-        <section className="panel">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {t("models.title")}
-              </h1>
-              <p className="mt-1 text-sm text-slate-600">
-                {t("models.subtitle")}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {user?.role === "admin" ? <button type="button" className="btn-primary" onClick={() => void openReplay()}>{t("replay.open")}</button> : null}
-              <button type="button" className="btn-secondary" onClick={() => void loadModels()}>{t("models.refresh")}</button>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <DetailField
-              label={t("models.service")}
-              value={modelsError ? t("models.offline") : t("models.online")}
-            />
-            <DetailField
-              label={t("models.readiness")}
-              value={
-                models.some((model) => model.loaded)
-                  ? t("models.ready")
-                  : tCommon("notAvailable")
-              }
-            />
-            <DetailField
-              label={t("models.loaded")}
-              value={models.filter((model) => model.loaded).length}
-            />
-            <DetailField
-              label={t("models.active")}
-              value={models.filter((model) => model.enabled).length}
-            />
-          </div>
-          {modelsError ? (
-            <p className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-              {modelsError}
-            </p>
-          ) : null}
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {models.map((model) => (
-              <article
-                key={model.id}
-                className="rounded-xl border border-slate-200 p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-bold text-slate-900">{model.name}</h2>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
-                      {t(`models.tasks.${model.task}`)}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {model.purpose}
-                    </p>
-                  </div>
-                  <span className="rounded-full border px-2.5 py-1 text-xs font-semibold">
-                    {model.status}
-                  </span>
-                </div>
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <DetailField
-                    label={t("models.version")}
-                    value={model.modelVersion}
-                  />
-                  <DetailField
-                    label={t("models.loadedState")}
-                    value={model.loaded ? t("boolean.yes") : t("boolean.no")}
-                  />
-                  <DetailField
-                    label={t("models.lastExecution")}
-                    value={
-                      model.lastExecutionAt
-                        ? formatDateTime(model.lastExecutionAt)
-                        : tCommon("notAvailable")
-                    }
-                  />
-                  <DetailField
-                    label={t("models.duration")}
-                    value={
-                      model.lastExecutionDurationMs == null
-                        ? tCommon("notAvailable")
-                        : `${model.lastExecutionDurationMs} ms`
-                    }
-                  />
-                </dl>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setSelectedModel(model)}
-                  >
-                    {t("models.viewDetails")}
-                  </button>
-                  {user?.role === "admin" ? (
-                    <button
-                      type="button"
-                      className={model.enabled ? "btn-danger" : "btn-primary"}
-                      disabled={changingModel === model.id}
-                      onClick={() =>
-                        model.enabled
-                          ? setModelToDisable(model)
-                          : void changeModelState(model, true)
-                      }
-                    >
-                      {changingModel === model.id
-                        ? t("models.changing")
-                        : t(model.enabled ? "models.stop" : "models.start")}
-                    </button>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-          </div>
-          <p className="mt-4 text-sm text-slate-600">
-            {t("models.inputNotice")}
-          </p>
-        </section>
+        <ModelOverviewSection
+          models={models}
+          error={modelsError}
+          changingModel={changingModel}
+          isAdmin={user?.role === "admin"}
+          formatDateTime={formatDateTime}
+          onOpenReplay={() => void openReplay()}
+          onRefresh={() => void loadModels()}
+          onSelect={setSelectedModel}
+          onStart={(model) => void changeModelState(model, true)}
+          onRequestStop={(model) => setModelToDisable(model)}
+        />
         <section className="panel">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -802,7 +878,11 @@ function AiAnomalyMonitoringContent() {
           </div>
         ) : null}
       </Modal>
-      <Modal isOpen={replayOpen} onClose={() => setReplayOpen(false)} title={t("replay.title")}>
+      <Modal
+        isOpen={replayOpen}
+        onClose={() => setReplayOpen(false)}
+        title={t("replay.title")}
+      >
         <div className="space-y-4">
           <AiDataProvenance
             items={[
@@ -817,26 +897,93 @@ function AiAnomalyMonitoringContent() {
             ]}
             notice={t("replay.notice")}
           />
-          <label className="block text-sm font-medium text-slate-700">{t("replay.experiment")}
-            <select className="input mt-1 w-full" value={replayForm.experiment} disabled={replayLoading} onChange={(event) => setReplayForm((current) => ({ ...current, experiment: event.target.value }))}>
-              {(replayCatalog?.experiments ?? []).map((item) => <option key={item.id} value={item.id} disabled={!item.supported}>{item.id}{item.supported ? "" : ` — ${t("replay.notValidated")}`}</option>)}
+          <label className="block text-sm font-medium text-slate-700">
+            {t("replay.experiment")}
+            <select
+              className="input mt-1 w-full"
+              value={replayForm.experiment}
+              disabled={replayLoading}
+              onChange={(event) =>
+                setReplayForm((current) => ({
+                  ...current,
+                  experiment: event.target.value,
+                }))
+              }
+            >
+              {(replayCatalog?.experiments ?? []).map((item) => (
+                <option
+                  key={item.id}
+                  value={item.id}
+                  disabled={!item.supported}
+                >
+                  {item.id}
+                  {item.supported ? "" : ` — ${t("replay.notValidated")}`}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700">{t("replay.sample")}
-            <select className="input mt-1 w-full" value={replayForm.timestamp} disabled={replayLoading} onChange={(event) => setReplayForm((current) => ({ ...current, timestamp: event.target.value }))}>
-              {replaySamples.map((sample) => <option key={sample} value={sample}>{formatDateTime(sample)}</option>)}
+          <label className="block text-sm font-medium text-slate-700">
+            {t("replay.sample")}
+            <select
+              className="input mt-1 w-full"
+              value={replayForm.timestamp}
+              disabled={replayLoading}
+              onChange={(event) =>
+                setReplayForm((current) => ({
+                  ...current,
+                  timestamp: event.target.value,
+                }))
+              }
+            >
+              {replaySamples.map((sample) => (
+                <option key={sample} value={sample}>
+                  {formatDateTime(sample)}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700">{t("replay.demoMachine")}
-            <select className="input mt-1 w-full" value={replayForm.machineId} disabled={replayLoading} onChange={(event) => setReplayForm((current) => ({ ...current, machineId: event.target.value }))}>
+          <label className="block text-sm font-medium text-slate-700">
+            {t("replay.demoMachine")}
+            <select
+              className="input mt-1 w-full"
+              value={replayForm.machineId}
+              disabled={replayLoading}
+              onChange={(event) =>
+                setReplayForm((current) => ({
+                  ...current,
+                  machineId: event.target.value,
+                }))
+              }
+            >
               <option value="">{t("replay.selectMachine")}</option>
-              {machines.map((machine) => <option key={machine.id} value={machine.id}>{machine.label}</option>)}
+              {machines.map((machine) => (
+                <option key={machine.id} value={machine.id}>
+                  {machine.label}
+                </option>
+              ))}
             </select>
           </label>
-          <p className="text-xs text-slate-500">{t("replay.demoAssociationNotice")}</p>
+          <p className="text-xs text-slate-500">
+            {t("replay.demoAssociationNotice")}
+          </p>
           <div className="flex justify-end gap-2">
-            <button type="button" className="btn-secondary" onClick={() => setReplayOpen(false)}>{tCommon("cancel")}</button>
-            <button type="button" className="btn-primary" disabled={replayLoading || !replayForm.machineId || !replayForm.timestamp} onClick={() => void runReplay()}>{replayLoading ? t("replay.running") : t("replay.run")}</button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setReplayOpen(false)}
+            >
+              {tCommon("cancel")}
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={
+                replayLoading || !replayForm.machineId || !replayForm.timestamp
+              }
+              onClick={() => void runReplay()}
+            >
+              {replayLoading ? t("replay.running") : t("replay.run")}
+            </button>
           </div>
         </div>
       </Modal>
@@ -1373,8 +1520,7 @@ function AiAnomalyFiltersSection({
             onChange={(event) =>
               onChange({
                 validationStatus: event.target.value as
-                  | "ALL"
-                  | AiAnomalyValidationStatus,
+                  "ALL" | AiAnomalyValidationStatus,
               })
             }
           >

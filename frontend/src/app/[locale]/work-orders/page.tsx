@@ -208,7 +208,7 @@ export default function WorkOrdersPage() {
     });
     return table.sort === 'due_date' ? [...filtered].sort((a, b) => operationalOrder(a, b, sortReferenceTime)) : filtered;
   }, [table.items, table.filters.maintenanceType, table.sort, statusTab, sortReferenceTime]);
-  const maintenanceTypes = useMemo(() => Array.from(new Set(table.items.map((item) => item.type_maintenance).filter(Boolean) as string[])).sort(), [table.items]);
+  const maintenanceTypes = useMemo(() => Array.from(new Set(table.items.map((item) => item.type_maintenance).filter(Boolean) as string[])).sort((left, right) => left.localeCompare(right, locale)), [table.items, locale]);
   const pageSummary = useMemo(() => ({
     open: table.items.filter((item) => !TERMINAL_STATUSES.has(item.status)).length,
     overdue: table.items.filter((item) => isOverdue(item, sortReferenceTime)).length,

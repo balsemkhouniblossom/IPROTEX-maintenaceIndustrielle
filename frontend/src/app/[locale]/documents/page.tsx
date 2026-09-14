@@ -124,6 +124,15 @@ function tagsToText(tags?: string[]): string {
   return tags.join(", ");
 }
 
+function getKnowledgeIndexLabel(
+  status: DocumentType["rag_status"],
+  labels: { index: string; reindex: string; retry: string },
+): string {
+  if (status === "READY") return labels.reindex;
+  if (status === "FAILED") return labels.retry;
+  return labels.index;
+}
+
 export default function DocumentsPage() {
   const t = useTranslations("documents");
   const tCommon = useTranslations("common");
@@ -570,6 +579,15 @@ export default function DocumentsPage() {
             const status = doc.status ?? "draft";
             const availableActions = getAvailableActions(status);
             const deletable = canDelete(doc);
+            const knowledgeIndexLabel = getKnowledgeIndexLabel(doc.rag_status, {
+              index: t("rag.index"),
+              reindex: t("rag.reindex"),
+              retry: t("rag.retry"),
+            });
+            const knowledgeIndexButtonLabel =
+              indexingDocumentId === doc._id
+                ? t("rag.processing")
+                : knowledgeIndexLabel;
 
             return (
               <div key={doc._id} className="panel hover:shadow-lg transition">
@@ -640,15 +658,9 @@ export default function DocumentsPage() {
                       doc.rag_status === "PROCESSING"
                     }
                     onClick={() => void handleKnowledgeIndex(doc)}
-                    aria-label={`${doc.rag_status === "READY" ? t("rag.reindex") : doc.rag_status === "FAILED" ? t("rag.retry") : t("rag.index")} ${doc.file_name}`}
+                    aria-label={`${knowledgeIndexLabel} ${doc.file_name}`}
                   >
-                    {indexingDocumentId === doc._id
-                      ? t("rag.processing")
-                      : doc.rag_status === "READY"
-                        ? t("rag.reindex")
-                        : doc.rag_status === "FAILED"
-                          ? t("rag.retry")
-                          : t("rag.index")}
+                    {knowledgeIndexButtonLabel}
                   </button>
                 </div>
 
