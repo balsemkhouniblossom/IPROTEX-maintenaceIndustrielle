@@ -5,7 +5,7 @@ export type AiAnomalyInputSource = "DATASET_REPLAY" | "DEMO";
 export type AiAnomalyRuntimeModel = {
   id: string;
   name: string;
-  task: string;
+  task: "ANOMALY_DETECTION" | "FAULT_DIAGNOSIS";
   purpose: string;
   modelVersion: string;
   artifactVersion?: string;
@@ -25,6 +25,10 @@ export type AiAnomalyRuntimeModel = {
   lastExecutionDurationMs?: number;
   lastError?: string;
   validationMetrics: Record<string, unknown>;
+  acceptedForAdvisoryPilot: boolean;
+  knownLimitations: string[];
+  lifecyclePersistence: "PROCESS_LOCAL";
+  taskMetadata: Record<string, unknown>;
 };
 
 export type AiAnomalyAnalysis = {
@@ -34,6 +38,8 @@ export type AiAnomalyAnalysis = {
   capteur_id?: string;
   requested_by?: string;
   model_version: string;
+  artifact_version?: string;
+  model_status?: string;
   input_source: AiAnomalyInputSource;
   experiment: string;
   measurement_timestamp: string;
@@ -103,7 +109,7 @@ export type AiAnomalySummary = {
 };
 
 export const AI_ANOMALY_LIMITATION_NOTICE =
-  "Experimental prototype based on the public IMS bearing dataset. Validation is currently limited to 1st_test and does not establish generalization to IPROTEX machines.";
+  "Research analysis based on public bearing datasets. Each record retains its model version and validation scope; generalization to IPROTEX machines is not established.";
 
 export const AI_ANOMALY_DATASET_REPLAY_LABEL = "IMS dataset replay";
 
@@ -134,7 +140,7 @@ export function canBrowseAiAnomalyHistory(role?: string | null): boolean {
 }
 
 export function canSubmitAiAnomalyAnalysis(role?: string | null): boolean {
-  return role === "admin" || role === "technician" || role === "operator";
+  return role === "admin" || role === "technician";
 }
 
 export function canValidateAiAnomaly(

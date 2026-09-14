@@ -127,7 +127,7 @@ function TechnicianMachineHealthDetailContent() {
     [analysis, t],
   );
 
-  const backHref = `/${locale}/technician/machine-health`;
+  const backHref = `/${locale}/${user?.role === "admin" ? "machine-health" : "technician/machine-health"}`;
 
   return (
     <DashboardLayout title={t("technician.machineHealth.title")}>

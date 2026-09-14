@@ -66,11 +66,11 @@ def error_payload(code: str, message: str) -> dict[str, Any]:
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    summary="Deterministic serving API for the validated IMS anomaly inference prototype.",
+    summary="Deterministic serving API for IPROTEX research and benchmark AI models.",
     description=(
-        "Serves the existing IMS v0.1.0 anomaly-inference artifact through versioned JSON endpoints. "
-        "The API never trains, refits, or rewrites the model. Current validation covers only IMS 1st_test; "
-        "generalization to 2nd_test, 3rd_test, or IPROTEX factory data is not established."
+        "Serves configured IMS anomaly and experimental CWRU diagnosis artifacts through versioned JSON endpoints. "
+        "The API never trains, refits, or rewrites a model. Neither benchmark establishes validation on "
+        "IPROTEX factory machinery."
     ),
     lifespan=lifespan,
 )

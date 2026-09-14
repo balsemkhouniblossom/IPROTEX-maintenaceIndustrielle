@@ -3849,6 +3849,12 @@
       "detailsTitle": "Informations sur le modèle",
       "modelName": "Modèle",
       "task": "Fonction",
+      "tasks": {
+        "ANOMALY_DETECTION": "Détection d’anomalies",
+        "FAULT_DIAGNOSIS": "Diagnostic expérimental de panne"
+      },
+      "diagnosisExplanation": "Ce modèle compare l’entrée aux classes de roulements CWRU prises en charge. Sa confiance est une confiance de classification dans ce benchmark, pas une probabilité de panne machine.",
+      "researchNotice": "Modèle de recherche ou de référence. Confirmez les résultats par une inspection technique avant toute intervention.",
       "framework": "Technologie",
       "dataset": "Jeu de données",
       "method": "Méthode d’agrégation",

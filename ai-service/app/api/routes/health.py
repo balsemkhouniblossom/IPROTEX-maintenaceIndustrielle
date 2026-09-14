@@ -25,6 +25,16 @@ def index(request: Request) -> dict[str, object]:
             ready = False
             model_version = None
 
+    model_id = "ims-selected-anomaly-model"
+    validation_scope = "the configured IMS research artifact"
+    if inference is not None:
+        try:
+            metadata = inference.metadata()
+            model_id = str(metadata.get("id", model_id))
+            validation_scope = str(metadata.get("validationScope", validation_scope))
+        except Exception:  # noqa: BLE001 - service info must remain available
+            pass
+
     return {
         "service": settings.app_name,
         "apiVersion": settings.api_version,
@@ -36,14 +46,15 @@ def index(request: Request) -> dict[str, object]:
             "ready": "/ready",
             "docs": "/docs",
             "openapi": "/openapi.json",
-            "model": "/v1/models/ims-selected-anomaly-model-v0-1-0",
+            "models": "/v1/models",
+            "model": f"/v1/models/{model_id}",
             "analyze": "/v1/anomaly/analyze",
             "analyzeBatch": "/v1/anomaly/analyze-batch",
         },
         "notes": (
-            "Serves the IMS v0.1.0 anomaly-inference artifact. "
+            "Serves the configured IMS anomaly artifact and any valid optional diagnosis artifact. "
             "The API never trains, refits, or rewrites the model. "
-            "Current validation covers only IMS 1st_test."
+            f"IMS validation scope: {validation_scope}."
         ),
     }
 
@@ -53,7 +64,20 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.get("/ready", summary="Readiness probe", description="Returns readiness after the IMS v0.1.0 artifact is loaded.")
+@router.get("/ready", summary="Readiness probe", description="Returns readiness after configured model artifacts are validated.")
 def ready(request: Request) -> dict[str, str]:
     service = request.app.state.inference_service
-    return {"status": "ready" if service.ready else "not_ready", "modelVersion": service.pipeline.version}
+    from app.api.routes.models import CWRU_METADATA_PATH, load_cwru_artifact
+
+    diagnosis_ready = True
+    if CWRU_METADATA_PATH.is_file():
+        try:
+            load_cwru_artifact()
+        except Exception:
+            diagnosis_ready = False
+    ready_state = service.ready and diagnosis_ready
+    return {
+        "status": "ready" if ready_state else "not_ready",
+        "modelVersion": service.pipeline.version,
+        "diagnosisStatus": "ready" if diagnosis_ready else "artifact_error",
+    }

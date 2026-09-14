@@ -8,7 +8,7 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { AuthenticatedRoles, Roles } from '../auth/decorators/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { Role } from '../schemas/user.schema';
 import { AiAnomalyService } from './ai-anomaly.service';
@@ -65,7 +65,7 @@ export class AiAnomalyController {
   }
 
   @Post('analyses')
-  @AuthenticatedRoles()
+  @Roles(Role.ADMIN, Role.TECHNICIAN)
   createAnalysis(
     @Body() dto: CreateAiAnomalyAnalysisDto,
     @Req() req: AuthenticatedRequest,
@@ -74,7 +74,7 @@ export class AiAnomalyController {
   }
 
   @Post('analyses/batch')
-  @AuthenticatedRoles()
+  @Roles(Role.ADMIN, Role.TECHNICIAN)
   createBatch(
     @Body() dto: CreateAiAnomalyBatchDto,
     @Req() req: AuthenticatedRequest,

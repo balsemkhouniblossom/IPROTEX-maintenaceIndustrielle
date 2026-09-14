@@ -403,9 +403,9 @@ function DashboardLayoutBody({
             icon: CogIcon,
             children: [
               {
-                name: t("navigation.devices"),
-                href: "/devices",
-                icon: CpuChipIcon,
+                name: t("navigation.machineTypes"),
+                href: "/machine-types",
+                icon: CubeIcon,
               },
             ],
           },
@@ -446,11 +446,6 @@ function DashboardLayoutBody({
             href: "/catalogues",
             icon: BuildingStorefrontIcon,
             children: [
-              {
-                name: t("navigation.modulePieces"),
-                href: "/module-pieces",
-                icon: CubeIcon,
-              },
               {
                 name: t("navigation.stocks"),
                 href: "/stocks",
@@ -493,7 +488,7 @@ function DashboardLayoutBody({
           },
           {
             name: t("navigation.machineHealth"),
-            href: "/technician/machine-health",
+            href: "/machine-health",
             icon: HeartIcon,
           },
           {
@@ -524,16 +519,6 @@ function DashboardLayoutBody({
             href: "/users",
             icon: UsersIcon,
             children: [
-              {
-                name: t("navigation.machineTypes"),
-                href: "/machine-types",
-                icon: CubeIcon,
-              },
-              {
-                name: t("navigation.moduleTypes"),
-                href: "/module-types",
-                icon: DocumentTextIcon,
-              },
             ],
           },
         ],

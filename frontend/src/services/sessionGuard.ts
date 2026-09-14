@@ -30,6 +30,7 @@ const ADMIN_ROUTE_ROOTS = new Set([
   "lubrifiants",
   "lubrification-logs",
   "machine-types",
+  "machine-health",
   "maintenance-plans",
   "mesures",
   "module-pieces",

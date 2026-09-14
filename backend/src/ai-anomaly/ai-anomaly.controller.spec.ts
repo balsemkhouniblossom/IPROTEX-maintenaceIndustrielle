@@ -53,21 +53,27 @@ describe('AiAnomalyController', () => {
     expect(roles).toEqual([Role.ADMIN, Role.TECHNICIAN]);
   });
 
-  it('allows authenticated users to request analysis while deriving the actor from JWT', async () => {
+  it('allows only Admin and Technician to submit raw analyses', async () => {
+    expect(
+      Reflect.getMetadata(ROLES_KEY, controllerMethod('createAnalysis')),
+    ).toEqual([Role.ADMIN, Role.TECHNICIAN]);
+    expect(
+      Reflect.getMetadata(ROLES_KEY, controllerMethod('createBatch')),
+    ).toEqual([Role.ADMIN, Role.TECHNICIAN]);
     const dto = {
       machine_id: '64a111111111111111111111',
       input_source: AiAnomalyInputSource.DEMO,
       rows: [],
     };
     const req = {
-      user: { userId: '64a222222222222222222222', role: Role.OPERATOR },
+      user: { userId: '64a222222222222222222222', role: Role.TECHNICIAN },
     };
 
     await controller.createAnalysis(dto, req as never);
 
     expect(aiAnomalyService.createAnalysis).toHaveBeenCalledWith(dto, {
       userId: req.user.userId,
-      role: Role.OPERATOR,
+      role: Role.TECHNICIAN,
     });
   });
 

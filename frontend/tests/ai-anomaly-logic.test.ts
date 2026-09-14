@@ -57,8 +57,9 @@ test("Admin and Technician can browse anomaly history, Operator cannot", () => {
   );
 });
 
-test("Operator can submit through an existing machine workflow but cannot browse history", () => {
-  assert.equal(canSubmitAiAnomalyAnalysis("operator"), true);
+test("Operator cannot submit raw anomaly vectors or browse technical history", () => {
+  assert.equal(canSubmitAiAnomalyAnalysis("operator"), false);
+  assert.equal(canSubmitAiAnomalyAnalysis("technician"), true);
   assert.equal(canBrowseAiAnomalyHistory("operator"), false);
   assert.doesNotMatch(
     readSource(LAYOUT),
@@ -218,8 +219,8 @@ test("analysis details render component scores and scientific limitations", () =
   assert.match(source, /component_scores\.zScore/);
   assert.match(source, /component_scores\.isolationForest/);
   assert.match(source, /AI_ANOMALY_LIMITATION_NOTICE/);
-  assert.match(AI_ANOMALY_LIMITATION_NOTICE, /public IMS bearing dataset/);
-  assert.match(AI_ANOMALY_LIMITATION_NOTICE, /1st_test/);
+  assert.match(AI_ANOMALY_LIMITATION_NOTICE, /public bearing datasets/);
+  assert.match(AI_ANOMALY_LIMITATION_NOTICE, /validation scope/);
   assert.match(AI_ANOMALY_LIMITATION_NOTICE, /IPROTEX machines/);
 });
 

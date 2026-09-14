@@ -12,6 +12,7 @@ import {
   AiAnomalyFastApiResult,
   AiAnomalyFastApiResults,
   AiAnomalyModelMetadata,
+  AiAnomalyRuntimeModel,
   AiDatasetReplayCatalog,
   AiDatasetReplayRows,
   AiDatasetReplaySamples,
@@ -74,6 +75,7 @@ function validateResult(value: unknown): AiAnomalyFastApiResult {
 
   return {
     modelVersion: assertString(value.modelVersion, 'modelVersion'),
+    artifactVersion: assertString(value.artifactVersion, 'artifactVersion'),
     experiment: assertString(value.experiment, 'experiment'),
     timestamp: assertString(value.timestamp, 'timestamp'),
     bearing: assertFiniteNumber(value.bearing, 'bearing'),
@@ -105,73 +107,96 @@ function validateResults(value: unknown): AiAnomalyFastApiResults {
   return { results: value.results.map(validateResult) };
 }
 
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
 function validateModelMetadata(value: unknown): AiAnomalyModelMetadata {
   if (!isObject(value) || !Array.isArray(value.models)) {
     throw new BadGatewayException('AI service returned invalid model metadata');
   }
 
-  const models: unknown[] = value.models;
-  if (!models.length || !models.every(isObject)) {
-    throw new BadGatewayException('AI service returned no model metadata');
+  const models = value.models.flatMap((candidate) => {
+    if (!isObject(candidate)) return [];
+    const rawTask = optionalString(candidate.task)?.toUpperCase();
+    const task: AiAnomalyRuntimeModel['task'] | undefined =
+      rawTask === 'ANOMALY_DETECTION' || rawTask === 'FAULT_DIAGNOSIS'
+        ? rawTask
+        : undefined;
+    if (!task) {
+      return [];
+    }
+    const taskMetadata = isObject(candidate.taskMetadata)
+      ? candidate.taskMetadata
+      : {};
+    return [
+      {
+        id: assertString(candidate.id, 'id'),
+        name: assertString(candidate.name, 'name'),
+        task,
+        purpose: assertString(candidate.purpose, 'purpose'),
+        modelVersion: assertString(candidate.modelVersion, 'modelVersion'),
+        artifactVersion: optionalString(candidate.artifactVersion),
+        selectedMethod: optionalString(
+          taskMetadata.selectedMethod ?? candidate.selectedMethod,
+        ),
+        sourceDataset: assertString(candidate.sourceDataset, 'sourceDataset'),
+        validatedExperiments: stringArray(
+          taskMetadata.validatedExperiments ?? candidate.validatedExperiments,
+        ),
+        validationScope: assertString(
+          candidate.validationScope,
+          'validationScope',
+        ),
+        generalizationStatus: assertString(
+          candidate.generalizationStatus,
+          'generalizationStatus',
+        ),
+        featureOrder: stringArray(
+          taskMetadata.featureOrder ?? candidate.featureOrder,
+        ),
+        framework: assertString(candidate.framework, 'framework'),
+        loaded: assertBoolean(candidate.loaded, 'loaded'),
+        enabled: assertBoolean(candidate.enabled, 'enabled'),
+        running: assertBoolean(candidate.running, 'running'),
+        status: assertString(
+          candidate.status,
+          'status',
+        ) as AiAnomalyRuntimeModel['status'],
+        activeExecutions: assertFiniteNumber(
+          candidate.activeExecutions,
+          'activeExecutions',
+        ),
+        lastExecutionAt: optionalString(candidate.lastExecutionAt),
+        lastExecutionDurationMs:
+          typeof candidate.lastExecutionDurationMs === 'number'
+            ? candidate.lastExecutionDurationMs
+            : undefined,
+        lastError: optionalString(candidate.lastError),
+        validationMetrics: isObject(candidate.validationMetrics)
+          ? candidate.validationMetrics
+          : {},
+        acceptedForAdvisoryPilot: candidate.acceptedForAdvisoryPilot === true,
+        knownLimitations: stringArray(candidate.knownLimitations),
+        lifecyclePersistence: 'PROCESS_LOCAL' as const,
+        taskMetadata,
+      },
+    ];
+  });
+
+  if (!models.length) {
+    throw new BadGatewayException(
+      'AI service returned no supported model metadata',
+    );
   }
-
-  return {
-    models: models.map((model) => ({
-      id: assertString(model.id, 'id'),
-      name: assertString(model.name, 'name'),
-      task: assertString(model.task, 'task'),
-      purpose: assertString(model.purpose, 'purpose'),
-      modelVersion: assertString(model.modelVersion, 'modelVersion'),
-      artifactVersion:
-        typeof model.artifactVersion === 'string'
-          ? model.artifactVersion
-          : undefined,
-      selectedMethod:
-        typeof model.selectedMethod === 'string'
-          ? model.selectedMethod
-          : undefined,
-      sourceDataset: assertString(model.sourceDataset, 'sourceDataset'),
-      validatedExperiments: Array.isArray(model.validatedExperiments)
-        ? model.validatedExperiments.filter(
-            (item): item is string => typeof item === 'string',
-          )
-        : [],
-      validationScope: assertString(model.validationScope, 'validationScope'),
-      generalizationStatus: assertString(
-        model.generalizationStatus,
-        'generalizationStatus',
-      ),
-      featureOrder: Array.isArray(model.featureOrder)
-        ? model.featureOrder.filter(
-            (item): item is string => typeof item === 'string',
-          )
-        : [],
-      framework: assertString(model.framework, 'framework'),
-      loaded: assertBoolean(model.loaded, 'loaded'),
-      enabled: assertBoolean(model.enabled, 'enabled'),
-      running: assertBoolean(model.running, 'running'),
-      status: assertString(model.status, 'status') as never,
-      activeExecutions: assertFiniteNumber(
-        model.activeExecutions,
-        'activeExecutions',
-      ),
-      lastExecutionAt:
-        typeof model.lastExecutionAt === 'string'
-          ? model.lastExecutionAt
-          : undefined,
-      lastExecutionDurationMs:
-        typeof model.lastExecutionDurationMs === 'number'
-          ? model.lastExecutionDurationMs
-          : undefined,
-      lastError:
-        typeof model.lastError === 'string' ? model.lastError : undefined,
-      validationMetrics: isObject(model.validationMetrics)
-        ? model.validationMetrics
-        : {},
-    })),
-  };
+  return { models };
 }
-
 @Injectable()
 export class AiAnomalyFastApiClient {
   private readonly logger = new Logger(AiAnomalyFastApiClient.name);

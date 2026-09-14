@@ -24,12 +24,15 @@ interface CatalogueOption {
   _id: string;
   part_id?: string;
   nom_piece?: string;
+  ref_constructeur?: string;
+  categorie_piece?: string;
+  fabricant?: string;
 }
 
 interface StockItem {
   _id: string;
   stock_id: string;
-  part_id?: string | { _id?: string; part_id?: string; nom_piece?: string };
+  part_id?: string | CatalogueOption;
   quantite_en_stock?: number;
   quantite_reservee?: number;
   seuil_alerte_stock?: number;
@@ -39,7 +42,9 @@ interface StockItem {
 }
 
 type MovementType = "reservation" | "consumption" | "return" | "adjustment" | "cancellation";
-type StockTableItem = StockItem & { available: number };
+type StockStatus = "available" | "low" | "out";
+type StockFilter = "all" | "available" | "reserved" | "low" | "out";
+type StockTableItem = StockItem & { available: number; presentationStatus: StockStatus };
 
 interface StockMovement {
   _id: string;
@@ -63,9 +68,17 @@ const MOVEMENT_BADGE_CLASSES: Record<MovementType, string> = {
 };
 
 function partLabel(part: StockItem["part_id"]): string {
-  if (!part) return "N/A";
-  if (typeof part === "string") return displayText(part, "N/A");
-  return displayText(part.part_id ?? part.nom_piece, "N/A");
+  if (!part) return "—";
+  if (typeof part === "string") return displayText(part, "—");
+  return displayText(part.nom_piece ?? part.part_id, "—");
+}
+
+function partReference(part: StockItem["part_id"]): string {
+  return typeof part === "object" && part ? displayText(part.part_id ?? part.ref_constructeur, "—") : "—";
+}
+
+function partCategory(part: StockItem["part_id"]): string {
+  return typeof part === "object" && part ? displayText(part.categorie_piece, "—") : "—";
 }
 
 
@@ -107,6 +120,19 @@ function metadataPayload(form: MetadataStockForm) {
   };
 }
 
+function stockStatus(item: StockItem): StockStatus {
+  const availableQuantity = available(item);
+  if (availableQuantity <= 0) return "out";
+  const threshold = item.seuil_alerte_stock ?? item.quantite_minimale;
+  return threshold !== undefined && availableQuantity <= threshold ? "low" : "available";
+}
+
+const STOCK_STATUS_PRESENTATION: Record<StockStatus, { label: string; className: string }> = {
+  available: { label: "Available", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+  low: { label: "Low stock", className: "border-amber-200 bg-amber-50 text-amber-800" },
+  out: { label: "Out of stock", className: "border-red-200 bg-red-50 text-red-800" },
+};
+
 function createStockPayload(form: CreateStockForm, initialQuantity: number) {
   return {
     stock_id: form.stock_id.trim(),
@@ -128,6 +154,7 @@ function optionalText(value: string): string | undefined {
 
 type StocksTableContentProps = {
   readonly loading: boolean;
+  readonly error: string | null;
   readonly items: StockTableItem[];
   readonly searchTerm: string;
   readonly t: ReturnType<typeof useTranslations>;
@@ -136,10 +163,12 @@ type StocksTableContentProps = {
   readonly onHistory: (item: StockTableItem) => void;
   readonly onEdit: (item: StockTableItem) => void;
   readonly onDelete: (item: StockTableItem) => void;
+  readonly onRetry: () => void;
 };
 
 function StocksTableContent({
   loading,
+  error,
   items,
   searchTerm,
   t,
@@ -148,29 +177,36 @@ function StocksTableContent({
   onHistory,
   onEdit,
   onDelete,
+  onRetry,
 }: StocksTableContentProps) {
   if (loading) {
-    return <div className="text-sm text-slate-500">{tCommon("loading")}</div>;
+    return <div className="space-y-2 p-4" role="status" aria-live="polite"><span className="sr-only">{tCommon("loading")}</span>{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-11 animate-pulse rounded bg-slate-100" />)}</div>;
+  }
+
+  if (error) {
+    return <div className="flex flex-col items-center gap-3 py-10 text-center" role="alert"><ExclamationTriangleIcon className="h-8 w-8 text-red-500" /><p className="text-sm text-slate-600">{error}</p><button type="button" className="btn-secondary" onClick={onRetry}>Retry</button></div>;
   }
 
   if (items.length === 0) {
     return (
       <div className="text-sm text-slate-500">
-        {searchTerm ? t("empty.search", { default: "No stock records match your search." }) : t("empty.default", { default: "No stock records available." })}
+        {searchTerm ? "No live stock records match the current search and filters." : "No live stock records exist in the database yet."}
       </div>
     );
   }
 
   return (
-    <table className="table">
+    <table className="table min-w-[1120px]">
       <thead>
         <tr>
-          <th>{t("table.part", { default: "Part" })}</th>
-          <th>{t("table.quantity", { default: "In Stock" })}</th>
-          <th>{t("table.reserved", { default: "Reserved" })}</th>
+          <th>Part</th>
+          <th>Reference</th>
+          <th>Category</th>
           <th>{t("table.available", { default: "Available" })}</th>
-          <th>{t("table.threshold", { default: "Alert Threshold" })}</th>
+          <th>{t("table.reserved", { default: "Reserved" })}</th>
+          <th>Total stock</th>
           <th>{t("table.location", { default: "Location" })}</th>
+          <th>Stock status</th>
           <th>{tCommon("table.actions")}</th>
         </tr>
       </thead>
@@ -242,7 +278,7 @@ function StockHistoryContent({
               <td>{formatDelta(movement.reserved_delta)}</td>
               <td>{movement.quantite_en_stock_after}</td>
               <td>{movement.quantite_reservee_after}</td>
-              <td>{movement.reason || tCommon("notAvailable")}</td>
+              <td>{movement.reason || "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -259,18 +295,20 @@ function StockTableRow({
   onHistory,
   onEdit,
   onDelete,
-}: Omit<StocksTableContentProps, "loading" | "items" | "searchTerm"> & {
+}: Omit<StocksTableContentProps, "loading" | "error" | "items" | "searchTerm" | "onRetry"> & {
   readonly item: StockTableItem;
 }) {
   const isDeletable = canDelete(item);
   return (
     <tr>
       <td>{partLabel(item.part_id)}</td>
-      <td>{item.quantite_en_stock ?? 0}</td>
-      <td>{item.quantite_reservee ?? 0}</td>
+      <td>{partReference(item.part_id)}</td>
+      <td>{partCategory(item.part_id)}</td>
       <td className={item.available <= 0 ? "text-red-600 font-semibold" : ""}>{item.available}</td>
-      <td>{item.seuil_alerte_stock ?? tCommon("notAvailable")}</td>
-      <td>{item.emplacement || tCommon("notAvailable")}</td>
+      <td>{item.quantite_reservee ?? 0}</td>
+      <td>{item.quantite_en_stock ?? 0}</td>
+      <td>{item.emplacement || "—"}</td>
+      <td><span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${STOCK_STATUS_PRESENTATION[item.presentationStatus].className}`}>{STOCK_STATUS_PRESENTATION[item.presentationStatus].label}</span></td>
       <td>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-secondary p-2" title={t("actions.adjust", { default: "Adjust" })} onClick={() => onAdjust(item)}>
@@ -302,11 +340,12 @@ export default function StocksPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
+  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [showFormModal, setShowFormModal] = useState(false);
@@ -332,18 +371,32 @@ export default function StocksPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [stocksResponse, cataloguesResponse] = await Promise.all([
-        apiService.getStocks({ page, limit }),
-        apiService.getCatalogues({ page: 1, limit: 500 }),
+      setLoadError(null);
+      const [firstStocksResponse, cataloguesResponse] = await Promise.all([
+        apiService.getStocks({ page: 1, limit: 100 }),
+        apiService.getCatalogues({ page: 1, limit: 100 }),
       ]);
-
-      setItems(stocksResponse.data?.items ?? []);
-      setTotalItems(stocksResponse.data?.totalItems ?? 0);
-      setTotalPages(stocksResponse.data?.totalPages ?? 1);
-      setCatalogues(cataloguesResponse.data?.items ?? []);
+      const stockPages = firstStocksResponse.data?.totalPages ?? 1;
+      const additionalResponses = stockPages > 1
+        ? await Promise.all(Array.from({ length: stockPages - 1 }, (_, index) => apiService.getStocks({ page: index + 2, limit: 100 })))
+        : [];
+      const allStocks = [
+        ...(firstStocksResponse.data?.items ?? []),
+        ...additionalResponses.flatMap((response) => response.data?.items ?? []),
+      ];
+      setItems(allStocks);
+      setTotalItems(firstStocksResponse.data?.totalItems ?? allStocks.length);
+      const cataloguePages = cataloguesResponse.data?.totalPages ?? 1;
+      const additionalCatalogueResponses = cataloguePages > 1
+        ? await Promise.all(Array.from({ length: cataloguePages - 1 }, (_, index) => apiService.getCatalogues({ page: index + 2, limit: 100 })))
+        : [];
+      setCatalogues([
+        ...(cataloguesResponse.data?.items ?? []),
+        ...additionalCatalogueResponses.flatMap((response) => response.data?.items ?? []),
+      ]);
     } catch (error) {
       console.error("Error loading stocks:", error);
-      showNotification("error", t("notifications.loadFailed"));
+      setLoadError(extractApiErrorMessage(error, t("notifications.loadFailed")).message);
     } finally {
       setLoading(false);
     }
@@ -352,7 +405,15 @@ export default function StocksPage() {
   useEffect(() => {
     void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, []);
+
+  useEffect(() => {
+    const watermark = document.querySelector<HTMLElement>(".themed-logo-watermark");
+    if (!watermark) return;
+    const previousOpacity = watermark.style.opacity;
+    watermark.style.opacity = "0.025";
+    return () => { watermark.style.opacity = previousOpacity; };
+  }, []);
 
   function handleCreate() {
     setEditingStock(null);
@@ -504,15 +565,33 @@ export default function StocksPage() {
       items.map((item) => ({
         ...item,
         part_label: partLabel(item.part_id),
+        part_reference: partReference(item.part_id),
+        part_category: partCategory(item.part_id),
         available: available(item),
+        presentationStatus: stockStatus(item),
       })),
     [items],
   );
   const searchableFields = useMemo(() => getSearchableFields(searchableItems), [searchableItems]);
   const filteredItems = useMemo(
-    () => searchableItems.filter((item) => matchesDynamicSearch(item, searchTerm, selectedSearchField)),
-    [searchableItems, searchTerm, selectedSearchField],
+    () => searchableItems.filter((item) => {
+      if (!matchesDynamicSearch(item, searchTerm, selectedSearchField)) return false;
+      if (stockFilter === "available") return item.available > 0;
+      if (stockFilter === "reserved") return (item.quantite_reservee ?? 0) > 0;
+      if (stockFilter === "low") return item.presentationStatus === "low";
+      if (stockFilter === "out") return item.presentationStatus === "out";
+      return true;
+    }),
+    [searchableItems, searchTerm, selectedSearchField, stockFilter],
   );
+  const liveSummary = useMemo(() => ({
+    available: searchableItems.filter((item) => item.available > 0).length,
+    reserved: searchableItems.filter((item) => (item.quantite_reservee ?? 0) > 0).length,
+    low: searchableItems.filter((item) => item.presentationStatus === "low").length,
+    out: searchableItems.filter((item) => item.presentationStatus === "out").length,
+  }), [searchableItems]);
+  const liveTotalPages = Math.max(1, Math.ceil(filteredItems.length / limit));
+  const visibleLiveItems = filteredItems.slice((page - 1) * limit, page * limit);
   const submitLabel = editingStock
     ? t("actions.update", { default: "Update" })
     : t("actions.create", { default: "Create" });
@@ -534,65 +613,30 @@ export default function StocksPage() {
         </div>
       )}
 
-      <div className="bento-grid">
-        <div className="col-span-full mb-6 bento-item">
-          <div className="panel">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">{t("heading", { default: "Stocks Management" })}</h1>
-                <p className="text-slate-600 mt-1">
-                  {t("description", {
-                    default: "Track available quantities, reservations, and the full audit trail for every part in inventory.",
-                  })}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">{totalItems}</div>
-                  <div className="text-sm text-slate-500">{t("totalStocks", { default: "Total Stock Records" })}</div>
-                </div>
-                <button type="button" onClick={handleCreate} className="btn-primary flex items-center gap-2">
-                  <PlusIcon className="w-4 h-4" />
-                  <span>{t("addStock", { default: "Add Stock Record" })}</span>
-                </button>
+      <main className="w-full space-y-4">
+        <header className="panel flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div><h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Inventory</h1><p className="mt-1 text-sm text-slate-600">{totalItems} live stock records · See what is available, reserved, low, or unavailable.</p></div>
+          <button type="button" onClick={handleCreate} className="btn-primary flex min-h-11 items-center justify-center gap-2"><PlusIcon className="h-4 w-4" /><span>{t("addStock", { default: "Add Stock Record" })}</span></button>
+        </header>
+
+          <section aria-label="Live stock summary" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {([['available', 'Available', liveSummary.available], ['reserved', 'Reserved', liveSummary.reserved], ['low', 'Low stock', liveSummary.low], ['out', 'Out of stock', liveSummary.out]] as const).map(([key, label, value]) => (
+              <button key={key} type="button" onClick={() => { setStockFilter(key); setPage(1); }} className={`panel min-h-24 border-s-4 p-4 text-start ${stockFilter === key ? 'border-s-blue-600 ring-2 ring-blue-200' : 'border-s-slate-300'}`} aria-pressed={stockFilter === key}><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span><span className="mt-1 block text-2xl font-bold text-slate-800">{value}</span><span className="text-xs text-slate-500">Live records</span></button>
+            ))}
+          </section>
+
+          <section className="panel min-w-0 p-3 sm:p-5" aria-labelledby="live-stock-title">
+            <div className="mb-4 space-y-3">
+              <div><h2 id="live-stock-title" className="card-title">Live Stock</h2><p className="mt-1 text-sm text-slate-500">Authoritative quantities from Catalogue and Stock records.</p></div>
+              <div className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-center">
+                <div className="min-w-0 md:flex-[1.3]"><select value={stockFilter} onChange={(event) => { setStockFilter(event.target.value as StockFilter); setPage(1); }} className="input-field min-h-11 w-full" aria-label="Filter live stock by status"><option value="all">All stock statuses</option><option value="available">Available</option><option value="reserved">Has reservations</option><option value="low">Low stock</option><option value="out">Out of stock</option></select></div>
+                <DynamicSearchControls className="w-full min-w-0 md:flex-[2]" layoutClassName="md:grid-cols-[minmax(110px,0.8fr)_minmax(180px,1.4fr)]" selectClassName="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2" inputClassName="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 py-2 pe-4 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500" selectedField={selectedSearchField} onSelectedFieldChange={(value) => { setSelectedSearchField(value); setPage(1); }} searchableFields={searchableFields} allFieldsLabel={tCommon("table.allFields", { default: "All fields" })} searchTerm={searchTerm} onSearchTermChange={(value) => { setSearchTerm(value); setPage(1); }} searchPlaceholder="Search stock..." />
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="col-span-full bento-item panel overflow-x-auto">
-          <div className="flex items-center justify-between mb-4 gap-4">
-            <div className="card-title">{t("allStocks", { default: "All Stock Records" })}</div>
-            <DynamicSearchControls
-              className=""
-              selectClassName="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              inputClassName="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-              selectedField={selectedSearchField}
-              onSelectedFieldChange={setSelectedSearchField}
-              searchableFields={searchableFields}
-              allFieldsLabel={tCommon("table.allFields", { default: "All fields" })}
-              searchTerm={searchTerm}
-              onSearchTermChange={setSearchTerm}
-              searchPlaceholder={t("searchPlaceholder", { default: "Search by part, location..." })}
-            />
-          </div>
-
-          <StocksTableContent
-            loading={loading}
-            items={filteredItems}
-            searchTerm={searchTerm}
-            t={t}
-            tCommon={tCommon}
-            onAdjust={handleOpenAdjust}
-            onHistory={(item) => void handleOpenHistory(item)}
-            onEdit={handleEditMetadata}
-            onDelete={(item) => void handleDelete(item)}
-          />
-          <div className="col-span-full">
-            <Pagination page={page} totalPages={totalPages} totalItems={totalItems} limit={limit} onPageChange={setPage} />
-          </div>
-        </div>
-      </div>
+            <div className="overflow-x-auto"><StocksTableContent loading={loading} error={loadError} items={visibleLiveItems} searchTerm={searchTerm || (stockFilter !== "all" ? stockFilter : "")} t={t} tCommon={tCommon} onAdjust={handleOpenAdjust} onHistory={(item) => void handleOpenHistory(item)} onEdit={handleEditMetadata} onDelete={(item) => void handleDelete(item)} onRetry={() => void loadData()} /></div>
+            {!loading && !loadError && filteredItems.length > 0 ? <Pagination page={page} totalPages={liveTotalPages} totalItems={filteredItems.length} limit={limit} onPageChange={setPage} /> : null}
+          </section>
+      </main>
 
       <Modal
         isOpen={showFormModal}
@@ -625,7 +669,7 @@ export default function StocksPage() {
                   <option value="">{t("placeholders.part", { default: "Select a part" })}</option>
                   {catalogues.map((part) => (
                     <option key={part._id} value={part._id}>
-                      {displayText(part.part_id ?? part.nom_piece, part._id)}
+                      {displayText(part.part_id ?? part.nom_piece, "—")}
                     </option>
                   ))}
                 </select>

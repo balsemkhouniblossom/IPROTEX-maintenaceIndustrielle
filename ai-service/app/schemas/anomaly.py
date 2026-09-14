@@ -87,6 +87,7 @@ class ComponentScores(BaseModel):
 
 class AnomalyResult(BaseModel):
     modelVersion: str
+    artifactVersion: str
     experiment: str
     timestamp: str
     bearing: int
@@ -105,25 +106,20 @@ class AnalyzeResponse(BaseModel):
 
 
 class ModelMetadata(BaseModel):
+    """Common runtime descriptor shared by every served model.
+
+    Model-specific scientific metadata belongs in ``taskMetadata``.  Keeping
+    the common contract small prevents diagnosis models from having to mimic
+    IMS anomaly fields.
+    """
     id: str
     modelVersion: str
-    artifactVersion: str
-    selectedMethod: str
+    artifactVersion: str | None = None
     sourceDataset: str
-    validatedExperiments: list[str]
     validationScope: str
     generalizationStatus: str
-    unsupportedGeneralizationTargets: list[str]
-    featureOrder: list[str]
-    requiredColumns: list[str]
-    riskLevels: list[dict[str, str | int]]
-    persistence: dict[str, object]
-    aggregation: dict[str, object]
-    runtimeLoadedWith: dict[str, str]
-    artifactProducedWith: dict[str, str]
-    warnings: list[str]
     name: str
-    task: str
+    task: Literal["ANOMALY_DETECTION", "FAULT_DIAGNOSIS"]
     purpose: str
     framework: str
     loaded: bool
@@ -136,8 +132,9 @@ class ModelMetadata(BaseModel):
     lastError: str | None = None
     validationMetrics: dict[str, object]
     acceptedForAdvisoryPilot: bool = False
-    riskMappingType: str = "heuristic"
     knownLimitations: list[str] = Field(default_factory=list)
+    lifecyclePersistence: Literal["PROCESS_LOCAL"] = "PROCESS_LOCAL"
+    taskMetadata: dict[str, object] = Field(default_factory=dict)
 
 
 class ModelsResponse(BaseModel):

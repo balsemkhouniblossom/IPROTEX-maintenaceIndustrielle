@@ -10,4 +10,8 @@ def test_health_and_readiness() -> None:
         assert client.get("/health").json() == {"status": "ok"}
         ready = client.get("/ready")
         assert ready.status_code == 200
-        assert ready.json() == {"status": "ready", "modelVersion": "0.1.0"}
+        assert ready.json() == {
+            "status": "ready",
+            "modelVersion": "0.1.0",
+            "diagnosisStatus": "ready",
+        }

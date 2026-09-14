@@ -14,24 +14,31 @@ def test_model_metadata_exposes_validation_scope_and_runtime_versions(monkeypatc
         response = client.get("/v1/models")
 
     assert response.status_code == 200
-    payload = response.json()
-    model = payload["models"][0]
+    model = response.json()["models"][0]
     assert model["modelVersion"] == "0.1.0"
+    assert model["task"] == "ANOMALY_DETECTION"
     assert model["sourceDataset"] == "IMS public bearing test-rig data"
-    assert model["validatedExperiments"] == ["1st_test"]
+    assert model["taskMetadata"]["validatedExperiments"] == ["1st_test"]
+    assert model["taskMetadata"]["featureOrder"]
     assert "only" in model["validationScope"].lower()
-    assert "2nd_test" in model["unsupportedGeneralizationTargets"]
-    assert "3rd_test" in model["unsupportedGeneralizationTargets"]
-    assert "IPROTEX" in model["unsupportedGeneralizationTargets"]
-    assert model["runtimeLoadedWith"]["python"]
-    assert model["runtimeLoadedWith"]["numpy"]
-    assert model["runtimeLoadedWith"]["scikitLearn"]
-    assert model["runtimeLoadedWith"]["joblib"]
-    assert model["artifactProducedWith"]["scikitLearn"] == "1.9.0 recorded by pickle warning"
-    assert any("joblib" in warning.lower() for warning in model["warnings"])
     assert model["validationMetrics"]["mean_precision"] > 0
     assert model["validationMetrics"]["mean_pr_auc"] > 0
 
+
+def test_registry_returns_ims_and_cwru_with_polymorphic_metadata(monkeypatch) -> None:
+    monkeypatch.setattr("app.main.settings.service_token", "test-service-token")
+    with TestClient(app, headers={"x-ai-service-token": "test-service-token"}) as client:
+        response = client.get("/v1/models")
+
+    assert response.status_code == 200
+    by_task = {model["task"]: model for model in response.json()["models"]}
+    assert set(by_task) == {"ANOMALY_DETECTION", "FAULT_DIAGNOSIS"}
+    assert by_task["ANOMALY_DETECTION"]["taskMetadata"]["persistence"]
+    diagnosis = by_task["FAULT_DIAGNOSIS"]
+    assert diagnosis["loaded"] is True
+    assert diagnosis["acceptedForAdvisoryPilot"] is False
+    assert "not validated on iprotex" in diagnosis["generalizationStatus"].lower()
+    assert diagnosis["taskMetadata"]["confidenceMeaning"]
 
 def test_model_can_be_stopped_and_started_without_unloading_artifact(monkeypatch) -> None:
     monkeypatch.setattr("app.main.settings.service_token", "test-service-token")

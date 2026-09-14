@@ -3849,6 +3849,12 @@
       "detailsTitle": "Información del modelo",
       "modelName": "Modelo",
       "task": "Función",
+      "tasks": {
+        "ANOMALY_DETECTION": "Detección de anomalías",
+        "FAULT_DIAGNOSIS": "Diagnóstico experimental de fallos"
+      },
+      "diagnosisExplanation": "Este modelo compara la entrada con las clases de rodamientos CWRU admitidas. La confianza corresponde a la clasificación del benchmark, no a la probabilidad de fallo de la máquina.",
+      "researchNotice": "Modelo de investigación o benchmark. Confirme los resultados mediante una inspección técnica antes de actuar.",
       "framework": "Tecnología",
       "dataset": "Conjunto de datos",
       "method": "Método de agregación",

@@ -1,0 +1,1467 @@
+[
+  {
+    "reference": "BRD-001",
+    "name": "Toothed gear 20",
+    "category": "Gears",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-002",
+    "name": "Toothed gear 21",
+    "category": "Gears",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-003",
+    "name": "Toothed gear 22",
+    "category": "Gears",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-004",
+    "name": "Toothed gear 23",
+    "category": "Gears",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-005",
+    "name": "Toothed gear 24",
+    "category": "Gears",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-006",
+    "name": "Toothed gear 25",
+    "category": "Gears",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-007",
+    "name": "Toothed gear 27",
+    "category": "Gears",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-008",
+    "name": "Toothed gear 28",
+    "category": "Gears",
+    "quantity": 7,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-009",
+    "name": "Toothed gear 29",
+    "category": "Gears",
+    "quantity": 4,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-010",
+    "name": "Toothed gear 30",
+    "category": "Gears",
+    "quantity": 4,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-011",
+    "name": "Toothed gear 31",
+    "category": "Gears",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-012",
+    "name": "Toothed gear 32",
+    "category": "Gears",
+    "quantity": 2,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-013",
+    "name": "Toothed gear 33",
+    "category": "Gears",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-014",
+    "name": "Toothed gear 34",
+    "category": "Gears",
+    "quantity": 4,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-015",
+    "name": "Toothed gear 36",
+    "category": "Gears",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-016",
+    "name": "Toothed gear 38",
+    "category": "Gears",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-017",
+    "name": "Toothed gear 40",
+    "category": "Gears",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-018",
+    "name": "Toothed gear 42",
+    "category": "Gears",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-019",
+    "name": "Toothed gear 19",
+    "category": "Machine F072",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-020",
+    "name": "Toothed gear 26",
+    "category": "Machine F072",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg/TN",
+    "location": "Braiding workshop",
+    "sourceDate": "15.07.2026",
+    "sourceSheets": [
+      "Accessoires braiding engrenage"
+    ]
+  },
+  {
+    "reference": "BRD-021",
+    "name": "Winding needle",
+    "category": "Winding",
+    "quantity": 2,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-022",
+    "name": "Relais RV4002",
+    "category": "Winding",
+    "quantity": 0,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-023",
+    "name": "Thread sensor",
+    "category": "Winding",
+    "quantity": 62,
+    "minimumQuantity": 10,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-024",
+    "name": "Display",
+    "category": "Winding",
+    "quantity": 1,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-025",
+    "name": "Red terminal for thread sensor",
+    "category": "Winding",
+    "quantity": 105,
+    "minimumQuantity": 30,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-026",
+    "name": "Centering point",
+    "category": "Winding",
+    "quantity": 6,
+    "minimumQuantity": 2,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-027",
+    "name": "Roulement SKF 6203-2Z",
+    "category": "Winding",
+    "quantity": 4,
+    "minimumQuantity": 2,
+    "critical": false,
+    "supplier": "local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-028",
+    "name": "Roulement SKF 6003-2RSH",
+    "category": "Winding",
+    "quantity": 3,
+    "minimumQuantity": 2,
+    "critical": false,
+    "supplier": "local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-029",
+    "name": "Step mat",
+    "category": "Winding",
+    "quantity": 8,
+    "minimumQuantity": 4,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-030",
+    "name": "Thread-sensor cover",
+    "category": "Winding",
+    "quantity": 26,
+    "minimumQuantity": 10,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-031",
+    "name": "Courroie MPW 2",
+    "category": "Winding",
+    "quantity": 2,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-032",
+    "name": "Thread-sensor cable",
+    "category": "Winding",
+    "quantity": 15,
+    "minimumQuantity": 5,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-033",
+    "name": "Thread brake",
+    "category": "Winding",
+    "quantity": 20,
+    "minimumQuantity": 5,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-034",
+    "name": "variateur Mitsubishi E500",
+    "category": "Braiding",
+    "quantity": 1,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-035",
+    "name": "Shuttle",
+    "category": "Braiding",
+    "quantity": 68,
+    "minimumQuantity": 30,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-036",
+    "name": "Thread needle",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 2,
+    "critical": true,
+    "supplier": "Iprotex Münchberg+local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-037",
+    "name": "Pink eyelet PF",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 20,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-038",
+    "name": "Pink eyelet MF",
+    "category": "Braiding",
+    "quantity": 1,
+    "minimumQuantity": 20,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-039",
+    "name": "Pink eyelet GF",
+    "category": "Braiding",
+    "quantity": 40,
+    "minimumQuantity": 20,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-040",
+    "name": "Timing belt T5-305 ST",
+    "category": "Braiding",
+    "quantity": 2,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg+local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-041",
+    "name": "Timing belt Z35",
+    "category": "Braiding",
+    "quantity": 2,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg+local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-042",
+    "name": "Black bobbin-base latch",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 5,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-043",
+    "name": "Red bobbin-base latch",
+    "category": "Braiding",
+    "quantity": 31,
+    "minimumQuantity": 5,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-044",
+    "name": "Plate disc",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-045",
+    "name": "Locking pin",
+    "category": "Braiding",
+    "quantity": 300,
+    "minimumQuantity": 200,
+    "critical": false,
+    "supplier": "local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-046",
+    "name": "Haul-off roller coating 50 mm × 50 m",
+    "category": "Braiding",
+    "quantity": 30,
+    "minimumQuantity": 20,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-047",
+    "name": "Mat adhesive",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg+local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-048",
+    "name": "capteur de fil avec fourchettte",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 0,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-049",
+    "name": "capteur de fil rouge",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 5,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-050",
+    "name": "Bobbin guide",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-051",
+    "name": "V-shaped fork",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-052",
+    "name": "Spindle head",
+    "category": "Braiding",
+    "quantity": 37,
+    "minimumQuantity": 10,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-053",
+    "name": "Black spindle",
+    "category": "Braiding",
+    "quantity": 2,
+    "minimumQuantity": 4,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-054",
+    "name": "Worm screw",
+    "category": "Braiding",
+    "quantity": 2,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-055",
+    "name": "PF spring",
+    "category": "Braiding",
+    "quantity": 1,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-056",
+    "name": "Winding disc",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 1,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-057",
+    "name": "GF spring 20 cm",
+    "category": "Braiding",
+    "quantity": 21,
+    "minimumQuantity": 5,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-058",
+    "name": "Bobbin-holder support",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-059",
+    "name": "Red guide support",
+    "category": "Braiding",
+    "quantity": 4,
+    "minimumQuantity": 1,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-060",
+    "name": "Aluminium adhesive tape",
+    "category": "Braiding",
+    "quantity": 2,
+    "minimumQuantity": 2,
+    "critical": true,
+    "supplier": "Iprotex Münchberg+local",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-061",
+    "name": "Blue adhesive tape",
+    "category": "Winding",
+    "quantity": 3,
+    "minimumQuantity": 2,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding"
+    ]
+  },
+  {
+    "reference": "BRD-062",
+    "name": "80 mm blade",
+    "category": "HSGM cutting",
+    "quantity": 9,
+    "minimumQuantity": 4,
+    "critical": true,
+    "supplier": "Iprotex Münchberg",
+    "location": "QS",
+    "sourceDate": "07.07.2026",
+    "sourceSheets": [
+      "Ersatzteilliste braiding",
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-063",
+    "name": "600 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-064",
+    "name": "530 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-065",
+    "name": "500 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-066",
+    "name": "350 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 2,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-067",
+    "name": "450 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-068",
+    "name": "250 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-069",
+    "name": "150 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-070",
+    "name": "100 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-071",
+    "name": "800 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-072",
+    "name": "75 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-073",
+    "name": "550 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-074",
+    "name": "400 g dancer weight",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-075",
+    "name": "Rod diameter 14",
+    "category": "Dancer weights and rods",
+    "quantity": 5,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-076",
+    "name": "Rod diameter 3",
+    "category": "Dancer weights and rods",
+    "quantity": 2,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-077",
+    "name": "Rod diameter 4",
+    "category": "Dancer weights and rods",
+    "quantity": 2,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-078",
+    "name": "Rod diameter 12",
+    "category": "Dancer weights and rods",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-079",
+    "name": "Rod diameter 10",
+    "category": "Dancer weights and rods",
+    "quantity": 5,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-080",
+    "name": "Rod diameter 8",
+    "category": "Dancer weights and rods",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-081",
+    "name": "Rod diameter 5",
+    "category": "Dancer weights and rods",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-082",
+    "name": "Rod diameter 6",
+    "category": "Dancer weights and rods",
+    "quantity": 2,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-083",
+    "name": "Rod diameter 16",
+    "category": "Dancer weights and rods",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "04.07.2024",
+    "sourceSheets": [
+      "Accessoires braiding  danseur"
+    ]
+  },
+  {
+    "reference": "BRD-084",
+    "name": "Timing belt T5-650Q/18",
+    "category": "Spare parts",
+    "quantity": 1,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Maedler",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-085",
+    "name": "Timing belt T5-305 RD",
+    "category": "Spare parts",
+    "quantity": 2,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": null,
+    "location": "Braiding workshop",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-086",
+    "name": "Black bobbin latch",
+    "category": "Spare parts",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-087",
+    "name": "Red bobbin latch",
+    "category": "Spare parts",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-088",
+    "name": "Steuer CPU",
+    "category": "Spare parts",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "OMR",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-089",
+    "name": "Braiding needle",
+    "category": "Braiding",
+    "quantity": 3,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Iprotex Münchberg",
+    "location": "Braiding workshop",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-090",
+    "name": "Maschinendisplay/variateur",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-091",
+    "name": "Maschinen Display/Variateur",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Siemens",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-092",
+    "name": "Drive-motor ball bearing",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "Maedler",
+    "location": "Workshop",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-093",
+    "name": "55 mm blade",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "HSGM",
+    "location": "Ablängen",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-094",
+    "name": "110 mm blade",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "HSGM",
+    "location": "Ablängen",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-095",
+    "name": "Frequency converter",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "RS Elek.",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-096",
+    "name": "Wheels",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-097",
+    "name": "Thread monitoring sensor",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "OMR",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-098",
+    "name": "Limit switch",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "RS Elek.",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-099",
+    "name": "Drive motor",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-100",
+    "name": "Adjustment potentiometer",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "RS Elek.",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-101",
+    "name": "Rotary encoder",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-102",
+    "name": "Wheel bolts",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-103",
+    "name": "Haul-off roller",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "ETK",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  },
+  {
+    "reference": "BRD-104",
+    "name": "Haul-off V-belt",
+    "category": "Braiding",
+    "quantity": 0,
+    "minimumQuantity": 0,
+    "critical": false,
+    "supplier": "div.",
+    "location": "IEL",
+    "sourceDate": "03.07.2023",
+    "sourceSheets": [
+      "Ersatzteilliste"
+    ]
+  }
+]

@@ -27,6 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { translateEnumValue } from "@/services/enumTranslations";
 import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
 
@@ -44,6 +45,8 @@ interface WorkOrder {
   date_created: string;
   date_start?: string;
   date_end?: string;
+  due_date?: string;
+  type_maintenance?: string;
 }
 
 interface Machine {
@@ -60,6 +63,11 @@ interface User {
 interface WorkOrdersFilters {
   status: string;
   priority: string;
+  machineId: string;
+  technicianId: string;
+  dateFrom: string;
+  dateTo: string;
+  maintenanceType: string;
   [key: string]: string;
 }
 
@@ -73,10 +81,16 @@ const STATUS_BADGE_CLASSES: Record<string, string> = {
   in_progress: 'bg-blue-100 text-blue-800 border-blue-200',
   completed: 'bg-green-100 text-green-800 border-green-200',
   cancelled: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  canceled: 'bg-slate-100 text-slate-700 border-slate-200',
+  assigned: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  waiting_parts: 'bg-amber-100 text-amber-800 border-amber-200',
+  waiting_validation: 'bg-violet-100 text-violet-800 border-violet-200',
+  validated: 'bg-green-100 text-green-800 border-green-200',
 };
 const DEFAULT_STATUS_BADGE_CLASS = 'bg-yellow-100 text-yellow-800 border-yellow-200';
 
 const PRIORITY_BADGE_CLASSES: Record<string, string> = {
+  critical: 'bg-red-100 text-red-900 border-red-300',
   high: 'bg-red-100 text-red-800 border-red-200',
   medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   low: 'bg-green-100 text-green-800 border-green-200',
@@ -91,7 +105,36 @@ type SavedWorkOrdersQuery = {
   status?: string;
   priority?: string;
   sort?: string;
+  machineId?: string;
+  technicianId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  maintenanceType?: string;
 };
+
+type StatusTab = 'all' | 'open' | 'in_progress' | 'waiting_parts' | 'overdue' | 'completed' | 'cancelled';
+const TERMINAL_STATUSES = new Set(['completed', 'validated', 'cancelled', 'canceled', 'CLOTURE', 'ANNULE']);
+const STATUS_TAB_VALUES: Record<Exclude<StatusTab, 'all' | 'overdue'>, string> = {
+  open: 'pending,assigned,technician_required,returned,waiting_validation',
+  in_progress: 'in_progress',
+  waiting_parts: 'waiting_parts',
+  completed: 'completed,validated,CLOTURE',
+  cancelled: 'cancelled,canceled,ANNULE',
+};
+
+function isOverdue(workOrder: WorkOrder, now: number) {
+  const due = workOrder.due_date || workOrder.date_end;
+  return Boolean(due && !TERMINAL_STATUSES.has(workOrder.status) && new Date(due).getTime() < now);
+}
+
+function operationalOrder(a: WorkOrder, b: WorkOrder, now: number) {
+  const overdueDelta = Number(isOverdue(b, now)) - Number(isOverdue(a, now));
+  if (overdueDelta) return overdueDelta;
+  const rank: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+  const urgencyDelta = (rank[b.priorite || ''] || 0) - (rank[a.priorite || ''] || 0);
+  if (urgencyDelta) return urgencyDelta;
+  return new Date(a.due_date || a.date_end || '9999-12-31').getTime() - new Date(b.due_date || b.date_end || '9999-12-31').getTime();
+}
 
 export default function WorkOrdersPage() {
   const tWorkOrders = useTranslations("workOrders");
@@ -121,6 +164,8 @@ export default function WorkOrdersPage() {
 
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [activeSavedViewId, setActiveSavedViewId] = useState<string | null>(null);
+  const [statusTab, setStatusTab] = useState<StatusTab>('all');
+  const [sortReferenceTime] = useState(() => Date.now());
 
   const fetcher = useCallback(
     async (query: ServerTableQuery<WorkOrdersFilters>, signal: AbortSignal) => {
@@ -132,6 +177,10 @@ export default function WorkOrdersPage() {
           sort: query.sort,
           status: query.filters.status || undefined,
           priority: query.filters.priority || undefined,
+          machineId: query.filters.machineId || undefined,
+          technicianId: query.filters.technicianId || undefined,
+          dateFrom: query.filters.dateFrom || undefined,
+          dateTo: query.filters.dateTo || undefined,
         },
         { signal },
       );
@@ -148,9 +197,30 @@ export default function WorkOrdersPage() {
 
   const table = useServerTable<WorkOrder, WorkOrdersFilters>({
     fetcher,
-    initialFilters: { status: '', priority: '' },
+    initialFilters: { status: '', priority: '', machineId: '', technicianId: '', dateFrom: '', dateTo: '', maintenanceType: '' },
     pageSize: 10,
+    initialSort: 'due_date',
   });
+  const visibleItems = useMemo(() => {
+    const filtered = table.items.filter((item) => {
+      if (statusTab === 'overdue' && !isOverdue(item, sortReferenceTime)) return false;
+      return !table.filters.maintenanceType || item.type_maintenance === table.filters.maintenanceType;
+    });
+    return table.sort === 'due_date' ? [...filtered].sort((a, b) => operationalOrder(a, b, sortReferenceTime)) : filtered;
+  }, [table.items, table.filters.maintenanceType, table.sort, statusTab, sortReferenceTime]);
+  const maintenanceTypes = useMemo(() => Array.from(new Set(table.items.map((item) => item.type_maintenance).filter(Boolean) as string[])).sort(), [table.items]);
+  const pageSummary = useMemo(() => ({
+    open: table.items.filter((item) => !TERMINAL_STATUSES.has(item.status)).length,
+    overdue: table.items.filter((item) => isOverdue(item, sortReferenceTime)).length,
+    urgent: table.items.filter((item) => ['high', 'critical'].includes(item.priorite || '') && !TERMINAL_STATUSES.has(item.status)).length,
+    unassigned: table.items.filter((item) => !item.technician_id && !TERMINAL_STATUSES.has(item.status)).length,
+  }), [table.items, sortReferenceTime]);
+
+  function selectStatusTab(tab: StatusTab) {
+    setStatusTab(tab);
+    table.setFilters({ ...table.filters, status: tab === 'all' || tab === 'overdue' ? '' : STATUS_TAB_VALUES[tab] });
+    table.setPage(1);
+  }
   const dynamicTranslations = useWorkOrderDynamicTranslations(table.items, locale);
 
   // Picks up: this page's own CRUD (below), plus Operator corrective/
@@ -162,6 +232,14 @@ export default function WorkOrdersPage() {
     window.addEventListener('focus', table.reload);
     return () => window.removeEventListener('focus', table.reload);
   }, [table.reload]);
+
+  useEffect(() => {
+    const watermark = document.querySelector<HTMLElement>('.themed-logo-watermark');
+    if (!watermark) return;
+    const previousDisplay = watermark.style.display;
+    watermark.style.display = 'none';
+    return () => { watermark.style.display = previousDisplay; };
+  }, []);
 
   const loadFormOptions = useCallback(async () => {
     try {
@@ -337,7 +415,8 @@ export default function WorkOrdersPage() {
     const query = view.query as SavedWorkOrdersQuery;
     setActiveSavedViewId(view._id);
     table.setSearchInput(query.search ?? '');
-    table.setFilters({ status: query.status ?? '', priority: query.priority ?? '' });
+    table.setFilters({ status: query.status ?? '', priority: query.priority ?? '', machineId: query.machineId ?? '', technicianId: query.technicianId ?? '', dateFrom: query.dateFrom ?? '', dateTo: query.dateTo ?? '', maintenanceType: query.maintenanceType ?? '' });
+    setStatusTab('all');
     table.setSort(query.sort);
     table.setPage(1);
   }
@@ -349,6 +428,11 @@ export default function WorkOrdersPage() {
         status: table.filters.status || undefined,
         priority: table.filters.priority || undefined,
         sort: table.sort,
+        machineId: table.filters.machineId || undefined,
+        technicianId: table.filters.technicianId || undefined,
+        dateFrom: table.filters.dateFrom || undefined,
+        dateTo: table.filters.dateTo || undefined,
+        maintenanceType: table.filters.maintenanceType || undefined,
       };
       const response = await apiService.createSavedView({ pageKey: 'work-orders', name, query });
       setSavedViews((prev) => [response.data, ...prev]);
@@ -381,7 +465,7 @@ export default function WorkOrdersPage() {
         width: 'minmax(10rem, 1.5fr)',
         render: (wo) => {
           const text = dynamicTranslations.textFor(wo._id, "description", wo.description);
-          if (!text) return tCommon("notAvailable");
+          if (!text) return '—';
           return (
             <span title={dynamicTranslations.isAutomaticallyTranslated(wo._id, "description") ? tCommon("dynamicTranslations.safetyNotice") : text}>
               {text}
@@ -398,7 +482,7 @@ export default function WorkOrdersPage() {
         key: 'machine',
         header: tWorkOrders("table.machine"),
         width: 'minmax(7rem, 1fr)',
-        render: (wo) => wo.machine_id?.machine_id || tCommon("notAvailable"),
+        render: (wo) => wo.machine_id?.machine_id || '—',
       },
       {
         key: 'technician',
@@ -413,6 +497,12 @@ export default function WorkOrdersPage() {
           ) : (
             tWorkOrders("unassigned")
           ),
+      },
+      {
+        key: 'type_maintenance',
+        header: 'Maintenance type',
+        width: '9rem',
+        render: (wo) => wo.type_maintenance ? translateEnumValue(tEnums, 'maintenanceTypes', wo.type_maintenance) : '—',
       },
       {
         key: 'status',
@@ -449,13 +539,13 @@ export default function WorkOrdersPage() {
         key: 'date_start',
         header: tWorkOrders("table.startDate"),
         width: '8rem',
-        render: (wo) => (wo.date_start ? new Date(wo.date_start).toLocaleDateString() : tCommon("notAvailable")),
+        render: (wo) => (wo.date_start ? new Date(wo.date_start).toLocaleDateString(locale) : '—'),
       },
       {
         key: 'date_end',
-        header: tWorkOrders("table.endDate"),
+        header: 'Due date',
         width: '8rem',
-        render: (wo) => (wo.date_end ? new Date(wo.date_end).toLocaleDateString() : tCommon("notAvailable")),
+        render: (wo) => (wo.due_date || wo.date_end ? new Date(wo.due_date || wo.date_end!).toLocaleDateString(locale) : '—'),
       },
       {
         key: 'actions',
@@ -464,6 +554,9 @@ export default function WorkOrdersPage() {
         width: 'minmax(18rem, 36rem)',
         render: (wo) => (
           <div className="flex justify-end gap-2">
+            <Link href={`/${locale}/technician/work-orders/${wo._id}`} className="btn-secondary inline-flex items-center px-3 py-2 text-xs font-semibold" aria-label={`View ${wo.ot_id}`}>
+              View
+            </Link>
             {VALIDATABLE_STATUSES.has(wo.status) && (
               <>
                 <button
@@ -523,7 +616,7 @@ export default function WorkOrdersPage() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tWorkOrders, tCommon, tEnums, users, machines, dynamicTranslations],
+    [tWorkOrders, tCommon, tEnums, users, machines, dynamicTranslations, locale],
   );
 
   const workOrderSubmitLabel = editingWorkOrder
@@ -553,36 +646,41 @@ export default function WorkOrdersPage() {
         </div>
       )}
 
-      <div className="bento-grid work-orders-theme">
+      <div className="work-orders-theme w-full space-y-4">
         {/* Header */}
-        <div className="col-span-full mb-6 bento-item">
-          <div className="panel">
-            <div className="flex items-center justify-between">
+        <div className="panel px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">{tWorkOrders("heading")}</h1>
-                <p className="text-slate-600 mt-1">{tWorkOrders("subtitle")}</p>
+                <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">{tWorkOrders("title")}</h1>
+                <p className="mt-1 text-sm text-slate-600">Plan, assign and track maintenance work.</p>
               </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">{table.totalItems}</div>
-                  <div className="text-sm text-slate-500">{tWorkOrders("totalWorkOrders")}</div>
-                </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-500">{table.totalItems} total</span>
                 <button type="button"
                   onClick={handleCreate}
-                  className="btn-primary flex items-center space-x-2"
+                  className="btn-primary flex min-h-11 items-center space-x-2"
                 >
                   <PlusIcon className="w-4 h-4" />
                   <span>{tWorkOrders("addWorkOrder")}</span>
                 </button>
               </div>
             </div>
-          </div>
         </div>
 
+        <section aria-label="Work order summary" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {[['Open', pageSummary.open], ['Overdue', pageSummary.overdue], ['High priority', pageSummary.urgent], ['Unassigned', pageSummary.unassigned]].map(([label, value]) => (
+            <div key={String(label)} className="panel border-s-4 border-s-blue-500 px-4 py-3">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
+              <div className="mt-1 text-2xl font-bold text-slate-800">{value}</div>
+              <div className="text-xs text-slate-500">On this page</div>
+            </div>
+          ))}
+        </section>
+
         {/* Work Orders Table */}
-        <div className="col-span-full bento-item panel">
+        <div className="panel min-w-0 p-3 sm:p-5">
           <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-            <div className="card-title">{tWorkOrders("allWorkOrders")}</div>
+            <div className="card-title">Maintenance queue</div>
             <div className="flex flex-wrap items-center gap-2">
               {dynamicTranslations.hasTranslationLocale ? (
                 <button
@@ -602,33 +700,29 @@ export default function WorkOrdersPage() {
                 placeholder={tWorkOrders("searchPlaceholder")}
                 aria-label={tWorkOrders("searchPlaceholder")}
               />
-              <select
-                value={table.filters.status}
-                onChange={(e) => { table.setFilters({ ...table.filters, status: e.target.value }); table.setPage(1); }}
-                className="input-field"
-                aria-label={tWorkOrders('table.status')}
-              >
-                <option value="">{tWorkOrders('filters.allStatuses')}</option>
-                <option value="pending">{tWorkOrders('status.pending')}</option>
-                <option value="in_progress">{tWorkOrders('status.in_progress')}</option>
-                <option value="completed">{tWorkOrders('status.completed')}</option>
-                <option value="cancelled">{tWorkOrders('status.cancelled')}</option>
-              </select>
-              <select
-                value={table.filters.priority}
-                onChange={(e) => { table.setFilters({ ...table.filters, priority: e.target.value }); table.setPage(1); }}
-                className="input-field"
-                aria-label={tWorkOrders('table.priority')}
-              >
-                <option value="">{tWorkOrders('filters.allPriorities')}</option>
-                <option value="low">{tWorkOrders('priority.low')}</option>
-                <option value="medium">{tWorkOrders('priority.medium')}</option>
-                <option value="high">{tWorkOrders('priority.high')}</option>
-              </select>
             </div>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 overflow-x-auto border-b border-slate-200" role="tablist" aria-label="Work order status">
+            <div className="flex min-w-max gap-1">
+              {([['all', 'All'], ['open', 'Open'], ['in_progress', 'In Progress'], ['waiting_parts', 'Waiting Parts'], ['overdue', 'Overdue'], ['completed', 'Completed'], ['cancelled', 'Cancelled']] as const).map(([key, label]) => (
+                <button key={key} type="button" role="tab" aria-selected={statusTab === key} onClick={() => selectStatusTab(key)} className={`min-h-11 border-b-2 px-3 text-sm font-medium ${statusTab === key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
+            <select value={table.filters.machineId} onChange={(e) => { table.setFilters({ ...table.filters, machineId: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by machine"><option value="">All machines</option>{machines.map((machine) => <option key={machine._id} value={machine._id}>{machine.machine_id}</option>)}</select>
+            <select value={table.filters.maintenanceType} onChange={(e) => { table.setFilters({ ...table.filters, maintenanceType: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by maintenance type"><option value="">All maintenance types</option>{maintenanceTypes.map((type) => <option key={type} value={type}>{translateEnumValue(tEnums, 'maintenanceTypes', type)}</option>)}</select>
+            <select value={table.filters.priority} onChange={(e) => { table.setFilters({ ...table.filters, priority: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by priority"><option value="">All priorities</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+            <select value={table.filters.technicianId} onChange={(e) => { table.setFilters({ ...table.filters, technicianId: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by technician"><option value="">All technicians</option>{users.map((user) => <option key={user._id} value={user._id}>{user.nom_complet}</option>)}</select>
+            <input type="date" value={table.filters.dateFrom} onChange={(e) => { table.setFilters({ ...table.filters, dateFrom: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Created from date" />
+            <input type="date" value={table.filters.dateTo} onChange={(e) => { table.setFilters({ ...table.filters, dateTo: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Created to date" />
+          </div>
+
+          <details className="mb-4 rounded-lg border border-slate-200 px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium text-slate-600">Saved views</summary>
+            <div className="pt-3">
             <SavedViewsBar
               views={savedViews}
               activeViewId={activeSavedViewId}
@@ -640,16 +734,17 @@ export default function WorkOrdersPage() {
               emptyLabel={tCommon('savedViews.empty')}
               deleteLabel={tCommon('savedViews.delete')}
             />
-          </div>
+            </div>
+          </details>
 
           <VirtualizedDataTable
             columns={columns}
-            rows={table.items}
+            rows={visibleItems}
             rowKey={(wo) => wo._id}
             loading={table.loading}
             error={table.error}
             onRetry={table.reload}
-            emptyMessage={table.searchInput ? tWorkOrders("empty.search") : tWorkOrders("empty.default")}
+            emptyMessage={table.searchInput || statusTab !== 'all' || Object.values(table.filters).some(Boolean) ? 'No work orders match the selected filters.' : tWorkOrders("empty.default")}
             loadingLabel={tCommon('loading')}
             errorRetryLabel={tCommon('retry')}
             sortField={table.sortField}
@@ -657,7 +752,7 @@ export default function WorkOrdersPage() {
             onSortChange={table.toggleSort}
             ariaLabel={tWorkOrders('allWorkOrders')}
             // Fits a full page of rows without its own nested scrollbar (double scroll).
-            height={Math.max(480, table.limit * 60)}
+            height={Math.max(420, visibleItems.length * 60 + 48)}
           />
 
           <div className="col-span-full mt-4">

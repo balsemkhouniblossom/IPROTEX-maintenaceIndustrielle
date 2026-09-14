@@ -52,7 +52,13 @@ def feature_rows(timestamp_count: int = 1) -> list[dict[str, Any]]:
 
 def pipeline_records(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     pipeline = ImsAnomalyInferencePipeline(ARTIFACT_PATH, METADATA_PATH)
-    return pipeline.to_json_records(pipeline.predict_batch(pd.DataFrame(rows)))
+    artifact_version = str(
+        pipeline.metadata.get("artifact_version", f"v{pipeline.version.replace('.', '_')}")
+    )
+    return [
+        {**record, "artifactVersion": artifact_version}
+        for record in pipeline.to_json_records(pipeline.predict_batch(pd.DataFrame(rows)))
+    ]
 
 
 def post_batch(client: TestClient, rows: list[dict[str, Any]]):
@@ -73,6 +79,7 @@ def test_valid_single_inference_and_direct_pipeline_parity() -> None:
     assert payload["results"] == pipeline_records(rows)
     assert set(payload["results"][0]) == {
         "modelVersion",
+        "artifactVersion",
         "experiment",
         "timestamp",
         "bearing",

@@ -24,6 +24,7 @@ interface UseServerTableOptions<T, F> {
   pageSize?: number;
   /** Milliseconds to wait after the last keystroke before the search term is applied — avoids firing one request per character. */
   searchDebounceMs?: number;
+  initialSort?: string;
 }
 
 function getSortDirection(sort: string | undefined): 'asc' | 'desc' | undefined {
@@ -52,12 +53,13 @@ export function useServerTable<T, F extends Record<string, unknown>>({
   initialFilters,
   pageSize = 20,
   searchDebounceMs = 300,
+  initialSort,
 }: UseServerTableOptions<T, F>) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(pageSize);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [sort, setSort] = useState<string | undefined>(undefined);
+  const [sort, setSort] = useState<string | undefined>(initialSort);
   const [filters, setFilters] = useState<F>(initialFilters);
 
   const [items, setItems] = useState<T[]>([]);

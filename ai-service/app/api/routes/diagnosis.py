@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import joblib
 import numpy as np
 from fastapi import APIRouter, HTTPException, Request
 
@@ -17,6 +16,7 @@ from app.schemas.diagnosis import (
     DiagnosisSample,
 )
 from src.inference.cwru_diagnosis_inference import CwruDiagnosisError, diagnose, extract_window_features
+from app.api.routes.models import load_cwru_artifact
 
 MODEL_DIR = Path(__file__).resolve().parents[3] / "artifacts" / "models"
 CWRU_DIR = Path(__file__).resolve().parents[4] / "data" / "raw" / "cwru"
@@ -58,12 +58,6 @@ CWRU_FILE_MAP = {
 
 MODEL_ID = "cwru_bearing_diagnosis_v0_1_0"
 ARTIFACT_PATH = MODEL_DIR / "cwru_bearing_diagnosis_model_v0_1_0.joblib"
-
-
-def _load_artifact():
-    if not ARTIFACT_PATH.exists():
-        raise HTTPException(status_code=503, detail="CWRU diagnosis artifact not found")
-    return joblib.load(ARTIFACT_PATH)
 
 
 def _build_catalog() -> list[DiagnosisSample]:
@@ -119,13 +113,13 @@ async def analyze(request: Request, body: DiagnosisAnalyzeRequest) -> DiagnosisA
 
     t0 = time.time()
     try:
-        artifact = _load_artifact()
+        artifact = load_cwru_artifact()
         signal = np.array(body.signal, dtype=float)
         result = diagnose(artifact, signal, confidence_threshold=CONFIDENCE_THRESHOLD)
     except CwruDiagnosisError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Diagnosis failed: {exc}")
+    except Exception:
+        raise HTTPException(status_code=503, detail="MODEL_ARTIFACT_ERROR")
 
     elapsed_ms = (time.time() - t0) * 1000
 
@@ -179,14 +173,18 @@ def disable_diagnosis(request: Request):
 
 @router.get("/status", summary="CWRU diagnosis model status")
 def diagnosis_status(request: Request):
-    artifact_exists = ARTIFACT_PATH.exists()
+    try:
+        load_cwru_artifact()
+        artifact_loaded = True
+    except Exception:
+        artifact_loaded = False
     enabled = getattr(request.app.state, "cwru_diagnosis_enabled", True)
     return {
         "model_id": MODEL_ID,
         "version": "0.1.0",
         "task": "FAULT_DIAGNOSIS",
         "dataset": "CWRU",
-        "artifact_loaded": artifact_exists,
-        "enabled": enabled,
+        "artifact_loaded": artifact_loaded,
+        "enabled": enabled and artifact_loaded,
         "running": False,
     }

@@ -28,6 +28,7 @@ export type AiAnomalyFastApiPayload = {
 
 export type AiAnomalyFastApiResult = {
   modelVersion: string;
+  artifactVersion: string;
   experiment: string;
   timestamp: string;
   bearing: number;
@@ -51,7 +52,7 @@ export type AiAnomalyFastApiResults = {
 export type AiAnomalyRuntimeModel = {
   id: string;
   name: string;
-  task: string;
+  task: 'ANOMALY_DETECTION' | 'FAULT_DIAGNOSIS';
   purpose: string;
   modelVersion: string;
   artifactVersion?: string;
@@ -71,6 +72,10 @@ export type AiAnomalyRuntimeModel = {
   lastExecutionDurationMs?: number;
   lastError?: string;
   validationMetrics: Record<string, unknown>;
+  acceptedForAdvisoryPilot: boolean;
+  knownLimitations: string[];
+  lifecyclePersistence: 'PROCESS_LOCAL';
+  taskMetadata: Record<string, unknown>;
 };
 
 export type AiAnomalyModelMetadata = { models: AiAnomalyRuntimeModel[] };

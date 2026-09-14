@@ -14,7 +14,7 @@ router = APIRouter(prefix="/v1/anomaly", tags=["anomaly"])
     response_model=AnalyzeResponse,
     summary="Analyze one IMS timestamp",
     description=(
-        "Stateful streaming inference for exactly one timestamp. The saved v0.1.0 artifact is used as-is; "
+        "Stateful streaming inference for exactly one timestamp. The configured artifact is used as-is; "
         "no training or model mutation occurs during the request."
     ),
 )

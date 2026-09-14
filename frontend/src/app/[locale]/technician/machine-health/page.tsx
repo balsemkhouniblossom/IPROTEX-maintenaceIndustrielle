@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ToastNotification,
   type ToastNotificationState,
@@ -43,6 +44,7 @@ function TechnicianMachineHealthContent() {
   const t = useTranslations();
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const { user } = useAuth();
   const [analyses, setAnalyses] = useState<AiAnomalyAnalysis[]>([]);
   const [machineRecords, setMachineRecords] = useState<
     AiAnomalyMachineRecord[]
@@ -280,7 +282,7 @@ function TechnicianMachineHealthContent() {
                 machines={machines}
                 locale={locale}
                 t={t}
-                detailHref={`/${locale}/technician/machine-health/${analysis.analysis_id}`}
+                detailHref={`/${locale}/${user?.role === "admin" ? "machine-health" : "technician/machine-health"}/${analysis.analysis_id}`}
               />
             ))}
           </section>

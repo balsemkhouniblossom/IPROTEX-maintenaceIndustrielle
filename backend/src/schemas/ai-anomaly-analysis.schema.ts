@@ -21,6 +21,7 @@ export enum AiAnomalyDatasetOrigin {
 
 export enum AiAnomalyValidationScope {
   IMS_1ST_TEST_ONLY = 'IMS_1ST_TEST_ONLY',
+  IMS_MULTI_EXPERIMENT_RESEARCH = 'IMS_MULTI_EXPERIMENT_RESEARCH',
 }
 
 export enum AiAnomalyGeneralizationStatus {
@@ -44,6 +45,9 @@ export const AiAnomalyComponentScoresSchema = SchemaFactory.createForClass(
 export class AiAnomalyModelResponse {
   @Prop({ type: String, required: true })
   modelVersion: string;
+
+  @Prop({ type: String })
+  artifactVersion?: string;
 
   @Prop({ type: String, required: true })
   experiment: string;
@@ -119,6 +123,12 @@ export class AiAnomalyAnalysis {
 
   @Prop({ type: String, required: true, index: true })
   model_version: string;
+
+  @Prop({ type: String })
+  artifact_version?: string;
+
+  @Prop({ type: String, default: 'RESEARCH' })
+  model_status: string;
 
   @Prop({
     type: String,

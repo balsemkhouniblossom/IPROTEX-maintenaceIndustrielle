@@ -36,6 +36,7 @@ describe('AiAnomalyService', () => {
 
   const result = {
     modelVersion: '0.1.0',
+    artifactVersion: 'ims_anomaly_model_v0_1_0',
     experiment: '1st_test',
     timestamp: '2003-11-15T18:18:46',
     bearing: 1,
@@ -69,6 +70,8 @@ describe('AiAnomalyService', () => {
       capteur_id: new Types.ObjectId(capteurId),
       requested_by: new Types.ObjectId(userId),
       model_version: result.modelVersion,
+      artifact_version: result.artifactVersion,
+      model_status: 'RESEARCH',
       input_source: AiAnomalyInputSource.DATASET_REPLAY,
       experiment: result.experiment,
       measurement_timestamp: new Date(result.timestamp),
@@ -215,6 +218,7 @@ describe('AiAnomalyService', () => {
         $setOnInsert: expect.objectContaining({
           requested_by: new Types.ObjectId(userId),
           model_response: result,
+          artifact_version: 'ims_anomaly_model_v0_1_0',
           raw_anomaly: false,
         }),
       }),
@@ -226,10 +230,38 @@ describe('AiAnomalyService', () => {
       machine_id: machineId,
       capteur_id: capteurId,
       model_version: '0.1.0',
+      artifact_version: 'ims_anomaly_model_v0_1_0',
       dataset_origin: 'IMS_PUBLIC_TEST_RIG',
       validation_scope: 'IMS_1ST_TEST_ONLY',
       generalization_status: 'NOT_ESTABLISHED_FOR_IPROTEX',
     });
+  });
+
+  it('persists v0.2 provenance as multi-experiment research metadata', async () => {
+    const { service, analysisModel, fastApiClient } = makeService();
+    fastApiClient.analyze.mockResolvedValue({
+      results: [
+        {
+          ...result,
+          modelVersion: '0.2.0',
+          artifactVersion: 'ims_anomaly_model_v0_2_0',
+        },
+      ],
+    });
+
+    await service.createAnalysis(dto, actor);
+
+    expect(analysisModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ model_version: '0.2.0' }),
+      expect.objectContaining({
+        $setOnInsert: expect.objectContaining({
+          artifact_version: 'ims_anomaly_model_v0_2_0',
+          model_status: 'RESEARCH',
+          validation_scope: 'IMS_MULTI_EXPERIMENT_RESEARCH',
+        }),
+      }),
+      expect.any(Object),
+    );
   });
 
   it('uses stateless batch analysis for deterministic replay', async () => {

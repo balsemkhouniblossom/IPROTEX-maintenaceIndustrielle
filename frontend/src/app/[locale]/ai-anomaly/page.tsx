@@ -437,6 +437,9 @@ function AiAnomalyMonitoringContent() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="font-bold text-slate-900">{model.name}</h2>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      {t(`models.tasks.${model.task}`)}
+                    </p>
                     <p className="mt-1 text-sm text-slate-600">
                       {model.purpose}
                     </p>
@@ -712,7 +715,7 @@ function AiAnomalyMonitoringContent() {
               />
               <DetailField
                 label={t("models.task")}
-                value={selectedModel.task}
+                value={t(`models.tasks.${selectedModel.task}`)}
               />
               <DetailField
                 label={t("models.framework")}
@@ -740,9 +743,16 @@ function AiAnomalyMonitoringContent() {
                 {t("models.howItWorks")}
               </h3>
               <p className="mt-2 text-sm text-slate-600">
-                {t("models.componentsExplanation")}
+                {selectedModel.task === "ANOMALY_DETECTION"
+                  ? t("models.componentsExplanation")
+                  : t("models.diagnosisExplanation")}
               </p>
             </section>
+            {!selectedModel.acceptedForAdvisoryPilot ? (
+              <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                {t("models.researchNotice")}
+              </p>
+            ) : null}
             <section>
               <h3 className="text-sm font-semibold text-slate-900">
                 {t("models.validation")}
@@ -916,7 +926,10 @@ function AiAnomalyDetailsPanel({
           label={t("details.datasetOrigin")}
           value={t("details.imsDataset")}
         />
-        <DetailField label={t("details.validationScope")} value="1st_test" />
+        <DetailField
+          label={t("details.validationScope")}
+          value={analysis.validation_scope ?? tCommon("notAvailable")}
+        />
       </div>
 
       <div>

@@ -47,6 +47,8 @@ type SerializedAiAnomalyAnalysis = {
   capteur_id?: string;
   requested_by: string;
   model_version: string;
+  artifact_version?: string;
+  model_status: string;
   input_source: AiAnomalyInputSource;
   experiment: string;
   measurement_timestamp: string;
@@ -295,7 +297,11 @@ export class AiAnomalyService {
             prototype_result: result.prototypeResult,
             model_response: result,
             dataset_origin: AiAnomalyDatasetOrigin.IMS_PUBLIC_TEST_RIG,
-            validation_scope: AiAnomalyValidationScope.IMS_1ST_TEST_ONLY,
+            artifact_version: result.artifactVersion,
+            model_status: 'RESEARCH',
+            validation_scope: this.validationScopeForVersion(
+              result.modelVersion,
+            ),
             generalization_status:
               AiAnomalyGeneralizationStatus.NOT_ESTABLISHED_FOR_IPROTEX,
             validation_status: AiAnomalyValidationStatus.PENDING,
@@ -310,6 +316,14 @@ export class AiAnomalyService {
     }
 
     return { doc, inserted: !existing };
+  }
+
+  private validationScopeForVersion(
+    modelVersion: string,
+  ): AiAnomalyValidationScope {
+    return modelVersion === '0.1.0'
+      ? AiAnomalyValidationScope.IMS_1ST_TEST_ONLY
+      : AiAnomalyValidationScope.IMS_MULTI_EXPERIMENT_RESEARCH;
   }
 
   private async createPersistentAlertNotifications(
@@ -577,6 +591,8 @@ export class AiAnomalyService {
       capteur_id: doc.capteur_id ? this.toIdString(doc.capteur_id) : undefined,
       requested_by: this.toIdString(doc.requested_by),
       model_version: doc.model_version,
+      artifact_version: doc.artifact_version,
+      model_status: doc.model_status ?? 'RESEARCH',
       input_source: doc.input_source,
       experiment: doc.experiment,
       measurement_timestamp: doc.measurement_timestamp.toISOString(),
@@ -589,7 +605,13 @@ export class AiAnomalyService {
       component_scores: doc.component_scores,
       reason_codes: doc.reason_codes,
       prototype_result: doc.prototype_result,
-      model_response: doc.model_response,
+      model_response: {
+        ...doc.model_response,
+        artifactVersion:
+          doc.model_response.artifactVersion ??
+          doc.artifact_version ??
+          `v${doc.model_version.replaceAll('.', '_')}`,
+      },
       dataset_origin: doc.dataset_origin,
       validation_scope: doc.validation_scope,
       generalization_status: doc.generalization_status,

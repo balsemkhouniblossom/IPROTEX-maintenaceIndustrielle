@@ -153,6 +153,7 @@ type DynamicSearchControlsProps = Readonly<{
   inputClassName?: string;
   highlightRootId?: string;
   showFieldSelector?: boolean;
+  layoutClassName?: string;
 }>;
 
 function toDisplayLabel(field: string): string {
@@ -181,6 +182,7 @@ export default function DynamicSearchControls({
   inputClassName = 'input-field w-full',
   highlightRootId,
   showFieldSelector = true,
+  layoutClassName,
 }: DynamicSearchControlsProps) {
   useEffect(() => {
     clearSearchHighlights(highlightRootId);
@@ -193,11 +195,11 @@ export default function DynamicSearchControls({
 
   return (
     <div
-      className={`${className} grid min-w-0 gap-3 ${
+      className={`${className} grid min-w-0 gap-3 ${layoutClassName ?? (
         showFieldSelector
           ? 'md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]'
           : 'grid-cols-1'
-      }`}
+      )}`}
     >
       {showFieldSelector && (
         <select
@@ -221,7 +223,7 @@ export default function DynamicSearchControls({
           <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
         </div>
         <input
-          type="text"
+          type="search"
           value={searchTerm}
           onChange={(e) => onSearchTermChange(e.target.value)}
           placeholder={searchPlaceholder}

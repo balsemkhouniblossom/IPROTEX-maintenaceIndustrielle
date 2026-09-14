@@ -3849,6 +3849,12 @@
       "detailsTitle": "Modellinformationen",
       "modelName": "Modell",
       "task": "Aufgabe",
+      "tasks": {
+        "ANOMALY_DETECTION": "Anomalieerkennung",
+        "FAULT_DIAGNOSIS": "Experimentelle Fehlerdiagnose"
+      },
+      "diagnosisExplanation": "Dieses Modell vergleicht die Eingabe mit unterstützten CWRU-Lagerklassen. Die Konfidenz gilt für die Benchmark-Klassifikation und ist keine Wahrscheinlichkeit eines Maschinenausfalls.",
+      "researchNotice": "Forschungs- oder Benchmarkmodell. Ergebnisse vor Wartungsmaßnahmen technisch prüfen.",
       "framework": "Technologie",
       "dataset": "Datensatz",
       "method": "Aggregationsmethode",

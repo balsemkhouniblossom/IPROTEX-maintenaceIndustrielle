@@ -3849,6 +3849,12 @@
       "detailsTitle": "Informazioni sul modello",
       "modelName": "Modello",
       "task": "Funzione",
+      "tasks": {
+        "ANOMALY_DETECTION": "Rilevamento anomalie",
+        "FAULT_DIAGNOSIS": "Diagnosi sperimentale dei guasti"
+      },
+      "diagnosisExplanation": "Questo modello confronta l’input con le classi di cuscinetti CWRU supportate. La confidenza riguarda la classificazione benchmark, non la probabilità di guasto della macchina.",
+      "researchNotice": "Modello di ricerca o benchmark. Confermare i risultati con un’ispezione tecnica prima di intervenire.",
       "framework": "Tecnologia",
       "dataset": "Set di dati",
       "method": "Metodo di aggregazione",

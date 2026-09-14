@@ -27,6 +27,7 @@ describe('AiAnomalyFastApiClient', () => {
 
   const validResult = {
     modelVersion: '0.1.0',
+    artifactVersion: 'ims_anomaly_model_v0_1_0',
     experiment: '1st_test',
     timestamp: '2003-11-15T18:18:46',
     bearing: 1,
@@ -437,5 +438,78 @@ describe('AiAnomalyFastApiClient', () => {
     await expect(client.analyze({ rows: [] })).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+});
+
+describe('heterogeneous model registry contract', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('parses IMS and CWRU without applying IMS fields to diagnosis', async () => {
+    const common = {
+      purpose: 'Research use',
+      framework: 'scikit-learn',
+      loaded: true,
+      enabled: true,
+      running: false,
+      status: 'ACTIVE',
+      activeExecutions: 0,
+      acceptedForAdvisoryPilot: false,
+      lifecyclePersistence: 'PROCESS_LOCAL',
+    };
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          models: [
+            {
+              ...common,
+              id: 'ims',
+              name: 'IMS anomaly',
+              task: 'ANOMALY_DETECTION',
+              modelVersion: '0.2.0',
+              sourceDataset: 'IMS',
+              validationScope: 'Chronological IMS experiments',
+              generalizationStatus: 'Research',
+              taskMetadata: {
+                validatedExperiments: ['1st_test'],
+                featureOrder: ['rms'],
+              },
+            },
+            {
+              ...common,
+              id: 'cwru',
+              name: 'Experimental Bearing Fault Diagnosis',
+              task: 'FAULT_DIAGNOSIS',
+              modelVersion: '0.1.0',
+              sourceDataset: 'CWRU benchmark',
+              validationScope: 'Grouped benchmark validation',
+              generalizationStatus: 'Not validated on IPROTEX machinery',
+              taskMetadata: { supportedClasses: ['NORMAL', 'BALL'] },
+            },
+            { ...common, id: 'future', task: 'RUL' },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const client = new AiAnomalyFastApiClient({
+      get: jest.fn((key: string) =>
+        key === 'AI_SERVICE_ENABLED'
+          ? 'true'
+          : key === 'AI_SERVICE_TOKEN'
+            ? 'test-service-token'
+            : undefined,
+      ),
+    } as unknown as ConfigService);
+
+    const result = await client.getModels();
+
+    expect(result.models.map((model) => model.task)).toEqual([
+      'ANOMALY_DETECTION',
+      'FAULT_DIAGNOSIS',
+    ]);
+    expect(result.models[1].validatedExperiments).toEqual([]);
   });
 });

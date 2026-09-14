@@ -3849,6 +3849,12 @@
       "detailsTitle": "Model information",
       "modelName": "Model",
       "task": "Task",
+      "tasks": {
+        "ANOMALY_DETECTION": "Anomaly detection",
+        "FAULT_DIAGNOSIS": "Experimental fault diagnosis"
+      },
+      "diagnosisExplanation": "This model compares the input with supported CWRU bearing classes. Its confidence is classification confidence within that benchmark, not probability of machine failure.",
+      "researchNotice": "Research or benchmark model. Confirm results through technician inspection before maintenance action.",
       "framework": "Framework",
       "dataset": "Dataset",
       "method": "Aggregation method",

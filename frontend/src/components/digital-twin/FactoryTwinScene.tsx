@@ -531,7 +531,16 @@ function FactoryCanvas({
     if (!host) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#f8fafc");
+    const syncSceneTheme = () => {
+      const isDark = document.documentElement.dataset.theme === "dark";
+      scene.background = new THREE.Color(isDark ? "#07101f" : "#f8fafc");
+    };
+    syncSceneTheme();
+    const themeObserver = new MutationObserver(syncSceneTheme);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
 
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.fromArray(cameraViews.complete.position);
@@ -681,6 +690,7 @@ function FactoryCanvas({
       window.removeEventListener("resize", resize);
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
       controls.dispose();
+      themeObserver.disconnect();
       renderer.dispose();
       renderer.domElement.remove();
     };
@@ -823,7 +833,7 @@ export default function FactoryTwinScene() {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="digital-twin-theme grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="panel overflow-hidden p-0">
         <div className="flex min-h-[680px] flex-col">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-5 py-4">

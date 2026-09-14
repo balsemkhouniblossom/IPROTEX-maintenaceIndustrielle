@@ -79,7 +79,7 @@ class InferenceService:
                 self._pipelines_by_stream[stream_id] = stream_pipeline
             output = stream_pipeline.predict_timestamp(frame)
             self._record_stream_timestamps(stream_id, frame)
-        return stream_pipeline.to_json_records(output)
+        return self._with_artifact_version(stream_pipeline.to_json_records(output))
 
     def analyze_batch(self, rows: list[ImsFeatureRow]) -> list[dict[str, Any]]:
         started = self._begin_execution()
@@ -96,7 +96,15 @@ class InferenceService:
         self._log_request("analyze_batch", rows)
         replay_pipeline = self._new_replay_pipeline()
         output = replay_pipeline.predict_batch(frame, reset_state=True)
-        return replay_pipeline.to_json_records(output)
+        return self._with_artifact_version(replay_pipeline.to_json_records(output))
+
+    def _with_artifact_version(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        artifact_version = str(
+            self.pipeline.metadata.get(
+                "artifact_version", f"v{self.pipeline.version.replace('.', '_')}"
+            )
+        )
+        return [{**record, "artifactVersion": artifact_version} for record in records]
 
     def metadata(self) -> dict[str, Any]:
         with self._state_lock:
@@ -132,7 +140,7 @@ class InferenceService:
                 "Warnings are documented and are not globally suppressed by the API.",
             ],
             "name": "IMS Selected Anomaly Pipeline",
-            "task": "anomaly_detection",
+            "task": "ANOMALY_DETECTION",
             "purpose": "Aggregate Dynamic Z-score and Isolation Forest scores for bearing anomaly screening.",
             "framework": "scikit-learn + deterministic Python pipeline",
             "loaded": True,
@@ -150,6 +158,17 @@ class InferenceService:
             "acceptedForAdvisoryPilot": bool(self.pipeline.metadata.get("accepted_for_advisory_pilot", False)),
             "riskMappingType": str(self.pipeline.metadata.get("risk_mapping_type", "heuristic")),
             "knownLimitations": deepcopy(self.pipeline.metadata.get("limitations", [])),
+            "lifecyclePersistence": "PROCESS_LOCAL",
+            "taskMetadata": {
+                "selectedMethod": str(self.pipeline.artifact["selected_method"]),
+                "validatedExperiments": sorted(self.pipeline.validated_experiments),
+                "featureOrder": list(self.pipeline.feature_order),
+                "requiredColumns": list(self.pipeline.required_columns),
+                "riskLevels": deepcopy(self.pipeline.risk_levels),
+                "persistence": deepcopy(self.pipeline.persistence_config),
+                "aggregation": deepcopy(self.pipeline.artifact["aggregation"]),
+                "riskMappingType": str(self.pipeline.metadata.get("risk_mapping_type", "heuristic")),
+            },
         }
 
     def start(self) -> dict[str, Any]:
