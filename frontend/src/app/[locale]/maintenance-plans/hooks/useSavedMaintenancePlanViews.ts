@@ -46,7 +46,7 @@ export function useSavedMaintenancePlanViews({
     const query = view.query as SavedMaintenancePlansQuery;
     setActiveSavedViewId(view._id);
     setSearchInput(query.search ?? '');
-    setFilters({ status: query.status ?? '', typeMaintenance: query.typeMaintenance ?? '' });
+    setFilters({ status: query.status ?? '', typeMaintenance: query.typeMaintenance ?? '', machineId: query.machineId ?? '', frequencyUnit: query.frequencyUnit ?? '' });
     setSort(query.sort);
     setPage(1);
   }
@@ -57,6 +57,8 @@ export function useSavedMaintenancePlanViews({
         search: searchInput || undefined,
         status: filters.status || undefined,
         typeMaintenance: filters.typeMaintenance || undefined,
+        machineId: filters.machineId || undefined,
+        frequencyUnit: filters.frequencyUnit || undefined,
         sort,
       };
       const response = await apiService.createSavedView({ pageKey: 'maintenance-plans', name, query });

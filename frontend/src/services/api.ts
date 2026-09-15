@@ -368,6 +368,7 @@ export const apiService = {
     },
     options?: { signal?: AbortSignal },
   ) => api.get("/maintenance-plans", { params, signal: options?.signal }),
+  getMaintenancePlan: (id: string) => api.get(`/maintenance-plans/${id}`),
   createMaintenancePlan: (data: AnyObject) =>
     api.post("/maintenance-plans", data),
   updateMaintenancePlan: (id: string, data: AnyObject) =>
@@ -461,6 +462,7 @@ export const apiService = {
     },
     options?: { signal?: AbortSignal },
   ) => api.get("/work-orders", { params, signal: options?.signal }),
+  getWorkOrder: (id: string) => api.get(`/work-orders/${id}`),
   getMyWorkOrders: (params?: PaginationParams) =>
     api.get("/operator/work-orders/my", withPagination(params)),
 
@@ -593,6 +595,7 @@ export const apiService = {
   // Intervention Reports
   getInterventionReports: (params?: PaginationParams) =>
     api.get("/intervention-reports", withPagination(params)),
+  getInterventionReport: (id: string) => api.get(`/intervention-reports/${id}`),
   getMyInterventionReports: (params?: PaginationParams) =>
     api.get("/operator/reports/my", withPagination(params)),
   createInterventionReport: (data: AnyObject) =>

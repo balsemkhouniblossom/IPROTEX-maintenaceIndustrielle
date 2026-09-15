@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DynamicSearchControls from "@/components/DynamicSearchControls";
 import { Modal } from "@/components/Modal";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { ALL_FIELDS_TOKEN, getSearchableFields, matchesDynamicSearch } from "@/services/dynamicSearch";
 import { CheckIcon, EyeIcon, CheckCircleIcon, ExclamationTriangleIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Pagination from "@/components/Pagination";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
+import { fetchAllPaginated } from "@/services/pagination";
+import { frequencyLabel, frequencyTranslationKey } from "@/app/[locale]/maintenance-plans/utils";
 
 type EntityRef = string | { _id?: string };
 
@@ -37,6 +41,8 @@ interface PreventiveTask {
   completed: boolean;
   completedAt?: string;
   notes?: string;
+  source: "plan" | "manual";
+  frequency?: string;
 }
 
 interface PreventiveTaskForm {
@@ -59,12 +65,20 @@ function refId(value: EntityRef | undefined): string {
 export default function PreventiveTaskChecklistPage() {
   const t = useTranslations("preventiveTaskChecklist");
   const tCommon = useTranslations("common");
+  const tPlans = useTranslations("maintenancePlans");
+  const locale = useLocale();
+  const searchParams = useSearchParams();
+  const relatedWorkOrderId = searchParams.get("workOrderId");
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [modules, setModules] = useState<Module[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [tasks, setTasks] = useState<PreventiveTask[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<PreventiveTaskFilter>("all");
+  const [machineFilter, setMachineFilter] = useState("");
+  const [planFilter, setPlanFilter] = useState(searchParams.get("planId") ?? "");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSearchField, setSelectedSearchField] = useState(ALL_FIELDS_TOKEN);
   const [selectedTask, setSelectedTask] = useState<PreventiveTask | null>(null);
@@ -85,31 +99,23 @@ export default function PreventiveTaskChecklistPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
 
-  // Load data on mount
-  useEffect(() => {
-    async function loadData() {
+  const loadData = useCallback(async () => {
       try {
         setLoading(true);
-        await apiService.syncPreventiveTasks();
+        setLoadError(false);
         const [tasksRes, modulesRes, machinesRes] = await Promise.all([
-          apiService.getPreventiveTasks({ page: 1, limit: 1000 }),
-          apiService.getModules({
-            page: 1,
-            limit: 1000,
-          }),
-          apiService.getMachines({
-            page: 1,
-            limit: 1000,
-          }),
+          fetchAllPaginated<Record<string, any>>((params) => apiService.getPreventiveTasks(params), 1000),
+          fetchAllPaginated<Module>((params) => apiService.getModules(params)),
+          fetchAllPaginated<Machine>((params) => apiService.getMachines(params)),
         ]);
 
-        const modulesData: Module[] = modulesRes.data.items ?? [];
-        const machinesData: Machine[] = machinesRes.data.items ?? [];
+        const modulesData: Module[] = modulesRes;
+        const machinesData: Machine[] = machinesRes;
 
         setModules(modulesData);
         setMachines(machinesData);
 
-        const persistedTasks = (tasksRes.data.items ?? []).map((task: Record<string, any>): PreventiveTask => ({
+        const persistedTasks = tasksRes.map((task: Record<string, any>): PreventiveTask => ({
           id: String(task._id),
           planId: refId(task.plan_id),
           plan_id: String(task.plan_code ?? task.task_id),
@@ -119,44 +125,50 @@ export default function PreventiveTaskChecklistPage() {
           completed: task.status === "completed",
           completedAt: task.completed_at,
           notes: task.notes,
+          source: task.source === "plan" ? "plan" : "manual",
+          frequency: typeof task.plan_id === "object" && task.plan_id
+            ? (frequencyTranslationKey(task.plan_id.frequence, task.plan_id.unite_frequence)
+              ? tPlans(`frequencyLabels.${frequencyTranslationKey(task.plan_id.frequence, task.plan_id.unite_frequence)}`, { count: task.plan_id.frequence })
+              : frequencyLabel(task.plan_id.frequence, task.plan_id.unite_frequence, task.plan_id.frequence_label))
+            : undefined,
         }));
         setTasks(persistedTasks);
-
-        if (persistedTasks.length === 0) {
-          setNotification({
-            type: "info",
-            message: t("notifications.noTasksAvailable"),
-          });
-        }
       } catch (error) {
         console.error("Failed to load preventive tasks", error);
-        setNotification({
-          type: "error",
-          message: t("notifications.loadFailed"),
-        });
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
-    }
+  }, [tPlans]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
-    void loadData();
-  }, [t]);
+  const syncFromPlans = async () => {
+    setSyncing(true);
+    try {
+      await apiService.syncPreventiveTasks();
+      await loadData();
+    } catch {
+      setNotification({ type: "error", message: t("notifications.loadFailed") });
+    } finally {
+      setSyncing(false);
+    }
+  };
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, selectedSearchField, selectedFilter, tasks.length]);
+  }, [searchTerm, selectedSearchField, selectedFilter, machineFilter, planFilter, tasks.length]);
 
   // Get module name
   const getModuleName = (moduleId: string): string => {
     const module = modules.find((m) => m._id === moduleId);
-    return module?.module_id ?? tCommon("notAvailable");
+    return module?.module_id ?? "—";
   };
 
   // Get machine name
   const getMachineName = (moduleId: string): string => {
     const module = modules.find((m) => m._id === moduleId);
-    if (!module) return tCommon("notAvailable");
+    if (!module) return "—";
     const machine = machines.find((m) => m._id === refId(module.machine_id));
-    return machine ? machine.machine_id : tCommon("notAvailable");
+    return machine ? machine.machine_id : "—";
   };
 
   const searchableTasks = useMemo(
@@ -169,11 +181,11 @@ export default function PreventiveTaskChecklistPage() {
 
         return {
           ...task,
-          machine_label: machine?.machine_id ?? tCommon("notAvailable"),
-          module_label: module?.module_id ?? tCommon("notAvailable"),
+          machine_label: machine?.machine_id ?? "—",
+          module_label: module?.module_id ?? "—",
         };
       }),
-    [tasks, modules, machines, tCommon],
+    [tasks, modules, machines],
   );
 
   const searchableFields = useMemo(() => getSearchableFields(searchableTasks), [searchableTasks]);
@@ -188,9 +200,11 @@ export default function PreventiveTaskChecklistPage() {
         (selectedFilter === "pending" && !task.completed) ||
         (selectedFilter === "completed" && task.completed);
 
-      return matchesSearch && matchesFilter;
+      const matchesMachine = !machineFilter || refId(modules.find((module) => module._id === task.moduleId)?.machine_id) === machineFilter;
+      const matchesPlan = !planFilter || task.planId === planFilter;
+      return matchesSearch && matchesFilter && matchesMachine && matchesPlan;
     });
-  }, [searchableTasks, searchTerm, selectedSearchField, selectedFilter]);
+  }, [searchableTasks, searchTerm, selectedSearchField, selectedFilter, machineFilter, planFilter, modules]);
 
   const totalItems = filteredTasks.length;
 
@@ -281,8 +295,7 @@ export default function PreventiveTaskChecklistPage() {
       } else {
         await apiService.createPreventiveTask({ ...payload, task_id: `PT-MANUAL-${Date.now()}` });
       }
-      const refreshed = await apiService.getPreventiveTasks({ page: 1, limit: 1000 });
-      setTasks((refreshed.data.items ?? []).map((task: Record<string, any>): PreventiveTask => ({ id: String(task._id), planId: refId(task.plan_id), plan_id: String(task.plan_code ?? task.task_id), moduleId: refId(task.module_id), instruction: String(task.instruction), responsable: task.responsable, completed: task.status === "completed", completedAt: task.completed_at, notes: task.notes })));
+      await loadData();
       setNotification({
         type: "success",
         message: editingTask
@@ -368,8 +381,22 @@ export default function PreventiveTaskChecklistPage() {
           <div className="panel flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-4"></div>
-              <p>{tCommon("loading")}</p>
+              <p>{t("loadingTasks")}</p>
             </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <ProtectedRoute allowedRoles={["admin", "technician"]}>
+        <DashboardLayout title={t("title")}>
+          <div className="panel" role="alert">
+            <h1 className="text-lg font-semibold">{t("loadErrorTitle")}</h1>
+            <p className="mt-1 text-sm text-slate-600">{t("loadErrorDescription")}</p>
+            <button type="button" className="btn-secondary mt-3" onClick={() => void loadData()}>{tCommon("retry")}</button>
           </div>
         </DashboardLayout>
       </ProtectedRoute>
@@ -413,25 +440,26 @@ export default function PreventiveTaskChecklistPage() {
         )}
 
         <div className="bento-grid">
+          {relatedWorkOrderId && <Link className="col-span-full text-blue-700 underline" href={`/${locale}/work-orders/${encodeURIComponent(relatedWorkOrderId)}`}>{t("backToWorkOrder")}</Link>}
           {/* Header */}
           <div className="col-span-full bento-item">
             <div className="panel">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h1 className="card-title mb-2">{t("heading")}</h1>
-                  <p className="text-sm text-slate-600">{t("description")}</p>
+                  <h1 className="card-title mb-2">{t("workspaceTitle")}</h1>
+                  <p className="text-sm text-slate-600">{t("workspaceSubtitle")}</p>
                 </div>
                 <div className="text-end">
                   <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
                   <div className="text-sm text-slate-500">{t("totalTasks")}</div>
                 </div>
-                <button type="button"
-                  onClick={openAddForm}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  <span>{t("actions.addTask")}</span>
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => void syncFromPlans()} disabled={syncing} className="btn-secondary">{t("syncFromPlans")}</button>
+                  <details className="relative">
+                    <summary className="btn-secondary cursor-pointer">{t("manualTasks")}</summary>
+                    <button type="button" onClick={openAddForm} className="btn-secondary mt-2 flex items-center gap-2"><PlusIcon className="w-4 h-4" />{t("actions.addTask")}</button>
+                  </details>
+                </div>
               </div>
             </div>
           </div>
@@ -454,12 +482,13 @@ export default function PreventiveTaskChecklistPage() {
               <div className="text-sm text-slate-600">{t("completionRate")}</div>
               <div className="text-3xl font-bold text-blue-600">{completionRate}%</div>
             </div>
+            <p className="col-span-full text-xs text-slate-600">{t("summaryScope")}</p>
           </div>
 
           {/* Filters and Search */}
           <div className="col-span-full bento-item">
             <div className="panel">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">{t("actions.filter")}</label>
                   <div className="flex gap-2 flex-wrap">
@@ -490,7 +519,22 @@ export default function PreventiveTaskChecklistPage() {
                     searchPlaceholder={t("placeholders.taskName")}
                   />
                 </div>
+                <div>
+                  <label htmlFor="checklist-machine-filter" className="block text-sm font-medium mb-2">{t("table.machine")}</label>
+                  <select id="checklist-machine-filter" className="input-field w-full" value={machineFilter} onChange={(event) => setMachineFilter(event.target.value)}>
+                    <option value="">{t("allMachines")}</option>
+                    {machines.map((machine) => <option key={machine._id} value={machine._id}>{machine.machine_id}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="checklist-plan-filter" className="block text-sm font-medium mb-2">{t("table.planCode")}</label>
+                  <select id="checklist-plan-filter" className="input-field w-full" value={planFilter} onChange={(event) => setPlanFilter(event.target.value)}>
+                    <option value="">{t("allPlans")}</option>
+                    {Array.from(new Map(tasks.filter((task) => task.planId).map((task) => [task.planId, task.plan_id])).entries()).map(([id, code]) => <option key={id} value={id}>{code}</option>)}
+                  </select>
+                </div>
               </div>
+              {(searchTerm || machineFilter || planFilter || selectedFilter !== "all") && <button type="button" className="btn-secondary" onClick={() => { setSearchTerm(""); setMachineFilter(""); setPlanFilter(""); setSelectedFilter("all"); }}>{t("resetFilters")}</button>}
             </div>
           </div>
 
@@ -505,6 +549,7 @@ export default function PreventiveTaskChecklistPage() {
                     <th>{t("table.machine")}</th>
                     <th>{t("table.module")}</th>
                     <th>{t("table.instruction")}</th>
+                    <th>{t("table.frequency")}</th>
                     <th>{t("table.responsable")}</th>
                     <th>{t("table.status")}</th>
                     <th className="text-end">{tCommon("table.actions")}</th>
@@ -513,18 +558,20 @@ export default function PreventiveTaskChecklistPage() {
                 <tbody>
                   {paginatedTasks.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-gray-500">
-                        {t("empty.default")}
+                      <td colSpan={8} className="text-center py-8 text-gray-500">
+                        <p>{t("empty.default")}</p>
+                        {tasks.length === 0 && <p className="mt-1 text-sm">{t("emptyGuidance")}</p>}
                       </td>
                     </tr>
                   ) : (
                     paginatedTasks.map((task) => (
                       <tr key={task.id} className={task.completed ? "bg-emerald-50" : ""}>
-                        <td>{displayText(task.plan_id, tCommon("notAvailable"))}</td>
+                        <td>{displayText(task.plan_id, "—")}</td>
                         <td>{getMachineName(task.moduleId)}</td>
                         <td>{getModuleName(task.moduleId)}</td>
-                        <td>{task.instruction}</td>
-                        <td>{task.responsable || tCommon("notAvailable")}</td>
+                        <td><span className="block max-w-[24rem] truncate" title={task.instruction}>{task.instruction}</span></td>
+                        <td>{task.frequency || "—"}</td>
+                        <td>{task.responsable || "—"}</td>
                         <td>
                           <span
                             className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
@@ -538,7 +585,7 @@ export default function PreventiveTaskChecklistPage() {
                         </td>
                         <td>
                           <div className="flex flex-wrap justify-end gap-2">
-                            <button
+                            {task.source === "manual" && <button
                               type="button"
                               onClick={() => toggleTaskCompletion(task)}
                               aria-label={task.completed ? t("status.completed") : t("actions.complete")}
@@ -547,8 +594,8 @@ export default function PreventiveTaskChecklistPage() {
                             >
                               <CheckIcon className="h-4 w-4 shrink-0" />
                               <span>{task.completed ? t("status.completed") : t("actions.complete")}</span>
-                            </button>
-                            <button
+                            </button>}
+                            {task.source === "manual" && <button
                               type="button"
                               onClick={() => openEditForm(task)}
                               aria-label={tCommon("edit")}
@@ -557,7 +604,7 @@ export default function PreventiveTaskChecklistPage() {
                             >
                               <PencilIcon className="h-4 w-4 shrink-0" />
                               <span>{tCommon("edit")}</span>
-                            </button>
+                            </button>}
                             <button
                               type="button"
                               onClick={() => openTaskDetails(task)}
@@ -568,7 +615,7 @@ export default function PreventiveTaskChecklistPage() {
                               <EyeIcon className="h-4 w-4 shrink-0" />
                               <span>{t("actions.view")}</span>
                             </button>
-                            <button
+                            {task.source === "manual" && <button
                               type="button"
                               onClick={() => void deleteTask(task)}
                               aria-label={t("actions.delete")}
@@ -577,7 +624,7 @@ export default function PreventiveTaskChecklistPage() {
                             >
                               <TrashIcon className="h-4 w-4 shrink-0" />
                               <span>{t("actions.delete")}</span>
-                            </button>
+                            </button>}
                           </div>
                         </td>
                       </tr>
@@ -636,10 +683,10 @@ export default function PreventiveTaskChecklistPage() {
                   className="input-field"
                   title={t("table.module")}
                 >
-                  <option value="">{tCommon("notAvailable")}</option>
+                  <option value="">—</option>
                   {modules.map((module) => (
                     <option key={module._id} value={module._id}>
-                      {displayText(module.module_id, tCommon("notAvailable"))}
+                      {displayText(module.module_id, "—")}
                     </option>
                   ))}
                 </select>
@@ -729,7 +776,7 @@ export default function PreventiveTaskChecklistPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!selectedTask.completed) {
+                if (!selectedTask.completed && selectedTask.source === "manual") {
                   markTaskComplete();
                 }
               }}
@@ -766,6 +813,7 @@ export default function PreventiveTaskChecklistPage() {
                   onChange={(e) => setCompletionNotes(e.target.value)}
                   placeholder={t("placeholders.notes")}
                   className="input-field min-h-24"
+                  readOnly={selectedTask.source === "plan"}
                 />
               </div>
 
@@ -782,10 +830,12 @@ export default function PreventiveTaskChecklistPage() {
               )}
 
               <div className="flex justify-end space-x-3 pt-4">
+                {selectedTask.planId && <Link className="btn-secondary" href={`/${locale}/maintenance-plans?planId=${encodeURIComponent(selectedTask.planId)}`}>{t("viewPlan")}</Link>}
+                {relatedWorkOrderId && <Link className="btn-secondary" href={`/${locale}/work-orders/${encodeURIComponent(relatedWorkOrderId)}`}>{t("backToWorkOrder")}</Link>}
                 <button type="button" onClick={closeModal} className="btn-secondary">
                   {tCommon("actions.cancel")}
                 </button>
-                {!selectedTask.completed && (
+                {!selectedTask.completed && selectedTask.source === "manual" && (
                   <button type="submit" className="btn-primary">
                     {t("actions.complete")}
                   </button>

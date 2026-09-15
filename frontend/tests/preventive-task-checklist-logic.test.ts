@@ -58,3 +58,23 @@ test("all supported locales define the preventiveTaskChecklist translation names
     assert.deepEqual(extra, [], `${locale}.json has extraneous preventiveTaskChecklist keys: ${extra.join(", ")}`);
   }
 });
+
+test("checklist keeps load failures separate from true empty results and doesn't auto-sync on mount", () => {
+  const source = readSource(PAGE);
+  assert.match(source, /const \[loadError, setLoadError\] = useState\(false\)/);
+  assert.match(source, /if \(loadError\) \{/);
+  assert.match(source, /role="alert"/);
+  assert.match(source, /onClick=\{\(\) => void loadData\(\)\}/);
+  assert.match(source, /const syncFromPlans = async \(\) => \{/);
+  const loadBody = source.match(/const loadData = useCallback\(async \(\) => \{([\s\S]*?)\n  \}, \[tPlans\]\)/)?.[1] ?? "";
+  assert.doesNotMatch(loadBody, /syncPreventiveTasks/);
+});
+
+test("plan-derived tasks are read-only in the Admin checklist while manual task CRUD remains", () => {
+  const source = readSource(PAGE);
+  assert.match(source, /source: task\.source === "plan" \? "plan" : "manual"/);
+  assert.match(source, /task\.source === "manual" && <button/);
+  assert.match(source, /selectedTask\.source === "manual"/);
+  assert.match(source, /createPreventiveTask/);
+  assert.match(source, /backToWorkOrder/);
+});

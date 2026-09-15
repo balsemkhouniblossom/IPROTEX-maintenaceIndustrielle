@@ -13,6 +13,8 @@ import {
   cleanInstruction,
   cleanResponsable,
   getModuleLabel,
+  getMachineId,
+  getMachineLabel,
   getNextFieldValue,
   getSelectValue,
 } from '../utils';
@@ -21,6 +23,7 @@ import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
 
 export type PlanFormData = {
   plan_id: string;
+  machineId: string; // UI selection only; MaintenancePlan remains linked through module_id.
   module_id: string;
   type_maintenance: string;
   frequence: string;
@@ -81,10 +84,48 @@ function PlanFormModalInner({
   } else if (editingPlan) {
     submitLabel = t('actions.update');
   }
+  const machineModules = modules.filter((module) => getMachineId(module));
+  const machineIds = Array.from(new Set(machineModules.map(getMachineId)));
+  const availableModules = modules.filter((module) => getMachineId(module) === formData.machineId);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={editingPlan ? t('modal.edit') : t('modal.add')}>
       <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="plan-form-machine" className="block text-sm font-medium text-slate-700 mb-1">{t('machineLabel')}</label>
+          <select
+            id="plan-form-machine"
+            value={formData.machineId}
+            onChange={(event) => setFormData((prev) => ({ ...prev, machineId: event.target.value, module_id: '' }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            required
+          >
+            <option value="">{t('selectMachine')}</option>
+            {machineIds.map((id) => (
+              <option key={id} value={id}>
+                {getMachineLabel(machineModules.find((module) => getMachineId(module) === id), modules, '—')}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="plan-form-module-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.module')}</label>
+          <select
+            id="plan-form-module-id"
+            value={formData.module_id}
+            onChange={(event) => setFormData((prev) => ({ ...prev, module_id: event.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            title={t('form.module')}
+            required
+          >
+            <option value="">{t('placeholders.module')}</option>
+            {availableModules.map((module) => (
+              <option key={module._id} value={module._id}>
+                {getModuleLabel(module, modules, '—')}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label htmlFor="plan-form-plan-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.planCode', { default: 'Plan Code' })}</label>
           <select
@@ -121,25 +162,6 @@ function PlanFormModalInner({
         </div>
 
         <div>
-          <label htmlFor="plan-form-module-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.module')}</label>
-          <select
-            id="plan-form-module-id"
-            value={formData.module_id}
-            onChange={(event) => setFormData((prev) => ({ ...prev, module_id: event.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.module')}
-            required
-          >
-            <option value="">{t('placeholders.module')}</option>
-            {(Array.isArray(modules) ? modules : []).map((module) => (
-              <option key={module._id} value={module._id}>
-                {getModuleLabel(module, modules, tCommon('notAvailable'))}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="plan-form-type-maintenance" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceType')}</label>
             <select
@@ -173,7 +195,33 @@ function PlanFormModalInner({
               />
             )}
           </div>
-          <div>
+        </div>
+        <div>
+          <label htmlFor="plan-form-instruction" className="block text-sm font-medium text-slate-700 mb-1">{t('form.instruction')}</label>
+          <select
+            id="plan-form-instruction"
+            value={getSelectValue(INSTRUCTION_OPTIONS, formData.instruction)}
+            onChange={(event) => setFormData((prev) => ({
+              ...prev,
+              instruction: getNextFieldValue(INSTRUCTION_OPTIONS, prev.instruction, event.target.value),
+            }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          >
+            <option value="">{t('placeholders.instruction')}</option>
+            {INSTRUCTION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            <option value={CUSTOM_OPTION}>{t('custom')}</option>
+          </select>
+          {getSelectValue(INSTRUCTION_OPTIONS, formData.instruction) === CUSTOM_OPTION && (
+            <textarea
+              rows={5}
+              value={formData.instruction}
+              onChange={(event) => setFormData((prev) => ({ ...prev, instruction: cleanInstruction(event.target.value) }))}
+              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder={t('placeholders.instruction')}
+            />
+          )}
+        </div>
+        <div>
             <label htmlFor="plan-form-frequence" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequency')}</label>
             <select
               id="plan-form-frequence"
@@ -206,7 +254,6 @@ function PlanFormModalInner({
                 required
               />
             )}
-          </div>
         </div>
 
         <div>
@@ -235,7 +282,7 @@ function PlanFormModalInner({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="plan-form-maintenance-code" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceCode')}</label>
             <select
@@ -397,39 +444,6 @@ function PlanFormModalInner({
               onChange={(event) => setFormData((prev) => ({ ...prev, documentation: event.target.value }))}
               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
               placeholder={t('placeholders.documentation')}
-            />
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="plan-form-instruction" className="block text-sm font-medium text-slate-700 mb-1">{t('form.instruction')}</label>
-          <select
-            id="plan-form-instruction"
-            value={getSelectValue(INSTRUCTION_OPTIONS, formData.instruction)}
-            onChange={(event) =>
-              setFormData((prev) => ({
-                ...prev,
-                instruction: getNextFieldValue(INSTRUCTION_OPTIONS, prev.instruction, event.target.value),
-              }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.instruction')}
-          >
-            <option value="">{t('placeholders.instruction')}</option>
-            {INSTRUCTION_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
-          </select>
-          {getSelectValue(INSTRUCTION_OPTIONS, formData.instruction) === CUSTOM_OPTION && (
-            <textarea
-              rows={5}
-              value={formData.instruction}
-              onChange={(event) => setFormData((prev) => ({ ...prev, instruction: cleanInstruction(event.target.value) }))}
-              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.instruction')}
             />
           )}
         </div>

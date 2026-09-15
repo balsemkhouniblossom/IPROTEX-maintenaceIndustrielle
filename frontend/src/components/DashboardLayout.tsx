@@ -456,11 +456,6 @@ function DashboardLayoutBody({
                 href: "/lubrifiants",
                 icon: CubeIcon,
               },
-              {
-                name: t("navigation.otPieces"),
-                href: "/ot-pieces",
-                icon: ClipboardDocumentListIcon,
-              },
             ],
           },
         ],

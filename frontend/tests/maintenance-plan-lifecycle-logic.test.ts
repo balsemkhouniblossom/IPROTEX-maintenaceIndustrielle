@@ -90,8 +90,8 @@ test("Maintenance plans page hides Edit and Delete once a plan is Archived (read
   );
   assert.match(
     source,
-    /!isArchived \? \(\s*<button[\s\S]*?className="btn-danger p-2"[\s\S]*?title=\{t\('actions\.delete'\)\}/,
-    `${PAGE_PATH} must only render the Delete button when the plan is not archived`,
+    /selectedPlan\.status !== 'archived' && <button type="button" className="btn-danger"/,
+    `${PAGE_PATH} must only render the detail-view Delete button when the plan is not archived`,
   );
 });
 
@@ -155,7 +155,8 @@ test("PlanFormModal associates every field label with its control via matching h
   const htmlForIds = [...source.matchAll(/htmlFor="([^"]+)"/g)].map((m) => m[1]);
   const idAttrs = [...source.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 
-  assert.equal(htmlForIds.length, 11, "PlanFormModal should have 11 labeled fields");
+  assert.equal(htmlForIds.length, 12, "PlanFormModal should have 12 labeled fields, including Machine");
+  assert.ok(htmlForIds.includes("plan-form-machine"));
   for (const forId of htmlForIds) {
     assert.ok(
       idAttrs.includes(forId),
@@ -178,4 +179,14 @@ test("maintenance frequency units are constrained to scheduler-supported values 
   assert.doesNotMatch(utils, /FREQUENCE_UNIT_OPTIONS[^\n]*trimestre|FREQUENCE_UNIT_OPTIONS[^\n]*semestre/);
   assert.match(modal, /hasLegacyFrequencyUnit/);
   assert.doesNotMatch(modal, /onChange=\{\(event\)[\s\S]{0,160}unite_frequence: event\.target\.value/);
+});
+
+test("plan workspace resolves machine through module and never submits machineId", () => {
+  const page = readPage();
+  const form = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/maintenance-plans/components/PlanFormModal.tsx"), "utf8");
+  assert.match(page, /getMachineLabel\(getModule\(plan\.module_id, modules\), modules, '—'\)/);
+  assert.match(form, /getMachineId\(module\) === formData\.machineId/);
+  const payload = page.match(/const payload = \{([\s\S]*?)\n      \};/)?.[1] ?? "";
+  assert.match(payload, /module_id: formData\.module_id/);
+  assert.doesNotMatch(payload, /machineId|machine_id/);
 });

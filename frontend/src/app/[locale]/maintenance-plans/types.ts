@@ -2,6 +2,7 @@ export interface ModuleEntity {
   _id: string;
   module_id?: string;
   localisation?: string;
+  machine_id?: string | { _id: string; machine_id?: string; nom_machine?: string; name?: string };
 }
 
 export type MaintenancePlanStatus = 'draft' | 'active' | 'paused' | 'archived' | 'completed';
@@ -27,6 +28,8 @@ export interface MaintenancePlan {
 export interface MaintenancePlansFilters {
   status: string;
   typeMaintenance: string;
+  machineId: string;
+  frequencyUnit: string;
   [key: string]: string;
 }
 
@@ -34,5 +37,7 @@ export type SavedMaintenancePlansQuery = {
   search?: string;
   status?: string;
   typeMaintenance?: string;
+  machineId?: string;
+  frequencyUnit?: string;
   sort?: string;
 };

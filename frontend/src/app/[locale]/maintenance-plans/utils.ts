@@ -14,6 +14,12 @@ export const CUSTOM_OPTION = '__custom__';
 export const MAINTENANCE_TYPE_OPTIONS = ['preventive', 'corrective', 'inspection', 'lubrication'];
 export const FREQUENCE_OPTIONS = ['1', '2', '3', '4', '6', '12'];
 export const FREQUENCE_UNIT_OPTIONS = ['jour', 'semaine', 'mois', 'an'];
+const FREQUENCY_UNITS: Record<string, [string, string]> = {
+  jour: ['day', 'days'], day: ['day', 'days'], days: ['day', 'days'],
+  semaine: ['week', 'weeks'], week: ['week', 'weeks'], weeks: ['week', 'weeks'],
+  mois: ['month', 'months'], month: ['month', 'months'], months: ['month', 'months'],
+  an: ['year', 'years'], year: ['year', 'years'], years: ['year', 'years'],
+};
 export const RESPONSABLE_OPTIONS = ['Maintenance', 'Operator', 'Supervisor', 'Quality'];
 export const HUILE_GRAISSE_OPTIONS = ['Huile', 'Graisse', 'Aucune'];
 export const DOCUMENTATION_OPTIONS = ['Maintenance plan', 'Machine maintenance plan', 'SOP', 'Checklist'];
@@ -63,5 +69,49 @@ export function getModuleLabel(value: string | ModuleEntity, modules: ModuleEnti
     return displayText(value.module_id ?? value.localisation, fallback);
   }
   const found = modules.find((module) => module._id === value);
-  return displayText(found?.module_id ?? found?.localisation ?? value, fallback);
+  return displayText(found?.module_id ?? found?.localisation, fallback);
+}
+
+export function getModule(value: string | ModuleEntity, modules: ModuleEntity[]): ModuleEntity | undefined {
+  const id = typeof value === 'string' ? value : value?._id;
+  return modules.find((module) => module._id === id) ?? (typeof value === 'object' ? value : undefined);
+}
+
+export function getMachineId(module?: ModuleEntity): string {
+  const machine = module?.machine_id;
+  return typeof machine === 'string' ? machine : machine?._id ?? '';
+}
+
+export function getMachineLabel(module: ModuleEntity | undefined, modules: ModuleEntity[], fallback: string): string {
+  const machine = module?.machine_id;
+  if (typeof machine === 'object' && machine) {
+    return displayText(machine.machine_id ?? machine.nom_machine ?? machine.name, fallback);
+  }
+  const related = modules.find((item) => getMachineId(item) === machine && typeof item.machine_id === 'object');
+  const populated = related?.machine_id;
+  return typeof populated === 'object' && populated
+    ? displayText(populated.machine_id ?? populated.nom_machine ?? populated.name, fallback)
+    : fallback;
+}
+
+export function frequencyLabel(frequency: number, unit: string, explicitLabel?: string): string {
+  if (unit.toLowerCase() === 'loading') return explicitLabel || 'At each loading / setup';
+  const names = FREQUENCY_UNITS[unit.toLowerCase()];
+  if (!names || !Number.isFinite(frequency) || frequency <= 0) {
+    return explicitLabel || `Every ${frequency} ${unit}`;
+  }
+  return `Every ${frequency === 1 ? '' : `${frequency} `}${frequency === 1 ? names[0] : names[1]}`;
+}
+
+export function frequencyTranslationKey(frequency: number, unit: string): string | null {
+  if (unit.toLowerCase() === 'loading') return 'loading';
+  const names = FREQUENCY_UNITS[unit.toLowerCase()];
+  if (!names || !Number.isFinite(frequency) || frequency <= 0) return null;
+  const canonical = names[0];
+  return `${canonical}${frequency === 1 ? '' : 's'}`;
+}
+
+export function maintenanceTypeLabel(value: string): string {
+  if (value === 'corrective_history') return 'Corrective history (legacy)';
+  return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

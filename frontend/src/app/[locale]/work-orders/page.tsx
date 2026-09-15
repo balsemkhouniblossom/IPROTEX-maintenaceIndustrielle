@@ -523,7 +523,7 @@ export default function WorkOrdersPage() {
         width: '9rem',
         render: (wo) => (
           <StatusBadge
-            label={translateEnumValue(tEnums, "priorities", wo.priorite || "low")}
+             label={wo.priorite === 'critical' ? tEnums('priorities.urgent') : translateEnumValue(tEnums, "priorities", wo.priorite || "low")}
             colorClassName={PRIORITY_BADGE_CLASSES[wo.priorite || 'low'] ?? DEFAULT_PRIORITY_BADGE_CLASS}
           />
         ),
@@ -554,8 +554,8 @@ export default function WorkOrdersPage() {
         width: 'minmax(18rem, 36rem)',
         render: (wo) => (
           <div className="flex justify-end gap-2">
-            <Link href={`/${locale}/technician/work-orders/${wo._id}`} className="btn-secondary inline-flex items-center px-3 py-2 text-xs font-semibold" aria-label={`View ${wo.ot_id}`}>
-              View
+            <Link href={`/${locale}/work-orders/${wo._id}`} className="btn-secondary inline-flex items-center px-3 py-2 text-xs font-semibold" aria-label={`${tWorkOrders('view')} ${wo.ot_id}`}>
+              {tWorkOrders('view')}
             </Link>
             {VALIDATABLE_STATUSES.has(wo.status) && (
               <>
@@ -652,10 +652,10 @@ export default function WorkOrdersPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">{tWorkOrders("title")}</h1>
-                <p className="mt-1 text-sm text-slate-600">Plan, assign and track maintenance work.</p>
+                <p className="mt-1 text-sm text-slate-600">{tWorkOrders('workspaceSubtitle')}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-500">{table.totalItems} total</span>
+                <span className="text-sm text-slate-500">{table.totalItems} {tWorkOrders('totalLabel')}</span>
                 <button type="button"
                   onClick={handleCreate}
                   className="btn-primary flex min-h-11 items-center space-x-2"
@@ -667,12 +667,12 @@ export default function WorkOrdersPage() {
             </div>
         </div>
 
-        <section aria-label="Work order summary" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {[['Open', pageSummary.open], ['Overdue', pageSummary.overdue], ['High priority', pageSummary.urgent], ['Unassigned', pageSummary.unassigned]].map(([label, value]) => (
+        <section aria-label={tWorkOrders('summaryLabel')} className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {[[tWorkOrders('summary.open'), pageSummary.open], [tWorkOrders('summary.overdue'), pageSummary.overdue], [tWorkOrders('summary.highPriority'), pageSummary.urgent], [tWorkOrders('summary.unassigned'), pageSummary.unassigned]].map(([label, value]) => (
             <div key={String(label)} className="panel border-s-4 border-s-blue-500 px-4 py-3">
               <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
               <div className="mt-1 text-2xl font-bold text-slate-800">{value}</div>
-              <div className="text-xs text-slate-500">On this page</div>
+               <div className="text-xs text-slate-500">{tWorkOrders('pageSummaryScope')}</div>
             </div>
           ))}
         </section>
@@ -680,7 +680,7 @@ export default function WorkOrdersPage() {
         {/* Work Orders Table */}
         <div className="panel min-w-0 p-3 sm:p-5">
           <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-            <div className="card-title">Maintenance queue</div>
+            <div className="card-title">{tWorkOrders('maintenanceQueue')}</div>
             <div className="flex flex-wrap items-center gap-2">
               {dynamicTranslations.hasTranslationLocale ? (
                 <button
@@ -693,35 +693,30 @@ export default function WorkOrdersPage() {
                     : tCommon("dynamicTranslations.showOriginal")}
                 </button>
               ) : null}
-              <input
-                value={table.searchInput}
-                onChange={(e) => table.setSearchInput(e.target.value)}
-                className="input-field"
-                placeholder={tWorkOrders("searchPlaceholder")}
-                aria-label={tWorkOrders("searchPlaceholder")}
-              />
             </div>
           </div>
 
-          <div className="mb-4 overflow-x-auto border-b border-slate-200" role="tablist" aria-label="Work order status">
+          <div className="mb-4 overflow-x-auto border-b border-slate-200" role="tablist" aria-label={tWorkOrders('statusTabsLabel')}>
             <div className="flex min-w-max gap-1">
-              {([['all', 'All'], ['open', 'Open'], ['in_progress', 'In Progress'], ['waiting_parts', 'Waiting Parts'], ['overdue', 'Overdue'], ['completed', 'Completed'], ['cancelled', 'Cancelled']] as const).map(([key, label]) => (
-                <button key={key} type="button" role="tab" aria-selected={statusTab === key} onClick={() => selectStatusTab(key)} className={`min-h-11 border-b-2 px-3 text-sm font-medium ${statusTab === key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>{label}</button>
+              {(['all', 'open', 'in_progress', 'waiting_parts', 'overdue', 'completed', 'cancelled'] as const).map((key) => (
+                <button key={key} type="button" role="tab" aria-selected={statusTab === key} onClick={() => selectStatusTab(key)} className={`min-h-11 border-b-2 px-3 text-sm font-medium ${statusTab === key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>{tWorkOrders(`tabs.${key}`)}</button>
               ))}
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
-            <select value={table.filters.machineId} onChange={(e) => { table.setFilters({ ...table.filters, machineId: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by machine"><option value="">All machines</option>{machines.map((machine) => <option key={machine._id} value={machine._id}>{machine.machine_id}</option>)}</select>
-            <select value={table.filters.maintenanceType} onChange={(e) => { table.setFilters({ ...table.filters, maintenanceType: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by maintenance type"><option value="">All maintenance types</option>{maintenanceTypes.map((type) => <option key={type} value={type}>{translateEnumValue(tEnums, 'maintenanceTypes', type)}</option>)}</select>
-            <select value={table.filters.priority} onChange={(e) => { table.setFilters({ ...table.filters, priority: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by priority"><option value="">All priorities</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
-            <select value={table.filters.technicianId} onChange={(e) => { table.setFilters({ ...table.filters, technicianId: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Filter by technician"><option value="">All technicians</option>{users.map((user) => <option key={user._id} value={user._id}>{user.nom_complet}</option>)}</select>
-            <input type="date" value={table.filters.dateFrom} onChange={(e) => { table.setFilters({ ...table.filters, dateFrom: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Created from date" />
-            <input type="date" value={table.filters.dateTo} onChange={(e) => { table.setFilters({ ...table.filters, dateTo: e.target.value }); table.setPage(1); }} className="input-field" aria-label="Created to date" />
+          <div className="mb-4 grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+             <input type="search" value={table.searchInput} onChange={(e) => table.setSearchInput(e.target.value)} className="input-field w-full min-w-0 xl:col-span-2" placeholder={tWorkOrders('searchPlaceholder')} aria-label={tWorkOrders('searchPlaceholder')} />
+            <select value={table.filters.machineId} onChange={(e) => { table.setFilters({ ...table.filters, machineId: e.target.value }); table.setPage(1); }} className="input-field" aria-label={tWorkOrders('filterMachine')}><option value="">{tWorkOrders('allMachines')}</option>{machines.map((machine) => <option key={machine._id} value={machine._id}>{machine.machine_id}</option>)}</select>
+            <select value={table.filters.maintenanceType} onChange={(e) => { table.setFilters({ ...table.filters, maintenanceType: e.target.value }); table.setPage(1); }} className="input-field" aria-label={tWorkOrders('filterMaintenanceType')}><option value="">{tWorkOrders('allMaintenanceTypes')}</option>{maintenanceTypes.map((type) => <option key={type} value={type}>{translateEnumValue(tEnums, 'maintenanceTypes', type)}</option>)}</select>
+             <select value={table.filters.priority} onChange={(e) => { table.setFilters({ ...table.filters, priority: e.target.value }); table.setPage(1); }} className="input-field" aria-label={tWorkOrders('filterPriority')}><option value="">{tWorkOrders('filters.allPriorities')}</option><option value="critical">{tEnums('priorities.urgent')}</option><option value="high">{tEnums('priorities.high')}</option><option value="medium">{tEnums('priorities.medium')}</option><option value="low">{tEnums('priorities.low')}</option></select>
+            <select value={table.filters.technicianId} onChange={(e) => { table.setFilters({ ...table.filters, technicianId: e.target.value }); table.setPage(1); }} className="input-field" aria-label={tWorkOrders('filterTechnician')}><option value="">{tWorkOrders('allTechnicians')}</option>{users.map((user) => <option key={user._id} value={user._id}>{user.nom_complet}</option>)}</select>
+            <input type="date" value={table.filters.dateFrom} onChange={(e) => { table.setFilters({ ...table.filters, dateFrom: e.target.value }); table.setPage(1); }} className="input-field" aria-label={tWorkOrders('createdFrom')} />
+            <input type="date" value={table.filters.dateTo} onChange={(e) => { table.setFilters({ ...table.filters, dateTo: e.target.value }); table.setPage(1); }} className="input-field" aria-label={tWorkOrders('createdTo')} />
           </div>
+          {(table.searchInput || statusTab !== 'all' || Object.values(table.filters).some(Boolean)) && <button type="button" className="btn-secondary mb-4" onClick={() => { table.setSearchInput(''); table.setFilters({ status: '', priority: '', machineId: '', technicianId: '', dateFrom: '', dateTo: '', maintenanceType: '' }); setStatusTab('all'); table.setPage(1); }}>{tWorkOrders('resetFilters')}</button>}
 
           <details className="mb-4 rounded-lg border border-slate-200 px-3 py-2">
-            <summary className="cursor-pointer text-sm font-medium text-slate-600">Saved views</summary>
+            <summary className="cursor-pointer text-sm font-medium text-slate-600">{tWorkOrders('savedViewsLabel')}</summary>
             <div className="pt-3">
             <SavedViewsBar
               views={savedViews}
