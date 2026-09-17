@@ -1,0 +1,126 @@
+@startuml
+title GMAO/IPROTEX - DevSecOps architecture and delivery controls
+
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam defaultTextAlignment center
+
+legend right
+  |= Symbol |= Meaning |
+  | <<implemented>> | Control evidenced in repository |
+  | <<gap>> | Recommended or incomplete control |
+endlegend
+
+actor "Developer" as dev
+actor "User" as user
+
+package "GitHub repository" {
+  component "Frontend\nNext.js / TypeScript" as frontend_src
+  component "Backend\nNestJS / TypeScript" as backend_src
+  component "AI service\nFastAPI / Python" as ai_src
+  artifact "Lockfiles, env examples,\nDockerfiles, Render blueprint" as repo_config
+}
+
+package "GitHub Actions CI" {
+  component "Repository hygiene\nlockfile + runtime artifact checks" as hygiene <<implemented>>
+  component "Frontend gates\nlint, typecheck, tests, coverage,\nPlaywright E2E, build" as frontend_ci <<implemented>>
+  component "Backend gates\nlint, Jest, coverage, E2E,\nMongo index check, build" as backend_ci <<implemented>>
+  component "AI gates\npytest, schema/auth/inference tests" as ai_ci <<implemented>>
+  component "Security gates\nnpm audit + Trivy HIGH/CRITICAL" as security_ci <<implemented>>
+  component "SonarCloud\nLCOV + quality gate" as sonar <<implemented>>
+  component "Secret scanning\nGitHub/Gitleaks" as secret_scan <<gap>>
+  component "Container image scan\nscan deployable digests" as image_scan <<gap>>
+}
+
+package "Production delivery" {
+  component "CD workflow\nmain after successful CI" as cd <<implemented>>
+  component "Deploy hooks / Render API\nprotected production environment" as deploy <<implemented>>
+  component "Post-deploy checks\nfrontend 200 + backend smoke test" as verify <<implemented>>
+  component "Staging environment" as staging <<gap>>
+}
+
+cloud "Vercel" as vercel {
+  component "Frontend runtime" as frontend_runtime
+}
+
+cloud "Render" as render {
+  component "NestJS API" as backend_runtime
+  component "FastAPI IMS API" as ai_runtime
+  component "Prometheus" as prometheus
+  component "Grafana" as grafana
+}
+
+database "MongoDB Atlas" as mongo
+cloud "Supabase Storage\nprivate bucket + signed URLs" as supabase
+cloud "Gemini API\noptional assistant/RAG" as gemini
+artifact "Versioned IMS model\nartifact + metadata" as model
+component "Sentry\noptional error tracking" as sentry
+
+dev --> frontend_src
+dev --> backend_src
+dev --> ai_src
+dev --> repo_config
+
+frontend_src --> frontend_ci
+backend_src --> backend_ci
+ai_src --> ai_ci
+repo_config --> hygiene
+
+hygiene --> sonar
+frontend_ci --> sonar
+backend_ci --> sonar
+ai_ci --> sonar
+frontend_ci --> security_ci
+backend_ci --> security_ci
+ai_ci --> security_ci
+security_ci --> cd : CI success
+secret_scan ..> security_ci
+image_scan ..> cd
+
+cd --> deploy
+deploy --> vercel
+deploy --> render
+vercel --> verify
+render --> verify
+verify --> cd : pass / fail
+
+frontend_runtime --> backend_runtime : HTTPS API\npublic NEXT_PUBLIC_* only
+user --> frontend_runtime
+backend_runtime --> mongo : TLS / MONGODB_URI
+backend_runtime --> supabase : server-side service key
+backend_runtime --> ai_runtime : HTTPS + AI_SERVICE_TOKEN
+backend_runtime --> gemini : server-side GEMINI_API_KEY
+ai_runtime --> model : /ready requires artifact
+
+backend_runtime --> prometheus : /health/metrics\nmetrics bearer token
+prometheus --> grafana
+backend_runtime --> sentry : optional telemetry
+backend_runtime --> mongo : audit events + leases
+
+note bottom of backend_runtime
+  JWT + refresh cookies, CSRF, RBAC/machine scope,
+  validation, throttling, Helmet/HPP, upload checks,
+  timeouts, audit logging, structured JSON logs
+end note
+
+note bottom of ai_runtime
+  Bounded request bytes/batch rows,
+  service-token auth, chronological input,
+  finite-value checks, deterministic inference,
+  no request-time retraining
+end note
+
+note right of deploy
+  Secrets come from GitHub/Render/Vercel settings.
+  Server-only credentials stay out of browser code.
+end note
+
+note bottom of staging
+  Main currently deploys directly to production.
+  Isolated staging is a recommended next control.
+end note
+
+@enduml

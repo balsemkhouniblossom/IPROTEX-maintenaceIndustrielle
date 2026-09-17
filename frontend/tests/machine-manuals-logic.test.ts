@@ -198,9 +198,10 @@ test("operator manual downloads use authenticated blobs with safe cleanup", () =
   assert.match(pageSource, /downloadAuthenticatedDocument\(doc\._id, doc\.file_name\)/);
   assert.match(pageSource, /downloadingId === doc\._id/);
   assert.match(pageSource, /role="alert"/);
-  assert.match(helperSource, /api\.get\(`\/documents\/\$\{encodeURIComponent\(documentId\)\}\/file`/);
+  assert.match(helperSource, /d\.get\(`\/documents\/\$\{encodeURIComponent\(documentId\)\}\/file`/);
+  assert.match(helperSource, /await import\("\.\/api"\)/);
   assert.match(helperSource, /responseType:\s*"blob"/);
   assert.match(helperSource, /response\.headers\["content-type"\]/);
   assert.match(helperSource, /anchor\.download = safeDownloadName\(originalFileName\)/);
-  assert.match(helperSource, /URL\.revokeObjectURL\(objectUrl\)/);
+  assert.match(helperSource, /d\.revokeObjectURL\(objectUrl\)/);
 });

@@ -207,6 +207,9 @@ GMAO/
 
 The PlantUML sources are synchronized with the implementation :
 
+- [`gmao-devsecops-architecture.puml`](gmao-devsecops-architecture.puml) maps
+  the CI/CD pipeline, security controls, deployment boundaries, runtime
+  services, monitoring, and current DevSecOps gaps.
 - [`gmao-global-use-case-diagram.puml`](gmao-global-use-case-diagram.puml) describes actors, role-scoped workflows, external systems, and the IMS anomaly-analysis lifecycle.
 - [`gmao-detailed-class-diagram.puml`](gmao-detailed-class-diagram.puml) represents all backend Mongoose schema classes, key relationships, business services, and the FastAPI inference boundary.
 - [`gmao-executive-class-diagram.puml`](gmao-executive-class-diagram.puml) is the compact, presentation-oriented view of the primary entities and services.

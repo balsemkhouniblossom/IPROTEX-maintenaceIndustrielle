@@ -1,48 +1,184 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { downloadAuthenticatedDocument } from "../src/services/authenticatedDownload.ts";
-import api from "../src/services/api.ts";
+import {
+  downloadAuthenticatedDocument,
+  safeDownloadName,
+  type DownloadDeps,
+} from "../src/services/authenticatedDownload.ts";
 
-test("downloadAuthenticatedDocument downloads file", async () => {
+function makeDeps(overrides?: Partial<DownloadDeps>): DownloadDeps {
   const anchor = {
+    click: () => {},
+    remove: () => {},
+    style: { display: "" },
     href: "",
     download: "",
-    style: {},
-    clicked: false,
-    click() { anchor.clicked = true; },
-    remove() {},
-    setAttribute() {},
+    setAttribute: () => {},
   };
-  const mockDocument = {
+  const document = {
     createElement: () => anchor,
-    body: { appendChild: () => {}, removeChild: () => {} },
+    body: {
+      appendChild: () => {},
+      removeChild: () => {},
+    },
   };
-
-  const originalURL = globalThis.URL;
-  const originalWindow = globalThis.window;
-
-  const originalApiGet = api.get;
-
-  try {
-    (globalThis as Record<string, unknown>).URL = {
-      createObjectURL: () => "blob:mock-url",
-      revokeObjectURL: () => {},
-    };
-    (globalThis as Record<string, unknown>).window = { document: mockDocument };
-
-    api.get = (async () => ({
+  return {
+    get: async () => ({
       data: new Blob(["test content"], { type: "application/pdf" }),
       headers: { "content-type": "application/pdf" },
-    })) as any;
+    }),
+    createObjectURL: () => "blob:mock-url",
+    revokeObjectURL: () => {},
+    document,
+    ...overrides,
+  };
+}
 
-    await assert.doesNotReject(
-      downloadAuthenticatedDocument("doc123", "report.pdf"),
-    );
-    assert.equal(anchor.download, "report.pdf");
-    assert.ok(anchor.clicked);
-  } finally {
-    (globalThis as Record<string, unknown>).URL = originalURL;
-    (globalThis as Record<string, unknown>).window = originalWindow;
-    api.get = originalApiGet;
+test("safeDownloadName sanitizes invalid characters", () => {
+  assert.equal(safeDownloadName("report.pdf"), "report.pdf");
+  assert.equal(safeDownloadName("my\\file.txt"), "my_file.txt");
+  assert.equal(safeDownloadName("a/b/c.doc"), "a_b_c.doc");
+  assert.equal(safeDownloadName(""), "download");
+  assert.equal(safeDownloadName("   "), "download");
+  assert.equal(safeDownloadName("\x00\x01"), "__");
+});
+
+test("safeDownloadName trims and defaults empty to download", () => {
+  assert.equal(safeDownloadName("  spaced  "), "spaced");
+  assert.equal(safeDownloadName("  a  "), "a");
+});
+
+test("downloadAuthenticatedDocument downloads file", async () => {
+  let revokedUrl = "";
+  let clicked = false;
+  let appended = false;
+  let removed = false;
+
+  const deps: DownloadDeps = {
+    ...makeDeps(),
+    createObjectURL: (blob: Blob) => {
+      assert.ok(blob instanceof Blob);
+      return "blob:mock-url";
+    },
+    revokeObjectURL: (url: string) => { revokedUrl = url; },
+    document: {
+      createElement: () => ({
+        click: () => { clicked = true; },
+        remove: () => { removed = true; },
+        style: { display: "" },
+        href: "",
+        download: "",
+        setAttribute: () => {},
+      }),
+      body: {
+        appendChild: () => { appended = true; },
+        removeChild: () => {},
+      },
+    },
+  };
+
+  await downloadAuthenticatedDocument("doc123", "report.pdf", deps);
+  assert.equal(clicked, true);
+  assert.equal(appended, true);
+  assert.equal(revokedUrl, "blob:mock-url");
+  assert.equal(removed, true);
+});
+
+test("downloadAuthenticatedDocument uses safeDownloadName for filename", async () => {
+  let capturedAnchor: { download: string } | undefined;
+  const deps: DownloadDeps = {
+    ...makeDeps(),
+    document: {
+      createElement: (() => {
+        const anchor = {
+          click: () => {},
+          remove: () => {},
+          style: { display: "" },
+          href: "",
+          download: "",
+          setAttribute: () => {},
+        };
+        capturedAnchor = anchor;
+        return anchor;
+      }),
+      body: {
+        appendChild: () => {},
+        removeChild: () => {},
+      },
+    },
+  };
+
+  await downloadAuthenticatedDocument("doc123", "my\\report.pdf", deps);
+  assert.equal(capturedAnchor?.download, "my_report.pdf");
+});
+
+test("downloadAuthenticatedDocument handles non-blob content type", async () => {
+  let receivedBlobType = "";
+  const deps: DownloadDeps = {
+    ...makeDeps(),
+    get: async () => ({
+      data: new Blob(["raw"], { type: "" }),
+      headers: { "content-type": "text/plain" },
+    }),
+    createObjectURL: (blob: Blob) => { receivedBlobType = blob.type; return "blob:mock"; },
+    revokeObjectURL: () => {},
+    document: {
+      createElement: () => ({
+        click: () => {},
+        remove: () => {},
+        style: { display: "" },
+        href: "",
+        download: "",
+        setAttribute: () => {},
+      }),
+      body: { appendChild: () => {}, removeChild: () => {} },
+    },
+  };
+
+  await downloadAuthenticatedDocument("doc123", "file.txt", deps);
+  assert.equal(receivedBlobType, "text/plain");
+});
+
+test("downloadAuthenticatedDocument throws on API failure", async () => {
+  const deps: DownloadDeps = {
+    ...makeDeps(),
+    get: async () => { throw new Error("Network error"); },
+  };
+
+  await assert.rejects(
+    downloadAuthenticatedDocument("doc123", "report.pdf", deps),
+    /Network error/,
+  );
+});
+
+test("downloadAuthenticatedDocument always revokes object URL and removes anchor", async () => {
+  let revoked = false;
+  let removed = false;
+  const deps: DownloadDeps = {
+    ...makeDeps(),
+    get: async () => ({
+      data: new Blob(["test"], { type: "application/pdf" }),
+      headers: { "content-type": "application/pdf" },
+    }),
+    revokeObjectURL: () => { revoked = true; },
+    document: {
+      createElement: () => ({
+        click: () => {},
+        remove: () => { removed = true; },
+        style: { display: "" },
+        href: "",
+        download: "",
+        setAttribute: () => {},
+      }),
+      body: { appendChild: () => {}, removeChild: () => {} },
+    },
+  };
+
+  try {
+    await downloadAuthenticatedDocument("doc123", "report.pdf", deps);
+  } catch {
+    // ignore
   }
+  assert.equal(revoked, true);
+  assert.equal(removed, true);
 });
