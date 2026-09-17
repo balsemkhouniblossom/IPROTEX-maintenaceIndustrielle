@@ -1,6 +1,6 @@
 import api, { quiet } from "./api";
 
-function safeDownloadName(fileName: string): string {
+export function safeDownloadName(fileName: string): string {
   return fileName.replace(/[\\/\u0000-\u001f]/g, "_").trim() || "download";
 }
 
