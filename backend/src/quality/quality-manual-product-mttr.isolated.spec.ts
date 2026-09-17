@@ -59,8 +59,8 @@ describe('Manual Product Quality MTTR in isolated MongoDB', () => {
       {
         year: 2026,
         entries: [
-          { machineTypeId: winding.id, month: 9, mttrMinutes: 150 },
-          { machineTypeId: extrusion.id, month: 9, mttrMinutes: 45 },
+          { machineTypeId: winding.id, month: 9, mttrValue: 2.5 },
+          { machineTypeId: extrusion.id, month: 9, mttrValue: 0.75 },
         ],
       },
       actor,
@@ -68,7 +68,7 @@ describe('Manual Product Quality MTTR in isolated MongoDB', () => {
     await service.save(
       {
         year: 2027,
-        entries: [{ machineTypeId: winding.id, month: 9, mttrMinutes: 90 }],
+        entries: [{ machineTypeId: winding.id, month: 9, mttrValue: 1.5 }],
       },
       actor,
     );
@@ -77,17 +77,17 @@ describe('Manual Product Quality MTTR in isolated MongoDB', () => {
     expect(year2026.processes).toHaveLength(2);
     expect(
       year2026.processes.find((item) => item.name === 'Winding')?.months[8]
-        .mttrMinutes,
-    ).toBe(150);
+        .mttrValue,
+    ).toBe(2.5);
     expect(
       year2026.processes.find((item) => item.name === 'Extrusion')?.months[8]
-        .mttrMinutes,
-    ).toBe(45);
+        .mttrValue,
+    ).toBe(0.75);
     expect(
       year2027.processes.find((item) => item.name === 'Winding')?.months[8]
-        .mttrMinutes,
-    ).toBe(90);
-    expect(year2027.processes[0].months[0].mttrMinutes).toBeNull();
+        .mttrValue,
+    ).toBe(1.5);
+    expect(year2027.processes[0].months[0].mttrValue).toBeNull();
   });
 
   it('loads historical context without creating manual MTTR', async () => {
@@ -111,7 +111,7 @@ describe('Manual Product Quality MTTR in isolated MongoDB', () => {
     ]);
     expect(
       result.processes.every((process) =>
-        process.months.every((month) => month.mttrMinutes === null),
+        process.months.every((month) => month.mttrValue === null),
       ),
     ).toBe(true);
   });

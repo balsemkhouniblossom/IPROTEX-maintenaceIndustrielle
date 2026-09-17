@@ -1054,7 +1054,7 @@ export const apiService = {
     entries: Array<{
       machineTypeId: string;
       month: number;
-      mttrMinutes: number | null;
+      mttrValue: number | null;
     }>;
   }) => api.put('/quality/product-mttr/manual', data),
 

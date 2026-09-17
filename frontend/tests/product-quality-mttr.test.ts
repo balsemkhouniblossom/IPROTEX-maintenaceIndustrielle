@@ -17,16 +17,20 @@ test('renders dynamic machine-type rows and all 12 months', () => {
   assert.doesNotMatch(page, /Winding|Cutting|Braiding|Rolling/);
 });
 
-test('uses direct manual MTTR values with a single save action', () => {
+test('uses one numeric MTTR-hours value with a single save action', () => {
   assert.match(page, /parseInput/);
   assert.match(page, /saveManualProductQualityMttr/);
   assert.match(page, /saveChanges/);
+  assert.match(page, /type="number"/);
+  assert.match(page, /step="0.01"/);
+  assert.match(page, /monthlyHoursHeading/);
   assert.doesNotMatch(page, /resolvedDefects|totalResolutionMinutes|editingMonth/);
+  assert.doesNotMatch(page, /hoursLabel|minutesLabel/);
 });
 
 test('empty cells remain null and are not converted to zero', () => {
   assert.match(page, /if \(!trimmed\) return null/);
-  assert.match(page, /minutes === null \? ''/);
+  assert.match(page, /value === null \? ''/);
 });
 
 test('historical defect data is supporting context only', () => {

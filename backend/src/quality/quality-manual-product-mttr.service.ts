@@ -102,7 +102,8 @@ export class QualityManualProductMttrService {
           const entry = entryMap.get(`${machineType._id.toString()}:${month}`);
           return {
             month,
-            mttrMinutes: entry?.mttr_minutes ?? null,
+            mttrValue: entry?.mttr_value ?? null,
+            unit: entry?.unit ?? 'HOURS',
             updatedAt: entry?.updatedAt ?? null,
           };
         }),
@@ -142,12 +143,16 @@ export class QualityManualProductMttrService {
             month: entry.month,
             machine_type_id: new Types.ObjectId(entry.machineTypeId),
           };
-          if (entry.mttrMinutes === null) return { deleteOne: { filter } };
+          if (entry.mttrValue === null) return { deleteOne: { filter } };
           return {
             updateOne: {
               filter,
               update: {
-                $set: { mttr_minutes: entry.mttrMinutes, updated_by: actor },
+                $set: {
+                  mttr_value: entry.mttrValue,
+                  unit: 'HOURS',
+                  updated_by: actor,
+                },
                 $setOnInsert: { entered_by: actor },
               },
               upsert: true,

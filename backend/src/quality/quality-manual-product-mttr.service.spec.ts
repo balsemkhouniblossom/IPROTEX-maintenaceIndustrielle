@@ -48,14 +48,23 @@ describe('Manual Product Quality MTTR service', () => {
       ]),
     );
     entryModel.find.mockReturnValue(
-      chain([{ machine_type_id: windingId, month: 9, mttr_minutes: 150 }]),
+      chain([
+        {
+          machine_type_id: windingId,
+          month: 9,
+          mttr_value: 2.5,
+          unit: 'HOURS',
+        },
+      ]),
     );
     const result = await service.getYear('2026');
     expect(result.processes).toHaveLength(2);
     expect(result.processes[1].name).toBe('Extrusion');
     expect(result.processes[0].months).toHaveLength(12);
-    expect(result.processes[0].months[8].mttrMinutes).toBe(150);
-    expect(result.processes[0].months[0].mttrMinutes).toBeNull();
+    expect(result.processes[0].months[8]).toEqual(
+      expect.objectContaining({ mttrValue: 2.5, unit: 'HOURS' }),
+    );
+    expect(result.processes[0].months[0].mttrValue).toBeNull();
   });
 
   it('returns historical defects as context without deriving MTTR', async () => {
@@ -85,8 +94,8 @@ describe('Manual Product Quality MTTR service', () => {
       {
         year: 2031,
         entries: [
-          { machineTypeId: windingId.toString(), month: 1, mttrMinutes: 150 },
-          { machineTypeId: windingId.toString(), month: 2, mttrMinutes: null },
+          { machineTypeId: windingId.toString(), month: 1, mttrValue: 2.5 },
+          { machineTypeId: windingId.toString(), month: 2, mttrValue: null },
         ],
       },
       actor,
@@ -109,8 +118,8 @@ describe('Manual Product Quality MTTR service', () => {
         {
           year: 2026,
           entries: [
-            { machineTypeId: windingId.toString(), month: 1, mttrMinutes: 5 },
-            { machineTypeId: windingId.toString(), month: 1, mttrMinutes: 6 },
+            { machineTypeId: windingId.toString(), month: 1, mttrValue: 5 },
+            { machineTypeId: windingId.toString(), month: 1, mttrValue: 6 },
           ],
         },
         actor,
@@ -121,7 +130,7 @@ describe('Manual Product Quality MTTR service', () => {
         {
           year: 2026,
           entries: [
-            { machineTypeId: windingId.toString(), month: 1, mttrMinutes: 5 },
+            { machineTypeId: windingId.toString(), month: 1, mttrValue: 5 },
           ],
         },
         actor,

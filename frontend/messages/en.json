@@ -4269,15 +4269,16 @@
       "Coupage": "Cutting",
       "Enroulement": "Rewinding"
     },
-    "manualDescription": "Enter the manually reported monthly Product Quality MTTR for each process.",
-    "manualInputHelp": "Enter durations as hours:minutes, for example 2:30. Leave blank when unavailable.",
+    "manualDescription": "Enter one monthly Product Quality MTTR value in hours for each process.",
+    "manualInputHelp": "Enter one numeric value in hours. Example: 2.5 means 2 hours 30 minutes.",
     "manualCellLabel": "{process}, {month} MTTR",
-    "manualFormatError": "Use the hours:minutes format, for example 2:30.",
+    "manualFormatError": "Enter a valid MTTR value in hours, such as 2.5.",
     "manualSaved": "Product Quality MTTR values saved.",
     "saveChanges": "Save Changes",
     "noProcesses": "No machine types are available.",
     "historicalTitle": "{year} Historical Defect Data",
     "historicalContextHelp": "Official imported defect counts are supporting context only. They do not generate MTTR.",
-    "mainDefectCodes": "Main defect codes"
+    "mainDefectCodes": "Main defect codes",
+    "monthlyHoursHeading": "Monthly Product Quality MTTR (hours)"
   }
 }

@@ -95,9 +95,8 @@ export function MttrAnalytics({ locale, machines, technicians }: MttrAnalyticsPr
       if ((err as { name?: string })?.name === 'CanceledError' || (err as { name?: string })?.name === 'AbortError') {
         return;
       }
-      const status = (err as { response?: { status?: number } })?.response?.status;
       setError(
-        status === 403
+        (err as { response?: { status?: number } })?.response?.status === 403
           ? t('errorMachineAccess')
           : extractApiErrorMessage(err, t('error')),
       );
@@ -329,9 +328,7 @@ export function MttrAnalytics({ locale, machines, technicians }: MttrAnalyticsPr
                     <td>{monthName(month.monthIndex, t)}</td>
                     <td>{month.completedRepairs}</td>
                     <td>
-                      {hasRepairs &&
-                      month.totalRepairMinutes !== null &&
-                      month.totalRepairMinutes !== undefined
+                      {hasRepairs
                         ? formatDuration(month.totalRepairMinutes, t)
                         : '—'}
                     </td>

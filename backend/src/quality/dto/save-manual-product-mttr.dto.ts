@@ -24,7 +24,7 @@ export class ManualProductMttrValueDto {
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
   @Max(10_000_000)
-  mttrMinutes!: number | null;
+  mttrValue!: number | null;
 }
 
 export class SaveManualProductMttrDto {

@@ -10,7 +10,9 @@ export class ProductQualityMttrEntry {
   @Prop({ required: true, min: 1, max: 12 }) month!: number;
   @Prop({ type: Types.ObjectId, ref: 'MachineType', required: true })
   machine_type_id!: Types.ObjectId;
-  @Prop({ required: true, min: 0 }) mttr_minutes!: number;
+  @Prop({ required: true, min: 0 }) mttr_value!: number;
+  @Prop({ required: true, enum: ['HOURS'], default: 'HOURS' })
+  unit!: 'HOURS';
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   entered_by!: Types.ObjectId;
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
