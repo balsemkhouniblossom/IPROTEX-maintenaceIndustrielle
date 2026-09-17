@@ -4279,6 +4279,17 @@
     "historicalTitle": "Historische Fehlerdaten {year}",
     "historicalContextHelp": "Offizielle importierte Fehlerzahlen dienen nur als Kontext. Sie erzeugen keine MTTR.",
     "mainDefectCodes": "Wichtigste Fehlercodes",
-    "monthlyHoursHeading": "Monatliche Produktqualitäts-MTTR (Stunden)"
+    "monthlyHoursHeading": "Monatliche Produktqualitäts-MTTR (Stunden)",
+    "processAverage": "Prozessdurchschnitt",
+    "monthlyAverage": "Monatsdurchschnitt",
+    "overallAverage": "Gesamtdurchschnitt MTTR",
+    "unsavedChanges": "Nicht gespeicherte Änderungen",
+    "discardYearQuestion": "Sie haben nicht gespeicherte Änderungen. Verwerfen und Jahr wechseln?",
+    "stay": "Bleiben",
+    "discardChanges": "Änderungen verwerfen",
+    "manualSavedSuccessfully": "MTTR-Werte erfolgreich gespeichert.",
+    "total": "Gesamt",
+    "monthlyTotal": "Monatssumme",
+    "finalHistoricalDefects": "Gesamte historische Fehler"
   }
 }

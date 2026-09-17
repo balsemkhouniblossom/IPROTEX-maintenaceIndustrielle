@@ -19,6 +19,7 @@ import {
   QualityDefectSource,
 } from '../schemas/quality-defect-occurrence.schema';
 import { SaveManualProductMttrDto } from './dto/save-manual-product-mttr.dto';
+import { normalizeQualityProcessName } from './quality-process-name';
 
 @Injectable()
 export class QualityManualProductMttrService {
@@ -88,6 +89,28 @@ export class QualityManualProductMttrService {
         entry,
       ]),
     );
+    const historicalByProcessMonth = new Map<
+      string,
+      {
+        process: string;
+        month: number;
+        defectCount: number;
+        defectCodes: Set<string>;
+      }
+    >();
+    for (const item of historical) {
+      const process = normalizeQualityProcessName(item._id.process);
+      const key = `${process}:${item._id.month}`;
+      const existing = historicalByProcessMonth.get(key) ?? {
+        process,
+        month: item._id.month,
+        defectCount: 0,
+        defectCodes: new Set<string>(),
+      };
+      existing.defectCount += item.defectCount;
+      item.defectCodes.forEach((code) => existing.defectCodes.add(code));
+      historicalByProcessMonth.set(key, existing);
+    }
     return {
       year,
       timeZone,
@@ -108,12 +131,18 @@ export class QualityManualProductMttrService {
           };
         }),
       })),
-      historical: historical.map((item) => ({
-        process: item._id.process,
-        month: item._id.month,
-        defectCount: item.defectCount,
-        defectCodes: item.defectCodes.sort(),
-      })),
+      historical: [...historicalByProcessMonth.values()]
+        .map((item) => ({
+          process: item.process,
+          month: item.month,
+          defectCount: item.defectCount,
+          defectCodes: [...item.defectCodes].sort(),
+        }))
+        .sort(
+          (left, right) =>
+            left.process.localeCompare(right.process) ||
+            left.month - right.month,
+        ),
     };
   }
 

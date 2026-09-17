@@ -2,6 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { inferRequiredRoleFromPath } from '../src/services/sessionGuard.ts';
+import {
+  averageSavedValues,
+  buildHistoricalMatrix,
+  parseManualMttrHours,
+} from '../src/services/productQualityMttr.ts';
 
 const page = fs.readFileSync('src/app/[locale]/quality/product-mttr/page.tsx', 'utf8');
 const api = fs.readFileSync('src/services/api.ts', 'utf8');
@@ -18,7 +23,7 @@ test('renders dynamic machine-type rows and all 12 months', () => {
 });
 
 test('uses one numeric MTTR-hours value with a single save action', () => {
-  assert.match(page, /parseInput/);
+  assert.match(page, /parseManualMttrHours/);
   assert.match(page, /saveManualProductQualityMttr/);
   assert.match(page, /saveChanges/);
   assert.match(page, /type="number"/);
@@ -29,13 +34,51 @@ test('uses one numeric MTTR-hours value with a single save action', () => {
 });
 
 test('empty cells remain null and are not converted to zero', () => {
-  assert.match(page, /if \(!trimmed\) return null/);
+  assert.equal(parseManualMttrHours(''), null);
+  assert.equal(parseManualMttrHours('0'), 0);
   assert.match(page, /value === null \? ''/);
 });
 
 test('historical defect data is supporting context only', () => {
   assert.match(page, /data\?\.historical/);
   assert.match(page, /historicalContextHelp/);
+});
+
+test('averages exclude empty cells and use saved numeric values', () => {
+  assert.equal(averageSavedValues([5, 5, 4, null]), 14 / 3);
+  assert.equal(averageSavedValues([null, null]), null);
+  assert.equal(averageSavedValues([0, null, 2]), 1);
+});
+
+test('historical matrix calculates process, month, and final totals', () => {
+  const matrix = buildHistoricalMatrix([
+    { process: 'Braiding', month: 1, defectCount: 1, defectCodes: ['F108'] },
+    { process: 'Braiding', month: 2, defectCount: 2, defectCodes: ['F205'] },
+    { process: 'Cutting', month: 1, defectCount: 3, defectCodes: ['F201'] },
+  ]);
+  expectEqual(matrix.processes.find((row) => row.process === 'Braiding')?.total, 3);
+  assert.equal(matrix.monthlyTotals[0], 4);
+  assert.equal(matrix.monthlyTotals[1], 2);
+  assert.equal(matrix.finalTotal, 6);
+});
+
+function expectEqual(actual: unknown, expected: unknown) {
+  assert.equal(actual, expected);
+}
+
+test('saved summaries are derived from savedValues, not draftValues', () => {
+  assert.match(page, /processAverages[\s\S]*savedNumber/);
+  assert.match(page, /monthlyAverages[\s\S]*savedNumber/);
+  assert.match(page, /overallAverage[\s\S]*savedNumber/);
+  assert.doesNotMatch(page, /averageSavedValues\([^)]*draftValues/);
+});
+
+test('dirty year change requires explicit discard and save is the only persistence action', () => {
+  assert.match(page, /if \(isDirty\) setPendingYear/);
+  assert.match(page, /discardAndChangeYear/);
+  assert.match(page, /unsavedChanges/);
+  assert.doesNotMatch(page, /onBlur=/);
+  assert.match(page, /onChange=.*setDraftValues/);
 });
 
 test('frontend calls the dedicated manual endpoints', () => {

@@ -4279,6 +4279,17 @@
     "historicalTitle": "بيانات العيوب التاريخية لسنة {year}",
     "historicalContextHelp": "أعداد العيوب الرسمية المستوردة هي معلومات داعمة فقط ولا تُنشئ قيمة MTTR.",
     "mainDefectCodes": "أهم رموز العيوب",
-    "monthlyHoursHeading": "متوسط زمن إصلاح جودة المنتج الشهري (بالساعات)"
+    "monthlyHoursHeading": "متوسط زمن إصلاح جودة المنتج الشهري (بالساعات)",
+    "processAverage": "متوسط العملية",
+    "monthlyAverage": "المتوسط الشهري",
+    "overallAverage": "المتوسط العام لزمن الإصلاح",
+    "unsavedChanges": "تغييرات غير محفوظة",
+    "discardYearQuestion": "لديك تغييرات غير محفوظة. هل تريد تجاهلها وتغيير السنة؟",
+    "stay": "البقاء",
+    "discardChanges": "تجاهل التغييرات",
+    "manualSavedSuccessfully": "تم حفظ قيم MTTR بنجاح.",
+    "total": "الإجمالي",
+    "monthlyTotal": "الإجمالي الشهري",
+    "finalHistoricalDefects": "الإجمالي النهائي للعيوب التاريخية"
   }
 }

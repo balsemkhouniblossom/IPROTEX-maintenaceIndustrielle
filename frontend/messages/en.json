@@ -4279,6 +4279,17 @@
     "historicalTitle": "{year} Historical Defect Data",
     "historicalContextHelp": "Official imported defect counts are supporting context only. They do not generate MTTR.",
     "mainDefectCodes": "Main defect codes",
-    "monthlyHoursHeading": "Monthly Product Quality MTTR (hours)"
+    "monthlyHoursHeading": "Monthly Product Quality MTTR (hours)",
+    "processAverage": "Process Average",
+    "monthlyAverage": "Monthly Average",
+    "overallAverage": "Overall Average MTTR",
+    "unsavedChanges": "Unsaved changes",
+    "discardYearQuestion": "You have unsaved changes. Discard them and change year?",
+    "stay": "Stay",
+    "discardChanges": "Discard Changes",
+    "manualSavedSuccessfully": "MTTR values saved successfully.",
+    "total": "Total",
+    "monthlyTotal": "Monthly Total",
+    "finalHistoricalDefects": "Final Historical Defects"
   }
 }

@@ -4279,6 +4279,17 @@
     "historicalTitle": "Dati storici dei difetti {year}",
     "historicalContextHelp": "I conteggi ufficiali importati sono solo informazioni di supporto. Non generano MTTR.",
     "mainDefectCodes": "Codici difetto principali",
-    "monthlyHoursHeading": "MTTR mensile della qualità prodotto (ore)"
+    "monthlyHoursHeading": "MTTR mensile della qualità prodotto (ore)",
+    "processAverage": "Media del processo",
+    "monthlyAverage": "Media mensile",
+    "overallAverage": "MTTR medio complessivo",
+    "unsavedChanges": "Modifiche non salvate",
+    "discardYearQuestion": "Sono presenti modifiche non salvate. Ignorarle e cambiare anno?",
+    "stay": "Rimani",
+    "discardChanges": "Ignora modifiche",
+    "manualSavedSuccessfully": "Valori MTTR salvati correttamente.",
+    "total": "Totale",
+    "monthlyTotal": "Totale mensile",
+    "finalHistoricalDefects": "Totale finale difetti storici"
   }
 }
