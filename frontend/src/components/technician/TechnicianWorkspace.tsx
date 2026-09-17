@@ -90,23 +90,6 @@ type Manual = {
     type_id?: { _id?: string; name?: string } | string | null;
   } | null;
 };
-type StockPart = {
-  _id: string;
-  stock_id: string;
-  part_id?: string | {
-    _id?: string;
-    part_id?: string;
-    nom_piece?: string;
-    ref_constructeur?: string;
-    fabricant?: string;
-    categorie_piece?: string;
-  };
-  quantite_en_stock?: number;
-  quantite_reservee?: number;
-  seuil_alerte_stock?: number;
-  quantite_minimale?: number;
-  emplacement?: string;
-};
 type WorkOrderTab = {
   key: "all" | "assigned" | "inProgress" | "waitingParts" | "completed";
   status?: "assigned" | "in_progress" | "waiting_parts" | "completed";
@@ -195,16 +178,6 @@ function formatOrderDate(value: string | undefined, locale: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleDateString(locale);
-}
-
-function partNameLegacy(part: StockPart["part_id"], fallback: string): string {
-  if (!part) return fallback;
-  if (typeof part === "string") return part || fallback;
-  return part.nom_piece || part.part_id || fallback;
-}
-
-function availableQuantityLegacy(part: StockPart): number {
-  return (part.quantite_en_stock ?? 0) - (part.quantite_reservee ?? 0);
 }
 
 function isClosedStatus(status: string): boolean {
@@ -316,25 +289,6 @@ function initialWorkOrderFilters(fixedStatus?: string) {
   };
 }
 
-function DashboardSectionTitle({
-  children,
-  icon: Icon,
-  iconClassName,
-}: Readonly<{
-  children: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  iconClassName: string;
-}>) {
-  return (
-    <div className="mb-4 border-b border-slate-300 pb-3">
-      <h2 className="flex items-center gap-2 text-sm font-bold uppercase text-slate-900">
-        <Icon className={`h-5 w-5 ${iconClassName}`} />
-        {children}
-      </h2>
-    </div>
-  );
-}
-
 function ErrorBox({
   message,
   retry,
@@ -354,101 +308,6 @@ function ErrorBox({
         {label}
       </button>
     </div>
-  );
-}
-
-function OrderCard({
-  order,
-  locale,
-  viewLabel,
-  description,
-  automaticallyTranslated,
-}: Readonly<{
-  order: WorkOrder;
-  locale: string;
-  viewLabel: string;
-  description: string;
-  automaticallyTranslated: boolean;
-}>) {
-  const t = useTranslations("technician");
-  const tEnums = useTranslations("common.enums");
-  const statusKey = `status.${order.status}`;
-  const dateRows = [
-    {
-      label: t("fields.created"),
-      value: formatOrderDate(order.date_created, locale),
-    },
-    {
-      label: t.has("fields.startDate") ? t("fields.startDate") : "Start",
-      value: formatOrderDate(
-        order.due_date || order.scheduled_date || order.date_start,
-        locale,
-      ),
-    },
-    {
-      label: t.has("fields.endDate") ? t("fields.endDate") : "End",
-      value: formatOrderDate(order.date_end || order.date_closed, locale),
-    },
-  ];
-  return (
-    <article className="technician-order-card rounded-xl border p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="technician-order-title font-semibold">{order.ot_id}</h3>
-          <p className="technician-order-muted text-sm">
-            {machineName(order) || t("notAvailable")}
-          </p>
-        </div>
-        <span className="technician-order-status rounded-full px-2 py-1 text-xs">
-          {t.has(statusKey) ? t(statusKey) : translateEnumValue(tEnums, 'workOrderStatuses', order.status)}
-        </span>
-      </div>
-      <p className="technician-order-description mt-3 line-clamp-2 text-sm">
-        {description || t("notAvailable")}
-        {automaticallyTranslated ? (
-          <span
-            className="ms-1 text-xs text-amber-700"
-            title={t("dynamicTranslations.safetyNotice")}
-          >
-            {t("dynamicTranslations.auto")}
-          </span>
-        ) : null}
-      </p>
-      <p className="technician-order-text mt-2 text-sm">
-        <span className="font-medium">{t("operator")}:</span>{" "}
-        {order.operator?.nom_complet || t("notAvailable")}
-      </p>
-      <div className="technician-order-muted mt-3 flex flex-wrap gap-2 text-xs [&>span:nth-child(n+4)]:hidden">
-        <span>{translateEnumValue(tEnums, 'maintenanceTypes', order.type_maintenance) || "—"}</span>
-        <span>•</span>
-        <span>{translateEnumValue(tEnums, 'priorities', order.priorite) || "—"}</span>
-        <span>•</span>
-        <span>
-          {order.date_created
-            ? new Date(order.date_created).toLocaleDateString(locale)
-            : "—"}
-        </span>
-      </div>
-      <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
-        {dateRows.map((row) => (
-          <div
-            key={row.label}
-            className="technician-order-date rounded-lg border px-2 py-1.5"
-          >
-            <dt className="technician-order-muted">{row.label}</dt>
-            <dd className="technician-order-title mt-0.5 font-medium">
-              {row.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <Link
-        className="technician-order-link mt-4 inline-flex rounded-lg px-3 py-2 text-sm"
-        href={`/${locale}/technician/work-orders/${order._id}`}
-      >
-        {viewLabel}
-      </Link>
-    </article>
   );
 }
 

@@ -216,7 +216,6 @@ function StocksTableContent({
             key={item._id}
             item={item}
             t={t}
-            tCommon={tCommon}
             onAdjust={onAdjust}
             onHistory={onHistory}
             onEdit={onEdit}
@@ -290,7 +289,6 @@ function StockHistoryContent({
 function StockTableRow({
   item,
   t,
-  tCommon,
   onAdjust,
   onHistory,
   onEdit,

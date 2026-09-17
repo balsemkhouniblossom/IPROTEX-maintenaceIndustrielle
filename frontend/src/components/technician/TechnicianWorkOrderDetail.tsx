@@ -703,7 +703,6 @@ function PartsTab({
   canEditIntervention,
   onAddPart,
   onSubmitRequest,
-  id,
   status,
   requests,
 }: Readonly<{
@@ -719,7 +718,6 @@ function PartsTab({
   canEditIntervention: boolean;
   onAddPart: () => void;
   onSubmitRequest: () => void;
-  id: string;
   status: string;
   requests: PartRequestRecord[];
 }>) {
