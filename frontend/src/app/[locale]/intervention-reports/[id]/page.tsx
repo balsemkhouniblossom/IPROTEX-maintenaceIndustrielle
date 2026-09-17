@@ -42,7 +42,7 @@ export default function AdminInterventionReportDetailPage() {
       <DashboardLayout title={t("title")}>
         <div className="space-y-4">
           {orderId && <Link className="text-blue-700 underline" href={`/${locale}/work-orders/${orderId}`}>{tWorkOrders("detail.backToWorkOrder")}</Link>}
-          {loading ? <div role="status" className="panel">{tCommon("loading")}</div> : null}
+          {loading ? <output className="panel">{tCommon("loading")}</output> : null}
           {error ? <div role="alert" className="panel"><p>{tCommon("error")}</p><button type="button" className="btn-secondary mt-3" onClick={() => void load()}>{tCommon("retry")}</button></div> : null}
           {!loading && !error && report ? <>
             <header className="panel"><p className="text-sm text-slate-600">{t("title")}</p><h1 className="text-2xl font-bold">{report.report_id}</h1></header>
