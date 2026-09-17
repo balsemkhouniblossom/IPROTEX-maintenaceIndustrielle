@@ -4280,6 +4280,7 @@
     "historicalContextHelp": "Los recuentos oficiales importados son solo información de apoyo. No generan MTTR.",
     "mainDefectCodes": "Códigos de defecto principales",
     "monthlyHoursHeading": "MTTR mensual de calidad del producto (horas)",
+    "monthlyMinutesHeading": "MTTR mensual de calidad del producto (minutos)",
     "processAverage": "Promedio del proceso",
     "monthlyAverage": "Promedio mensual",
     "overallAverage": "MTTR promedio general",

@@ -4280,6 +4280,7 @@
     "historicalContextHelp": "I conteggi ufficiali importati sono solo informazioni di supporto. Non generano MTTR.",
     "mainDefectCodes": "Codici difetto principali",
     "monthlyHoursHeading": "MTTR mensile della qualità prodotto (ore)",
+    "monthlyMinutesHeading": "MTTR mensile della qualità prodotto (minuti)",
     "processAverage": "Media del processo",
     "monthlyAverage": "Media mensile",
     "overallAverage": "MTTR medio complessivo",

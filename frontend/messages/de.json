@@ -4280,6 +4280,7 @@
     "historicalContextHelp": "Offizielle importierte Fehlerzahlen dienen nur als Kontext. Sie erzeugen keine MTTR.",
     "mainDefectCodes": "Wichtigste Fehlercodes",
     "monthlyHoursHeading": "Monatliche Produktqualitäts-MTTR (Stunden)",
+    "monthlyMinutesHeading": "Monatliche Produktqualitäts-MTTR (Minuten)",
     "processAverage": "Prozessdurchschnitt",
     "monthlyAverage": "Monatsdurchschnitt",
     "overallAverage": "Gesamtdurchschnitt MTTR",

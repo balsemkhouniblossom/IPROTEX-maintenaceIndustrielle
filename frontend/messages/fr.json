@@ -4280,6 +4280,7 @@
     "historicalContextHelp": "Les nombres officiels de défauts importés sont uniquement contextuels. Ils ne génèrent pas de MTTR.",
     "mainDefectCodes": "Principaux codes défaut",
     "monthlyHoursHeading": "MTTR mensuel de qualité produit (heures)",
+    "monthlyMinutesHeading": "MTTR mensuel de qualité produit (minutes)",
     "processAverage": "Moyenne du processus",
     "monthlyAverage": "Moyenne mensuelle",
     "overallAverage": "MTTR moyen global",

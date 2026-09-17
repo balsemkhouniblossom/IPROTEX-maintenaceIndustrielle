@@ -1,4 +1,7 @@
-import { MttrCalculationService, RepairRecord } from './mttr-calculation.service';
+import {
+  MttrCalculationService,
+  RepairRecord,
+} from './mttr-calculation.service';
 
 describe('MttrCalculationService', () => {
   const service = new MttrCalculationService();
@@ -96,15 +99,7 @@ describe('MttrCalculationService', () => {
     );
 
     expect(
-      [
-        preventive,
-        cancelled,
-        incomplete,
-        missingEnd,
-        negative,
-        orphan,
-        valid,
-      ]
+      [preventive, cancelled, incomplete, missingEnd, negative, orphan, valid]
         .map((item) => service.classifyExclusion(item))
         .filter(Boolean),
     ).toEqual([

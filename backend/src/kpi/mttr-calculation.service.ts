@@ -110,7 +110,9 @@ export class MttrCalculationService {
       .reduce((sum, repair) => {
         const start = this.toValidDate(repair.dateDebut);
         const end = this.toValidDate(repair.dateFin);
-        return start && end ? sum + (end.getTime() - start.getTime()) / 60_000 : sum;
+        return start && end
+          ? sum + (end.getTime() - start.getTime()) / 60_000
+          : sum;
       }, 0);
   }
 

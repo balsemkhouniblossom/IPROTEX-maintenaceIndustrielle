@@ -4280,6 +4280,7 @@
     "historicalContextHelp": "أعداد العيوب الرسمية المستوردة هي معلومات داعمة فقط ولا تُنشئ قيمة MTTR.",
     "mainDefectCodes": "أهم رموز العيوب",
     "monthlyHoursHeading": "متوسط زمن إصلاح جودة المنتج الشهري (بالساعات)",
+    "monthlyMinutesHeading": "متوسط زمن إصلاح جودة المنتج الشهري (بالدقائق)",
     "processAverage": "متوسط العملية",
     "monthlyAverage": "المتوسط الشهري",
     "overallAverage": "المتوسط العام لزمن الإصلاح",

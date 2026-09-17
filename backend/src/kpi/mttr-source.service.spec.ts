@@ -203,9 +203,7 @@ describe('MttrSourceService', () => {
     );
     expect(details).toHaveLength(result.months[8].completedRepairs);
     expect(detailTotal).toBe(result.months[8].totalRepairMinutes);
-    expect(detailTotal / details.length).toBe(
-      result.months[8].mttrMinutes,
-    );
+    expect(detailTotal / details.length).toBe(result.months[8].mttrMinutes);
     expect(details.map((detail) => detail.workOrderId)).toEqual([
       'WO-090-1',
       'WO-090-2',
@@ -222,7 +220,12 @@ describe('MttrSourceService', () => {
     const otherTechnicianId = new Types.ObjectId();
     workOrderModel.find.mockReturnValue(
       queryChain([
-        workOrder(firstWorkOrderId, 'WO-TECH-FILTER', 'completed', 'corrective'),
+        workOrder(
+          firstWorkOrderId,
+          'WO-TECH-FILTER',
+          'completed',
+          'corrective',
+        ),
       ]),
     );
     interventionReportModel.find.mockReturnValue(

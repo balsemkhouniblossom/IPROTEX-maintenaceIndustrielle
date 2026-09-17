@@ -73,7 +73,12 @@ describe('Manual Product Quality MTTR service', () => {
     );
     entryModel.find.mockReturnValue(
       chain([
-        { machine_type_id: windingId, month: 1, mttr_value: 2.5, unit: 'HOURS' },
+        {
+          machine_type_id: windingId,
+          month: 1,
+          mttr_value: 2.5,
+          unit: 'HOURS',
+        },
       ]),
     );
     const result = await service.getYear('2026');

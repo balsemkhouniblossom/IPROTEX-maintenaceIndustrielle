@@ -149,7 +149,9 @@ export class MttrSourceService {
     const reportFilter: FilterQuery<InterventionReportDocument> = {};
     const workOrderRecordIds = [...workOrderMap.keys()];
     if (workOrderRecordIds.length > 0) {
-      reportFilter.ot_id = { $in: workOrderRecordIds.map((id) => new Types.ObjectId(id)) };
+      reportFilter.ot_id = {
+        $in: workOrderRecordIds.map((id) => new Types.ObjectId(id)),
+      };
     } else if (query.technicianId) {
       reportFilter.technician_id = new Types.ObjectId(query.technicianId);
     }
@@ -294,7 +296,9 @@ export class MttrSourceService {
       (sum, repair) => sum + repair.durationMinutes,
       0,
     );
-    const exclusionReasons = Object.keys(exclusions) as Array<keyof typeof exclusions>;
+    const exclusionReasons = Object.keys(exclusions) as Array<
+      keyof typeof exclusions
+    >;
 
     return {
       year: query.year,
@@ -341,7 +345,9 @@ export class MttrSourceService {
     const [machines, users] = await Promise.all([
       machineIds.length
         ? this.machineModel
-            .find({ _id: { $in: machineIds.map((id) => new Types.ObjectId(id)) } })
+            .find({
+              _id: { $in: machineIds.map((id) => new Types.ObjectId(id)) },
+            })
             .select({ _id: 1, machine_id: 1, reference: 1 })
             .session(session ?? null)
             .lean()
@@ -349,7 +355,9 @@ export class MttrSourceService {
         : Promise.resolve([]),
       technicianIds.length
         ? this.userModel
-            .find({ _id: { $in: technicianIds.map((id) => new Types.ObjectId(id)) } })
+            .find({
+              _id: { $in: technicianIds.map((id) => new Types.ObjectId(id)) },
+            })
             .select({ _id: 1, nom_complet: 1, user_id: 1 })
             .session(session ?? null)
             .lean()
@@ -379,7 +387,12 @@ export class MttrSourceService {
       .map((candidate) => {
         const start = this.calculation.toValidDate(candidate.dateDebut);
         const end = this.calculation.toValidDate(candidate.dateFin);
-        if (!start || !end || !candidate.interventionReportId || !candidate.workOrderId) {
+        if (
+          !start ||
+          !end ||
+          !candidate.interventionReportId ||
+          !candidate.workOrderId
+        ) {
           return null;
         }
         const machineId = candidate.machineId || '';
@@ -393,9 +406,11 @@ export class MttrSourceService {
         };
         return {
           reportRecordId: candidate.interventionReportId,
-          reportId: candidate.reportBusinessId || candidate.interventionReportId || '',
+          reportId:
+            candidate.reportBusinessId || candidate.interventionReportId || '',
           workOrderRecordId: candidate.workOrderId,
-          workOrderId: candidate.workOrderBusinessId || candidate.workOrderId || '',
+          workOrderId:
+            candidate.workOrderBusinessId || candidate.workOrderId || '',
           machine: {
             recordId: machineId,
             code: machine.code,

@@ -67,10 +67,12 @@ describe('AnalyticsService.getMttr', () => {
       service.getMttr(year, { actor: technicianActor }),
     ).resolves.toBe(expected);
 
-    expect(documentAccessService.listAccessibleMachineIds).toHaveBeenCalledWith({
-      userId: technicianActor.userId,
-      role: technicianActor.role,
-    });
+    expect(documentAccessService.listAccessibleMachineIds).toHaveBeenCalledWith(
+      {
+        userId: technicianActor.userId,
+        role: technicianActor.role,
+      },
+    );
     expect(mttrSource.calculate).toHaveBeenCalledWith({
       year,
       machineIds: [machineId.toHexString()],

@@ -118,7 +118,7 @@ function extractFacetCount(rows: FacetCountRow[] | undefined): number {
 const ADMIN_DASHBOARD_CACHE_KEY = 'kpi:admin-dashboard';
 const ADMIN_DASHBOARD_CACHE_TTL_MS = 30_000;
 
-  @Injectable()
+@Injectable()
 export class KpiService {
   constructor(
     @InjectModel(WorkOrder.name)
@@ -477,13 +477,14 @@ export class KpiService {
 
     let mtbfHours = 0;
     if (correctiveClosures.length >= 2) {
-      const gaps = correctiveClosures.slice(1).map(
-        (closed, index) =>
-          (closed.getTime() - correctiveClosures[index].getTime()) /
-          3_600_000,
-      );
-      mtbfHours =
-        gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
+      const gaps = correctiveClosures
+        .slice(1)
+        .map(
+          (closed, index) =>
+            (closed.getTime() - correctiveClosures[index].getTime()) /
+            3_600_000,
+        );
+      mtbfHours = gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
     }
 
     const mttrResult = await this.mttrSource.calculate({

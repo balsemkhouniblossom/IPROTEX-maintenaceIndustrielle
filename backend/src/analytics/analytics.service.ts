@@ -30,10 +30,7 @@ export class AnalyticsService {
       throw new BadRequestException('Invalid year');
     }
 
-    if (
-      filters.technicianId &&
-      !Types.ObjectId.isValid(filters.technicianId)
-    ) {
+    if (filters.technicianId && !Types.ObjectId.isValid(filters.technicianId)) {
       throw new BadRequestException('Invalid technicianId');
     }
     if (

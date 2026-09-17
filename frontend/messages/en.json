@@ -4280,6 +4280,7 @@
     "historicalContextHelp": "Official imported defect counts are supporting context only. They do not generate MTTR.",
     "mainDefectCodes": "Main defect codes",
     "monthlyHoursHeading": "Monthly Product Quality MTTR (hours)",
+    "monthlyMinutesHeading": "Monthly Product Quality MTTR (minutes)",
     "processAverage": "Process Average",
     "monthlyAverage": "Monthly Average",
     "overallAverage": "Overall Average MTTR",
