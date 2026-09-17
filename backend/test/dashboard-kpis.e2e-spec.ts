@@ -253,7 +253,7 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
       ot_id: (await workOrders.findOne({ ot_id: 'WO-KPI-D-COMPLETED-TODAY' }))!
         ._id,
       technician_id: technician._id,
-      date_debut: hoursFromTodayStart(-1),
+      date_debut: hoursFromTodayStart(-3),
       date_fin: hoursFromTodayStart(-1),
     });
     await interventionReports.create({
@@ -264,18 +264,8 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
       date_fin: hoursFromTodayStart(-10 * 24),
     });
 
-    const orderF = await workOrders.findOne({
-      ot_id: 'WO-KPI-F-PREVENTIVE-ON-TIME',
-    });
     const orderC = await workOrders.findOne({
       ot_id: 'WO-KPI-C-WAITING-VALIDATION',
-    });
-    await interventionReports.create({
-      report_id: 'IR-KPI-F',
-      ot_id: orderF!._id,
-      technician_id: technician._id,
-      date_debut: hoursFromTodayStart(-3 * 24),
-      date_fin: hoursFromTodayStart(-3 * 24 + 2),
     });
     await interventionReports.create({
       report_id: 'IR-KPI-C',
@@ -286,7 +276,7 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
     });
 
     // F: preventive, completed on time.
-    await workOrders.create({
+    const orderF = await workOrders.create({
       ot_id: 'WO-KPI-F-PREVENTIVE-ON-TIME',
       machine_id: machine._id,
       technician_id: technician._id,
@@ -299,6 +289,14 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
       due_date: daysFromTodayStart(-2),
       date_start: daysFromTodayStart(-3),
       date_end: hoursFromTodayStart(-2 * 24 - 2), // 2h before its due date
+    });
+
+    await interventionReports.create({
+      report_id: 'IR-KPI-F',
+      ot_id: orderF._id,
+      technician_id: technician._id,
+      date_debut: hoursFromTodayStart(-3 * 24),
+      date_fin: hoursFromTodayStart(-3 * 24 + 2),
     });
 
     // G: preventive, completed late.
