@@ -33,7 +33,7 @@ test("downloadAuthenticatedDocument downloads file", async () => {
     api.get = (async () => ({
       data: new Blob(["test content"], { type: "application/pdf" }),
       headers: { "content-type": "application/pdf" },
-    })) as unknown as typeof api.get;
+    })) as any;
 
     await assert.doesNotReject(
       downloadAuthenticatedDocument("doc123", "report.pdf"),
