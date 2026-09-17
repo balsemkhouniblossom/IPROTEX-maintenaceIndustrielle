@@ -57,8 +57,14 @@ export class QualityManualProductMttrService {
       new Date(Date.UTC(year + 1, 6, 1, 12)),
       timeZone,
     );
-    const [machineTypes, entries, manualDefects, historical, mttrYears, defectYears] =
-      await Promise.all([
+    const [
+      machineTypes,
+      entries,
+      manualDefects,
+      historical,
+      mttrYears,
+      defectYears,
+    ] = await Promise.all([
       this.machineTypeModel.find({}).sort({ name: 1 }).lean().exec(),
       this.entryModel.find({ year }).lean().exec(),
       this.defectModel.find({ year }).lean().exec(),

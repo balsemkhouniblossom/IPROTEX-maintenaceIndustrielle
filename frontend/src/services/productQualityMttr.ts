@@ -36,7 +36,7 @@ export function parseManualDefectCount(
 }
 
 export function sumSavedDefectValues(values: Array<number | null>): number {
-  return values.reduce((sum, value) => sum + (value ?? 0), 0);
+  return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
 }
 
 export function buildHistoricalMatrix(rows: HistoricalMttrContext[]) {
