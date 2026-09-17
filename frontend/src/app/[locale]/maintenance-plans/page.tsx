@@ -504,7 +504,8 @@ export default function MaintenancePlansPage() {
         </div>
 
         <div className="panel min-w-0">
-          <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Plan status">
+          <fieldset className="mb-4 flex flex-wrap gap-2">
+            <legend className="sr-only">Plan status</legend>
             {(['', 'draft', 'active', 'paused', 'archived', 'completed'] as const).map((status) => (
               <button
                 key={status || 'all'}
@@ -516,7 +517,7 @@ export default function MaintenancePlansPage() {
                 {status ? t(`status.${status}`) : t('allTab')}
               </button>
             ))}
-          </div>
+          </fieldset>
           <div className="grid w-full min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
               <input
                 type="search"
