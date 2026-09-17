@@ -7,8 +7,10 @@ function execResult<T>(value: T) {
 
 function findChain<T>(value: T) {
   const chain = {
+    select: jest.fn().mockReturnThis(),
     sort: jest.fn().mockReturnThis(),
     session: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
     exec: jest.fn().mockResolvedValue(value),
   };
   return chain;
@@ -24,6 +26,7 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     create: jest.Mock;
   };
   let counterService: { getNextSequence: jest.Mock };
+  let mttrSource: { calculate: jest.Mock };
   let service: WorkOrderKpiService;
 
   function order(overrides: Record<string, unknown> = {}) {
@@ -47,11 +50,21 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
       create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
     };
     counterService = { getNextSequence: jest.fn().mockResolvedValue(7) };
+    mttrSource = {
+      calculate: jest.fn().mockResolvedValue({
+        summary: {
+          completedRepairs: 1,
+          totalRepairMinutes: 90,
+          mttrMinutes: 90,
+        },
+      }),
+    };
 
     service = new WorkOrderKpiService(
       workOrderModel as never,
       kpiModel as never,
       counterService as never,
+      mttrSource as never,
     );
   });
 
@@ -107,24 +120,76 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
     );
   });
 
-  it('computes MTTR as the average repair duration in hours across completed orders', async () => {
+  it('computes MTTR from the shared InterventionReport source', async () => {
+    workOrderModel.find.mockReturnValue(findChain([order()]));
+    mttrSource.calculate.mockResolvedValueOnce({
+      summary: {
+        completedRepairs: 1,
+        totalRepairMinutes: 90,
+        mttrMinutes: 90,
+      },
+    });
+
+    await service.updateKpiForMachine(machineId.toHexString());
+
+    expect(mttrSource.calculate).toHaveBeenCalledWith({
+      machineIds: [machineId.toHexString()],
+      session: undefined,
+    });
+    expect(kpiModel.create).toHaveBeenCalledWith(
+      [expect.objectContaining({ mttr_value: 1.5 })],
+      expect.anything(),
+    );
+  });
+
+  it('keeps MTTR and MTBF in matching hour units for availability', async () => {
     workOrderModel.find.mockReturnValue(
       findChain([
         order({
-          date_start: new Date('2026-01-01T00:00:00.000Z'),
-          date_end: new Date('2026-01-01T02:00:00.000Z'),
+          type_maintenance: 'corrective',
+          date_closed: new Date('2026-01-01T00:00:00.000Z'),
         }),
         order({
-          date_start: new Date('2026-01-02T00:00:00.000Z'),
-          date_end: new Date('2026-01-02T04:00:00.000Z'),
+          type_maintenance: 'corrective',
+          date_closed: new Date('2026-01-03T00:00:00.000Z'),
         }),
       ]),
     );
+    mttrSource.calculate.mockResolvedValueOnce({
+      summary: {
+        completedRepairs: 1,
+        totalRepairMinutes: 90,
+        mttrMinutes: 90,
+      },
+    });
 
     await service.updateKpiForMachine(machineId.toHexString());
 
     expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ mttr_value: 3 })],
+      [expect.objectContaining({ availability_rate: 96.97 })],
+      expect.anything(),
+    );
+  });
+
+  it('returns null MTTR (stored as 0) when no repairs are found', async () => {
+    workOrderModel.find.mockReturnValue(
+      findChain([
+        order({ status: 'in_progress' }),
+      ]),
+    );
+    mttrSource.calculate.mockResolvedValueOnce({
+      summary: {
+        completedRepairs: 0,
+        totalRepairMinutes: 0,
+        mttrMinutes: null,
+      },
+    });
+
+    await service.updateKpiForMachine(machineId.toHexString());
+
+    expect(mttrSource.calculate).toHaveBeenCalled();
+    expect(kpiModel.create).toHaveBeenCalledWith(
+      [expect.objectContaining({ mttr_value: 0 })],
       expect.anything(),
     );
   });

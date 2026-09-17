@@ -490,6 +490,11 @@ function DashboardLayoutBody({
             name: t("navigation.analyticsAndReports"),
             href: "/reports",
             icon: ChartBarIcon,
+            children: [{
+              name: t("navigation.productQualityMttr"),
+              href: "/quality/product-mttr",
+              icon: ChartBarIcon,
+            }],
           },
           {
             name: t("navigation.documents"),

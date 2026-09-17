@@ -7,6 +7,7 @@ import {
   InterventionReportSchema,
 } from '../src/schemas/intervention-report.schema';
 import { Machine, MachineSchema } from '../src/schemas/machine.schema';
+import { User, UserSchema } from '../src/schemas/user.schema';
 import {
   Module as ModuleEntity,
   ModuleSchema,
@@ -34,6 +35,8 @@ import { WorkOrderLifecycleService } from '../src/work-orders/services/work-orde
 import { WorkOrderPreventiveSchedulingService } from '../src/work-orders/services/work-order-preventive-scheduling.service';
 import { WorkOrderReportService } from '../src/work-orders/services/work-order-report.service';
 import { WorkOrderKpiService } from '../src/work-orders/services/work-order-kpi.service';
+import { MttrCalculationService } from '../src/kpi/mttr-calculation.service';
+import { MttrSourceService } from '../src/kpi/mttr-source.service';
 import { WorkOrderCommandService } from '../src/work-orders/services/work-order-command.service';
 import { WorkOrderOperatorCommandService } from '../src/work-orders/services/work-order-operator-command.service';
 
@@ -78,6 +81,7 @@ async function main() {
       InterventionReportSchema,
     );
     const machineModel = connection.model(Machine.name, MachineSchema);
+    const userModel = connection.model(User.name, UserSchema);
     const moduleModel = connection.model(ModuleEntity.name, ModuleSchema);
     const maintenancePlanModel = connection.model(
       MaintenancePlan.name,
@@ -104,6 +108,7 @@ async function main() {
         workOrderModel,
         reportModel,
         machineModel,
+        userModel,
         moduleModel,
         maintenancePlanModel,
         lubrifiantModel,
@@ -120,6 +125,19 @@ async function main() {
     const lifecycleService = new WorkOrderLifecycleService(
       workOrderModel as never,
       reportModel as never,
+    );
+    const mttrSource = new MttrSourceService(
+      reportModel as never,
+      workOrderModel as never,
+      machineModel as never,
+      userModel as never,
+      new MttrCalculationService(),
+    );
+    const kpiService = new WorkOrderKpiService(
+      workOrderModel as never,
+      kpiModel as never,
+      counterService,
+      mttrSource,
     );
     const preventiveSchedulingService = new WorkOrderPreventiveSchedulingService(
       workOrderModel as never,
@@ -141,11 +159,6 @@ async function main() {
       noopNotificationService as WorkOrderNotificationService,
       lifecycleService,
       preventiveSchedulingService,
-    );
-    const kpiService = new WorkOrderKpiService(
-      workOrderModel as never,
-      kpiModel as never,
-      counterService,
     );
     const commandService = new WorkOrderCommandService(
       workOrderModel as never,

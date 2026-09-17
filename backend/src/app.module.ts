@@ -86,6 +86,7 @@ import { DeviceMonitoringModule } from './device-monitoring/device-monitoring.mo
 import { AiAssistantModule } from './ai-assistant/ai-assistant.module';
 import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive-maintenance.module';
 import { AiAnomalyModule } from './ai-anomaly/ai-anomaly.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { ReportsModule } from './reports/reports.module';
 import { SavedViewsModule } from './saved-views/saved-views.module';
 import { MachineTimelineModule } from './machine-timeline/machine-timeline.module';
@@ -99,6 +100,7 @@ import { RolesGuard } from './auth/roles.guard';
 import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { RagModule } from './rag/rag.module';
+import { QualityModule } from './quality/quality.module';
 const mongoLogger = new Logger('MongoDB');
 const SLOW_QUERY_THRESHOLD_MS =
   Number(process.env.SLOW_QUERY_THRESHOLD_MS) || 200;
@@ -251,8 +253,10 @@ const SLOW_QUERY_THRESHOLD_MS =
     SavedViewsModule,
     MachineTimelineModule,
     DynamicContentTranslationModule,
+    AnalyticsModule,
     MetricsModule,
     RagModule,
+    QualityModule,
   ],
   controllers: [AppController],
   providers: [

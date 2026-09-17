@@ -16,6 +16,7 @@ import {
 } from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
 import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
+import { InterventionReport, InterventionReportDocument } from '../src/schemas/intervention-report.schema';
 import { Stock, StockDocument } from '../src/schemas/stock.schema';
 import { Catalogue, CatalogueDocument } from '../src/schemas/catalogue.schema';
 import * as businessTime from '../src/common/business-time';
@@ -32,15 +33,16 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
   // business-timezone *mechanism* itself (not the specific zone) is what's
   // under test elsewhere (`business-time.spec.ts`).
   let mongo: MongoMemoryReplSet;
-  let app: INestApplication<App>;
-  let jwtService: JwtService;
-  let connection: Connection;
-  let users: Model<UserDocument>;
-  let machineTypes: Model<MachineTypeDocument>;
-  let machines: Model<MachineDocument>;
-  let workOrders: Model<WorkOrderDocument>;
-  let stocks: Model<StockDocument>;
-  let catalogues: Model<CatalogueDocument>;
+    let app: INestApplication<App>;
+    let jwtService: JwtService;
+    let connection: Connection;
+    let users: Model<UserDocument>;
+    let machineTypes: Model<MachineTypeDocument>;
+    let machines: Model<MachineDocument>;
+    let workOrders: Model<WorkOrderDocument>;
+    let interventionReports: Model<InterventionReportDocument>;
+    let stocks: Model<StockDocument>;
+    let catalogues: Model<CatalogueDocument>;
 
   let adminToken: string;
   let technicianToken: string;
@@ -83,6 +85,7 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
     machineTypes = app.get(getModelToken(MachineType.name));
     machines = app.get(getModelToken(Machine.name));
     workOrders = app.get(getModelToken(WorkOrder.name));
+    interventionReports = app.get(getModelToken(InterventionReport.name));
     stocks = app.get(getModelToken(Stock.name));
     catalogues = app.get(getModelToken(Catalogue.name));
 
@@ -225,7 +228,7 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
 
     // E: an older corrective closure (10 days ago) — the second MTBF data
     // point, exactly 241 hours before D's closure.
-    await workOrders.create({
+    const orderE = await workOrders.create({
       ot_id: 'WO-KPI-E-OLD-CORRECTIVE',
       machine_id: machine._id,
       technician_id: technician._id,
@@ -237,6 +240,45 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
       date_created: hoursFromTodayStart(-10 * 24 - 3),
       date_start: hoursFromTodayStart(-10 * 24 - 2),
       date_end: hoursFromTodayStart(-10 * 24),
+    });
+
+    // Intervention reports for corrective completed orders D and E.
+    // D: 2h repair = 120 minutes. E: 2h repair = 120 minutes.
+    // MTTR = (120 + 120) / 2 = 120 minutes.
+    await interventionReports.create({
+      report_id: 'IR-KPI-D',
+      ot_id: (await workOrders.findOne({ ot_id: 'WO-KPI-D-COMPLETED-TODAY' }))!._id,
+      technician_id: technician._id,
+      date_debut: hoursFromTodayStart(-1),
+      date_fin: hoursFromTodayStart(-1),
+    });
+    await interventionReports.create({
+      report_id: 'IR-KPI-E',
+      ot_id: orderE._id,
+      technician_id: technician._id,
+      date_debut: hoursFromTodayStart(-10 * 24 - 2),
+      date_fin: hoursFromTodayStart(-10 * 24),
+    });
+
+    const orderF = await workOrders.findOne({
+      ot_id: 'WO-KPI-F-PREVENTIVE-ON-TIME',
+    });
+    const orderC = await workOrders.findOne({
+      ot_id: 'WO-KPI-C-WAITING-VALIDATION',
+    });
+    await interventionReports.create({
+      report_id: 'IR-KPI-F',
+      ot_id: orderF!._id,
+      technician_id: technician._id,
+      date_debut: hoursFromTodayStart(-3 * 24),
+      date_fin: hoursFromTodayStart(-3 * 24 + 2),
+    });
+    await interventionReports.create({
+      report_id: 'IR-KPI-C',
+      ot_id: orderC!._id,
+      technician_id: operator._id,
+      date_debut: hoursFromTodayStart(-5 * 24),
+      date_fin: hoursFromTodayStart(-5 * 24 + 1),
     });
 
     // F: preventive, completed on time.
@@ -402,9 +444,9 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
       expect(body.correctiveResponseTime.sampleSize).toBe(2);
       expect(body.correctiveResponseTime.averageResponseHours).toBe(1);
 
-      // MTTR: D(2h) + E(2h) + F(22h) + G(36h) + J(4h) over 5 samples = 13.2h.
-      expect(body.mttrMtbf.sampleSize).toBe(5);
-      expect(body.mttrMtbf.mttrHours).toBeCloseTo(13.2, 1);
+      // MTTR: D(120min) + E(120min) over 2 samples = 120min.
+      expect(body.mttrMtbf.sampleSize).toBe(2);
+      expect(body.mttrMtbf.mttrMinutes).toBe(120);
       // MTBF: only D and E are corrective closures, 241h apart.
       expect(body.mttrMtbf.mtbfHours).toBe(241);
 
@@ -453,6 +495,77 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
       expect(response.body.assignedCount).toBe(2); // C (waiting_validation) + I (in_progress)
       expect(response.body.inProgressCount).toBe(1); // I
       expect(response.body.completedCount).toBe(1); // J
+    });
+  });
+
+  describe('GET /analytics/mttr', () => {
+    it('returns the same auditable source rows used by the summary and months', async () => {
+      const year = todayStart.getUTCFullYear();
+      const response = await request(app.getHttpServer())
+        .get('/analytics/mttr')
+        .query({ year })
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(response.body.summary).toEqual({
+        completedRepairs: 2,
+        totalRepairMinutes: 240,
+        mttrMinutes: 120,
+      });
+      expect(response.body.excluded).toEqual({
+        total: 2,
+        byReason: {
+          missingStartEnd: 0,
+          endBeforeStart: 0,
+          nonCorrective: 1,
+          cancelledIncomplete: 1,
+          missingUnresolvableWorkOrder: 0,
+        },
+      });
+      const repairs = response.body.months.flatMap(
+        (month: { repairs: Array<{ reportId: string }> }) => month.repairs,
+      );
+      expect(repairs.map((repair) => repair.reportId).sort()).toEqual([
+        'IR-KPI-D',
+        'IR-KPI-E',
+      ]);
+      expect(
+        repairs.reduce(
+          (sum: number, repair: { durationMinutes: number }) =>
+            sum + repair.durationMinutes,
+          0,
+        ),
+      ).toBe(response.body.summary.totalRepairMinutes);
+    });
+
+    it('scopes repairs by machine and technician', async () => {
+      const year = todayStart.getUTCFullYear();
+      const machineResponse = await request(app.getHttpServer())
+        .get('/analytics/mttr')
+        .query({ year, machineId: machine._id.toString() })
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(machineResponse.body.summary.completedRepairs).toBe(2);
+
+      const technicianResponse = await request(app.getHttpServer())
+        .get('/analytics/mttr')
+        .query({ year, technicianId: technician._id.toString() })
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+      expect(technicianResponse.body.summary.completedRepairs).toBe(2);
+    });
+
+    it('rejects another technician filter and malformed years for non-admins', async () => {
+      const year = todayStart.getUTCFullYear();
+      await request(app.getHttpServer())
+        .get('/analytics/mttr')
+        .query({ year, technicianId: admin._id.toString() })
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .get('/analytics/mttr?year=2026abc')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(400);
     });
   });
 });

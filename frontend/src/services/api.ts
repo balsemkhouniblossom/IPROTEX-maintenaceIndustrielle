@@ -1037,6 +1037,27 @@ export const apiService = {
   ) => api.patch(`/saved-views/${id}`, data),
   deleteSavedView: (id: string) => api.delete(`/saved-views/${id}`),
 
+  // MTTR Analytics
+  getMttrAnalytics: (
+    params: { year: number; machineId?: string; technicianId?: string },
+    options?: { signal?: AbortSignal },
+  ) => api.get("/analytics/mttr", { params, signal: options?.signal }),
+
+  getProductQualityMttr: (params: { year: number }, signal?: AbortSignal) =>
+    api.get('/quality/product-mttr', { params, signal }),
+  saveProductQualityMttrMonth: (year: number, month: number, data: { resolvedDefects: number; totalResolutionMinutes: number; note?: string }) =>
+    api.put(`/quality/product-mttr/${year}/${month}`, data),
+  getManualProductQualityMttr: (year: number, signal?: AbortSignal) =>
+    api.get('/quality/product-mttr/manual', { params: { year }, signal }),
+  saveManualProductQualityMttr: (data: {
+    year: number;
+    entries: Array<{
+      machineTypeId: string;
+      month: number;
+      mttrMinutes: number | null;
+    }>;
+  }) => api.put('/quality/product-mttr/manual', data),
+
   // Transactional bulk user approve/reject — either every selected user
   // is approved/rejected or none are (see backend UsersService).
   bulkApproveUsers: (userIds: string[]) =>

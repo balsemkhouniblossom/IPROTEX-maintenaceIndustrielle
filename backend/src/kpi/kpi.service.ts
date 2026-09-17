@@ -12,8 +12,13 @@ import {
   COMPLETED_WORK_ORDER_STATUSES,
   WAITING_VALIDATION_STATUS,
 } from '../common/work-order-status';
-import { NOT_CORRECTIVE_TYPE_FILTER } from '../common/maintenance-type';
+import {
+  CORRECTIVE_TYPE_REGEX,
+  NOT_CORRECTIVE_TYPE_FILTER,
+} from '../common/maintenance-type';
 import * as businessTime from '../common/business-time';
+import { MttrCalculationService } from './mttr-calculation.service';
+import { MttrSourceService } from './mttr-source.service';
 
 export interface WorkOrderStatusCounts {
   openCount: number;
@@ -53,7 +58,8 @@ export interface CorrectiveResponseTimeResult {
 }
 
 export interface MttrMtbfResult {
-  mttrHours: number;
+  mttrMinutes: number | null;
+  mttrHours: number | null;
   mtbfHours: number;
   availabilityPercent: number;
   sampleSize: number;
@@ -112,7 +118,7 @@ function extractFacetCount(rows: FacetCountRow[] | undefined): number {
 const ADMIN_DASHBOARD_CACHE_KEY = 'kpi:admin-dashboard';
 const ADMIN_DASHBOARD_CACHE_TTL_MS = 30_000;
 
-@Injectable()
+  @Injectable()
 export class KpiService {
   constructor(
     @InjectModel(WorkOrder.name)
@@ -124,6 +130,8 @@ export class KpiService {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    private readonly mttrCalculation: MttrCalculationService,
+    private readonly mttrSource: MttrSourceService,
   ) {}
 
   private toMongoFilter(
@@ -416,86 +424,86 @@ export class KpiService {
   }
 
   /**
-   * MTTR (mean time to repair) is the average duration, in hours, that
-   * completed work orders were open (`date_start`/`date_created` through
-   * `date_end`/`date_closed`). MTBF (mean time between failures) is the
-   * average gap between consecutive *corrective* closures — it needs at
-   * least two corrective closures to mean anything, and is 0 otherwise.
-   * Availability follows the standard `MTBF / (MTBF + MTTR)` formula,
-   * defaulting to 100% when there's no failure history yet to measure.
-   * This mirrors the formula `WorkOrdersService.updateKpiForMachine` wrote
-   * into the legacy per-machine `KPI` snapshot collection, but computed
-   * fresh from the current WorkOrder collection at request time instead of
-   * from a stale, write-triggered snapshot.
+   * MTTR (mean time to repair) is the average repair duration
+   * (InterventionReport.date_fin - date_debut) in minutes across
+   * completed corrective work orders. MTBF (mean time between
+   * failures) is the average gap between consecutive corrective
+   * closures. Availability follows `MTBF / (MTBF + MTTR)`,
+   * defaulting to 100% when there's no failure history yet.
+   * MTTR is computed via MttrCalculationService so the same
+   * calculation is shared with WorkOrderKpiService and the
+   * analytics endpoint. MTBF remains WorkOrder-based.
    */
   async computeMttrMtbf(
     scope: WorkOrderScopeFilter = {},
   ): Promise<MttrMtbfResult> {
-    const match: FilterQuery<WorkOrderDocument> = {
-      ...this.toMongoFilter(scope),
-      status: { $in: COMPLETED_WORK_ORDER_STATUSES },
-    };
+    const baseFilter: FilterQuery<WorkOrderDocument> = {};
+    if (scope.technicianId) {
+      baseFilter.technician_id = toObjectId(scope.technicianId);
+    }
+    if (scope.machineIds) {
+      baseFilter.machine_id = {
+        $in: scope.machineIds.map(toObjectId),
+      };
+    }
 
     const orders = await this.workOrderModel
-      .find(match, {
-        date_created: 1,
-        date_start: 1,
-        date_end: 1,
-        date_closed: 1,
-        type_maintenance: 1,
-      })
+      .find(
+        {
+          ...baseFilter,
+          type_maintenance: CORRECTIVE_TYPE_REGEX,
+          status: { $in: COMPLETED_WORK_ORDER_STATUSES },
+        },
+        {
+          date_end: 1,
+          date_closed: 1,
+        },
+      )
       .sort({ date_closed: 1, date_end: 1 })
       .lean()
       .exec();
 
-    const repairDurations = orders
-      .map((order) => {
-        const start = order.date_start || order.date_created;
-        const end = order.date_end || order.date_closed;
-        if (!start || !end) return null;
-        const diff = new Date(end).getTime() - new Date(start).getTime();
-        return diff / 3_600_000;
-      })
-      .filter((value): value is number => value !== null && value >= 0);
-    const mttrHours =
-      repairDurations.length > 0
-        ? repairDurations.reduce((sum, value) => sum + value, 0) /
-          repairDurations.length
-        : 0;
-
     const correctiveClosures = orders
-      .filter((order) => /correct/i.test(order.type_maintenance || ''))
       .map((order) => {
         const closed = order.date_closed || order.date_end;
-        return closed ? new Date(closed).getTime() : null;
+        return closed ? new Date(closed) : null;
       })
-      .filter((value): value is number => value !== null)
-      .sort((a, b) => a - b);
+      .filter((closed): closed is Date => Boolean(closed))
+      .filter((closed) => {
+        if (scope.dateFrom && closed < scope.dateFrom) return false;
+        if (scope.dateTo && closed >= scope.dateTo) return false;
+        return true;
+      });
 
     let mtbfHours = 0;
     if (correctiveClosures.length >= 2) {
-      const gaps: number[] = [];
-      for (let i = 1; i < correctiveClosures.length; i += 1) {
-        gaps.push(
-          (correctiveClosures[i] - correctiveClosures[i - 1]) / 3_600_000,
-        );
-      }
-      mtbfHours = gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
+      const gaps = correctiveClosures.slice(1).map(
+        (closed, index) =>
+          (closed.getTime() - correctiveClosures[index].getTime()) /
+          3_600_000,
+      );
+      mtbfHours =
+        gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
     }
 
-    // Availability is only meaningful once MTBF itself is: with fewer than
-    // two corrective closures there is no failure-frequency signal yet, so
-    // defaulting to 100% (rather than treating "no MTBF data" the same as
-    // "instantaneous repeat failures") avoids reporting a misleadingly low
-    // number off a single data point.
+    const mttrResult = await this.mttrSource.calculate({
+      machineIds: scope.machineIds,
+      technicianId: scope.technicianId,
+      dateFrom: scope.dateFrom,
+      dateTo: scope.dateTo,
+    });
+    const mttrMinutes = mttrResult.summary.mttrMinutes;
     const availabilityPercent =
-      mtbfHours > 0 ? (mtbfHours / (mtbfHours + mttrHours)) * 100 : 100;
+      mtbfHours > 0 && mttrMinutes !== null && mttrMinutes > 0
+        ? (mtbfHours / (mtbfHours + mttrMinutes / 60)) * 100
+        : 100;
 
     return {
-      mttrHours: round2(mttrHours),
+      mttrMinutes,
+      mttrHours: mttrMinutes === null ? null : mttrMinutes / 60,
       mtbfHours: round2(mtbfHours),
       availabilityPercent: round2(availabilityPercent),
-      sampleSize: repairDurations.length,
+      sampleSize: mttrResult.summary.completedRepairs,
     };
   }
 

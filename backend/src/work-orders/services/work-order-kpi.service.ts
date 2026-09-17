@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model, Types } from 'mongoose';
 import { WorkOrder, WorkOrderDocument } from '../../schemas/work-order.schema';
+import { CORRECTIVE_TYPE_REGEX } from '../../common/maintenance-type';
+import { MttrSourceService } from '../../kpi/mttr-source.service';
 import { KPI, KPIDocument } from '../../schemas/kpi.schema';
 import { CounterService } from '../../counters/counter.service';
 import {
-  isCorrectiveMaintenanceType,
-  isSchedulableMaintenanceType,
-} from '../../common/maintenance-type';
+  COMPLETED_WORK_ORDER_STATUSES,
+} from '../../common/work-order-status';
 
 /**
  * Owns Work Order-triggered KPI *write* orchestration — recomputing and
@@ -22,7 +23,7 @@ import {
  * repeated call idempotent — it always converges on the same figures for
  * an unchanged history rather than accumulating drift.
  */
-@Injectable()
+  @Injectable()
 export class WorkOrderKpiService {
   constructor(
     @InjectModel(WorkOrder.name)
@@ -30,6 +31,7 @@ export class WorkOrderKpiService {
     @InjectModel(KPI.name)
     private readonly kpiModel: Model<KPIDocument>,
     private readonly counterService: CounterService,
+    private readonly mttrSource: MttrSourceService,
   ) {}
 
   async updateKpiForMachine(machineId?: string, session?: ClientSession) {
@@ -40,8 +42,13 @@ export class WorkOrderKpiService {
     const machineObjectId = new Types.ObjectId(machineId);
     const orders = await this.workOrderModel
       .find({ machine_id: machineObjectId })
-      .sort({ date_created: 1 })
+      .select({
+        _id: 1,
+        status: 1,
+        type_maintenance: 1,
+      })
       .session(session ?? null)
+      .lean()
       .exec();
 
     if (!orders.length) {
@@ -49,36 +56,25 @@ export class WorkOrderKpiService {
     }
 
     const completed = orders.filter((order) =>
-      this.isCompletedStatus(order.status),
+      COMPLETED_WORK_ORDER_STATUSES.includes(order.status),
     );
     const corrective = completed.filter((order) =>
-      isCorrectiveMaintenanceType(order.type_maintenance),
+      CORRECTIVE_TYPE_REGEX.test(order.type_maintenance || ''),
     );
     const preventive = completed.filter((order) =>
-      isSchedulableMaintenanceType(order.type_maintenance),
+      this.isSchedulableMaintenanceType(order.type_maintenance),
     );
+
+    const mttrResult = await this.mttrSource.calculate({
+      machineIds: [machineId],
+      session,
+    });
+    const mttrMinutes = mttrResult.summary.mttrMinutes;
+    const mttrHours = mttrMinutes === null ? 0 : mttrMinutes / 60;
 
     const now = new Date();
     const sixMonthsAgo = new Date(now);
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const durations = completed
-      .map((order) => {
-        const start = order.date_start || order.date_created;
-        const end = order.date_end || order.date_closed;
-        if (!start || !end) {
-          return null;
-        }
-        return (
-          (new Date(end).getTime() - new Date(start).getTime()) /
-          (1000 * 60 * 60)
-        );
-      })
-      .filter((value): value is number => value !== null && value >= 0);
-
-    const mttr = durations.length
-      ? durations.reduce((sum, value) => sum + value, 0) / durations.length
-      : 0;
 
     const failures = corrective
       .map(
@@ -106,12 +102,13 @@ export class WorkOrderKpiService {
       return (
         due !== null &&
         due < now &&
-        !this.isCompletedStatus(order.status) &&
+        !COMPLETED_WORK_ORDER_STATUSES.includes(order.status) &&
         order.status !== 'waiting_validation'
       );
     }).length;
 
-    const availability = mtbf + mttr > 0 ? (mtbf / (mtbf + mttr)) * 100 : 100;
+    const availability =
+      mtbf + mttrHours > 0 ? (mtbf / (mtbf + mttrHours)) * 100 : 100;
     const overdueRate = total > 0 ? (overdueCount / total) * 100 : 0;
 
     const existing = await this.kpiModel
@@ -124,7 +121,7 @@ export class WorkOrderKpiService {
       kpi_id: existing?.kpi_id || (await this.generateKpiCode()),
       machine_id: machineObjectId,
       mtbf_value: Number(mtbf.toFixed(2)),
-      mttr_value: Number(mttr.toFixed(2)),
+      mttr_value: Number(mttrHours.toFixed(2)),
       availability_rate: Number(availability.toFixed(2)),
       date_calcul: now,
       periode_debut: sixMonthsAgo,
@@ -157,8 +154,8 @@ export class WorkOrderKpiService {
     return source ? new Date(source) : null;
   }
 
-  private isCompletedStatus(status?: string) {
-    return status === 'completed' || status === 'validated';
+  private isSchedulableMaintenanceType(type?: string) {
+    return Boolean(type) && !CORRECTIVE_TYPE_REGEX.test(type || '');
   }
 
   private async generateKpiCode() {

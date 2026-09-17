@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ArrowDownTrayIcon,
@@ -30,6 +31,11 @@ import { useServerTable, ServerTableQuery } from '@/hooks/useServerTable';
 // the summary charts are actually about to render.
 const BarChartCard = dynamic(
   () => import('@/components/charts/BarChartCard').then((mod) => mod.BarChartCard),
+  { ssr: false, loading: () => <div className="panel h-[220px] animate-pulse" /> },
+);
+
+const MttrAnalytics = dynamic(
+  () => import('@/components/reports/MttrAnalytics').then((mod) => mod.MttrAnalytics),
   { ssr: false, loading: () => <div className="panel h-[220px] animate-pulse" /> },
 );
 
@@ -164,11 +170,13 @@ export default function ReportsPage() {
 }
 
 function ReportsPageContent() {
+  const params = useParams();
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
 
   const [machines, setMachines] = useState<Machine[]>([]);
   const [availableTypes, setAvailableTypes] = useState<ReportType[]>(ALL_REPORT_TYPES);
+  const [technicians, setTechnicians] = useState<Array<{ _id: string; name: string }>>([]);
 
   const [schedules, setSchedules] = useState<ScheduledReport[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(true);
@@ -204,6 +212,23 @@ function ReportsPageContent() {
     } catch {
       // Non-fatal — the machine picker just stays empty; the rest of the
       // page (types without a machine scope) remains fully usable.
+    }
+  }, []);
+
+  const loadTechnicians = useCallback(async () => {
+    try {
+      const response = await apiService.getUsers({ limit: 500 });
+      const users = (response.data?.data ?? response.data?.users ?? response.data?.items ?? []) as Array<{ role?: string; name?: string; fullName?: string; nom_complet?: string; _id: string }>;
+      setTechnicians(
+        users
+          .filter((u) => u.role === 'technician')
+          .map((u) => ({
+            _id: u._id,
+            name: u.name ?? u.fullName ?? u.nom_complet ?? u._id,
+          })),
+      );
+    } catch {
+      // Non-fatal — the technician filter just stays empty.
     }
   }, []);
 
@@ -274,7 +299,8 @@ function ReportsPageContent() {
     void loadTypes();
     void loadSchedules();
     void loadSavedViews();
-  }, [loadMachines, loadTypes, loadSchedules, loadSavedViews]);
+    void loadTechnicians();
+  }, [loadMachines, loadTypes, loadSchedules, loadSavedViews, loadTechnicians]);
 
   // Report generation is async on the backend (pending -> processing ->
   // completed/failed) — poll while anything on the *current page* is
@@ -911,6 +937,9 @@ function ReportsPageContent() {
           </table>
         </div>
       </div>
+
+      {/* MTTR Analytics */}
+      <MttrAnalytics locale={params.locale as string} machines={machines} technicians={technicians} />
     </DashboardLayout>
   );
 }

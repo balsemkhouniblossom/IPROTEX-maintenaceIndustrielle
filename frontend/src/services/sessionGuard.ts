@@ -38,6 +38,7 @@ const ADMIN_ROUTE_ROOTS = new Set([
   "ot-pieces",
   "panne-solutions",
   "pannes",
+  "quality",
   "reports",
   "stocks",
   "users",

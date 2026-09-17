@@ -1,6 +1,10 @@
 import type { Schema } from 'mongoose';
 import { User, UserSchema } from '../schemas/user.schema';
 import { MachineType, MachineTypeSchema } from '../schemas/machine-type.schema';
+import {
+  ProductQualityMttrEntry,
+  ProductQualityMttrEntrySchema,
+} from '../schemas/product-quality-mttr-entry.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { ModuleType, ModuleTypeSchema } from '../schemas/module-type.schema';
 import { Module as ModuleEntity, ModuleSchema } from '../schemas/module.schema';
@@ -100,6 +104,18 @@ import {
   TranslationCache,
   TranslationCacheSchema,
 } from '../schemas/translation-cache.schema';
+import {
+  ProductDefectCatalogue,
+  ProductDefectCatalogueSchema,
+} from '../schemas/product-defect-catalogue.schema';
+import {
+  QualityDefectOccurrence,
+  QualityDefectOccurrenceSchema,
+} from '../schemas/quality-defect-occurrence.schema';
+import {
+  ProductQualityMonthlyMttr,
+  ProductQualityMonthlyMttrSchema,
+} from '../schemas/product-quality-monthly-mttr.schema';
 
 export interface SchemaRegistryEntry {
   modelName: string;
@@ -124,12 +140,28 @@ export interface SchemaRegistryEntry {
 export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   { modelName: User.name, schema: UserSchema },
   { modelName: MachineType.name, schema: MachineTypeSchema },
+  {
+    modelName: ProductQualityMttrEntry.name,
+    schema: ProductQualityMttrEntrySchema,
+  },
   { modelName: Machine.name, schema: MachineSchema },
   { modelName: ModuleType.name, schema: ModuleTypeSchema },
   { modelName: ModuleEntity.name, schema: ModuleSchema },
   { modelName: Capteur.name, schema: CapteurSchema },
   { modelName: Mesure.name, schema: MesureSchema },
   { modelName: Catalogue.name, schema: CatalogueSchema },
+  {
+    modelName: ProductDefectCatalogue.name,
+    schema: ProductDefectCatalogueSchema,
+  },
+  {
+    modelName: QualityDefectOccurrence.name,
+    schema: QualityDefectOccurrenceSchema,
+  },
+  {
+    modelName: ProductQualityMonthlyMttr.name,
+    schema: ProductQualityMonthlyMttrSchema,
+  },
   { modelName: Stock.name, schema: StockSchema },
   { modelName: ModulePieces.name, schema: ModulePiecesSchema },
   { modelName: MaintenancePlan.name, schema: MaintenancePlanSchema },

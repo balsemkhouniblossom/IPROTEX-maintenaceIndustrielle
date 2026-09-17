@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "import:admin-preventative-history": "node scripts/import-admin-preventative-history.js",
+    "import:iproflex-defects:dry-run": "ts-node scripts/import-iproflex-defects-dry-run.ts",
     "audit:preventive-scheduling": "node scripts/audit-preventive-scheduling.js",
     "audit:preventive-scheduling:test": "node scripts/audit-preventive-scheduling.js --seed-test",
     "translate:gemini": "node scripts/gemini-translate-messages.mjs",
@@ -43,7 +44,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage --runInBand && node ../scripts/prefix-lcov-source-paths.mjs coverage/lcov.info backend",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "import:iproflex-catalogue:dry-run": "ts-node scripts/import-iproflex-catalogue-dry-run.ts",
+    "import:iproflex-quality": "ts-node scripts/import-iproflex-quality.ts",
+    "validate:iproflex-quality:isolated": "ts-node scripts/validate-iproflex-quality-isolated.ts"
   },
   "dependencies": {
     "@google/genai": "^2.14.0",

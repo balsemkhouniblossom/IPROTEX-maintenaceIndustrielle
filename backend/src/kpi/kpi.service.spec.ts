@@ -42,6 +42,7 @@ describe('KpiService', () => {
   let machineModel: { countDocuments: jest.Mock };
   let userModel: { find: jest.Mock; countDocuments: jest.Mock };
   let cache: { get: jest.Mock; set: jest.Mock };
+  let mttrSource: { calculate: jest.Mock };
   let service: KpiService;
 
   beforeEach(() => {
@@ -60,6 +61,15 @@ describe('KpiService', () => {
       get: jest.fn().mockResolvedValue(undefined),
       set: jest.fn().mockResolvedValue(undefined),
     };
+    mttrSource = {
+      calculate: jest.fn().mockResolvedValue({
+        summary: {
+          completedRepairs: 0,
+          totalRepairMinutes: 0,
+          mttrMinutes: null,
+        },
+      }),
+    };
 
     service = new KpiService(
       workOrderModel as never,
@@ -67,6 +77,8 @@ describe('KpiService', () => {
       machineModel as never,
       userModel as never,
       cache as never,
+      { calculateMttrMinutes: jest.fn().mockReturnValue(180) } as never,
+      mttrSource as never,
     );
   });
 
@@ -334,57 +346,86 @@ describe('KpiService', () => {
   });
 
   describe('computeMttrMtbf', () => {
-    it('computes MTTR as the mean repair duration and MTBF as the mean gap between corrective closures', async () => {
+    it('uses the shared InterventionReport MTTR source and WorkOrder closures for MTBF', async () => {
+      const firstClosure = new Date('2026-07-01T04:00:00.000Z');
+      const secondClosure = new Date('2026-07-03T02:00:00.000Z');
       workOrderModel.find.mockReturnValue(
         findChain([
           {
+            _id: new Types.ObjectId(),
             type_maintenance: 'corrective',
-            date_start: new Date('2026-07-01T00:00:00.000Z'),
-            date_end: new Date('2026-07-01T04:00:00.000Z'), // 4h repair
+            status: 'completed',
+            date_closed: firstClosure,
           },
           {
+            _id: new Types.ObjectId(),
             type_maintenance: 'corrective',
-            date_start: new Date('2026-07-03T00:00:00.000Z'),
-            date_end: new Date('2026-07-03T02:00:00.000Z'), // 2h repair, closed 48h after the first
+            status: 'validated',
+            date_closed: secondClosure,
           },
         ]),
       );
+      mttrSource.calculate.mockResolvedValueOnce({
+        summary: {
+          completedRepairs: 2,
+          totalRepairMinutes: 360,
+          mttrMinutes: 180,
+        },
+      });
 
       const result = await service.computeMttrMtbf();
 
-      expect(result.mttrHours).toBe(3); // (4 + 2) / 2
-      // Gap between the two closures: 2026-07-01T04:00 -> 2026-07-03T02:00 = 46h
+      expect(result.mttrMinutes).toBe(180);
+      expect(result.mttrHours).toBe(3);
       expect(result.mtbfHours).toBe(46);
       expect(result.sampleSize).toBe(2);
     });
 
-    it('reports 0 MTBF (and 100% availability) with fewer than two corrective closures', async () => {
-      workOrderModel.find.mockReturnValue(
-        findChain([
-          {
-            type_maintenance: 'corrective',
-            date_start: new Date('2026-07-01T00:00:00.000Z'),
-            date_end: new Date('2026-07-01T04:00:00.000Z'),
-          },
-        ]),
-      );
+    it('returns null MTTR without inventing a zero mean', async () => {
+      workOrderModel.find.mockReturnValue(findChain([]));
+      mttrSource.calculate.mockResolvedValueOnce({
+        summary: {
+          completedRepairs: 0,
+          totalRepairMinutes: 0,
+          mttrMinutes: null,
+        },
+      });
 
       const result = await service.computeMttrMtbf();
 
+      expect(result.mttrMinutes).toBeNull();
+      expect(result.mttrHours).toBeNull();
       expect(result.mtbfHours).toBe(0);
       expect(result.availabilityPercent).toBe(100);
+      expect(result.sampleSize).toBe(0);
     });
 
-    it('defaults availability to 100% when there is no history at all', async () => {
+    it('scopes the shared MTTR source by machine, technician, and completion range', async () => {
       workOrderModel.find.mockReturnValue(findChain([]));
+      mttrSource.calculate.mockResolvedValueOnce({
+        summary: {
+          completedRepairs: 0,
+          totalRepairMinutes: 0,
+          mttrMinutes: null,
+        },
+      });
+      const machineId = new Types.ObjectId().toHexString();
+      const technicianId = new Types.ObjectId().toHexString();
+      const dateFrom = new Date('2026-01-01T00:00:00.000Z');
+      const dateTo = new Date('2026-02-01T00:00:00.000Z');
 
-      const result = await service.computeMttrMtbf();
+      await service.computeMttrMtbf({
+        machineIds: [machineId],
+        technicianId,
+        dateFrom,
+        dateTo,
+      });
 
-      expect(result).toEqual({
-        mttrHours: 0,
-        mtbfHours: 0,
-        availabilityPercent: 100,
-        sampleSize: 0,
+      expect(mttrSource.calculate).toHaveBeenCalledWith({
+        machineIds: [machineId],
+        technicianId,
+        dateFrom,
+        dateTo,
       });
     });
   });
@@ -411,37 +452,42 @@ describe('KpiService', () => {
       expect(filter.date_created).toEqual({ $gte: dateFrom });
     });
 
-    it('supports an open-ended upper bound (dateTo only)', async () => {
+    it('passes completion bounds to the shared MTTR source instead of filtering reports by creation date', async () => {
       workOrderModel.find.mockReturnValue(findChain([]));
+      mttrSource.calculate.mockResolvedValueOnce({
+        summary: {
+          completedRepairs: 0,
+          totalRepairMinutes: 0,
+          mttrMinutes: null,
+        },
+      });
       const dateTo = new Date('2026-02-01T00:00:00.000Z');
 
       await service.computeMttrMtbf({ dateTo });
 
-      const [filter] = workOrderModel.find.mock.calls[0];
-      expect(filter.date_created).toEqual({ $lt: dateTo });
+      expect(mttrSource.calculate).toHaveBeenCalledWith(
+        expect.objectContaining({ dateTo }),
+      );
     });
 
-    it('omits date_created entirely when no date range is given (unchanged prior behavior)', async () => {
+    it('combines machine and technician scope in the shared MTTR source', async () => {
       workOrderModel.find.mockReturnValue(findChain([]));
-
-      await service.computePreventiveCompliance();
-
-      const [filter] = workOrderModel.find.mock.calls[0];
-      expect(filter.date_created).toBeUndefined();
-    });
-
-    it('combines with machineIds/technicianId scoping', async () => {
-      workOrderModel.find.mockReturnValue(findChain([]));
-      const machineId = new Types.ObjectId().toString();
-      const dateFrom = new Date('2026-01-01T00:00:00.000Z');
-
-      await service.computeMttrMtbf({ machineIds: [machineId], dateFrom });
-
-      const [filter] = workOrderModel.find.mock.calls[0];
-      expect(filter.machine_id).toEqual({
-        $in: [new Types.ObjectId(machineId)],
+      mttrSource.calculate.mockResolvedValueOnce({
+        summary: {
+          completedRepairs: 0,
+          totalRepairMinutes: 0,
+          mttrMinutes: null,
+        },
       });
-      expect(filter.date_created).toEqual({ $gte: dateFrom });
+      const machineId = new Types.ObjectId().toString();
+      const technicianId = new Types.ObjectId().toString();
+
+      await service.computeMttrMtbf({ machineIds: [machineId], technicianId });
+
+      expect(mttrSource.calculate).toHaveBeenCalledWith({
+        machineIds: [machineId],
+        technicianId,
+      });
     });
   });
 

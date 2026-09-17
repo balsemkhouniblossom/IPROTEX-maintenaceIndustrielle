@@ -53,7 +53,7 @@ export class MttrMtbfTrendsReportProvider implements ReportDataProvider {
       cursor = next;
     }
 
-    const rows: Array<Record<string, string | number>> = [];
+    const rows: Array<Record<string, string | number | null>> = [];
     for (const bucket of buckets) {
       const result = await this.kpiService.computeMttrMtbf({
         machineIds: machineIds?.map((id) => id.toString()),

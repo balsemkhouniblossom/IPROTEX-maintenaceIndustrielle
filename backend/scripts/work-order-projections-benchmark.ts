@@ -33,6 +33,8 @@ import {
 } from '../src/schemas/panne-solution.schema';
 import { Stock, StockSchema } from '../src/schemas/stock.schema';
 import { KpiService } from '../src/kpi/kpi.service';
+import { MttrCalculationService } from '../src/kpi/mttr-calculation.service';
+import { MttrSourceService } from '../src/kpi/mttr-source.service';
 import { MaintenanceSchedulingService } from '../src/work-orders/maintenance-scheduling.service';
 import { WorkOrderCalendarQueryService } from '../src/work-orders/services/work-order-calendar-query.service';
 import { WorkOrderDashboardQueryService } from '../src/work-orders/services/work-order-dashboard-query.service';
@@ -156,11 +158,21 @@ async function main() {
 
     const schedulingService = new MaintenanceSchedulingService();
     const counterService = new CounterService(counterModel as never);
+    const mttrSource = new MttrSourceService(
+      reportModel as never,
+      workOrderModel as never,
+      machineModel as never,
+      userModel as never,
+      new MttrCalculationService(),
+    );
     const kpiService = new KpiService(
       workOrderModel as never,
       stockModel as never,
       machineModel as never,
       userModel as never,
+      { get: async () => undefined, set: async () => undefined } as never,
+      new MttrCalculationService(),
+      mttrSource,
     );
     const lifecycleService = new WorkOrderLifecycleService(
       workOrderModel as never,
