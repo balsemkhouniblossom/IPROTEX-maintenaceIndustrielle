@@ -100,7 +100,9 @@ export function frequencyLabel(frequency: number, unit: string, explicitLabel?: 
   if (!names || !Number.isFinite(frequency) || frequency <= 0) {
     return explicitLabel || `Every ${frequency} ${unit}`;
   }
-  return `Every ${frequency === 1 ? '' : `${frequency} `}${frequency === 1 ? names[0] : names[1]}`;
+  const prefix = frequency === 1 ? '' : `${frequency} `;
+  const name = frequency === 1 ? names[0] : names[1];
+  return `Every ${prefix}${name}`;
 }
 
 export function frequencyTranslationKey(frequency: number, unit: string): string | null {

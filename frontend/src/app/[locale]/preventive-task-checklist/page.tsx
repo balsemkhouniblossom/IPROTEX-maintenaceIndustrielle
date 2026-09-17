@@ -115,23 +115,31 @@ export default function PreventiveTaskChecklistPage() {
         setModules(modulesData);
         setMachines(machinesData);
 
-        const persistedTasks = tasksRes.map((task: Record<string, any>): PreventiveTask => ({
-          id: String(task._id),
-          planId: refId(task.plan_id),
-          plan_id: String(task.plan_code ?? task.task_id),
-          moduleId: refId(task.module_id),
-          instruction: String(task.instruction),
-          responsable: task.responsable,
-          completed: task.status === "completed",
-          completedAt: task.completed_at,
-          notes: task.notes,
-          source: task.source === "plan" ? "plan" : "manual",
-          frequency: typeof task.plan_id === "object" && task.plan_id
-            ? (frequencyTranslationKey(task.plan_id.frequence, task.plan_id.unite_frequence)
-              ? tPlans(`frequencyLabels.${frequencyTranslationKey(task.plan_id.frequence, task.plan_id.unite_frequence)}`, { count: task.plan_id.frequence })
-              : frequencyLabel(task.plan_id.frequence, task.plan_id.unite_frequence, task.plan_id.frequence_label))
-            : undefined,
-        }));
+        const persistedTasks = tasksRes.map((task: Record<string, any>): PreventiveTask => {
+          const planId = task.plan_id;
+          let frequency: string | undefined;
+          if (typeof planId === "object" && planId) {
+            const key = frequencyTranslationKey(planId.frequence, planId.unite_frequence);
+            if (key) {
+              frequency = tPlans(`frequencyLabels.${key}`, { count: planId.frequence });
+            } else {
+              frequency = frequencyLabel(planId.frequence, planId.unite_frequence, planId.frequence_label);
+            }
+          }
+          return {
+            id: String(task._id),
+            planId: refId(task.plan_id),
+            plan_id: String(task.plan_code ?? task.task_id),
+            moduleId: refId(task.module_id),
+            instruction: String(task.instruction),
+            responsable: task.responsable,
+            completed: task.status === "completed",
+            completedAt: task.completed_at,
+            notes: task.notes,
+            source: task.source === "plan" ? "plan" : "manual",
+            frequency,
+          };
+        });
         setTasks(persistedTasks);
       } catch (error) {
         console.error("Failed to load preventive tasks", error);

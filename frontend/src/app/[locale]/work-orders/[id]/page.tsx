@@ -30,6 +30,54 @@ function refLabel(value: Ref | null | undefined, key: "machine_id" | "module_id"
   return typeof value === "object" && value ? value[key] || "—" : "—";
 }
 
+function WorkOrderDetailContent({
+  order, calendar, calendarError, planCode, planError, planId, planHref, checklistHref, date, t, tEnums, locale,
+}: {
+  order: WorkOrderDetail;
+  calendar: CalendarDetails | null;
+  calendarError: boolean;
+  planCode: string;
+  planError: boolean;
+  planId: string;
+  planHref: string;
+  checklistHref: string;
+  date: (value?: string) => string;
+  t: ReturnType<typeof useTranslations>;
+  tEnums: ReturnType<typeof useTranslations>;
+  locale: string;
+}) {
+  const technicianLabel = refLabel(order.technician_id, "nom_complet");
+  const technicianDisplay = technicianLabel === "—" ? t("unassigned") : technicianLabel;
+  const calendarParts = calendarError
+    ? <p className="mt-3 text-sm text-amber-700" role="alert">{t("detail.relatedDataUnavailable")}</p>
+    : calendar?.spareParts?.length
+      ? <ul className="mt-3 space-y-1 text-sm">{calendar.spareParts.map((part) => <li key={part.id}>{part.name} × {part.quantity}</li>)}</ul>
+      : <p className="mt-3 text-sm text-slate-600">{t("detail.noParts")}</p>;
+  const calendarHistory = calendarError
+    ? <p className="mt-3 text-sm text-amber-700" role="alert">{t("detail.relatedDataUnavailable")}</p>
+    : calendar?.history?.length
+      ? <ul className="mt-3 space-y-2 text-sm">{calendar.history.map((report) => <li key={report.id}><span className="font-medium">{report.reportId}</span> <span className="text-slate-600">{report.action || "—"}</span> <Link href={`/${locale}/intervention-reports/${report.id}`} className="ms-2 text-blue-700 underline">{t("detail.viewReport")}</Link></li>)}</ul>
+      : <p className="mt-3 text-sm text-slate-600">{t("detail.noReport")}</p>;
+  return (
+    <>
+      <header className="panel flex flex-wrap items-start justify-between gap-3">
+        <div><p className="text-sm text-slate-600">{t("title")}</p><h1 className="text-2xl font-bold">{order.ot_id}</h1></div>
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge label={translateEnumValue(tEnums, "workOrderStatuses", order.status)} colorClassName="bg-blue-100 text-blue-800 border-blue-200" />
+          <StatusBadge label={translateEnumValue(tEnums, "priorities", order.priorite || "low")} colorClassName="bg-amber-100 text-amber-800 border-amber-200" />
+        </div>
+      </header>
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="panel"><h2 className="font-semibold">{t("detail.equipment")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("table.machine")}</dt><dd>{refLabel(order.machine_id, "machine_id")}</dd></div><div><dt className="text-slate-500">{t("detail.equipment")}</dt><dd>{refLabel(order.module_id, "module_id")}</dd></div></dl></section>
+        <section className="panel"><h2 className="font-semibold">{t("detail.maintenance")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("filterMaintenanceType")}</dt><dd>{order.type_maintenance ? translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) : "—"}</dd></div><div><dt className="text-slate-500">{t("table.description")}</dt><dd className="whitespace-pre-wrap break-words">{order.description || "—"}</dd></div><div><dt className="text-slate-500">{t("detail.relatedPlan")}</dt><dd>{planError ? t("detail.relatedDataUnavailable") : planCode || (planId ? "—" : t("detail.noPlan"))}</dd></div></dl>{planId && <div className="mt-3 flex flex-wrap gap-2"><Link className="btn-secondary" href={planHref}>{t("detail.viewPlan")}</Link><Link className="btn-secondary" href={checklistHref}>{t("detail.viewChecklist")}</Link></div>}</section>
+        <section className="panel"><h2 className="font-semibold">{t("detail.assignment")}</h2><p className="mt-3 text-sm">{technicianDisplay}</p></section>
+        <section className="panel"><h2 className="font-semibold">{t("detail.schedule")}</h2><dl className="mt-3 grid grid-cols-2 gap-3 text-sm">{[[t("table.created"), order.date_created], [t("detail.scheduled"), order.scheduled_date], [t("detail.started"), order.date_start], [t("detail.due"), order.due_date || order.date_end], [t("detail.completed"), order.date_closed || order.execution_date]].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd>{date(value)}</dd></div>)}</dl></section>
+        <section className="panel"><h2 className="font-semibold">{t("detail.parts")}</h2>{calendarParts}</section>
+        <section className="panel"><h2 className="font-semibold">{t("detail.result")}</h2>{calendarHistory}</section>
+      </div>
+    </>
+  );
+}
 export default function AdminWorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const locale = useLocale();
@@ -83,27 +131,9 @@ export default function AdminWorkOrderDetailPage() {
       <DashboardLayout title={t("title")}>
         <div className="w-full space-y-4">
           <Link href={`/${locale}/work-orders`} className="text-sm text-blue-700 underline">{t("detail.back")}</Link>
-          {loading ? <div className="panel" role="status">{t("detail.loading")}</div> : null}
+          {loading ? <output className="panel">{t("detail.loading")}</output> : null}
           {error ? <div className="panel" role="alert"><p>{t("detail.loadFailed")}</p><button type="button" className="btn-secondary mt-3" onClick={() => void load()}>{tCommon("retry")}</button></div> : null}
-          {!loading && !error && order ? (
-            <>
-              <header className="panel flex flex-wrap items-start justify-between gap-3">
-                <div><p className="text-sm text-slate-600">{t("title")}</p><h1 className="text-2xl font-bold">{order.ot_id}</h1></div>
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge label={translateEnumValue(tEnums, "workOrderStatuses", order.status)} colorClassName="bg-blue-100 text-blue-800 border-blue-200" />
-                  <StatusBadge label={translateEnumValue(tEnums, "priorities", order.priorite || "low")} colorClassName="bg-amber-100 text-amber-800 border-amber-200" />
-                </div>
-              </header>
-              <div className="grid gap-4 md:grid-cols-2">
-                <section className="panel"><h2 className="font-semibold">{t("detail.equipment")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("table.machine")}</dt><dd>{refLabel(order.machine_id, "machine_id")}</dd></div><div><dt className="text-slate-500">{t("detail.equipment")}</dt><dd>{refLabel(order.module_id, "module_id")}</dd></div></dl></section>
-                <section className="panel"><h2 className="font-semibold">{t("detail.maintenance")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("filterMaintenanceType")}</dt><dd>{order.type_maintenance ? translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) : "—"}</dd></div><div><dt className="text-slate-500">{t("table.description")}</dt><dd className="whitespace-pre-wrap break-words">{order.description || "—"}</dd></div><div><dt className="text-slate-500">{t("detail.relatedPlan")}</dt><dd>{planError ? t("detail.relatedDataUnavailable") : planCode || (planId ? "—" : t("detail.noPlan"))}</dd></div></dl>{planId && <div className="mt-3 flex flex-wrap gap-2"><Link className="btn-secondary" href={planHref}>{t("detail.viewPlan")}</Link><Link className="btn-secondary" href={checklistHref}>{t("detail.viewChecklist")}</Link></div>}</section>
-                <section className="panel"><h2 className="font-semibold">{t("detail.assignment")}</h2><p className="mt-3 text-sm">{refLabel(order.technician_id, "nom_complet") === "—" ? t("unassigned") : refLabel(order.technician_id, "nom_complet")}</p></section>
-                <section className="panel"><h2 className="font-semibold">{t("detail.schedule")}</h2><dl className="mt-3 grid grid-cols-2 gap-3 text-sm">{[[t("table.created"), order.date_created], [t("detail.scheduled"), order.scheduled_date], [t("detail.started"), order.date_start], [t("detail.due"), order.due_date || order.date_end], [t("detail.completed"), order.date_closed || order.execution_date]].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd>{date(value)}</dd></div>)}</dl></section>
-                <section className="panel"><h2 className="font-semibold">{t("detail.parts")}</h2>{calendarError ? <p className="mt-3 text-sm text-amber-700" role="alert">{t("detail.relatedDataUnavailable")}</p> : calendar?.spareParts?.length ? <ul className="mt-3 space-y-1 text-sm">{calendar.spareParts.map((part) => <li key={part.id}>{part.name} × {part.quantity}</li>)}</ul> : <p className="mt-3 text-sm text-slate-600">{t("detail.noParts")}</p>}</section>
-                <section className="panel"><h2 className="font-semibold">{t("detail.result")}</h2>{calendarError ? <p className="mt-3 text-sm text-amber-700" role="alert">{t("detail.relatedDataUnavailable")}</p> : calendar?.history?.length ? <ul className="mt-3 space-y-2 text-sm">{calendar.history.map((report) => <li key={report.id}><span className="font-medium">{report.reportId}</span> <span className="text-slate-600">{report.action || "—"}</span> <Link href={`/${locale}/intervention-reports/${report.id}`} className="ms-2 text-blue-700 underline">{t("detail.viewReport")}</Link></li>)}</ul> : <p className="mt-3 text-sm text-slate-600">{t("detail.noReport")}</p>}</section>
-              </div>
-            </>
-          ) : null}
+          {!loading && !error && order ? <WorkOrderDetailContent order={order} calendar={calendar} calendarError={calendarError} planCode={planCode} planError={planError} planId={planId} planHref={planHref} checklistHref={checklistHref} date={date} t={t} tEnums={tEnums} locale={locale} /> : null}
         </div>
       </DashboardLayout>
     </ProtectedRoute>
