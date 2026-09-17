@@ -123,10 +123,16 @@ export class QualityManualProductMttrService {
         months: Array.from({ length: 12 }, (_, index) => {
           const month = index + 1;
           const entry = entryMap.get(`${machineType._id.toString()}:${month}`);
+          const storedUnit = (entry as { unit?: string } | undefined)?.unit;
           return {
             month,
-            mttrValue: entry?.mttr_value ?? null,
-            unit: entry?.unit ?? 'MINUTES',
+            mttrValue:
+              entry?.mttr_value === undefined
+                ? null
+                : storedUnit === 'HOURS'
+                  ? entry.mttr_value * 60
+                  : entry.mttr_value,
+            unit: 'MINUTES' as const,
             updatedAt: entry?.updatedAt ?? null,
           };
         }),

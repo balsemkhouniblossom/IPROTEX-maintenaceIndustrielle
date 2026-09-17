@@ -67,6 +67,21 @@ describe('Manual Product Quality MTTR service', () => {
     expect(result.processes[0].months[0].mttrValue).toBeNull();
   });
 
+  it('converts legacy hour entries to minutes when reading', async () => {
+    machineTypeModel.find.mockReturnValue(
+      chain([{ _id: windingId, name: 'Winding' }]),
+    );
+    entryModel.find.mockReturnValue(
+      chain([
+        { machine_type_id: windingId, month: 1, mttr_value: 2.5, unit: 'HOURS' },
+      ]),
+    );
+    const result = await service.getYear('2026');
+    expect(result.processes[0].months[0]).toEqual(
+      expect.objectContaining({ mttrValue: 150, unit: 'MINUTES' }),
+    );
+  });
+
   it('returns historical defects as context without deriving MTTR', async () => {
     occurrenceModel.aggregate.mockReturnValue({
       exec: async () => [
