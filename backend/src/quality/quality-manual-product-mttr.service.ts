@@ -126,7 +126,7 @@ export class QualityManualProductMttrService {
           return {
             month,
             mttrValue: entry?.mttr_value ?? null,
-            unit: entry?.unit ?? 'HOURS',
+            unit: entry?.unit ?? 'MINUTES',
             updatedAt: entry?.updatedAt ?? null,
           };
         }),
@@ -179,7 +179,7 @@ export class QualityManualProductMttrService {
               update: {
                 $set: {
                   mttr_value: entry.mttrValue,
-                  unit: 'HOURS',
+                  unit: 'MINUTES',
                   updated_by: actor,
                 },
                 $setOnInsert: { entered_by: actor },

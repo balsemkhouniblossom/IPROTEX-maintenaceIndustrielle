@@ -5,7 +5,7 @@ import { inferRequiredRoleFromPath } from '../src/services/sessionGuard.ts';
 import {
   averageSavedValues,
   buildHistoricalMatrix,
-  parseManualMttrHours,
+  parseManualMttrMinutes,
 } from '../src/services/productQualityMttr.ts';
 
 const page = fs.readFileSync('src/app/[locale]/quality/product-mttr/page.tsx', 'utf8');
@@ -22,20 +22,20 @@ test('renders dynamic machine-type rows and all 12 months', () => {
   assert.doesNotMatch(page, /Winding|Cutting|Braiding|Rolling/);
 });
 
-test('uses one numeric MTTR-hours value with a single save action', () => {
-  assert.match(page, /parseManualMttrHours/);
+test('uses one numeric MTTR-minutes value with a single save action', () => {
+  assert.match(page, /parseManualMttrMinutes/);
   assert.match(page, /saveManualProductQualityMttr/);
   assert.match(page, /saveChanges/);
   assert.match(page, /type="number"/);
   assert.match(page, /step="0.01"/);
-  assert.match(page, /monthlyHoursHeading/);
+  assert.match(page, /monthlyMinutesHeading/);
   assert.doesNotMatch(page, /resolvedDefects|totalResolutionMinutes|editingMonth/);
   assert.doesNotMatch(page, /hoursLabel|minutesLabel/);
 });
 
 test('empty cells remain null and are not converted to zero', () => {
-  assert.equal(parseManualMttrHours(''), null);
-  assert.equal(parseManualMttrHours('0'), 0);
+  assert.equal(parseManualMttrMinutes(''), null);
+  assert.equal(parseManualMttrMinutes('0'), 0);
   assert.match(page, /value === null \? ''/);
 });
 

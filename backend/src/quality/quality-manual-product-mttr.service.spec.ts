@@ -53,7 +53,7 @@ describe('Manual Product Quality MTTR service', () => {
           machine_type_id: windingId,
           month: 9,
           mttr_value: 2.5,
-          unit: 'HOURS',
+          unit: 'MINUTES',
         },
       ]),
     );
@@ -62,7 +62,7 @@ describe('Manual Product Quality MTTR service', () => {
     expect(result.processes[1].name).toBe('Extrusion');
     expect(result.processes[0].months).toHaveLength(12);
     expect(result.processes[0].months[8]).toEqual(
-      expect.objectContaining({ mttrValue: 2.5, unit: 'HOURS' }),
+      expect.objectContaining({ mttrValue: 2.5, unit: 'MINUTES' }),
     );
     expect(result.processes[0].months[0].mttrValue).toBeNull();
   });

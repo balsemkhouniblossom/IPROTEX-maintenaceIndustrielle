@@ -16,7 +16,10 @@ import {
 } from '../src/schemas/machine-type.schema';
 import { Machine, MachineDocument } from '../src/schemas/machine.schema';
 import { WorkOrder, WorkOrderDocument } from '../src/schemas/work-order.schema';
-import { InterventionReport, InterventionReportDocument } from '../src/schemas/intervention-report.schema';
+import {
+  InterventionReport,
+  InterventionReportDocument,
+} from '../src/schemas/intervention-report.schema';
 import { Stock, StockDocument } from '../src/schemas/stock.schema';
 import { Catalogue, CatalogueDocument } from '../src/schemas/catalogue.schema';
 import * as businessTime from '../src/common/business-time';
@@ -33,16 +36,16 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
   // business-timezone *mechanism* itself (not the specific zone) is what's
   // under test elsewhere (`business-time.spec.ts`).
   let mongo: MongoMemoryReplSet;
-    let app: INestApplication<App>;
-    let jwtService: JwtService;
-    let connection: Connection;
-    let users: Model<UserDocument>;
-    let machineTypes: Model<MachineTypeDocument>;
-    let machines: Model<MachineDocument>;
-    let workOrders: Model<WorkOrderDocument>;
-    let interventionReports: Model<InterventionReportDocument>;
-    let stocks: Model<StockDocument>;
-    let catalogues: Model<CatalogueDocument>;
+  let app: INestApplication<App>;
+  let jwtService: JwtService;
+  let connection: Connection;
+  let users: Model<UserDocument>;
+  let machineTypes: Model<MachineTypeDocument>;
+  let machines: Model<MachineDocument>;
+  let workOrders: Model<WorkOrderDocument>;
+  let interventionReports: Model<InterventionReportDocument>;
+  let stocks: Model<StockDocument>;
+  let catalogues: Model<CatalogueDocument>;
 
   let adminToken: string;
   let technicianToken: string;
@@ -247,7 +250,8 @@ describe('Dashboard KPIs — role-scoped, computed from seeded database state (e
     // MTTR = (120 + 120) / 2 = 120 minutes.
     await interventionReports.create({
       report_id: 'IR-KPI-D',
-      ot_id: (await workOrders.findOne({ ot_id: 'WO-KPI-D-COMPLETED-TODAY' }))!._id,
+      ot_id: (await workOrders.findOne({ ot_id: 'WO-KPI-D-COMPLETED-TODAY' }))!
+        ._id,
       technician_id: technician._id,
       date_debut: hoursFromTodayStart(-1),
       date_fin: hoursFromTodayStart(-1),

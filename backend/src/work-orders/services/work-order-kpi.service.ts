@@ -6,9 +6,7 @@ import { CORRECTIVE_TYPE_REGEX } from '../../common/maintenance-type';
 import { MttrSourceService } from '../../kpi/mttr-source.service';
 import { KPI, KPIDocument } from '../../schemas/kpi.schema';
 import { CounterService } from '../../counters/counter.service';
-import {
-  COMPLETED_WORK_ORDER_STATUSES,
-} from '../../common/work-order-status';
+import { COMPLETED_WORK_ORDER_STATUSES } from '../../common/work-order-status';
 
 /**
  * Owns Work Order-triggered KPI *write* orchestration — recomputing and
@@ -23,7 +21,7 @@ import {
  * repeated call idempotent — it always converges on the same figures for
  * an unchanged history rather than accumulating drift.
  */
-  @Injectable()
+@Injectable()
 export class WorkOrderKpiService {
   constructor(
     @InjectModel(WorkOrder.name)

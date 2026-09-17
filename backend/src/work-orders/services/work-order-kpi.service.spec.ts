@@ -173,9 +173,7 @@ describe('WorkOrderKpiService.updateKpiForMachine', () => {
 
   it('returns null MTTR (stored as 0) when no repairs are found', async () => {
     workOrderModel.find.mockReturnValue(
-      findChain([
-        order({ status: 'in_progress' }),
-      ]),
+      findChain([order({ status: 'in_progress' })]),
     );
     mttrSource.calculate.mockResolvedValueOnce({
       summary: {
