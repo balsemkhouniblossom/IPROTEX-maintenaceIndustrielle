@@ -22,6 +22,10 @@ import {
   ProductQualityMttrEntrySchema,
 } from '../schemas/product-quality-mttr-entry.schema';
 import { QualityManualProductMttrService } from './quality-manual-product-mttr.service';
+import {
+  ProductQualityMonthlyDefects,
+  ProductQualityMonthlyDefectsSchema,
+} from '../schemas/product-quality-monthly-defects.schema';
 
 @Module({
   imports: [
@@ -41,6 +45,10 @@ import { QualityManualProductMttrService } from './quality-manual-product-mttr.s
       {
         name: ProductQualityMttrEntry.name,
         schema: ProductQualityMttrEntrySchema,
+      },
+      {
+        name: ProductQualityMonthlyDefects.name,
+        schema: ProductQualityMonthlyDefectsSchema,
       },
       { name: MachineType.name, schema: MachineTypeSchema },
     ]),

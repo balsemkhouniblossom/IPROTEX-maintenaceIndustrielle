@@ -10,6 +10,10 @@ import {
   QualityDefectOccurrenceSchema,
   QualityDefectSource,
 } from '../schemas/quality-defect-occurrence.schema';
+import {
+  ProductQualityMonthlyDefects,
+  ProductQualityMonthlyDefectsSchema,
+} from '../schemas/product-quality-monthly-defects.schema';
 import { QualityManualProductMttrService } from './quality-manual-product-mttr.service';
 
 jest.setTimeout(120_000);
@@ -36,8 +40,13 @@ describe('Manual Product Quality MTTR in isolated MongoDB', () => {
       QualityDefectOccurrence.name,
       QualityDefectOccurrenceSchema,
     );
+    const defects = connection.model(
+      ProductQualityMonthlyDefects.name,
+      ProductQualityMonthlyDefectsSchema,
+    );
     service = new QualityManualProductMttrService(
       entries as never,
+      defects as never,
       machineTypes as never,
       occurrences as never,
     );
@@ -114,5 +123,32 @@ describe('Manual Product Quality MTTR in isolated MongoDB', () => {
         process.months.every((month) => month.mttrValue === null),
       ),
     ).toBe(true);
+  });
+
+  it('persists empty and zero distinctly and keeps years separate', async () => {
+    const winding = await machineTypes.findOne({ name: 'Winding' });
+    expect(winding).not.toBeNull();
+    const actor = new Types.ObjectId().toString();
+    await service.save(
+      {
+        year: 2026,
+        entries: [],
+        defectEntries: [
+          { machineTypeId: winding!.id, month: 1, defectCount: 0 },
+          { machineTypeId: winding!.id, month: 2, defectCount: 4 },
+        ],
+      },
+      actor,
+    );
+    const year2026 = await service.getYear(2026);
+    const year2027 = await service.getYear(2027);
+    const row = year2026.processes.find((item) => item.name === 'Winding');
+    expect(row?.months[0].defectCount).toBe(0);
+    expect(row?.months[1].defectCount).toBe(4);
+    expect(row?.months[2].defectCount).toBeNull();
+    expect(
+      year2027.processes.find((item) => item.name === 'Winding')?.months[0]
+        .defectCount,
+    ).toBeNull();
   });
 });

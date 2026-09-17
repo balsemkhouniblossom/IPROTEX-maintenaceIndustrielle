@@ -5,6 +5,10 @@ import {
   ProductQualityMttrEntry,
   ProductQualityMttrEntrySchema,
 } from '../schemas/product-quality-mttr-entry.schema';
+import {
+  ProductQualityMonthlyDefects,
+  ProductQualityMonthlyDefectsSchema,
+} from '../schemas/product-quality-monthly-defects.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { ModuleType, ModuleTypeSchema } from '../schemas/module-type.schema';
 import { Module as ModuleEntity, ModuleSchema } from '../schemas/module.schema';
@@ -143,6 +147,10 @@ export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   {
     modelName: ProductQualityMttrEntry.name,
     schema: ProductQualityMttrEntrySchema,
+  },
+  {
+    modelName: ProductQualityMonthlyDefects.name,
+    schema: ProductQualityMonthlyDefectsSchema,
   },
   { modelName: Machine.name, schema: MachineSchema },
   { modelName: ModuleType.name, schema: ModuleTypeSchema },

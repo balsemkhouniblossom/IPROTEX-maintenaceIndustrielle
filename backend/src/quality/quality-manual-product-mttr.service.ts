@@ -14,6 +14,10 @@ import {
   ProductQualityMttrEntryDocument,
 } from '../schemas/product-quality-mttr-entry.schema';
 import {
+  ProductQualityMonthlyDefects,
+  ProductQualityMonthlyDefectsDocument,
+} from '../schemas/product-quality-monthly-defects.schema';
+import {
   QualityDefectOccurrence,
   QualityDefectOccurrenceDocument,
   QualityDefectSource,
@@ -26,6 +30,8 @@ export class QualityManualProductMttrService {
   constructor(
     @InjectModel(ProductQualityMttrEntry.name)
     private readonly entryModel: Model<ProductQualityMttrEntryDocument>,
+    @InjectModel(ProductQualityMonthlyDefects.name)
+    private readonly defectModel: Model<ProductQualityMonthlyDefectsDocument>,
     @InjectModel(MachineType.name)
     private readonly machineTypeModel: Model<MachineTypeDocument>,
     @InjectModel(QualityDefectOccurrence.name)
@@ -51,9 +57,11 @@ export class QualityManualProductMttrService {
       new Date(Date.UTC(year + 1, 6, 1, 12)),
       timeZone,
     );
-    const [machineTypes, entries, historical, storedYears] = await Promise.all([
+    const [machineTypes, entries, manualDefects, historical, mttrYears, defectYears] =
+      await Promise.all([
       this.machineTypeModel.find({}).sort({ name: 1 }).lean().exec(),
       this.entryModel.find({ year }).lean().exec(),
+      this.defectModel.find({ year }).lean().exec(),
       this.occurrenceModel
         .aggregate<{
           _id: { process: string; month: number };
@@ -82,6 +90,7 @@ export class QualityManualProductMttrService {
         ])
         .exec(),
       this.entryModel.distinct('year').exec(),
+      this.defectModel.distinct('year').exec(),
     ]);
     const entryMap = new Map(
       entries.map((entry) => [
@@ -111,10 +120,16 @@ export class QualityManualProductMttrService {
       item.defectCodes.forEach((code) => existing.defectCodes.add(code));
       historicalByProcessMonth.set(key, existing);
     }
+    const manualDefectMap = new Map(
+      manualDefects.map((entry) => [
+        `${entry.machine_type_id.toString()}:${entry.month}`,
+        entry,
+      ]),
+    );
     return {
       year,
       timeZone,
-      availableYears: [...new Set([year, ...storedYears])].sort(
+      availableYears: [...new Set([year, ...mttrYears, ...defectYears])].sort(
         (left, right) => right - left,
       ),
       processes: machineTypes.map((machineType) => ({
@@ -123,6 +138,12 @@ export class QualityManualProductMttrService {
         months: Array.from({ length: 12 }, (_, index) => {
           const month = index + 1;
           const entry = entryMap.get(`${machineType._id.toString()}:${month}`);
+          const manualDefect = manualDefectMap.get(
+            `${machineType._id.toString()}:${month}`,
+          );
+          const officialDefect = historicalByProcessMonth.get(
+            `${normalizeQualityProcessName(machineType.name)}:${month}`,
+          );
           const storedUnit = (entry as { unit?: string } | undefined)?.unit;
           return {
             month,
@@ -134,6 +155,18 @@ export class QualityManualProductMttrService {
                   : entry.mttr_value,
             unit: 'MINUTES' as const,
             updatedAt: entry?.updatedAt ?? null,
+            defectCount:
+              officialDefect?.defectCount ?? manualDefect?.defect_count ?? null,
+            defectSource: officialDefect
+              ? ('OFFICIAL_IMPORT' as const)
+              : manualDefect
+                ? ('MANUAL' as const)
+                : null,
+            defectReadOnly: Boolean(officialDefect),
+            defectCodes: officialDefect
+              ? [...officialDefect.defectCodes].sort()
+              : [],
+            defectUpdatedAt: manualDefect?.updatedAt ?? null,
           };
         }),
       })),
@@ -156,20 +189,50 @@ export class QualityManualProductMttrService {
     const year = this.parseYear(input.year);
     if (!Types.ObjectId.isValid(userId))
       throw new BadRequestException('Invalid authenticated user');
+    const defectEntries = input.defectEntries ?? [];
     const keys = input.entries.map(
       (entry) => `${entry.machineTypeId}:${entry.month}`,
     );
     if (new Set(keys).size !== keys.length)
       throw new BadRequestException('Duplicate process/month entry');
+    const defectKeys = defectEntries.map(
+      (entry) => `${entry.machineTypeId}:${entry.month}`,
+    );
+    if (new Set(defectKeys).size !== defectKeys.length)
+      throw new BadRequestException('Duplicate defect process/month entry');
     const machineTypeIds = [
-      ...new Set(input.entries.map((entry) => entry.machineTypeId)),
+      ...new Set(
+        [...input.entries, ...defectEntries].map(
+          (entry) => entry.machineTypeId,
+        ),
+      ),
     ];
-    const existingCount = await this.machineTypeModel
-      .countDocuments({ _id: { $in: machineTypeIds } })
+    const selectedMachineTypes = await this.machineTypeModel
+      .find({ _id: { $in: machineTypeIds } })
+      .lean()
       .exec();
+    const existingCount = selectedMachineTypes.length;
     if (existingCount !== machineTypeIds.length)
       throw new BadRequestException('Unknown machine type');
     const actor = new Types.ObjectId(userId);
+    if (defectEntries.length > 0) {
+      const officialCells = await this.getOfficialCellKeys(year);
+      const machineTypeNames = new Map(
+        selectedMachineTypes.map((item) => [
+          item._id.toString(),
+          normalizeQualityProcessName(item.name),
+        ]),
+      );
+      const protectedEntry = defectEntries.find((entry) =>
+        officialCells.has(
+          `${machineTypeNames.get(entry.machineTypeId)}:${entry.month}`,
+        ),
+      );
+      if (protectedEntry)
+        throw new BadRequestException(
+          'Official imported defect data cannot be overwritten',
+        );
+    }
     if (input.entries.length > 0) {
       await this.entryModel.bulkWrite(
         input.entries.map((entry) => {
@@ -196,6 +259,70 @@ export class QualityManualProductMttrService {
         }),
       );
     }
+    if (defectEntries.length > 0) {
+      await this.defectModel.bulkWrite(
+        defectEntries.map((entry) => {
+          const filter = {
+            year,
+            month: entry.month,
+            machine_type_id: new Types.ObjectId(entry.machineTypeId),
+          };
+          if (entry.defectCount === null) return { deleteOne: { filter } };
+          return {
+            updateOne: {
+              filter,
+              update: {
+                $set: {
+                  defect_count: entry.defectCount,
+                  source: 'MANUAL',
+                  updated_by: actor,
+                },
+                $setOnInsert: { entered_by: actor },
+              },
+              upsert: true,
+            },
+          };
+        }),
+      );
+    }
     return this.getYear(year);
+  }
+
+  private async getOfficialCellKeys(year: number): Promise<Set<string>> {
+    const timeZone = getBusinessTimezone();
+    const yearStart = startOfBusinessYear(
+      new Date(Date.UTC(year, 6, 1, 12)),
+      timeZone,
+    );
+    const nextYearStart = startOfBusinessYear(
+      new Date(Date.UTC(year + 1, 6, 1, 12)),
+      timeZone,
+    );
+    const cells = await this.occurrenceModel
+      .aggregate<{ _id: { process: string; month: number } }>([
+        {
+          $match: {
+            source: QualityDefectSource.HISTORICAL_IMPORT,
+            occurrence_date: { $gte: yearStart, $lt: nextYearStart },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              process: '$process',
+              month: {
+                $month: { date: '$occurrence_date', timezone: timeZone },
+              },
+            },
+          },
+        },
+      ])
+      .exec();
+    return new Set(
+      cells.map(
+        (cell) =>
+          `${normalizeQualityProcessName(cell._id.process)}:${cell._id.month}`,
+      ),
+    );
   }
 }

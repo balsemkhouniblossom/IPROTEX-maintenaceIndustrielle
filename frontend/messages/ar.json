@@ -4291,6 +4291,11 @@
     "manualSavedSuccessfully": "تم حفظ قيم MTTR بنجاح.",
     "total": "الإجمالي",
     "monthlyTotal": "الإجمالي الشهري",
-    "finalHistoricalDefects": "الإجمالي النهائي للعيوب التاريخية"
+    "finalHistoricalDefects": "الإجمالي النهائي للعيوب التاريخية",
+    "monthlyDefectTitle": "بيانات العيوب الشهرية",
+    "monthlyDefectHelp": "أدخل العدد الإجمالي الشهري للعيوب. خلايا الاستيراد الرسمي للقراءة فقط.",
+    "officialImport": "استيراد رسمي",
+    "defectCellLabel": "عدد العيوب لـ {process}، {month}",
+    "finalTotalDefects": "الإجمالي النهائي للعيوب"
   }
 }

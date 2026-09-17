@@ -9,11 +9,75 @@ import {
 } from './historical-defect-import.parser';
 
 describe('historical defect workbook parser', () => {
-  const workbook =
-    process.env.IPROFLEX_DEFECT_WORKBOOK ??
-    'C:/Users/Balsem/Downloads/Reporting de Défauts internes  iproflex 2025.xlsx';
+  async function buildWorkbook(): Promise<string> {
+    const directory = await mkdtemp(path.join(tmpdir(), 'iproflex-quality-'));
+    const file = path.join(directory, 'full.xlsx');
+    const source = new Workbook();
+    const sheetEntries: Record<string, Array<{ date: Date; code: string }>> = {
+      Janv: [{ date: new Date('2025-01-15T00:00:00.000Z'), code: '101' }],
+      Fev: [
+        { date: new Date('2025-02-10T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-02-20T00:00:00.000Z'), code: '101' },
+      ],
+      Mars: [
+        { date: new Date('2025-03-10T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-03-20T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-03-25T00:00:00.000Z'), code: '101' },
+      ],
+      Avril: [{ date: new Date('2025-04-15T00:00:00.000Z'), code: '101' }],
+      Mai: [{ date: new Date('2025-05-15T00:00:00.000Z'), code: '101' }],
+      Juin: [{ date: new Date('2025-06-15T00:00:00.000Z'), code: '101' }],
+      Juillet: [{ date: new Date('2025-07-15T00:00:00.000Z'), code: '101' }],
+      Aout: [],
+      Sept: [
+        { date: new Date('2025-09-01T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-09-08T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-09-15T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-09-22T00:00:00.000Z'), code: '101' },
+      ],
+      Oct: [
+        { date: new Date('2025-10-01T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-10-08T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-10-15T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-10-22T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-10-29T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-09-30T00:00:00.000Z'), code: '201' },
+      ],
+      Nov: [
+        { date: new Date('2025-11-01T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-11-08T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-11-15T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-11-22T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-11-29T00:00:00.000Z'), code: '101' },
+      ],
+      Dec: [
+        { date: new Date('2025-12-01T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-12-08T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-12-15T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-12-22T00:00:00.000Z'), code: '101' },
+        { date: new Date('2025-12-29T00:00:00.000Z'), code: '101' },
+      ],
+    };
+    for (const sheetName of HISTORICAL_SHEETS) {
+      const sheet = source.addWorksheet(sheetName);
+      const entries = sheetEntries[sheetName] ?? [];
+      entries.forEach((entry, index) => {
+        sheet.getCell(3, 4 + index).value = entry.date;
+      });
+      entries.forEach((entry, index) => {
+        const row = 4 + index;
+        sheet.getCell(row, 1).value = 'Process A';
+        sheet.getCell(row, 2).value = entry.code;
+        sheet.getCell(row, 3).value = `Defect ${entry.code}`;
+        sheet.getCell(row, 4 + index).value = 1;
+      });
+    }
+    await source.xlsx.writeFile(file);
+    return file;
+  }
 
   it('parses only daily occurrence cells and preserves source dates', async () => {
+    const workbook = await buildWorkbook();
     const result = await parseHistoricalWorkbook(workbook);
     expect(result.validOccurrenceCells).toBe(30);
     expect(result.totalOccurrenceQuantity).toBe(30);

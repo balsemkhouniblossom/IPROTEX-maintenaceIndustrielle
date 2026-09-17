@@ -24,6 +24,21 @@ export function averageSavedValues(
   return saved.reduce((sum, value) => sum + value, 0) / saved.length;
 }
 
+export function parseManualDefectCount(
+  value: string,
+): number | null | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const numericValue = Number(trimmed);
+  return Number.isInteger(numericValue) && numericValue >= 0
+    ? numericValue
+    : undefined;
+}
+
+export function sumSavedDefectValues(values: Array<number | null>): number {
+  return values.reduce((sum, value) => sum + (value ?? 0), 0);
+}
+
 export function buildHistoricalMatrix(rows: HistoricalMttrContext[]) {
   const processNames = [...new Set(rows.map((row) => row.process))].sort();
   const processes = processNames.map((process) => {

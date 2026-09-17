@@ -27,6 +27,22 @@ export class ManualProductMttrValueDto {
   mttrValue!: number | null;
 }
 
+export class ManualProductDefectValueDto {
+  @IsMongoId()
+  machineTypeId!: string;
+
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  defectCount!: number | null;
+}
+
 export class SaveManualProductMttrDto {
   @IsInt()
   @Min(2000)
@@ -38,4 +54,11 @@ export class SaveManualProductMttrDto {
   @ValidateNested({ each: true })
   @Type(() => ManualProductMttrValueDto)
   entries!: ManualProductMttrValueDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5000)
+  @ValidateNested({ each: true })
+  @Type(() => ManualProductDefectValueDto)
+  defectEntries?: ManualProductDefectValueDto[];
 }

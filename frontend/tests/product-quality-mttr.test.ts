@@ -5,7 +5,9 @@ import { inferRequiredRoleFromPath } from '../src/services/sessionGuard.ts';
 import {
   averageSavedValues,
   buildHistoricalMatrix,
+  parseManualDefectCount,
   parseManualMttrMinutes,
+  sumSavedDefectValues,
 } from '../src/services/productQualityMttr.ts';
 
 const page = fs.readFileSync('src/app/[locale]/quality/product-mttr/page.tsx', 'utf8');
@@ -40,8 +42,31 @@ test('empty cells remain null and are not converted to zero', () => {
 });
 
 test('historical defect data is supporting context only', () => {
-  assert.match(page, /data\?\.historical/);
-  assert.match(page, /historicalContextHelp/);
+  assert.match(page, /monthlyDefectTitle/);
+  assert.match(page, /officialImport/);
+  assert.match(page, /defectReadOnly/);
+});
+
+test('manual defect counts preserve empty and explicit zero', () => {
+  assert.equal(parseManualDefectCount(''), null);
+  assert.equal(parseManualDefectCount('0'), 0);
+  assert.equal(parseManualDefectCount('2'), 2);
+  assert.equal(parseManualDefectCount('2.5'), undefined);
+});
+
+test('defect totals use saved values and ignore empty cells', () => {
+  assert.equal(sumSavedDefectValues([2, null, 0, 3]), 5);
+  assert.match(page, /savedDefectValues/);
+  assert.match(page, /processDefectTotals/);
+  assert.match(page, /monthlyDefectTotals/);
+  assert.match(page, /finalDefectTotal/);
+  assert.doesNotMatch(page, /sumSavedDefectValues\([^)]*draftDefectValues/);
+});
+
+test('one Save Changes action sends MTTR and defect drafts together', () => {
+  assert.match(page, /defectEntries: changedDefectEntries/);
+  assert.equal((page.match(/t\('saveChanges'\)/g) ?? []).length, 1);
+  assert.doesNotMatch(page, /onBlur=/);
 });
 
 test('averages exclude empty cells and use saved numeric values', () => {
@@ -67,9 +92,9 @@ function expectEqual(actual: unknown, expected: unknown) {
 }
 
 test('saved summaries are derived from savedValues, not draftValues', () => {
-  assert.match(page, /processAverages[\s\S]*savedNumber/);
-  assert.match(page, /monthlyAverages[\s\S]*savedNumber/);
-  assert.match(page, /overallAverage[\s\S]*savedNumber/);
+  assert.match(page, /processAverages[\s\S]*savedMttr/);
+  assert.match(page, /monthlyAverages[\s\S]*savedMttr/);
+  assert.match(page, /overallAverage[\s\S]*savedMttr/);
   assert.doesNotMatch(page, /averageSavedValues\([^)]*draftValues/);
 });
 
@@ -90,7 +115,7 @@ test('frontend calls the dedicated manual endpoints', () => {
 test('all six locales include the simplified manual UI labels', () => {
   for (const locale of ['en', 'fr', 'ar', 'es', 'de', 'it']) {
     const messages = JSON.parse(fs.readFileSync(`messages/${locale}.json`, 'utf8'));
-    for (const key of ['manualDescription', 'manualInputHelp', 'manualSaved', 'saveChanges', 'historicalContextHelp']) {
+    for (const key of ['manualDescription', 'manualInputHelp', 'manualSaved', 'saveChanges', 'monthlyDefectTitle', 'monthlyDefectHelp', 'officialImport', 'defectCellLabel', 'finalTotalDefects']) {
       assert.ok(messages.productQualityMttr[key], `${locale}.${key}`);
     }
   }

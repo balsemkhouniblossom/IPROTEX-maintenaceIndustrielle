@@ -4291,6 +4291,11 @@
     "manualSavedSuccessfully": "MTTR-Werte erfolgreich gespeichert.",
     "total": "Gesamt",
     "monthlyTotal": "Monatssumme",
-    "finalHistoricalDefects": "Gesamte historische Fehler"
+    "finalHistoricalDefects": "Gesamte historische Fehler",
+    "monthlyDefectTitle": "Monatliche Fehlerdaten",
+    "monthlyDefectHelp": "Geben Sie die monatlichen aggregierten Fehlerzahlen ein. Offiziell importierte Zellen sind schreibgeschützt.",
+    "officialImport": "Offizieller Import",
+    "defectCellLabel": "Fehleranzahl für {process}, {month}",
+    "finalTotalDefects": "Endgültige Gesamtfehlerzahl"
   }
 }

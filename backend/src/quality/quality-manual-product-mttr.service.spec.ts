@@ -16,6 +16,11 @@ describe('Manual Product Quality MTTR service', () => {
     distinct: jest.fn(() => ({ exec: async () => [] })),
     bulkWrite: jest.fn(async () => ({})),
   };
+  const defectModel = {
+    find: jest.fn(() => chain([])),
+    distinct: jest.fn(() => ({ exec: async () => [] })),
+    bulkWrite: jest.fn(async () => ({})),
+  };
   const machineTypeModel = {
     find: jest.fn(() => chain([])),
     countDocuments: jest.fn(() => ({ exec: async () => 0 })),
@@ -25,6 +30,7 @@ describe('Manual Product Quality MTTR service', () => {
   };
   const service = new QualityManualProductMttrService(
     entryModel as never,
+    defectModel as never,
     machineTypeModel as never,
     occurrenceModel as never,
   );
@@ -33,6 +39,8 @@ describe('Manual Product Quality MTTR service', () => {
     jest.clearAllMocks();
     entryModel.find.mockReturnValue(chain([]));
     entryModel.distinct.mockReturnValue({ exec: async () => [] });
+    defectModel.find.mockReturnValue(chain([]));
+    defectModel.distinct.mockReturnValue({ exec: async () => [] });
     machineTypeModel.find.mockReturnValue(chain([]));
     machineTypeModel.countDocuments.mockReturnValue({ exec: async () => 0 });
     occurrenceModel.aggregate.mockReturnValue({
@@ -107,9 +115,54 @@ describe('Manual Product Quality MTTR service', () => {
     expect(result.processes).toEqual([]);
   });
 
+  it('returns official counts as read-only and manual counts as editable', async () => {
+    machineTypeModel.find.mockReturnValue(
+      chain([
+        { _id: windingId, name: 'Winding' },
+        { _id: extrusionId, name: 'Extrusion' },
+      ]),
+    );
+    defectModel.find.mockReturnValue(
+      chain([
+        {
+          machine_type_id: extrusionId,
+          month: 2,
+          defect_count: 0,
+          source: 'MANUAL',
+        },
+      ]),
+    );
+    occurrenceModel.aggregate.mockReturnValue({
+      exec: async () => [
+        {
+          _id: { process: 'Bobinage', month: 1 },
+          defectCount: 3,
+          defectCodes: ['F201'],
+        },
+      ],
+    });
+    const result = await service.getYear(2025);
+    expect(result.processes[0].months[0]).toEqual(
+      expect.objectContaining({
+        defectCount: 3,
+        defectSource: 'OFFICIAL_IMPORT',
+        defectReadOnly: true,
+      }),
+    );
+    expect(result.processes[1].months[1]).toEqual(
+      expect.objectContaining({
+        defectCount: 0,
+        defectSource: 'MANUAL',
+        defectReadOnly: false,
+      }),
+    );
+  });
+
   it('saves and clears only validated machine-type/month cells', async () => {
     const actor = new Types.ObjectId().toString();
-    machineTypeModel.countDocuments.mockReturnValue({ exec: async () => 1 });
+    machineTypeModel.find.mockReturnValue(
+      chain([{ _id: windingId, name: 'Winding' }]),
+    );
     await service.save(
       {
         year: 2031,
@@ -145,6 +198,7 @@ describe('Manual Product Quality MTTR service', () => {
         actor,
       ),
     ).rejects.toThrow('Duplicate process/month entry');
+    machineTypeModel.find.mockReturnValue(chain([]));
     await expect(
       service.save(
         {
@@ -156,5 +210,53 @@ describe('Manual Product Quality MTTR service', () => {
         actor,
       ),
     ).rejects.toThrow('Unknown machine type');
+  });
+
+  it('saves aggregate manual defects without creating occurrence records', async () => {
+    const actor = new Types.ObjectId().toString();
+    machineTypeModel.find.mockReturnValue(
+      chain([{ _id: windingId, name: 'Winding' }]),
+    );
+    occurrenceModel.aggregate.mockReturnValue({ exec: async () => [] });
+    await service.save(
+      {
+        year: 2026,
+        entries: [],
+        defectEntries: [
+          { machineTypeId: windingId.toString(), month: 1, defectCount: 0 },
+          { machineTypeId: windingId.toString(), month: 2, defectCount: null },
+        ],
+      },
+      actor,
+    );
+    expect(defectModel.bulkWrite).toHaveBeenCalledWith([
+      expect.objectContaining({
+        updateOne: expect.objectContaining({ upsert: true }),
+      }),
+      expect.objectContaining({ deleteOne: expect.any(Object) }),
+    ]);
+    expect(occurrenceModel).not.toHaveProperty('bulkWrite');
+  });
+
+  it('rejects attempts to overwrite an official imported defect cell', async () => {
+    const actor = new Types.ObjectId().toString();
+    machineTypeModel.find.mockReturnValue(
+      chain([{ _id: windingId, name: 'Winding' }]),
+    );
+    occurrenceModel.aggregate.mockReturnValue({
+      exec: async () => [{ _id: { process: 'Bobinage', month: 1 } }],
+    });
+    await expect(
+      service.save(
+        {
+          year: 2025,
+          entries: [],
+          defectEntries: [
+            { machineTypeId: windingId.toString(), month: 1, defectCount: 9 },
+          ],
+        },
+        actor,
+      ),
+    ).rejects.toThrow('Official imported defect data cannot be overwritten');
   });
 });

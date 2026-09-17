@@ -1056,6 +1056,11 @@ export const apiService = {
       month: number;
       mttrValue: number | null;
     }>;
+    defectEntries?: Array<{
+      machineTypeId: string;
+      month: number;
+      defectCount: number | null;
+    }>;
   }) => api.put('/quality/product-mttr/manual', data),
 
   // Transactional bulk user approve/reject — either every selected user

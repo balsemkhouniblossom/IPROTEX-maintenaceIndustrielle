@@ -4291,6 +4291,11 @@
     "manualSavedSuccessfully": "Valori MTTR salvati correttamente.",
     "total": "Totale",
     "monthlyTotal": "Totale mensile",
-    "finalHistoricalDefects": "Totale finale difetti storici"
+    "finalHistoricalDefects": "Totale finale difetti storici",
+    "monthlyDefectTitle": "Dati mensili dei difetti",
+    "monthlyDefectHelp": "Inserire i conteggi mensili aggregati dei difetti. Le celle importate ufficialmente sono di sola lettura.",
+    "officialImport": "Importazione ufficiale",
+    "defectCellLabel": "Numero di difetti per {process}, {month}",
+    "finalTotalDefects": "Totale finale difetti"
   }
 }
