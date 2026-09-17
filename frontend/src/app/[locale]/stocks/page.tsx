@@ -293,7 +293,7 @@ function StockTableRow({
   onHistory,
   onEdit,
   onDelete,
-}: Omit<StocksTableContentProps, "loading" | "error" | "items" | "searchTerm" | "onRetry"> & {
+}: Omit<StocksTableContentProps, "loading" | "error" | "items" | "searchTerm" | "onRetry" | "tCommon"> & {
   readonly item: StockTableItem;
 }) {
   const isDeletable = canDelete(item);

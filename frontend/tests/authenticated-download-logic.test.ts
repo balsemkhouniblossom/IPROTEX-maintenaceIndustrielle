@@ -30,10 +30,10 @@ test("downloadAuthenticatedDocument downloads file", async () => {
     };
     (globalThis as Record<string, unknown>).window = { document: mockDocument };
 
-    api.get = async () => ({
+    api.get = (async () => ({
       data: new Blob(["test content"], { type: "application/pdf" }),
       headers: { "content-type": "application/pdf" },
-    });
+    })) as unknown as typeof api.get;
 
     await assert.doesNotReject(
       downloadAuthenticatedDocument("doc123", "report.pdf"),
