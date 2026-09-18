@@ -4,20 +4,6 @@ import { CounterService } from '../../counters/counter.service';
 import { MttrSourceService } from '../../kpi/mttr-source.service';
 import { WorkOrderKpiService } from './work-order-kpi.service';
 
-function createQuery<T>(result: T) {
-  return {
-    select: jest.fn().mockReturnThis(),
-    session: jest.fn().mockReturnThis(),
-    lean: jest.fn().mockReturnThis(),
-    sort: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    populate: jest.fn().mockReturnThis(),
-    exec: jest.fn().mockResolvedValue(result),
-    and: jest.fn().mockReturnThis(),
-  };
-}
-
 function createModelFindQuery<T>(result: T) {
   return {
     select: jest.fn().mockReturnThis(),
@@ -60,6 +46,18 @@ describe('WorkOrderKpiService', () => {
     );
   });
 
+  function makeExistingKpiQuery(result: any) {
+    return {
+      sort: jest.fn().mockReturnThis(),
+      session: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(result),
+    };
+  }
+
+  function makeFindByIdAndUpdate(result: any) {
+    return { exec: jest.fn().mockResolvedValue(result) };
+  }
+
   describe('updateKpiForMachine', () => {
     it('returns early when machineId is missing', async () => {
       await service.updateKpiForMachine(undefined);
@@ -81,18 +79,14 @@ describe('WorkOrderKpiService', () => {
       ] as any;
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 120 } });
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(null),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery(null));
+      counterService.getNextSequence.mockResolvedValue(5);
 
       await service.updateKpiForMachine(machineId);
 
       expect(kpiModel.create).toHaveBeenCalled();
-      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
-      expect(payload.machine_id).toBe(new Types.ObjectId(machineId));
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0][0];
+      expect(payload.machine_id).toEqual(new Types.ObjectId(machineId));
       expect(payload.completed_corrective).toBe(2);
       expect(payload.completed_preventive).toBe(1);
     });
@@ -104,12 +98,8 @@ describe('WorkOrderKpiService', () => {
       ] as any;
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId(), kpi_id: 'KPI-001' }),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery({ _id: new Types.ObjectId(), kpi_id: 'KPI-001' }));
+      (kpiModel.findByIdAndUpdate as jest.Mock).mockReturnValue(makeFindByIdAndUpdate(null));
 
       await service.updateKpiForMachine(machineId);
       expect(kpiModel.findByIdAndUpdate).toHaveBeenCalled();
@@ -120,12 +110,7 @@ describe('WorkOrderKpiService', () => {
       const orders = [{ _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() }] as any;
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(null),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery(null));
       counterService.getNextSequence.mockResolvedValue(5);
 
       await service.updateKpiForMachine(machineId);
@@ -140,15 +125,11 @@ describe('WorkOrderKpiService', () => {
       ] as any;
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 120 } });
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(null),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery(null));
+      counterService.getNextSequence.mockResolvedValue(5);
 
       await service.updateKpiForMachine(machineId);
-      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0][0];
       expect(payload.completed_corrective).toBe(1);
       expect(payload.completed_preventive).toBe(1);
     });
@@ -160,16 +141,11 @@ describe('WorkOrderKpiService', () => {
       ] as any;
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: null } });
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(null),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery(null));
+      counterService.getNextSequence.mockResolvedValue(5);
 
       await service.updateKpiForMachine(machineId);
-      expect(kpiModel.create).toHaveBeenCalled();
-      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0][0];
       expect(payload.mttr_value).toBe(0);
       expect(payload.availability_rate).toBe(100);
     });
@@ -181,15 +157,11 @@ describe('WorkOrderKpiService', () => {
       ] as any;
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(null),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery(null));
+      counterService.getNextSequence.mockResolvedValue(5);
 
       await service.updateKpiForMachine(machineId);
-      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0][0];
       expect(payload.mtbf_value).toBe(0);
     });
 
@@ -199,14 +171,11 @@ describe('WorkOrderKpiService', () => {
       workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
       mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
       const existingKpi = { _id: new Types.ObjectId(), kpi_id: 'KPI-001' };
-      const existingKpiQuery = {
-        sort: jest.fn().mockReturnThis(),
-        session: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue(existingKpi),
-      };
-      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      (kpiModel.findOne as jest.Mock).mockReturnValue(makeExistingKpiQuery(existingKpi));
+      (kpiModel.findByIdAndUpdate as jest.Mock).mockReturnValue(makeFindByIdAndUpdate(null));
 
       await service.updateKpiForMachine(machineId);
+
       expect(kpiModel.findByIdAndUpdate).toHaveBeenCalled();
     });
   });

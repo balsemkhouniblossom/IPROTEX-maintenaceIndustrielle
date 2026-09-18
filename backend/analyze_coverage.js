@@ -37,49 +37,25 @@ const allPatterns = exclusionValue.split(',').map(p => p.trim()).filter(p => p.l
 console.log('Patterns: ' + allPatterns.length);
 
 // Normalize LCOV paths and match against patterns
-// LCOV paths use backslashes (e.g. src\app.controller.ts)
-// Patterns use forward slashes (e.g. backend/src/**/*.ts)
+// LCOV paths are relative to backend/ (e.g. src\app.controller.ts)
+// Patterns use project-relative paths (e.g. backend/src/**/*.ts)
+// Prepend 'backend/' to LCOV paths for correct matching
 function isExcluded(filePath, patterns) {
-  const fp = filePath.replace(/\\/g, '/').toLowerCase();
+  const fp = ('backend/' + filePath).replace(/\\/g, '/').toLowerCase();
   const basename = path.basename(filePath).toLowerCase();
 
   for (const pattern of patterns) {
     const np = pattern.replace(/\\/g, '/').toLowerCase();
 
-    // Extract filename from pattern (last segment after /)
-    const patternBasename = np.split('/').pop();
-
-    // Check if basename matches pattern basename (with wildcards)
-    if (patternBasename.includes('*')) {
-      // Convert wildcard basename to regex
-      let regexStr = patternBasename
-        .replace(/\./g, '\\.')
-        .replace(/\*/g, '[^/]*');
-      try {
-        const regex = new RegExp('^' + regexStr + '$', 'i');
-        if (regex.test(basename)) return true;
-      } catch (e) { /* skip */ }
-    } else {
-      if (basename === patternBasename) return true;
-    }
-
-    // Check full path match for non-wildcard patterns
-    if (!np.includes('*')) {
-      if (fp === np || fp.endsWith('/' + np)) return true;
-    }
-
-    // **/wildcard: check if fp ends with pattern after **/
+    // **/wildcard: use full path matching first (more accurate)
     if (np.includes('**/')) {
       const parts = np.split('**/');
-      const before = parts[0]; // path before **/
-      const after = parts[1]; // path after **/
-
-      // Check if fp starts with before and ends with after (with **/ matching anything in between)
+      const before = parts[0];
+      const after = parts[1];
       const afterSegments = after ? after.split('/') : [];
       const fpSegments = fp.split('/');
 
       if (afterSegments.length > 0) {
-        // Check if fp ends with the after pattern
         const lastFew = fpSegments.slice(-afterSegments.length);
         let match = true;
         for (let i = 0; i < afterSegments.length; i++) {
@@ -90,6 +66,26 @@ function isExcluded(filePath, patterns) {
       } else if (fp.includes(before + (before ? '/' : ''))) {
         return true;
       }
+      continue;
+    }
+
+    // Basename wildcard: only if pattern has no directory prefix
+    const patternBasename = np.split('/').pop();
+    if (np.split('/').length === 1 && patternBasename.includes('*')) {
+      let regexStr = patternBasename
+        .replace(/\./g, '\\.')
+        .replace(/\*/g, '[^/]*');
+      try {
+        const regex = new RegExp('^' + regexStr + '$', 'i');
+        if (regex.test(basename)) return true;
+      } catch (e) { /* skip */ }
+    } else if (np.split('/').length === 1 && basename === patternBasename) {
+      return true;
+    }
+
+    // Full path match for non-wildcard patterns
+    if (!np.includes('*')) {
+      if (fp === np || fp.endsWith('/' + np)) return true;
     }
   }
   return false;
@@ -125,7 +121,7 @@ if (includedFiles.length > 0) {
     const uncovered = f.LF - f.LH;
     const pct = f.LF > 0 ? ((f.LH / f.LF) * 100).toFixed(1) : '0.0';
     runningTotal += uncovered;
-    console.log(f.uncovered.toString().padStart(5) + ' uncov | ' + pct.padStart(6) + '% | ' + f.LF.toString().padStart(5) + ' LF | ' + f.file);
+    console.log(uncovered.toString().padStart(5) + ' uncov | ' + pct.padStart(6) + '% | ' + f.LF.toString().padStart(5) + ' LF | ' + f.file);
   }
   console.log('Top 40 total uncovered: ' + runningTotal);
 

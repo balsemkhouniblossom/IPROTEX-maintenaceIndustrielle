@@ -19,7 +19,7 @@ describe('WorkOrderCommandService', () => {
     db: { startSession: jest.Mock<any, any, any> };
     findByIdAndUpdate: jest.Mock<any, any, any>;
     findByIdAndDelete: jest.Mock<any, any, any>;
-  };
+  } & jest.Mock<any, any, any>;
   let counterService: { getNextSequence: jest.Mock<any, any, any> };
   let notificationService: { notifyCreated: jest.Mock<any, any, any> };
   let reportService: { ensureAutoInterventionReport: jest.Mock<any, any, any> };
@@ -30,11 +30,11 @@ describe('WorkOrderCommandService', () => {
   let kpiService: { updateKpiForMachine: jest.Mock<any, any, any> };
 
   beforeEach(() => {
-    workOrderModel = {
+    workOrderModel = Object.assign(jest.fn(), {
       db: { startSession: jest.fn() },
       findByIdAndUpdate: jest.fn(),
       findByIdAndDelete: jest.fn(),
-    };
+    });
     counterService = { getNextSequence: jest.fn() };
     notificationService = { notifyCreated: jest.fn() };
     reportService = { ensureAutoInterventionReport: jest.fn() };
@@ -60,9 +60,7 @@ describe('WorkOrderCommandService', () => {
       const session = { withTransaction: jest.fn().mockResolvedValue({ _id: new Types.ObjectId(), status: 'pending' }), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
       const savedWO = { _id: new Types.ObjectId(), status: 'pending' };
-      const createModel = jest.fn().mockResolvedValue(savedWO);
-      const queryBuilder = { save: createModel, ...createQuery(null) };
-      (WorkOrder as any).mockImplementation(() => queryBuilder);
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue(savedWO) }));
 
       await service.create(dto);
       expect(counterService.getNextSequence).toHaveBeenCalledWith('work_order');
@@ -72,7 +70,7 @@ describe('WorkOrderCommandService', () => {
       const dto = { ot_id: 'WO-001', type_maintenance: 'preventive' } as any;
       const session = { withTransaction: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }) }));
 
       await service.create(dto);
       expect(counterService.getNextSequence).not.toHaveBeenCalled();
@@ -82,7 +80,7 @@ describe('WorkOrderCommandService', () => {
       const dto = { ot_id: 'WO-001' } as any;
       const session = { withTransaction: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
 
       await service.create(dto);
       expect(dto.date_created).toBeDefined();
@@ -92,7 +90,7 @@ describe('WorkOrderCommandService', () => {
       const dto = { ot_id: 'WO-001', date_start: '2026-01-15' } as any;
       const session = { withTransaction: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
 
       await service.create(dto);
       expect(dto.due_date).toBe('2026-01-15');
@@ -102,7 +100,7 @@ describe('WorkOrderCommandService', () => {
       const dto = { ot_id: 'WO-001', due_date: '2026-02-01' } as any;
       const session = { withTransaction: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
 
       await service.create(dto);
       expect(dto.scheduled_date).toBe('2026-02-01');
@@ -112,7 +110,7 @@ describe('WorkOrderCommandService', () => {
       const dto = { ot_id: 'WO-001', machine_id: 'm1', plan_id: 'p1', due_date: '2026-02-01' } as any;
       const session = { withTransaction: jest.fn().mockResolvedValue({ _id: new Types.ObjectId(), status: 'pending' }), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
 
       await service.create(dto);
       expect(preventiveSchedulingService.assertNoDuplicatePreventiveOccurrence).toHaveBeenCalled();
@@ -125,7 +123,7 @@ describe('WorkOrderCommandService', () => {
         endSession: jest.fn(),
       };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue({}) }));
 
       await service.create(dto);
       expect(session.endSession).toHaveBeenCalled();
@@ -136,7 +134,7 @@ describe('WorkOrderCommandService', () => {
       const savedWO = { _id: new Types.ObjectId(), status: 'pending', ot_id: 'WO-001' };
       const session = { withTransaction: jest.fn().mockResolvedValue(savedWO), endSession: jest.fn() };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      (WorkOrder as any).mockImplementation(() => ({ save: jest.fn().mockResolvedValue(savedWO) }));
+      workOrderModel.mockImplementation(() => ({ save: jest.fn().mockResolvedValue(savedWO) }));
 
       const result = await service.create(dto);
       expect(result).toBeDefined();
@@ -151,7 +149,7 @@ describe('WorkOrderCommandService', () => {
         endSession: jest.fn(),
       };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      workOrderModel.findByIdAndUpdate.mockResolvedValue(null);
+      workOrderModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
 
       const result = await service.update('nonexistent', { status: 'completed' } as any);
       expect(result).toBeNull();
@@ -164,7 +162,7 @@ describe('WorkOrderCommandService', () => {
         endSession: jest.fn(),
       };
       workOrderModel.db.startSession.mockResolvedValue(session);
-      workOrderModel.findByIdAndUpdate.mockResolvedValue(updatedWO);
+      workOrderModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(updatedWO) });
 
       const result = await service.update('wo-1', { status: 'pending' } as any);
       expect(result).not.toBeNull();
@@ -174,14 +172,14 @@ describe('WorkOrderCommandService', () => {
   describe('remove', () => {
     it('deletes and returns work order', async () => {
       const removed = { _id: new Types.ObjectId(), ot_id: 'WO-001' };
-      workOrderModel.findByIdAndDelete.mockResolvedValue(removed);
+      workOrderModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue(removed) });
       const result = await service.remove('wo-1');
       expect(result).not.toBeNull();
       expect(result!.ot_id).toBe('WO-001');
     });
 
     it('returns null when nothing to delete', async () => {
-      workOrderModel.findByIdAndDelete.mockResolvedValue(null);
+      workOrderModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
       const result = await service.remove('nonexistent');
       expect(result).toBeNull();
     });

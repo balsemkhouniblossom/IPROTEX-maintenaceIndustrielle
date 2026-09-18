@@ -1,9 +1,25 @@
 import { Types } from 'mongoose';
 import { WorkOrderAssistantContextService } from './work-order-assistant-context.service';
 
-function createQuery<T>(result: T) {
+function createPanneFindQuery<T>(result: T) {
   return {
-    find: jest.fn().mockResolvedValue(result),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+  };
+}
+
+function createSolutionFindQuery<T>(result: T) {
+  return {
+    populate: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+  };
+}
+
+function createDocumentFindQuery<T>(result: T) {
+  return {
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
   };
 }
 
@@ -20,9 +36,11 @@ describe('WorkOrderAssistantContextService', () => {
   beforeEach(() => {
     panneModel = { find: jest.fn() };
     panneSolutionModel = {
-      find: jest.fn(),
+      find: jest.fn().mockReturnValue(createSolutionFindQuery([])),
     };
-    documentModel = { find: jest.fn() };
+    documentModel = {
+      find: jest.fn().mockReturnValue(createDocumentFindQuery([])),
+    };
     service = new WorkOrderAssistantContextService(
       panneModel as any,
       panneSolutionModel as any,
@@ -32,7 +50,7 @@ describe('WorkOrderAssistantContextService', () => {
 
   describe('getCorrectiveAssistant', () => {
     it('returns empty pannes and documents when no data exists', async () => {
-      panneModel.find.mockResolvedValue([]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([]));
       const result = await service.getCorrectiveAssistant('some-machine-id');
       expect(result.machineId).toBe('some-machine-id');
       expect(result.pannes).toEqual([]);
@@ -40,7 +58,7 @@ describe('WorkOrderAssistantContextService', () => {
     });
 
     it('returns machineId null when called without machineId', async () => {
-      panneModel.find.mockResolvedValue([]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([]));
       const result = await service.getCorrectiveAssistant(undefined);
       expect(result.machineId).toBeUndefined();
       expect(documentModel.find).not.toHaveBeenCalled();
@@ -56,8 +74,8 @@ describe('WorkOrderAssistantContextService', () => {
         solution_recommandee: 'Some solution',
       };
 
-      panneModel.find.mockResolvedValue([panne]);
-      panneSolutionModel.find.mockResolvedValue([solution]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([panne]));
+      panneSolutionModel.find.mockReturnValue(createSolutionFindQuery([solution]));
 
       const result = await service.getCorrectiveAssistant('machine-1');
 
@@ -82,8 +100,8 @@ describe('WorkOrderAssistantContextService', () => {
         file_path: '/docs/other.pdf',
       };
 
-      panneModel.find.mockResolvedValue([]);
-      documentModel.find.mockResolvedValue([maintenanceDoc, otherDoc]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([]));
+      documentModel.find.mockReturnValue(createDocumentFindQuery([maintenanceDoc, otherDoc]));
 
       const result = await service.getCorrectiveAssistant(machineId);
 
@@ -92,7 +110,7 @@ describe('WorkOrderAssistantContextService', () => {
     });
 
     it('does not query documents when machineId is invalid ObjectId', async () => {
-      panneModel.find.mockResolvedValue([]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([]));
       await service.getCorrectiveAssistant('invalid-object-id');
       expect(documentModel.find).not.toHaveBeenCalled();
     });
@@ -109,8 +127,8 @@ describe('WorkOrderAssistantContextService', () => {
         solution_recommandee: 'solution',
       };
 
-      panneModel.find.mockResolvedValue([panne1, panne2]);
-      panneSolutionModel.find.mockResolvedValue([solution]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([panne1, panne2]));
+      panneSolutionModel.find.mockReturnValue(createSolutionFindQuery([solution]));
 
       const result = await service.getCorrectiveAssistant('machine-1');
 
@@ -124,9 +142,9 @@ describe('WorkOrderAssistantContextService', () => {
     it('returns empty documents for machine with no maintenance docs', async () => {
       const machineId = new Types.ObjectId().toString();
       const panne = { _id: new Types.ObjectId(), code_panne: 'P1' };
-      panneModel.find.mockResolvedValue([panne]);
-      panneSolutionModel.find.mockResolvedValue([]);
-      documentModel.find.mockResolvedValue([]);
+      panneModel.find.mockReturnValue(createPanneFindQuery([panne]));
+      panneSolutionModel.find.mockReturnValue(createSolutionFindQuery([]));
+      documentModel.find.mockReturnValue(createDocumentFindQuery([]));
 
       const result = await service.getCorrectiveAssistant(machineId);
       expect(result.documents).toHaveLength(0);

@@ -58,6 +58,7 @@ describe('WorkOrderQueryService', () => {
     });
 
     it('falls back without populate on error', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
       const mockWO = { _id: new Types.ObjectId() };
       const rejectedQuery = {
         ...createQuery([mockWO]),
@@ -69,6 +70,7 @@ describe('WorkOrderQueryService', () => {
 
       const result = await service.findAll(1, 10, 0, {});
       expect(result.items).toHaveLength(1);
+      consoleSpy.mockRestore();
     });
 
     it('passes page, limit, skip to query', async () => {
@@ -86,14 +88,16 @@ describe('WorkOrderQueryService', () => {
   describe('findOne', () => {
     it('returns a work order by id with populate', async () => {
       const mockWO = { _id: new Types.ObjectId(), ot_id: 'WO-001' };
-      workOrderModel.findById.mockResolvedValue(mockWO);
+      const findByIdQuery = createQuery(mockWO);
+      workOrderModel.findById.mockReturnValue(findByIdQuery);
 
       const result = await service.findOne(mockWO._id.toString());
       expect(result).not.toBeNull();
     });
 
     it('returns null when work order not found', async () => {
-      workOrderModel.findById.mockResolvedValue(null);
+      const findByIdQuery = createQuery(null);
+      workOrderModel.findById.mockReturnValue(findByIdQuery);
       const result = await service.findOne('non-existent-id');
       expect(result).toBeNull();
     });
