@@ -112,6 +112,25 @@ describe('WorkOrderDashboardQueryService', () => {
       expect(result.machineId).toBe(machineId);
       expect(result.sections.preventivePlan).toEqual([]);
     });
+
+    it('returns preventive plan summary with orders grouped by plan', async () => {
+      const machine = { _id: new Types.ObjectId(), machine_id: 'M-1' };
+      const module = { _id: new Types.ObjectId(), module_id: 'MOD-1', localisation: 'Building A' };
+      const plan = { _id: new Types.ObjectId(), plan_id: 'PLAN-1', maintenance_code: 'MC-1', frequence: 1, unite_frequence: 'monthly', frequence_label: 'Monthly' };
+      const order = { _id: new Types.ObjectId(), plan_id: plan._id, status: 'scheduled', due_date: new Date(), execution_date: null, date_start: null, date_closed: null, date_end: null, date_created: null };
+
+      machineModel.findById.mockReturnValue(chain(machine));
+      moduleModel.find.mockReturnValue(chain([module]));
+      maintenancePlanModel.find.mockReturnValue(chain([plan]));
+      workOrderModel.find.mockReturnValue(chain([order]));
+
+      const result = await service.getMachinePreventiveStates(machineId);
+
+      expect(result.machineId).toBe(machineId);
+      expect(result.sections).toBeDefined();
+      expect(result.sections.preventivePlan).toHaveLength(1);
+      expect(result.sections.preventivePlan[0].plan).toBeDefined();
+    });
   });
 
   describe('getDashboardCalendarWidget', () => {
@@ -132,6 +151,29 @@ describe('WorkOrderDashboardQueryService', () => {
         }),
         expect.anything(),
       );
+    });
+
+    it('classifies work orders into time buckets by due date', async () => {
+      const today = new Date('2026-09-18T12:00:00.000Z');
+      const yesterday = new Date('2026-09-17T12:00:00.000Z');
+      const nextWeek = new Date('2026-09-25T12:00:00.000Z');
+      const nextMonth = new Date('2026-10-18T12:00:00.000Z');
+
+      workOrderModel.find.mockReturnValue(
+        chain([
+          { _id: new Types.ObjectId(), ot_id: 'WO-1', status: 'pending', due_date: yesterday },
+          { _id: new Types.ObjectId(), ot_id: 'WO-2', status: 'pending', due_date: nextWeek },
+          { _id: new Types.ObjectId(), ot_id: 'WO-3', status: 'pending', due_date: nextMonth },
+        ]),
+      );
+
+      const result = await service.getDashboardCalendarWidget();
+
+      expect(result.counts.overdue).toBe(1);
+      expect(result.counts.nextWeek).toBe(1);
+      expect(result.counts.nextMonth).toBe(1);
+      expect(result.overdue).toHaveLength(1);
+      expect(result.nextWeek).toHaveLength(1);
     });
   });
 
