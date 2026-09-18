@@ -6,22 +6,31 @@ import { NotificationCenterService } from '../../notification-center/notificatio
 
 describe('WorkOrderNotificationService', () => {
   let service: WorkOrderNotificationService;
-  let notificationCenterService: { createIfNotExists: ReturnType<typeof jest.fn> };
+  let notificationCenterService: {
+    createIfNotExists: ReturnType<typeof jest.fn>;
+  };
 
   beforeEach(() => {
     notificationCenterService = { createIfNotExists: jest.fn() };
-    service = new WorkOrderNotificationService(notificationCenterService as any);
+    service = new WorkOrderNotificationService(
+      notificationCenterService as any,
+    );
   });
 
   describe('notifyCreated', () => {
     it('returns null when technician_id is missing', async () => {
       const result = await service.notifyCreated({});
       expect(result).toBeNull();
-      expect(notificationCenterService.createIfNotExists).not.toHaveBeenCalled();
+      expect(
+        notificationCenterService.createIfNotExists,
+      ).not.toHaveBeenCalled();
     });
 
     it('returns null when technician_id is an object without toString', async () => {
-      const result = await service.notifyCreated({ _id: '123', machine_id: '456' });
+      const result = await service.notifyCreated({
+        _id: '123',
+        machine_id: '456',
+      });
       expect(result).toBeNull();
     });
 

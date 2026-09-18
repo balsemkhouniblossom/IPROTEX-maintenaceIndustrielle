@@ -115,9 +115,30 @@ describe('WorkOrderDashboardQueryService', () => {
 
     it('returns preventive plan summary with orders grouped by plan', async () => {
       const machine = { _id: new Types.ObjectId(), machine_id: 'M-1' };
-      const module = { _id: new Types.ObjectId(), module_id: 'MOD-1', localisation: 'Building A' };
-      const plan = { _id: new Types.ObjectId(), plan_id: 'PLAN-1', maintenance_code: 'MC-1', frequence: 1, unite_frequence: 'monthly', frequence_label: 'Monthly' };
-      const order = { _id: new Types.ObjectId(), plan_id: plan._id, status: 'scheduled', due_date: new Date(), execution_date: null, date_start: null, date_closed: null, date_end: null, date_created: null };
+      const module = {
+        _id: new Types.ObjectId(),
+        module_id: 'MOD-1',
+        localisation: 'Building A',
+      };
+      const plan = {
+        _id: new Types.ObjectId(),
+        plan_id: 'PLAN-1',
+        maintenance_code: 'MC-1',
+        frequence: 1,
+        unite_frequence: 'monthly',
+        frequence_label: 'Monthly',
+      };
+      const order = {
+        _id: new Types.ObjectId(),
+        plan_id: plan._id,
+        status: 'scheduled',
+        due_date: new Date(),
+        execution_date: null,
+        date_start: null,
+        date_closed: null,
+        date_end: null,
+        date_created: null,
+      };
 
       machineModel.findById.mockReturnValue(chain(machine));
       moduleModel.find.mockReturnValue(chain([module]));
@@ -161,9 +182,24 @@ describe('WorkOrderDashboardQueryService', () => {
 
       workOrderModel.find.mockReturnValue(
         chain([
-          { _id: new Types.ObjectId(), ot_id: 'WO-1', status: 'pending', due_date: yesterday },
-          { _id: new Types.ObjectId(), ot_id: 'WO-2', status: 'pending', due_date: nextWeek },
-          { _id: new Types.ObjectId(), ot_id: 'WO-3', status: 'pending', due_date: nextMonth },
+          {
+            _id: new Types.ObjectId(),
+            ot_id: 'WO-1',
+            status: 'pending',
+            due_date: yesterday,
+          },
+          {
+            _id: new Types.ObjectId(),
+            ot_id: 'WO-2',
+            status: 'pending',
+            due_date: nextWeek,
+          },
+          {
+            _id: new Types.ObjectId(),
+            ot_id: 'WO-3',
+            status: 'pending',
+            due_date: nextMonth,
+          },
         ]),
       );
 

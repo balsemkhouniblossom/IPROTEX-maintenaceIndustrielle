@@ -1,8 +1,5 @@
 import { Types } from 'mongoose';
-import {
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { WorkOrderAssignmentService } from './work-order-assignment.service';
 
 describe('WorkOrderAssignmentService', () => {
@@ -41,7 +38,9 @@ describe('WorkOrderAssignmentService', () => {
         session: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue(null),
       });
-      workOrderModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      workOrderModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
       await expect(
         service.claimForTechnician({
           technicianId: new Types.ObjectId().toString(),
@@ -77,7 +76,9 @@ describe('WorkOrderAssignmentService', () => {
         exec: jest.fn().mockResolvedValue(null),
       });
       const wo = { _id: new Types.ObjectId(), status: 'scheduled' };
-      workOrderModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(wo) });
+      workOrderModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(wo),
+      });
       const technicianId = new Types.ObjectId().toString();
       const result = await service.claimForTechnician({
         technicianId,
@@ -93,12 +94,17 @@ describe('WorkOrderAssignmentService', () => {
     });
 
     it('passes session through to queries when provided', async () => {
-      const session = { withTransaction: jest.fn(), endSession: jest.fn() } as any;
+      const session = {
+        withTransaction: jest.fn(),
+        endSession: jest.fn(),
+      } as any;
       workOrderModel.findOne.mockReturnValue({
         session: jest.fn().mockReturnThis(),
         exec: jest.fn().mockResolvedValue(null),
       });
-      workOrderModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }) });
+      workOrderModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      });
       const technicianId = new Types.ObjectId().toString();
       await service.claimForTechnician({
         technicianId,
@@ -106,8 +112,12 @@ describe('WorkOrderAssignmentService', () => {
         accessibleMachineIds: [],
         session,
       });
-      expect(workOrderModel.findOne.mock.results[0].value.session).toHaveBeenCalledWith(session);
-      expect(workOrderModel.findOneAndUpdate.mock.calls[0][2].session).toBe(session);
+      expect(
+        workOrderModel.findOne.mock.results[0].value.session,
+      ).toHaveBeenCalledWith(session);
+      expect(workOrderModel.findOneAndUpdate.mock.calls[0][2].session).toBe(
+        session,
+      );
     });
   });
 

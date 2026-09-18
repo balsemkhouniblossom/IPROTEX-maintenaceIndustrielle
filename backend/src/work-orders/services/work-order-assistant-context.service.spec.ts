@@ -66,7 +66,12 @@ describe('WorkOrderAssistantContextService', () => {
 
     it('returns pannes with recommended solutions', async () => {
       const panneId = new Types.ObjectId();
-      const panne = { _id: panneId, code_panne: 'P001', description: 'Test panne', gravite: 'high' };
+      const panne = {
+        _id: panneId,
+        code_panne: 'P001',
+        description: 'Test panne',
+        gravite: 'high',
+      };
       const solution = {
         _id: new Types.ObjectId(),
         panne_id: panneId,
@@ -75,14 +80,18 @@ describe('WorkOrderAssistantContextService', () => {
       };
 
       panneModel.find.mockReturnValue(createPanneFindQuery([panne]));
-      panneSolutionModel.find.mockReturnValue(createSolutionFindQuery([solution]));
+      panneSolutionModel.find.mockReturnValue(
+        createSolutionFindQuery([solution]),
+      );
 
       const result = await service.getCorrectiveAssistant('machine-1');
 
       expect(result.pannes).toHaveLength(1);
       expect(result.pannes[0].id).toBe(panneId.toString());
       expect(result.pannes[0].recommendedSolutions).toHaveLength(1);
-      expect(result.pannes[0].recommendedSolutions[0].id).toBe(solution._id.toString());
+      expect(result.pannes[0].recommendedSolutions[0].id).toBe(
+        solution._id.toString(),
+      );
     });
 
     it('returns only maintenance document types', async () => {
@@ -101,7 +110,9 @@ describe('WorkOrderAssistantContextService', () => {
       };
 
       panneModel.find.mockReturnValue(createPanneFindQuery([]));
-      documentModel.find.mockReturnValue(createDocumentFindQuery([maintenanceDoc, otherDoc]));
+      documentModel.find.mockReturnValue(
+        createDocumentFindQuery([maintenanceDoc, otherDoc]),
+      );
 
       const result = await service.getCorrectiveAssistant(machineId);
 
@@ -118,8 +129,18 @@ describe('WorkOrderAssistantContextService', () => {
     it('filters panne solutions by panne_id', async () => {
       const panne1Id = new Types.ObjectId();
       const panne2Id = new Types.ObjectId();
-      const panne1 = { _id: panne1Id, code_panne: 'P1', description: 'p1', gravite: 'low' };
-      const panne2 = { _id: panne2Id, code_panne: 'P2', description: 'p2', gravite: 'med' };
+      const panne1 = {
+        _id: panne1Id,
+        code_panne: 'P1',
+        description: 'p1',
+        gravite: 'low',
+      };
+      const panne2 = {
+        _id: panne2Id,
+        code_panne: 'P2',
+        description: 'p2',
+        gravite: 'med',
+      };
       const solution = {
         _id: new Types.ObjectId(),
         panne_id: panne1Id,
@@ -128,14 +149,16 @@ describe('WorkOrderAssistantContextService', () => {
       };
 
       panneModel.find.mockReturnValue(createPanneFindQuery([panne1, panne2]));
-      panneSolutionModel.find.mockReturnValue(createSolutionFindQuery([solution]));
+      panneSolutionModel.find.mockReturnValue(
+        createSolutionFindQuery([solution]),
+      );
 
       const result = await service.getCorrectiveAssistant('machine-1');
 
       expect(result.pannes).toHaveLength(2);
-      const p1 = result.pannes.find(p => p.id === panne1Id.toString());
+      const p1 = result.pannes.find((p) => p.id === panne1Id.toString());
       expect(p1!.recommendedSolutions).toHaveLength(1);
-      const p2 = result.pannes.find(p => p.id === panne2Id.toString());
+      const p2 = result.pannes.find((p) => p.id === panne2Id.toString());
       expect(p2!.recommendedSolutions).toHaveLength(0);
     });
 
