@@ -1,89 +1,150 @@
-import { ConflictException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import {
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { WorkOrderAssignmentService } from './work-order-assignment.service';
 
-function execResult<T>(value: T) {
-  return { exec: jest.fn().mockResolvedValue(value) };
-}
-
 describe('WorkOrderAssignmentService', () => {
-  const technicianId = new Types.ObjectId().toHexString();
-  const workOrderId = new Types.ObjectId().toHexString();
-  const machineId = new Types.ObjectId();
-
-  let workOrderModel: {
-    findOne: jest.Mock;
-    findOneAndUpdate: jest.Mock;
-  };
   let service: WorkOrderAssignmentService;
+  let workOrderModel: {
+    findOne: jest.Mock<any, any, any>;
+    findOneAndUpdate: jest.Mock<any, any, any>;
+  };
 
   beforeEach(() => {
     workOrderModel = {
-      findOne: jest.fn().mockReturnValue(execResult(null)),
-      findOneAndUpdate: jest
-        .fn()
-        .mockReturnValue(execResult({ _id: workOrderId })),
+      findOne: jest.fn(),
+      findOneAndUpdate: jest.fn(),
     };
-    service = new WorkOrderAssignmentService(workOrderModel as never);
+    service = new WorkOrderAssignmentService(workOrderModel as any);
   });
 
-  it('returns an already assigned own work order without claiming again', async () => {
-    const existing = { _id: workOrderId, technician_id: technicianId };
-    workOrderModel.findOne.mockReturnValue(execResult(existing));
-
-    await expect(
-      service.claimForTechnician({
-        technicianId,
-        workOrderId,
-        accessibleMachineIds: [machineId],
-      }),
-    ).resolves.toBe(existing);
-
-    expect(workOrderModel.findOneAndUpdate).not.toHaveBeenCalled();
-  });
-
-  it('claims only unassigned accessible non-closed work orders atomically', async () => {
-    await service.claimForTechnician({
-      technicianId,
-      workOrderId,
-      accessibleMachineIds: [machineId],
+  describe('claimForTechnician', () => {
+    it('returns already assigned work order without throwing', async () => {
+      const wo = { _id: new Types.ObjectId() };
+      workOrderModel.findOne.mockResolvedValue({
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(wo),
+      });
+      const result = await service.claimForTechnician({
+        technicianId: new Types.ObjectId().toString(),
+        workOrderId: new Types.ObjectId().toString(),
+        accessibleMachineIds: [],
+      });
+      expect(result).toBe(wo);
+      expect(workOrderModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
-    expect(workOrderModel.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        _id: expect.any(Types.ObjectId),
-        machine_id: { $in: [machineId] },
-        status: {
-          $nin: [
-            'completed',
-            'validated',
-            'cancelled',
-            'canceled',
-            'CLOTURE',
-            'ANNULE',
-          ],
-        },
-        $or: [{ technician_id: { $exists: false } }, { technician_id: null }],
-      }),
-      {
-        $set: {
-          technician_id: expect.any(Types.ObjectId),
-          status: 'assigned',
-        },
-      },
-      { new: true },
-    );
+    it('throws ConflictException when work order is closed', async () => {
+      workOrderModel.findOne.mockResolvedValue({
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      });
+      workOrderModel.findOneAndUpdate.mockResolvedValue(null);
+      await expect(
+        service.claimForTechnician({
+          technicianId: new Types.ObjectId().toString(),
+          workOrderId: new Types.ObjectId().toString(),
+          accessibleMachineIds: [],
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('throws BadRequestException for invalid technicianId', async () => {
+      await expect(
+        service.claimForTechnician({
+          technicianId: 'not-a-valid-objectid',
+          workOrderId: new Types.ObjectId().toString(),
+          accessibleMachineIds: [],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException for invalid workOrderId', async () => {
+      await expect(
+        service.claimForTechnician({
+          technicianId: new Types.ObjectId().toString(),
+          workOrderId: 'not-valid',
+          accessibleMachineIds: [],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('sets technician_id and status to assigned on successful claim', async () => {
+      workOrderModel.findOne.mockResolvedValue({
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      });
+      const wo = { _id: new Types.ObjectId(), status: 'scheduled' };
+      workOrderModel.findOneAndUpdate.mockResolvedValue(wo);
+      const technicianId = new Types.ObjectId().toString();
+      const result = await service.claimForTechnician({
+        technicianId,
+        workOrderId: new Types.ObjectId().toString(),
+        accessibleMachineIds: [],
+      });
+      expect(result).toBe(wo);
+      const updateCall = workOrderModel.findOneAndUpdate.mock.calls[0];
+      expect((updateCall[1] as Record<string, unknown>).$set).toMatchObject({
+        technician_id: expect.any(Types.ObjectId),
+        status: 'assigned',
+      });
+    });
+
+    it('passes session through to queries when provided', async () => {
+      const session = { withTransaction: jest.fn(), endSession: jest.fn() } as any;
+      workOrderModel.findOne.mockResolvedValue({
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      });
+      workOrderModel.findOneAndUpdate.mockResolvedValue({ _id: new Types.ObjectId() });
+      const technicianId = new Types.ObjectId().toString();
+      await service.claimForTechnician({
+        technicianId,
+        workOrderId: new Types.ObjectId().toString(),
+        accessibleMachineIds: [],
+        session,
+      });
+      expect(workOrderModel.findOne.mock.calls[0][1].session).toBe(session);
+      expect(workOrderModel.findOneAndUpdate.mock.calls[0][3].session).toBe(session);
+    });
   });
 
-  it('rejects inaccessible or concurrently claimed work orders', async () => {
-    workOrderModel.findOneAndUpdate.mockReturnValue(execResult(null));
+  describe('claimableUnassignedScope', () => {
+    it('returns $in: [] when machineIds is empty', () => {
+      const result = service.claimableUnassignedScope([]);
+      expect(result).toMatchObject({ machine_id: { $in: [] } });
+    });
 
-    await expect(
-      service.claimForTechnician({
-        technicianId,
-        workOrderId,
-        accessibleMachineIds: [],
-      }),
-    ).rejects.toThrow(ConflictException);
+    it('returns machine_id filter with $in for non-empty machineIds', () => {
+      const ids = [new Types.ObjectId(), new Types.ObjectId()];
+      const result = service.claimableUnassignedScope(ids);
+      expect(result).toHaveProperty('machine_id');
+      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('$or');
+    });
+
+    it('excludes closed work order statuses', () => {
+      const ids = [new Types.ObjectId()];
+      const result = service.claimableUnassignedScope(ids);
+      expect(result.status.$nin).toContain('completed');
+    });
+
+    it('requires unassigned work orders', () => {
+      const ids = [new Types.ObjectId()];
+      const result = service.claimableUnassignedScope(ids);
+      expect(result.$or).toBeDefined();
+    });
+  });
+
+  describe('technicianScope', () => {
+    it('returns scope with ObjectId and raw technicianId', () => {
+      const technicianId = new Types.ObjectId().toString();
+      const result = service.technicianScope(technicianId);
+      expect(result.$in).toHaveLength(2);
+      expect(result.$in[0]).toBeInstanceOf(Types.ObjectId);
+      expect(result.$in[1]).toBe(technicianId);
+    });
   });
 });

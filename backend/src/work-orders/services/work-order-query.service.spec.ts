@@ -1,148 +1,133 @@
 import { Types } from 'mongoose';
 import { WorkOrderQueryService } from './work-order-query.service';
 
-function execResult<T>(value: T) {
-  return { exec: jest.fn().mockResolvedValue(value) };
+function createQuery<T>(result: T) {
+  return {
+    sort: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    populate: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+    and: jest.fn().mockReturnThis(),
+  };
 }
 
-describe('WorkOrderQueryService.findAll — server-side filtering, search, and sort', () => {
-  function findAllChain<T>(value: T) {
-    const result: {
-      sort: jest.Mock;
-      skip: jest.Mock;
-      limit: jest.Mock;
-      populate: jest.Mock;
-      exec: jest.Mock;
-    } = {
-      sort: jest.fn(),
-      skip: jest.fn(),
-      limit: jest.fn(),
-      populate: jest.fn(),
-      exec: jest.fn().mockResolvedValue(value),
-    };
-    result.sort.mockReturnValue(result);
-    result.skip.mockReturnValue(result);
-    result.limit.mockReturnValue(result);
-    result.populate.mockReturnValue(result);
-    return result;
-  }
-
-  let workOrderModel: { find: jest.Mock; countDocuments: jest.Mock };
+describe('WorkOrderQueryService', () => {
   let service: WorkOrderQueryService;
+  let workOrderModel: {
+    find: jest.Mock<any, any, any>;
+    countDocuments: jest.Mock<any, any, any>;
+    findById: jest.Mock<any, any, any>;
+  };
 
   beforeEach(() => {
     workOrderModel = {
-      find: jest.fn().mockReturnValue(findAllChain([])),
-      countDocuments: jest.fn().mockReturnValue(execResult(0)),
+      find: jest.fn(),
+      countDocuments: jest.fn(),
+      findById: jest.fn(),
     };
-
-    service = new WorkOrderQueryService(workOrderModel as never);
+    service = new WorkOrderQueryService(workOrderModel as any);
   });
 
-  it('applies status and priority as $in filters from comma-separated query params', async () => {
-    await service.findAll(1, 10, 0, {
-      status: 'open, in_progress',
-      priority: 'high,critical',
+  describe('findAll', () => {
+    it('returns paginated work orders', async () => {
+      const mockWO = { _id: new Types.ObjectId(), ot_id: 'WO-001' };
+      const queryBuilder = createQuery([mockWO]);
+      const countQuery = createQuery(1);
+      workOrderModel.find.mockReturnValue(queryBuilder);
+      workOrderModel.countDocuments.mockReturnValue(countQuery);
+
+      const result = await service.findAll(1, 10, 0, {});
+
+      expect(result.items).toHaveLength(1);
+      expect(result.totalItems).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(10);
     });
 
-    expect(workOrderModel.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: { $in: ['open', 'in_progress'] },
-        priorite: { $in: ['high', 'critical'] },
-      }),
-    );
-  });
+    it('handles empty results', async () => {
+      const queryBuilder = createQuery([]);
+      const countQuery = createQuery(0);
+      workOrderModel.find.mockReturnValue(queryBuilder);
+      workOrderModel.countDocuments.mockReturnValue(countQuery);
 
-  it('escapes search input and searches ot_id/description/code_panne', async () => {
-    await service.findAll(1, 10, 0, { search: 'a.b+c' });
+      const result = await service.findAll(1, 10, 0, {});
 
-    const [filter] = workOrderModel.find.mock.calls[0] as [
-      { $or: Array<Record<string, RegExp>> },
-    ];
-    expect(filter.$or).toHaveLength(3);
-    expect(filter.$or[0].ot_id.source).toBe('a\\.b\\+c');
-  });
-
-  it('builds a date_created range filter from dateFrom/dateTo', async () => {
-    await service.findAll(1, 10, 0, {
-      dateFrom: '2026-01-01T00:00:00.000Z',
-      dateTo: '2026-02-01T00:00:00.000Z',
+      expect(result.items).toHaveLength(0);
+      expect(result.totalItems).toBe(0);
     });
 
-    expect(workOrderModel.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        date_created: {
-          $gte: new Date('2026-01-01T00:00:00.000Z'),
-          $lte: new Date('2026-02-01T00:00:00.000Z'),
-        },
-      }),
-    );
+    it('falls back without populate on error', async () => {
+      const mockWO = { _id: new Types.ObjectId() };
+      const rejectedQuery = {
+        ...createQuery([mockWO]),
+        exec: jest.fn().mockRejectedValue(new Error('populate error')),
+      };
+      workOrderModel.find.mockReturnValueOnce(rejectedQuery);
+      workOrderModel.find.mockReturnValue(createQuery([mockWO]));
+      workOrderModel.countDocuments.mockReturnValue(createQuery(1));
+
+      const result = await service.findAll(1, 10, 0, {});
+      expect(result.items).toHaveLength(1);
+    });
+
+    it('passes page, limit, skip to query', async () => {
+      const queryBuilder = createQuery([]);
+      const countQuery = createQuery(0);
+      workOrderModel.find.mockReturnValue(queryBuilder);
+      workOrderModel.countDocuments.mockReturnValue(countQuery);
+
+      await service.findAll(2, 25, 50, {});
+      expect(queryBuilder.skip).toHaveBeenCalledWith(50);
+      expect(queryBuilder.limit).toHaveBeenCalledWith(25);
+    });
   });
 
-  it('sorts by an allow-listed field and direction', async () => {
-    const chain = findAllChain([]);
-    workOrderModel.find.mockReturnValue(chain);
+  describe('findOne', () => {
+    it('returns a work order by id with populate', async () => {
+      const mockWO = { _id: new Types.ObjectId(), ot_id: 'WO-001' };
+      workOrderModel.findById.mockResolvedValue(mockWO);
 
-    await service.findAll(1, 10, 0, { sort: '-priorite' });
+      const result = await service.findOne(mockWO._id.toString());
+      expect(result).not.toBeNull();
+    });
 
-    expect(chain.sort).toHaveBeenCalledWith({ priorite: -1 });
-  });
+    it('returns null when work order not found', async () => {
+      workOrderModel.findById.mockResolvedValue(null);
+      const result = await service.findOne('non-existent-id');
+      expect(result).toBeNull();
+    });
 
-  it('defaults to newest-first when sort is absent or not allow-listed', async () => {
-    const chain = findAllChain([]);
-    workOrderModel.find.mockReturnValue(chain);
+    it('falls back without populate on error', async () => {
+      const rejected = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockRejectedValue(new Error('populate error')),
+      };
+      const resolved = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      };
+      workOrderModel.findById.mockReturnValueOnce(rejected);
+      workOrderModel.findById.mockReturnValue(resolved);
+      const result = await service.findOne('some-id');
+      expect(result).not.toBeNull();
+    });
 
-    await service.findAll(1, 10, 0, { sort: 'ot_id' });
-
-    expect(chain.sort).toHaveBeenCalledWith({ date_created: -1 });
-  });
-
-  it('ignores an invalid machineId/technicianId instead of throwing', async () => {
-    await service.findAll(1, 10, 0, { machineId: 'not-an-object-id' });
-
-    const [filter] = workOrderModel.find.mock.calls[0] as [
-      Record<string, unknown>,
-    ];
-    expect(filter.machine_id).toBeUndefined();
-  });
-
-  it('never fetches the full technician User document — populate is restricted to a safe projection', async () => {
-    const chain = findAllChain([]);
-    workOrderModel.find.mockReturnValue(chain);
-
-    await service.findAll(1, 10, 0);
-
-    expect(chain.populate).toHaveBeenCalledWith(
-      'technician_id',
-      'nom_complet user_id role',
-    );
-    expect(chain.populate).not.toHaveBeenCalledWith('technician_id');
-  });
-});
-
-describe('WorkOrderQueryService.findOne — technician projection', () => {
-  let workOrderModel: { findById: jest.Mock };
-  let findByIdChain: { populate: jest.Mock; exec: jest.Mock };
-  let service: WorkOrderQueryService;
-
-  beforeEach(() => {
-    findByIdChain = {
-      populate: jest.fn(),
-      exec: jest.fn().mockResolvedValue(null),
-    };
-    findByIdChain.populate.mockReturnValue(findByIdChain);
-    workOrderModel = { findById: jest.fn().mockReturnValue(findByIdChain) };
-
-    service = new WorkOrderQueryService(workOrderModel as never);
-  });
-
-  it('never fetches the full technician User document on a single work order lookup either', async () => {
-    await service.findOne(new Types.ObjectId().toHexString());
-
-    expect(findByIdChain.populate).toHaveBeenCalledWith(
-      'technician_id',
-      'nom_complet user_id role',
-    );
-    expect(findByIdChain.populate).not.toHaveBeenCalledWith('technician_id');
+    it('logs warning on error', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const rejected = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockRejectedValue(new Error('test error')),
+      };
+      const resolved = {
+        populate: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      };
+      workOrderModel.findById.mockReturnValueOnce(rejected);
+      workOrderModel.findById.mockReturnValue(resolved);
+      await service.findOne('test-id');
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
   });
 });

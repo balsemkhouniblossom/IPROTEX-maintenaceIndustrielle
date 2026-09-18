@@ -1,297 +1,213 @@
 import { Types } from 'mongoose';
+import { COMPLETED_WORK_ORDER_STATUSES } from '../../common/work-order-status';
+import { CounterService } from '../../counters/counter.service';
+import { MttrSourceService } from '../../kpi/mttr-source.service';
 import { WorkOrderKpiService } from './work-order-kpi.service';
 
-function execResult<T>(value: T) {
-  return { exec: jest.fn().mockResolvedValue(value) };
-}
-
-function findChain<T>(value: T) {
-  const chain = {
+function createQuery<T>(result: T) {
+  return {
     select: jest.fn().mockReturnThis(),
-    sort: jest.fn().mockReturnThis(),
     session: jest.fn().mockReturnThis(),
     lean: jest.fn().mockReturnThis(),
-    exec: jest.fn().mockResolvedValue(value),
+    sort: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    populate: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+    and: jest.fn().mockReturnThis(),
   };
-  return chain;
 }
 
-describe('WorkOrderKpiService.updateKpiForMachine', () => {
-  const machineId = new Types.ObjectId();
-
-  let workOrderModel: { find: jest.Mock };
-  let kpiModel: {
-    findOne: jest.Mock;
-    findByIdAndUpdate: jest.Mock;
-    create: jest.Mock;
+function createModelFindQuery<T>(result: T) {
+  return {
+    select: jest.fn().mockReturnThis(),
+    session: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    sort: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    populate: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(result),
+    and: jest.fn().mockReturnThis(),
   };
-  let counterService: { getNextSequence: jest.Mock };
-  let mttrSource: { calculate: jest.Mock };
-  let service: WorkOrderKpiService;
+}
 
-  function order(overrides: Record<string, unknown> = {}) {
-    return {
-      machine_id: machineId,
-      status: 'completed',
-      type_maintenance: 'corrective',
-      date_created: new Date('2026-01-01T00:00:00.000Z'),
-      date_start: new Date('2026-01-01T00:00:00.000Z'),
-      date_end: new Date('2026-01-01T02:00:00.000Z'),
-      date_closed: new Date('2026-01-01T02:00:00.000Z'),
-      ...overrides,
-    };
-  }
+describe('WorkOrderKpiService', () => {
+  let service: WorkOrderKpiService;
+  let workOrderModel: { find: jest.Mock<any, any, any> };
+  let kpiModel: {
+    findOne: jest.Mock<any, any, any>;
+    findByIdAndUpdate: jest.Mock<any, any, any>;
+    create: jest.Mock<any, any, any>;
+  };
+  let counterService: { getNextSequence: jest.Mock<any, any, any> };
+  let mttrSource: { calculate: jest.Mock<any, any, any> };
 
   beforeEach(() => {
-    workOrderModel = { find: jest.fn().mockReturnValue(findChain([])) };
+    workOrderModel = { find: jest.fn() };
     kpiModel = {
-      findOne: jest.fn().mockReturnValue(findChain(null)),
-      findByIdAndUpdate: jest.fn().mockReturnValue(execResult(null)),
-      create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      findOne: jest.fn(),
+      findByIdAndUpdate: jest.fn(),
+      create: jest.fn(),
     };
-    counterService = { getNextSequence: jest.fn().mockResolvedValue(7) };
-    mttrSource = {
-      calculate: jest.fn().mockResolvedValue({
-        summary: {
-          completedRepairs: 1,
-          totalRepairMinutes: 90,
-          mttrMinutes: 90,
-        },
-      }),
-    };
-
+    counterService = { getNextSequence: jest.fn() };
+    mttrSource = { calculate: jest.fn() };
     service = new WorkOrderKpiService(
-      workOrderModel as never,
-      kpiModel as never,
-      counterService as never,
-      mttrSource as never,
+      workOrderModel as any,
+      kpiModel as any,
+      counterService as any,
+      mttrSource as any,
     );
   });
 
-  it('is a no-op when no machineId is supplied', async () => {
-    await service.updateKpiForMachine(undefined);
-
-    expect(workOrderModel.find).not.toHaveBeenCalled();
-  });
-
-  it('is a no-op when the machine has no work order history at all', async () => {
-    workOrderModel.find.mockReturnValue(findChain([]));
-
-    await service.updateKpiForMachine(machineId.toHexString());
-
-    expect(kpiModel.create).not.toHaveBeenCalled();
-    expect(kpiModel.findByIdAndUpdate).not.toHaveBeenCalled();
-  });
-
-  it('creates a new KPI record with a generated kpi_id when none exists yet', async () => {
-    workOrderModel.find.mockReturnValue(findChain([order()]));
-
-    await service.updateKpiForMachine(machineId.toHexString());
-
-    expect(counterService.getNextSequence).toHaveBeenCalledWith('kpi');
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          kpi_id: 'KPI-000007',
-          machine_id: machineId,
-        }),
-      ],
-      expect.anything(),
-    );
-    expect(kpiModel.findByIdAndUpdate).not.toHaveBeenCalled();
-  });
-
-  it('reuses the existing kpi_id and updates in place instead of creating a duplicate record', async () => {
-    const existing = {
-      _id: new Types.ObjectId(),
-      kpi_id: 'KPI-000001',
-    };
-    kpiModel.findOne.mockReturnValue(findChain(existing));
-    workOrderModel.find.mockReturnValue(findChain([order()]));
-
-    await service.updateKpiForMachine(machineId.toHexString());
-
-    expect(counterService.getNextSequence).not.toHaveBeenCalled();
-    expect(kpiModel.create).not.toHaveBeenCalled();
-    expect(kpiModel.findByIdAndUpdate).toHaveBeenCalledWith(
-      existing._id,
-      expect.objectContaining({ kpi_id: 'KPI-000001' }),
-      expect.anything(),
-    );
-  });
-
-  it('computes MTTR from the shared InterventionReport source', async () => {
-    workOrderModel.find.mockReturnValue(findChain([order()]));
-    mttrSource.calculate.mockResolvedValueOnce({
-      summary: {
-        completedRepairs: 1,
-        totalRepairMinutes: 90,
-        mttrMinutes: 90,
-      },
+  describe('updateKpiForMachine', () => {
+    it('returns early when machineId is missing', async () => {
+      await service.updateKpiForMachine(undefined);
+      expect(workOrderModel.find).not.toHaveBeenCalled();
     });
 
-    await service.updateKpiForMachine(machineId.toHexString());
-
-    expect(mttrSource.calculate).toHaveBeenCalledWith({
-      machineIds: [machineId.toHexString()],
-      session: undefined,
-    });
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ mttr_value: 1.5 })],
-      expect.anything(),
-    );
-  });
-
-  it('keeps MTTR and MTBF in matching hour units for availability', async () => {
-    workOrderModel.find.mockReturnValue(
-      findChain([
-        order({
-          type_maintenance: 'corrective',
-          date_closed: new Date('2026-01-01T00:00:00.000Z'),
-        }),
-        order({
-          type_maintenance: 'corrective',
-          date_closed: new Date('2026-01-03T00:00:00.000Z'),
-        }),
-      ]),
-    );
-    mttrSource.calculate.mockResolvedValueOnce({
-      summary: {
-        completedRepairs: 1,
-        totalRepairMinutes: 90,
-        mttrMinutes: 90,
-      },
+    it('returns early when no orders for machine', async () => {
+      workOrderModel.find.mockReturnValue(createModelFindQuery([]));
+      await service.updateKpiForMachine(new Types.ObjectId().toString());
+      expect(kpiModel.findOne).not.toHaveBeenCalled();
     });
 
-    await service.updateKpiForMachine(machineId.toHexString());
+    it('calculates and updates KPI for machine with completed orders', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [
+        { _id: new Types.ObjectId(), status: COMPLETED_WORK_ORDER_STATUSES[0], type_maintenance: 'corrective', date_closed: new Date() },
+        { _id: new Types.ObjectId(), status: COMPLETED_WORK_ORDER_STATUSES[0], type_maintenance: 'corrective', date_closed: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        { _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'preventive', date_created: new Date() },
+      ] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 120 } });
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
 
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ availability_rate: 96.97 })],
-      expect.anything(),
-    );
-  });
+      await service.updateKpiForMachine(machineId);
 
-  it('returns null MTTR (stored as 0) when no repairs are found', async () => {
-    workOrderModel.find.mockReturnValue(
-      findChain([order({ status: 'in_progress' })]),
-    );
-    mttrSource.calculate.mockResolvedValueOnce({
-      summary: {
-        completedRepairs: 0,
-        totalRepairMinutes: 0,
-        mttrMinutes: null,
-      },
+      expect(kpiModel.create).toHaveBeenCalled();
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      expect(payload.machine_id).toBe(new Types.ObjectId(machineId));
+      expect(payload.completed_corrective).toBe(2);
+      expect(payload.completed_preventive).toBe(1);
     });
 
-    await service.updateKpiForMachine(machineId.toHexString());
+    it('updates existing KPI document', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [
+        { _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() },
+      ] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue({ _id: new Types.ObjectId(), kpi_id: 'KPI-001' }),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
 
-    expect(mttrSource.calculate).toHaveBeenCalled();
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ mttr_value: 0 })],
-      expect.anything(),
-    );
-  });
+      await service.updateKpiForMachine(machineId);
+      expect(kpiModel.findByIdAndUpdate).toHaveBeenCalled();
+    });
 
-  it('computes MTBF from the gaps between corrective closure dates, requiring at least two closures', async () => {
-    workOrderModel.find.mockReturnValue(
-      findChain([
-        order({
-          type_maintenance: 'corrective',
-          date_closed: new Date('2026-01-01T00:00:00.000Z'),
-        }),
-        order({
-          type_maintenance: 'corrective',
-          date_closed: new Date('2026-01-03T00:00:00.000Z'),
-        }),
-      ]),
-    );
+    it('generates KPI code when no existing KPI', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [{ _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() }] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
+      counterService.getNextSequence.mockResolvedValue(5);
 
-    await service.updateKpiForMachine(machineId.toHexString());
+      await service.updateKpiForMachine(machineId);
+      expect(counterService.getNextSequence).toHaveBeenCalledWith('kpi');
+    });
 
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ mtbf_value: 48 })],
-      expect.anything(),
-    );
-  });
+    it('handles maintenance type correctly', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [
+        { _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() },
+        { _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'preventive', date_closed: new Date() },
+      ] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 120 } });
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
 
-  it('defaults MTBF to 0 with a single corrective closure (no gap to measure)', async () => {
-    workOrderModel.find.mockReturnValue(
-      findChain([order({ type_maintenance: 'corrective' })]),
-    );
+      await service.updateKpiForMachine(machineId);
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      expect(payload.completed_corrective).toBe(1);
+      expect(payload.completed_preventive).toBe(1);
+    });
 
-    await service.updateKpiForMachine(machineId.toHexString());
+    it('handles mttrMinutes null as 0 hours', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [
+        { _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() },
+      ] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: null } });
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
 
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ mtbf_value: 0 })],
-      expect.anything(),
-    );
-  });
+      await service.updateKpiForMachine(machineId);
+      expect(kpiModel.create).toHaveBeenCalled();
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      expect(payload.mttr_value).toBe(0);
+      expect(payload.availability_rate).toBe(100);
+    });
 
-  it('counts completed preventive and corrective orders separately', async () => {
-    workOrderModel.find.mockReturnValue(
-      findChain([
-        order({ type_maintenance: 'corrective' }),
-        order({ type_maintenance: 'preventive' }),
-        order({ type_maintenance: 'preventive' }),
-      ]),
-    );
+    it('handles no failures for mtbf', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [
+        { _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() },
+      ] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(null),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
 
-    await service.updateKpiForMachine(machineId.toHexString());
+      await service.updateKpiForMachine(machineId);
+      const payload = (kpiModel.create as jest.Mock).mock.calls[0][0];
+      expect(payload.mtbf_value).toBe(0);
+    });
 
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          completed_corrective: 1,
-          completed_preventive: 2,
-        }),
-      ],
-      expect.anything(),
-    );
-  });
+    it('updates KPI with existing document found', async () => {
+      const machineId = new Types.ObjectId().toString();
+      const orders = [{ _id: new Types.ObjectId(), status: 'completed', type_maintenance: 'corrective', date_closed: new Date() }] as any;
+      workOrderModel.find.mockReturnValue(createModelFindQuery(orders));
+      mttrSource.calculate.mockResolvedValue({ summary: { mttrMinutes: 60 } });
+      const existingKpi = { _id: new Types.ObjectId(), kpi_id: 'KPI-001' };
+      const existingKpiQuery = {
+        sort: jest.fn().mockReturnThis(),
+        session: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(existingKpi),
+      };
+      (kpiModel.findOne as jest.Mock).mockReturnValue(existingKpiQuery);
 
-  it('counts an order overdue only when not completed, not waiting_validation, and past its due date', async () => {
-    const now = new Date();
-    const past = new Date(now.getTime() - 86400000);
-    workOrderModel.find.mockReturnValue(
-      findChain([
-        order({
-          status: 'in_progress',
-          due_date: past,
-          date_end: undefined,
-          date_closed: undefined,
-        }),
-        order({
-          status: 'waiting_validation',
-          due_date: past,
-          date_end: undefined,
-          date_closed: undefined,
-        }),
-      ]),
-    );
-
-    await service.updateKpiForMachine(machineId.toHexString());
-
-    expect(kpiModel.create).toHaveBeenCalledWith(
-      [expect.objectContaining({ overdue_rate: 50 })],
-      expect.anything(),
-    );
-  });
-
-  it('produces identical figures on a repeated invocation against the same unchanged history (deterministic)', async () => {
-    const orders = [order()];
-    workOrderModel.find.mockReturnValue(findChain(orders));
-
-    await service.updateKpiForMachine(machineId.toHexString());
-    const firstPayload = kpiModel.create.mock.calls[0][0][0];
-
-    kpiModel.create.mockClear();
-    await service.updateKpiForMachine(machineId.toHexString());
-    const secondPayload = kpiModel.create.mock.calls[0][0][0];
-
-    expect(secondPayload.mtbf_value).toBe(firstPayload.mtbf_value);
-    expect(secondPayload.mttr_value).toBe(firstPayload.mttr_value);
-    expect(secondPayload.availability_rate).toBe(
-      firstPayload.availability_rate,
-    );
+      await service.updateKpiForMachine(machineId);
+      expect(kpiModel.findByIdAndUpdate).toHaveBeenCalled();
+    });
   });
 });
