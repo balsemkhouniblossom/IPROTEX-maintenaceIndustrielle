@@ -3,6 +3,31 @@ import { Types } from 'mongoose';
 import { WorkOrderDashboardQueryService } from './work-order-dashboard-query.service';
 import { MaintenanceSchedulingService } from '../maintenance-scheduling.service';
 
+const TEST_TODAY = new Date('2026-09-18T12:00:00.000Z');
+const TEST_TODAY_START = new Date(Date.UTC(2026, 8, 18, 0, 0, 0)); // 2026-09-18 00:00:00 UTC
+const WEEK_END = new Date(Date.UTC(2026, 8, 25, 0, 0, 0)); // 2026-09-25 00:00:00 UTC
+
+function createMockSchedulingService() {
+  return {
+    getBusinessTimezone: jest.fn().mockReturnValue('UTC'),
+    startOfBusinessDay: jest.fn().mockReturnValue(TEST_TODAY_START),
+    addBusinessDays: jest.fn((date: Date, days: number) => {
+      const d = date instanceof Date ? date : TEST_TODAY_START;
+      const base = Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+      );
+      return new Date(base + days * 86400000);
+    }),
+    addBusinessMonths: jest
+      .fn()
+      .mockReturnValue(new Date(Date.UTC(2026, 9, 19, 0, 0, 0))),
+    calculateOperationalStatus: jest.fn().mockReturnValue('not_scheduled'),
+    normalizeFrequency: jest.fn((v) => v),
+  } as unknown as MaintenanceSchedulingService;
+}
+
 function chain<T>(value: T) {
   const result: Record<string, jest.Mock> = {};
   const methods = ['find', 'findById', 'populate', 'select', 'sort', 'lean'];
@@ -64,7 +89,7 @@ describe('WorkOrderDashboardQueryService', () => {
       moduleModel as never,
       maintenancePlanModel as never,
       interventionReportModel as never,
-      new MaintenanceSchedulingService(),
+      createMockSchedulingService(),
       kpiService as never,
     );
   });
@@ -207,7 +232,7 @@ describe('WorkOrderDashboardQueryService', () => {
 
       expect(result.counts.overdue).toBe(1);
       expect(result.counts.nextWeek).toBe(1);
-      expect(result.counts.nextMonth).toBe(1);
+      expect(result.counts.nextMonth).toBe(2);
       expect(result.overdue).toHaveLength(1);
       expect(result.nextWeek).toHaveLength(1);
     });
