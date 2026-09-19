@@ -59,6 +59,7 @@ function text(value: CellValue): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'object' && 'richText' in value)
     return value.richText.map((part) => part.text).join('');
+  if (typeof value === 'object') return JSON.stringify(value);
   return String(value).trim();
 }
 
