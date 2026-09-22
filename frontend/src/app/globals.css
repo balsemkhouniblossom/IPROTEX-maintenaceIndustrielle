@@ -1474,12 +1474,13 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   border-right: 1px solid var(--sidebar-border);
-  padding: 32px 24px;
+  padding: 24px 16px;
   display: flex;
   flex-direction: column;
   gap: 32px;
   min-width: 0;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 @media (max-width: 1023px) {
@@ -1574,6 +1575,11 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-inline: 2px;
 }
 
 .nav-link-modern {
@@ -1593,9 +1599,6 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
 
 .nav-link-modern > span {
   min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1661,8 +1664,8 @@ html[data-theme='dark'] .themed-logo-watermark {
   color: var(--text-muted);
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.5;
   white-space: nowrap;
 }
 
@@ -1937,8 +1940,6 @@ select option {
 
 /* Nav alignment fix */
 [dir="rtl"] .nav-link-modern {
-  flex-direction: row-reverse;
-  justify-content: flex-end;
   text-align: right;
 }
 
@@ -1950,8 +1951,6 @@ select option {
 
 /* Status blocks */
 [dir="rtl"] .status-item-modern {
-  flex-direction: row-reverse;
-  justify-content: flex-end;
   text-align: right;
 }
 

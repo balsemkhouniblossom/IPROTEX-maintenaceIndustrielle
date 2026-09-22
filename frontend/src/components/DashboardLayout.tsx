@@ -53,6 +53,46 @@ type DashboardLayoutProps = Readonly<{
   headerActions?: React.ReactNode;
 }>;
 
+type SidebarItemProps = Readonly<{
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  label: string;
+  href: string;
+  active: boolean;
+  isRtl: boolean;
+  onNavigate: () => void;
+  compact?: boolean;
+  trailing?: React.ReactNode;
+}>;
+
+function SidebarItem({
+  Icon,
+  label,
+  href,
+  active,
+  isRtl,
+  onNavigate,
+  compact = false,
+  trailing,
+}: SidebarItemProps) {
+  return (
+    <Link
+      href={href}
+      className={`nav-link-modern flex-1 ${active ? "active" : ""}`}
+      onClick={onNavigate}
+      title={label}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon className={`${compact ? "h-4 w-4" : "h-5 w-5"} shrink-0`} />
+      <span
+        className={`${compact ? "text-sm" : ""} flex-1 whitespace-nowrap ${isRtl ? "text-right" : "text-left"}`}
+      >
+        {label}
+      </span>
+      {trailing}
+    </Link>
+  );
+}
+
 function DashboardLayoutBody({
   children,
   title,
@@ -61,6 +101,7 @@ function DashboardLayoutBody({
   const pathname = usePathname() || "";
   const params = useParams();
   const locale = params.locale as string;
+  const isRtl = locale === "ar";
   const tCommon = useTranslations("common");
   const tUsers = useTranslations("users");
   const t = useTranslations("sidebar");
@@ -387,7 +428,9 @@ function DashboardLayoutBody({
         items: [
           { name: t("navigation.dashboard"), href: "/", icon: HomeIcon },
           {
-            name: `${t("navigation.digitalTwin")} - ${t("navigation.factory")}`,
+            name: isRtl
+              ? t("navigation.digitalTwin")
+              : `${t("navigation.digitalTwin")} - ${t("navigation.factory")}`,
             href: "/digital-twin",
             icon: CubeIcon,
           },
@@ -566,6 +609,7 @@ function DashboardLayoutBody({
         id="dashboard-navigation"
         aria-label={tCommon("openMenu")}
         className={`sidebar-modern ${sidebarOpen ? "sidebar-open" : ""}`}
+        dir={isRtl ? "rtl" : "ltr"}
       >
         <div className="sidebar-header-modern">
           <div className="flex items-center justify-between gap-3">
@@ -626,13 +670,13 @@ function DashboardLayoutBody({
         </div>
 
         {/* Navigation */}
-        <nav className="nav-modern">
+        <nav className="nav-modern min-h-0 overflow-y-auto">
           {Array.isArray(navigation) &&
             navigation.map((section) => (
-              <div key={section.domain} className="mb-4">
+              <div key={section.domain} className="mb-5">
                 {/* Domain Section Header */}
                 <div
-                  className="nav-section-label text-xs font-bold uppercase tracking-widest mb-3 px-4"
+                  className={`nav-section-label mt-5 mb-1 px-3 text-xs font-medium tracking-wide ${isRtl ? "text-right" : "text-left"}`}
                   title={t(section.domainKey)}
                 >
                   {t(section.domainKey)}
@@ -657,30 +701,25 @@ function DashboardLayoutBody({
                     return (
                       <div key={item.href}>
                         <div className="flex items-center">
-                          <Link
+                          <SidebarItem
+                            Icon={Icon}
+                            label={item.name}
                             href={withLocale(item.href)}
-                            className={`nav-link-modern flex-1 ${isActive ? "active" : ""}`}
-                            onClick={() => setSidebarOpen(false)}
-                            title={item.name}
-                            aria-current={isActive ? "page" : undefined}
-                          >
-                            <Icon className="h-5 w-5 shrink-0" />
-                            <span className="min-w-0 flex-1 truncate">
-                              {item.name}
-                            </span>
-                            {item.href === "/users" &&
-                              pendingApprovalCount > 0 && (
+                            active={isActive}
+                            isRtl={isRtl}
+                            onNavigate={() => setSidebarOpen(false)}
+                            trailing={
+                              item.href === "/users" && pendingApprovalCount > 0 ? (
                                 <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                                  {pendingApprovalCount > 99
-                                    ? "99+"
-                                    : pendingApprovalCount}
+                                  {pendingApprovalCount > 99 ? "99+" : pendingApprovalCount}
                                 </span>
-                              )}
-                          </Link>
+                              ) : undefined
+                            }
+                          />
                           {hasChildren && (
                             <button
                               type="button"
-                              className="toolbar-action mr-2 h-7 w-7 p-1"
+                              className="toolbar-action ms-2 h-7 w-7 shrink-0 p-1"
                               aria-label={
                                 isExpanded
                                   ? tCommon("collapse")
@@ -705,7 +744,7 @@ function DashboardLayoutBody({
                               {isExpanded ? (
                                 <ChevronDownIcon className="h-4 w-4" />
                               ) : (
-                                <ChevronRightIcon className="h-4 w-4" />
+                                <ChevronRightIcon className={`h-4 w-4 ${isRtl ? "rotate-180" : ""}`} />
                               )}
                             </button>
                           )}
@@ -719,21 +758,16 @@ function DashboardLayoutBody({
                                 pathname === childPath ||
                                 pathname.startsWith(`${childPath}/`);
                               return (
-                                <Link
+                                <SidebarItem
                                   key={child.href}
+                                  Icon={ChildIcon}
+                                  label={child.name}
                                   href={withLocale(child.href)}
-                                  className={`nav-link-modern ${childActive ? "active" : ""}`}
-                                  onClick={() => setSidebarOpen(false)}
-                                  title={child.name}
-                                  aria-current={
-                                    childActive ? "page" : undefined
-                                  }
-                                >
-                                  <ChildIcon className="h-4 w-4 shrink-0" />
-                                  <span className="min-w-0 flex-1 truncate text-sm">
-                                    {child.name}
-                                  </span>
-                                </Link>
+                                  active={childActive}
+                                  isRtl={isRtl}
+                                  compact
+                                  onNavigate={() => setSidebarOpen(false)}
+                                />
                               );
                             })}
                           </div>
