@@ -227,7 +227,10 @@ test("Users page wires the SavedViewsBar to the users page-key and replays a sav
   const pageSource = readSource(USERS_PAGE);
   const hookSource = readSource(USERS_SAVED_VIEWS_HOOK);
 
-  assert.match(pageSource, /import \{ SavedViewsBar \} from '@\/components\/SavedViewsBar';/);
+  assert.match(
+    pageSource,
+    /import \{ SavedViewsBar \} from ["']@\/components\/SavedViewsBar["'];/,
+  );
   assert.match(hookSource, /apiService\.getSavedViews\('users'\)/);
   assert.match(hookSource, /pageKey: 'users'/);
   assert.match(hookSource, /function applySavedView\(view: SavedView\)/);

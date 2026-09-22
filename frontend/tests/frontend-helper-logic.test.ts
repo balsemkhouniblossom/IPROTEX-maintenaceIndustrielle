@@ -97,7 +97,10 @@ test("existing user photo uploads send the user id through the upload endpoint",
     "utf8",
   );
 
-  assert.match(source, /uploadData\.append\('userId', getActionId\(editingUser\)\)/);
+  assert.match(
+    source,
+    /uploadData\.append\(["']userId["'], getActionId\(editingUser\)\)/,
+  );
   assert.doesNotMatch(
     source,
     /apiService\.updateUser\(getActionId\(editingUser\),\s*\{\s*photo:\s*photoPath\s*\}\)/,
