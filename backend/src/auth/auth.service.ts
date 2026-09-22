@@ -48,6 +48,7 @@ import {
   SUPPORTED_PROFILE_LANGUAGES,
 } from './dto/complete-google-profile.dto';
 import { FeatureFlagsConfigService } from '../config/feature-flags.config';
+import { isTrustedIprotexEmail } from './trusted-email.util';
 
 interface JwtPayload {
   email?: string;
@@ -101,15 +102,17 @@ export interface GoogleUserProfile {
 
 export interface RegisterResult {
   success: true;
-  code: 'ACCOUNT_CREATED_PENDING_APPROVAL';
+  code:
+    | 'ACCOUNT_CREATED_PENDING_APPROVAL'
+    | 'ACCOUNT_CREATED_AWAITING_EMAIL_VERIFICATION';
   requiresEmailVerification: true;
-  requiresAdminApproval: true;
+  requiresAdminApproval: boolean;
   user: {
     email: string;
     role: Role.OPERATOR | Role.TECHNICIAN;
     is_verified: false;
     is_active: false;
-    approval_status: ApprovalStatus.PENDING;
+    approval_status: ApprovalStatus;
   };
   message: string;
 }
@@ -226,13 +229,26 @@ export class AuthService {
       return this.buildVerificationResponse(user, true);
     }
 
+    const automaticallyApproved =
+      isTrustedIprotexEmail(user.email) &&
+      resolveApprovalStatus(user) !== ApprovalStatus.REJECTED;
+
     await this.userModel.findByIdAndUpdate(payload.userId, {
       is_verified: true,
+      ...(automaticallyApproved
+        ? {
+            approval_status: ApprovalStatus.APPROVED,
+            is_active: true,
+            approved_at: user.approved_at ?? new Date(),
+          }
+        : {}),
     });
 
     const verifiedUser = {
-      approval_status: user.approval_status,
-      is_active: user.is_active,
+      approval_status: automaticallyApproved
+        ? ApprovalStatus.APPROVED
+        : user.approval_status,
+      is_active: automaticallyApproved ? true : user.is_active,
       is_verified: true,
     };
 
@@ -350,6 +366,7 @@ export class AuthService {
   ): Promise<RegisterResult> {
     const normalizedEmail = userData.email.trim().toLowerCase();
     const publicRole = this.toPublicRole(userData.role);
+    const automaticallyApproved = isTrustedIprotexEmail(normalizedEmail);
 
     if (!publicRole) {
       throw new ForbiddenException({
@@ -379,7 +396,10 @@ export class AuthService {
         department: userData.department?.trim() || undefined,
         is_verified: false,
         is_active: false,
-        approval_status: ApprovalStatus.PENDING,
+        approval_status: automaticallyApproved
+          ? ApprovalStatus.APPROVED
+          : ApprovalStatus.PENDING,
+        ...(automaticallyApproved ? { approved_at: new Date() } : {}),
       });
     } catch (error: unknown) {
       if (isDuplicateKeyError(error)) {
@@ -422,18 +442,23 @@ export class AuthService {
     }
     return {
       success: true,
-      code: 'ACCOUNT_CREATED_PENDING_APPROVAL',
+      code: automaticallyApproved
+        ? 'ACCOUNT_CREATED_AWAITING_EMAIL_VERIFICATION'
+        : 'ACCOUNT_CREATED_PENDING_APPROVAL',
       requiresEmailVerification: true,
-      requiresAdminApproval: true,
+      requiresAdminApproval: !automaticallyApproved,
       user: {
         email: newUser.email,
         role: publicRole,
         is_verified: false,
         is_active: false,
-        approval_status: ApprovalStatus.PENDING,
+        approval_status: automaticallyApproved
+          ? ApprovalStatus.APPROVED
+          : ApprovalStatus.PENDING,
       },
-      message:
-        'Your account was created successfully. Verify your email and wait for administrator approval before signing in.',
+      message: automaticallyApproved
+        ? 'Your account was created successfully. Verify your email to activate it and sign in.'
+        : 'Your account was created successfully. Verify your email and wait for administrator approval before signing in.',
     };
   }
 
@@ -841,10 +866,12 @@ export class AuthService {
     // enters the admin approval queue.
     const alreadyApproved =
       resolveApprovalStatus(user) === ApprovalStatus.APPROVED;
+    const automaticallyApproved = isTrustedIprotexEmail(user.email);
+    const approvedAfterCompletion = alreadyApproved || automaticallyApproved;
 
     if (this.isGoogleProfileComplete(user)) {
       return {
-        code: alreadyApproved
+        code: approvedAfterCompletion
           ? 'GOOGLE_PROFILE_COMPLETED'
           : 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
         mandatoryFields: this.getMandatoryGoogleProfileFields(),
@@ -865,9 +892,18 @@ export class AuthService {
             is_verified: true,
             ...(alreadyApproved
               ? {}
-              : { approval_status: ApprovalStatus.PENDING, is_active: false }),
+              : automaticallyApproved
+                ? {
+                    approval_status: ApprovalStatus.APPROVED,
+                    is_active: true,
+                    ...(!user.approved_at ? { approved_at: new Date() } : {}),
+                  }
+                : {
+                    approval_status: ApprovalStatus.PENDING,
+                    is_active: false,
+                  }),
           },
-          ...(alreadyApproved
+          ...(approvedAfterCompletion
             ? {}
             : {
                 $unset: {
@@ -889,7 +925,7 @@ export class AuthService {
     }
 
     return {
-      code: alreadyApproved
+      code: approvedAfterCompletion
         ? 'GOOGLE_PROFILE_COMPLETED'
         : 'GOOGLE_PROFILE_COMPLETED_PENDING_APPROVAL',
       mandatoryFields: this.getMandatoryGoogleProfileFields(),

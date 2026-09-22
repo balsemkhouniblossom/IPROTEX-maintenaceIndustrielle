@@ -340,6 +340,47 @@ describe('AuthService', () => {
     expect(result.user.role).toBe(Role.TECHNICIAN);
   });
 
+  it('automatically approves an IPROTEX registration without skipping email verification', async () => {
+    const createdUser = createUserDocument({
+      email: 'employee@iprotex.com',
+      is_active: false,
+      is_verified: false,
+      approval_status: ApprovalStatus.APPROVED,
+      role: Role.OPERATOR,
+    });
+
+    usersService.findByEmail.mockResolvedValue(null);
+    usersService.create.mockResolvedValue(createdUser);
+    emailVerificationTokenService.issueToken.mockReturnValue(
+      'verification-token',
+    );
+    notificationsFacade.sendVerificationEmail.mockResolvedValue(undefined);
+
+    const result = await service.register({
+      nom_complet: 'IPROTEX Employee',
+      email: ' Employee@IPROTEX.com ',
+      password: 'P@ssword123!',
+      role: Role.OPERATOR,
+    } as never);
+
+    expect(usersService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'employee@iprotex.com',
+        is_verified: false,
+        is_active: false,
+        approval_status: ApprovalStatus.APPROVED,
+        approved_at: expect.any(Date),
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        code: 'ACCOUNT_CREATED_AWAITING_EMAIL_VERIFICATION',
+        requiresEmailVerification: true,
+        requiresAdminApproval: false,
+      }),
+    );
+  });
+
   it('rejects admin and unknown public registration roles', async () => {
     await expect(
       service.register({
@@ -522,6 +563,38 @@ describe('AuthService', () => {
     expect(updateCalls[0][1]).not.toHaveProperty('approval_status');
     expect(updateCalls[0][1]).not.toHaveProperty('refresh_token_hash');
     expect(updateCalls[0][1]).not.toHaveProperty('last_login');
+  });
+
+  it('activates and automatically approves a verified IPROTEX account', async () => {
+    const userId = new Types.ObjectId();
+    const pendingUser = createUserDocument({
+      _id: userId,
+      email: 'employee@Iprotex.com',
+      is_active: false,
+      is_verified: false,
+      approval_status: ApprovalStatus.PENDING,
+      role: Role.OPERATOR,
+    });
+
+    mockVerificationToken(userId);
+    userModel.findById.mockReturnValue(createQuery(pendingUser));
+    userModel.findByIdAndUpdate.mockReturnValue(
+      createQuery({ acknowledged: true }),
+    );
+
+    const result = await service.verifyEmail('valid-token');
+
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      userId.toString(),
+      expect.objectContaining({
+        is_verified: true,
+        is_active: true,
+        approval_status: ApprovalStatus.APPROVED,
+        approved_at: expect.any(Date),
+      }),
+    );
+    expect(result.code).toBe('EMAIL_VERIFIED');
+    expect(result.requiresAdminApproval).toBe(false);
   });
 
   it('preserves approved account state and metadata during verification', async () => {
