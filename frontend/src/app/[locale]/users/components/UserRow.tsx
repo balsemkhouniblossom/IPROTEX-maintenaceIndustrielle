@@ -32,48 +32,55 @@ type UserRowProps = Readonly<{
   tCommon: ReturnType<typeof useTranslations>;
 }>;
 
-export function UserRow({
+type UserActionsProps = Pick<
+  UserRowProps,
+  | "user"
+  | "view"
+  | "rowActionId"
+  | "onApprove"
+  | "onReject"
+  | "onEdit"
+  | "onDelete"
+  | "onHistory"
+  | "onToggleActive"
+  | "tUsers"
+  | "tCommon"
+>;
+
+function UserActions({
   user,
   view,
   rowActionId,
-  dateFormatter,
   onApprove,
   onReject,
   onEdit,
   onDelete,
   onHistory,
   onToggleActive,
-  selectable = false,
-  selected = false,
-  onToggleSelect,
   tUsers,
   tCommon,
-}: UserRowProps) {
-  const actionId = getActionId(user);
-  const actionLoading = rowActionId === actionId;
-  const approveDisabled = actionLoading || !user.is_verified;
-  let actionContent = (
-    <span className="text-sm text-slate-500">{tCommon("notAvailable")}</span>
-  );
+}: UserActionsProps) {
+  const actionLoading = rowActionId === getActionId(user);
 
   if (view === "pending") {
-    actionContent = (
+    const approveTitle = user.is_verified
+      ? tUsers("approvals.actions.approve")
+      : tUsers("approvals.mustVerifyBeforeApproval");
+    const approveLabel = actionLoading
+      ? tUsers("approvals.actions.processing")
+      : tUsers("approvals.actions.approve");
+
+    return (
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => onApprove(user)}
-          disabled={approveDisabled}
-          title={
-            !user.is_verified
-              ? tUsers("approvals.mustVerifyBeforeApproval")
-              : tUsers("approvals.actions.approve")
-          }
+          disabled={actionLoading || !user.is_verified}
+          title={approveTitle}
           className="btn-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
         >
           <CheckIcon className="h-4 w-4 shrink-0" />
-          {actionLoading
-            ? tUsers("approvals.actions.processing")
-            : tUsers("approvals.actions.approve")}
+          {approveLabel}
         </button>
         <button
           type="button"
@@ -93,64 +100,57 @@ export function UserRow({
     );
   }
 
-  if (view === "all") {
-    actionContent = (
-      <div className="flex gap-2">
-        <button
-          type="button"
-          aria-label={tUsers("actions.viewDetails")}
-          title={tUsers("actions.viewDetails")}
-          className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-          onClick={() => onHistory(user)}
-        >
-          <EyeIcon className="h-4 w-4 shrink-0" />
-          <span>{tUsers("actions.viewDetails")}</span>
-        </button>
-        <button
-          type="button"
-          aria-label={tUsers("actions.edit")}
-          title={tUsers("actions.edit")}
-          className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-          onClick={() => onEdit(user)}
-        >
-          <PencilIcon className="h-4 w-4 shrink-0" />
-          <span>{tUsers("actions.edit")}</span>
-        </button>
-        <button
-          type="button"
-          aria-label={tUsers(
-            `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
-          )}
-          title={tUsers(
-            `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
-          )}
-          disabled={actionLoading}
-          className={`${user.is_active ? "btn-secondary" : "btn-primary"} inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
-          onClick={() => onToggleActive(user)}
-        >
-          <PowerIcon className="h-4 w-4 shrink-0" />
-          <span>
-            {actionLoading
-              ? tUsers("approvals.actions.processing")
-              : tUsers(
-                  `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
-                )}
-          </span>
-        </button>
-        <button
-          type="button"
-          aria-label={tUsers("actions.delete")}
-          title={tUsers("actions.delete")}
-          className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
-          onClick={() => onDelete(getActionId(user))}
-        >
-          <TrashIcon className="h-4 w-4 shrink-0" />
-          <span>{tUsers("actions.delete")}</span>
-        </button>
-      </div>
-    );
+  if (view !== "all") {
+    return <span className="text-sm text-slate-500">{tCommon("notAvailable")}</span>;
   }
 
+  const activationAction = user.is_active ? "deactivate" : "reactivate";
+  const activationLabel = actionLoading
+    ? tUsers("approvals.actions.processing")
+    : tUsers(`activation.actions.${activationAction}`);
+  const activationButtonClass = user.is_active
+    ? "btn-secondary"
+    : "btn-primary";
+
+  return (
+    <div className="flex gap-2">
+      <button type="button" aria-label={tUsers("actions.viewDetails")} title={tUsers("actions.viewDetails")} className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs" onClick={() => onHistory(user)}>
+        <EyeIcon className="h-4 w-4 shrink-0" />
+        <span>{tUsers("actions.viewDetails")}</span>
+      </button>
+      <button type="button" aria-label={tUsers("actions.edit")} title={tUsers("actions.edit")} className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs" onClick={() => onEdit(user)}>
+        <PencilIcon className="h-4 w-4 shrink-0" />
+        <span>{tUsers("actions.edit")}</span>
+      </button>
+      <button type="button" aria-label={activationLabel} title={activationLabel} disabled={actionLoading} className={`${activationButtonClass} inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`} onClick={() => onToggleActive(user)}>
+        <PowerIcon className="h-4 w-4 shrink-0" />
+        <span>{activationLabel}</span>
+      </button>
+      <button type="button" aria-label={tUsers("actions.delete")} title={tUsers("actions.delete")} className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs" onClick={() => onDelete(getActionId(user))}>
+        <TrashIcon className="h-4 w-4 shrink-0" />
+        <span>{tUsers("actions.delete")}</span>
+      </button>
+    </div>
+  );
+}
+
+export function UserRow({
+  user,
+  view,
+  rowActionId,
+  dateFormatter,
+  onApprove,
+  onReject,
+  onEdit,
+  onDelete,
+  onHistory,
+  onToggleActive,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+  tUsers,
+  tCommon,
+}: UserRowProps) {
   return (
     <tr aria-selected={selectable ? selected : undefined}>
       {selectable && (
@@ -234,7 +234,21 @@ export function UserRow({
           </td>
         </>
       )}
-      <td>{actionContent}</td>
+      <td>
+        <UserActions
+          user={user}
+          view={view}
+          rowActionId={rowActionId}
+          onApprove={onApprove}
+          onReject={onReject}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onHistory={onHistory}
+          onToggleActive={onToggleActive}
+          tUsers={tUsers}
+          tCommon={tCommon}
+        />
+      </td>
     </tr>
   );
 }

@@ -53,6 +53,13 @@ export function UserCard(props: UserCardProps) {
     tUsers,
   } = props;
   const actionLoading = rowActionId === getActionId(user);
+  const activationAction = user.is_active ? "deactivate" : "reactivate";
+  const activationLabel = actionLoading
+    ? tUsers("approvals.actions.processing")
+    : tUsers(`activation.actions.${activationAction}`);
+  const activationButtonClass = user.is_active
+    ? "btn-secondary"
+    : "btn-primary";
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -144,15 +151,11 @@ export function UserCard(props: UserCardProps) {
           <button
             type="button"
             disabled={actionLoading}
-            className={`${user.is_active ? "btn-secondary" : "btn-primary"} flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50`}
+            className={`${activationButtonClass} flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50`}
             onClick={() => onToggleActive(user)}
           >
             <PowerIcon className="h-4 w-4 shrink-0" />
-            {actionLoading
-              ? tUsers("approvals.actions.processing")
-              : tUsers(
-                  `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
-                )}
+            {activationLabel}
           </button>
           <button
             type="button"

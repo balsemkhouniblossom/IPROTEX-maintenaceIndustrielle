@@ -879,6 +879,20 @@ export class AuthService {
       };
     }
 
+    let profileApprovalUpdate: Record<string, unknown> = {
+      approval_status: ApprovalStatus.PENDING,
+      is_active: false,
+    };
+    if (alreadyApproved) {
+      profileApprovalUpdate = {};
+    } else if (automaticallyApproved) {
+      profileApprovalUpdate = {
+        approval_status: ApprovalStatus.APPROVED,
+        is_active: true,
+        ...(!user.approved_at ? { approved_at: new Date() } : {}),
+      };
+    }
+
     const updated = await this.userModel
       .findByIdAndUpdate(
         user._id,
@@ -890,18 +904,7 @@ export class AuthService {
             language: dto.language,
             profile_completed: true,
             is_verified: true,
-            ...(alreadyApproved
-              ? {}
-              : automaticallyApproved
-                ? {
-                    approval_status: ApprovalStatus.APPROVED,
-                    is_active: true,
-                    ...(!user.approved_at ? { approved_at: new Date() } : {}),
-                  }
-                : {
-                    approval_status: ApprovalStatus.PENDING,
-                    is_active: false,
-                  }),
+            ...profileApprovalUpdate,
           },
           ...(approvedAfterCompletion
             ? {}

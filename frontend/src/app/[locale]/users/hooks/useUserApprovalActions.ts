@@ -148,15 +148,17 @@ export function useUserApprovalActions({
       const updatedUser = response.data?.user as User | undefined;
 
       setItems((currentItems) =>
-        currentItems.map((currentUser) =>
-          getActionId(currentUser) === actionId
-            ? {
-                ...currentUser,
-                ...(updatedUser ?? {}),
-                is_active: updatedUser?.is_active ?? !user.is_active,
-              }
-            : currentUser,
-        ),
+        currentItems.map((currentUser) => {
+          if (getActionId(currentUser) !== actionId) return currentUser;
+
+          const refreshedUser = updatedUser
+            ? { ...currentUser, ...updatedUser }
+            : currentUser;
+          return {
+            ...refreshedUser,
+            is_active: updatedUser?.is_active ?? !user.is_active,
+          };
+        }),
       );
       showNotification(
         "success",
