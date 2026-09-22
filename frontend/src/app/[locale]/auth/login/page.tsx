@@ -277,6 +277,7 @@ export default function LoginPage() {
                   <input
                     id="password"
                     name="password"
+                    data-custom-password-toggle
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     required

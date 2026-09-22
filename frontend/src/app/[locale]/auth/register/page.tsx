@@ -242,6 +242,7 @@ export default function RegisterPage() {
                   <input
                     id="password"
                     name="password"
+                    data-custom-password-toggle
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={formData.password}
@@ -284,6 +285,7 @@ export default function RegisterPage() {
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
+                    data-custom-password-toggle
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={formData.confirmPassword}

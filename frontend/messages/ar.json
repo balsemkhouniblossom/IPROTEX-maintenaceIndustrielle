@@ -79,7 +79,7 @@
       "profileCompletionRequired": "???? ???? ?????? ??? ?????? ??? ???????."
     },
     "protected": {
-      "loading": "جارٍ التحقق من الجلسة...",
+      "loading": "جارٍ إعداد مساحة العمل الخاصة بك...",
       "redirectingTitle": "جارٍ التحويل إلى تسجيل الدخول...",
       "redirectingDescription": "تعذر التحقق من الجلسة. سيتم تحويلك.",
       "accessDeniedTitle": "الوصول مقيد",

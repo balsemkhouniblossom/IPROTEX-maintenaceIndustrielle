@@ -2,6 +2,14 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/* Edge can render its native password-reveal eye in addition to our custom,
+   accessible toggle. Hide the native control only where a custom toggle is
+   present so password fields without one keep their browser behavior. */
+input[data-custom-password-toggle]::-ms-reveal,
+input[data-custom-password-toggle]::-ms-clear {
+  display: none;
+}
+
 /* Local Frutiger Font Setup */
 @font-face {
   font-family: 'Frutiger LT';
