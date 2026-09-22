@@ -449,23 +449,28 @@ describe('UsersService', () => {
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
-  it('blocks approval until Google profile completion is complete', async () => {
-    userModel.findById.mockReturnValue(
-      createQuery(
-        createUserDocument({
-          is_verified: true,
-          profile_completed: false,
-        }),
-      ),
+  it('allows approval before Google profile completion', async () => {
+    const targetId = new Types.ObjectId();
+    const target = createUserDocument({
+      _id: targetId,
+      is_verified: true,
+      profile_completed: false,
+    });
+    const updated = createUserDocument({
+      ...target,
+      approval_status: ApprovalStatus.APPROVED,
+      is_active: true,
+    });
+    userModel.findById.mockReturnValue(createQuery(target));
+    userModel.findOneAndUpdate.mockReturnValue(createQuery(updated));
+
+    const result = await service.approveUser(
+      targetId.toString(),
+      new Types.ObjectId().toString(),
     );
 
-    await expect(
-      service.approveUser(
-        new Types.ObjectId().toString(),
-        new Types.ObjectId().toString(),
-      ),
-    ).rejects.toBeInstanceOf(ConflictException);
-    expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(result.code).toBe('ACCOUNT_APPROVED');
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledTimes(1);
   });
 
   it('approves with an atomic update and clears stale rejection/session fields', async () => {

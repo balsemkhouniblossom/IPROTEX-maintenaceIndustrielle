@@ -655,14 +655,6 @@ export class UsersService {
       });
     }
 
-    if (target.profile_completed === false) {
-      throw new ConflictException({
-        code: 'PROFILE_COMPLETION_REQUIRED_BEFORE_APPROVAL',
-        message:
-          'The user must complete their profile before the account can be approved.',
-      });
-    }
-
     const currentStatus = resolveApprovalStatus(target);
     if (currentStatus === ApprovalStatus.APPROVED) {
       return {
@@ -812,7 +804,8 @@ export class UsersService {
 
   /**
    * Approves every listed user inside one Mongo transaction, calling the
-   * exact same `approveUser` validation (email-verified, profile-complete,
+   * exact same `approveUser` validation (email-verified; profile completion
+   * remains a separate onboarding access gate),
    * not-already-admin, optimistic status guard) per row — this duplicates
    * no business logic, it just runs the single-item path N times and
    * commits (or rolls every row back) atomically, so a bulk action never
