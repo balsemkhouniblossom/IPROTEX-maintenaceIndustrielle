@@ -3,6 +3,7 @@ import {
   QualityImportService,
   prepareQualityImport,
 } from './quality-import.service';
+import { importIdentity } from './historical-defect-import.parser';
 
 const catalogueFile =
   'C:/Users/Balsem/Downloads/FM_7_5-19_iproFlex_Defect_Catalogue_EN.docx';
@@ -12,6 +13,22 @@ const sourceTest =
   existsSync(catalogueFile) && existsSync(workbookFile) ? it : it.skip;
 
 describe('controlled IPROTEX quality import', () => {
+  it('builds a stable source identity without requiring local import files', () => {
+    const source = {
+      sourceSheet: 'Janv',
+      sourceRow: 4,
+      sourceCell: 'D4',
+      sourceDefectCode: '201',
+      process: 'Tressage',
+      occurrenceDate: '2025-01-03',
+    };
+    expect(importIdentity(source)).toBe(importIdentity(source));
+    expect(importIdentity(source)).toMatch(/^[a-f0-9]{64}$/);
+    expect(importIdentity({ ...source, sourceCell: 'E4' })).not.toBe(
+      importIdentity(source),
+    );
+  });
+
   sourceTest(
     'reconciles the official catalogue and daily-cell workbook without inventing MTTR',
     async () => {

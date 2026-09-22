@@ -40,21 +40,23 @@ test("notifyDigitalTwinMachinesChanged handles undefined window", () => {
   globalThis.window = undefined as never;
   try {
     notifyDigitalTwinMachinesChanged();
+    assert.equal(globalThis.window, undefined);
   } finally {
     globalThis.window = originalWindow;
   }
 });
 
 test("notifyDigitalTwinMachinesChanged handles localStorage error", () => {
-  const dispatchEvent = () => {};
+  let dispatchCount = 0;
   const localStorage = {
     setItem: () => { throw new Error("storage full"); },
     removeItem: () => {},
   };
   const originalWindow = globalThis.window;
-  globalThis.window = { dispatchEvent, localStorage } as never;
+  globalThis.window = { dispatchEvent: () => { dispatchCount += 1; }, localStorage } as never;
   try {
     notifyDigitalTwinMachinesChanged();
+    assert.equal(dispatchCount, 1);
   } finally {
     globalThis.window = originalWindow;
   }

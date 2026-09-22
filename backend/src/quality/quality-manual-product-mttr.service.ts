@@ -151,23 +151,19 @@ export class QualityManualProductMttrService {
             `${normalizeQualityProcessName(machineType.name)}:${month}`,
           );
           const storedUnit = (entry as { unit?: string } | undefined)?.unit;
+          let mttrValue: number | null = entry?.mttr_value ?? null;
+          if (mttrValue !== null && storedUnit === 'HOURS') mttrValue *= 60;
+          let defectSource: 'OFFICIAL_IMPORT' | 'MANUAL' | null = null;
+          if (officialDefect) defectSource = 'OFFICIAL_IMPORT';
+          else if (manualDefect) defectSource = 'MANUAL';
           return {
             month,
-            mttrValue:
-              entry?.mttr_value === undefined
-                ? null
-                : storedUnit === 'HOURS'
-                  ? entry.mttr_value * 60
-                  : entry.mttr_value,
+            mttrValue,
             unit: 'MINUTES' as const,
             updatedAt: entry?.updatedAt ?? null,
             defectCount:
               officialDefect?.defectCount ?? manualDefect?.defect_count ?? null,
-            defectSource: officialDefect
-              ? ('OFFICIAL_IMPORT' as const)
-              : manualDefect
-                ? ('MANUAL' as const)
-                : null,
+            defectSource,
             defectReadOnly: Boolean(officialDefect),
             defectCodes: officialDefect
               ? [...officialDefect.defectCodes].sort((left, right) =>
@@ -233,12 +229,12 @@ export class QualityManualProductMttrService {
           normalizeQualityProcessName(item.name),
         ]),
       );
-      const protectedEntry = defectEntries.find((entry) =>
+      const hasProtectedEntry = defectEntries.some((entry) =>
         officialCells.has(
           `${machineTypeNames.get(entry.machineTypeId)}:${entry.month}`,
         ),
       );
-      if (protectedEntry)
+      if (hasProtectedEntry)
         throw new BadRequestException(
           'Official imported defect data cannot be overwritten',
         );

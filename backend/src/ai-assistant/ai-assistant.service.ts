@@ -250,21 +250,8 @@ export class AiAssistantService {
       });
     }
 
-    if (dto.machineId) {
-      await this.documentAccessService.assertCanAccessMachine(
-        { userId: actor.userId, role: actor.role },
-        dto.machineId,
-      );
-    }
-
-    const authorizedWorkOrder = dto.workOrderId
-      ? await this.workOrderContextService.resolve(
-          actor,
-          dto.workOrderId,
-          dto.machineId,
-        )
-      : undefined;
-    const effectiveMachineId = authorizedWorkOrder?.machineId ?? dto.machineId;
+    const { authorizedWorkOrder, effectiveMachineId } =
+      await this.resolveAuthorizedScope(actor, dto);
     const validatedWorkOrderId = authorizedWorkOrder?.workOrderId;
 
     if (this.provider.name === 'disabled') {
@@ -407,6 +394,29 @@ export class AiAssistantService {
     } finally {
       clearTimeout(timeoutTimer);
     }
+  }
+
+  private async resolveAuthorizedScope(
+    actor: { userId: string; role: string },
+    dto: RequestAiRecommendationDto,
+  ) {
+    if (dto.machineId) {
+      await this.documentAccessService.assertCanAccessMachine(
+        actor,
+        dto.machineId,
+      );
+    }
+    const authorizedWorkOrder = dto.workOrderId
+      ? await this.workOrderContextService.resolve(
+          actor,
+          dto.workOrderId,
+          dto.machineId,
+        )
+      : undefined;
+    return {
+      authorizedWorkOrder,
+      effectiveMachineId: authorizedWorkOrder?.machineId ?? dto.machineId,
+    };
   }
 
   getHealth(): AiProviderDiagnostics {

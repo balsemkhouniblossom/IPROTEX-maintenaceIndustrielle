@@ -30,9 +30,27 @@ function refLabel(value: Ref | null | undefined, key: "machine_id" | "module_id"
   return typeof value === "object" && value ? value[key] || "—" : "—";
 }
 
+function renderParts(calendar: CalendarDetails | null, hasError: boolean, message: (key: string) => string) {
+  if (hasError) return <p className="mt-3 text-sm text-amber-700" role="alert">{message("detail.relatedDataUnavailable")}</p>;
+  if (!calendar?.spareParts?.length) return <p className="mt-3 text-sm text-slate-600">{message("detail.noParts")}</p>;
+  return <ul className="mt-3 space-y-1 text-sm">{calendar.spareParts.map((part) => <li key={part.id}>{part.name} × {part.quantity}</li>)}</ul>;
+}
+
+function renderHistory(calendar: CalendarDetails | null, hasError: boolean, locale: string, message: (key: string) => string) {
+  if (hasError) return <p className="mt-3 text-sm text-amber-700" role="alert">{message("detail.relatedDataUnavailable")}</p>;
+  if (!calendar?.history?.length) return <p className="mt-3 text-sm text-slate-600">{message("detail.noReport")}</p>;
+  return <ul className="mt-3 space-y-2 text-sm">{calendar.history.map((report) => <li key={report.id}><span className="font-medium">{report.reportId}</span> <span className="text-slate-600">{report.action || "—"}</span> <Link href={`/${locale}/intervention-reports/${report.id}`} className="ms-2 text-blue-700 underline">{message("detail.viewReport")}</Link></li>)}</ul>;
+}
+
+function relatedPlanLabel(planError: boolean, planCode: string, planId: string, message: (key: string) => string): string {
+  if (planError) return message("detail.relatedDataUnavailable");
+  if (planCode) return planCode;
+  return planId ? "—" : message("detail.noPlan");
+}
+
 function WorkOrderDetailContent({
   order, calendar, calendarError, planCode, planError, planId, planHref, checklistHref, date, t, tEnums, locale,
-}: {
+}: Readonly<{
   order: WorkOrderDetail;
   calendar: CalendarDetails | null;
   calendarError: boolean;
@@ -45,19 +63,11 @@ function WorkOrderDetailContent({
   t: ReturnType<typeof useTranslations>;
   tEnums: ReturnType<typeof useTranslations>;
   locale: string;
-}) {
+}>) {
   const technicianLabel = refLabel(order.technician_id, "nom_complet");
   const technicianDisplay = technicianLabel === "—" ? t("unassigned") : technicianLabel;
-  const calendarParts = calendarError
-    ? <p className="mt-3 text-sm text-amber-700" role="alert">{t("detail.relatedDataUnavailable")}</p>
-    : calendar?.spareParts?.length
-      ? <ul className="mt-3 space-y-1 text-sm">{calendar.spareParts.map((part) => <li key={part.id}>{part.name} × {part.quantity}</li>)}</ul>
-      : <p className="mt-3 text-sm text-slate-600">{t("detail.noParts")}</p>;
-  const calendarHistory = calendarError
-    ? <p className="mt-3 text-sm text-amber-700" role="alert">{t("detail.relatedDataUnavailable")}</p>
-    : calendar?.history?.length
-      ? <ul className="mt-3 space-y-2 text-sm">{calendar.history.map((report) => <li key={report.id}><span className="font-medium">{report.reportId}</span> <span className="text-slate-600">{report.action || "—"}</span> <Link href={`/${locale}/intervention-reports/${report.id}`} className="ms-2 text-blue-700 underline">{t("detail.viewReport")}</Link></li>)}</ul>
-      : <p className="mt-3 text-sm text-slate-600">{t("detail.noReport")}</p>;
+  const calendarParts = renderParts(calendar, calendarError, t);
+  const calendarHistory = renderHistory(calendar, calendarError, locale, t);
   return (
     <>
       <header className="panel flex flex-wrap items-start justify-between gap-3">
@@ -69,7 +79,7 @@ function WorkOrderDetailContent({
       </header>
       <div className="grid gap-4 md:grid-cols-2">
         <section className="panel"><h2 className="font-semibold">{t("detail.equipment")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("table.machine")}</dt><dd>{refLabel(order.machine_id, "machine_id")}</dd></div><div><dt className="text-slate-500">{t("detail.equipment")}</dt><dd>{refLabel(order.module_id, "module_id")}</dd></div></dl></section>
-        <section className="panel"><h2 className="font-semibold">{t("detail.maintenance")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("filterMaintenanceType")}</dt><dd>{order.type_maintenance ? translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) : "—"}</dd></div><div><dt className="text-slate-500">{t("table.description")}</dt><dd className="whitespace-pre-wrap break-words">{order.description || "—"}</dd></div><div><dt className="text-slate-500">{t("detail.relatedPlan")}</dt><dd>{planError ? t("detail.relatedDataUnavailable") : planCode || (planId ? "—" : t("detail.noPlan"))}</dd></div></dl>{planId && <div className="mt-3 flex flex-wrap gap-2"><Link className="btn-secondary" href={planHref}>{t("detail.viewPlan")}</Link><Link className="btn-secondary" href={checklistHref}>{t("detail.viewChecklist")}</Link></div>}</section>
+        <section className="panel"><h2 className="font-semibold">{t("detail.maintenance")}</h2><dl className="mt-3 space-y-2 text-sm"><div><dt className="text-slate-500">{t("filterMaintenanceType")}</dt><dd>{order.type_maintenance ? translateEnumValue(tEnums, "maintenanceTypes", order.type_maintenance) : "—"}</dd></div><div><dt className="text-slate-500">{t("table.description")}</dt><dd className="whitespace-pre-wrap break-words">{order.description || "—"}</dd></div><div><dt className="text-slate-500">{t("detail.relatedPlan")}</dt><dd>{relatedPlanLabel(planError, planCode, planId, t)}</dd></div></dl>{planId && <div className="mt-3 flex flex-wrap gap-2"><Link className="btn-secondary" href={planHref}>{t("detail.viewPlan")}</Link><Link className="btn-secondary" href={checklistHref}>{t("detail.viewChecklist")}</Link></div>}</section>
         <section className="panel"><h2 className="font-semibold">{t("detail.assignment")}</h2><p className="mt-3 text-sm">{technicianDisplay}</p></section>
         <section className="panel"><h2 className="font-semibold">{t("detail.schedule")}</h2><dl className="mt-3 grid grid-cols-2 gap-3 text-sm">{[[t("table.created"), order.date_created], [t("detail.scheduled"), order.scheduled_date], [t("detail.started"), order.date_start], [t("detail.due"), order.due_date || order.date_end], [t("detail.completed"), order.date_closed || order.execution_date]].map(([label, value]) => <div key={label}><dt className="text-slate-500">{label}</dt><dd>{date(value)}</dd></div>)}</dl></section>
         <section className="panel"><h2 className="font-semibold">{t("detail.parts")}</h2>{calendarParts}</section>

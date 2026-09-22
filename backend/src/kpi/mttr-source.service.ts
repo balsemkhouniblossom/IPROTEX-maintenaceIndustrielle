@@ -176,19 +176,13 @@ export class MttrSourceService {
       const workOrder = workOrderMap.get(workOrderRecordId);
       const reportTechnicianId = this.objectIdString(report.technician_id);
       if (
-        query.technicianId &&
-        reportTechnicianId &&
-        reportTechnicianId !== query.technicianId
-      ) {
+        !this.matchesTechnician(
+          query.technicianId,
+          reportTechnicianId,
+          workOrder,
+        )
+      )
         continue;
-      }
-      if (
-        query.technicianId &&
-        !reportTechnicianId &&
-        workOrder?.technicianId !== query.technicianId
-      ) {
-        continue;
-      }
 
       const reportView: ReportView = {
         recordId: this.objectIdString(report._id),
@@ -201,46 +195,14 @@ export class MttrSourceService {
         dateFin: this.toDate(report.date_fin),
       };
 
-      if (!workOrder) {
-        candidates.push({
-          interventionReportId: reportView.recordId,
-          reportBusinessId: reportView.businessId,
-          workOrderId: reportView.workOrderRecordId || undefined,
-          workOrderBusinessId: reportView.workOrderRecordId || undefined,
-          dateDebut: reportView.dateDebut,
-          dateFin: reportView.dateFin,
-          technicianId: reportView.technicianRecordId || undefined,
-          workOrderMissing: true,
-        });
-        continue;
-      }
-
-      candidates.push({
-        interventionReportId: reportView.recordId,
-        reportBusinessId: reportView.businessId,
-        workOrderId: workOrder.recordId,
-        workOrderBusinessId: workOrder.businessId,
-        dateDebut: reportView.dateDebut,
-        dateFin: reportView.dateFin,
-        typeMaintenance: workOrder.typeMaintenance,
-        workOrderStatus: workOrder.status,
-        machineId: workOrder.machineId,
-        machineReference: null,
-        technicianId: reportTechnicianId || workOrder.technicianId,
-      });
+      candidates.push(
+        this.toRepairRecord(reportView, workOrder, reportTechnicianId),
+      );
     }
 
-    const scopedCandidates = candidates.filter((candidate) => {
-      const end = this.calculation.toValidDate(candidate.dateFin);
-      if (!end) return true;
-      if (query.year !== undefined) {
-        const parts = this.calculation.getZonedParts(end);
-        if (parts.year !== query.year) return false;
-      }
-      if (query.dateFrom && end < query.dateFrom) return false;
-      if (query.dateTo && end >= query.dateTo) return false;
-      return true;
-    });
+    const scopedCandidates = candidates.filter((candidate) =>
+      this.isInScope(candidate, query),
+    );
 
     const exclusions = {
       missingStartEnd: 0,
@@ -321,6 +283,61 @@ export class MttrSourceService {
       },
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private matchesTechnician(
+    requestedId: string | undefined,
+    reportTechnicianId: string,
+    workOrder?: WorkOrderView,
+  ): boolean {
+    if (!requestedId) return true;
+    return reportTechnicianId
+      ? reportTechnicianId === requestedId
+      : workOrder?.technicianId === requestedId;
+  }
+
+  private toRepairRecord(
+    report: ReportView,
+    workOrder: WorkOrderView | undefined,
+    reportTechnicianId: string,
+  ): RepairRecord {
+    if (!workOrder) {
+      return {
+        interventionReportId: report.recordId,
+        reportBusinessId: report.businessId,
+        workOrderId: report.workOrderRecordId || undefined,
+        workOrderBusinessId: report.workOrderRecordId || undefined,
+        dateDebut: report.dateDebut,
+        dateFin: report.dateFin,
+        technicianId: report.technicianRecordId || undefined,
+        workOrderMissing: true,
+      };
+    }
+    return {
+      interventionReportId: report.recordId,
+      reportBusinessId: report.businessId,
+      workOrderId: workOrder.recordId,
+      workOrderBusinessId: workOrder.businessId,
+      dateDebut: report.dateDebut,
+      dateFin: report.dateFin,
+      typeMaintenance: workOrder.typeMaintenance,
+      workOrderStatus: workOrder.status,
+      machineId: workOrder.machineId,
+      machineReference: null,
+      technicianId: reportTechnicianId || workOrder.technicianId,
+    };
+  }
+
+  private isInScope(candidate: RepairRecord, query: MttrSourceQuery): boolean {
+    const end = this.calculation.toValidDate(candidate.dateFin);
+    if (!end) return true;
+    if (
+      query.year !== undefined &&
+      this.calculation.getZonedParts(end).year !== query.year
+    )
+      return false;
+    if (query.dateFrom && end < query.dateFrom) return false;
+    return !(query.dateTo && end >= query.dateTo);
   }
 
   private async enrichRepairs(

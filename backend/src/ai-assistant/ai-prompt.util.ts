@@ -89,6 +89,38 @@ function formatArticleLine(
   return `- [${article.category}] ${article.title}${summary}`;
 }
 
+function optionalDetail(label: string, value?: string): string {
+  return value ? ` | ${label}: ${value}` : '';
+}
+
+function formatChecklistTask(
+  task: NonNullable<
+    AiAssistantRequest['context']['workOrder']
+  >['checklist'][number],
+): string {
+  return `- ${task.reference} [${task.status}] ${task.instruction}${optionalDetail('responsible', task.responsible)}${optionalDetail('notes', task.notes)}${optionalDetail('completed', task.completedAt)}`;
+}
+
+function formatIntervention(
+  report: NonNullable<
+    AiAssistantRequest['context']['workOrder']
+  >['interventions'][number],
+): string {
+  return `- ${report.reference} [${report.startedAt} to ${report.completedAt}]${optionalDetail('technician', report.technician)}${optionalDetail('diagnosis/root cause', report.rootCause)}${optionalDetail('action performed', report.actionTaken)}${optionalDetail('final state', report.finalState)}`;
+}
+
+function formatPart(
+  part: NonNullable<
+    AiAssistantRequest['context']['workOrder']
+  >['partsUsed'][number],
+): string {
+  return `- ${part.reference}: ${part.name} (${part.manufacturerReference}) quantity ${part.quantity}${optionalDetail('manufacturer', part.manufacturer)}`;
+}
+
+function optionalFact(label: string, value?: string): string[] {
+  return value ? [`${label}: ${value}`] : [];
+}
+
 function formatWorkOrder(context: AiAssistantRequest['context']): string[] {
   const workOrder = context.workOrder;
   if (!workOrder) return ['WORK ORDER CONTEXT: none selected.'];
@@ -96,45 +128,28 @@ function formatWorkOrder(context: AiAssistantRequest['context']): string[] {
   const facts = [
     `Reference: ${workOrder.reference}`,
     `Status: ${workOrder.status}`,
-    ...(workOrder.maintenanceType
-      ? [`Maintenance type: ${workOrder.maintenanceType}`]
-      : []),
-    ...(workOrder.priority ? [`Priority: ${workOrder.priority}`] : []),
-    ...(workOrder.description
-      ? [`Problem description: ${workOrder.description}`]
-      : []),
-    ...(workOrder.faultCode ? [`Failure code: ${workOrder.faultCode}`] : []),
-    ...(workOrder.assignedTechnician
-      ? [`Assigned technician: ${workOrder.assignedTechnician}`]
-      : []),
+    ...optionalFact('Maintenance type', workOrder.maintenanceType),
+    ...optionalFact('Priority', workOrder.priority),
+    ...optionalFact('Problem description', workOrder.description),
+    ...optionalFact('Failure code', workOrder.faultCode),
+    ...optionalFact('Assigned technician', workOrder.assignedTechnician),
     `Created: ${workOrder.createdAt}`,
-    ...(workOrder.scheduledAt ? [`Scheduled: ${workOrder.scheduledAt}`] : []),
-    ...(workOrder.dueAt ? [`Due: ${workOrder.dueAt}`] : []),
-    ...(workOrder.startedAt ? [`Started: ${workOrder.startedAt}`] : []),
-    ...(workOrder.executedAt ? [`Executed: ${workOrder.executedAt}`] : []),
-    ...(workOrder.completedAt ? [`Completed: ${workOrder.completedAt}`] : []),
-    ...(workOrder.closedAt ? [`Closed: ${workOrder.closedAt}`] : []),
-    ...(workOrder.rescheduleReason
-      ? [`Reschedule note: ${workOrder.rescheduleReason}`]
-      : []),
+    ...optionalFact('Scheduled', workOrder.scheduledAt),
+    ...optionalFact('Due', workOrder.dueAt),
+    ...optionalFact('Started', workOrder.startedAt),
+    ...optionalFact('Executed', workOrder.executedAt),
+    ...optionalFact('Completed', workOrder.completedAt),
+    ...optionalFact('Closed', workOrder.closedAt),
+    ...optionalFact('Reschedule note', workOrder.rescheduleReason),
   ];
   const checklist = workOrder.checklist.length
-    ? workOrder.checklist.map(
-        (task) =>
-          `- ${task.reference} [${task.status}] ${task.instruction}${task.responsible ? ` | responsible: ${task.responsible}` : ''}${task.notes ? ` | notes: ${task.notes}` : ''}${task.completedAt ? ` | completed: ${task.completedAt}` : ''}`,
-      )
+    ? workOrder.checklist.map(formatChecklistTask)
     : ['- none available'];
   const interventions = workOrder.interventions.length
-    ? workOrder.interventions.map(
-        (report) =>
-          `- ${report.reference} [${report.startedAt} to ${report.completedAt}]${report.technician ? ` technician: ${report.technician}` : ''}${report.rootCause ? ` | diagnosis/root cause: ${report.rootCause}` : ''}${report.actionTaken ? ` | action performed: ${report.actionTaken}` : ''}${report.finalState ? ` | final state: ${report.finalState}` : ''}`,
-      )
+    ? workOrder.interventions.map(formatIntervention)
     : ['- none available'];
   const parts = workOrder.partsUsed.length
-    ? workOrder.partsUsed.map(
-        (part) =>
-          `- ${part.reference}: ${part.name} (${part.manufacturerReference}) quantity ${part.quantity}${part.manufacturer ? ` | manufacturer: ${part.manufacturer}` : ''}`,
-      )
+    ? workOrder.partsUsed.map(formatPart)
     : ['- none recorded'];
 
   return [

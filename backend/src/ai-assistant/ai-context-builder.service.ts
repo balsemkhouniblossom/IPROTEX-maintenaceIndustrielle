@@ -27,7 +27,7 @@ const KNOWLEDGE_ARTICLES_LIMIT = 5;
 export type AiContextInput = {
   machineId?: string;
   faultCode?: string;
-  workOrder?: AiGroundedContext['workOrder'];
+  workOrder?: NonNullable<AiGroundedContext['workOrder']>;
 };
 
 /**

@@ -117,6 +117,115 @@ function dateColumns(sheet: Worksheet): number[] {
   return columns;
 }
 
+function addOccurrence(
+  report: HistoricalImportReport,
+  sheet: Worksheet,
+  sheetName: string,
+  rowNumber: number,
+  column: number,
+  process: string,
+  sourceCode: string,
+  defectName: string,
+): void {
+  const cell = sheet.getCell(rowNumber, column);
+  const value = cell.value;
+  if (typeof value !== 'number') {
+    if (value !== null && value !== undefined && value !== '')
+      report.skippedCells += 1;
+    return;
+  }
+  if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
+    report.errors.push(
+      `Invalid occurrence value ${cell.address}: ${String(value)}`,
+    );
+    return;
+  }
+  if (value === 0) return;
+  const date = excelDate(sheet.getCell(3, column).value);
+  if (!date) {
+    report.errors.push(
+      `Occurrence without a valid date at ${sheetName}!${cell.address}`,
+    );
+    return;
+  }
+  const occurrenceDate = date.toISOString().slice(0, 10);
+  if (date.getUTCFullYear() !== report.year)
+    report.warnings.push(
+      `Date outside source year at ${sheetName}!${cell.address}: ${occurrenceDate}`,
+    );
+  const actualMonth = occurrenceDate.slice(0, 7);
+  if (!actualMonth.endsWith(sheetMonthSuffix(sheetName)))
+    report.warnings.push(
+      `Cross-month date: source sheet ${sheetName}, actual date month ${actualMonth}`,
+    );
+  const occurrence: HistoricalOccurrence = {
+    sourceDefectCode: sourceCode,
+    canonicalDefectCode: canonicalCode(sourceCode),
+    process,
+    defectName: defectName || undefined,
+    occurrenceDate,
+    quantityAffected: value,
+    source: 'HISTORICAL_IMPORT',
+    sourceYear: report.year,
+    sourceSheet: sheetName,
+    sourceRow: rowNumber,
+    sourceCell: cell.address,
+    importIdentity: importIdentity({
+      sourceSheet: sheetName,
+      sourceRow: rowNumber,
+      sourceCell: cell.address,
+      sourceDefectCode: sourceCode,
+      process,
+      occurrenceDate,
+    }),
+  };
+  report.occurrences.push(occurrence);
+  report.validOccurrenceCells += 1;
+  report.totalOccurrenceQuantity += value;
+  increment(report.occurrencesByMonth, actualMonth, value);
+  increment(report.occurrencesBySourceSheet, sheetName, value);
+  increment(report.occurrencesByProcess, process, value);
+  increment(
+    report.occurrencesByDefectCode,
+    occurrence.canonicalDefectCode,
+    value,
+  );
+}
+
+function processMonthlySheet(
+  report: HistoricalImportReport,
+  sheet: Worksheet,
+  sheetName: string,
+): void {
+  report.sheetsProcessed.push(sheetName);
+  const columns = dateColumns(sheet);
+  report.rowsInspected += sheet.rowCount;
+  for (let rowNumber = 4; rowNumber <= sheet.rowCount; rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    const process = text(row.getCell(1).value);
+    const sourceCode = text(row.getCell(2).value);
+    const defectName = text(row.getCell(3).value);
+    if (
+      !process ||
+      !sourceCode ||
+      /^total\b/i.test(sourceCode) ||
+      /^total\b/i.test(defectName)
+    )
+      continue;
+    for (const column of columns)
+      addOccurrence(
+        report,
+        sheet,
+        sheetName,
+        rowNumber,
+        column,
+        process,
+        sourceCode,
+        defectName,
+      );
+  }
+}
+
 export async function parseHistoricalWorkbook(
   filePath: string,
 ): Promise<HistoricalImportReport> {
@@ -146,89 +255,7 @@ export async function parseHistoricalWorkbook(
       report.errors.push(`Missing monthly sheet: ${sheetName}`);
       continue;
     }
-    report.sheetsProcessed.push(sheetName);
-    const columns = dateColumns(sheet);
-    report.rowsInspected += sheet.rowCount;
-    for (let rowNumber = 4; rowNumber <= sheet.rowCount; rowNumber += 1) {
-      const row = sheet.getRow(rowNumber);
-      // The workbook's visible table starts in column A; the first blank
-      // item in ExcelJS row.values is only the array's 0-index placeholder.
-      const process = text(row.getCell(1).value);
-      const sourceCode = text(row.getCell(2).value);
-      const defectName = text(row.getCell(3).value);
-      if (
-        !process ||
-        !sourceCode ||
-        /^total\b/i.test(sourceCode) ||
-        /^total\b/i.test(defectName)
-      )
-        continue;
-      for (const column of columns) {
-        const date = excelDate(sheet.getCell(3, column).value);
-        const value = sheet.getCell(rowNumber, column).value;
-        if (typeof value !== 'number') {
-          if (value !== null && value !== undefined && value !== '')
-            report.skippedCells += 1;
-          continue;
-        }
-        if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
-          report.errors.push(
-            `Invalid occurrence value ${sheet.getCell(rowNumber, column).address}: ${String(value)}`,
-          );
-          continue;
-        }
-        if (value === 0) continue;
-        if (!date) {
-          report.errors.push(
-            `Occurrence without a valid date at ${sheetName}!${sheet.getCell(rowNumber, column).address}`,
-          );
-          continue;
-        }
-        const occurrenceDate = date.toISOString().slice(0, 10);
-        if (date.getUTCFullYear() !== report.year)
-          report.warnings.push(
-            `Date outside source year at ${sheetName}!${sheet.getCell(rowNumber, column).address}: ${occurrenceDate}`,
-          );
-        const actualMonth = occurrenceDate.slice(0, 7);
-        if (!actualMonth.endsWith(sheetMonthSuffix(sheetName)))
-          report.warnings.push(
-            `Cross-month date: source sheet ${sheetName}, actual date month ${actualMonth}`,
-          );
-        const sourceCell = sheet.getCell(rowNumber, column).address;
-        const occurrence: HistoricalOccurrence = {
-          sourceDefectCode: sourceCode,
-          canonicalDefectCode: canonicalCode(sourceCode),
-          process,
-          defectName: defectName || undefined,
-          occurrenceDate,
-          quantityAffected: value,
-          source: 'HISTORICAL_IMPORT',
-          sourceYear: report.year,
-          sourceSheet: sheetName,
-          sourceRow: rowNumber,
-          sourceCell,
-          importIdentity: importIdentity({
-            sourceSheet: sheetName,
-            sourceRow: rowNumber,
-            sourceCell,
-            sourceDefectCode: sourceCode,
-            process,
-            occurrenceDate,
-          }),
-        };
-        report.occurrences.push(occurrence);
-        report.validOccurrenceCells += 1;
-        report.totalOccurrenceQuantity += value;
-        increment(report.occurrencesByMonth, actualMonth, value);
-        increment(report.occurrencesBySourceSheet, sheetName, value);
-        increment(report.occurrencesByProcess, process, value);
-        increment(
-          report.occurrencesByDefectCode,
-          occurrence.canonicalDefectCode,
-          value,
-        );
-      }
-    }
+    processMonthlySheet(report, sheet, sheetName);
   }
 
   const annual = workbook.getWorksheet("Cumul d'année");

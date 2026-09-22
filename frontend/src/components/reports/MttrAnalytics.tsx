@@ -58,7 +58,7 @@ export interface MttrAnalyticsProps {
   technicians: Array<{ _id: string; name: string }>;
 }
 
-export function MttrAnalytics({ locale, machines, technicians }: MttrAnalyticsProps) {
+export function MttrAnalytics({ locale, machines, technicians }: Readonly<MttrAnalyticsProps>) {
   const t = useTranslations('mttr');
   const currentYear = new Date().getFullYear();
 
