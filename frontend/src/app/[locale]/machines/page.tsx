@@ -22,6 +22,7 @@ import { sortMachineDocumentsForMachine } from "@/services/machineManuals";
 import { buildMachinePayload } from "@/services/machineForm";
 import { notifyDigitalTwinMachinesChanged } from "@/services/digitalTwinMachines";
 import { normalizeApiItems } from "@/services/pagination";
+import { displayText } from "@/services/displayValues";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PencilIcon,
@@ -448,10 +449,11 @@ export default function MachinesPage() {
 
     return filtered.map((machine) => {
       const summary = summaryByMachine[machine._id];
-      const machineType =
+      const machineType = displayText(
         machine.machine_type_name ||
-        machineTypeMap[String(machine.type_id)]?.name ||
-        tCommon("notAvailable");
+          machineTypeMap[String(machine.type_id)]?.name,
+        tCommon("notAvailable"),
+      );
       const statusTranslationKey = machineStatusTranslationKey(machine.status);
       const health = healthByMachine[machine._id];
       const hasHealthWarning = Boolean(
@@ -490,13 +492,13 @@ export default function MachinesPage() {
                   {isAttention ? "● " : ""}
                   {statusTranslationKey
                     ? tMachines(statusTranslationKey)
-                    : machine.status}
+                    : displayText(machine.status, tCommon("notAvailable"))}
                 </span>
                 <MachineHealthBadge status={healthByMachine[machine._id]} />
               </div>
               <p className="text-sm font-medium text-slate-700">{machineType}</p>
               <p className="mt-1 text-sm text-slate-500">
-                {machine.serial_no || tCommon("notAvailable")}
+                {displayText(machine.serial_no, tCommon("notAvailable"))}
               </p>
               {attentionReason && (
                 <p className="mt-2 text-sm font-medium text-amber-800">
@@ -589,17 +591,18 @@ export default function MachinesPage() {
               className="inline-flex max-w-full items-center gap-1.5 text-left font-semibold text-blue-700 hover:text-blue-900"
             >
               <span className="truncate">
-                {machine.machine_id || tCommon("notAvailable")}
+                {displayText(machine.machine_id, tCommon("notAvailable"))}
               </span>
             </button>
           </td>
-          <td>{machine.serial_no || tCommon("notAvailable")}</td>
-          <td>{machine.fabricant || tCommon("notAvailable")}</td>
-          <td>{machine.model || tCommon("notAvailable")}</td>
+          <td>{displayText(machine.serial_no, tCommon("notAvailable"))}</td>
+          <td>{displayText(machine.fabricant, tCommon("notAvailable"))}</td>
+          <td>{displayText(machine.model, tCommon("notAvailable"))}</td>
           <td>
-            {machine.machine_type_name ||
-              machineType?.name ||
-              tCommon("notAvailable")}
+            {displayText(
+              machine.machine_type_name || machineType?.name,
+              tCommon("notAvailable"),
+            )}
           </td>
           <td>
             <span
@@ -623,7 +626,7 @@ export default function MachinesPage() {
               ? `${machine.poids_kg} kg`
               : tCommon("notAvailable")}
           </td>
-          <td>{machine.location || tCommon("notAvailable")}</td>
+          <td>{displayText(machine.location, tCommon("notAvailable"))}</td>
           <td>
             <div className="flex gap-2">
               <button

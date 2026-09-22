@@ -1,5 +1,6 @@
 const MONGO_OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const NOT_AVAILABLE_PATTERN = /^n\.?\s*[\/-]?\s*a\.?$/i;
 
 export function isRawTechnicalId(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -23,7 +24,7 @@ export function displayText(value: unknown, fallback = "-"): string {
   } else {
     return fallback;
   }
-  if (!text || isRawTechnicalId(text)) return fallback;
+  if (!text || NOT_AVAILABLE_PATTERN.test(text) || isRawTechnicalId(text)) return fallback;
   return text;
 }
 

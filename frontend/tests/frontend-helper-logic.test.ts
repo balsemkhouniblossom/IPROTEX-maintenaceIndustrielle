@@ -68,6 +68,9 @@ test("displayText hides raw technical identifiers and formats safe scalar values
 
   assert.equal(displayText(null, "n/a"), "n/a");
   assert.equal(displayText("  Pump A  "), "Pump A");
+  assert.equal(displayText("N/A", "غير متوفر"), "غير متوفر");
+  assert.equal(displayText(" n / a ", "غير متوفر"), "غير متوفر");
+  assert.equal(displayText("N.A.", "غير متوفر"), "غير متوفر");
   assert.equal(displayText(42), "42");
   assert.equal(displayText(false), "false");
   assert.equal(displayText("64f0d61b4e0f7c1b3c9a1234", "hidden"), "hidden");

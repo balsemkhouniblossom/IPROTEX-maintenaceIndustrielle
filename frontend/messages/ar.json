@@ -239,7 +239,7 @@
       "negative": "{value}% منذ الشهر الماضي"
     },
     "logout": "Logout",
-    "notAvailable": "غير متاح",
+    "notAvailable": "غير متوفر",
     "saving": "جاري الحفظ...",
     "na": "غير متوفر",
     "skipToContent": "الانتقال إلى المحتوى الرئيسي",
@@ -2906,7 +2906,7 @@
     "operatorSubmission": "المعلومات المسجلة بواسطة المشغل",
     "claim": "إسناد إليّ",
     "loading": "جارٍ التحميل…",
-    "notAvailable": "غير متاح",
+    "notAvailable": "غير متوفر",
     "dashboard": {
       "title": "لوحة الفني",
       "cards": {
@@ -4279,7 +4279,7 @@
     "duration": "زمن الحل",
     "nextPage": "التالي",
     "previousPage": "السابق",
-    "notAvailable": "غير متاح",
+    "notAvailable": "غير متوفر",
     "hours": "ساعة",
     "processes": {
       "Bobinage": "اللف",
