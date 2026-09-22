@@ -40,6 +40,7 @@ const USERS_DEFAULT_SORT: Record<string, 1 | -1> = { created_at: -1 };
 // Fields owned exclusively by the approve/reject transition endpoints.
 // Never allow the generic PATCH /users/:id path to set these directly.
 const APPROVAL_FIELDS_LOCKED_FROM_GENERIC_UPDATE = [
+  'is_active',
   'approval_status',
   'approved_by',
   'approved_at',
@@ -78,6 +79,15 @@ export type ApprovalSafeUser = {
 
 export type ApprovalActionResult = {
   code: ApprovalActionCode;
+  user: ApprovalSafeUser;
+};
+
+export type AccountActivationResult = {
+  code:
+    | 'ACCOUNT_DEACTIVATED'
+    | 'ACCOUNT_ALREADY_INACTIVE'
+    | 'ACCOUNT_REACTIVATED'
+    | 'ACCOUNT_ALREADY_ACTIVE';
   user: ApprovalSafeUser;
 };
 
@@ -707,6 +717,106 @@ export class UsersService {
       code: 'ACCOUNT_APPROVED',
       user: sanitizeApprovalUser(updated),
     };
+  }
+
+  async deactivateUser(
+    targetId: string,
+    administratorId: string,
+    deactivatedAt: Date = new Date(),
+  ): Promise<AccountActivationResult> {
+    this.validateObjectId(targetId);
+    this.validateObjectId(administratorId);
+
+    if (targetId === administratorId) {
+      throw new ConflictException({
+        code: 'CANNOT_DEACTIVATE_SELF',
+        message: 'You cannot deactivate your own administrator account.',
+      });
+    }
+
+    const target = await this.userModel.findById(targetId).exec();
+    if (!target) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found.',
+      });
+    }
+
+    if (!target.is_active) {
+      return {
+        code: 'ACCOUNT_ALREADY_INACTIVE',
+        user: sanitizeApprovalUser(target),
+      };
+    }
+
+    const updated = await this.userModel
+      .findOneAndUpdate(
+        { _id: target._id, is_active: true },
+        {
+          $set: {
+            is_active: false,
+            credentials_invalidated_at: deactivatedAt,
+          },
+          $unset: { refresh_token_hash: '' },
+        },
+        { new: true },
+      )
+      .exec();
+
+    if (!updated) {
+      throw new ConflictException({
+        code: 'ACCOUNT_STATE_CHANGED',
+        message: 'The account state changed. Please retry.',
+      });
+    }
+
+    return { code: 'ACCOUNT_DEACTIVATED', user: sanitizeApprovalUser(updated) };
+  }
+
+  async reactivateUser(targetId: string): Promise<AccountActivationResult> {
+    this.validateObjectId(targetId);
+
+    const target = await this.userModel.findById(targetId).exec();
+    if (!target) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found.',
+      });
+    }
+
+    if (target.is_active) {
+      return {
+        code: 'ACCOUNT_ALREADY_ACTIVE',
+        user: sanitizeApprovalUser(target),
+      };
+    }
+
+    if (
+      !target.is_verified ||
+      resolveApprovalStatus(target) !== ApprovalStatus.APPROVED
+    ) {
+      throw new ConflictException({
+        code: 'ACCOUNT_NOT_ELIGIBLE_FOR_REACTIVATION',
+        message: 'Only verified, approved accounts can be reactivated.',
+      });
+    }
+
+    const updated = await this.userModel
+      .findOneAndUpdate(
+        { _id: target._id, is_active: false },
+        { $set: { is_active: true }, $unset: { refresh_token_hash: '' } },
+        { new: true },
+      )
+      .exec();
+
+    if (!updated) {
+      throw new ConflictException({
+        code: 'ACCOUNT_STATE_CHANGED',
+        message: 'The account state changed. Please retry.',
+      });
+    }
+
+    return { code: 'ACCOUNT_REACTIVATED', user: sanitizeApprovalUser(updated) };
   }
 
   async rejectUser(

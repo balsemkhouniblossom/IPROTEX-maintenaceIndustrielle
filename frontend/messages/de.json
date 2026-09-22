@@ -1580,6 +1580,21 @@
   },
   "users": {
     "pageTitle": "Benutzerverwaltung",
+    "activation": {
+      "actions": {
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate"
+      },
+      "confirm": {
+        "deactivate": "Deactivate {name}? Their current sessions will be revoked.",
+        "reactivate": "Reactivate {name}? They will be able to sign in again."
+      },
+      "messages": {
+        "deactivated": "Account deactivated successfully.",
+        "reactivated": "Account reactivated successfully.",
+        "alreadyUpdated": "The account is already in that state."
+      }
+    },
     "heading": "Benutzerverwaltung",
     "totalUsers": "Benutzer insgesamt",
     "addUser": "Benutzer hinzufügen",
@@ -1681,6 +1696,9 @@
         "ADMIN_ACCOUNT_REQUIRES_SEPARATE_MANAGEMENT": "Administratorkonten benötigen separate Verwaltung.",
         "INVALID_APPROVAL_TRANSITION": "Der Kontostatus hat sich geändert. Die Liste wurde aktualisiert.",
         "ACCOUNT_ALREADY_APPROVED": "Konto ist bereits genehmigt.",
+        "CANNOT_DEACTIVATE_SELF": "You cannot deactivate your own account.",
+        "ACCOUNT_NOT_ELIGIBLE_FOR_REACTIVATION": "Only verified, approved accounts can be reactivated.",
+        "ACCOUNT_STATE_CHANGED": "The account state changed. Refresh and try again.",
         "generic": "Genehmigungen konnten nicht geladen werden."
       }
     },

@@ -1466,6 +1466,21 @@
   },
   "users": {
     "pageTitle": "Gestion des utilisateurs",
+    "activation": {
+      "actions": {
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate"
+      },
+      "confirm": {
+        "deactivate": "Deactivate {name}? Their current sessions will be revoked.",
+        "reactivate": "Reactivate {name}? They will be able to sign in again."
+      },
+      "messages": {
+        "deactivated": "Account deactivated successfully.",
+        "reactivated": "Account reactivated successfully.",
+        "alreadyUpdated": "The account is already in that state."
+      }
+    },
     "heading": "Gestion des utilisateurs",
     "totalUsers": "Total des utilisateurs",
     "addUser": "Ajouter un utilisateur",
@@ -1567,6 +1582,9 @@
         "ADMIN_ACCOUNT_REQUIRES_SEPARATE_MANAGEMENT": "Les comptes administrateur nécessitent une gestion séparée.",
         "INVALID_APPROVAL_TRANSITION": "L’état du compte a changé. La liste a été actualisée.",
         "ACCOUNT_ALREADY_APPROVED": "Le compte est déjà approuvé.",
+        "CANNOT_DEACTIVATE_SELF": "You cannot deactivate your own account.",
+        "ACCOUNT_NOT_ELIGIBLE_FOR_REACTIVATION": "Only verified, approved accounts can be reactivated.",
+        "ACCOUNT_STATE_CHANGED": "The account state changed. Refresh and try again.",
         "generic": "Impossible de charger les approbations."
       }
     },

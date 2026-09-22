@@ -1,16 +1,22 @@
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import {
   CheckIcon,
   EyeIcon,
   PencilIcon,
+  PowerIcon,
   TrashIcon,
   XMarkIcon,
-} from '@heroicons/react/24/outline';
-import { ApprovalView } from '@/services/userApprovals';
-import { User } from '../types';
-import { getActionId, dateHeaderForView, dateValueForView, formatDate } from '../utils';
-import { RoleBadge, VerificationBadge, ApprovalStatusBadge } from './Badges';
-import { UserIdentity } from './UserIdentity';
+} from "@heroicons/react/24/outline";
+import { ApprovalView } from "@/services/userApprovals";
+import { User } from "../types";
+import {
+  getActionId,
+  dateHeaderForView,
+  dateValueForView,
+  formatDate,
+} from "../utils";
+import { RoleBadge, VerificationBadge, ApprovalStatusBadge } from "./Badges";
+import { UserIdentity } from "./UserIdentity";
 
 type UserCardProps = Readonly<{
   user: User;
@@ -22,6 +28,7 @@ type UserCardProps = Readonly<{
   onEdit: (user: User) => void;
   onDelete: (id?: string) => void;
   onHistory: (user: User) => void;
+  onToggleActive: (user: User) => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -39,6 +46,7 @@ export function UserCard(props: UserCardProps) {
     onEdit,
     onDelete,
     onHistory,
+    onToggleActive,
     selectable = false,
     selected = false,
     onToggleSelect,
@@ -54,7 +62,9 @@ export function UserCard(props: UserCardProps) {
             type="checkbox"
             checked={selected}
             onChange={onToggleSelect}
-            aria-label={tUsers('bulk.selectRow', { name: user.nom_complet || user.email || '' })}
+            aria-label={tUsers("bulk.selectRow", {
+              name: user.nom_complet || user.email || "",
+            })}
             className="mt-1"
           />
         )}
@@ -63,31 +73,39 @@ export function UserCard(props: UserCardProps) {
       </div>
       <div className="mt-4 grid gap-2 text-sm">
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">{tUsers('table.role')}</span>
+          <span className="text-slate-500">{tUsers("table.role")}</span>
           <RoleBadge role={user.role} tUsers={tUsers} />
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">{tUsers('approvals.emailVerification')}</span>
+          <span className="text-slate-500">
+            {tUsers("approvals.emailVerification")}
+          </span>
           <VerificationBadge verified={user.is_verified} tUsers={tUsers} />
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-slate-500">{dateHeaderForView(view, tUsers)}</span>
+          <span className="text-slate-500">
+            {dateHeaderForView(view, tUsers)}
+          </span>
           <span>{formatDate(dateValueForView(user, view), dateFormatter)}</span>
         </div>
       </div>
-      {view === 'pending' && (
+      {view === "pending" && (
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => onApprove(user)}
             disabled={actionLoading || !user.is_verified}
-            title={!user.is_verified ? tUsers('approvals.mustVerifyBeforeApproval') : undefined}
+            title={
+              !user.is_verified
+                ? tUsers("approvals.mustVerifyBeforeApproval")
+                : undefined
+            }
             className="btn-primary flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckIcon className="h-4 w-4 shrink-0" />
             {actionLoading
-              ? tUsers('approvals.actions.processing')
-              : tUsers('approvals.actions.approve')}
+              ? tUsers("approvals.actions.processing")
+              : tUsers("approvals.actions.approve")}
           </button>
           <button
             type="button"
@@ -96,16 +114,16 @@ export function UserCard(props: UserCardProps) {
             className="btn-danger flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           >
             <XMarkIcon className="h-4 w-4 shrink-0" />
-            {tUsers('approvals.actions.reject')}
+            {tUsers("approvals.actions.reject")}
           </button>
           {!user.is_verified && (
             <p className="basis-full text-xs text-amber-700">
-              {tUsers('approvals.mustVerifyBeforeApproval')}
+              {tUsers("approvals.mustVerifyBeforeApproval")}
             </p>
           )}
         </div>
       )}
-      {view === 'all' && (
+      {view === "all" && (
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -113,7 +131,7 @@ export function UserCard(props: UserCardProps) {
             onClick={() => onHistory(user)}
           >
             <EyeIcon className="h-4 w-4 shrink-0" />
-            {tUsers('actions.viewDetails')}
+            {tUsers("actions.viewDetails")}
           </button>
           <button
             type="button"
@@ -121,7 +139,20 @@ export function UserCard(props: UserCardProps) {
             onClick={() => onEdit(user)}
           >
             <PencilIcon className="h-4 w-4 shrink-0" />
-            {tUsers('actions.edit')}
+            {tUsers("actions.edit")}
+          </button>
+          <button
+            type="button"
+            disabled={actionLoading}
+            className={`${user.is_active ? "btn-secondary" : "btn-primary"} flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50`}
+            onClick={() => onToggleActive(user)}
+          >
+            <PowerIcon className="h-4 w-4 shrink-0" />
+            {actionLoading
+              ? tUsers("approvals.actions.processing")
+              : tUsers(
+                  `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
+                )}
           </button>
           <button
             type="button"
@@ -129,7 +160,7 @@ export function UserCard(props: UserCardProps) {
             onClick={() => onDelete(getActionId(user))}
           >
             <TrashIcon className="h-4 w-4 shrink-0" />
-            {tUsers('actions.delete')}
+            {tUsers("actions.delete")}
           </button>
         </div>
       )}

@@ -1580,6 +1580,21 @@
   },
   "users": {
     "pageTitle": "Gestione utenti",
+    "activation": {
+      "actions": {
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate"
+      },
+      "confirm": {
+        "deactivate": "Deactivate {name}? Their current sessions will be revoked.",
+        "reactivate": "Reactivate {name}? They will be able to sign in again."
+      },
+      "messages": {
+        "deactivated": "Account deactivated successfully.",
+        "reactivated": "Account reactivated successfully.",
+        "alreadyUpdated": "The account is already in that state."
+      }
+    },
     "heading": "Gestione utenti",
     "totalUsers": "Totale utenti",
     "subtitle": "Gestisci gli utenti del sistema",
@@ -1682,6 +1697,9 @@
         "ADMIN_ACCOUNT_REQUIRES_SEPARATE_MANAGEMENT": "Gli account amministratore richiedono gestione separata.",
         "INVALID_APPROVAL_TRANSITION": "Lo stato account è cambiato. L’elenco è stato aggiornato.",
         "ACCOUNT_ALREADY_APPROVED": "L’account è già approvato.",
+        "CANNOT_DEACTIVATE_SELF": "You cannot deactivate your own account.",
+        "ACCOUNT_NOT_ELIGIBLE_FOR_REACTIVATION": "Only verified, approved accounts can be reactivated.",
+        "ACCOUNT_STATE_CHANGED": "The account state changed. Refresh and try again.",
         "generic": "Impossibile caricare le approvazioni."
       }
     },

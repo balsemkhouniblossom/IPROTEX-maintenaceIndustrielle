@@ -544,6 +544,101 @@ describe('UsersService', () => {
     expect(result.user).not.toHaveProperty('approved_by');
   });
 
+  it('deactivates an account and immediately revokes its sessions', async () => {
+    const targetId = new Types.ObjectId();
+    const adminId = new Types.ObjectId();
+    const deactivatedAt = new Date('2026-09-22T12:00:00.000Z');
+    const target = createUserDocument({
+      _id: targetId,
+      is_active: true,
+      approval_status: ApprovalStatus.APPROVED,
+    });
+    const updated = createUserDocument({
+      ...target,
+      is_active: false,
+      credentials_invalidated_at: deactivatedAt,
+    });
+    userModel.findById.mockReturnValue(createQuery(target));
+    userModel.findOneAndUpdate.mockReturnValue(createQuery(updated));
+
+    const result = await service.deactivateUser(
+      targetId.toString(),
+      adminId.toString(),
+      deactivatedAt,
+    );
+
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: targetId, is_active: true },
+      {
+        $set: {
+          is_active: false,
+          credentials_invalidated_at: deactivatedAt,
+        },
+        $unset: { refresh_token_hash: '' },
+      },
+      { new: true },
+    );
+    expect(result.code).toBe('ACCOUNT_DEACTIVATED');
+    expect(result.user.is_active).toBe(false);
+  });
+
+  it('prevents an administrator from deactivating their own account', async () => {
+    const adminId = new Types.ObjectId().toString();
+
+    await expect(
+      service.deactivateUser(adminId, adminId),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'CANNOT_DEACTIVATE_SELF' }),
+    });
+    expect(userModel.findById).not.toHaveBeenCalled();
+  });
+
+  it('reactivates only verified and approved accounts', async () => {
+    const targetId = new Types.ObjectId();
+    const target = createUserDocument({
+      _id: targetId,
+      is_active: false,
+      is_verified: true,
+      approval_status: ApprovalStatus.APPROVED,
+    });
+    const updated = createUserDocument({ ...target, is_active: true });
+    userModel.findById.mockReturnValue(createQuery(target));
+    userModel.findOneAndUpdate.mockReturnValue(createQuery(updated));
+
+    const result = await service.reactivateUser(targetId.toString());
+
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: targetId, is_active: false },
+      { $set: { is_active: true }, $unset: { refresh_token_hash: '' } },
+      { new: true },
+    );
+    expect(result.code).toBe('ACCOUNT_REACTIVATED');
+    expect(result.user.is_active).toBe(true);
+  });
+
+  it('refuses to reactivate an account that is not approved', async () => {
+    const targetId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery(
+        createUserDocument({
+          _id: targetId,
+          is_active: false,
+          is_verified: true,
+          approval_status: ApprovalStatus.REJECTED,
+        }),
+      ),
+    );
+
+    await expect(
+      service.reactivateUser(targetId.toString()),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'ACCOUNT_NOT_ELIGIBLE_FOR_REACTIVATION',
+      }),
+    });
+    expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it('rejects with a trimmed reason and clears stale approval/session fields', async () => {
     const targetId = new Types.ObjectId();
     const adminId = new Types.ObjectId();
@@ -640,7 +735,7 @@ describe('UsersService', () => {
       expect(result).toBe(updated);
     });
 
-    it('strips approval fields even if a caller supplies them directly, bypassing the DTO layer', async () => {
+    it('strips approval and activation fields even if a caller bypasses the DTO layer', async () => {
       const targetId = new Types.ObjectId();
       const adminId = new Types.ObjectId();
       const updated = createUserDocument({ _id: targetId });
@@ -652,6 +747,7 @@ describe('UsersService', () => {
       // caller that builds the object without going through that pipe.
       await service.update(targetId.toString(), {
         department: 'Ops',
+        is_active: false,
         approval_status: ApprovalStatus.REJECTED,
         approved_by: adminId,
         approved_at: new Date(),

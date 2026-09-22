@@ -1,17 +1,18 @@
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import {
   CheckIcon,
   EyeIcon,
   PencilIcon,
+  PowerIcon,
   TrashIcon,
   XMarkIcon,
-} from '@heroicons/react/24/outline';
-import ProfileAvatar from '@/components/ProfileAvatar';
-import { ApprovalView } from '@/services/userApprovals';
-import { User } from '../types';
-import { getActionId, dateValueForView, formatDate } from '../utils';
-import { RoleBadge, VerificationBadge, ApprovalStatusBadge } from './Badges';
-import { UserIdentity } from './UserIdentity';
+} from "@heroicons/react/24/outline";
+import ProfileAvatar from "@/components/ProfileAvatar";
+import { ApprovalView } from "@/services/userApprovals";
+import { User } from "../types";
+import { getActionId, dateValueForView, formatDate } from "../utils";
+import { RoleBadge, VerificationBadge, ApprovalStatusBadge } from "./Badges";
+import { UserIdentity } from "./UserIdentity";
 
 type UserRowProps = Readonly<{
   user: User;
@@ -23,6 +24,7 @@ type UserRowProps = Readonly<{
   onEdit: (user: User) => void;
   onDelete: (id?: string) => void;
   onHistory: (user: User) => void;
+  onToggleActive: (user: User) => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -40,6 +42,7 @@ export function UserRow({
   onEdit,
   onDelete,
   onHistory,
+  onToggleActive,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -50,12 +53,10 @@ export function UserRow({
   const actionLoading = rowActionId === actionId;
   const approveDisabled = actionLoading || !user.is_verified;
   let actionContent = (
-    <span className="text-sm text-slate-500">
-      {tCommon('notAvailable')}
-    </span>
+    <span className="text-sm text-slate-500">{tCommon("notAvailable")}</span>
   );
 
-  if (view === 'pending') {
+  if (view === "pending") {
     actionContent = (
       <div className="flex gap-2">
         <button
@@ -64,15 +65,15 @@ export function UserRow({
           disabled={approveDisabled}
           title={
             !user.is_verified
-              ? tUsers('approvals.mustVerifyBeforeApproval')
-              : tUsers('approvals.actions.approve')
+              ? tUsers("approvals.mustVerifyBeforeApproval")
+              : tUsers("approvals.actions.approve")
           }
           className="btn-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
         >
           <CheckIcon className="h-4 w-4 shrink-0" />
           {actionLoading
-            ? tUsers('approvals.actions.processing')
-            : tUsers('approvals.actions.approve')}
+            ? tUsers("approvals.actions.processing")
+            : tUsers("approvals.actions.approve")}
         </button>
         <button
           type="button"
@@ -81,49 +82,70 @@ export function UserRow({
           className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
         >
           <XMarkIcon className="h-4 w-4 shrink-0" />
-          {tUsers('approvals.actions.reject')}
+          {tUsers("approvals.actions.reject")}
         </button>
         {!user.is_verified && (
           <span className="max-w-48 whitespace-normal text-xs leading-snug text-amber-700">
-            {tUsers('approvals.mustVerifyBeforeApproval')}
+            {tUsers("approvals.mustVerifyBeforeApproval")}
           </span>
         )}
       </div>
     );
   }
 
-  if (view === 'all') {
+  if (view === "all") {
     actionContent = (
       <div className="flex gap-2">
         <button
           type="button"
-          aria-label={tUsers('actions.viewDetails')}
-          title={tUsers('actions.viewDetails')}
+          aria-label={tUsers("actions.viewDetails")}
+          title={tUsers("actions.viewDetails")}
           className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
           onClick={() => onHistory(user)}
         >
           <EyeIcon className="h-4 w-4 shrink-0" />
-          <span>{tUsers('actions.viewDetails')}</span>
+          <span>{tUsers("actions.viewDetails")}</span>
         </button>
         <button
           type="button"
-          aria-label={tUsers('actions.edit')}
-          title={tUsers('actions.edit')}
+          aria-label={tUsers("actions.edit")}
+          title={tUsers("actions.edit")}
           className="btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
           onClick={() => onEdit(user)}
         >
           <PencilIcon className="h-4 w-4 shrink-0" />
-          <span>{tUsers('actions.edit')}</span>
+          <span>{tUsers("actions.edit")}</span>
         </button>
         <button
           type="button"
-          aria-label={tUsers('actions.delete')}
-          title={tUsers('actions.delete')}
+          aria-label={tUsers(
+            `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
+          )}
+          title={tUsers(
+            `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
+          )}
+          disabled={actionLoading}
+          className={`${user.is_active ? "btn-secondary" : "btn-primary"} inline-flex items-center gap-1.5 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+          onClick={() => onToggleActive(user)}
+        >
+          <PowerIcon className="h-4 w-4 shrink-0" />
+          <span>
+            {actionLoading
+              ? tUsers("approvals.actions.processing")
+              : tUsers(
+                  `activation.actions.${user.is_active ? "deactivate" : "reactivate"}`,
+                )}
+          </span>
+        </button>
+        <button
+          type="button"
+          aria-label={tUsers("actions.delete")}
+          title={tUsers("actions.delete")}
           className="btn-danger inline-flex items-center gap-1.5 px-3 py-2 text-xs"
           onClick={() => onDelete(getActionId(user))}
         >
           <TrashIcon className="h-4 w-4 shrink-0" />
-          <span>{tUsers('actions.delete')}</span>
+          <span>{tUsers("actions.delete")}</span>
         </button>
       </div>
     );
@@ -137,7 +159,9 @@ export function UserRow({
             type="checkbox"
             checked={selected}
             onChange={onToggleSelect}
-            aria-label={tUsers('bulk.selectRow', { name: user.nom_complet || user.email || '' })}
+            aria-label={tUsers("bulk.selectRow", {
+              name: user.nom_complet || user.email || "",
+            })}
           />
         </td>
       )}
@@ -145,7 +169,7 @@ export function UserRow({
         <ProfileAvatar
           name={user.nom_complet}
           photo={user.photo}
-          alt={user.nom_complet || tUsers('approvals.userAvatar')}
+          alt={user.nom_complet || tUsers("approvals.userAvatar")}
           size="sm"
         />
       </td>
@@ -153,16 +177,16 @@ export function UserRow({
         <UserIdentity user={user} tUsers={tUsers} showAvatar={false} />
       </td>
       <td>
-        <span className="user-table-text">{user.email || '—'}</span>
+        <span className="user-table-text">{user.email || "—"}</span>
       </td>
       <td>
         <RoleBadge role={user.role} tUsers={tUsers} />
       </td>
       <td>
-        <span className="user-table-text">{user.department || '—'}</span>
+        <span className="user-table-text">{user.department || "—"}</span>
       </td>
       <td>
-        <span className="user-table-text">{user.phone || '—'}</span>
+        <span className="user-table-text">{user.phone || "—"}</span>
       </td>
       <td>
         <VerificationBadge verified={user.is_verified} tUsers={tUsers} />
@@ -175,24 +199,27 @@ export function UserRow({
           {formatDate(dateValueForView(user, view), dateFormatter)}
         </span>
       </td>
-      {view === 'rejected' && (
+      {view === "rejected" && (
         <td>
-          <span title={user.rejection_reason || ''} className="user-table-reason">
-            {user.rejection_reason || '—'}
+          <span
+            title={user.rejection_reason || ""}
+            className="user-table-reason"
+          >
+            {user.rejection_reason || "—"}
           </span>
         </td>
       )}
-      {view === 'all' && (
+      {view === "all" && (
         <>
           <td>
             <span
               className={`rounded-full px-2 py-1 text-xs ${
                 user.is_active
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
               }`}
             >
-              {tUsers(`status.${user.is_active ? 'active' : 'inactive'}`)}
+              {tUsers(`status.${user.is_active ? "active" : "inactive"}`)}
             </span>
           </td>
           <td>
@@ -203,7 +230,7 @@ export function UserRow({
           <td>
             {Array.isArray(user.login_history) && user.login_history.length > 0
               ? user.login_history.length
-              : '—'}
+              : "—"}
           </td>
         </>
       )}

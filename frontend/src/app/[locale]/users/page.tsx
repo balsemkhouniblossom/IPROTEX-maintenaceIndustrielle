@@ -1,29 +1,46 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { CheckCircleIcon, ExclamationTriangleIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import {
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  PlusIcon,
+} from "@heroicons/react/24/outline";
 
-import DashboardLayout from '@/components/DashboardLayout';
-import Pagination from '@/components/Pagination';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { BulkActionToolbar } from '@/components/BulkActionToolbar';
-import { SavedViewsBar } from '@/components/SavedViewsBar';
-import { ApprovalRole, EmailVerificationFilter } from '@/services/userApprovals';
+import DashboardLayout from "@/components/DashboardLayout";
+import Pagination from "@/components/Pagination";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { BulkActionToolbar } from "@/components/BulkActionToolbar";
+import { SavedViewsBar } from "@/components/SavedViewsBar";
+import {
+  ApprovalRole,
+  EmailVerificationFilter,
+} from "@/services/userApprovals";
 
-import { NotificationState, User, VIEWS, PAGE_SIZE_OPTIONS } from './types';
-import { formatBadgeCount, dateHeaderForView, getActionId, getUserKey } from './utils';
-import { useUsersApprovalsList } from './hooks/useUsersApprovalsList';
-import { useUserApprovalActions } from './hooks/useUserApprovalActions';
-import { useBulkUserActions } from './hooks/useBulkUserActions';
-import { useSavedUserViews } from './hooks/useSavedUserViews';
-import { useUserForm } from './hooks/useUserForm';
-import { AccessDenied, ErrorState, LoadingTable, EmptyState } from './components/PageStates';
-import { UserRow } from './components/UserRow';
-import { UserCard } from './components/UserCard';
-import { ApprovalDialog } from './components/ApprovalDialog';
-import { UserFormModal } from './components/UserFormModal';
-import { HistoryModal } from './components/HistoryModal';
+import { NotificationState, User, VIEWS, PAGE_SIZE_OPTIONS } from "./types";
+import {
+  formatBadgeCount,
+  dateHeaderForView,
+  getActionId,
+  getUserKey,
+} from "./utils";
+import { useUsersApprovalsList } from "./hooks/useUsersApprovalsList";
+import { useUserApprovalActions } from "./hooks/useUserApprovalActions";
+import { useBulkUserActions } from "./hooks/useBulkUserActions";
+import { useSavedUserViews } from "./hooks/useSavedUserViews";
+import { useUserForm } from "./hooks/useUserForm";
+import {
+  AccessDenied,
+  ErrorState,
+  LoadingTable,
+  EmptyState,
+} from "./components/PageStates";
+import { UserRow } from "./components/UserRow";
+import { UserCard } from "./components/UserCard";
+import { ApprovalDialog } from "./components/ApprovalDialog";
+import { UserFormModal } from "./components/UserFormModal";
+import { HistoryModal } from "./components/HistoryModal";
 
 export default function UsersPage() {
   return (
@@ -34,11 +51,11 @@ export default function UsersPage() {
 }
 
 function UsersPageContent() {
-  const tUsers = useTranslations('users');
-  const tCommon = useTranslations('common');
+  const tUsers = useTranslations("users");
+  const tCommon = useTranslations("common");
 
   const [notification, setNotification] = useState<NotificationState>(null);
-  function showNotification(type: 'success' | 'error', message: string) {
+  function showNotification(type: "success" | "error", message: string) {
     setNotification({ type, message });
     window.setTimeout(() => setNotification(null), 5000);
   }
@@ -78,6 +95,7 @@ function UsersPageContent() {
 
   const approvalActions = useUserApprovalActions({
     items,
+    setItems,
     page,
     setPage,
     refreshAfterDecision,
@@ -118,31 +136,39 @@ function UsersPageContent() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const activeTitle = tUsers(`approvals.tabs.${activeView}`);
-  const isPending = activeView === 'pending';
+  const isPending = activeView === "pending";
 
   let listStateContent = null;
   if (accessDenied) {
     listStateContent = <AccessDenied tUsers={tUsers} />;
   } else if (errorState) {
-    listStateContent = <ErrorState message={errorState} onRetry={() => void loadCurrentView()} tUsers={tUsers} />;
+    listStateContent = (
+      <ErrorState
+        message={errorState}
+        onRetry={() => void loadCurrentView()}
+        tUsers={tUsers}
+      />
+    );
   } else if (loading) {
     listStateContent = <LoadingTable tUsers={tUsers} />;
   } else if (items.length === 0) {
-    listStateContent = <EmptyState view={activeView} search={debouncedSearch} tUsers={tUsers} />;
+    listStateContent = (
+      <EmptyState view={activeView} search={debouncedSearch} tUsers={tUsers} />
+    );
   }
 
   return (
-    <DashboardLayout title={tUsers('pageTitle')}>
+    <DashboardLayout title={tUsers("pageTitle")}>
       {notification && (
         <output
           className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg border p-4 shadow-lg ${
-            notification.type === 'success'
-              ? 'border-green-200 bg-green-100 text-green-800'
-              : 'border-red-200 bg-red-100 text-red-800'
+            notification.type === "success"
+              ? "border-green-200 bg-green-100 text-green-800"
+              : "border-red-200 bg-red-100 text-red-800"
           }`}
-          aria-live={notification.type === 'error' ? 'assertive' : 'polite'}
+          aria-live={notification.type === "error" ? "assertive" : "polite"}
         >
-          {notification.type === 'success' ? (
+          {notification.type === "success" ? (
             <CheckCircleIcon className="h-5 w-5" />
           ) : (
             <ExclamationTriangleIcon className="h-5 w-5" />
@@ -157,28 +183,29 @@ function UsersPageContent() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-slate-800">
-                  {tUsers('heading')}
+                  {tUsers("heading")}
                 </h1>
-                <p className="mt-1 text-slate-600">{tUsers('subtitle')}</p>
+                <p className="mt-1 text-slate-600">{tUsers("subtitle")}</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <div className="text-3xl font-bold text-blue-600">
-                    {activeView === 'pending' ? pendingCount : totalItems}
+                    {activeView === "pending" ? pendingCount : totalItems}
                   </div>
                   <div className="text-sm text-slate-500">
-                    {activeView === 'pending'
-                      ? tUsers('approvals.pendingCount')
-                      : tUsers('totalUsers')}
+                    {activeView === "pending"
+                      ? tUsers("approvals.pendingCount")
+                      : tUsers("totalUsers")}
                   </div>
                 </div>
-                {activeView === 'all' && (
-                  <button type="button"
+                {activeView === "all" && (
+                  <button
+                    type="button"
                     onClick={userForm.handleAdd}
                     className="btn-primary flex items-center gap-2"
                   >
                     <PlusIcon className="h-4 w-4" />
-                    <span>{tUsers('addUser')}</span>
+                    <span>{tUsers("addUser")}</span>
                   </button>
                 )}
               </div>
@@ -195,22 +222,24 @@ function UsersPageContent() {
                   style={{ minHeight: 24 }}
                   className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
                     activeView === view
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
                   }`}
                 >
                   <span>{tUsers(`approvals.tabs.${view}`)}</span>
-                  {view === 'pending' && !pendingCountLoading && pendingCount > 0 && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        activeView === view
-                          ? 'bg-white text-blue-700'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {formatBadgeCount(pendingCount)}
-                    </span>
-                  )}
+                  {view === "pending" &&
+                    !pendingCountLoading &&
+                    pendingCount > 0 && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          activeView === view
+                            ? "bg-white text-blue-700"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {formatBadgeCount(pendingCount)}
+                      </span>
+                    )}
                 </button>
               ))}
             </div>
@@ -220,23 +249,27 @@ function UsersPageContent() {
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 className="input-field xl:col-span-2"
-                placeholder={tUsers('approvals.filters.search')}
-                aria-label={tUsers('approvals.filters.search')}
+                placeholder={tUsers("approvals.filters.search")}
+                aria-label={tUsers("approvals.filters.search")}
               />
               {isPending && (
                 <>
                   <select
                     value={roleFilter}
                     onChange={(event) => {
-                      setRoleFilter(event.target.value as ApprovalRole | 'all');
+                      setRoleFilter(event.target.value as ApprovalRole | "all");
                       setPage(1);
                     }}
                     className="input-field"
-                    aria-label={tUsers('approvals.filters.role')}
+                    aria-label={tUsers("approvals.filters.role")}
                   >
-                    <option value="all">{tUsers('approvals.filters.allRoles')}</option>
-                    <option value="operator">{tUsers('roles.operator')}</option>
-                    <option value="technician">{tUsers('roles.technician')}</option>
+                    <option value="all">
+                      {tUsers("approvals.filters.allRoles")}
+                    </option>
+                    <option value="operator">{tUsers("roles.operator")}</option>
+                    <option value="technician">
+                      {tUsers("roles.technician")}
+                    </option>
                   </select>
                   <select
                     value={verificationFilter}
@@ -247,23 +280,33 @@ function UsersPageContent() {
                       setPage(1);
                     }}
                     className="input-field"
-                    aria-label={tUsers('approvals.filters.verification')}
+                    aria-label={tUsers("approvals.filters.verification")}
                   >
-                    <option value="all">{tUsers('approvals.filters.allVerification')}</option>
-                    <option value="verified">{tUsers('approvals.emailVerified')}</option>
-                    <option value="unverified">{tUsers('approvals.emailNotVerified')}</option>
+                    <option value="all">
+                      {tUsers("approvals.filters.allVerification")}
+                    </option>
+                    <option value="verified">
+                      {tUsers("approvals.emailVerified")}
+                    </option>
+                    <option value="unverified">
+                      {tUsers("approvals.emailNotVerified")}
+                    </option>
                   </select>
                   <select
                     value={sortOrder}
                     onChange={(event) => {
-                      setSortOrder(event.target.value as 'asc' | 'desc');
+                      setSortOrder(event.target.value as "asc" | "desc");
                       setPage(1);
                     }}
                     className="input-field"
-                    aria-label={tUsers('approvals.filters.sort')}
+                    aria-label={tUsers("approvals.filters.sort")}
                   >
-                    <option value="asc">{tUsers('approvals.filters.oldest')}</option>
-                    <option value="desc">{tUsers('approvals.filters.newest')}</option>
+                    <option value="asc">
+                      {tUsers("approvals.filters.oldest")}
+                    </option>
+                    <option value="desc">
+                      {tUsers("approvals.filters.newest")}
+                    </option>
                   </select>
                 </>
               )}
@@ -275,7 +318,7 @@ function UsersPageContent() {
                     setPage(1);
                   }}
                   className="input-field"
-                  aria-label={tUsers('approvals.filters.pageSize')}
+                  aria-label={tUsers("approvals.filters.pageSize")}
                 >
                   {PAGE_SIZE_OPTIONS.map((size) => (
                     <option key={size} value={size}>
@@ -293,10 +336,10 @@ function UsersPageContent() {
                 onApply={savedViews.applySavedView}
                 onSaveCurrent={(name) => void savedViews.saveCurrentView(name)}
                 onDelete={(view) => void savedViews.deleteSavedView(view)}
-                saveLabel={tUsers('savedViews.save')}
-                namePlaceholder={tUsers('savedViews.namePlaceholder')}
-                emptyLabel={tUsers('savedViews.empty')}
-                deleteLabel={tUsers('savedViews.delete')}
+                saveLabel={tUsers("savedViews.save")}
+                namePlaceholder={tUsers("savedViews.namePlaceholder")}
+                emptyLabel={tUsers("savedViews.empty")}
+                deleteLabel={tUsers("savedViews.delete")}
               />
             </div>
           </div>
@@ -312,7 +355,7 @@ function UsersPageContent() {
             </div>
             {loading && (
               <output className="text-sm text-slate-500">
-                {tUsers('approvals.loading')}
+                {tUsers("approvals.loading")}
               </output>
             )}
           </div>
@@ -323,8 +366,10 @@ function UsersPageContent() {
                 <BulkActionToolbar
                   selectedCount={bulkActions.selectedIds.size}
                   onClearSelection={() => bulkActions.toggleSelectAll(false)}
-                  clearLabel={tUsers('bulk.clearSelection')}
-                  countLabel={(count) => tUsers('bulk.selectedCount', { count })}
+                  clearLabel={tUsers("bulk.clearSelection")}
+                  countLabel={(count) =>
+                    tUsers("bulk.selectedCount", { count })
+                  }
                 >
                   <button
                     type="button"
@@ -332,14 +377,16 @@ function UsersPageContent() {
                     disabled={bulkActions.bulkSubmitting}
                     className="btn-primary px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {tUsers('bulk.approve')}
+                    {tUsers("bulk.approve")}
                   </button>
                   <input
                     value={bulkActions.bulkRejectReason}
-                    onChange={(e) => bulkActions.setBulkRejectReason(e.target.value)}
-                    placeholder={tUsers('bulk.reasonPlaceholder')}
+                    onChange={(e) =>
+                      bulkActions.setBulkRejectReason(e.target.value)
+                    }
+                    placeholder={tUsers("bulk.reasonPlaceholder")}
                     className="input-field h-8 w-56 text-xs"
-                    aria-label={tUsers('bulk.reasonPlaceholder')}
+                    aria-label={tUsers("bulk.reasonPlaceholder")}
                   />
                   <button
                     type="button"
@@ -347,14 +394,14 @@ function UsersPageContent() {
                     disabled={bulkActions.bulkSubmitting}
                     className="btn-danger px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {tUsers('bulk.reject')}
+                    {tUsers("bulk.reject")}
                   </button>
                 </BulkActionToolbar>
               )}
 
               <section
                 className="users-table-scroll hidden lg:block"
-                aria-label={tUsers('allUsers')}
+                aria-label={tUsers("allUsers")}
               >
                 <table className="table users-table">
                   <colgroup>
@@ -368,10 +415,10 @@ function UsersPageContent() {
                     <col className="users-table__verification" />
                     <col className="users-table__approval" />
                     <col className="users-table__date" />
-                    {activeView === 'rejected' && (
+                    {activeView === "rejected" && (
                       <col className="users-table__reason" />
                     )}
-                    {activeView === 'all' && (
+                    {activeView === "all" && (
                       <>
                         <col className="users-table__status" />
                         <col className="users-table__date" />
@@ -386,32 +433,39 @@ function UsersPageContent() {
                         <th>
                           <input
                             type="checkbox"
-                            checked={items.length > 0 && items.every((user) => bulkActions.selectedIds.has(getActionId(user)))}
-                            onChange={(e) => bulkActions.toggleSelectAll(e.target.checked)}
-                            aria-label={tUsers('bulk.selectAll')}
+                            checked={
+                              items.length > 0 &&
+                              items.every((user) =>
+                                bulkActions.selectedIds.has(getActionId(user)),
+                              )
+                            }
+                            onChange={(e) =>
+                              bulkActions.toggleSelectAll(e.target.checked)
+                            }
+                            aria-label={tUsers("bulk.selectAll")}
                           />
                         </th>
                       )}
-                      <th>{tUsers('table.photo')}</th>
-                      <th>{tUsers('table.name')}</th>
-                      <th>{tUsers('table.email')}</th>
-                      <th>{tUsers('table.role')}</th>
-                      <th>{tUsers('table.department')}</th>
-                      <th>{tUsers('table.phone')}</th>
-                      <th>{tUsers('approvals.emailVerification')}</th>
-                      <th>{tUsers('approvals.approvalStatus')}</th>
+                      <th>{tUsers("table.photo")}</th>
+                      <th>{tUsers("table.name")}</th>
+                      <th>{tUsers("table.email")}</th>
+                      <th>{tUsers("table.role")}</th>
+                      <th>{tUsers("table.department")}</th>
+                      <th>{tUsers("table.phone")}</th>
+                      <th>{tUsers("approvals.emailVerification")}</th>
+                      <th>{tUsers("approvals.approvalStatus")}</th>
                       <th>{dateHeaderForView(activeView, tUsers)}</th>
-                      {activeView === 'rejected' && (
-                        <th>{tUsers('approvals.rejectionReason')}</th>
+                      {activeView === "rejected" && (
+                        <th>{tUsers("approvals.rejectionReason")}</th>
                       )}
-                      {activeView === 'all' && (
+                      {activeView === "all" && (
                         <>
-                          <th>{tUsers('table.status')}</th>
-                          <th>{tUsers('table.lastLogin')}</th>
-                          <th>{tUsers('table.loginHistory')}</th>
+                          <th>{tUsers("table.status")}</th>
+                          <th>{tUsers("table.lastLogin")}</th>
+                          <th>{tUsers("table.loginHistory")}</th>
                         </>
                       )}
-                      <th>{tCommon('table.actions')}</th>
+                      <th>{tCommon("table.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -430,9 +484,14 @@ function UsersPageContent() {
                           setHistoryUser(target);
                           setIsHistoryModalOpen(true);
                         }}
+                        onToggleActive={approvalActions.toggleAccountActive}
                         selectable={isPending}
-                        selected={bulkActions.selectedIds.has(getActionId(user))}
-                        onToggleSelect={() => bulkActions.toggleSelect(getActionId(user))}
+                        selected={bulkActions.selectedIds.has(
+                          getActionId(user),
+                        )}
+                        onToggleSelect={() =>
+                          bulkActions.toggleSelect(getActionId(user))
+                        }
                         tUsers={tUsers}
                         tCommon={tCommon}
                       />
@@ -457,9 +516,12 @@ function UsersPageContent() {
                       setHistoryUser(target);
                       setIsHistoryModalOpen(true);
                     }}
+                    onToggleActive={approvalActions.toggleAccountActive}
                     selectable={isPending}
                     selected={bulkActions.selectedIds.has(getActionId(user))}
-                    onToggleSelect={() => bulkActions.toggleSelect(getActionId(user))}
+                    onToggleSelect={() =>
+                      bulkActions.toggleSelect(getActionId(user))
+                    }
                     tUsers={tUsers}
                   />
                 ))}
@@ -486,7 +548,7 @@ function UsersPageContent() {
         loading={!!approvalActions.rowActionId}
         onReasonChange={(nextReason) => {
           approvalActions.setReason(nextReason);
-          approvalActions.setReasonError('');
+          approvalActions.setReasonError("");
         }}
         onClose={approvalActions.closeActionDialog}
         onApprove={() => void approvalActions.confirmApprove()}

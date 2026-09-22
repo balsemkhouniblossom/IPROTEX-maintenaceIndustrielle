@@ -1427,6 +1427,21 @@
   },
   "users": {
     "pageTitle": "إدارة المستخدمين",
+    "activation": {
+      "actions": {
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate"
+      },
+      "confirm": {
+        "deactivate": "Deactivate {name}? Their current sessions will be revoked.",
+        "reactivate": "Reactivate {name}? They will be able to sign in again."
+      },
+      "messages": {
+        "deactivated": "Account deactivated successfully.",
+        "reactivated": "Account reactivated successfully.",
+        "alreadyUpdated": "The account is already in that state."
+      }
+    },
     "heading": "إدارة المستخدمين",
     "totalUsers": "إجمالي المستخدمين",
     "placeholder": "نص مؤقت",
@@ -1529,6 +1544,9 @@
         "ADMIN_ACCOUNT_REQUIRES_SEPARATE_MANAGEMENT": "حسابات المسؤولين تتطلب إدارة منفصلة.",
         "INVALID_APPROVAL_TRANSITION": "تغيرت حالة الحساب. تم تحديث القائمة.",
         "ACCOUNT_ALREADY_APPROVED": "تمت الموافقة على الحساب مسبقاً.",
+        "CANNOT_DEACTIVATE_SELF": "You cannot deactivate your own account.",
+        "ACCOUNT_NOT_ELIGIBLE_FOR_REACTIVATION": "Only verified, approved accounts can be reactivated.",
+        "ACCOUNT_STATE_CHANGED": "The account state changed. Refresh and try again.",
         "generic": "تعذر تحميل الموافقات."
       }
     },

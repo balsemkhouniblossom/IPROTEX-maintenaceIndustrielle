@@ -1,16 +1,16 @@
-import api, { apiService } from './api.ts';
+import api, { apiService } from "./api.ts";
 import {
   buildPendingApprovalsParams,
   buildRejectAccountPayload,
   buildUsersListParams,
-} from './userApprovalLogic';
-export { getApprovalErrorCode } from './userApprovalLogic';
+} from "./userApprovalLogic";
+export { getApprovalErrorCode } from "./userApprovalLogic";
 
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type ApprovalRole = 'operator' | 'technician';
-export type ApprovalView = 'pending' | 'approved' | 'rejected' | 'all';
-export type EmailVerificationFilter = 'verified' | 'unverified' | 'all';
-export type SortOrder = 'asc' | 'desc';
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+export type ApprovalRole = "operator" | "technician";
+export type ApprovalView = "pending" | "approved" | "rejected" | "all";
+export type EmailVerificationFilter = "verified" | "unverified" | "all";
+export type SortOrder = "asc" | "desc";
 
 export interface ApprovalUser {
   id: string;
@@ -33,7 +33,7 @@ export interface PendingApprovalsParams {
   page?: number;
   limit?: number;
   search?: string;
-  role?: ApprovalRole | 'all';
+  role?: ApprovalRole | "all";
   emailVerified?: EmailVerificationFilter;
   sortOrder?: SortOrder;
 }
@@ -82,14 +82,14 @@ function readPaginatedUsers(data: unknown): PaginatedApprovalUsers {
 export async function getPendingApprovals(
   params: PendingApprovalsParams = {},
 ): Promise<PaginatedApprovalUsers> {
-  const response = await api.get('/users/pending-approvals', {
+  const response = await api.get("/users/pending-approvals", {
     params: buildPendingApprovalsParams(params),
   });
   return readPaginatedUsers(response.data);
 }
 
 export async function getPendingApprovalCount(): Promise<PendingApprovalCount> {
-  const response = await api.get('/users/pending-approvals/count');
+  const response = await api.get("/users/pending-approvals/count");
   const data = response.data as PendingApprovalCount;
   return {
     count: Number(data.count) || 0,
@@ -108,6 +108,14 @@ export async function rejectUserAccount(userId: string, reason: string) {
     `/users/${encodeURIComponent(userId)}/reject`,
     buildRejectAccountPayload(reason),
   );
+}
+
+export async function deactivateUserAccount(userId: string) {
+  return api.patch(`/users/${encodeURIComponent(userId)}/deactivate`);
+}
+
+export async function reactivateUserAccount(userId: string) {
+  return api.patch(`/users/${encodeURIComponent(userId)}/reactivate`);
 }
 
 export async function getApprovalAwareUsers(

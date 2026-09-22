@@ -228,6 +228,24 @@ export class UsersController {
     );
   }
 
+  @Patch(':id/deactivate')
+  @UseGuards(JwtAuthGuard, AdminAccountGuard)
+  async deactivateUser(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.deactivateUser(
+      id,
+      req.currentUser?._id.toString() ?? '',
+    );
+  }
+
+  @Patch(':id/reactivate')
+  @UseGuards(JwtAuthGuard, AdminAccountGuard)
+  async reactivateUser(@Param('id') id: string) {
+    return this.usersService.reactivateUser(id);
+  }
+
   @Post('bulk-approve')
   @UseGuards(JwtAuthGuard, AdminAccountGuard)
   async bulkApproveUsers(

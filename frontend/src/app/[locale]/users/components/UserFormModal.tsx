@@ -1,12 +1,12 @@
-import React from 'react';
-import { useTranslations } from 'next-intl';
-import { CameraIcon } from '@heroicons/react/24/outline';
-import InternationalPhoneInput from '@/components/InternationalPhoneInput';
-import { Modal } from '@/components/Modal';
-import ProfileAvatar from '@/components/ProfileAvatar';
-import { User, UserFormData } from '../types';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { WidgetErrorFallback } from '@/components/WidgetErrorFallback';
+import React from "react";
+import { useTranslations } from "next-intl";
+import { CameraIcon } from "@heroicons/react/24/outline";
+import InternationalPhoneInput from "@/components/InternationalPhoneInput";
+import { Modal } from "@/components/Modal";
+import ProfileAvatar from "@/components/ProfileAvatar";
+import { User, UserFormData } from "../types";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 type UserFormModalProps = Readonly<{
   isOpen: boolean;
@@ -36,10 +36,12 @@ function submitButtonLabel(
   tCommon: ReturnType<typeof useTranslations>,
 ) {
   if (submitting) {
-    return tCommon('actions.saving');
+    return tCommon("actions.saving");
   }
 
-  return editingUser ? tUsers('actions.updateUser') : tUsers('actions.createUser');
+  return editingUser
+    ? tUsers("actions.updateUser")
+    : tUsers("actions.createUser");
 }
 
 export function UserFormModal(props: UserFormModalProps) {
@@ -75,7 +77,7 @@ function UserFormModalInner(props: UserFormModalProps) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editingUser ? tUsers('modal.editTitle') : tUsers('modal.addTitle')}
+      title={editingUser ? tUsers("modal.editTitle") : tUsers("modal.addTitle")}
       size="lg"
     >
       <form onSubmit={onSubmit} className="space-y-4">
@@ -84,7 +86,7 @@ function UserFormModalInner(props: UserFormModalProps) {
             <ProfileAvatar
               name={formData.nom_complet}
               photo={formData.photo}
-              alt={tUsers('form.profilePhoto')}
+              alt={tUsers("form.profilePhoto")}
               size="lg"
               className="border border-slate-300"
             />
@@ -95,11 +97,13 @@ function UserFormModalInner(props: UserFormModalProps) {
               type="file"
               accept="image/*"
               className="hidden"
-              aria-label={tUsers('form.profilePhoto')}
+              aria-label={tUsers("form.profilePhoto")}
               onChange={onPhotoUpload}
             />
           </label>
-          <span className="text-sm text-slate-500">{tUsers('form.clickAvatar')}</span>
+          <span className="text-sm text-slate-500">
+            {tUsers("form.clickAvatar")}
+          </span>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -110,8 +114,8 @@ function UserFormModalInner(props: UserFormModalProps) {
               onFormDataChange({ ...formData, nom_complet: event.target.value })
             }
             className="input-field"
-            placeholder={tUsers('form.fullName')}
-            aria-label={tUsers('form.fullName')}
+            placeholder={tUsers("form.fullName")}
+            aria-label={tUsers("form.fullName")}
             required
           />
           <input
@@ -121,8 +125,8 @@ function UserFormModalInner(props: UserFormModalProps) {
               onFormDataChange({ ...formData, email: event.target.value })
             }
             className="input-field"
-            placeholder={tUsers('form.email')}
-            aria-label={tUsers('form.email')}
+            placeholder={tUsers("form.email")}
+            aria-label={tUsers("form.email")}
             required
           />
         </div>
@@ -136,16 +140,18 @@ function UserFormModalInner(props: UserFormModalProps) {
           className="input-field"
           required={!editingUser}
           placeholder={
-            editingUser ? tUsers('placeholders.editPassword') : tUsers('placeholders.password')
+            editingUser
+              ? tUsers("placeholders.editPassword")
+              : tUsers("placeholders.password")
           }
-          aria-label={tUsers('form.password')}
+          aria-label={tUsers("form.password")}
         />
 
         <InternationalPhoneInput
           name="phone"
           value={formData.phone}
           onChange={(phone) => onFormDataChange({ ...formData, phone })}
-          placeholder={tUsers('validation.phoneHint')}
+          placeholder={tUsers("validation.phoneHint")}
           className="w-full"
         />
 
@@ -160,23 +166,26 @@ function UserFormModalInner(props: UserFormModalProps) {
               onChange={(event) => {
                 if (event.target.value === customDepartmentValue) {
                   onUseCustomDepartmentChange(true);
-                  onFormDataChange({ ...formData, department: '' });
+                  onFormDataChange({ ...formData, department: "" });
                   return;
                 }
                 onUseCustomDepartmentChange(false);
-                onFormDataChange({ ...formData, department: event.target.value });
+                onFormDataChange({
+                  ...formData,
+                  department: event.target.value,
+                });
               }}
               className="input-field"
-              aria-label={tUsers('form.department')}
+              aria-label={tUsers("form.department")}
             >
-              <option value="">{tUsers('form.department')}</option>
+              <option value="">{tUsers("form.department")}</option>
               {departmentOptions.map((department) => (
                 <option key={department} value={department}>
                   {department}
                 </option>
               ))}
               <option value={customDepartmentValue}>
-                {tUsers('form.customDepartment')}
+                {tUsers("form.customDepartment")}
               </option>
             </select>
             {useCustomDepartment && (
@@ -184,10 +193,13 @@ function UserFormModalInner(props: UserFormModalProps) {
                 type="text"
                 value={formData.department}
                 onChange={(event) =>
-                  onFormDataChange({ ...formData, department: event.target.value })
+                  onFormDataChange({
+                    ...formData,
+                    department: event.target.value,
+                  })
                 }
                 className="input-field mt-2"
-                placeholder={tUsers('form.customDepartment')}
+                placeholder={tUsers("form.customDepartment")}
               />
             )}
           </div>
@@ -197,32 +209,34 @@ function UserFormModalInner(props: UserFormModalProps) {
               onFormDataChange({ ...formData, role: event.target.value })
             }
             className="input-field"
-            aria-label={tUsers('form.role')}
+            aria-label={tUsers("form.role")}
           >
-            <option value="admin">{tUsers('roles.admin')}</option>
-            <option value="technician">{tUsers('roles.technician')}</option>
-            <option value="operator">{tUsers('roles.operator')}</option>
+            <option value="admin">{tUsers("roles.admin")}</option>
+            <option value="technician">{tUsers("roles.technician")}</option>
+            <option value="operator">{tUsers("roles.operator")}</option>
           </select>
         </div>
 
-        <select
-          value={formData.is_active ? 'true' : 'false'}
-          onChange={(event) =>
-            onFormDataChange({
-              ...formData,
-              is_active: event.target.value === 'true',
-            })
-          }
-          className="input-field"
-          aria-label={tUsers('form.status')}
-        >
-          <option value="true">{tUsers('status.active')}</option>
-          <option value="false">{tUsers('status.inactive')}</option>
-        </select>
+        {!editingUser && (
+          <select
+            value={formData.is_active ? "true" : "false"}
+            onChange={(event) =>
+              onFormDataChange({
+                ...formData,
+                is_active: event.target.value === "true",
+              })
+            }
+            className="input-field"
+            aria-label={tUsers("form.status")}
+          >
+            <option value="true">{tUsers("status.active")}</option>
+            <option value="false">{tUsers("status.inactive")}</option>
+          </select>
+        )}
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={onClose} className="btn-secondary">
-            {tCommon('actions.cancel')}
+            {tCommon("actions.cancel")}
           </button>
           <button type="submit" className="btn-primary" disabled={submitting}>
             {submitButtonLabel(submitting, editingUser, tUsers, tCommon)}

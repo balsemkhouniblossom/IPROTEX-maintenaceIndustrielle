@@ -1,30 +1,35 @@
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { apiService } from '@/services/api';
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { apiService } from "@/services/api";
 import {
   buildInternationalPhone,
   DEFAULT_PHONE_COUNTRY,
   parseInternationalPhoneValue,
   validateNationalPhone,
-} from '@/services/phoneNumber';
-import { validatePasswordPolicy } from '@/services/userValidation';
-import { User, UserFormData } from '../types';
-import { getActionId } from '../utils';
+} from "@/services/phoneNumber";
+import { validatePasswordPolicy } from "@/services/userValidation";
+import { User, UserFormData } from "../types";
+import { getActionId } from "../utils";
 
-export const DEPARTMENT_OPTIONS = ['IT', 'Maintenance', 'Production', 'Administration'];
-export const CUSTOM_DEPARTMENT_VALUE = '__custom_department__';
+export const DEPARTMENT_OPTIONS = [
+  "IT",
+  "Maintenance",
+  "Production",
+  "Administration",
+];
+export const CUSTOM_DEPARTMENT_VALUE = "__custom_department__";
 
 const emptyForm: UserFormData = {
-  nom_complet: '',
-  email: '',
-  password: '',
-  role: 'operator',
-  department: '',
+  nom_complet: "",
+  email: "",
+  password: "",
+  role: "operator",
+  department: "",
   phone: {
     country: DEFAULT_PHONE_COUNTRY,
-    nationalNumber: '',
+    nationalNumber: "",
   },
-  photo: '',
+  photo: "",
   is_active: true,
 };
 
@@ -34,7 +39,7 @@ export function useUserForm({
   tUsers,
 }: {
   loadCurrentView: () => Promise<void>;
-  showNotification: (type: 'success' | 'error', message: string) => void;
+  showNotification: (type: "success" | "error", message: string) => void;
   tUsers: ReturnType<typeof useTranslations>;
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -51,11 +56,11 @@ export function useUserForm({
 
   function validateForm() {
     if (!formData.nom_complet.trim()) {
-      showNotification('error', tUsers('validation.nameRequired'));
+      showNotification("error", tUsers("validation.nameRequired"));
       return false;
     }
     if (!formData.email.trim()) {
-      showNotification('error', tUsers('validation.emailRequired'));
+      showNotification("error", tUsers("validation.emailRequired"));
       return false;
     }
     if (
@@ -64,18 +69,18 @@ export function useUserForm({
         formData.phone.nationalNumber,
       )
     ) {
-      showNotification('error', tUsers('validation.invalidPhone'));
+      showNotification("error", tUsers("validation.invalidPhone"));
       return false;
     }
     if (!editingUser && !formData.password.trim()) {
-      showNotification('error', tUsers('validation.passwordRequired'));
+      showNotification("error", tUsers("validation.passwordRequired"));
       return false;
     }
     if (
       formData.password.trim() &&
       !validatePasswordPolicy(formData.password.trim())
     ) {
-      showNotification('error', tUsers('validation.weakPassword'));
+      showNotification("error", tUsers("validation.weakPassword"));
       return false;
     }
     return true;
@@ -87,20 +92,20 @@ export function useUserForm({
   }
 
   function handleEdit(user: User) {
-    const existingDepartment = user.department || '';
+    const existingDepartment = user.department || "";
     const isCustomDepartment =
       !!existingDepartment && !DEPARTMENT_OPTIONS.includes(existingDepartment);
 
     setEditingUser(user);
     setUseCustomDepartment(isCustomDepartment);
     setFormData({
-      nom_complet: user.nom_complet || '',
-      email: user.email || '',
-      password: '',
-      role: user.role || 'operator',
+      nom_complet: user.nom_complet || "",
+      email: user.email || "",
+      password: "",
+      role: user.role || "operator",
       department: existingDepartment,
       phone: parseInternationalPhoneValue(user.phone),
-      photo: user.photo || '',
+      photo: user.photo || "",
       is_active: user.is_active ?? true,
     });
     setIsModalOpen(true);
@@ -112,22 +117,22 @@ export function useUserForm({
 
     try {
       const uploadData = new FormData();
-      uploadData.append('photo', file);
+      uploadData.append("photo", file);
       if (editingUser) {
-        uploadData.append('userId', getActionId(editingUser));
+        uploadData.append("userId", getActionId(editingUser));
       }
       const response = await apiService.uploadPhoto(uploadData);
-      const photoPath = response.data.photoPath || response.data.path || '';
+      const photoPath = response.data.photoPath || response.data.path || "";
       setFormData((prev) => ({ ...prev, photo: photoPath }));
 
       if (editingUser && photoPath) {
         await loadCurrentView();
       }
 
-      showNotification('success', tUsers('notifications.photoUploaded'));
+      showNotification("success", tUsers("notifications.photoUploaded"));
     } catch (error) {
       console.error(error);
-      showNotification('error', tUsers('notifications.photoUploadFailed'));
+      showNotification("error", tUsers("notifications.photoUploadFailed"));
     }
   }
 
@@ -148,7 +153,6 @@ export function useUserForm({
         department: formData.department.trim() || undefined,
         phone: phone || undefined,
         photo: formData.photo || undefined,
-        is_active: formData.is_active,
         ...(formData.password.trim()
           ? { password: formData.password.trim() }
           : {}),
@@ -156,21 +160,22 @@ export function useUserForm({
 
       if (editingUser) {
         await apiService.updateUser(getActionId(editingUser), payload);
-        showNotification('success', tUsers('notifications.updated'));
+        showNotification("success", tUsers("notifications.updated"));
       } else {
         await apiService.createUser({
           ...payload,
           password: formData.password.trim(),
+          is_active: formData.is_active,
         });
-        showNotification('success', tUsers('notifications.created'));
+        showNotification("success", tUsers("notifications.created"));
       }
 
       setIsModalOpen(false);
       resetForm();
       await loadCurrentView();
     } catch (error) {
-      console.error('Save error:', error);
-      showNotification('error', tUsers('notifications.saveFailed'));
+      console.error("Save error:", error);
+      showNotification("error", tUsers("notifications.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -178,15 +183,15 @@ export function useUserForm({
 
   async function handleDelete(userId?: string) {
     if (!userId) return;
-    if (!confirm(tUsers('notifications.confirmDelete'))) return;
+    if (!confirm(tUsers("notifications.confirmDelete"))) return;
 
     try {
       await apiService.deleteUser(userId);
       await loadCurrentView();
-      showNotification('success', tUsers('notifications.deleted'));
+      showNotification("success", tUsers("notifications.deleted"));
     } catch (error) {
-      console.error('Error deleting user:', error);
-      showNotification('error', tUsers('notifications.deleteFailed'));
+      console.error("Error deleting user:", error);
+      showNotification("error", tUsers("notifications.deleteFailed"));
     }
   }
 
