@@ -196,7 +196,7 @@ test("machines list exposes persistent recovery and correct machine values", () 
   assert.match(source, /onClick=\{\(\) => void loadMachines\(\)\}/);
   assert.match(
     source,
-    /machine\.machine_type_name\s*\|\|\s*machineType\?\.name\s*\|\|\s*tCommon\("notAvailable"\)/,
+    /displayText\(\s*machine\.machine_type_name\s*\|\|\s*machineType\?\.name,\s*tCommon\("notAvailable"\),?\s*\)/,
   );
   assert.match(source, /machine\.poids_kg != null[\s\S]{0,100}tCommon\("notAvailable"\)/);
   assert.match(source, /setPendingDelete\(machine\)/);
