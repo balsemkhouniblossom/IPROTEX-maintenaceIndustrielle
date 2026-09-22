@@ -12,6 +12,7 @@ import { AiContextBuilderService } from './ai-context-builder.service';
 import { PromptInjectionGuardService } from './prompt-injection-guard.service';
 import { SensitiveDataFilterService } from './sensitive-data-filter.service';
 import { AiAssistantThrottleService } from './ai-assistant-throttle.service';
+import { AiWorkOrderContextService } from './ai-work-order-context.service';
 import {
   AI_PROVIDER,
   AiAssistantAnswer,
@@ -191,6 +192,8 @@ type RecordParams = {
   retryAfterSeconds?: number;
   errorMessage?: string;
   grounded?: boolean;
+  validatedWorkOrderId?: string;
+  validatedMachineId?: string;
   sources?: KnowledgeSource[];
 };
 
@@ -216,6 +219,7 @@ export class AiAssistantService {
     private readonly throttleService: AiAssistantThrottleService,
     private readonly configService: ConfigService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
+    private readonly workOrderContextService: AiWorkOrderContextService,
     @Optional()
     private readonly knowledgeRetrieval?: KnowledgeRetrievalService,
   ) {}
@@ -253,6 +257,16 @@ export class AiAssistantService {
       );
     }
 
+    const authorizedWorkOrder = dto.workOrderId
+      ? await this.workOrderContextService.resolve(
+          actor,
+          dto.workOrderId,
+          dto.machineId,
+        )
+      : undefined;
+    const effectiveMachineId = authorizedWorkOrder?.machineId ?? dto.machineId;
+    const validatedWorkOrderId = authorizedWorkOrder?.workOrderId;
+
     if (this.provider.name === 'disabled') {
       this.logger.warn(
         `AI assistant request skipped: ${this.getHealth().message}`,
@@ -265,6 +279,8 @@ export class AiAssistantService {
         question: redactionResult.redacted,
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
+        validatedWorkOrderId,
+        validatedMachineId: effectiveMachineId,
       });
     }
 
@@ -281,22 +297,25 @@ export class AiAssistantService {
         question: redactionResult.redacted,
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
+        validatedWorkOrderId,
+        validatedMachineId: effectiveMachineId,
       });
     }
 
     const context = await this.contextBuilder.buildContext({
-      machineId: dto.machineId,
+      machineId: effectiveMachineId,
       faultCode: dto.faultCode,
+      workOrder: authorizedWorkOrder?.context,
     });
     const retrieval = this.knowledgeRetrieval
       ? await this.knowledgeRetrieval.retrieve({
           question: redactionResult.redacted,
           userId: actor.userId,
           role: actor.role,
-          machineId: dto.machineId,
+          machineId: effectiveMachineId,
         })
       : undefined;
-    if (retrieval?.matched === 0) {
+    if (retrieval?.matched === 0 && !authorizedWorkOrder) {
       return this.record({
         actor,
         dto,
@@ -308,6 +327,8 @@ export class AiAssistantService {
         injectionFlags: injectionResult.flags,
         grounded: false,
         sources: [],
+        validatedWorkOrderId,
+        validatedMachineId: effectiveMachineId,
       });
     }
 
@@ -356,8 +377,10 @@ export class AiAssistantService {
         question: redactionResult.redacted,
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
-        grounded: Boolean(retrieval?.matched),
+        grounded: Boolean(retrieval?.matched || authorizedWorkOrder),
         sources: retrieval?.sources ?? [],
+        validatedWorkOrderId,
+        validatedMachineId: effectiveMachineId,
       });
     } catch (error) {
       const status = timedOut
@@ -378,6 +401,8 @@ export class AiAssistantService {
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
         errorMessage: error instanceof Error ? error.message : String(error),
+        validatedWorkOrderId,
+        validatedMachineId: effectiveMachineId,
       });
     } finally {
       clearTimeout(timeoutTimer);
@@ -519,16 +544,18 @@ export class AiAssistantService {
   private async record(
     params: RecordParams,
   ): Promise<AiRecommendationResponse> {
+    const machineId = params.validatedMachineId ?? params.dto.machineId;
     const doc = await this.interactionModel.create({
       actor_user_id: new Types.ObjectId(params.actor.userId),
       actor_role: params.actor.role,
       machine_id:
-        params.dto.machineId && Types.ObjectId.isValid(params.dto.machineId)
-          ? new Types.ObjectId(params.dto.machineId)
+        machineId && Types.ObjectId.isValid(machineId)
+          ? new Types.ObjectId(machineId)
           : undefined,
       work_order_id:
-        params.dto.workOrderId && Types.ObjectId.isValid(params.dto.workOrderId)
-          ? new Types.ObjectId(params.dto.workOrderId)
+        params.validatedWorkOrderId &&
+        Types.ObjectId.isValid(params.validatedWorkOrderId)
+          ? new Types.ObjectId(params.validatedWorkOrderId)
           : undefined,
       fault_code: params.dto.faultCode,
       locale: params.dto.locale,

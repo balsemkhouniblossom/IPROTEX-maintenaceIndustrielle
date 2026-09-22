@@ -41,6 +41,7 @@ describe('AiAssistantService', () => {
     generate: jest.Mock;
     getDiagnostics?: jest.Mock;
   };
+  let workOrderContextService: { resolve: jest.Mock };
 
   function buildService() {
     return new AiAssistantService(
@@ -52,6 +53,7 @@ describe('AiAssistantService', () => {
       throttleService as never,
       configService as never,
       provider,
+      workOrderContextService as never,
     );
   }
 
@@ -95,6 +97,7 @@ describe('AiAssistantService', () => {
         model: 'fake-model',
       } satisfies AiProviderResult),
     };
+    workOrderContextService = { resolve: jest.fn() };
   });
 
   it('returns a RATE_LIMITED result without calling the provider or context builder when throttled', async () => {
@@ -131,6 +134,84 @@ describe('AiAssistantService', () => {
       machineId,
     );
     expect(provider.generate).not.toHaveBeenCalled();
+  });
+
+  it('passes only an authorized work-order context to the grounding builder and provider', async () => {
+    const machineId = new Types.ObjectId().toString();
+    const workOrderId = new Types.ObjectId().toString();
+    const workOrder = {
+      reference: 'OT-204',
+      status: 'in_progress',
+      createdAt: '2026-09-20T10:00:00.000Z',
+      checklist: [],
+      interventions: [],
+      partsUsed: [],
+    };
+    workOrderContextService.resolve.mockResolvedValue({
+      machineId,
+      workOrderId,
+      context: workOrder,
+    });
+    contextBuilder.buildContext.mockImplementation((input) =>
+      Promise.resolve({
+        ...emptyGroundedContext(),
+        workOrder: input.workOrder,
+      }),
+    );
+    const service = buildService();
+
+    await service.getRecommendation(
+      { ...actor, role: 'technician' },
+      baseDto({ machineId, workOrderId }),
+    );
+
+    expect(workOrderContextService.resolve).toHaveBeenCalledWith(
+      { ...actor, role: 'technician' },
+      workOrderId,
+      machineId,
+    );
+    expect(contextBuilder.buildContext).toHaveBeenCalledWith(
+      expect.objectContaining({ machineId, workOrder }),
+    );
+    expect(provider.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({ workOrder }),
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(interactionModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        machine_id: new Types.ObjectId(machineId),
+        work_order_id: new Types.ObjectId(workOrderId),
+      }),
+    );
+  });
+
+  it('does not persist or send an arbitrary workOrderId when authorization fails', async () => {
+    const workOrderId = new Types.ObjectId().toString();
+    workOrderContextService.resolve.mockRejectedValue(
+      new ForbiddenException('Work order access denied'),
+    );
+    const service = buildService();
+
+    await expect(
+      service.getRecommendation(actor, baseDto({ workOrderId })),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(contextBuilder.buildContext).not.toHaveBeenCalled();
+    expect(provider.generate).not.toHaveBeenCalled();
+    expect(interactionModel.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps requests without workOrderId working without resolving a work order', async () => {
+    const service = buildService();
+
+    await expect(
+      service.getRecommendation(actor, baseDto()),
+    ).resolves.toMatchObject({ status: AiInteractionStatus.OK });
+
+    expect(workOrderContextService.resolve).not.toHaveBeenCalled();
+    expect(provider.generate).toHaveBeenCalled();
   });
 
   it('returns DISABLED without calling the context builder or persisting grounded data when the provider is the null provider', async () => {

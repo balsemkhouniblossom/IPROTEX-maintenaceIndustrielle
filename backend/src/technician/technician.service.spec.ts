@@ -194,6 +194,394 @@ describe('TechnicianService authorization policy', () => {
   });
 });
 
+describe('TechnicianService dashboard and machine context', () => {
+  const technicianId = new Types.ObjectId().toHexString();
+  const machineId = new Types.ObjectId();
+
+  function query<T>(value: T) {
+    const result = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      findById: jest.fn(),
+      sort: jest.fn(),
+      skip: jest.fn(),
+      limit: jest.fn(),
+      select: jest.fn(),
+      populate: jest.fn(),
+      aggregate: jest.fn(),
+      exec: jest.fn().mockResolvedValue(value),
+    };
+    for (const method of [
+      'find',
+      'findOne',
+      'findById',
+      'sort',
+      'skip',
+      'limit',
+      'select',
+      'populate',
+      'aggregate',
+    ] as const) {
+      result[method].mockReturnValue(result);
+    }
+    return result;
+  }
+
+  it('builds an empty dashboard with shared KPI counts and authorized manual scope', async () => {
+    const workOrderQuery = query([]);
+    const documentsQuery = query([]);
+    const workOrdersModel = {
+      countDocuments: jest.fn().mockResolvedValue(0),
+      find: jest.fn().mockReturnValue(workOrderQuery),
+    };
+    const documentsModel = {
+      aggregate: jest.fn().mockReturnValue(documentsQuery),
+      populate: jest.fn().mockResolvedValue([]),
+    };
+    const documentAccessService = {
+      listAccessibleMachineIds: jest.fn().mockResolvedValue([machineId]),
+    };
+    const kpiService = {
+      getTechnicianDashboardCounts: jest.fn().mockResolvedValue({
+        completedTodayCount: 1,
+        overdueCount: 2,
+        dueTodayCount: 3,
+        waitingValidationCount: 4,
+      }),
+    };
+    const service = createTechnicianService({
+      workOrdersModel,
+      reportsModel: { find: jest.fn().mockReturnValue(query([])) },
+      machinesModel: { collection: { name: 'machines' } },
+      documentsModel,
+      documentAccessService,
+      kpiService,
+    });
+
+    await expect(service.dashboard(technicianId)).resolves.toEqual({
+      counters: {
+        assigned: 0,
+        inProgress: 0,
+        waitingParts: 0,
+        waitingReview: 0,
+        completedToday: 1,
+        urgent: 0,
+        overdue: 2,
+        dueToday: 3,
+        waitingValidation: 4,
+      },
+      urgentTasks: [],
+      current: [],
+      waitingPartsTasks: [],
+      upcoming: [],
+      recent: [],
+      manuals: [],
+    });
+    expect(kpiService.getTechnicianDashboardCounts).toHaveBeenCalledWith(
+      technicianId,
+    );
+    expect(documentsModel.populate).toHaveBeenCalledWith([], {
+      path: 'machine_id',
+      populate: { path: 'type_id' },
+    });
+  });
+
+  it('returns a machine context with safe empty optional collections', async () => {
+    const machine = {
+      _id: machineId,
+      machine_id: 'M-100',
+      reference: 'PRESS-100',
+      status: 'active',
+    };
+    const emptyQuery = () => query([]);
+    const workOrdersModel = {
+      find: jest.fn().mockImplementation(emptyQuery),
+    };
+    const service = createTechnicianService({
+      workOrdersModel,
+      reportsModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      machinesModel: {
+        findById: jest.fn().mockReturnValue(query(machine)),
+      },
+      modulesModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      maintenancePlansModel: {
+        find: jest.fn().mockImplementation(emptyQuery),
+      },
+      documentsModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      partsModel: { aggregate: jest.fn().mockImplementation(emptyQuery) },
+      capteursModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      mesuresModel: { findOne: jest.fn().mockReturnValue(query(null)) },
+      documentAccessService: {
+        assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
+        listAccessibleMachineIds: jest.fn().mockResolvedValue([machineId]),
+      },
+    });
+
+    const result = await service.machineContext(
+      technicianId,
+      machineId.toHexString(),
+    );
+
+    expect(result.machine).toMatchObject({ machine_id: 'M-100' });
+    expect(result.components).toEqual([]);
+    expect(result.openWork).toEqual([]);
+    expect(result.upcomingPreventive).toEqual([]);
+    expect(result.recentMaintenance).toEqual([]);
+    expect(result.documents).toEqual([]);
+    expect(result.summary.stats).toMatchObject({
+      totalInterventions: 0,
+      openWorkOrders: 0,
+      closedWorkOrders: 0,
+      averageRepairTimeHours: null,
+      partsConsumed: 0,
+    });
+  });
+
+  it('adds scoped maintenance statistics to each authorized machine', async () => {
+    const machine = {
+      _id: machineId,
+      machine_id: 'M-100',
+      reference: 'PRESS-100',
+      status: 'active',
+    };
+    const machinesModel = {
+      find: jest.fn().mockReturnValue(query([machine])),
+      countDocuments: jest.fn().mockReturnValue(query(1)),
+    };
+    const workOrdersModel = {
+      countDocuments: jest.fn().mockReturnValue(query(2)),
+      findOne: jest
+        .fn()
+        .mockReturnValueOnce(
+          query({ date_closed: new Date('2026-09-10T08:00:00.000Z') }),
+        )
+        .mockReturnValueOnce(
+          query({ due_date: new Date('2026-09-25T08:00:00.000Z') }),
+        ),
+    };
+    const service = createTechnicianService({
+      machinesModel,
+      workOrdersModel,
+      documentAccessService: {
+        listAccessibleMachineIds: jest.fn().mockResolvedValue([machineId]),
+      },
+    });
+
+    const result = await service.machines(technicianId, {
+      page: 1,
+      limit: 20,
+      skip: 0,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      machine_id: 'M-100',
+      technicianSummary: {
+        stats: {
+          openWorkOrders: 2,
+          lastMaintenanceAt: '2026-09-10T08:00:00.000Z',
+          nextMaintenanceAt: '2026-09-25T08:00:00.000Z',
+        },
+      },
+    });
+  });
+
+  it('calculates preventive/corrective counts, downtime, and date boundaries', async () => {
+    const workOrders = [
+      {
+        status: 'completed',
+        type_maintenance: 'preventive',
+        date_start: new Date('2026-09-01T08:00:00.000Z'),
+        date_end: new Date('2026-09-01T10:00:00.000Z'),
+        date_closed: new Date('2026-09-01T10:00:00.000Z'),
+      },
+      {
+        status: 'validated',
+        type_maintenance: 'corrective',
+        date_start: new Date('2026-09-02T08:00:00.000Z'),
+        date_closed: new Date('2026-09-02T11:00:00.000Z'),
+      },
+      {
+        status: 'scheduled',
+        type_maintenance: 'preventive',
+        due_date: new Date('2026-09-25T08:00:00.000Z'),
+      },
+    ];
+    const service = createTechnicianService({
+      workOrdersModel: { find: jest.fn().mockReturnValue(query(workOrders)) },
+      partsModel: {
+        aggregate: jest.fn().mockReturnValue(query([{ total: 7 }])),
+      },
+    });
+
+    const stats = await (
+      service as unknown as {
+        getTechnicianMachineStats(
+          id: Types.ObjectId,
+          scope: Record<string, unknown>,
+        ): Promise<Record<string, unknown>>;
+      }
+    ).getTechnicianMachineStats(machineId, {});
+
+    expect(stats).toMatchObject({
+      totalInterventions: 3,
+      preventiveCompleted: 1,
+      correctiveCompleted: 1,
+      openWorkOrders: 1,
+      closedWorkOrders: 2,
+      downtimeHours: 5,
+      averageRepairTimeHours: 2.5,
+      partsConsumed: 7,
+      lastMaintenanceAt: '2026-09-02T11:00:00.000Z',
+      nextMaintenanceAt: '2026-09-25T08:00:00.000Z',
+    });
+  });
+
+  it('delegates technician lifecycle, part-request, report, manual, and stock workflows', async () => {
+    const workOrderId = new Types.ObjectId();
+    const partId = new Types.ObjectId();
+    const workOrder = {
+      _id: workOrderId,
+      ot_id: 'OT-100',
+      status: 'in_progress',
+      type_maintenance: 'corrective',
+    };
+    const report = {
+      _id: new Types.ObjectId(),
+      report_id: 'RPT-100',
+      ot_id: workOrderId,
+      technician_id: new Types.ObjectId(technicianId),
+      cause_racine: 'Bearing wear',
+    };
+    const stock = {
+      _id: new Types.ObjectId(),
+      stock_id: 'STK-1',
+      part_id: partId,
+      quantite_en_stock: 5,
+    };
+    const document = {
+      _id: new Types.ObjectId(),
+      document_id: 'DOC-1',
+      file_name: 'manual.pdf',
+      type_document: 'manual',
+    };
+    const workOrdersModel = {
+      findOne: jest.fn().mockReturnValue(query(workOrder)),
+    };
+    const reportsModel = {
+      findOneAndUpdate: jest.fn().mockReturnValue(query(report)),
+    };
+    const workOrderLifecycleService = {
+      startForTechnician: jest.fn().mockResolvedValue(workOrder),
+      transitionForTechnician: jest.fn().mockResolvedValue(workOrder),
+    };
+    const workOrdersService = {
+      requestPartsForOperator: jest.fn().mockResolvedValue({
+        _id: new Types.ObjectId(),
+        request_id: 'REQ-1',
+        ot_id: workOrderId,
+        part_id: partId,
+        status: 'pending',
+        quantity: 2,
+      }),
+    };
+    const service = createTechnicianService({
+      workOrdersModel,
+      reportsModel,
+      stockModel: {
+        find: jest.fn().mockReturnValue(query([stock])),
+        countDocuments: jest.fn().mockReturnValue(query(1)),
+      },
+      documentsModel: {
+        find: jest.fn().mockReturnValue(query([document])),
+        countDocuments: jest.fn().mockReturnValue(query(1)),
+      },
+      documentAccessService: {
+        listAccessibleMachineIds: jest.fn().mockResolvedValue([machineId]),
+        assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
+      },
+      workOrderLifecycleService,
+      workOrdersService,
+    });
+
+    await expect(
+      service.manuals(
+        technicianId,
+        { page: 1, limit: 20, skip: 0 },
+        machineId.toHexString(),
+      ),
+    ).resolves.toMatchObject({ totalItems: 1 });
+    await expect(
+      service.availableParts(technicianId, { page: 1, limit: 20, skip: 0 }),
+    ).resolves.toMatchObject({ totalItems: 1 });
+    await expect(
+      service.start(technicianId, workOrderId.toHexString()),
+    ).resolves.toMatchObject({ ot_id: 'OT-100' });
+    await expect(
+      service.waitingParts(technicianId, workOrderId.toHexString()),
+    ).resolves.toMatchObject({ ot_id: 'OT-100' });
+    await expect(
+      service.resume(technicianId, workOrderId.toHexString()),
+    ).resolves.toMatchObject({ ot_id: 'OT-100' });
+    await expect(
+      service.updateReport(technicianId, workOrderId.toHexString(), {
+        cause_racine: 'Bearing wear',
+        description_action: 'Replaced bearing',
+      }),
+    ).resolves.toMatchObject({ report_id: 'RPT-100' });
+    await expect(
+      service.requestPart(
+        technicianId,
+        workOrderId.toHexString(),
+        partId.toHexString(),
+        2,
+      ),
+    ).resolves.toMatchObject({ status: 'pending' });
+
+    expect(
+      workOrderLifecycleService.transitionForTechnician,
+    ).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ from: ['in_progress'], to: 'waiting_parts' }),
+    );
+    expect(
+      workOrderLifecycleService.transitionForTechnician,
+    ).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ from: ['waiting_parts'], to: 'in_progress' }),
+    );
+    expect(workOrdersService.requestPartsForOperator).toHaveBeenCalledWith({
+      operatorId: technicianId,
+      workOrderId: workOrderId.toHexString(),
+      partId: partId.toHexString(),
+      quantity: 2,
+    });
+  });
+
+  it('rejects a missing machine after authorization and data loading', async () => {
+    const emptyQuery = () => query([]);
+    const service = createTechnicianService({
+      workOrdersModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      reportsModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      machinesModel: { findById: jest.fn().mockReturnValue(query(null)) },
+      modulesModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      maintenancePlansModel: {
+        find: jest.fn().mockImplementation(emptyQuery),
+      },
+      documentsModel: { find: jest.fn().mockImplementation(emptyQuery) },
+      partsModel: { aggregate: jest.fn().mockImplementation(emptyQuery) },
+      documentAccessService: {
+        assertCanAccessMachine: jest.fn().mockResolvedValue(undefined),
+        listAccessibleMachineIds: jest.fn().mockResolvedValue([machineId]),
+      },
+    });
+
+    await expect(
+      service.machineContext(technicianId, machineId.toHexString()),
+    ).rejects.toThrow('Machine not found');
+  });
+});
+
 describe('TechnicianService.details', () => {
   const technicianId = new Types.ObjectId().toHexString();
   const workOrderId = new Types.ObjectId();

@@ -27,6 +27,7 @@ const KNOWLEDGE_ARTICLES_LIMIT = 5;
 export type AiContextInput = {
   machineId?: string;
   faultCode?: string;
+  workOrder?: AiGroundedContext['workOrder'];
 };
 
 /**
@@ -89,6 +90,7 @@ export class AiContextBuilderService {
       faultSeverity: undefined,
       probableCause: corrective?.probableCause,
       approvedSolution: corrective?.approvedSolution,
+      workOrder: input.workOrder,
       activeAlarms,
       maintenanceHistory,
       knowledgeArticles: knowledgeArticles.map((article) => ({

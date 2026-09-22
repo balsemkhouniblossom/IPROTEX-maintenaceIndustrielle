@@ -291,6 +291,171 @@ describe('MachineTimelineService', () => {
     });
   });
 
+  it('maps maintenance evidence from every supported timeline source', async () => {
+    const at = new Date('2026-02-01T10:00:00.000Z');
+    const actorId = new Types.ObjectId();
+    const moduleId = new Types.ObjectId();
+    const workOrderId = new Types.ObjectId();
+    const { service } = buildService({
+      machine: {
+        _id: machineObjectId,
+        machine_id: 'M-1',
+        status: 'operational',
+        lifecycle_history: [
+          { action: 'created', at },
+          {
+            action: 'status_changed',
+            at: new Date(at.getTime() + 1),
+            from_status: 'offline',
+            to_status: 'operational',
+            actor_user_id: actorId,
+          },
+        ],
+      },
+      moduleIds: [moduleId],
+      modules: [{ _id: moduleId, module_id: 'MOD-1', createdAt: at }],
+      workOrderIds: [workOrderId],
+      workOrders: [
+        {
+          _id: workOrderId,
+          ot_id: 'OT-1',
+          status: 'cancelled',
+          type_maintenance: 'preventive',
+          technician_id: actorId,
+          date_created: at,
+          date_start: new Date(at.getTime() + 2),
+          date_end: new Date(at.getTime() + 3),
+          date_closed: new Date(at.getTime() + 4),
+          lifecycle_history: [
+            {
+              action: 'rescheduled',
+              at: new Date(at.getTime() + 5),
+              reason: 'Production conflict',
+              actor_user_id: actorId,
+            },
+          ],
+        },
+      ],
+      interventionReports: [
+        {
+          _id: new Types.ObjectId(),
+          report_id: 'RPT-1',
+          ot_id: workOrderId,
+          technician_id: actorId,
+          date_fin: new Date(at.getTime() + 6),
+          validated_at: new Date(at.getTime() + 7),
+          validated_by: actorId,
+          cause_racine: 'Worn seal',
+        },
+      ],
+      documents: [
+        {
+          _id: new Types.ObjectId(),
+          document_id: 'DOC-1',
+          file_name: 'manual.pdf',
+          type_document: 'manual',
+          lifecycle_history: [
+            {
+              action: 'uploaded',
+              at: new Date(at.getTime() + 8),
+              actor_user_id: actorId,
+            },
+          ],
+        },
+        {
+          _id: new Types.ObjectId(),
+          document_id: 'DOC-2',
+          file_name: 'drawing.pdf',
+          type_document: 'drawing',
+          date_ajout: new Date(at.getTime() + 9),
+        },
+      ],
+      maintenancePlans: [
+        {
+          _id: new Types.ObjectId(),
+          plan_id: 'PLAN-1',
+          type_maintenance: 'preventive',
+          lifecycle_history: [
+            {
+              action: 'created',
+              at: new Date(at.getTime() + 10),
+              actor_user_id: actorId,
+            },
+          ],
+        },
+      ],
+      preventiveTasks: [
+        {
+          _id: new Types.ObjectId(),
+          task_id: 'TASK-1',
+          instruction: 'Inspect belt',
+          completed_at: new Date(at.getTime() + 11),
+          responsable: 'operator',
+        },
+      ],
+      lubricationLogs: [
+        {
+          _id: new Types.ObjectId(),
+          log_id: 'LUB-1',
+          date_application: new Date(at.getTime() + 12),
+          technician_id: actorId,
+          quantite: 2,
+          lubrifiant_id: { nom: 'Grease X' },
+        },
+      ],
+      stockMovements: [
+        {
+          _id: new Types.ObjectId(),
+          movement_id: 'MOV-1',
+          type: 'consumption',
+          quantity_delta: -2,
+          actor_user_id: actorId,
+          work_order_id: workOrderId,
+          part_id: { nom_piece: 'Drive belt', ref_constructeur: 'BELT-1' },
+          createdAt: new Date(at.getTime() + 13),
+        },
+      ],
+      aiInteractions: [
+        {
+          _id: new Types.ObjectId(),
+          question: 'Why is the press vibrating?',
+          actor_user_id: actorId,
+          work_order_id: workOrderId,
+          provider: 'gemini',
+          createdAt: new Date(at.getTime() + 14),
+        },
+      ],
+      users: [
+        {
+          _id: actorId,
+          nom_complet: 'Jane Tech',
+          role: 'technician',
+        },
+      ],
+    });
+
+    const result = await service.getTimeline(machineId, {});
+    const types = new Set(result.items.map((event) => event.type));
+
+    for (const expectedType of [
+      MachineTimelineEventType.MACHINE_CREATED,
+      MachineTimelineEventType.MACHINE_STATUS_CHANGED,
+      MachineTimelineEventType.MODULE_ADDED,
+      MachineTimelineEventType.WORK_ORDER_CANCELLED,
+      MachineTimelineEventType.INTERVENTION_REPORT_CREATED,
+      MachineTimelineEventType.INTERVENTION_REPORT_VALIDATED,
+      MachineTimelineEventType.DOCUMENT_UPLOADED,
+      MachineTimelineEventType.PREVENTIVE_TASK_COMPLETED,
+      MachineTimelineEventType.LUBRICATION_COMPLETED,
+      MachineTimelineEventType.AI_RECOMMENDATION_GENERATED,
+    ]) {
+      expect(types).toContain(expectedType);
+    }
+    expect(result.items.some((event) => event.category === 'inventory')).toBe(
+      true,
+    );
+  });
+
   describe('getSummary', () => {
     it('computes open/closed work order counts and downtime', async () => {
       const { service } = buildService({

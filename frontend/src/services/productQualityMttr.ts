@@ -40,7 +40,9 @@ export function sumSavedDefectValues(values: Array<number | null>): number {
 }
 
 export function buildHistoricalMatrix(rows: HistoricalMttrContext[]) {
-  const processNames = [...new Set(rows.map((row) => row.process))].sort();
+  const processNames = [...new Set(rows.map((row) => row.process))].sort(
+    (left, right) => left.localeCompare(right),
+  );
   const processes = processNames.map((process) => {
     const months = Array.from({ length: 12 }, (_, index) => {
       const monthRows = rows.filter(
@@ -51,7 +53,7 @@ export function buildHistoricalMatrix(rows: HistoricalMttrContext[]) {
         defectCount: monthRows.reduce((sum, row) => sum + row.defectCount, 0),
         defectCodes: [
           ...new Set(monthRows.flatMap((row) => row.defectCodes)),
-        ].sort(),
+        ].sort((left, right) => left.localeCompare(right)),
       };
     });
     return {

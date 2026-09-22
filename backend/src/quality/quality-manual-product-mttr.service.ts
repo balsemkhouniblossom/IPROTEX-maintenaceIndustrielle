@@ -170,7 +170,9 @@ export class QualityManualProductMttrService {
                 : null,
             defectReadOnly: Boolean(officialDefect),
             defectCodes: officialDefect
-              ? [...officialDefect.defectCodes].sort()
+              ? [...officialDefect.defectCodes].sort((left, right) =>
+                  left.localeCompare(right),
+                )
               : [],
             defectUpdatedAt: manualDefect?.updatedAt ?? null,
           };
@@ -181,7 +183,9 @@ export class QualityManualProductMttrService {
           process: item.process,
           month: item.month,
           defectCount: item.defectCount,
-          defectCodes: [...item.defectCodes].sort(),
+          defectCodes: [...item.defectCodes].sort((left, right) =>
+            left.localeCompare(right),
+          ),
         }))
         .sort(
           (left, right) =>

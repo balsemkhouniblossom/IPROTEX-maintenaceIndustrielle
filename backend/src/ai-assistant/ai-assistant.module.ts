@@ -14,6 +14,13 @@ import {
 } from '../schemas/panne-solution.schema';
 import { FaultEvent, FaultEventSchema } from '../schemas/fault-event.schema';
 import { WorkOrder, WorkOrderSchema } from '../schemas/work-order.schema';
+import { User, UserSchema } from '../schemas/user.schema';
+import { OTPieces, OTPiecesSchema } from '../schemas/ot-pieces.schema';
+import { Catalogue, CatalogueSchema } from '../schemas/catalogue.schema';
+import {
+  PreventiveTask,
+  PreventiveTaskSchema,
+} from '../schemas/preventive-task.schema';
 import {
   InterventionReport,
   InterventionReportSchema,
@@ -27,6 +34,7 @@ import { AiContextBuilderService } from './ai-context-builder.service';
 import { PromptInjectionGuardService } from './prompt-injection-guard.service';
 import { SensitiveDataFilterService } from './sensitive-data-filter.service';
 import { AiAssistantThrottleService } from './ai-assistant-throttle.service';
+import { AiWorkOrderContextService } from './ai-work-order-context.service';
 import { AI_PROVIDER, AiProvider } from './ai-provider.interface';
 import { NullAiProvider } from './providers/null-ai.provider';
 import {
@@ -53,6 +61,10 @@ const aiProviderLogger = new Logger('AiAssistantProvider');
       { name: PanneSolution.name, schema: PanneSolutionSchema },
       { name: FaultEvent.name, schema: FaultEventSchema },
       { name: WorkOrder.name, schema: WorkOrderSchema },
+      { name: User.name, schema: UserSchema },
+      { name: OTPieces.name, schema: OTPiecesSchema },
+      { name: Catalogue.name, schema: CatalogueSchema },
+      { name: PreventiveTask.name, schema: PreventiveTaskSchema },
       { name: InterventionReport.name, schema: InterventionReportSchema },
     ]),
     DocumentsModule,
@@ -66,6 +78,7 @@ const aiProviderLogger = new Logger('AiAssistantProvider');
     PromptInjectionGuardService,
     SensitiveDataFilterService,
     AiAssistantThrottleService,
+    AiWorkOrderContextService,
     {
       provide: AI_PROVIDER,
       useFactory: (configService: ConfigService): AiProvider => {

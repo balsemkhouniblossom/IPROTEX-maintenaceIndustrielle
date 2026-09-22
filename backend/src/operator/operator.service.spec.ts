@@ -185,6 +185,129 @@ describe('OperatorService machine scoping', () => {
     });
   });
 
+  it('returns safely scoped empty catalogue pages across operator read workflows', async () => {
+    const page = 1;
+    const limit = 20;
+    const skip = 0;
+
+    await expect(
+      service.getMyWorkOrders(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getMachineTypes(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getModules(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getMaintenancePlans(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getPreventiveTaskChecklist(
+        operatorId.toString(),
+        page,
+        limit,
+        skip,
+        {},
+      ),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getLubrifiants(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getKpis(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getCatalogues(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getStocks(operatorId.toString(), page, limit, skip),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+
+    expect(workOrderModel.find).toHaveBeenCalledWith({
+      technician_id: expect.anything(),
+    });
+    expect(preventiveTasksService.syncPlansForModuleIds).not.toHaveBeenCalled();
+  });
+
+  it('scopes manuals to assigned machines and returns no data for an unassigned machine', async () => {
+    await expect(
+      service.getOperatorManuals(
+        operatorId.toString(),
+        1,
+        20,
+        0,
+        unassignedMachineId.toHexString(),
+      ),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    expect(documentModel.find).not.toHaveBeenCalled();
+
+    await expect(
+      service.getOperatorManuals(operatorId.toString(), 1, 20, 0),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    expect(documentModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        machine_id: { $in: [assignedMachineId] },
+      }),
+    );
+  });
+
+  it('builds fault and solution queries only from failures observed on assigned machines', async () => {
+    workOrderModel.find.mockReturnValueOnce(
+      queryResult([
+        { code_panne: ' F-100 ' },
+        { code_panne: 'F-100' },
+        { code_panne: 'F-200' },
+      ]),
+    );
+
+    await expect(
+      service.getFaultsForOperator(operatorId.toString(), 1, 20, 0, {
+        search: 'bearing',
+      }),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    expect(panneModel.find).toHaveBeenCalledWith({
+      code_panne: { $in: ['F-100', 'F-200'] },
+      $or: [
+        { code_panne: { $regex: 'bearing', $options: 'i' } },
+        { description: { $regex: 'bearing', $options: 'i' } },
+      ],
+    });
+
+    workOrderModel.find.mockReturnValueOnce(
+      queryResult([{ code_panne: 'F-100' }]),
+    );
+    panneModel.find.mockReturnValueOnce(
+      queryResult([{ _id: new Types.ObjectId() }]),
+    );
+    await expect(
+      service.getFaultSolutionsForOperator(operatorId.toString(), 1, 20, 0, {
+        search: 'replace',
+      }),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    expect(panneSolutionModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        panne_id: { $in: [expect.any(Types.ObjectId)] },
+        $or: expect.any(Array),
+      }),
+    );
+  });
+
+  it('returns empty fault pages when the operator has no visible machines', async () => {
+    userModel.findById.mockReturnValue(queryResult(null));
+    (
+      machineModel as unknown as { distinct: jest.Mock }
+    ).distinct.mockReturnValue(queryResult([]));
+
+    await expect(
+      service.getFaultsForOperator('invalid-user', 1, 20, 0, {}),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    await expect(
+      service.getFaultSolutionsForOperator('invalid-user', 1, 20, 0, {}),
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
+    expect(panneModel.find).not.toHaveBeenCalled();
+  });
+
   it('never fetches the full technician User document when listing the operator own reports', async () => {
     await service.getMyReports(operatorId.toString(), 1, 10, 0);
 

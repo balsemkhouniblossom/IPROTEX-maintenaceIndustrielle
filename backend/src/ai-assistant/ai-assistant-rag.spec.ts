@@ -30,6 +30,7 @@ describe('AiAssistantService RAG integration', () => {
       { consume: jest.fn(() => ({ allowed: true })) } as never,
       { get: jest.fn() } as never,
       { name: 'gemini', generate },
+      { resolve: jest.fn() } as never,
       retrieval as never,
     );
     return { service, interactionModel, generate };

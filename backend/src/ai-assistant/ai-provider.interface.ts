@@ -13,6 +13,47 @@ export interface AiGroundedContext {
   faultSeverity?: string;
   probableCause?: string;
   approvedSolution?: string;
+  workOrder?: {
+    reference: string;
+    maintenanceType?: string;
+    status: string;
+    priority?: string;
+    description?: string;
+    faultCode?: string;
+    assignedTechnician?: string;
+    createdAt: string;
+    startedAt?: string;
+    scheduledAt?: string;
+    dueAt?: string;
+    executedAt?: string;
+    completedAt?: string;
+    closedAt?: string;
+    rescheduleReason?: string;
+    checklist: Array<{
+      reference: string;
+      instruction: string;
+      responsible?: string;
+      status: string;
+      notes?: string;
+      completedAt?: string;
+    }>;
+    interventions: Array<{
+      reference: string;
+      startedAt: string;
+      completedAt: string;
+      technician?: string;
+      rootCause?: string;
+      actionTaken?: string;
+      finalState?: string;
+    }>;
+    partsUsed: Array<{
+      reference: string;
+      name: string;
+      manufacturerReference: string;
+      manufacturer?: string;
+      quantity: number;
+    }>;
+  };
   activeAlarms: Array<{
     codePanne: string;
     severity: string;
