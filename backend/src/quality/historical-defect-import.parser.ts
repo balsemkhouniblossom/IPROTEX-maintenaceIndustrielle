@@ -117,16 +117,27 @@ function dateColumns(sheet: Worksheet): number[] {
   return columns;
 }
 
-function addOccurrence(
-  report: HistoricalImportReport,
-  sheet: Worksheet,
-  sheetName: string,
-  rowNumber: number,
-  column: number,
-  process: string,
-  sourceCode: string,
-  defectName: string,
-): void {
+interface OccurrenceCellInput {
+  report: HistoricalImportReport;
+  sheet: Worksheet;
+  sheetName: string;
+  rowNumber: number;
+  column: number;
+  process: string;
+  sourceCode: string;
+  defectName: string;
+}
+
+function addOccurrence({
+  report,
+  sheet,
+  sheetName,
+  rowNumber,
+  column,
+  process,
+  sourceCode,
+  defectName,
+}: OccurrenceCellInput): void {
   const cell = sheet.getCell(rowNumber, column);
   const value = cell.value;
   if (typeof value !== 'number') {
@@ -213,7 +224,7 @@ function processMonthlySheet(
     )
       continue;
     for (const column of columns)
-      addOccurrence(
+      addOccurrence({
         report,
         sheet,
         sheetName,
@@ -222,7 +233,7 @@ function processMonthlySheet(
         process,
         sourceCode,
         defectName,
-      );
+      });
   }
 }
 
