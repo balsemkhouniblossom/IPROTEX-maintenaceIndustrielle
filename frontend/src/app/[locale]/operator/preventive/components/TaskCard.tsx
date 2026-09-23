@@ -41,7 +41,7 @@ export function TaskCard({ planName, machineName, machineCode, checkCount, compl
   } as const;
   const cardClass = cardClassByTab[tab];
   const formattedDueDate = due
-    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(due)
+    ? new Intl.DateTimeFormat(locale).format(due)
     : null;
 
   return (
