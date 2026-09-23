@@ -20,6 +20,7 @@ type Step = "list" | "checklist" | "review" | "success";
 function PreventiveTasksFlow() {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
   const locale = useLocale();
+  const isRtl = locale === "ar";
   const router = useRouter();
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -194,7 +195,7 @@ function PreventiveTasksFlow() {
                 }}
                   className="text-sm font-semibold text-slate-600 hover:text-slate-900"
                 >
-                  ← {t("backToTasks")}
+                  <span aria-hidden="true">{isRtl ? "→" : "←"}</span> {t("backToTasks")}
                 </button>
                 <KnowledgeSuggestions machineId={selectedTask.machineId} />
               </div>
@@ -260,7 +261,7 @@ function PreventiveTasksFlow() {
                   >
                     {t(tab)}
                     {tabCounts[tab] > 0 && (
-                      <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                      <span className={`ms-2 rounded-full px-2 py-0.5 text-xs ${
                         activeTab === tab ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
                       }`}>
                         {tabCounts[tab]}

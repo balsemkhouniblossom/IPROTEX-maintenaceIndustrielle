@@ -829,7 +829,7 @@ export class OperatorService {
       priority?: string;
     },
   ): Promise<CorrectiveReportForOperatorResponse> {
-    await this.assertMachineExists(input.machineId);
+    await this.assertCanAccessMachine(userId, input.machineId);
     return this.workOrdersService.createCorrectiveReportForOperator({
       machineId: input.machineId,
       codePanne: input.codePanne,

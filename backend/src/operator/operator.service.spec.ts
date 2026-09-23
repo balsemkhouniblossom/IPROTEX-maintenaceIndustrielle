@@ -482,24 +482,18 @@ describe('OperatorService machine scoping', () => {
     expect(workOrdersService.getCalendarEvents).not.toHaveBeenCalled();
   });
 
-  it('allows corrective reporting for any existing machine', async () => {
-    await service.createCorrectiveReport(operatorId.toString(), {
-      machineId: unassignedMachineId.toString(),
-      codePanne: 'FAULT-1',
-      actions: ['Reset breaker'],
-    });
+  it('denies corrective reporting for a machine outside the operator scope', async () => {
+    await expect(
+      service.createCorrectiveReport(operatorId.toString(), {
+        machineId: unassignedMachineId.toString(),
+        codePanne: 'FAULT-1',
+        actions: ['Reset breaker'],
+      }),
+    ).rejects.toThrow(ForbiddenException);
 
-    expect(machineModel.countDocuments).toHaveBeenCalledWith({
-      _id: unassignedMachineId,
-    });
     expect(
       workOrdersService.createCorrectiveReportForOperator,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        machineId: unassignedMachineId.toString(),
-        operatorId: operatorId.toString(),
-      }),
-    );
+    ).not.toHaveBeenCalled();
   });
 
   it('derives the operator identity from the authenticated user id and ignores any other caller-supplied identity', async () => {

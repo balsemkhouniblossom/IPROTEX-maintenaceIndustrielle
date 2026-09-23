@@ -43,21 +43,24 @@ export function TaskCard({ planName, machineName, machineCode, checkCount, compl
   const formattedDueDate = due
     ? new Intl.DateTimeFormat(locale).format(due)
     : null;
+  const showMachineCode = Boolean(
+    machineCode && machineCode.trim() !== machineName.trim(),
+  );
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`group flex h-full min-w-0 flex-col rounded-2xl border p-5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 sm:p-6 ${cardClass}`}
+      className={`group flex h-full min-w-0 flex-col rounded-2xl border p-5 text-start shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 sm:p-6 ${cardClass}`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="line-clamp-3 text-base font-semibold leading-6 text-slate-900 sm:text-lg">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
+        <div className="min-w-0 w-full flex-1">
+          <div dir="auto" className="line-clamp-3 text-base font-semibold leading-6 text-slate-900 sm:text-lg">
             {planName}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
-            <span className="font-medium text-slate-700">{machineName}</span>
-            {machineCode && <span className="text-slate-400">{machineCode}</span>}
+            <bdi dir="auto" className="font-medium text-slate-700">{machineName}</bdi>
+            {showMachineCode && <bdi dir="ltr" className="text-slate-400">{machineCode}</bdi>}
           </div>
         </div>
         <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass}`}>
@@ -68,7 +71,7 @@ export function TaskCard({ planName, machineName, machineCode, checkCount, compl
       <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
         <span>{checkCount} {t("checksLabel")}</span>
         {completedCount > 0 && <span>{completedCount} {t("completedLabel")}</span>}
-        {formattedDueDate && <span>{t("due")}: {formattedDueDate}</span>}
+        {formattedDueDate && <span>{t("due")}: <bdi dir="ltr">{formattedDueDate}</bdi></span>}
       </div>
 
       <div className="mt-auto pt-5">
