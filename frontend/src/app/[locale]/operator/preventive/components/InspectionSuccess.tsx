@@ -24,6 +24,9 @@ export function InspectionSuccess({
   onBack,
 }: Readonly<SuccessProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
+  const showMachineCode = Boolean(
+    machineCode && machineCode.trim() !== machineName.trim(),
+  );
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -34,20 +37,21 @@ export function InspectionSuccess({
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("machineLabel")}</div>
             <div className="mt-1 text-base font-semibold text-slate-900">
-              {machineName} {machineCode && <span className="text-slate-500">{machineCode}</span>}
+              <bdi dir="auto">{machineName}</bdi>{" "}
+              {showMachineCode && <bdi dir="ltr" className="text-slate-500">{machineCode}</bdi>}
             </div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("taskLabel")}</div>
-            <div className="mt-1 text-base font-semibold text-slate-900">{planName}</div>
+            <div dir="auto" className="mt-1 text-base font-semibold text-slate-900">{planName}</div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("completedAtLabel")}</div>
-            <div className="mt-1 text-base font-semibold text-slate-900">{completedAt}</div>
+            <div className="mt-1 text-base font-semibold text-slate-900"><bdi dir="ltr">{completedAt}</bdi></div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("checksLabel")}</div>
@@ -62,7 +66,7 @@ export function InspectionSuccess({
 
         <div>
           <div className="text-xs font-semibold uppercase text-slate-500">{t("reference")}</div>
-          <div className="mt-1 text-base font-semibold text-slate-900">{workOrderOtId}</div>
+          <div className="mt-1 text-base font-semibold text-slate-900"><bdi dir="ltr">{workOrderOtId}</bdi></div>
         </div>
       </div>
 

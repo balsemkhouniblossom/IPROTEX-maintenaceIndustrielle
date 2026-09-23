@@ -631,6 +631,44 @@ test("Operator maintenance forms opt into readable dark-mode text mapping", () =
   );
 });
 
+test("Operator preventive workflow keeps mixed-direction content readable in Arabic", () => {
+  const componentDirectory = path.join(
+    process.cwd(),
+    "src/app/[locale]/operator/preventive/components",
+  );
+  const inspectionSource = fs.readFileSync(
+    path.join(componentDirectory, "InspectionView.tsx"),
+    "utf8",
+  );
+  const reviewSource = fs.readFileSync(
+    path.join(componentDirectory, "InspectionReview.tsx"),
+    "utf8",
+  );
+  const successSource = fs.readFileSync(
+    path.join(componentDirectory, "InspectionSuccess.tsx"),
+    "utf8",
+  );
+  const selectorSource = fs.readFileSync(
+    path.join(componentDirectory, "PreventiveMachineSelector.tsx"),
+    "utf8",
+  );
+  const tabsSource = fs.readFileSync(
+    path.join(componentDirectory, "PreventivePlanTabs.tsx"),
+    "utf8",
+  );
+
+  assert.match(inspectionSource, /dir="auto"/);
+  assert.match(inspectionSource, /t\("okLabel"\)/);
+  assert.match(inspectionSource, /t\("problemLabel"\)/);
+  assert.doesNotMatch(inspectionSource, /✓ OK|⚠ Problem/);
+  assert.match(reviewSource, /grid-cols-1 gap-4 sm:grid-cols-2/);
+  assert.match(successSource, /grid-cols-1 gap-4 sm:grid-cols-2/);
+  assert.match(reviewSource, /<bdi dir="ltr"/);
+  assert.match(successSource, /<bdi dir="ltr"/);
+  assert.doesNotMatch(selectorSource, /text-left/);
+  assert.doesNotMatch(tabsSource, /text-left/);
+});
+
 test("Corrective page uses the existing operator report-problem API and shows real WorkOrder reference", () => {
   const source = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),

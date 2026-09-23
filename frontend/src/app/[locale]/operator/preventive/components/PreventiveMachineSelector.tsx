@@ -31,7 +31,7 @@ export function PreventiveMachineSelector({
               type="button"
               onClick={() => onSelectCategory(item._id)}
               data-testid="preventive-category-select"
-              className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+              className={`rounded-3xl border p-4 text-start transition hover:-translate-y-1 hover:shadow-lg ${
                 selectedCategory === item._id ? "border-blue-500 bg-blue-50 shadow-md" : "border-slate-200 bg-white"
               }`}
             >
@@ -51,7 +51,7 @@ export function PreventiveMachineSelector({
               type="button"
               onClick={() => onSelectMachine(machine._id)}
               data-testid="preventive-machine-select"
-              className={`rounded-3xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+              className={`rounded-3xl border p-4 text-start transition hover:-translate-y-1 hover:shadow-lg ${
                 selectedMachine === machine._id ? "border-emerald-500 bg-emerald-50 shadow-md" : "border-slate-200 bg-white"
               }`}
             >

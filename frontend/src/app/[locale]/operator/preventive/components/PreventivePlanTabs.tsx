@@ -18,7 +18,7 @@ export function PreventivePlanTabs({
           key={group.key}
           type="button"
           onClick={() => onSelectGroup(group.planIds)}
-          className={`shrink-0 rounded-lg border px-4 py-2 text-left text-sm ${
+          className={`shrink-0 rounded-lg border px-4 py-2 text-start text-sm ${
             group.planIds.some((planId) => selectedPlanIdsSet.has(planId))
               ? "border-emerald-500 bg-emerald-50 text-emerald-800"
               : "border-slate-200 bg-white text-slate-700"

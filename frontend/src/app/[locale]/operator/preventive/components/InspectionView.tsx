@@ -40,6 +40,9 @@ export function InspectionView({
   readOnly = false,
 }: Readonly<InspectionViewProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
+  const showMachineCode = Boolean(
+    machineCode && machineCode.trim() !== machineName.trim(),
+  );
 
   if (loading) {
     return (
@@ -61,8 +64,9 @@ export function InspectionView({
     <div className="space-y-6">
       <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-4">
         <div>
-          <div className="text-base font-semibold text-blue-900">
-            {planName} — {machineName} {machineCode && <span className="text-blue-700">{machineCode}</span>}
+          <div dir="auto" className="text-base font-semibold text-blue-900">
+            {planName} — <bdi dir="auto">{machineName}</bdi>{" "}
+            {showMachineCode && <bdi dir="ltr" className="text-blue-700">{machineCode}</bdi>}
           </div>
           <div className="mt-1 text-sm text-blue-700">
             {t("progress")}: {okCount + problemCount} / {items.length} {t("checksCompleted")}
@@ -93,7 +97,7 @@ export function InspectionView({
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div className="text-sm font-semibold text-slate-900">
+                  <div dir="auto" className="text-sm font-semibold text-slate-900">
                     {index + 1}. {item.instruction}
                   </div>
                 </div>
@@ -108,7 +112,7 @@ export function InspectionView({
                         : "border border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50"
                     }`}
                   >
-                    ✓ OK
+                    ✓ {t("okLabel")}
                   </button>
                   <button
                     type="button"
@@ -120,7 +124,7 @@ export function InspectionView({
                         : "border border-amber-300 bg-white text-amber-700 hover:bg-amber-50"
                     }`}
                   >
-                    ⚠ Problem
+                    ⚠ {t("problemLabel")}
                   </button>
                 </div>
               </div>

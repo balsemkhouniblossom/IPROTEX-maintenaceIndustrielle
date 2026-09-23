@@ -28,20 +28,24 @@ export function InspectionReview({
   submitting,
 }: Readonly<ReviewProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
+  const showMachineCode = Boolean(
+    machineCode && machineCode.trim() !== machineName.trim(),
+  );
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("machineLabel")}</div>
             <div className="mt-1 text-base font-semibold text-slate-900">
-              {machineName} {machineCode && <span className="text-slate-500">{machineCode}</span>}
+              <bdi dir="auto">{machineName}</bdi>{" "}
+              {showMachineCode && <bdi dir="ltr" className="text-slate-500">{machineCode}</bdi>}
             </div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("taskLabel")}</div>
-            <div className="mt-1 text-base font-semibold text-slate-900">{planName}</div>
+            <div dir="auto" className="mt-1 text-base font-semibold text-slate-900">{planName}</div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase text-slate-500">{t("checksLabel")}</div>
@@ -76,7 +80,7 @@ export function InspectionReview({
             <div className="text-sm font-semibold text-amber-900">{t("problemsDetected")}</div>
             <ul className="mt-2 list-inside list-disc text-sm text-amber-800">
               {problems.map((p) => (
-                <li key={p.itemId}>{p.instruction}</li>
+                <li key={p.itemId} dir="auto">{p.instruction}</li>
               ))}
             </ul>
           </div>
