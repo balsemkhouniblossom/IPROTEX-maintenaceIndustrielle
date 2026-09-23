@@ -476,6 +476,8 @@
       "solution": "Loesung",
       "validation": "Validierung erforderlich",
       "report": "Bericht",
+      "onThisPage": "Auf dieser Seite",
+      "searchReports": "Berichte suchen",
       "maintenanceCode": "Wartungscode",
       "openManual": "Handbuch-PDF oeffnen",
       "generateReport": "Bericht erstellen",
@@ -730,7 +732,21 @@
         "submit": "Submit Report",
         "cancel": "Cancel",
         "other": "Other",
-        "operationalStatus": "Operational"
+        "operationalStatus": "Operational",
+        "faultCategories": {
+          "mechanical": "Mechanisch",
+          "electrical": "Elektrisch",
+          "thermal": "Thermisch",
+          "leakage": "Leckage",
+          "blockage": "Blockierung / Start",
+          "other": "Sonstiges"
+        },
+        "faultSeverities": {
+          "info": "Information",
+          "warning": "Warnung",
+          "problem": "Problem",
+          "critical": "Kritisch"
+        }
       },
       "preventiveTasksFlow": {
         "title": "Preventive Tasks",
@@ -747,6 +763,7 @@
         "completedLabel": "completed",
         "due": "Due",
         "statusDueToday": "DUE TODAY",
+        "statusOverdue": "ÜBERFÄLLIG",
         "statusUpcoming": "UPCOMING",
         "statusCompleted": "COMPLETED",
         "loadingChecklist": "Loading checklist...",
@@ -1144,6 +1161,7 @@
     },
     "na": "غير متوفر",
     "now": "Now",
+    "liveTime": "Aktuelle Uhrzeit",
     "pagination": {
       "next": "Next",
       "previous": "Previous"
@@ -3616,7 +3634,11 @@
     "markRead": "Als gelesen markieren",
     "clear": "Löschen",
     "loading": "Wird geladen...",
-    "empty": "Keine Benachrichtigungen"
+    "empty": "Keine Benachrichtigungen",
+    "templates": {
+      "workOrderOverdueThreeDays": "Der Arbeitsauftrag {workOrder} ist seit mehr als 3 Tagen überfällig.",
+      "workOrderOverdueSevenDays": "Der Arbeitsauftrag {workOrder} ist seit mehr als 7 Tagen überfällig."
+    }
   },
   "knowledgeBase": {
     "title": "Wissensdatenbank",

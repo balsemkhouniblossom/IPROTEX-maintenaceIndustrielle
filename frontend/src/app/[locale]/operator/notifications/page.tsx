@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useTranslations } from "next-intl";
 import { apiService } from "@/services/api";
+import { legacyNotificationTranslation } from "@/services/notificationLocalization";
 import {
   BellAlertIcon,
   CheckIcon,
@@ -102,6 +103,10 @@ export default function OperatorNotificationsPage() {
       : "";
     if (key && tNotification.has(key)) {
       return tNotification(key, notificationTranslationParams(item.translationParams));
+    }
+    const legacy = legacyNotificationTranslation(item.title);
+    if (legacy && tNotification.has(legacy.key)) {
+      return tNotification(legacy.key, legacy.params);
     }
     return item.title;
   };

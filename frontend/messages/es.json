@@ -470,6 +470,8 @@
       "solution": "Solucion",
       "validation": "Validacion requerida",
       "report": "Informe",
+      "onThisPage": "En esta página",
+      "searchReports": "Buscar informes",
       "maintenanceCode": "Codigo de mantenimiento",
       "openManual": "Abrir manual PDF",
       "generateReport": "Generar informe",
@@ -730,7 +732,21 @@
         "submit": "Submit Report",
         "cancel": "Cancel",
         "other": "Other",
-        "operationalStatus": "Operational"
+        "operationalStatus": "Operational",
+        "faultCategories": {
+          "mechanical": "Mecánico",
+          "electrical": "Eléctrico",
+          "thermal": "Térmico",
+          "leakage": "Fuga",
+          "blockage": "Bloqueo / arranque",
+          "other": "Otro"
+        },
+        "faultSeverities": {
+          "info": "Información",
+          "warning": "Advertencia",
+          "problem": "Problema",
+          "critical": "Crítico"
+        }
       },
       "preventiveTasksFlow": {
         "title": "Preventive Tasks",
@@ -747,6 +763,7 @@
         "completedLabel": "completed",
         "due": "Due",
         "statusDueToday": "DUE TODAY",
+        "statusOverdue": "ATRASADA",
         "statusUpcoming": "UPCOMING",
         "statusCompleted": "COMPLETED",
         "loadingChecklist": "Loading checklist...",
@@ -1012,6 +1029,7 @@
     },
     "na": "غير متوفر",
     "now": "Now",
+    "liveTime": "Hora en directo",
     "pagination": {
       "next": "Next",
       "previous": "Previous"
@@ -3413,7 +3431,11 @@
     "markRead": "Marcar como leido",
     "clear": "Borrar",
     "loading": "Cargando...",
-    "empty": "Sin notificaciones"
+    "empty": "Sin notificaciones",
+    "templates": {
+      "workOrderOverdueThreeDays": "La orden de trabajo {workOrder} lleva más de 3 días de retraso.",
+      "workOrderOverdueSevenDays": "La orden de trabajo {workOrder} lleva más de 7 días de retraso."
+    }
   },
   "knowledgeBase": {
     "title": "Base de conocimiento",

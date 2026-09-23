@@ -11,6 +11,7 @@ import { apiService } from "@/services/api";
 import { fetchAllPaginated } from "@/services/pagination";
 import { extractApiErrorMessage } from "@/services/apiErrors";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
+import { translateEnumValue } from "@/services/enumTranslations";
 
 type Step = "machine" | "problem" | "description" | "urgency" | "review" | "success";
 
@@ -75,14 +76,13 @@ function getFaultCategory(description: string): string {
   return "other";
 }
 
-const FAULT_CATEGORY_LABELS: Record<string, string> = {
-  mechanical: "Mechanical",
-  electrical: "Electrical",
-  thermal: "Thermal",
-  leakage: "Leakage",
-  blockage: "Blockage / Start",
-  other: "Other",
-};
+function faultSeverityKey(value: string): "info" | "warning" | "problem" | "critical" {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("critical") || normalized.includes("urgent")) return "critical";
+  if (normalized.includes("warning") || normalized.includes("avertissement")) return "warning";
+  if (normalized.includes("trouble") || normalized.includes("problem") || normalized.includes("probl")) return "problem";
+  return "info";
+}
 
 function machineStatusClass(status: string | undefined): string {
   if (status === "Operational" || status === "operational") return "border border-emerald-200 bg-emerald-50 text-emerald-800";
@@ -159,6 +159,7 @@ function SummaryField({ label, value, detail }: Readonly<{ label: string; value:
 function ReportProblemFlow() {
   const t = useTranslations("dashboard.operator.reportProblemFlow");
   const tCommon = useTranslations("common");
+  const tEnums = useTranslations("common.enums");
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -669,7 +670,11 @@ function ReportProblemFlow() {
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${machineStatusClass(machine.status)}`}
                       >
-                        {machine.status || t("operationalStatus")}
+                        {translateEnumValue(
+                          tEnums,
+                          "machineStates",
+                          machine.status,
+                        ) || t("operationalStatus")}
                       </span>
                     </div>
                   </button>
@@ -699,7 +704,7 @@ function ReportProblemFlow() {
                   {Object.entries(faultGroups).map(([category, categoryFaults]) => (
                     <div key={category}>
                       <div className="mb-3 text-sm font-semibold text-slate-700">
-                        {FAULT_CATEGORY_LABELS[category] || category}
+                        {t(`faultCategories.${category}`)}
                       </div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         {categoryFaults.map((fault) => (
@@ -715,7 +720,9 @@ function ReportProblemFlow() {
                           >
                             <div className="text-sm font-semibold text-slate-900">{fault.description}</div>
                             {fault.gravite && (
-                              <div className="mt-1 text-xs text-slate-500">{fault.gravite}</div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {t(`faultSeverities.${faultSeverityKey(fault.gravite)}`)}
+                              </div>
                             )}
                           </button>
                         ))}

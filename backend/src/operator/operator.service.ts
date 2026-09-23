@@ -606,6 +606,7 @@ export class OperatorService {
     skip: number,
     reportId?: string,
     workOrderId?: string,
+    search?: string,
   ): Promise<PaginatedResponse<InterventionReportResponse>> {
     const query: Record<string, unknown> = {
       technician_id: this.technicianScopeFilter(userId),
@@ -619,6 +620,18 @@ export class OperatorService {
     }
     if (workOrderId?.trim() && Types.ObjectId.isValid(workOrderId.trim())) {
       query.ot_id = workOrderId.trim();
+    }
+    if (search?.trim()) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$and = [
+        {
+          $or: [
+            { report_id: { $regex: escaped, $options: 'i' } },
+            { description_action: { $regex: escaped, $options: 'i' } },
+            { etat_final: { $regex: escaped, $options: 'i' } },
+          ],
+        },
+      ];
     }
 
     const [items, totalItems] = await Promise.all([

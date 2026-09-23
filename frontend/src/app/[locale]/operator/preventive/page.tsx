@@ -145,7 +145,10 @@ function PreventiveTasksFlow() {
               planName={selectedTask.planName}
               machineName={selectedTask.machineName}
               machineCode={selectedTask.machineCode}
-              completedAt={new Date().toLocaleString()}
+              completedAt={new Intl.DateTimeFormat(locale, {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date())}
               okCount={inspection.okCount}
               problemCount={inspection.problemCount}
               workOrderOtId={correctiveWo || inspection.workOrderId || ""}

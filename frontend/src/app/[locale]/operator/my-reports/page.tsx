@@ -11,7 +11,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Modal } from "@/components/Modal";
 import { apiService } from "@/services/api";
 import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { fetchAllPaginated, normalizeApiItems, readPaginationMeta } from "@/services/pagination";
 
 type EntityRef = string | { _id?: string };
@@ -71,6 +71,7 @@ function notificationClasses(type: NotificationType): string {
 export default function OperatorMyReportsPage() {
   const t = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const requestedReportId = searchParams.get("reportId") || "";
   const requestedWorkOrderId = searchParams.get("workOrderId") || "";
@@ -84,6 +85,7 @@ export default function OperatorMyReportsPage() {
   const [reports, setReports] = useState<InterventionReport[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState("");
   const [page, setPage] = useState(1);
@@ -116,7 +118,7 @@ export default function OperatorMyReportsPage() {
       try {
         setLoading(true);
         const [reportsRes, workOrderItems] = await Promise.all([
-          apiService.getMyInterventionReports({ page, limit }),
+          apiService.getMyInterventionReports({ page, limit, search: search.trim() || undefined }),
           fetchAllPaginated<WorkOrder>((pagination) => apiService.getMyWorkOrders(pagination)),
         ]);
 
@@ -135,7 +137,7 @@ export default function OperatorMyReportsPage() {
     }
 
     void loadData();
-  }, [limit, page, t]);
+  }, [limit, page, search, t]);
 
   useEffect(() => {
     if (!requestedReportId && !requestedWorkOrderId) return;
@@ -199,7 +201,10 @@ export default function OperatorMyReportsPage() {
   function submittedAt(report?: InterventionReport | null, workOrder?: WorkOrder | null): string {
     const value = report?.date_fin || report?.date_debut || workOrder?.date_created;
     if (!value) return tCommon("notAvailable");
-    return new Date(value).toLocaleString();
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(value));
   }
 
   function statusLabel(status?: string): string {
@@ -243,19 +248,32 @@ export default function OperatorMyReportsPage() {
           <section className="col-span-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="card-title mb-2">{t("myReports")}</div>
             <p className="mb-5 text-sm text-slate-600">{t("machineInterventionHistory")}</p>
+            <label className="mb-5 block">
+              <span className="sr-only">{t("searchReports")}</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder={t("searchReports")}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm"
+              />
+            </label>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_1fr_240px]">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="text-sm text-slate-500">{t("report")}</div>
-                <div className="mt-2 text-3xl font-bold text-slate-900">{myReports.length}</div>
+                <div className="mt-2 text-3xl font-bold text-slate-900">{totalItems}</div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm opacity-80">{t("waitingValidation")}</div>
+                <div className="text-sm opacity-80">{t("waitingValidation")} · {t("onThisPage")}</div>
                 <div className="mt-2 text-3xl font-bold text-slate-900">
                   {myReports.filter((item) => item.workOrder?.status === "waiting_validation").length}
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm opacity-80">{t("completed")}</div>
+                <div className="text-sm opacity-80">{t("completed")} · {t("onThisPage")}</div>
                 <div className="mt-2 text-3xl font-bold text-slate-900">
                   {myReports.filter((item) => ["completed", "validated"].includes(item.workOrder?.status || "")).length}
                 </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ClockIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
 
 type LiveClockProps = Readonly<{
   locale?: string;
@@ -26,6 +27,7 @@ function formatClock(locale: string, now: Date) {
 }
 
 export default function LiveClock({ locale = 'en' }: LiveClockProps) {
+  const t = useTranslations('common');
   // `now` starts `null` so the server render and the client's pre-hydration
   // render produce identical markup — seeding it with `new Date()` here
   // would make the server's timestamp and the client's differ by however
@@ -55,7 +57,7 @@ export default function LiveClock({ locale = 'en' }: LiveClockProps) {
 
       <div className="min-w-0 leading-tight">
         <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-muted">
-          Live time
+          {t('liveTime')}
         </div>
         <div className="font-mono text-base font-semibold tabular-nums tracking-[0.14em] text-text-primary">
           {time}

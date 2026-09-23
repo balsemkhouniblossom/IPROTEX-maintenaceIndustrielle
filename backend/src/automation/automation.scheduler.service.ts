@@ -675,6 +675,8 @@ export class AutomationSchedulerService {
                 title: `Escalation 3+ days overdue for ${
                   row.ot_id || workOrderId
                 }`,
+                translationKey: 'templates.workOrderOverdueThreeDays',
+                translationParams: { workOrder: row.ot_id || workOrderId },
                 workOrderId,
                 ...this.resolveRecipient(
                   this.objectIdString(row.technician_id),
@@ -698,6 +700,8 @@ export class AutomationSchedulerService {
                   title: `Escalation 7+ days overdue for ${
                     row.ot_id || workOrderId
                   }`,
+                  translationKey: 'templates.workOrderOverdueSevenDays',
+                  translationParams: { workOrder: row.ot_id || workOrderId },
                   workOrderId,
                   recipientUserId: supervisorId,
                 });

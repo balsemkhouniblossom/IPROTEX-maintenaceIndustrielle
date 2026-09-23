@@ -204,6 +204,7 @@
     },
     "loading": "Loading...",
     "now": "Now",
+    "liveTime": "Live time",
     "priority": "Priority",
     "error": "Error",
     "success": "Success",
@@ -721,6 +722,8 @@
       "solution": "Solution",
       "validation": "Validation required",
       "report": "Report",
+      "onThisPage": "On this page",
+      "searchReports": "Search reports",
       "maintenanceCode": "Maintenance Code",
       "openManual": "Open Manual",
       "generateReport": "Generate Report",
@@ -924,7 +927,21 @@
         "submit": "Submit Report",
         "cancel": "Cancel",
         "other": "Other",
-        "operationalStatus": "Operational"
+        "operationalStatus": "Operational",
+        "faultCategories": {
+          "mechanical": "Mechanical",
+          "electrical": "Electrical",
+          "thermal": "Thermal",
+          "leakage": "Leakage",
+          "blockage": "Blocked / cannot start",
+          "other": "Other"
+        },
+        "faultSeverities": {
+          "info": "Information",
+          "warning": "Warning",
+          "problem": "Problem",
+          "critical": "Critical"
+        }
       },
       "preventiveTasksFlow": {
         "title": "Preventive Tasks",
@@ -941,6 +958,7 @@
         "completedLabel": "completed",
         "due": "Due",
         "statusDueToday": "DUE TODAY",
+        "statusOverdue": "OVERDUE",
         "statusUpcoming": "UPCOMING",
         "statusCompleted": "COMPLETED",
         "loadingChecklist": "Loading checklist...",
@@ -3616,7 +3634,11 @@
     "markRead": "Mark read",
     "clear": "Clear",
     "loading": "Loading...",
-    "empty": "No notifications"
+    "empty": "No notifications",
+    "templates": {
+      "workOrderOverdueThreeDays": "Work order {workOrder} is more than 3 days overdue.",
+      "workOrderOverdueSevenDays": "Work order {workOrder} is more than 7 days overdue."
+    }
   },
   "knowledgeBase": {
     "title": "Knowledge Base",

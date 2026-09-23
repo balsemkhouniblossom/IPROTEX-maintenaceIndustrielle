@@ -461,6 +461,8 @@
       "solution": "Soluzione",
       "validation": "Validazione richiesta",
       "report": "Rapporto",
+      "onThisPage": "In questa pagina",
+      "searchReports": "Cerca rapporti",
       "maintenanceCode": "Codice manutenzione",
       "openManual": "Apri manuale PDF",
       "generateReport": "Genera rapporto",
@@ -730,7 +732,21 @@
         "submit": "Submit Report",
         "cancel": "Cancel",
         "other": "Other",
-        "operationalStatus": "Operational"
+        "operationalStatus": "Operational",
+        "faultCategories": {
+          "mechanical": "Meccanico",
+          "electrical": "Elettrico",
+          "thermal": "Termico",
+          "leakage": "Perdita",
+          "blockage": "Blocco / avvio",
+          "other": "Altro"
+        },
+        "faultSeverities": {
+          "info": "Informazione",
+          "warning": "Avviso",
+          "problem": "Problema",
+          "critical": "Critico"
+        }
       },
       "preventiveTasksFlow": {
         "title": "Preventive Tasks",
@@ -747,6 +763,7 @@
         "completedLabel": "completed",
         "due": "Due",
         "statusDueToday": "DUE TODAY",
+        "statusOverdue": "IN RITARDO",
         "statusUpcoming": "UPCOMING",
         "statusCompleted": "COMPLETED",
         "loadingChecklist": "Loading checklist...",
@@ -1020,6 +1037,7 @@
     },
     "na": "غير متوفر",
     "now": "Now",
+    "liveTime": "Ora corrente",
     "pagination": {
       "next": "Next",
       "previous": "Previous"
@@ -3413,7 +3431,11 @@
     "markRead": "Segna come letta",
     "clear": "Cancella",
     "loading": "Caricamento...",
-    "empty": "Nessuna notifica"
+    "empty": "Nessuna notifica",
+    "templates": {
+      "workOrderOverdueThreeDays": "L’ordine di lavoro {workOrder} è in ritardo di oltre 3 giorni.",
+      "workOrderOverdueSevenDays": "L’ordine di lavoro {workOrder} è in ritardo di oltre 7 giorni."
+    }
   },
   "knowledgeBase": {
     "title": "Base di conoscenza",

@@ -6,6 +6,7 @@ import axios from "axios";
 import { useTranslations } from "next-intl";
 import { BellAlertIcon } from "@heroicons/react/24/outline";
 import { apiService } from "@/services/api";
+import { legacyNotificationTranslation } from "@/services/notificationLocalization";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface NotificationItem {
@@ -191,6 +192,10 @@ export default function NotificationBell() {
       : "";
     if (key && t.has(key)) {
       return t(key, notificationTranslationParams(item.translationParams));
+    }
+    const legacy = legacyNotificationTranslation(item.title);
+    if (legacy && t.has(legacy.key)) {
+      return t(legacy.key, legacy.params);
     }
     return item.title;
   }

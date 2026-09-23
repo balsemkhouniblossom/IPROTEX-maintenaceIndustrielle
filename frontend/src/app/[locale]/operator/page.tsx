@@ -18,6 +18,7 @@ import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 import { translateEnumValue } from "@/services/enumTranslations";
+import { legacyNotificationTranslation } from "@/services/notificationLocalization";
 
 interface OperatorKpiCounts {
   overdueCount: number;
@@ -205,6 +206,10 @@ function renderNotificationTitle(
     : "";
   if (key && tNotification.has(key)) {
     return tNotification(key, notificationTranslationParams(item.translationParams));
+  }
+  const legacy = legacyNotificationTranslation(item.title);
+  if (legacy && tNotification.has(legacy.key)) {
+    return tNotification(legacy.key, legacy.params);
   }
   return item.title;
 }
@@ -641,12 +646,13 @@ export default function OperatorDashboard() {
               <div className="space-y-3">
                 {operatorTasks.slice(0, 5).map((task) => {
                   const dueDate = new Date(task.dueDate!);
-                  const dueLabel = task.isOverdue
-                    ? tOperator("stats.overdue")
-                    : new Intl.DateTimeFormat(locale, {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }).format(dueDate);
+                  const dueLabel = new Intl.DateTimeFormat(locale, {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(dueDate);
 
                   return (
                     <div

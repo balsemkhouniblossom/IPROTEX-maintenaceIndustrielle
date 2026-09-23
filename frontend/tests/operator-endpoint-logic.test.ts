@@ -315,6 +315,15 @@ test("My Reports exposes employee-facing status wording for active and terminal 
   assert.match(source, /case "cancelled"/);
   assert.match(source, /dashboard\.statusSubmitted/);
   assert.doesNotMatch(source, /return status \|\| tCommon\("notAvailable"\)/);
+  assert.match(source, /getMyInterventionReports\(\{ page, limit, search:/);
+  assert.match(source, /new Intl\.DateTimeFormat\(locale/);
+});
+
+test("Operator preventive cards distinguish overdue occurrences from tasks due today", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/preventive/components/TaskCard.tsx"), "utf8");
+  assert.match(source, /isOverdue/);
+  assert.match(source, /statusOverdue/);
+  assert.match(source, /Intl\.DateTimeFormat\(locale\)/);
 });
 
 test("Corrective existing-issue action opens the exact follow-up record instead of an alert-only dead end", () => {

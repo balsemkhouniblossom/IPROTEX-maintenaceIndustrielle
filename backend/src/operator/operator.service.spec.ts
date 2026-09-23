@@ -343,6 +343,26 @@ describe('OperatorService machine scoping', () => {
     ]);
   });
 
+  it('searches the complete authorized report dataset on the server', async () => {
+    await service.getMyReports(
+      operatorId.toString(),
+      1,
+      10,
+      0,
+      undefined,
+      undefined,
+      'bearing.*',
+    );
+
+    const query = reportModel.find.mock.calls.at(-1)?.[0] as Record<string, any>;
+    expect(query.technician_id.$in).toContain(operatorId.toString());
+    expect(query.$and[0].$or).toEqual([
+      { report_id: { $regex: 'bearing\\.\\*', $options: 'i' } },
+      { description_action: { $regex: 'bearing\\.\\*', $options: 'i' } },
+      { etat_final: { $regex: 'bearing\\.\\*', $options: 'i' } },
+    ]);
+  });
+
   it('denies preventive state access for unassigned machines before workflow service calls', async () => {
     await expect(
       service.getPreventiveStates(

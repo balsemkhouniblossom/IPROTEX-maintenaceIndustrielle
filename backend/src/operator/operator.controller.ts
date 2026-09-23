@@ -93,6 +93,7 @@ export class OperatorController {
     @Query('limit') limit?: string,
     @Query('reportId') reportId?: string,
     @Query('workOrderId') workOrderId?: string,
+    @Query('search') search?: string,
   ): Promise<PaginatedResponse<InterventionReportResponse>> {
     const userId = this.ensureOperator(req);
     const pagination = normalizePagination(page, limit);
@@ -103,6 +104,7 @@ export class OperatorController {
       pagination.skip,
       reportId,
       workOrderId,
+      search,
     );
   }
 

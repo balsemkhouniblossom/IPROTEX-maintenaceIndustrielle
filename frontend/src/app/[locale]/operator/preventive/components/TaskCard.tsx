@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 interface TaskCardProps {
   planName: string;
@@ -13,20 +13,27 @@ interface TaskCardProps {
 
 export function TaskCard({ planName, machineName, machineCode, checkCount, completedCount, dueDate, tab, onOpen }: Readonly<TaskCardProps>) {
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
+  const locale = useLocale();
+  const due = dueDate ? new Date(dueDate) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isOverdue = tab === "today" && Boolean(due && due.getTime() < today.getTime());
 
   const statusLabelByTab = {
     today: t("statusDueToday"),
     upcoming: t("statusUpcoming"),
     completed: t("statusCompleted"),
   } as const;
-  const statusLabel = statusLabelByTab[tab];
+  const statusLabel = isOverdue ? t("statusOverdue") : statusLabelByTab[tab];
 
   const statusClassByTab = {
     today: "border-amber-200 bg-amber-50 text-amber-800",
     upcoming: "border-blue-200 bg-blue-50 text-blue-800",
     completed: "border-emerald-200 bg-emerald-50 text-emerald-800",
   } as const;
-  const statusClass = statusClassByTab[tab];
+  const statusClass = isOverdue
+    ? "border-rose-200 bg-rose-50 text-rose-800"
+    : statusClassByTab[tab];
   const cardClassByTab = {
     today: "border-amber-200 bg-white",
     upcoming: "border-slate-200 bg-white",
@@ -49,7 +56,7 @@ export function TaskCard({ planName, machineName, machineCode, checkCount, compl
           <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
             <span>{checkCount} {t("checksLabel")}</span>
             {completedCount > 0 && <span>{completedCount} {t("completedLabel")}</span>}
-            {dueDate && <span>{t("due")}: {new Date(dueDate).toLocaleDateString()}</span>}
+            {dueDate && <span>{t("due")}: {new Intl.DateTimeFormat(locale).format(new Date(dueDate))}</span>}
           </div>
         </div>
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass}`}>
