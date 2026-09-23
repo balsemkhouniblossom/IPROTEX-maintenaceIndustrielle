@@ -843,6 +843,16 @@ export const apiService = {
         machineTypeId: params?.machineTypeId,
       },
     }),
+  getOperatorReportableMachines: (
+    params?: PaginationParams & { machineTypeId?: string },
+  ) =>
+    api.get("/operator/machines/reportable", {
+      params: {
+        page: params?.page,
+        limit: params?.limit,
+        machineTypeId: params?.machineTypeId,
+      },
+    }),
   getOperatorMachineTypes: (params?: PaginationParams) =>
     api.get("/operator/machine-types", withPagination(params)),
   getOperatorModules: (params?: PaginationParams) =>

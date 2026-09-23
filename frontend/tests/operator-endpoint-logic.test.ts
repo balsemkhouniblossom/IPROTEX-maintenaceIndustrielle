@@ -54,6 +54,42 @@ test("Corrective page submits through the single scoped Operator corrective-repo
   );
 });
 
+test("Corrective reporting loads the complete reportable machine catalogue", () => {
+  const page = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+  const api = fs.readFileSync(
+    path.join(process.cwd(), "src/services/api.ts"),
+    "utf8",
+  );
+
+  assert.match(page, /getOperatorReportableMachines/);
+  assert.match(api, /operator\/machines\/reportable/);
+});
+
+test("Corrective reporting requests the complete fault catalogue for the selected machine", () => {
+  const page = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(page, /getOperatorFaults\(\{[\s\S]*machineId: selectedMachine/);
+  assert.match(page, /fetchAllPaginated<Panne>/);
+});
+
+test("Operator Machines lists every reportable machine without exposing unassigned operational details", () => {
+  const page = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/machines/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(page, /getOperatorReportableMachines/);
+  assert.match(page, /getMyMachines/);
+  assert.match(page, /assignedMachineIds\.has\(machine\._id\)/);
+  assert.match(page, /handleReportProblem\(machine\._id\)/);
+});
+
 test("Operator UI no longer routes to the removed report-problem page", () => {
   for (const relativePath of [
     "src/components/DashboardLayout.tsx",

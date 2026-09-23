@@ -185,6 +185,13 @@ describe('OperatorService machine scoping', () => {
     });
   });
 
+  it('returns the complete machine catalogue for corrective reporting', async () => {
+    await service.getReportableMachines(1, 10, 0);
+
+    expect(machineModel.find).toHaveBeenCalledWith({});
+    expect(machineModel.countDocuments).toHaveBeenCalledWith({});
+  });
+
   it('returns safely scoped empty catalogue pages across operator read workflows', async () => {
     const page = 1;
     const limit = 20;
@@ -291,6 +298,20 @@ describe('OperatorService machine scoping', () => {
         $or: expect.any(Array),
       }),
     );
+  });
+
+  it('returns the complete fault catalogue for a selected existing machine', async () => {
+    await expect(
+      service.getFaultsForOperator(operatorId.toString(), 1, 20, 0, {
+        machineId: unassignedMachineId.toString(),
+      }),
+    ).resolves.toMatchObject({ totalItems: 0 });
+
+    expect(machineModel.countDocuments).toHaveBeenCalledWith({
+      _id: unassignedMachineId,
+    });
+    expect(panneModel.find).toHaveBeenCalledWith({});
+    expect(workOrderModel.find).not.toHaveBeenCalled();
   });
 
   it('returns empty fault pages when the operator has no visible machines', async () => {
@@ -414,17 +435,24 @@ describe('OperatorService machine scoping', () => {
     expect(workOrdersService.getCalendarEvents).not.toHaveBeenCalled();
   });
 
-  it('denies corrective report creation for a machine not assigned to the Operator', async () => {
-    await expect(
-      service.createCorrectiveReport(operatorId.toString(), {
-        machineId: unassignedMachineId.toString(),
-        codePanne: 'FAULT-1',
-        actions: ['Reset breaker'],
-      }),
-    ).rejects.toThrow(ForbiddenException);
+  it('allows corrective reporting for any existing machine', async () => {
+    await service.createCorrectiveReport(operatorId.toString(), {
+      machineId: unassignedMachineId.toString(),
+      codePanne: 'FAULT-1',
+      actions: ['Reset breaker'],
+    });
+
+    expect(machineModel.countDocuments).toHaveBeenCalledWith({
+      _id: unassignedMachineId,
+    });
     expect(
       workOrdersService.createCorrectiveReportForOperator,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        machineId: unassignedMachineId.toString(),
+        operatorId: operatorId.toString(),
+      }),
+    );
   });
 
   it('derives the operator identity from the authenticated user id and ignores any other caller-supplied identity', async () => {

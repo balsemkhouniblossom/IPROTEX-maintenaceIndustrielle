@@ -2429,7 +2429,7 @@
     "pageTitle": "Machines",
     "loadFailed": "Unable to load your machines.",
     "backToMachines": "Back to Machines",
-    "subtitle": "View your assigned machines and open the one you are working on.",
+    "subtitle": "View all machines and report a problem. Assigned machines can also be opened for operational details.",
     "searchPlaceholder": "Search machine name or serial number...",
     "allMachines": "All Machines",
     "allMachinesDescription": "List of all machines in the system",

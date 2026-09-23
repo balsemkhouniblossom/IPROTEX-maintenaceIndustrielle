@@ -3912,7 +3912,7 @@
     "loadFailed": "Unable to load your machines.",
     "pageTitle": "Macchine",
     "backToMachines": "Torna alle macchine",
-    "subtitle": "Cerca e gestisci le macchine assegnate.",
+    "subtitle": "Visualizza tutte le macchine e segnala un problema. Puoi anche aprire le macchine assegnate per consultarne i dettagli operativi.",
     "searchPlaceholder": "Cerca per nome macchina o numero di serie...",
     "allMachines": "Tutte le macchine",
     "allMachinesDescription": "Elenco di tutte le macchine nel sistema",

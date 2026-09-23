@@ -696,6 +696,36 @@ export class OperatorService {
     );
   }
 
+  async getReportableMachines(
+    page: number,
+    limit: number,
+    skip: number,
+    machineTypeId?: string,
+  ): Promise<PaginatedResponse<MachineSummaryResponse>> {
+    const query: Record<string, unknown> = {};
+    if (machineTypeId && Types.ObjectId.isValid(machineTypeId)) {
+      query.type_id = this.toObjectId(machineTypeId);
+    }
+
+    const [items, totalItems] = await Promise.all([
+      this.machineModel
+        .find(query)
+        .sort({ machine_id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('type_id')
+        .exec(),
+      this.machineModel.countDocuments(query).exec(),
+    ]);
+
+    return toPaginatedResponse(
+      items.map(toMachineSummary),
+      totalItems,
+      page,
+      limit,
+    );
+  }
+
   async getMyCalendar(
     userId: string,
     params: {
@@ -762,7 +792,7 @@ export class OperatorService {
       priority?: string;
     },
   ): Promise<CorrectiveReportForOperatorResponse> {
-    await this.assertCanAccessMachine(userId, input.machineId);
+    await this.assertMachineExists(input.machineId);
     return this.workOrdersService.createCorrectiveReportForOperator({
       machineId: input.machineId,
       codePanne: input.codePanne,
@@ -1030,16 +1060,17 @@ export class OperatorService {
     skip: number,
     filters: FaultFilters,
   ): Promise<PaginatedResponse<PanneResponse>> {
-    const scope = await this.buildFaultScope(userId, filters);
-
-    if (!scope.machineIds.length) {
-      return toPaginatedResponse([], 0, page, limit);
-    }
-
     const query: Record<string, unknown> = {};
-
-    if (scope.panneCodes && scope.panneCodes.length > 0) {
-      query.code_panne = { $in: scope.panneCodes };
+    if (filters.machineId) {
+      await this.assertMachineExists(filters.machineId);
+    } else {
+      const scope = await this.buildFaultScope(userId, filters);
+      if (!scope.machineIds.length) {
+        return toPaginatedResponse([], 0, page, limit);
+      }
+      if (scope.panneCodes && scope.panneCodes.length > 0) {
+        query.code_panne = { $in: scope.panneCodes };
+      }
     }
 
     if (filters.search?.trim()) {
@@ -1153,6 +1184,16 @@ export class OperatorService {
     const allowedMachineIds = await this.getAllowedMachineIds(userId);
     if (!allowedMachineIds.includes(machineId)) {
       throw new ForbiddenException('Operator is not assigned to this machine');
+    }
+  }
+
+  private async assertMachineExists(machineId: string): Promise<void> {
+    this.assertValidObjectId(machineId, 'machine_id');
+    const exists = await this.machineModel
+      .countDocuments({ _id: this.toObjectId(machineId) })
+      .exec();
+    if (!exists) {
+      throw new NotFoundException('Machine not found');
     }
   }
 

@@ -126,6 +126,23 @@ export class OperatorController {
     );
   }
 
+  @Get('machines/reportable')
+  getReportableMachines(
+    @Req() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('machineTypeId') machineTypeId?: string,
+  ) {
+    this.ensureOperator(req);
+    const pagination = normalizePagination(page, limit);
+    return this.operatorService.getReportableMachines(
+      pagination.page,
+      pagination.limit,
+      pagination.skip,
+      machineTypeId,
+    );
+  }
+
   @Get('machine-types')
   getMachineTypes(
     @Req() req: AuthenticatedRequest,

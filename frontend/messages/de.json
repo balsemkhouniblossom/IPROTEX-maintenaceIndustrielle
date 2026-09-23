@@ -1998,7 +1998,7 @@
     "loadFailed": "Unable to load your machines.",
     "pageTitle": "Maschinen",
     "backToMachines": "Zurück zu Maschinen",
-    "subtitle": "Suchen und verwalten Sie Ihre zugewiesenen Maschinen.",
+    "subtitle": "Zeigen Sie alle Maschinen an und melden Sie Probleme. Zugewiesene Maschinen können Sie außerdem für Betriebsdetails öffnen.",
     "searchPlaceholder": "Nach Maschinenname oder Seriennummer suchen...",
     "allMachines": "Alle Maschinen",
     "allMachinesDescription": "Liste aller Maschinen im System",

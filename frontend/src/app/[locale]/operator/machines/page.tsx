@@ -62,6 +62,9 @@ function OperatorMachinesPageContent() {
   const locale = params?.locale ?? "en";
 
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [assignedMachineIds, setAssignedMachineIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
@@ -71,10 +74,16 @@ function OperatorMachinesPageContent() {
     try {
       setLoading(true);
       setLoadError(false);
-      const response = await fetchAllPaginated<Machine>((pagination) =>
-        apiService.getMyMachines(pagination),
-      );
-      setMachines(response);
+      const [reportable, assigned] = await Promise.all([
+        fetchAllPaginated<Machine>((pagination) =>
+          apiService.getOperatorReportableMachines(pagination),
+        ),
+        fetchAllPaginated<Machine>((pagination) =>
+          apiService.getMyMachines(pagination),
+        ),
+      ]);
+      setMachines(reportable);
+      setAssignedMachineIds(new Set(assigned.map((machine) => machine._id)));
     } catch (error) {
       console.error("Error loading machines:", error);
       setLoadError(true);
@@ -240,13 +249,15 @@ function OperatorMachinesPageContent() {
                       ) : null}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleViewMachine(machine._id)}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-(--surface-elevated) px-4 py-2 text-sm font-semibold text-text-primary transition hover:border-cyan-700/55"
-                      >
-                        {tMachines("viewMachine", { defaultValue: "View Machine" })}
-                      </button>
+                      {assignedMachineIds.has(machine._id) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewMachine(machine._id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-(--surface-elevated) px-4 py-2 text-sm font-semibold text-text-primary transition hover:border-cyan-700/55"
+                        >
+                          {tMachines("viewMachine", { defaultValue: "View Machine" })}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => handleReportProblem(machine._id)}

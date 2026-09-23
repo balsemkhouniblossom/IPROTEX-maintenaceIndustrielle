@@ -3912,7 +3912,7 @@
     "loadFailed": "Unable to load your machines.",
     "pageTitle": "Máquinas",
     "backToMachines": "Volver a máquinas",
-    "subtitle": "Busque y gestione sus máquinas asignadas.",
+    "subtitle": "Consulte todas las máquinas y comunique un problema. También puede abrir las máquinas asignadas para ver sus detalles operativos.",
     "searchPlaceholder": "Buscar por nombre de máquina o número de serie...",
     "allMachines": "Todas las máquinas",
     "allMachinesDescription": "Lista de todas las máquinas del sistema",

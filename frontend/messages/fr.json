@@ -3912,7 +3912,7 @@
     "pageTitle": "Machines",
     "loadFailed": "Impossible de charger vos machines.",
     "backToMachines": "Retour aux machines",
-    "subtitle": "Consultez les machines qui vous sont attribuées et ouvrez celle sur laquelle vous travaillez.",
+    "subtitle": "Consultez toutes les machines et signalez un problème. Les machines qui vous sont attribuées peuvent aussi être ouvertes pour voir les détails opérationnels.",
     "searchPlaceholder": "Rechercher par nom de machine ou numéro de série...",
     "allMachines": "Toutes les machines",
     "allMachinesDescription": "Liste de toutes les machines du système",

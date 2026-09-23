@@ -250,7 +250,9 @@ function ReportProblemFlow() {
       try {
         setLoading(true);
         const [machineItems, workOrderItems] = await Promise.all([
-          fetchAllPaginated<Machine>((p) => apiService.getMyMachines(p)),
+          fetchAllPaginated<Machine>((p) =>
+            apiService.getOperatorReportableMachines(p),
+          ),
           fetchAllPaginated<WorkOrder>((p) => apiService.getMyWorkOrders(p)),
         ]);
         setMachines(machineItems);
