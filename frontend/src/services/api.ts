@@ -598,6 +598,8 @@ export const apiService = {
   getInterventionReport: (id: string) => api.get(`/intervention-reports/${id}`),
   getMyInterventionReports: (params?: PaginationParams) =>
     api.get("/operator/reports/my", withPagination(params)),
+  getMyReportAttachments: (reportId: string) =>
+    api.get(`/operator/reports/${encodeURIComponent(reportId)}/attachments`),
   createInterventionReport: (data: AnyObject) =>
     api.post("/intervention-reports", data),
   updateInterventionReport: (id: string, data: AnyObject) =>

@@ -174,15 +174,30 @@ test("corrective reporting preserves Other text, resets machine drafts, and igno
     "utf8",
   );
 
-  assert.match(source, /const problemLabel = selectedFault\?\.description \|\| otherProblem\.trim\(\)/);
+  assert.match(source, /const problemLabels = \[/);
+  assert.match(source, /selectedFaults\.map\(\(fault\) => fault\.description\)/);
+  assert.match(source, /const actions = problemLabels/);
   assert.match(source, /fault_description: faultDescription/);
   assert.match(source, /function resetMachineSpecificDraft\(\)/);
-  for (const setter of ["setSelectedFault(null)", "setOtherProblem(\"\")", "setObservation(\"\")", "setUrgency(\"\")", "setPhoto(null)", "setFaultSearch(\"\")", "setFaults([])"]) {
+  for (const setter of ["setSelectedFaults([])", "setOtherProblem(\"\")", "setObservation(\"\")", "setUrgency(\"\")", "setPhoto(null)", "setFaultSearch(\"\")", "setFaults([])"]) {
     assert.ok(source.includes(setter), `missing machine draft reset: ${setter}`);
   }
   assert.match(source, /let cancelled = false/);
   assert.match(source, /if \(!cancelled\) \{\s*setFaults\(faultItems\)/);
   assert.match(source, /cancelled = true/);
+});
+
+test("corrective reporting supports selecting multiple catalogue problems", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /useState<Panne\[\]>\(\[\]\)/);
+  assert.match(source, /current\.some\(\(selected\) => selected\._id === fault\._id\)/);
+  assert.match(source, /current\.filter\(\(selected\) => selected\._id !== fault\._id\)/);
+  assert.match(source, /\[\.\.\.current, fault\]/);
+  assert.match(source, /aria-pressed=\{selectedFaults\.some/);
 });
 
 test("corrective submission distinguishes partial photo failure, retries by existing ids, and links View Status to the returned report", () => {
@@ -198,4 +213,20 @@ test("corrective submission distinguishes partial photo failure, retries by exis
   assert.match(source, /intervention_report_id\", result\.report\._id/);
   assert.match(source, /router\.push\(`\.\.\/my-reports\?reportId=/);
   assert.match(source, /result\.duplicate \? t\("existingReportReused"\)/);
+});
+
+test("corrective photo is previewed during entry, review, and final confirmation", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /function PhotoPreview/);
+  assert.match(source, /URL\.createObjectURL\(photo\)/);
+  assert.match(source, /URL\.revokeObjectURL\(objectUrl\)/);
+  assert.match(source, /alt=\{`\$\{label\}: \$\{photo\.name\}`\}/);
+  assert.equal(
+    source.match(/<PhotoPreview photo=\{photo\} label=\{t\("photoUpload"\)\} \/>/g)?.length,
+    3,
+  );
 });

@@ -25,7 +25,11 @@ describe('OperatorService machine scoping', () => {
     distinct: jest.Mock;
     findById: jest.Mock;
   };
-  let reportModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let reportModel: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    countDocuments: jest.Mock;
+  };
   let machineModel: { find: jest.Mock; countDocuments: jest.Mock };
   let referenceModel: { find: jest.Mock; countDocuments: jest.Mock };
   let moduleModel: { find: jest.Mock; countDocuments: jest.Mock };
@@ -71,6 +75,7 @@ describe('OperatorService machine scoping', () => {
     };
     reportModel = {
       find: jest.fn().mockReturnValue(queryResult([])),
+      findOne: jest.fn().mockReturnValue(queryResult(null)),
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
     };
     machineModel = {
@@ -375,13 +380,55 @@ describe('OperatorService machine scoping', () => {
       'bearing.*',
     );
 
-    const query = reportModel.find.mock.calls.at(-1)?.[0] as Record<string, any>;
+    const query = reportModel.find.mock.calls.at(-1)?.[0] as Record<
+      string,
+      any
+    >;
     expect(query.technician_id.$in).toContain(operatorId.toString());
     expect(query.$and[0].$or).toEqual([
       { report_id: { $regex: 'bearing\\.\\*', $options: 'i' } },
       { description_action: { $regex: 'bearing\\.\\*', $options: 'i' } },
       { etat_final: { $regex: 'bearing\\.\\*', $options: 'i' } },
     ]);
+  });
+
+  it('returns only photo attachments linked to a report owned by the operator', async () => {
+    const reportId = new Types.ObjectId();
+    reportModel.findOne.mockReturnValue(
+      queryResult({ _id: reportId, ot_id: assignedWorkOrderId }),
+    );
+
+    await service.getMyReportAttachments(
+      operatorId.toString(),
+      reportId.toString(),
+    );
+
+    expect(reportModel.findOne).toHaveBeenCalledWith({
+      _id: reportId.toString(),
+      technician_id: {
+        $in: [operatorId.toString(), expect.any(Types.ObjectId)],
+      },
+    });
+    expect(documentModel.find).toHaveBeenCalledWith({
+      type_document: { $in: ['fault_photo', 'maintenance_photo'] },
+      $or: [
+        { intervention_report_id: reportId },
+        { work_order_id: assignedWorkOrderId },
+      ],
+    });
+  });
+
+  it('does not reveal attachments for a report owned by another user', async () => {
+    const reportId = new Types.ObjectId();
+    reportModel.findOne.mockReturnValue(queryResult(null));
+
+    await expect(
+      service.getMyReportAttachments(
+        operatorId.toString(),
+        reportId.toString(),
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(documentModel.find).not.toHaveBeenCalled();
   });
 
   it('denies preventive state access for unassigned machines before workflow service calls', async () => {

@@ -654,6 +654,43 @@ export class OperatorService {
     );
   }
 
+  async getMyReportAttachments(
+    userId: string,
+    reportId: string,
+  ): Promise<DocumentSummaryResponse[]> {
+    if (!Types.ObjectId.isValid(reportId)) {
+      throw new BadRequestException('Invalid report id');
+    }
+
+    const report = await this.reportModel
+      .findOne({
+        _id: reportId,
+        technician_id: this.technicianScopeFilter(userId),
+      })
+      .exec();
+    if (!report) {
+      throw new NotFoundException('Report not found');
+    }
+
+    const workOrderId = this.toIdString(report.ot_id);
+    const linkFilters: Array<Record<string, unknown>> = [
+      { intervention_report_id: report._id },
+    ];
+    if (workOrderId && Types.ObjectId.isValid(workOrderId)) {
+      linkFilters.push({ work_order_id: this.toObjectId(workOrderId) });
+    }
+
+    const attachments = await this.documentModel
+      .find({
+        type_document: { $in: ['fault_photo', 'maintenance_photo'] },
+        $or: linkFilters,
+      })
+      .sort({ date_ajout: 1, _id: 1 })
+      .exec();
+
+    return attachments.map(toDocumentSummary);
+  }
+
   async getMyMachines(
     userId: string,
     page: number,

@@ -9,6 +9,7 @@ import {
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Modal } from "@/components/Modal";
+import DocumentAttachmentViewer from "@/components/DocumentAttachmentViewer";
 import { apiService } from "@/services/api";
 import { isCorrectiveMaintenanceType } from "@/services/maintenanceType";
 import { useLocale, useTranslations } from "next-intl";
@@ -24,6 +25,9 @@ interface WorkOrder {
   status: string;
   machine_id?: { machine_id?: string } | string;
   date_created?: string;
+  priorite?: string;
+  code_panne?: string;
+  description?: string;
 }
 
 interface InterventionReport {
@@ -32,10 +36,20 @@ interface InterventionReport {
   ot_id: EntityRef;
   technician_id: EntityRef;
   description_action?: string;
+  cause_racine?: string;
   etat_final?: string;
   validation_responsable?: string;
   date_debut?: string;
   date_fin?: string;
+}
+
+interface ReportAttachment {
+  _id: string;
+  file_name: string;
+  file_path?: string;
+  file_url?: string;
+  preview_path?: string;
+  type_document?: string;
 }
 
 function refId(value: EntityRef | undefined): string {
@@ -92,6 +106,9 @@ export default function OperatorMyReportsPage() {
   const [limit] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [attachmentsFailed, setAttachmentsFailed] = useState(false);
 
   const selectedReport = useMemo(
     () => reports.find((item) => item._id === selectedReportId) || null,
@@ -187,6 +204,39 @@ export default function OperatorMyReportsPage() {
     return workOrders.find((item) => item._id === workOrderId) || null;
   }, [selectedReport, workOrders]);
 
+  useEffect(() => {
+    if (!selectedReportId || !editorOpen) {
+      setAttachments([]);
+      setAttachmentsFailed(false);
+      return;
+    }
+
+    let cancelled = false;
+    setAttachmentsLoading(true);
+    setAttachmentsFailed(false);
+    apiService
+      .getMyReportAttachments(selectedReportId)
+      .then((response) => {
+        if (!cancelled) {
+          setAttachments(normalizeApiItems<ReportAttachment>(response.data));
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load report attachments", error);
+        if (!cancelled) {
+          setAttachments([]);
+          setAttachmentsFailed(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAttachmentsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editorOpen, selectedReportId]);
+
   function machineLabel(workOrder?: WorkOrder | null): string {
     if (!workOrder?.machine_id) return tCommon("notAvailable");
     return typeof workOrder.machine_id === "string"
@@ -230,6 +280,48 @@ export default function OperatorMyReportsPage() {
       default:
         return status ? t("dashboard.statusSubmitted") : tCommon("notAvailable");
     }
+  }
+
+  function urgencyLabel(priority?: string): string {
+    switch (priority) {
+      case "urgent":
+        return t("reportProblemFlow.machineStopped");
+      case "high":
+        return t("reportProblemFlow.high");
+      case "medium":
+      case "normal":
+        return t("reportProblemFlow.normal");
+      default:
+        return priority || tCommon("notAvailable");
+    }
+  }
+
+  function submittedObservation(report: InterventionReport): string {
+    const details = report.cause_racine?.trim() || "";
+    const problems = report.description_action?.trim() || "";
+    if (!details || details === problems) return "";
+
+    const problemSuffix = problems ? ` | ${problems}` : "";
+    return problemSuffix && details.endsWith(problemSuffix)
+      ? details.slice(0, -problemSuffix.length).trim()
+      : details;
+  }
+
+  function machineConditionLabel(value: string): string {
+    const workflowStatuses = new Set([
+      "waiting_validation",
+      "in_progress",
+      "in-progress",
+      "waiting_parts",
+      "waiting-for-parts",
+      "completed",
+      "validated",
+      "cancelled",
+      "canceled",
+      "returned",
+      "technician_required",
+    ]);
+    return workflowStatuses.has(value) ? statusLabel(value) : value;
   }
 
   return (
@@ -399,19 +491,51 @@ export default function OperatorMyReportsPage() {
                     {statusLabel(selectedReportWorkOrder?.status || selectedReport.validation_responsable)}
                   </div>
                 </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase text-slate-500">{t("reportProblemFlow.urgencyLabel")}</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">{urgencyLabel(selectedReportWorkOrder?.priorite)}</div>
+                </div>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <div className="text-sm font-semibold text-slate-700">{t("actionsPerformed")}</div>
+                <div className="text-sm font-semibold text-slate-700">{t("reportProblemFlow.problemLabel")}</div>
                 <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                   {selectedReport.description_action || tCommon("notAvailable")}
                 </div>
               </div>
 
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-700">{t("reportProblemFlow.descriptionLabel")}</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {submittedObservation(selectedReport) || tCommon("notAvailable")}
+                </div>
+              </div>
+
+              {attachmentsLoading ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600" aria-live="polite">
+                  {tCommon("loading")}
+                </div>
+              ) : null}
+              {attachmentsFailed ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                  {t("notifications.loadFailed")}
+                </div>
+              ) : null}
+              {!attachmentsLoading && attachments.length > 0 ? (
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-700">{t("reportProblemFlow.photoUpload")}</div>
+                  {attachments.map((attachment) => (
+                    <div key={attachment._id} className="overflow-hidden rounded-xl border border-slate-200 p-3">
+                      <DocumentAttachmentViewer document={attachment} title={attachment.file_name} />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               {selectedReport.etat_final ? (
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <div className="text-sm font-semibold text-slate-700">{t("machineCondition")}</div>
-                  <div className="mt-2 text-sm leading-6 text-slate-700">{selectedReport.etat_final}</div>
+                  <div className="mt-2 text-sm leading-6 text-slate-700">{machineConditionLabel(selectedReport.etat_final)}</div>
                 </div>
               ) : null}
 

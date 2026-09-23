@@ -921,6 +921,7 @@
         "searchPlaceholder": "Rechercher une machine...",
         "chooseMachine": "Choisir une machine",
         "selectProblemCategory": "Sélectionnez une catégorie de problème",
+        "selectMultipleProblems": "Sélectionnez tous les problèmes constatés. Vous pouvez en choisir plusieurs.",
         "describeObservation": "Décrivez ce que vous avez observé",
         "selectUrgency": "Quel est le niveau d’urgence ?",
         "review": "Vérifier",

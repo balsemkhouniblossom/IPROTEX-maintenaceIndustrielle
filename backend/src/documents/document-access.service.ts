@@ -42,6 +42,20 @@ export class DocumentAccessService {
     const document = await this.documentModel.findById(documentId).exec();
     if (!document) throw new NotFoundException('Document not found');
 
+    const isOwnOperatorEvidence =
+      actor.role === Role.OPERATOR &&
+      Boolean(actor.userId) &&
+      document.uploaded_by === actor.userId &&
+      ['fault_photo', 'maintenance_photo'].includes(
+        document.type_document.trim().toLowerCase(),
+      );
+
+    // Operator evidence is created as a private Draft after the report is
+    // committed. Its uploader may view that exact attachment even when the
+    // machine is outside their routine assignment; other Draft documents
+    // remain hidden and all other access follows normal machine scoping.
+    if (isOwnOperatorEvidence) return document;
+
     if (
       actor.role !== Role.ADMIN &&
       (document.status !== DocumentStatus.PUBLISHED ||

@@ -539,6 +539,26 @@ test("Operator My Reports opts into operator dark-mode theme mapping", () => {
   );
 });
 
+test("Operator My Reports shows persisted submission details and protected photo attachments", () => {
+  const relativePath = "src/app/[locale]/operator/my-reports/page.tsx";
+  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const apiSource = fs.readFileSync(
+    path.join(process.cwd(), "src/services/api.ts"),
+    "utf8",
+  );
+
+  assert.match(source, /selectedReport\.description_action/);
+  assert.match(source, /report\.cause_racine/);
+  assert.match(source, /function submittedObservation/);
+  assert.match(source, /selectedReportWorkOrder\?\.priorite/);
+  assert.match(source, /getMyReportAttachments\(selectedReportId\)/);
+  assert.match(source, /<DocumentAttachmentViewer document=\{attachment\}/);
+  assert.match(
+    apiSource,
+    /\/operator\/reports\/\$\{encodeURIComponent\(reportId\)\}\/attachments/,
+  );
+});
+
 test("Operator Manuals opts into operator dark-mode theme mapping", () => {
   const relativePath = "src/app/[locale]/operator/manuals/page.tsx";
   const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");

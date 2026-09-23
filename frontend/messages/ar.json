@@ -933,6 +933,7 @@
         "searchPlaceholder": "ابحث عن آلة...",
         "chooseMachine": "اختر آلة",
         "selectProblemCategory": "اختر فئة المشكلة",
+        "selectMultipleProblems": "اختر جميع المشكلات التي لاحظتها. يمكنك اختيار أكثر من مشكلة.",
         "describeObservation": "صف ما لاحظته",
         "selectUrgency": "ما درجة الاستعجال؟",
         "review": "مراجعة",

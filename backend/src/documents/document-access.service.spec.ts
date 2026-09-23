@@ -369,4 +369,58 @@ describe('DocumentAccessService lifecycle visibility', () => {
       ).resolves.toMatchObject({ status });
     });
   }
+
+  it('allows an Operator to view their own private corrective photo evidence', async () => {
+    const documentModel = {
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: new Types.ObjectId(),
+          machine_id: new Types.ObjectId(),
+          status: 'draft',
+          uploaded_by: userId,
+          type_document: 'fault_photo',
+        }),
+      }),
+    };
+    const service = new DocumentAccessService(
+      documentModel as never,
+      createMachineModel() as never,
+      createUserModel([]) as never,
+      createWorkOrderModel([]) as never,
+    );
+
+    await expect(
+      service.resolveAccessibleDocument(
+        { userId, role: Role.OPERATOR },
+        new Types.ObjectId().toHexString(),
+      ),
+    ).resolves.toMatchObject({ type_document: 'fault_photo' });
+  });
+
+  it('does not expose another Operator private photo evidence', async () => {
+    const documentModel = {
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: new Types.ObjectId(),
+          machine_id: machineId,
+          status: 'draft',
+          uploaded_by: new Types.ObjectId().toHexString(),
+          type_document: 'fault_photo',
+        }),
+      }),
+    };
+    const service = new DocumentAccessService(
+      documentModel as never,
+      createMachineModel() as never,
+      createUserModel([machineId]) as never,
+      createWorkOrderModel([]) as never,
+    );
+
+    await expect(
+      service.resolveAccessibleDocument(
+        { userId, role: Role.OPERATOR },
+        new Types.ObjectId().toHexString(),
+      ),
+    ).rejects.toThrow(NotFoundException);
+  });
 });

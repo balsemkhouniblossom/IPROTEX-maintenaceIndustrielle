@@ -24,6 +24,7 @@ import { UpdatePreventiveTaskChecklistDto } from './dto/update-preventive-task-c
 import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.types';
 import { CalendarEventsResponse } from '../work-orders/services/work-order-calendar-query.service';
 import { InterventionReportResponse } from '../common/response/intervention-report-response';
+import { DocumentSummaryResponse } from '../common/response/document-response';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -105,6 +106,17 @@ export class OperatorController {
       reportId,
       workOrderId,
       search,
+    );
+  }
+
+  @Get('reports/:reportId/attachments')
+  getMyReportAttachments(
+    @Req() req: AuthenticatedRequest,
+    @Param('reportId') reportId: string,
+  ): Promise<DocumentSummaryResponse[]> {
+    return this.operatorService.getMyReportAttachments(
+      this.ensureOperator(req),
+      reportId,
     );
   }
 

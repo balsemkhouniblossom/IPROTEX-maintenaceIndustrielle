@@ -139,7 +139,7 @@ function PreventiveTasksFlow() {
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("title")}>
-        <div className="operator-dashboard-theme mx-auto max-w-4xl">
+        <div className="operator-dashboard-theme mx-auto w-full max-w-7xl">
           {step === "success" && selectedTask && inspection.checklistItems.length > 0 && (
             <InspectionSuccess
               planName={selectedTask.planName}
@@ -234,22 +234,25 @@ function PreventiveTasksFlow() {
 
           {step === "list" && (
             <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-                <p className="mt-1 text-sm text-slate-500">{t("description")}</p>
-              </div>
+              <p className="max-w-3xl text-sm leading-6 text-slate-500">{t("description")}</p>
 
               {error && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
               )}
 
-              <div className="flex gap-2 border-b border-slate-200">
+              <div
+                role="tablist"
+                aria-label={t("title")}
+                className="flex max-w-full gap-1 overflow-x-auto border-b border-slate-200 sm:gap-2"
+              >
                 {(["today", "upcoming", "completed"] as const).map((tab) => (
                   <button
                     key={tab}
                     type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`relative px-4 py-3 text-sm font-semibold transition ${
+                    className={`relative shrink-0 px-3 py-3 text-sm font-semibold transition sm:px-4 ${
                       activeTab === tab
                         ? "text-slate-900"
                         : "text-slate-500 hover:text-slate-700"
@@ -283,7 +286,7 @@ function PreventiveTasksFlow() {
                 </div>
               )}
               {!loading && currentTasks.length > 0 && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
                   {currentTasks.map((task) => (
                     <TaskCard
                       key={task.workOrderId || `${task.planId}:${task.machineId}`}

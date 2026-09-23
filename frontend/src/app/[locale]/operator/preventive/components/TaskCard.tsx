@@ -40,43 +40,48 @@ export function TaskCard({ planName, machineName, machineCode, checkCount, compl
     completed: "border-slate-200 bg-slate-50",
   } as const;
   const cardClass = cardClassByTab[tab];
+  const formattedDueDate = due
+    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(due)
+    : null;
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`w-full rounded-2xl border p-5 text-left transition hover:-translate-y-1 hover:shadow-lg ${cardClass}`}
+      className={`group flex h-full min-w-0 flex-col rounded-2xl border p-5 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 sm:p-6 ${cardClass}`}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="text-base font-semibold text-slate-900">{planName}</div>
-          <div className="mt-1 text-sm text-slate-500">
-            {machineName} {machineCode && <span className="text-slate-400">{machineCode}</span>}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="line-clamp-3 text-base font-semibold leading-6 text-slate-900 sm:text-lg">
+            {planName}
           </div>
-          <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-            <span>{checkCount} {t("checksLabel")}</span>
-            {completedCount > 0 && <span>{completedCount} {t("completedLabel")}</span>}
-            {dueDate && <span>{t("due")}: {new Intl.DateTimeFormat(locale).format(new Date(dueDate))}</span>}
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+            <span className="font-medium text-slate-700">{machineName}</span>
+            {machineCode && <span className="text-slate-400">{machineCode}</span>}
           </div>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass}`}>
+        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass}`}>
           {statusLabel}
         </span>
       </div>
-      {tab !== "completed" && (
-        <div className="mt-4">
-          <span className="inline-flex rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-            {t("startChecklist")}
-          </span>
-        </div>
-      )}
-      {tab === "completed" && (
-        <div className="mt-4">
-          <span className="inline-flex rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-            {t("viewResults")}
-          </span>
-        </div>
-      )}
+
+      <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
+        <span>{checkCount} {t("checksLabel")}</span>
+        {completedCount > 0 && <span>{completedCount} {t("completedLabel")}</span>}
+        {formattedDueDate && <span>{t("due")}: {formattedDueDate}</span>}
+      </div>
+
+      <div className="mt-auto pt-5">
+        <span
+          className={`inline-flex rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+            tab === "completed"
+              ? "border border-slate-300 bg-white text-slate-700 group-hover:bg-slate-100"
+              : "bg-slate-900 text-white group-hover:bg-slate-800"
+          }`}
+        >
+          {tab === "completed" ? t("viewResults") : t("startChecklist")}
+        </span>
+      </div>
     </button>
   );
 }

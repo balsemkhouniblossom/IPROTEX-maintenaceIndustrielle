@@ -921,6 +921,7 @@
         "searchPlaceholder": "Search machine...",
         "chooseMachine": "Choose a machine",
         "selectProblemCategory": "Select a problem category",
+        "selectMultipleProblems": "Select every problem you noticed. You can choose more than one.",
         "describeObservation": "Describe what you observed",
         "selectUrgency": "How urgent is it?",
         "review": "Review",

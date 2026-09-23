@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -126,7 +127,7 @@ async function uploadFaultPhoto({
 type SuccessScreenProps = Readonly<{
   result: SubmissionResult;
   machine: Machine | null;
-  selectedFault: Panne | null;
+  selectedFaults: Panne[];
   otherProblem: string;
   urgency: string;
   observation: string;
@@ -139,14 +140,17 @@ type SuccessScreenProps = Readonly<{
   onBack: () => void;
 }>;
 
-function SuccessScreen({ result, machine, selectedFault, otherProblem, urgency, observation, photo, retryingPhoto, t, tCommon, onRetryPhoto, onViewStatus, onBack }: SuccessScreenProps) {
+function SuccessScreen({ result, machine, selectedFaults, otherProblem, urgency, observation, photo, retryingPhoto, t, tCommon, onRetryPhoto, onViewStatus, onBack }: SuccessScreenProps) {
   const { workOrder, attachmentFailed, duplicate } = result;
-  const problem = selectedFault?.description || otherProblem || tCommon("notAvailable");
+  const problem = [
+    ...selectedFaults.map((fault) => fault.description),
+    otherProblem.trim(),
+  ].filter(Boolean).join("; ") || tCommon("notAvailable");
   const statusTitle = attachmentFailed ? t("partialSuccessTitle") : t("successTitle");
   const statusMessage = attachmentFailed ? t("partialSuccessMessage") : t("successMessage");
   return <ProtectedRoute requiredRole="operator"><DashboardLayout title={statusTitle}><div className="mx-auto max-w-xl space-y-6">
     <div className={`rounded-2xl border p-6 text-center ${attachmentFailed ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}><div className="text-3xl font-bold">✓</div><h2 className="mt-2 text-xl font-semibold">{statusTitle}</h2><p className="mt-1 text-sm">{statusMessage}</p></div>
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6"><div className="grid grid-cols-2 gap-4"><SummaryField label={t("machineLabel")} value={machine?.machine_id || tCommon("notAvailable")} detail={machine?.model} /><SummaryField label={t("reference")} value={workOrder.ot_id || workOrder._id} /><SummaryField label={t("problemLabel")} value={problem} /><SummaryField label={t("urgencyLabel")} value={urgency ? t(urgency) : t("normal")} /></div>{observation ? <SummaryField label={t("descriptionLabel")} value={observation} /> : null}{photo ? <SummaryField label={t("photoUpload")} value={photo.name} /> : null}
+    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6"><div className="grid grid-cols-2 gap-4"><SummaryField label={t("machineLabel")} value={machine?.machine_id || tCommon("notAvailable")} detail={machine?.model} /><SummaryField label={t("reference")} value={workOrder.ot_id || workOrder._id} /><SummaryField label={t("problemLabel")} value={problem} /><SummaryField label={t("urgencyLabel")} value={urgency ? t(urgency) : t("normal")} /></div>{observation ? <SummaryField label={t("descriptionLabel")} value={observation} /> : null}{photo ? <PhotoPreview photo={photo} label={t("photoUpload")} /> : null}
       {attachmentFailed ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><div className="font-semibold">{t("partialSuccessTitle")}</div><button type="button" onClick={onRetryPhoto} disabled={retryingPhoto} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50">{retryingPhoto ? t("retryingPhoto") : t("retryPhoto")}</button></div> : <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">{duplicate ? t("existingReportReused") : t("reportedStatus")}</span>}
     </div><div className="flex gap-3"><button type="button" onClick={onViewStatus} className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white">{t("viewStatus")}</button><button type="button" onClick={onBack} className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700">{t("backToMachines")}</button></div>
   </div></DashboardLayout></ProtectedRoute>;
@@ -154,6 +158,38 @@ function SuccessScreen({ result, machine, selectedFault, otherProblem, urgency, 
 
 function SummaryField({ label, value, detail }: Readonly<{ label: string; value: string; detail?: string }>) {
   return <div><div className="text-xs font-semibold uppercase text-slate-500">{label}</div><div className="mt-1 text-base font-semibold text-slate-900">{value}</div>{detail ? <div className="text-sm text-slate-500">{detail}</div> : null}</div>;
+}
+
+function PhotoPreview({ photo, label }: Readonly<{ photo: File; label: string }>) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photo.type.startsWith("image/")) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(photo);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [photo]);
+
+  return (
+    <div>
+      <div className="text-xs font-semibold uppercase text-slate-500">{label}</div>
+      {previewUrl ? (
+        <Image
+          src={previewUrl}
+          alt={`${label}: ${photo.name}`}
+          width={1200}
+          height={800}
+          unoptimized
+          className="mt-2 max-h-72 w-full rounded-xl border border-slate-200 bg-slate-50 object-contain"
+        />
+      ) : null}
+      <div className="mt-2 break-all text-xs text-slate-600">{photo.name}</div>
+    </div>
+  );
 }
 
 function ReportProblemFlow() {
@@ -166,7 +202,7 @@ function ReportProblemFlow() {
 
   const [step, setStep] = useState<Step>("machine");
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
-  const [selectedFault, setSelectedFault] = useState<Panne | null>(null);
+  const [selectedFaults, setSelectedFaults] = useState<Panne[]>([]);
   const [isOtherSelected, setIsOtherSelected] = useState(false);
   const [otherProblem, setOtherProblem] = useState("");
   const [observation, setObservation] = useState("");
@@ -237,8 +273,23 @@ function ReportProblemFlow() {
   }, [filteredFaults]);
 
   const canProceedFromProblem = useMemo(() => {
-    return Boolean(selectedFault || (isOtherSelected && otherProblem.trim()));
-  }, [selectedFault, isOtherSelected, otherProblem]);
+    return Boolean(
+      selectedFaults.length > 0 ||
+        (isOtherSelected && otherProblem.trim()),
+    );
+  }, [selectedFaults, isOtherSelected, otherProblem]);
+
+  const selectedFault = selectedFaults[0] || null;
+  const selectedProblemSummary = useMemo(
+    () =>
+      [
+        ...selectedFaults.map((fault) => fault.description),
+        isOtherSelected ? otherProblem.trim() : "",
+      ]
+        .filter(Boolean)
+        .join("; "),
+    [selectedFaults, isOtherSelected, otherProblem],
+  );
 
   const canSubmitReview = useMemo(() => {
     if (!selectedMachine) return false;
@@ -305,7 +356,7 @@ function ReportProblemFlow() {
   }, [selectedMachine]);
 
   function resetMachineSpecificDraft() {
-    setSelectedFault(null);
+    setSelectedFaults([]);
     setIsOtherSelected(false);
     setOtherProblem("");
     setObservation("");
@@ -322,9 +373,15 @@ function ReportProblemFlow() {
   }
 
   function handleFaultSelect(fault: Panne | null) {
-    setSelectedFault(fault);
-    setIsOtherSelected(fault === null);
-    if (fault) setOtherProblem("");
+    if (!fault) {
+      setIsOtherSelected((current) => !current);
+      return;
+    }
+    setSelectedFaults((current) =>
+      current.some((selected) => selected._id === fault._id)
+        ? current.filter((selected) => selected._id !== fault._id)
+        : [...current, fault],
+    );
   }
 
   function handleBack() {
@@ -346,15 +403,21 @@ function ReportProblemFlow() {
 
   async function handleSubmit() {
     if (!selectedMachine || !user?._id) return;
-    if (!selectedFault && (!isOtherSelected || !otherProblem.trim())) return;
+    if (!selectedFaults.length && (!isOtherSelected || !otherProblem.trim())) return;
 
     setSubmitting(true);
     setError(null);
     try {
       const codePanne = selectedFault?.code_panne || "OBSERVED_SYMPTOMS";
-      const problemLabel = selectedFault?.description || otherProblem.trim();
-      const actions = [problemLabel];
-      const faultDescription = [observation.trim(), problemLabel].filter(Boolean).join(" | ").slice(0, 2000);
+      const problemLabels = [
+        ...selectedFaults.map((fault) => fault.description),
+        isOtherSelected ? otherProblem.trim() : "",
+      ].filter(Boolean);
+      const actions = problemLabels;
+      const faultDescription = [observation.trim(), problemLabels.join("; ")]
+        .filter(Boolean)
+        .join(" | ")
+        .slice(0, 2000);
 
       const reportRes = await apiService.createOperatorCorrectiveReport({
         machine_id: selectedMachine,
@@ -436,7 +499,7 @@ function ReportProblemFlow() {
   }
 
   if (step === "success" && result) {
-    return <SuccessScreen result={result} machine={selectedMachineData} selectedFault={selectedFault} otherProblem={otherProblem} urgency={urgency} observation={observation} photo={photo} retryingPhoto={retryingPhoto} t={t} tCommon={tCommon} onRetryPhoto={retryPhotoUpload} onViewStatus={() => {
+    return <SuccessScreen result={result} machine={selectedMachineData} selectedFaults={selectedFaults} otherProblem={isOtherSelected ? otherProblem : ""} urgency={urgency} observation={observation} photo={photo} retryingPhoto={retryingPhoto} t={t} tCommon={tCommon} onRetryPhoto={retryPhotoUpload} onViewStatus={() => {
       const reportId = result.report._id || result.report.report_id;
       router.push(`../my-reports?reportId=${encodeURIComponent(reportId)}&workOrderId=${encodeURIComponent(result.workOrder._id)}`);
     }} onBack={resetAndGoBack} />;
@@ -474,7 +537,7 @@ function ReportProblemFlow() {
                 <div>
                   <div className="text-xs font-semibold uppercase text-slate-500">{t("problemLabel")}</div>
                   <div className="mt-1 text-base font-semibold text-slate-900">
-                    {selectedFault?.description || otherProblem || tCommon("notAvailable")}
+                    {selectedProblemSummary || tCommon("notAvailable")}
                   </div>
                 </div>
                 <div>
@@ -692,6 +755,9 @@ function ReportProblemFlow() {
             <div className="space-y-6">
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">{t("selectProblemCategory")}</label>
+                <p className="mb-2 text-xs text-slate-500">
+                  {t("selectMultipleProblems")}
+                </p>
                 <input
                   type="text"
                   value={faultSearch}
@@ -713,9 +779,12 @@ function ReportProblemFlow() {
                           <button
                             key={fault._id}
                             type="button"
+                            aria-pressed={selectedFaults.some(
+                              (selected) => selected._id === fault._id,
+                            )}
                             onClick={() => handleFaultSelect(fault)}
                             className={`rounded-xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
-                              selectedFault?._id === fault._id
+                              selectedFaults.some((selected) => selected._id === fault._id)
                                 ? "border-blue-500 bg-blue-50 shadow-md"
                                 : "border-slate-200 bg-white"
                             }`}
@@ -740,6 +809,7 @@ function ReportProblemFlow() {
 
               <button
                 type="button"
+                aria-pressed={isOtherSelected}
                 onClick={() => handleFaultSelect(null)}
                 className={`w-full rounded-xl border p-4 text-left transition ${
                   isOtherSelected ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"
@@ -793,7 +863,7 @@ function ReportProblemFlow() {
                   onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
                 />
-                {photo && <div className="mt-2 text-xs text-slate-600">{photo.name}</div>}
+                {photo && <div className="mt-3"><PhotoPreview photo={photo} label={t("photoUpload")} /></div>}
               </div>
               <KnowledgeSuggestions machineId={selectedMachine || undefined} faultCode={selectedFault?.code_panne} />
             </div>
@@ -833,7 +903,7 @@ function ReportProblemFlow() {
                   <div>
                     <div className="text-xs font-semibold uppercase text-slate-500">{t("problemLabel")}</div>
                     <div className="mt-1 text-base font-semibold text-slate-900">
-                      {selectedFault?.description || otherProblem || tCommon("notAvailable")}
+                      {selectedProblemSummary || tCommon("notAvailable")}
                     </div>
                   </div>
                   <div>
@@ -849,12 +919,7 @@ function ReportProblemFlow() {
                     </div>
                   </div>
                 </div>
-                {photo && (
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-slate-500">{t("photoUpload")}</div>
-                    <div className="mt-1 text-sm text-slate-700">{photo.name}</div>
-                  </div>
-                )}
+                {photo && <PhotoPreview photo={photo} label={t("photoUpload")} />}
               </div>
             </div>
           )}
