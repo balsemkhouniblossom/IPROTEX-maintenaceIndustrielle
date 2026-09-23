@@ -262,6 +262,7 @@
         "waiting_validation": "En attente de validation",
         "technician_required": "Technicien requis",
         "returned": "Retourne",
+"overdue": "En retard",
         "completed": "Termine",
         "validated": "Valide",
         "cancelled": "Annule",
@@ -331,7 +332,7 @@
       "warning": "Warning"
     },
     "na": "غير متوفر",
-    "now": "Now",
+    "now": "Maintenant",
     "percentageChangeFromLastMonth": {
       "negative": "{value}% from last month",
       "positive": "+{value}% from last month"
@@ -603,8 +604,8 @@
         "recentNotifications": "Notifications récentes",
         "viewAllNotifications": "Voir toutes les notifications",
         "unknownStatus": "Inconnu",
-        "aiAssistantTitle": "Maintenance AI Assistant",
-        "aiAssistantSubtitle": "Ask the assistant for help with the current machine or task. It is advisory only and will not modify work orders."
+        "aiAssistantTitle": "Assistant IA de maintenance",
+        "aiAssistantSubtitle": "Demandez de l’aide pour la machine ou la tâche en cours. Les conseils sont indicatifs et ne modifient pas les ordres de travail."
       },
       "shift": {
         "morning": "Équipe du matin",
@@ -3889,7 +3890,7 @@
     "pageTitle": "Machines",
     "loadFailed": "Impossible de charger vos machines.",
     "backToMachines": "Retour aux machines",
-    "subtitle": "Recherchez et gérez vos machines assignées.",
+    "subtitle": "Consultez les machines qui vous sont attribuées et ouvrez celle sur laquelle vous travaillez.",
     "searchPlaceholder": "Rechercher par nom de machine ou numéro de série...",
     "allMachines": "Toutes les machines",
     "allMachinesDescription": "Liste de toutes les machines du système",

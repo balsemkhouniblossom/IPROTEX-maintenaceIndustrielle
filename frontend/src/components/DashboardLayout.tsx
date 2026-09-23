@@ -687,9 +687,11 @@ function DashboardLayoutBody({
                     const Icon = item.icon;
                     const hasChildren = Boolean(item.children?.length);
                     const itemPath = withLocale(item.href);
+                    const isOperatorDashboard = item.href === "/operator";
                     const isActive =
                       pathname === itemPath ||
-                      (item.href !== "/" &&
+                      (!isOperatorDashboard &&
+                        item.href !== "/" &&
                         pathname.startsWith(`${itemPath}/`));
                     const isExpanded =
                       expandedNavItems.has(item.href) ||

@@ -17,6 +17,7 @@ import {
 import { apiService } from "@/services/api";
 import { displayText } from "@/services/displayValues";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
+import { translateEnumValue } from "@/services/enumTranslations";
 
 interface OperatorKpiCounts {
   overdueCount: number;
@@ -45,6 +46,8 @@ interface WorkOrderItem {
   type_maintenance?: string;
   date_created?: string;
   date_start?: string;
+  due_date?: string;
+  scheduled_date?: string;
   priorite?: string;
   machine_id?: string | { _id?: string; machine_id?: string };
   description?: string;
@@ -67,7 +70,7 @@ interface CalendarEventItem {
   title: string;
   type?: string;
   status: string;
-  dueDate: string;
+  dueDate?: string;
   priority?: string;
   machine?: { id?: string; code?: string };
   frequency?: { label?: string };
@@ -81,7 +84,7 @@ interface OperatorTaskItem {
   maintenanceType: string;
   priority: string;
   status: string;
-  dueDate: string;
+  dueDate?: string;
   isOverdue: boolean;
 }
 
@@ -133,6 +136,11 @@ function isSameDay(date: Date, reference: Date): boolean {
 function isCompletedStatus(status?: string): boolean {
   const normalized = (status || "").toLowerCase();
   return normalized === "completed" || normalized === "validated";
+}
+
+function isActionableTaskStatus(status?: string): boolean {
+  const normalized = (status || "assigned").toLowerCase();
+  return ["assigned", "pending", "scheduled", "overdue", "in_progress", "returned"].includes(normalized);
 }
 
 function formatMaintenanceType(
@@ -205,6 +213,7 @@ export default function OperatorDashboard() {
   const tOperator = useTranslations("dashboard.operator");
   const tCommon = useTranslations("common");
   const tNotification = useTranslations("notificationCenter");
+  const tEnums = useTranslations("common.enums");
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
@@ -219,6 +228,7 @@ export default function OperatorDashboard() {
   const [kpiCounts, setKpiCounts] = useState<OperatorKpiCounts>(emptyKpiCounts);
   const [loading, setLoading] = useState(true);
   const [sectionErrors, setSectionErrors] = useState<Record<string, boolean>>({});
+  const [reloadVersion, setReloadVersion] = useState(0);
   const now = useMemo(() => new Date(), []);
 
   const [machines, setMachines] = useState<MachineItem[]>([]);
@@ -252,15 +262,11 @@ export default function OperatorDashboard() {
       })
       .map((order) => {
         const event = eventByWorkOrderId.get(order._id);
-        const dueDate =
-          event?.dueDate ||
-          order.date_start ||
-          order.date_created ||
-          new Date().toISOString();
-        const due = new Date(dueDate);
+        const dueDate = event?.dueDate || order.due_date || order.scheduled_date || order.date_start;
+        const due = dueDate ? new Date(dueDate) : null;
         const overdue =
           event?.status === "overdue" ||
-          (!isCompletedStatus(order.status) && due.getTime() < now.getTime());
+          Boolean(due && !isCompletedStatus(order.status) && due.getTime() < now.getTime());
 
         return {
           id: event?.id || order._id,
@@ -276,8 +282,9 @@ export default function OperatorDashboard() {
           isOverdue: overdue,
         };
       })
-      .filter((task) => !isCompletedStatus(task.status))
+      .filter((task) => isActionableTaskStatus(task.status))
       .filter((task) => {
+        if (!task.dueDate) return false;
         const due = new Date(task.dueDate);
         return task.isOverdue || isSameDay(due, now);
       })
@@ -286,7 +293,7 @@ export default function OperatorDashboard() {
           return left.isOverdue ? -1 : 1;
         }
         return (
-          new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime()
+          new Date(left.dueDate!).getTime() - new Date(right.dueDate!).getTime()
         );
       });
   }, [activeWorkOrders, eventByWorkOrderId, now]);
@@ -311,16 +318,6 @@ export default function OperatorDashboard() {
       )
       .slice(0, 5);
   }, [reports, workOrders, user?._id]);
-
-  const openReportsCount = useMemo(
-    () =>
-      reports.filter(
-        (report) =>
-          !isCompletedStatus(report.validation_responsable) &&
-          report.validation_responsable !== "rejected",
-      ).length,
-    [reports],
-  );
 
   const overdueTasksCount = kpiCounts.overdueCount;
   const analyticsCards = [
@@ -349,7 +346,7 @@ export default function OperatorDashboard() {
     ...analyticsCards,
     {
       label: tOperator("dashboard.openReports"),
-      value: openReportsCount,
+      value: kpiCounts.waitingValidationCount,
       icon: ClipboardDocumentListIcon,
       accent: "from-cyan-700 via-sky-700 to-indigo-800",
       textTone: "text-[var(--text-primary)]",
@@ -491,7 +488,7 @@ export default function OperatorDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user?._id, authLoading]);
+  }, [user?._id, authLoading, reloadVersion]);
 
   if (loading) {
     return (
@@ -510,6 +507,14 @@ export default function OperatorDashboard() {
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={tOperator("title")}>
         <div className="operator-dashboard-theme space-y-6 p-4 md:p-6 lg:p-8">
+          {Object.keys(sectionErrors).length > 0 && (
+            <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm font-semibold">{tCommon("loadFailed")}</span>
+              <button type="button" onClick={() => { setLoading(true); setReloadVersion((value) => value + 1); }} className={secondaryButtonClassName}>
+                {tCommon("retry")}
+              </button>
+            </div>
+          )}
           <section className="grid grid-cols-2 gap-4 md:grid-cols-4" data-work-order-count={stats.assigned + stats.inProgress + stats.completed} data-overdue-count={overdueTasksCount}>
             {summaryCards.map((card) => {
               const Icon = card.icon;
@@ -580,7 +585,7 @@ export default function OperatorDashboard() {
                       <span
                         className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semib capitalize ${machineStatusBadge(machine.status)}`}
                       >
-                        {machine.status || tOperator("dashboard.unknownStatus")}
+                        {translateEnumValue(tEnums, "machineStates", machine.status) || tOperator("dashboard.unknownStatus")}
                       </span>
                     </div>
                     <div className="mt-4 flex items-center gap-2">
@@ -635,9 +640,9 @@ export default function OperatorDashboard() {
             {!sectionErrors.tasks && operatorTasks.length > 0 && (
               <div className="space-y-3">
                 {operatorTasks.slice(0, 5).map((task) => {
-                  const dueDate = new Date(task.dueDate);
+                  const dueDate = new Date(task.dueDate!);
                   const dueLabel = task.isOverdue
-                    ? tCommon("now")
+                    ? tOperator("stats.overdue")
                     : new Intl.DateTimeFormat(locale, {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -657,7 +662,7 @@ export default function OperatorDashboard() {
                           <span className="mx-2 text-text-muted">•</span>
                           {tOperator("dashboard.due")}: {dueLabel}
                           <span className="mx-2 text-text-muted">•</span>
-                          {tOperator("dashboard.status")}: {formatReportStatus(task.status, tOperator)}
+                          {tOperator("dashboard.status")}: {translateEnumValue(tEnums, "workOrderStatuses", task.status)}
                         </div>
                       </div>
                       <button

@@ -292,10 +292,10 @@ test("DashboardLayout blocks Operator access to shared management routes while p
   assert.match(guard, /getDashboardPath\(locale, role\)/);
 });
 
-test("Operator dashboard separates preventive tasks from corrective work and does not count only recent cards", () => {
+test("Operator dashboard separates preventive tasks from corrective work and uses server KPI report counts", () => {
   const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"), "utf8");
   assert.match(source, /type_maintenance[\s\S]*includes\("correct"\)/);
-  assert.match(source, /reports\.filter\(/);
+  assert.match(source, /kpiCounts\.waitingValidationCount/);
   assert.doesNotMatch(source, /recentReports\.filter\(\s*\(report\)/);
   assert.match(source, /Promise\.allSettled/);
   assert.match(source, /sectionErrors\.machines/);

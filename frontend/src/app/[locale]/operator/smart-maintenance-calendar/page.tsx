@@ -1004,7 +1004,11 @@ export default function SmartMaintenanceCalendarPage() {
       router.push(`${base}/preventive?workOrderId=${selectedEventDetails.id}`);
       return;
     }
-    router.push(`${base}/corrective?workOrderId=${selectedEventDetails.id}`);
+    const query = new URLSearchParams({
+      workOrderId: selectedEventDetails.id,
+      machine: selectedEventDetails.machine.id,
+    });
+    router.push(`${base}/corrective?${query.toString()}`);
   }
 
   const actionSections = buildActionSections(events, tCalendar);

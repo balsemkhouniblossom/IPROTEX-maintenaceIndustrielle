@@ -166,6 +166,7 @@ function ReportProblemFlow() {
   const [step, setStep] = useState<Step>("machine");
   const [selectedMachine, setSelectedMachine] = useState<string | null>(null);
   const [selectedFault, setSelectedFault] = useState<Panne | null>(null);
+  const [isOtherSelected, setIsOtherSelected] = useState(false);
   const [otherProblem, setOtherProblem] = useState("");
   const [observation, setObservation] = useState("");
   const [urgency, setUrgency] = useState("");
@@ -235,8 +236,8 @@ function ReportProblemFlow() {
   }, [filteredFaults]);
 
   const canProceedFromProblem = useMemo(() => {
-    return Boolean(selectedFault || otherProblem.trim());
-  }, [selectedFault, otherProblem]);
+    return Boolean(selectedFault || (isOtherSelected && otherProblem.trim()));
+  }, [selectedFault, isOtherSelected, otherProblem]);
 
   const canSubmitReview = useMemo(() => {
     if (!selectedMachine) return false;
@@ -302,6 +303,7 @@ function ReportProblemFlow() {
 
   function resetMachineSpecificDraft() {
     setSelectedFault(null);
+    setIsOtherSelected(false);
     setOtherProblem("");
     setObservation("");
     setUrgency("");
@@ -318,6 +320,7 @@ function ReportProblemFlow() {
 
   function handleFaultSelect(fault: Panne | null) {
     setSelectedFault(fault);
+    setIsOtherSelected(fault === null);
     if (fault) setOtherProblem("");
   }
 
@@ -340,7 +343,7 @@ function ReportProblemFlow() {
 
   async function handleSubmit() {
     if (!selectedMachine || !user?._id) return;
-    if (!selectedFault && !otherProblem.trim()) return;
+    if (!selectedFault && (!isOtherSelected || !otherProblem.trim())) return;
 
     setSubmitting(true);
     setError(null);
@@ -730,14 +733,14 @@ function ReportProblemFlow() {
                 type="button"
                 onClick={() => handleFaultSelect(null)}
                 className={`w-full rounded-xl border p-4 text-left transition ${
-                  !selectedFault ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                  isOtherSelected ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:bg-slate-50"
                 }`}
               >
                 <div className="text-sm font-semibold text-slate-900">{t("other")}</div>
                 <div className="mt-1 text-xs text-slate-500">{t("describePlaceholder")}</div>
               </button>
 
-              {!selectedFault && (
+              {isOtherSelected && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <label htmlFor="other-problem" className="mb-2 block text-sm font-semibold text-slate-800">
                     {t("other")}

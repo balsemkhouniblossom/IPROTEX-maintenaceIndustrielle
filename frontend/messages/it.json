@@ -927,6 +927,7 @@
         "waiting_validation": "In attesa di validazione",
         "technician_required": "Tecnico richiesto",
         "returned": "Restituito",
+"overdue": "In ritardo",
         "completed": "Completato",
         "validated": "Validato",
         "cancelled": "Annullato",

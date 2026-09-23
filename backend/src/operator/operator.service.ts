@@ -1165,20 +1165,15 @@ export class OperatorService {
       this.toIdString(id),
     );
 
-    if (!explicitIds.length) {
-      // No explicit machine assignment configured for this operator — default
-      // to every machine rather than only ones they already have a work order
-      // on, which would otherwise never let them discover a machine to report
-      // a first problem or maintenance task against.
-      const allMachineIds = await this.machineModel.distinct('_id').exec();
-      return allMachineIds.map((id) => this.toIdString(id));
-    }
-
     const workOrderMachineIds = await this.workOrderModel
       .distinct('machine_id', {
         technician_id: this.technicianScopeFilter(userId),
       })
       .exec();
+
+    // Existing work-order assignments remain a valid operational scope when
+    // explicit machine assignments have not been configured. Never fall back
+    // to the complete machine catalogue.
 
     return Array.from(
       new Set(

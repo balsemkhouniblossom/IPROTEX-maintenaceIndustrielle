@@ -124,6 +124,8 @@ function isCompletedStatus(status?: string): boolean {
 export default function OperatorMachineDetailPage() {
   const t = useTranslations("operatorMachines");
   const tCommon = useTranslations("common");
+  const tOperator = useTranslations("dashboard.operator");
+  const tKnowledge = useTranslations("knowledgeBase");
   const router = useRouter();
   const params = useParams();
   const locale = Array.isArray(params?.locale)
@@ -456,6 +458,7 @@ export default function OperatorMachineDetailPage() {
                   </div>
                 </div>
                 <div className="mt-5">
+                  <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={handleReportProblem}
@@ -466,6 +469,21 @@ export default function OperatorMachineDetailPage() {
                       defaultValue: "Report a Problem",
                     })}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/${locale}/operator/manuals?machine=${machineId}&returnTo=${encodeURIComponent(`/${locale}/operator/machines/${machineId}`)}`)}
+                    className="inline-flex items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) px-5 py-2.5 text-sm font-semibold text-text-primary transition hover:border-cyan-700/55"
+                  >
+                    {tOperator("machineManuals")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/${locale}/operator/knowledge-base?machine=${machineId}`)}
+                    className="inline-flex items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) px-5 py-2.5 text-sm font-semibold text-text-primary transition hover:border-cyan-700/55"
+                  >
+                    {tKnowledge("title")}
+                  </button>
+                  </div>
                 </div>
               </section>
 
