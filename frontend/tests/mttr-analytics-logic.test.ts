@@ -234,9 +234,16 @@ test("reports page integrates MttrAnalytics with machines and technicians props"
   assert.match(source, /technicians=\{technicians\}/, "reports page must pass technicians prop");
   assert.match(
     source,
-    /getMttrAnalytics|getUsers.*limit.*500/,
+    /getMttrAnalytics|getUsers.*limit.*100/,
     "reports page must load MTTR data via the API service and users for technician filter",
   );
+});
+
+test("MTTR month labels use keys relative to the selected namespace", () => {
+  const source = readSource("src/components/reports/MttrAnalytics.tsx");
+
+  assert.match(source, /t\(`months\.\$\{key\}`\)/);
+  assert.doesNotMatch(source, /t\(`mttr\.months\.\$\{key\}`\)/);
 });
 
 test("reports page does not break existing report builder or history behavior", () => {

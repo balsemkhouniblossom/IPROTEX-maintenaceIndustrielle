@@ -44,7 +44,7 @@ function formatDuration(minutes: number, t: (key: string) => string): string {
 function monthName(monthIndex: number, t: (key: string) => string): string {
   const key = MONTH_KEYS[monthIndex];
   if (!key) return String(monthIndex + 1);
-  return t(`mttr.months.${key}`);
+  return t(`months.${key}`);
 }
 
 function formatDateTime(value: string, locale: string): string {

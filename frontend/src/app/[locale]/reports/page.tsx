@@ -217,7 +217,9 @@ function ReportsPageContent() {
 
   const loadTechnicians = useCallback(async () => {
     try {
-      const response = await apiService.getUsers({ limit: 500 });
+      // UsersQueryDto caps requests at 100. Asking for 500 is rejected with
+      // HTTP 400 and leaves the technician filter empty.
+      const response = await apiService.getUsers({ limit: 100 });
       const users = (response.data?.data ?? response.data?.users ?? response.data?.items ?? []) as Array<{ role?: string; name?: string; fullName?: string; nom_complet?: string; _id: string }>;
       setTechnicians(
         users
