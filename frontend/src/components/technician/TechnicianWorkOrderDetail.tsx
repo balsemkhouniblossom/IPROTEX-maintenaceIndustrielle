@@ -95,8 +95,8 @@ function useWorkOrderAct(options: {
       await action();
       invalidateList(LIST_EVENTS.workOrders);
       await load();
-    } catch (error: unknown) {
-      setError(apiErrorMessage(error, fallbackError));
+    } catch {
+      setError(fallbackError);
     } finally {
       setSaving(false);
     }
@@ -108,11 +108,8 @@ type CompletionResult = {
   status: string;
 };
 
-function apiErrorMessage(error: unknown, fallback: string): string {
-  return (
-    (error as { response?: { data?: { message?: string } } })?.response?.data
-      ?.message || fallback
-  );
+function apiErrorStatus(error: unknown): number | undefined {
+  return (error as { response?: { status?: number } })?.response?.status;
 }
 
 function formatMachineValue(
@@ -342,11 +339,11 @@ function ManualsSection({
           <>
             <div className="mb-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
               <label className="relative block">
-                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <MagnifyingGlassIcon className="pointer-events-none absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   aria-label={t("manuals.searchLabel")}
-                  className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+                  className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3 text-sm"
                   placeholder={t("manuals.searchPlaceholder")}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -1169,7 +1166,11 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
       });
       setAvailable(await fetchTechnicianAvailableParts(fallbackStock));
     } catch (error: unknown) {
-      setError(apiErrorMessage(error, t("errors.load")));
+      setError(
+        apiErrorStatus(error) === 403
+          ? t("errors.forbiddenMachine")
+          : t("errors.load"),
+      );
     } finally {
       setLoading(false);
     }
@@ -1222,7 +1223,7 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
         <DashboardLayout title={t("workOrders.detailTitle")}>
           <div className="panel border-red-200 bg-red-50 text-red-800">
             {error || t("errors.notFound")}
-            <button type="button" className="ml-3" onClick={() => void load()}>
+            <button type="button" className="ms-3" onClick={() => void load()}>
               {t("actions.retry")}
             </button>
           </div>

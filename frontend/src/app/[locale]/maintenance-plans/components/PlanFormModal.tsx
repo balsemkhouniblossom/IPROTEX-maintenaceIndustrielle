@@ -46,6 +46,7 @@ type PlanFormModalProps = Readonly<{
   planIdOptions: string[];
   maintenanceCodeOptions: string[];
   frequenceLabelOptions: string[];
+  maintenanceTypeOptions?: string[];
   onClose: () => void;
   onSubmit: (event: React.FormEvent) => void;
   t: ReturnType<typeof useTranslations>;
@@ -70,6 +71,7 @@ function PlanFormModalInner({
   planIdOptions,
   maintenanceCodeOptions,
   frequenceLabelOptions,
+  maintenanceTypeOptions = MAINTENANCE_TYPE_OPTIONS,
   onClose,
   onSubmit,
   t,
@@ -166,25 +168,25 @@ function PlanFormModalInner({
             <label htmlFor="plan-form-type-maintenance" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceType')}</label>
             <select
               id="plan-form-type-maintenance"
-              value={getSelectValue(MAINTENANCE_TYPE_OPTIONS, formData.type_maintenance)}
+              value={getSelectValue(maintenanceTypeOptions, formData.type_maintenance)}
               onChange={(event) =>
                 setFormData((prev) => ({
                   ...prev,
-                  type_maintenance: getNextFieldValue(MAINTENANCE_TYPE_OPTIONS, prev.type_maintenance, event.target.value),
+                  type_maintenance: getNextFieldValue(maintenanceTypeOptions, prev.type_maintenance, event.target.value),
                 }))
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               title={t('form.maintenanceType')}
               required
             >
-              {MAINTENANCE_TYPE_OPTIONS.map((option) => (
+              {maintenanceTypeOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
-              <option value={CUSTOM_OPTION}>{t('custom')}</option>
+              {maintenanceTypeOptions.length > 1 ? <option value={CUSTOM_OPTION}>{t('custom')}</option> : null}
             </select>
-            {getSelectValue(MAINTENANCE_TYPE_OPTIONS, formData.type_maintenance) === CUSTOM_OPTION && (
+            {maintenanceTypeOptions.length > 1 && getSelectValue(maintenanceTypeOptions, formData.type_maintenance) === CUSTOM_OPTION && (
               <input
                 type="text"
                 value={formData.type_maintenance}

@@ -35,12 +35,14 @@ import {
 } from '../schemas/preventive-task.schema';
 import { KpiModule } from '../kpi/kpi.module';
 import { PreventiveTasksModule } from '../preventive-tasks/preventive-tasks.module';
+import { MaintenancePlansModule } from '../maintenance-plans/maintenance-plans.module';
 
 @Module({
   imports: [
     WorkOrdersModule,
     KpiModule,
     PreventiveTasksModule,
+    MaintenancePlansModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: InterventionReport.name, schema: InterventionReportSchema },

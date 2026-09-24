@@ -1097,7 +1097,7 @@
         "waiting_validation": "Wartet auf Validierung",
         "technician_required": "Techniker erforderlich",
         "returned": "Zuruckgegeben",
-"overdue": "Überfällig",
+        "overdue": "Überfällig",
         "completed": "Abgeschlossen",
         "validated": "Validiert",
         "cancelled": "Storniert",
@@ -1164,8 +1164,11 @@
     "now": "Now",
     "liveTime": "Aktuelle Uhrzeit",
     "pagination": {
-      "next": "Next",
-      "previous": "Previous"
+      "next": "Weiter",
+      "previous": "Zurück",
+      "label": "Seitennavigation",
+      "page": "Seite {page}",
+      "showing": "<start></start> bis <end></end> von <total></total> Einträgen"
     },
     "priority": "Priority",
     "dynamicTranslations": {
@@ -3389,7 +3392,8 @@
       "network": "Technikerdaten konnten nicht geladen werden.",
       "load": "Auftrag konnte nicht geladen werden.",
       "update": "Aktion konnte nicht ausgeführt werden.",
-      "notFound": "Arbeitsauftrag nicht gefunden."
+      "notFound": "Arbeitsauftrag nicht gefunden.",
+      "forbiddenMachine": "Sie sind nicht berechtigt, auf diese Maschine oder diesen Arbeitsauftrag zuzugreifen."
     },
     "messages": {
       "confirmClose": "Diesen Auftrag schließen? Der Bericht muss vollständig sein.",

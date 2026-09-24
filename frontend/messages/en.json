@@ -221,7 +221,10 @@
     "previous": "Previous",
     "pagination": {
       "next": "Next",
-      "previous": "Previous"
+      "previous": "Previous",
+      "label": "Pagination",
+      "page": "Page {page}",
+      "showing": "Showing <start></start> to <end></end> of <total></total> items"
     },
     "close": "Close",
     "collapse": "Collapse",
@@ -282,7 +285,7 @@
         "waiting_validation": "Waiting for validation",
         "technician_required": "Technician required",
         "returned": "Returned",
-"overdue": "Overdue",
+        "overdue": "Overdue",
         "completed": "Completed",
         "validated": "Validated",
         "cancelled": "Cancelled",
@@ -3394,7 +3397,8 @@
       "network": "Unable to load technician data. Check your connection and retry.",
       "load": "Unable to load this work order.",
       "update": "The action could not be completed.",
-      "notFound": "Work order not found."
+      "notFound": "Work order not found.",
+      "forbiddenMachine": "You are not authorized to access this machine or work order."
     },
     "messages": {
       "confirmClose": "Close this work order? This action requires a complete report.",

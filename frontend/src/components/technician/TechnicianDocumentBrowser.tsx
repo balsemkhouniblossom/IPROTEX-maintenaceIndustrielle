@@ -94,10 +94,10 @@ export default function TechnicianDocumentBrowser({
     <div className="space-y-4">
       <div className="panel flex flex-col gap-3 md:flex-row md:items-end">
         <label className="relative flex-1">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <MagnifyingGlassIcon className="pointer-events-none absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             aria-label={t("manuals.searchLabel")}
-            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+            className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3 text-sm"
             placeholder={t("manuals.searchPlaceholder")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}

@@ -9,7 +9,24 @@ const operatorPages = [
   "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx",
   "src/app/[locale]/operator/preventive/page.tsx",
   "src/app/[locale]/operator/corrective/page.tsx",
+  "src/app/[locale]/operator/maintenance-plans/page.tsx",
 ];
+
+test("Operator can create preventive plans through a scoped route and assigned-module form", () => {
+  const page = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/maintenance-plans/page.tsx"),
+    "utf8",
+  );
+  const api = fs.readFileSync(path.join(process.cwd(), "src/services/api.ts"), "utf8");
+  const navigation = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
+
+  assert.match(page, /requiredRole="operator"/);
+  assert.match(page, /getOperatorModules/);
+  assert.match(page, /createOperatorMaintenancePlan/);
+  assert.match(page, /maintenanceTypeOptions=\{\["preventive"\]\}/);
+  assert.match(api, /post\("\/operator\/maintenance-plans"/);
+  assert.match(navigation, /href: "\/operator\/maintenance-plans"/);
+});
 
 test("Operator pages use scoped machine-type endpoint instead of Admin-only generic endpoint", () => {
   for (const relativePath of operatorPages) {

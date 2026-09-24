@@ -32,7 +32,11 @@ describe('OperatorService machine scoping', () => {
   };
   let machineModel: { find: jest.Mock; countDocuments: jest.Mock };
   let referenceModel: { find: jest.Mock; countDocuments: jest.Mock };
-  let moduleModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let moduleModel: {
+    find: jest.Mock;
+    findById: jest.Mock;
+    countDocuments: jest.Mock;
+  };
   let userModel: { findById: jest.Mock };
   let documentModel: { find: jest.Mock; countDocuments: jest.Mock };
   let panneModel: { find: jest.Mock; countDocuments: jest.Mock };
@@ -44,6 +48,7 @@ describe('OperatorService machine scoping', () => {
     findOneAndUpdate: jest.Mock;
   };
   let preventiveTasksService: { syncPlansForModuleIds: jest.Mock };
+  let maintenancePlansService: { create: jest.Mock };
   let workOrdersService: {
     getMachinePreventiveStates: jest.Mock;
     scheduleFirstPreventiveOccurrence: jest.Mock;
@@ -91,6 +96,9 @@ describe('OperatorService machine scoping', () => {
     };
     moduleModel = {
       find: jest.fn().mockReturnValue(queryResult([])),
+      findById: jest.fn().mockReturnValue(
+        queryResult({ _id: new Types.ObjectId(), machine_id: assignedMachineId }),
+      ),
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
     };
     userModel = {
@@ -122,6 +130,9 @@ describe('OperatorService machine scoping', () => {
       syncPlansForModuleIds: jest
         .fn()
         .mockResolvedValue({ plans: 0, created: 0 }),
+    };
+    maintenancePlansService = {
+      create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
     };
     workOrdersService = {
       getMachinePreventiveStates: jest.fn().mockResolvedValue({ sections: {} }),
@@ -178,6 +189,7 @@ describe('OperatorService machine scoping', () => {
       workOrdersService as never,
       {} as never,
       preventiveTasksService as never,
+      maintenancePlansService as never,
     );
   });
 
@@ -188,6 +200,48 @@ describe('OperatorService machine scoping', () => {
     expect(machineModel.find).toHaveBeenCalledWith({
       _id: { $in: [assignedMachineId] },
     });
+  });
+
+  it('creates a preventive plan only for a module on an assigned machine', async () => {
+    const moduleId = new Types.ObjectId();
+    moduleModel.findById.mockReturnValueOnce(
+      queryResult({ _id: moduleId, machine_id: assignedMachineId }),
+    );
+
+    await service.createPreventiveMaintenancePlan(operatorId.toString(), {
+      plan_id: 'OP-PM-1',
+      module_id: moduleId.toString(),
+      type_maintenance: 'Preventive',
+      frequence: 1,
+      unite_frequence: 'semaine',
+      instruction: 'Inspect the guard',
+    });
+
+    expect(maintenancePlansService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module_id: moduleId.toString(),
+        type_maintenance: 'preventive',
+      }),
+      operatorId.toString(),
+    );
+  });
+
+  it('denies operator plan creation for an unassigned machine', async () => {
+    const moduleId = new Types.ObjectId();
+    moduleModel.findById.mockReturnValueOnce(
+      queryResult({ _id: moduleId, machine_id: unassignedMachineId }),
+    );
+
+    await expect(
+      service.createPreventiveMaintenancePlan(operatorId.toString(), {
+        plan_id: 'OP-PM-2',
+        module_id: moduleId.toString(),
+        type_maintenance: 'preventive',
+        frequence: 1,
+        unite_frequence: 'semaine',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(maintenancePlansService.create).not.toHaveBeenCalled();
   });
 
   it('returns the complete machine catalogue for corrective reporting', async () => {

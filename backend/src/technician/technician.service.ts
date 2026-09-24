@@ -1018,9 +1018,12 @@ export class TechnicianService {
       .exec();
     if (!workOrder) throw new NotFoundException('Work order not found');
     const machineId = this.referenceId(workOrder.machine_id);
-    // The record passed the visibility scope, but every machine-scoped detail
-    // view must still pass the explicit document-level machine authorization.
-    if (machineId) {
+    const assignedTechnicianId = this.referenceId(workOrder.technician_id);
+    const isAssignedToTechnician =
+      assignedTechnicianId?.toString() === technicianId;
+    // Assignment is an explicit authorization to perform and inspect this work
+    // order. Unassigned, claimable work still requires machine-level access.
+    if (machineId && !isAssignedToTechnician) {
       await this.documentAccessService.assertCanAccessMachine(
         { userId: technicianId, role: Role.TECHNICIAN },
         machineId.toString(),

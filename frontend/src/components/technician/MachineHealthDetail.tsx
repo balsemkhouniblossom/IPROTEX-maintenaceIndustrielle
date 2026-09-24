@@ -177,7 +177,7 @@ export default function MachineHealthDetail({
         >
           <span
             aria-hidden
-            className={`mr-2 inline-block h-2 w-2 rounded-full align-middle ${tone.dot}`}
+            className={`me-2 inline-block h-2 w-2 rounded-full align-middle ${tone.dot}`}
           />
           {analysis.persistent_alert
             ? t("persistentAnomaly")
@@ -274,7 +274,7 @@ function TechnicalDetails({
     <section className="rounded-lg border bg-white shadow-sm">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left"
+        className="flex w-full items-center justify-between gap-3 px-5 py-3 text-start"
         onClick={onToggle}
         aria-expanded={show}
       >

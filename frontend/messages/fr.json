@@ -177,7 +177,10 @@
     "previous": "Précédent",
     "pagination": {
       "next": "Suivant",
-      "previous": "Précédent"
+      "previous": "Précédent",
+      "label": "Pagination",
+      "page": "Page {page}",
+      "showing": "Affichage de <start></start> à <end></end> sur <total></total> éléments"
     },
     "close": "Fermer",
     "collapse": "Réduire",
@@ -262,7 +265,7 @@
         "waiting_validation": "En attente de validation",
         "technician_required": "Technicien requis",
         "returned": "Retourne",
-"overdue": "En retard",
+        "overdue": "En retard",
         "completed": "Termine",
         "validated": "Valide",
         "cancelled": "Annule",
@@ -3322,7 +3325,8 @@
       "network": "Impossible de charger les données technicien. Vérifiez la connexion.",
       "load": "Impossible de charger cet ordre.",
       "update": "L’action n’a pas pu être effectuée.",
-      "notFound": "Ordre de travail introuvable."
+      "notFound": "Ordre de travail introuvable.",
+      "forbiddenMachine": "Vous n’êtes pas autorisé à accéder à cette machine ou à cet ordre de travail."
     },
     "messages": {
       "confirmClose": "Clôturer cet ordre de travail ? Le rapport doit être complet.",

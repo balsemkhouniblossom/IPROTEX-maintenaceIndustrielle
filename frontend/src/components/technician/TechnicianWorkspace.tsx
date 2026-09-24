@@ -1081,10 +1081,10 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
                 })}
               </div>
               <label className="relative block">
-                <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <MagnifyingGlassIcon className="pointer-events-none absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   aria-label={t("filters.search")}
-                  className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3"
+                  className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3"
                   placeholder={t("filters.searchPlaceholder")}
                   value={filters.search}
                   onChange={(event) => {
@@ -1362,10 +1362,10 @@ export function TechnicianParts() {
               </p>
             </div>
             <label className="relative block">
-              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <MagnifyingGlassIcon className="pointer-events-none absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 aria-label={t("filters.search")}
-                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+                className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3 text-sm"
                 placeholder={t("parts.searchPlaceholder")}
                 value={search}
                 onChange={(event) => {
@@ -1682,10 +1682,10 @@ export function TechnicianCompletedHistory() {
 
           <section className="panel space-y-4">
             <label className="relative block">
-              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <MagnifyingGlassIcon className="pointer-events-none absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 aria-label={t("historyPage.searchPlaceholder")}
-                className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
+                className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3 text-sm"
                 placeholder={t("historyPage.searchPlaceholder")}
                 value={search}
                 onChange={(event) => {

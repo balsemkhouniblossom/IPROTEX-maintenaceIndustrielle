@@ -861,6 +861,8 @@ export const apiService = {
     api.get("/operator/modules", withPagination(params)),
   getOperatorMaintenancePlans: (params?: PaginationParams) =>
     api.get("/operator/maintenance-plans", withPagination(params)),
+  createOperatorMaintenancePlan: (data: AnyObject) =>
+    api.post("/operator/maintenance-plans", data),
   getOperatorLubrifiants: (params?: PaginationParams) =>
     api.get("/operator/lubrifiants", withPagination(params)),
   getOperatorKpis: (params?: PaginationParams) =>

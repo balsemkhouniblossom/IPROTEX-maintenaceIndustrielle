@@ -128,7 +128,7 @@ export default function MachineHealthCard({
       >
         <span
           aria-hidden
-          className={`mr-2 inline-block h-2 w-2 rounded-full align-middle ${tone.dot}`}
+          className={`me-2 inline-block h-2 w-2 rounded-full align-middle ${tone.dot}`}
         />
         {t(persistenceKey)}
       </p>

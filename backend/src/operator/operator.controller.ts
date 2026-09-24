@@ -25,6 +25,7 @@ import { WorkOrderResponse } from '../work-orders/contracts/work-order-response.
 import { CalendarEventsResponse } from '../work-orders/services/work-order-calendar-query.service';
 import { InterventionReportResponse } from '../common/response/intervention-report-response';
 import { DocumentSummaryResponse } from '../common/response/document-response';
+import { CreateMaintenancePlanDto } from '../maintenance-plans/dto/create-maintenance-plan.dto';
 
 type CalendarView = 'day' | 'week' | 'month' | 'year' | 'timeline';
 
@@ -201,6 +202,15 @@ export class OperatorController {
       pagination.limit,
       pagination.skip,
     );
+  }
+
+  @Post('maintenance-plans')
+  createPreventiveMaintenancePlan(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateMaintenancePlanDto,
+  ) {
+    const userId = this.ensureOperator(req);
+    return this.operatorService.createPreventiveMaintenancePlan(userId, dto);
   }
 
   @Get('preventive-tasks')

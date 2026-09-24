@@ -400,6 +400,11 @@ function DashboardLayoutBody({
               href: "/operator/preventive",
               icon: ClipboardDocumentListIcon,
             },
+            {
+              name: t("navigation.maintenancePlans"),
+              href: "/operator/maintenance-plans",
+              icon: ClipboardDocumentListIcon,
+            },
           ],
         },
         {

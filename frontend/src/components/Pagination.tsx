@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useLocale, useTranslations } from 'next-intl';
 
 type PaginationProps = Readonly<{
   page: number;
@@ -19,6 +20,9 @@ export default function Pagination({
   onPageChange,
   className = '',
 }: PaginationProps) {
+  const locale = useLocale();
+  const t = useTranslations('common.pagination');
+  const isRtl = locale === 'ar';
   const safePage = Number.isFinite(page) ? page : 1;
   const safeLimit = Number.isFinite(limit) ? limit : 10;
   const safeTotalItems = Number.isFinite(totalItems) ? totalItems : 0;
@@ -38,13 +42,15 @@ export default function Pagination({
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={t('label')}
       className={`flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/90 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between ${className}`}
     >
       <div className="min-w-0 text-sm text-text-secondary" aria-live="polite">
-        Showing <span className="font-semibold text-text-primary">{start}</span> to{' '}
-        <span className="font-semibold text-text-primary">{end}</span> of{' '}
-        <span className="font-semibold text-text-primary">{totalItems}</span> items
+        {t.rich('showing', {
+          start: () => <span className="font-semibold text-text-primary">{start}</span>,
+          end: () => <span className="font-semibold text-text-primary">{end}</span>,
+          total: () => <span className="font-semibold text-text-primary">{safeTotalItems}</span>,
+        })}
       </div>
 
       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -53,10 +59,10 @@ export default function Pagination({
           onClick={() => onPageChange(Math.max(1, safePage - 1))}
           disabled={safePage <= 1}
           className="inline-flex min-w-0 items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
-          title="Previous"
+          title={t('previous')}
         >
-          <ChevronLeftIcon className="h-4 w-4" />
-          <span className="truncate">Previous</span>
+          {isRtl ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronLeftIcon className="h-4 w-4" />}
+          <span className="truncate">{t('previous')}</span>
         </button>
 
         <div className="flex min-w-0 flex-wrap items-center gap-1">
@@ -65,7 +71,7 @@ export default function Pagination({
               <button
                 type="button"
                 onClick={() => onPageChange(1)}
-                aria-label="Page 1"
+                aria-label={t('page', { page: 1 })}
                 style={{ minWidth: 40, minHeight: 40 }}
                 className="h-10 min-w-10 rounded-xl border border-border px-3 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary"
               >
@@ -81,7 +87,7 @@ export default function Pagination({
               type="button"
               onClick={() => onPageChange(currentPage)}
               aria-current={currentPage === page ? 'page' : undefined}
-              aria-label={`Page ${currentPage}`}
+              aria-label={t('page', { page: currentPage })}
               style={{ minWidth: 40, minHeight: 40 }}
               className={`h-10 min-w-10 rounded-xl border px-3 text-sm font-medium transition ${currentPage === page
                 ? 'border-primary bg-primary text-white shadow-sm'
@@ -98,7 +104,7 @@ export default function Pagination({
               <button
                 type="button"
                 onClick={() => onPageChange(safeTotalPages)}
-                aria-label={`Page ${safeTotalPages}`}
+                aria-label={t('page', { page: safeTotalPages })}
                 style={{ minWidth: 40, minHeight: 40 }}
                 className="h-10 min-w-10 rounded-xl border border-border px-3 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary"
               >
@@ -113,10 +119,10 @@ export default function Pagination({
           onClick={() => onPageChange(Math.min(safeTotalPages, safePage + 1))}
           disabled={safePage >= safeTotalPages}
           className="inline-flex min-w-0 items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-medium text-text-secondary transition hover:border-(--border-hover) hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
-          title="Next"
+          title={t('next')}
         >
-          <span className="truncate">Next</span>
-          <ChevronRightIcon className="h-4 w-4" />
+          <span className="truncate">{t('next')}</span>
+          {isRtl ? <ChevronLeftIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
         </button>
       </div>
     </nav>

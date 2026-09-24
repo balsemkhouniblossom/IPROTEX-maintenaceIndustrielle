@@ -279,7 +279,7 @@
         "waiting_validation": "بانتظار التحقق",
         "technician_required": "يتطلب فنيا",
         "returned": "مرجع",
-"overdue": "متأخر",
+        "overdue": "متأخر",
         "completed": "مكتمل",
         "validated": "تم التحقق",
         "cancelled": "ملغى",
@@ -342,7 +342,10 @@
     "liveTime": "الوقت الحالي",
     "pagination": {
       "next": "التالي",
-      "previous": "السابق"
+      "previous": "السابق",
+      "label": "التنقل بين الصفحات",
+      "page": "الصفحة {page}",
+      "showing": "عرض <start></start> إلى <end></end> من أصل <total></total> عنصر"
     },
     "priority": "Priority",
     "dynamicTranslations": {
@@ -2942,23 +2945,23 @@
         "current": "التدخلات الحالية",
         "waitingPartsTasks": "بانتظار القطع",
         "recent": "مكتملة مؤخراً",
-        "todaysPriority": "Today priority",
-        "upcomingWork": "Upcoming work",
-        "recentlyCompleted": "Recently completed"
+        "todaysPriority": "أولوية اليوم",
+        "upcomingWork": "الأعمال القادمة",
+        "recentlyCompleted": "المكتملة مؤخراً"
       }
     },
     "workOrders": {
       "title": "أوامر العمل",
       "detailTitle": "تفاصيل أمر العمل",
-      "myTitle": "My Work Orders"
+      "myTitle": "أوامر العمل الخاصة بي"
     },
     "workOrderTabs": {
-      "assigned": "Assigned",
-      "inProgress": "In Progress",
-      "waitingParts": "Waiting Parts",
-      "review": "Review",
-      "completed": "Completed",
-      "all": "All"
+      "assigned": "المسندة",
+      "inProgress": "قيد التنفيذ",
+      "waitingParts": "بانتظار القطع",
+      "review": "للمراجعة",
+      "completed": "المكتملة",
+      "all": "الكل"
     },
     "actions": {
       "title": "الإجراءات المتاحة",
@@ -2977,13 +2980,13 @@
       "waitingParts": "وضعه بانتظار القطع",
       "resume": "استئناف التدخل",
       "close": "إغلاق أمر العمل",
-      "viewWorkOrder": "View Work Order",
-      "viewPartsRequest": "View Parts Request",
-      "continueIntervention": "Continue Intervention",
-      "viewReport": "View Report",
-      "saveProgress": "Save Progress",
-      "completeIntervention": "Complete Intervention",
-      "cancel": "Cancel"
+      "viewWorkOrder": "عرض أمر العمل",
+      "viewPartsRequest": "عرض طلب القطع",
+      "continueIntervention": "متابعة التدخل",
+      "viewReport": "عرض التقرير",
+      "saveProgress": "حفظ التقدم",
+      "completeIntervention": "إكمال التدخل",
+      "cancel": "إلغاء"
     },
     "filters": {
       "status": "الحالة",
@@ -2994,12 +2997,12 @@
       "allPriorities": "كل الأولويات",
       "dateFrom": "من تاريخ",
       "dateTo": "إلى تاريخ",
-      "search": "Search",
-      "searchPlaceholder": "Search work order, machine...",
-      "machine": "Machine",
-      "allMachines": "All machines",
-      "dueDate": "Due date",
-      "anyDueDate": "Any due date"
+      "search": "بحث",
+      "searchPlaceholder": "ابحث بأمر العمل أو الآلة...",
+      "machine": "الآلة",
+      "allMachines": "كل الآلات",
+      "dueDate": "تاريخ الاستحقاق",
+      "anyDueDate": "أي تاريخ استحقاق"
     },
     "status": {
       "waiting_validation": "بانتظار المراجعة",
@@ -3028,11 +3031,11 @@
       "priority": "الأولوية",
       "created": "تاريخ الإنشاء",
       "technician": "الفني",
-      "startDate": "???????",
-      "endDate": "???????",
-      "due": "Due",
-      "machine": "Machine",
-      "status": "Status"
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "due": "الاستحقاق",
+      "machine": "الآلة",
+      "status": "الحالة"
     },
     "machine": {
       "title": "الآلة",
@@ -3058,16 +3061,16 @@
       "title": "قطع الغيار",
       "select": "اختر قطعة موجودة",
       "quantity": "إجمالي الكمية المستخدمة",
-      "stock": "Stock",
-      "reserved": "Reserved",
-      "minimum": "Minimum",
-      "location": "Location",
-      "used": "Parts used",
-      "noneAdded": "No parts added yet",
-      "addPart": "Add Part",
-      "available": "Available",
-      "requestPart": "Request Part",
-      "requestStatus": "Requested Parts status",
+      "stock": "المخزون",
+      "reserved": "المحجوز",
+      "minimum": "الحد الأدنى",
+      "location": "الموقع",
+      "used": "القطع المستخدمة",
+      "noneAdded": "لم تُضف أي قطع بعد",
+      "addPart": "إضافة قطعة",
+      "available": "المتوفر",
+      "requestPart": "طلب قطعة",
+      "requestStatus": "حالة القطع المطلوبة",
       "workspaceTitle": "مساحة عمل قطع غيار الصيانة",
       "workspaceSubtitle": "ابحث وراجع توفر قطع الغيار",
       "workspaceDescription": "تصفح الكتالوج وتحقق من التوفر الحالي. استخدم تبويب قطع أمر العمل لتسجيل القطع المستخدمة أو تقديم طلب عند نقص المخزون.",
@@ -3139,15 +3142,16 @@
       "report": "لا يوجد تقرير مرتبط.",
       "parts": "لم تُسجل قطع غيار.",
       "partsWorkspace": "لا توجد قطع غيار مطابقة لفلاترك.",
-      "waitingParts": "No work orders waiting for parts. All your current interventions have the required parts.",
-      "completed": "No completed interventions yet."
+      "waitingParts": "لا توجد أوامر عمل بانتظار القطع. تتوفر القطع المطلوبة لكل تدخلاتك الحالية.",
+      "completed": "لا توجد تدخلات مكتملة بعد."
     },
     "errors": {
       "storage": "تخزين المستندات غير متاح مؤقتًا.",
       "network": "تعذر تحميل بيانات الفني.",
       "load": "تعذر تحميل أمر العمل.",
       "update": "تعذر إكمال الإجراء.",
-      "notFound": "أمر العمل غير موجود."
+      "notFound": "أمر العمل غير موجود.",
+      "forbiddenMachine": "ليس لديك صلاحية الوصول إلى هذه الآلة أو أمر العمل."
     },
     "messages": {
       "confirmClose": "إغلاق أمر العمل؟ يجب أن يكون التقرير مكتملاً.",
@@ -3161,80 +3165,80 @@
       "safetyNotice": "ترجمة تلقائية للعرض فقط. تحقق من محتوى سلامة الماكينة مقابل النص الاصلي."
     },
     "dates": {
-      "today": "Today",
-      "tomorrow": "Tomorrow",
-      "next7Days": "Next 7 days"
+      "today": "اليوم",
+      "tomorrow": "غداً",
+      "next7Days": "الأيام السبعة القادمة"
     },
     "placeholders": {
-      "workOrder": "WO-...",
-      "machine": "Machine...",
-      "machineShort": "Machine...",
-      "priority": "Urgent",
-      "due": "Due..."
+      "workOrder": "أمر عمل...",
+      "machine": "آلة...",
+      "machineShort": "آلة...",
+      "priority": "عاجل",
+      "due": "موعد الاستحقاق..."
     },
     "badges": {
-      "overdue": "Overdue"
+      "overdue": "متأخر"
     },
     "detailTabs": {
-      "overview": "Overview",
-      "intervention": "Intervention",
-      "parts": "Parts",
-      "documents": "Documents",
-      "history": "History"
+      "overview": "نظرة عامة",
+      "intervention": "التدخل",
+      "parts": "القطع",
+      "documents": "المستندات",
+      "history": "السجل"
     },
     "overview": {
-      "title": "Work Order Overview",
-      "problem": "Problem",
-      "reportedBy": "Reported by",
-      "faultCode": "Fault code"
+      "title": "نظرة عامة على أمر العمل",
+      "problem": "المشكلة",
+      "reportedBy": "أبلغ عنها",
+      "faultCode": "رمز العطل"
     },
     "machineContext": {
-      "title": "Machine Context",
-      "health": "Machine Health",
-      "currentStatus": "Current status",
-      "openWorkOrders": "Open work orders",
-      "lastMaintenance": "Last maintenance"
+      "title": "سياق الآلة",
+      "health": "حالة الآلة",
+      "currentStatus": "الحالة الحالية",
+      "openWorkOrders": "أوامر العمل المفتوحة",
+      "lastMaintenance": "آخر صيانة"
     },
     "aiInsight": {
-      "title": "Machine Health Insight",
-      "summary": "Review machine signals and recommended checks without exposing technical model details first.",
-      "healthInsight": "Health insight",
-      "healthCopy": "Check machine status, recent maintenance, and live monitoring before intervening.",
-      "possibleAnomaly": "Possible anomaly",
-      "recommendedInspection": "Recommended inspection list",
-      "recommendedCopy": "Inspect the reported fault area, safety guards, lubrication, vibration, and electrical connections.",
-      "viewTechnical": "View technical analysis",
-      "hideTechnical": "Hide technical analysis"
+      "title": "مؤشر حالة الآلة",
+      "summary": "راجع إشارات الآلة والفحوصات المقترحة قبل عرض التفاصيل الفنية.",
+      "healthInsight": "مؤشر الحالة",
+      "healthCopy": "تحقق من حالة الآلة والصيانة الأخيرة والمراقبة المتاحة قبل التدخل.",
+      "possibleAnomaly": "شذوذ محتمل",
+      "recommendedInspection": "قائمة الفحوصات المقترحة",
+      "recommendedCopy": "افحص منطقة العطل المبلغ عنها ووسائل الحماية والتشحيم والاهتزاز والتوصيلات الكهربائية.",
+      "viewTechnical": "عرض التحليل الفني",
+      "hideTechnical": "إخفاء التحليل الفني"
     },
     "intervention": {
-      "title": "Intervention",
-      "notStarted": "Intervention not started",
-      "startedAt": "Started at",
-      "diagnosis": "Diagnosis",
-      "actionPerformed": "Action performed",
-      "observations": "Observations"
+      "title": "التدخل",
+      "notStarted": "لم يبدأ التدخل",
+      "startedAt": "بدأ في",
+      "diagnosis": "التشخيص",
+      "actionPerformed": "العمل المنجز",
+      "observations": "الملاحظات"
     },
     "completion": {
-      "title": "Complete Intervention",
-      "completedTitle": "Intervention completed",
-      "completedMessage": "The intervention was submitted for validation.",
-      "reportId": "Report ID",
-      "duration": "Duration",
-      "partsUsed": "Parts used",
-      "finalResult": "Final result",
-      "finalNotes": "Final notes",
-      "backToWork": "Back to My Work",
+      "title": "إكمال التدخل",
+      "completedTitle": "اكتمل التدخل",
+      "completedMessage": "أُرسل التدخل للمراجعة.",
+      "reportId": "مرجع التقرير",
+      "duration": "المدة",
+      "partsUsed": "القطع المستخدمة",
+      "finalResult": "النتيجة النهائية",
+      "finalNotes": "الملاحظات النهائية",
+      "backToWork": "العودة إلى عملي",
       "results": {
-        "resolved": "Resolved",
-        "followUp": "Follow-up required"
+        "resolved": "تم الحل",
+        "followUp": "تتطلب متابعة"
       }
     },
     "history": {
-      "title": "History",
-      "created": "Work order created",
-      "started": "Intervention started",
-      "completed": "Intervention completed",
-      "statusChanged": "Status changed"
+      "title": "السجل",
+      "created": "تم إنشاء أمر العمل",
+      "started": "بدأ التدخل",
+      "completed": "اكتمل التدخل",
+      "statusChanged": "تغيرت الحالة"
     },
     "historyPage": {
       "title": "التدخلات المكتملة",

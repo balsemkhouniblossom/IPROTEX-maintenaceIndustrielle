@@ -945,7 +945,7 @@
         "waiting_validation": "In attesa di validazione",
         "technician_required": "Tecnico richiesto",
         "returned": "Restituito",
-"overdue": "In ritardo",
+        "overdue": "In ritardo",
         "completed": "Completato",
         "validated": "Validato",
         "cancelled": "Annullato",
@@ -1040,8 +1040,11 @@
     "now": "Now",
     "liveTime": "Ora corrente",
     "pagination": {
-      "next": "Next",
-      "previous": "Previous"
+      "next": "Successivo",
+      "previous": "Precedente",
+      "label": "Paginazione",
+      "page": "Pagina {page}",
+      "showing": "Visualizzazione da <start></start> a <end></end> di <total></total> elementi"
     },
     "priority": "Priority",
     "status": {
@@ -3186,7 +3189,8 @@
       "network": "Impossibile caricare i dati del tecnico.",
       "load": "Impossibile caricare l'ordine.",
       "update": "Impossibile completare l'azione.",
-      "notFound": "Ordine non trovato."
+      "notFound": "Ordine non trovato.",
+      "forbiddenMachine": "Non sei autorizzato ad accedere a questa macchina o a questo ordine di lavoro."
     },
     "messages": {
       "confirmClose": "Chiudere questo ordine? Il rapporto deve essere completo.",

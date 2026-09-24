@@ -58,6 +58,8 @@ import {
 } from '../common/response/intervention-report-response';
 import { KpiService } from '../kpi/kpi.service';
 import { PreventiveTasksService } from '../preventive-tasks/preventive-tasks.service';
+import { MaintenancePlansService } from '../maintenance-plans/maintenance-plans.service';
+import { CreateMaintenancePlanDto } from '../maintenance-plans/dto/create-maintenance-plan.dto';
 import { SAFE_USER_PROJECTION } from '../users/safe-user-projection';
 import {
   MachineSummaryResponse,
@@ -164,6 +166,7 @@ export class OperatorService {
     private readonly workOrdersService: WorkOrdersService,
     private readonly kpiService: KpiService,
     private readonly preventiveTasksService: PreventiveTasksService,
+    private readonly maintenancePlansService: MaintenancePlansService,
   ) {}
 
   private toObjectId(id: string): Types.ObjectId {
@@ -392,6 +395,37 @@ export class OperatorService {
       totalItems,
       page,
       limit,
+    );
+  }
+
+  async createPreventiveMaintenancePlan(
+    userId: string,
+    dto: CreateMaintenancePlanDto,
+  ) {
+    if (dto.type_maintenance.trim().toLowerCase() !== 'preventive') {
+      throw new BadRequestException(
+        'Operators can only create preventive maintenance plans',
+      );
+    }
+
+    this.assertValidObjectId(dto.module_id, 'module_id');
+    const targetModule = await this.moduleModel
+      .findById(dto.module_id)
+      .select({ machine_id: 1 })
+      .exec();
+    if (!targetModule) {
+      throw new NotFoundException('Module not found');
+    }
+
+    const machineId = this.toIdString(targetModule.machine_id);
+    if (!machineId) {
+      throw new ForbiddenException('Module has no associated machine');
+    }
+    await this.assertCanAccessMachine(userId, machineId);
+
+    return this.maintenancePlansService.create(
+      { ...dto, type_maintenance: 'preventive' },
+      userId,
     );
   }
 

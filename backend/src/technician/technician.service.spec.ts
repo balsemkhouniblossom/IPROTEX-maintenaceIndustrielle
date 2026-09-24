@@ -651,7 +651,7 @@ describe('TechnicianService.details', () => {
     expect(documentAccessService.assertCanAccessMachine).not.toHaveBeenCalled();
   });
 
-  it('authorizes the work order machine once it is found in the visible scope, using the work order own machine_id', async () => {
+  it('allows the assigned technician to open the work order without a second machine-access rejection', async () => {
     workOrdersModel.findOne.mockReturnValue(
       populateChain({
         _id: workOrderId,
@@ -665,12 +665,26 @@ describe('TechnicianService.details', () => {
       workOrderId.toHexString(),
     );
 
+    expect(documentAccessService.assertCanAccessMachine).not.toHaveBeenCalled();
+    expect(result.workOrder).toEqual(
+      expect.objectContaining({ _id: workOrderId.toHexString() }),
+    );
+  });
+
+  it('requires machine authorization before an unassigned claimable work order can be opened', async () => {
+    workOrdersModel.findOne.mockReturnValue(
+      populateChain({
+        _id: workOrderId,
+        machine_id: machineId,
+        technician_id: null,
+      }),
+    );
+
+    await service.details(technicianId, workOrderId.toHexString());
+
     expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
       { userId: technicianId, role: Role.TECHNICIAN },
       machineId.toHexString(),
-    );
-    expect(result.workOrder).toEqual(
-      expect.objectContaining({ _id: workOrderId.toHexString() }),
     );
   });
 
