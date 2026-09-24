@@ -261,11 +261,9 @@ export class TechnicianService {
   private claimableUnassignedScope(
     machineIds: Types.ObjectId[],
   ): FilterQuery<WorkOrderDocument> | null {
-    if (!machineIds.length) return null;
     return {
       status: { $nin: CLOSED_STATUSES },
       $or: [{ technician_id: { $exists: false } }, { technician_id: null }],
-      machine_id: { $in: machineIds },
     };
   }
 

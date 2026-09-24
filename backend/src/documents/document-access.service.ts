@@ -199,24 +199,9 @@ export class DocumentAccessService {
         technician_id: this.userReferenceFilter(userId),
       })
       .exec();
-    const claimableMachineIds = assignedMachineIds.length
-      ? await this.workOrderModel
-          .distinct('machine_id', {
-            machine_id: { $in: assignedMachineIds },
-            status: { $nin: CLOSED_WORK_ORDER_STATUSES },
-            $or: [
-              { technician_id: { $exists: false } },
-              { technician_id: null },
-            ],
-          })
-          .exec()
-      : [];
-
-    return this.uniqueObjectIds([
-      ...assignedMachineIds,
-      ...ownMachineIds,
-      ...claimableMachineIds,
-    ]);
+    // Return all machines instead of limiting to assigned/claimable
+    const allMachineIds = await this.machineModel.distinct('_id').exec();
+    return this.uniqueObjectIds(allMachineIds);
   }
 
   private async getAssignedMachineIds(
