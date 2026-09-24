@@ -6,7 +6,7 @@ export interface LegacyNotificationTranslation {
 export function legacyNotificationTranslation(
   title: string,
 ): LegacyNotificationTranslation | null {
-  const match = /^Escalation\s+(3|7)\+\s+days overdue for\s+(.+)$/i.exec(
+  const match = /^Escalation\s+([37])\+\s+days overdue for\s+([^\r\n]+)$/i.exec(
     title.trim(),
   );
   if (!match) return null;

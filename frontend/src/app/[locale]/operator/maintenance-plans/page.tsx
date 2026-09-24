@@ -99,9 +99,9 @@ export default function OperatorMaintenancePlansPage() {
       <DashboardLayout title={t("title")}>
         <div className="operator-dashboard-theme mx-auto w-full max-w-4xl space-y-6">
           {notification ? (
-            <div role="status" className={`rounded-xl border p-4 text-sm ${notification.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
+            <output className={`block rounded-xl border p-4 text-sm ${notification.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
               {notification.message}
-            </div>
+            </output>
           ) : null}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

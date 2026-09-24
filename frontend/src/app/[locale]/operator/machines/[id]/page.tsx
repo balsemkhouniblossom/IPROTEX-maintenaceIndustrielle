@@ -10,6 +10,12 @@ import { apiService } from "@/services/api";
 import { fetchAllPaginated, normalizeApiItems } from "@/services/pagination";
 import AiAssistantPanel from "@/components/ai-assistant/AiAssistantPanel";
 
+function operatorManualsHref(locale: string, machineId: string): string {
+  const returnTo = `/${locale}/operator/machines/${machineId}`;
+  const query = new URLSearchParams({ machine: machineId, returnTo });
+  return `/${locale}/operator/manuals?${query.toString()}`;
+}
+
 type MachineTab = "overview" | "preventive" | "activity";
 
 interface PreventiveTaskItem {
@@ -471,7 +477,7 @@ export default function OperatorMachineDetailPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => router.push(`/${locale}/operator/manuals?machine=${machineId}&returnTo=${encodeURIComponent(`/${locale}/operator/machines/${machineId}`)}`)}
+                    onClick={() => router.push(operatorManualsHref(locale, machineId))}
                     className="inline-flex items-center justify-center rounded-2xl border border-border bg-(--surface-elevated) px-5 py-2.5 text-sm font-semibold text-text-primary transition hover:border-cyan-700/55"
                   >
                     {tOperator("machineManuals")}

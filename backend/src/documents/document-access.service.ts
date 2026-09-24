@@ -14,7 +14,6 @@ import {
 import { Machine, MachineDocument } from '../schemas/machine.schema';
 import { User, UserDocument, Role } from '../schemas/user.schema';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
-import { CLOSED_WORK_ORDER_STATUSES } from '../common/work-order-status';
 
 export type DocumentActor = {
   userId?: string;
@@ -175,30 +174,11 @@ export class DocumentAccessService {
   }
 
   private async getTechnicianMachineIds(
-    userId: string,
+    _userId: string,
   ): Promise<Types.ObjectId[]> {
-    const assignedMachineIds = await this.getAssignedMachineIds(userId);
-    const ownMachineIds = await this.workOrderModel
-      .distinct('machine_id', {
-        technician_id: this.userReferenceFilter(userId),
-      })
-      .exec();
     // Return all machines instead of limiting to assigned/claimable
     const allMachineIds = await this.machineModel.distinct('_id').exec();
     return this.uniqueObjectIds(allMachineIds);
-  }
-
-  private async getAssignedMachineIds(
-    userId: string,
-  ): Promise<Types.ObjectId[]> {
-    const technician = await this.userModel
-      .findById(userId)
-      .select({ assigned_machine_ids: 1 })
-      .exec();
-
-    return (technician?.assigned_machine_ids ?? [])
-      .map((id) => this.toObjectId(id))
-      .filter((id): id is Types.ObjectId => Boolean(id));
   }
 
   private userReferenceFilter(userId: string): {

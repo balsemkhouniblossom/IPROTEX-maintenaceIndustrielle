@@ -656,7 +656,9 @@ export class OperatorService {
       query.ot_id = workOrderId.trim();
     }
     if (search?.trim()) {
-      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escaped = search
+        .trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
       query.$and = [
         {
           $or: [

@@ -3,6 +3,12 @@
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useLocale, useTranslations } from 'next-intl';
 
+function renderPaginationValue(value: number) {
+  return function PaginationValueRenderer() {
+    return <span className="font-semibold text-text-primary">{value}</span>;
+  };
+}
+
 type PaginationProps = Readonly<{
   page: number;
   totalPages: number;
@@ -47,9 +53,9 @@ export default function Pagination({
     >
       <div className="min-w-0 text-sm text-text-secondary" aria-live="polite">
         {t.rich('showing', {
-          start: () => <span className="font-semibold text-text-primary">{start}</span>,
-          end: () => <span className="font-semibold text-text-primary">{end}</span>,
-          total: () => <span className="font-semibold text-text-primary">{safeTotalItems}</span>,
+          start: renderPaginationValue(start),
+          end: renderPaginationValue(end),
+          total: renderPaginationValue(safeTotalItems),
         })}
       </div>
 

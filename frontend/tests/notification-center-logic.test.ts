@@ -2,6 +2,23 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { legacyNotificationTranslation } from "../src/services/notificationLocalization";
+
+test("legacy escalation notifications are parsed without accepting multiline titles", () => {
+  assert.deepEqual(
+    legacyNotificationTranslation("Escalation 7+ days overdue for WO-42"),
+    {
+      key: "templates.workOrderOverdueSevenDays",
+      params: { workOrder: "WO-42" },
+    },
+  );
+  assert.equal(
+    legacyNotificationTranslation(
+      "Escalation 3+ days overdue for WO-42\nuntrusted suffix",
+    ),
+    null,
+  );
+});
 
 test("apiService exposes the shared /notifications endpoints for list/unread-count/read/clear", () => {
   const relativePath = "src/services/api.ts";
