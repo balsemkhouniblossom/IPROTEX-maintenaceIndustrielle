@@ -129,10 +129,10 @@ describe('WorkOrderAssignmentService', () => {
       expect(result).toHaveProperty('$or');
     });
 
-    it('does not restrict unassigned work to preassigned machines', () => {
+    it('restricts unassigned work to accessible machines when machineIds provided', () => {
       const ids = [new Types.ObjectId(), new Types.ObjectId()];
       const result = service.claimableUnassignedScope(ids);
-      expect(result).not.toHaveProperty('machine_id');
+      expect(result.machine_id).toEqual({ $in: ids });
       expect(result).toHaveProperty('status');
       expect(result).toHaveProperty('$or');
     });
