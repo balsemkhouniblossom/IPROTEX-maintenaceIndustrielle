@@ -861,6 +861,9 @@ export class OperatorService {
       faultDescription?: string;
       actions: string[];
       priority?: string;
+      machineStopped?: boolean;
+      interventionStartedAt?: string;
+      interventionEndedAt?: string;
     },
   ): Promise<CorrectiveReportForOperatorResponse> {
     await this.assertCanAccessMachine(userId, input.machineId);
@@ -870,6 +873,9 @@ export class OperatorService {
       faultDescription: input.faultDescription,
       actions: input.actions,
       priority: input.priority,
+      machineStopped: input.machineStopped,
+      interventionStartedAt: input.interventionStartedAt,
+      interventionEndedAt: input.interventionEndedAt,
       operatorId: userId,
     });
   }

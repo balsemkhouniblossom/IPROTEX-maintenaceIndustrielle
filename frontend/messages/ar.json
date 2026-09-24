@@ -957,7 +957,11 @@
           "warning": "تحذير",
           "problem": "مشكلة",
           "critical": "حرجة"
-        }
+        },
+        "interventionStartTime": "وقت بداية التدخل",
+        "interventionEndTime": "وقت إعادة تشغيل الآلة",
+        "machineStoppedTimeHelp": "تُستخدم هذه الأوقات لحساب MTTR صيانة الآلات.",
+        "machineStoppedInterval": "فترة التوقف المُبلّغ عنها"
       },
       "preventiveTasksFlow": {
         "title": "المهام الوقائية",
@@ -1094,7 +1098,8 @@
       "systemModules": "وحدات النظام",
       "moduleTypes": "أنواع الوحدات",
       "technicalReference": "المرجع التقني"
-    }
+    },
+    "machineMaintenanceMttr": "MTTR صيانة الآلات"
   },
   "capteurs": {
     "pageTitle": "إدارة المستشعرات",
@@ -4343,5 +4348,44 @@
     "officialImport": "استيراد رسمي",
     "defectCellLabel": "عدد العيوب لـ {process}، {month}",
     "finalTotalDefects": "الإجمالي النهائي للعيوب"
+  },
+  "machineMaintenanceMttr": {
+    "title": "MTTR صيانة الآلات",
+    "description": "يُحسب متوسط زمن الإصلاح من أوقات توقف الآلة وإعادة تشغيلها المُبلّغ عنها. هذه البيانات منفصلة عن MTTR جودة المنتج.",
+    "year": "السنة",
+    "add": "إضافة تدخل",
+    "overallMttr": "متوسط زمن الإصلاح الإجمالي",
+    "interventions": "التدخلات",
+    "totalTime": "إجمالي وقت التوقف",
+    "loading": "جارٍ التحميل…",
+    "monthlyHeading": "MTTR صيانة الآلات الشهري (بالدقائق)",
+    "process": "العملية",
+    "average": "المتوسط",
+    "records": "تدخل",
+    "monthlyAverage": "المتوسط الشهري",
+    "edit": "تعديل التدخل",
+    "machine": "الآلة",
+    "selectMachine": "اختر آلة",
+    "descriptionLabel": "التفاصيل",
+    "start": "بداية التدخل",
+    "end": "إعادة تشغيل الآلة",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "cancel": "إلغاء",
+    "history": "سجل التدخلات",
+    "close": "إغلاق",
+    "duration": "المدة",
+    "source": "المصدر",
+    "actions": "الإجراءات",
+    "operatorReport": "بلاغ المشغل",
+    "adminManual": "إدخال المسؤول",
+    "delete": "حذف",
+    "noRecords": "لا توجد تدخلات لهذا الشهر.",
+    "loadFailed": "تعذر تحميل MTTR صيانة الآلات.",
+    "saveFailed": "تعذر حفظ التدخل.",
+    "deleteFailed": "تعذر حذف التدخل.",
+    "invalidTimes": "يجب أن تكون إعادة التشغيل بعد وقت البداية.",
+    "saved": "تم حفظ التدخل.",
+    "deleted": "تم حذف التدخل."
   }
 }

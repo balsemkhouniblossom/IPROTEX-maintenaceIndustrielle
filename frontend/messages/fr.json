@@ -945,7 +945,11 @@
           "warning": "Avertissement",
           "problem": "Problème",
           "critical": "Critique"
-        }
+        },
+        "interventionStartTime": "Heure de début de l'intervention",
+        "interventionEndTime": "Heure de redémarrage de la machine",
+        "machineStoppedTimeHelp": "Ces heures servent à calculer le MTTR de maintenance machine.",
+        "machineStoppedInterval": "Intervalle d'arrêt signalé"
       },
       "preventiveTasksFlow": {
         "title": "Tâches préventives",
@@ -1094,7 +1098,8 @@
       "systemModules": "Modules système",
       "moduleTypes": "Types de modules",
       "technicalReference": "Référence technique"
-    }
+    },
+    "machineMaintenanceMttr": "MTTR maintenance machine"
   },
   "capteurs": {
     "pageTitle": "GESTION DES CAPTEURS",
@@ -4343,5 +4348,44 @@
     "officialImport": "Import officiel",
     "defectCellLabel": "Nombre de défauts pour {process}, {month}",
     "finalTotalDefects": "Total final des défauts"
+  },
+  "machineMaintenanceMttr": {
+    "title": "MTTR maintenance machine",
+    "description": "MTTR calculé à partir des heures d'arrêt et de redémarrage signalées. Ces données sont séparées du MTTR qualité produit.",
+    "year": "Année",
+    "add": "Ajouter une intervention",
+    "overallMttr": "MTTR global",
+    "interventions": "Interventions",
+    "totalTime": "Temps d'arrêt total",
+    "loading": "Chargement…",
+    "monthlyHeading": "MTTR mensuel de maintenance machine (minutes)",
+    "process": "Processus",
+    "average": "Moyenne",
+    "records": "interventions",
+    "monthlyAverage": "Moyenne mensuelle",
+    "edit": "Modifier l'intervention",
+    "machine": "Machine",
+    "selectMachine": "Sélectionner une machine",
+    "descriptionLabel": "Détails",
+    "start": "Début de l'intervention",
+    "end": "Redémarrage de la machine",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "history": "Historique des interventions",
+    "close": "Fermer",
+    "duration": "Durée",
+    "source": "Source",
+    "actions": "Actions",
+    "operatorReport": "Rapport opérateur",
+    "adminManual": "Saisie Admin",
+    "delete": "Supprimer",
+    "noRecords": "Aucune intervention pour ce mois.",
+    "loadFailed": "Could not load Machine Maintenance MTTR.",
+    "saveFailed": "Could not save the intervention.",
+    "deleteFailed": "Could not delete the intervention.",
+    "invalidTimes": "Le redémarrage doit être postérieur au début.",
+    "saved": "Intervention enregistrée.",
+    "deleted": "Intervention supprimée."
   }
 }

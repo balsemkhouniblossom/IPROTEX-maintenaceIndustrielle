@@ -32,6 +32,7 @@ import { CounterService } from '../../counters/counter.service';
 import { WorkOrderNotificationService } from './work-order-notification.service';
 import { WorkOrderLifecycleService } from './work-order-lifecycle.service';
 import { WorkOrderPreventiveSchedulingService } from './work-order-preventive-scheduling.service';
+import { MachineMaintenanceMttrService } from '../../machine-maintenance-mttr/machine-maintenance-mttr.service';
 
 export type ValidationAction = 'approve' | 'reject' | 'request_correction';
 
@@ -42,6 +43,9 @@ export interface CorrectiveReportForOperatorInput {
   faultDescription?: string;
   actions: string[];
   priority?: string;
+  machineStopped?: boolean;
+  interventionStartedAt?: string;
+  interventionEndedAt?: string;
 }
 
 export interface SubmitPreventiveMaintenanceInput {
@@ -110,6 +114,7 @@ export class WorkOrderReportService {
     private readonly notificationService: WorkOrderNotificationService,
     private readonly lifecycleService: WorkOrderLifecycleService,
     private readonly preventiveSchedulingService: WorkOrderPreventiveSchedulingService,
+    private readonly machineMaintenanceMttrService: MachineMaintenanceMttrService,
   ) {}
 
   /**
@@ -153,6 +158,26 @@ export class WorkOrderReportService {
     }
 
     const operatorObjectId = new Types.ObjectId(input.operatorId);
+    let stoppedInterval: { startedAt: Date; endedAt: Date } | null = null;
+    if (input.machineStopped) {
+      if (!input.interventionStartedAt || !input.interventionEndedAt) {
+        throw new BadRequestException(
+          'Machine stop and restart times are required when the machine is stopped',
+        );
+      }
+      const startedAt = new Date(input.interventionStartedAt);
+      const endedAt = new Date(input.interventionEndedAt);
+      if (
+        Number.isNaN(startedAt.getTime()) ||
+        Number.isNaN(endedAt.getTime()) ||
+        endedAt <= startedAt
+      ) {
+        throw new BadRequestException(
+          'Restart time must be later than the machine stop time',
+        );
+      }
+      stoppedInterval = { startedAt, endedAt };
+    }
     const description = `${codePanne} | ${actions.join(' | ')}`;
     const descriptionAction = actions.join(' | ');
 
@@ -232,6 +257,20 @@ export class WorkOrderReportService {
           ],
           { session },
         );
+
+        if (stoppedInterval) {
+          await this.machineMaintenanceMttrService.createFromOperator({
+            machineId: machine._id,
+            machineTypeId: machine.type_id,
+            workOrderId: workOrder._id,
+            reportId: report._id,
+            operatorId: operatorObjectId,
+            startedAt: stoppedInterval.startedAt,
+            endedAt: stoppedInterval.endedAt,
+            description: input.faultDescription,
+            session,
+          });
+        }
 
         return { workOrder, report, duplicate: false };
       });

@@ -207,6 +207,8 @@ function ReportProblemFlow() {
   const [otherProblem, setOtherProblem] = useState("");
   const [observation, setObservation] = useState("");
   const [urgency, setUrgency] = useState("");
+  const [interventionStartedAt, setInterventionStartedAt] = useState("");
+  const [interventionEndedAt, setInterventionEndedAt] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
 
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -293,8 +295,12 @@ function ReportProblemFlow() {
 
   const canSubmitReview = useMemo(() => {
     if (!selectedMachine) return false;
+    if (urgency === "machineStopped") {
+      if (!interventionStartedAt || !interventionEndedAt) return false;
+      if (new Date(interventionEndedAt) <= new Date(interventionStartedAt)) return false;
+    }
     return canProceedFromProblem;
-  }, [selectedMachine, canProceedFromProblem]);
+  }, [selectedMachine, canProceedFromProblem, urgency, interventionStartedAt, interventionEndedAt]);
 
   useEffect(() => {
     async function load() {
@@ -361,6 +367,8 @@ function ReportProblemFlow() {
     setOtherProblem("");
     setObservation("");
     setUrgency("");
+    setInterventionStartedAt("");
+    setInterventionEndedAt("");
     setPhoto(null);
     setFaultSearch("");
     setFaults([]);
@@ -425,6 +433,11 @@ function ReportProblemFlow() {
         fault_description: faultDescription || undefined,
         actions,
         priority: urgency ? URGENCY_PRIORITY_MAP[urgency] : undefined,
+        machine_stopped: urgency === "machineStopped",
+        intervention_started_at:
+          urgency === "machineStopped" ? new Date(interventionStartedAt).toISOString() : undefined,
+        intervention_ended_at:
+          urgency === "machineStopped" ? new Date(interventionEndedAt).toISOString() : undefined,
       });
 
       const workOrder = reportRes.data.workOrder;
@@ -884,6 +897,24 @@ function ReportProblemFlow() {
                   <div className="text-sm font-semibold text-slate-900">{t(option)}</div>
                 </button>
               ))}
+              {urgency === "machineStopped" && (
+                <div className="grid gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:grid-cols-2">
+                  <label className="text-sm font-semibold text-slate-700">
+                    {t("interventionStartTime")}
+                    <input type="datetime-local" value={interventionStartedAt}
+                      onChange={(event) => setInterventionStartedAt(event.target.value)}
+                      className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
+                  </label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    {t("interventionEndTime")}
+                    <input type="datetime-local" value={interventionEndedAt}
+                      min={interventionStartedAt || undefined}
+                      onChange={(event) => setInterventionEndedAt(event.target.value)}
+                      className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
+                  </label>
+                  <p className="text-xs text-amber-900 sm:col-span-2">{t("machineStoppedTimeHelp")}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -900,6 +931,13 @@ function ReportProblemFlow() {
                       <div className="text-sm text-slate-500">{selectedMachineData.model}</div>
                     )}
                   </div>
+                  {urgency === "machineStopped" && (
+                    <div className="col-span-2 rounded-xl bg-amber-50 p-3 text-sm">
+                      <strong>{t("machineStoppedInterval")}</strong>
+                      <div>{t("interventionStartTime")}: {new Date(interventionStartedAt).toLocaleString()}</div>
+                      <div>{t("interventionEndTime")}: {new Date(interventionEndedAt).toLocaleString()}</div>
+                    </div>
+                  )}
                   <div>
                     <div className="text-xs font-semibold uppercase text-slate-500">{t("problemLabel")}</div>
                     <div className="mt-1 text-base font-semibold text-slate-900">
@@ -969,7 +1007,8 @@ function ReportProblemFlow() {
                 <button
                   type="button"
                   onClick={() => setStep("review")}
-                  className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
+                  disabled={urgency === "machineStopped" && (!interventionStartedAt || !interventionEndedAt || new Date(interventionEndedAt) <= new Date(interventionStartedAt))}
+                  className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {tCommon("next")}
                 </button>

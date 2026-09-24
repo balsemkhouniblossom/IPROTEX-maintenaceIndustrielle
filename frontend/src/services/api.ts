@@ -254,6 +254,16 @@ export function quiet(config: QuietAxiosConfig = {}) {
 
 // Generic CRUD operations
 export const apiService = {
+  getMachineMaintenanceMttr: (year: number, signal?: AbortSignal) =>
+    api.get("/machine-maintenance-mttr", { params: { year }, signal }),
+  createMachineMaintenanceMttr: (data: {
+    machineId: string; startedAt: string; endedAt: string; description?: string;
+  }) => api.post("/machine-maintenance-mttr", data),
+  updateMachineMaintenanceMttr: (id: string, data: {
+    machineId?: string; startedAt?: string; endedAt?: string; description?: string;
+  }) => api.patch(`/machine-maintenance-mttr/${id}`, data),
+  deleteMachineMaintenanceMttr: (id: string) =>
+    api.delete(`/machine-maintenance-mttr/${id}`),
   // Users
   getUsers: (params?: PaginationParams) =>
     api.get("/users", withPagination(params)),
@@ -899,6 +909,9 @@ export const apiService = {
     fault_description?: string;
     actions: string[];
     priority?: string;
+    machine_stopped?: boolean;
+    intervention_started_at?: string;
+    intervention_ended_at?: string;
   }) => api.post("/operator/report-problem", data),
   submitOperatorPreventiveMaintenance: (data: {
     work_order_id: string;

@@ -101,6 +101,7 @@ import { AppThrottlerGuard } from './common/throttler/app-throttler.guard';
 import { MetricsModule } from './common/metrics/metrics.module';
 import { RagModule } from './rag/rag.module';
 import { QualityModule } from './quality/quality.module';
+import { MachineMaintenanceMttrModule } from './machine-maintenance-mttr/machine-maintenance-mttr.module';
 const mongoLogger = new Logger('MongoDB');
 const SLOW_QUERY_THRESHOLD_MS =
   Number(process.env.SLOW_QUERY_THRESHOLD_MS) || 200;
@@ -257,6 +258,7 @@ const SLOW_QUERY_THRESHOLD_MS =
     MetricsModule,
     RagModule,
     QualityModule,
+    MachineMaintenanceMttrModule,
   ],
   controllers: [AppController],
   providers: [

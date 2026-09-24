@@ -50,6 +50,7 @@ import { WorkOrderAssistantContextService } from './services/work-order-assistan
 import { WorkOrderCommandService } from './services/work-order-command.service';
 import { WorkOrderOperatorCommandService } from './services/work-order-operator-command.service';
 import { WorkOrderKpiService } from './services/work-order-kpi.service';
+import { MachineMaintenanceMttrModule } from '../machine-maintenance-mttr/machine-maintenance-mttr.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { WorkOrderKpiService } from './services/work-order-kpi.service';
     StockMovementsModule,
     KpiModule,
     SchedulerSupportModule,
+    MachineMaintenanceMttrModule,
     MongooseModule.forFeature([
       { name: WorkOrder.name, schema: WorkOrderSchema },
       { name: Machine.name, schema: MachineSchema },

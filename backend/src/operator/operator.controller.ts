@@ -452,6 +452,9 @@ export class OperatorController {
       faultDescription: dto.fault_description,
       actions: dto.actions,
       priority: dto.priority,
+      machineStopped: dto.machine_stopped,
+      interventionStartedAt: dto.intervention_started_at,
+      interventionEndedAt: dto.intervention_ended_at,
     });
   }
 

@@ -2,6 +2,8 @@ import {
   ArrayMinSize,
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
+  IsISO8601,
   IsIn,
   IsMongoId,
   IsOptional,
@@ -47,4 +49,16 @@ export class CreateCorrectiveReportDto {
   @IsOptional()
   @IsIn(CORRECTIVE_REPORT_PRIORITIES)
   priority?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  machine_stopped?: boolean;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  intervention_started_at?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  intervention_ended_at?: string;
 }

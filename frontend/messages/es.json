@@ -747,7 +747,11 @@
           "warning": "Advertencia",
           "problem": "Problema",
           "critical": "Crítico"
-        }
+        },
+        "interventionStartTime": "Hora de inicio",
+        "interventionEndTime": "Hora de reinicio",
+        "machineStoppedTimeHelp": "Estos horarios se usan para calcular el MTTR.",
+        "machineStoppedInterval": "Intervalo de parada"
       },
       "preventiveTasksFlow": {
         "title": "Preventive Tasks",
@@ -1094,7 +1098,8 @@
       "systemModules": "Módulos del sistema",
       "moduleTypes": "Tipos de módulos",
       "technicalReference": "Referencia técnica"
-    }
+    },
+    "machineMaintenanceMttr": "MTTR de mantenimiento de máquinas"
   },
   "capteurs": {
     "pageTitle": "GESTIÓN DE SENSORES",
@@ -4343,5 +4348,44 @@
     "officialImport": "Importación oficial",
     "defectCellLabel": "Número de defectos de {process}, {month}",
     "finalTotalDefects": "Total final de defectos"
+  },
+  "machineMaintenanceMttr": {
+    "title": "MTTR de mantenimiento de máquinas",
+    "description": "MTTR calculated from reported machine stop and restart intervals. This data is separate from Product Quality MTTR.",
+    "year": "Year",
+    "add": "Add intervention",
+    "overallMttr": "Overall MTTR",
+    "interventions": "Interventions",
+    "totalTime": "Total stopped time",
+    "loading": "Loading…",
+    "monthlyHeading": "Monthly Machine Maintenance MTTR (minutes)",
+    "process": "Process",
+    "average": "Average",
+    "records": "records",
+    "monthlyAverage": "Monthly average",
+    "edit": "Edit intervention",
+    "machine": "Machine",
+    "selectMachine": "Select a machine",
+    "descriptionLabel": "Details",
+    "start": "Intervention start",
+    "end": "Machine restart",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "history": "Intervention history",
+    "close": "Close",
+    "duration": "Duration",
+    "source": "Source",
+    "actions": "Actions",
+    "operatorReport": "Operator report",
+    "adminManual": "Admin entry",
+    "delete": "Delete",
+    "noRecords": "No interventions for this month.",
+    "loadFailed": "Could not load Machine Maintenance MTTR.",
+    "saveFailed": "Could not save the intervention.",
+    "deleteFailed": "Could not delete the intervention.",
+    "invalidTimes": "Enter valid times. Restart must be later than start.",
+    "saved": "Intervention saved.",
+    "deleted": "Intervention deleted."
   }
 }

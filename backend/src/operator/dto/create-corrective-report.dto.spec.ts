@@ -46,4 +46,26 @@ describe('CreateCorrectiveReportDto', () => {
       ),
     ).resolves.toHaveLength(0);
   });
+
+  it('accepts machine-stopped intervention timestamps and rejects malformed timestamps', async () => {
+    await expect(
+      validate(
+        dto({
+          machine_stopped: true,
+          intervention_started_at: '2026-09-24T08:00:00.000Z',
+          intervention_ended_at: '2026-09-24T09:00:00.000Z',
+        }),
+      ),
+    ).resolves.toHaveLength(0);
+
+    const errors = await validate(
+      dto({
+        machine_stopped: true,
+        intervention_started_at: 'not-a-date',
+      }),
+    );
+    expect(errors.map((error) => error.property)).toContain(
+      'intervention_started_at',
+    );
+  });
 });

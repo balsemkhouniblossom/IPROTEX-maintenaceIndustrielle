@@ -47,6 +47,7 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
     notifyCorrectiveAwaitingValidation: jest.Mock;
     notifyValidationDecision: jest.Mock;
   };
+  let machineMaintenanceMttrService: { createFromOperator: jest.Mock };
   let session: ReturnType<typeof createSessionMock>;
   let service: WorkOrderReportService;
 
@@ -67,7 +68,11 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
       create: jest.fn().mockResolvedValue([{ _id: new Types.ObjectId() }]),
     };
     machineModel = {
-      findById: jest.fn().mockReturnValue(execResult({ _id: machineId })),
+      findById: jest
+        .fn()
+        .mockReturnValue(
+          execResult({ _id: machineId, type_id: new Types.ObjectId() }),
+        ),
     };
     counterService = {
       getNextSequence: jest.fn().mockResolvedValue(1),
@@ -75,6 +80,9 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
     notificationService = {
       notifyCorrectiveAwaitingValidation: jest.fn().mockResolvedValue(null),
       notifyValidationDecision: jest.fn().mockResolvedValue(null),
+    };
+    machineMaintenanceMttrService = {
+      createFromOperator: jest.fn().mockResolvedValue({}),
     };
 
     service = new WorkOrderReportService(
@@ -89,7 +97,46 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
       notificationService as never,
       {} as never,
       {} as never,
+      machineMaintenanceMttrService as never,
     );
+  });
+
+  it('stores a separate MTTR interval when the operator reports a stopped machine', async () => {
+    await service.createCorrectiveReportForOperator({
+      operatorId,
+      machineId: machineId.toHexString(),
+      codePanne: 'STOP-1',
+      actions: ['Machine stopped'],
+      machineStopped: true,
+      interventionStartedAt: '2026-09-24T08:00:00.000Z',
+      interventionEndedAt: '2026-09-24T09:30:00.000Z',
+    });
+
+    expect(
+      machineMaintenanceMttrService.createFromOperator,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        machineId,
+        startedAt: new Date('2026-09-24T08:00:00.000Z'),
+        endedAt: new Date('2026-09-24T09:30:00.000Z'),
+        session,
+      }),
+    );
+  });
+
+  it('rejects a stopped-machine report when restart is not after start', async () => {
+    await expect(
+      service.createCorrectiveReportForOperator({
+        operatorId,
+        machineId: machineId.toHexString(),
+        codePanne: 'STOP-2',
+        actions: ['Machine stopped'],
+        machineStopped: true,
+        interventionStartedAt: '2026-09-24T10:00:00.000Z',
+        interventionEndedAt: '2026-09-24T09:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(workOrderModel.create).not.toHaveBeenCalled();
   });
 
   it('creates the work order and its intervention report together, deriving identity from the operator id argument only', async () => {
@@ -318,6 +365,7 @@ describe('WorkOrderReportService.submitPreventiveMaintenanceForOperator', () => 
         notifyCorrectiveAwaitingValidation: jest.fn().mockResolvedValue(null),
         notifyValidationDecision: jest.fn().mockResolvedValue(null),
       } as never,
+      {} as never,
       {} as never,
       {} as never,
     );
@@ -577,6 +625,7 @@ describe('WorkOrderReportService.applyValidationDecision', () => {
       notificationService as never,
       lifecycleService as never,
       preventiveSchedulingService as never,
+      {} as never,
     );
   });
 
@@ -728,6 +777,7 @@ describe('WorkOrderReportService.ensureAutoInterventionReport', () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
   });
 
@@ -808,6 +858,7 @@ describe('WorkOrderReportService.resolveCorrectiveData', () => {
       {} as never,
       panneModel as never,
       panneSolutionModel as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,

@@ -542,6 +542,10 @@ function DashboardLayoutBody({
               name: t("navigation.productQualityMttr"),
               href: "/quality/product-mttr",
               icon: ChartBarIcon,
+            }, {
+              name: t("navigation.machineMaintenanceMttr"),
+              href: "/maintenance-mttr",
+              icon: ChartBarIcon,
             }],
           },
           {
