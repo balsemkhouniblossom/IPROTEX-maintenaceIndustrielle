@@ -120,7 +120,7 @@ describe('TechnicianService authorization policy', () => {
     });
   });
 
-  it('shows every open unassigned work order alongside the technician own records', async () => {
+  it('shows technician own records and claimable unassigned orders on accessible machines', async () => {
     const scope = await (
       service as unknown as {
         visibleScope(id: string): Promise<Record<string, unknown>>;
@@ -152,6 +152,7 @@ describe('TechnicianService authorization policy', () => {
             ],
           },
           $or: [{ technician_id: { $exists: false } }, { technician_id: null }],
+          machine_id: { $in: [machineId] },
         },
       ],
     });
