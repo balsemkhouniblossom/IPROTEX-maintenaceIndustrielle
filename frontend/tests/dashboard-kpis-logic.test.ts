@@ -319,6 +319,30 @@ test("DashboardLayout gives technicians the compact role-specific sidebar", () =
       assert.ok(label.length > 0, `${locale}.json sidebar.navigation.${key} must not be empty`);
     }
   }
+
+  const arabicMessages = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "messages", "ar.json"), "utf8"),
+  );
+  assert.deepEqual(
+    {
+      myWork: arabicMessages.sidebar.domains.myWork,
+      equipment: arabicMessages.sidebar.domains.equipment,
+      resources: arabicMessages.sidebar.domains.resources,
+      history: arabicMessages.sidebar.domains.history,
+      parts: arabicMessages.sidebar.navigation.parts,
+      manuals: arabicMessages.sidebar.navigation.manuals,
+      completedWork: arabicMessages.sidebar.navigation.completedWork,
+    },
+    {
+      myWork: "عملي",
+      equipment: "المعدات",
+      resources: "الموارد",
+      history: "السجل",
+      parts: "قطع الغيار",
+      manuals: "الأدلة الفنية",
+      completedWork: "الأعمال المكتملة",
+    },
+  );
 });
 
 test("Technician work orders expose one My Work Orders workspace without deleting legacy routes", () => {

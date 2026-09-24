@@ -36,7 +36,7 @@ test("apiService exposes device registration/management and role-scoped live-mon
   );
   assert.match(
     source,
-    /getLiveMonitoringSummary:\s*\(\)\s*=>\s*api\.get\(["']\/live-monitoring\/machines["']\)/,
+    /getLiveMonitoringSummary:\s*\(options\?: QuietAxiosConfig\)\s*=>[\s\S]*?api\.get\(["']\/live-monitoring\/machines["'],\s*options\)/,
     "apiService.getLiveMonitoringSummary must GET /live-monitoring/machines",
   );
   assert.match(
@@ -56,8 +56,13 @@ test("useLiveMonitoring always does an initial REST fetch and keeps polling as a
 
   assert.match(
     source,
-    /apiService\.getLiveMonitoringSummary\(\)/,
+    /apiService\.getLiveMonitoringSummary\(quiet\(\)\)/,
     "the hook must fetch the bulk live-status summary via REST",
+  );
+  assert.match(
+    source,
+    /if \(status === 403\) \{[\s\S]*?setStatusByMachine\(\{\}\);[\s\S]*?return;/,
+    "an unavailable optional monitoring scope must not become a page-level error",
   );
   assert.match(
     source,

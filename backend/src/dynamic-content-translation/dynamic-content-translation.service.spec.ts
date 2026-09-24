@@ -139,6 +139,48 @@ describe('DynamicContentTranslationService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('allows technicians to translate an open unassigned work order visible in their shared queue', async () => {
+    const order = workOrder({ technician_id: null, status: 'pending' });
+    const { service } = createService({ order });
+
+    await expect(
+      service.batch(
+        { userId: new Types.ObjectId().toHexString(), role: Role.TECHNICIAN },
+        {
+          targetLocale: 'ar',
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: String(order._id),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).resolves.toHaveProperty('items');
+  });
+
+  it('does not expose a closed unassigned work order through translation', async () => {
+    const order = workOrder({ technician_id: null, status: 'completed' });
+    const { service } = createService({ order });
+
+    await expect(
+      service.batch(
+        { userId: new Types.ObjectId().toHexString(), role: Role.TECHNICIAN },
+        {
+          targetLocale: 'ar',
+          items: [
+            {
+              entityType: 'workOrder',
+              entityId: String(order._id),
+              fields: ['description'],
+            },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('rejects fields outside the work-order translation allowlist', async () => {
     const { service, provider, order } = createService({});
 

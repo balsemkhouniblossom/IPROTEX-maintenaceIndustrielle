@@ -357,10 +357,8 @@ export class WorkOrderLifecycleService {
     return { $in: [id, technicianId] };
   }
 
-  private claimableUnassignedScope(machineIds: Types.ObjectId[]) {
-    if (!machineIds.length) return { machine_id: { $in: [] } };
+  private claimableUnassignedScope(_machineIds: Types.ObjectId[]) {
     return {
-      machine_id: { $in: machineIds },
       $or: [{ technician_id: { $exists: false } }, { technician_id: null }],
     };
   }

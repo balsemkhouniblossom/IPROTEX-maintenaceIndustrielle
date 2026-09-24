@@ -120,7 +120,7 @@ describe('TechnicianService authorization policy', () => {
     });
   });
 
-  it('limits visible work orders to own records and explicitly claimable assigned-machine records', async () => {
+  it('shows every open unassigned work order alongside the technician own records', async () => {
     const scope = await (
       service as unknown as {
         visibleScope(id: string): Promise<Record<string, unknown>>;
@@ -141,7 +141,6 @@ describe('TechnicianService authorization policy', () => {
           },
         },
         {
-          machine_id: { $in: [machineId] },
           status: {
             $nin: [
               'completed',
@@ -158,12 +157,15 @@ describe('TechnicianService authorization policy', () => {
     });
   });
 
-  it('blocks unassigned claims when no assigned-machine claimable scope exists', async () => {
+  it('allows an unassigned order to be claimed even without a prior machine assignment', async () => {
     documentAccessService.listAccessibleMachineIds.mockResolvedValue([]);
+    workOrderAssignmentService.claimForTechnician.mockResolvedValue({
+      _id: new Types.ObjectId(),
+    });
 
     await expect(
       service.claim(technicianId, new Types.ObjectId().toHexString()),
-    ).rejects.toThrow('Work order is closed or already assigned');
+    ).resolves.toEqual(expect.objectContaining({ _id: expect.any(String) }));
 
     expect(workOrderAssignmentService.claimForTechnician).toHaveBeenCalledWith({
       technicianId,
@@ -671,7 +673,7 @@ describe('TechnicianService.details', () => {
     );
   });
 
-  it('requires machine authorization before an unassigned claimable work order can be opened', async () => {
+  it('lets every technician inspect an unassigned claimable work order', async () => {
     workOrdersModel.findOne.mockReturnValue(
       populateChain({
         _id: workOrderId,
@@ -682,13 +684,10 @@ describe('TechnicianService.details', () => {
 
     await service.details(technicianId, workOrderId.toHexString());
 
-    expect(documentAccessService.assertCanAccessMachine).toHaveBeenCalledWith(
-      { userId: technicianId, role: Role.TECHNICIAN },
-      machineId.toHexString(),
-    );
+    expect(documentAccessService.assertCanAccessMachine).not.toHaveBeenCalled();
   });
 
-  it('propagates a machine-authorization rejection as a 403 even though the work order itself was already found', async () => {
+  it('does not apply machine authorization to an unassigned claimable work order', async () => {
     workOrdersModel.findOne.mockReturnValue(
       populateChain({
         _id: workOrderId,
@@ -702,7 +701,14 @@ describe('TechnicianService.details', () => {
 
     await expect(
       service.details(technicianId, workOrderId.toHexString()),
-    ).rejects.toThrow(ForbiddenException);
+    ).resolves.toEqual(
+      expect.objectContaining({
+        workOrder: expect.objectContaining({
+          _id: workOrderId.toHexString(),
+        }),
+      }),
+    );
+    expect(documentAccessService.assertCanAccessMachine).not.toHaveBeenCalled();
   });
 
   it('skips machine authorization when the work order has no resolvable machine_id', async () => {

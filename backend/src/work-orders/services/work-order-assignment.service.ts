@@ -53,11 +53,9 @@ export class WorkOrderAssignmentService {
   }
 
   claimableUnassignedScope(
-    machineIds: Types.ObjectId[],
+    _machineIds: Types.ObjectId[],
   ): FilterQuery<WorkOrderDocument> {
-    if (!machineIds.length) return { machine_id: { $in: [] } };
     return {
-      machine_id: { $in: machineIds },
       status: { $nin: CLOSED_WORK_ORDER_STATUSES },
       $or: [{ technician_id: { $exists: false } }, { technician_id: null }],
     };

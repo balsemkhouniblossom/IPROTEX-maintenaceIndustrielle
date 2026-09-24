@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
-import { apiService } from "@/services/api";
+import { apiService, quiet } from "@/services/api";
 import { getApiBaseUrl } from "@/config/api-base-url";
 import { getAuthToken } from "@/services/authStorage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,7 +41,7 @@ export function useLiveMonitoring() {
 
   const refresh = useCallback(async () => {
     try {
-      const response = await apiService.getLiveMonitoringSummary();
+      const response = await apiService.getLiveMonitoringSummary(quiet());
       const items: LiveMachineStatus[] = Array.isArray(response.data)
         ? response.data
         : [];
@@ -51,6 +51,12 @@ export function useLiveMonitoring() {
         return next;
       });
     } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 403) {
+        setStatusByMachine({});
+        return;
+      }
       console.error("Failed to load live monitoring summary", error);
     }
   }, []);

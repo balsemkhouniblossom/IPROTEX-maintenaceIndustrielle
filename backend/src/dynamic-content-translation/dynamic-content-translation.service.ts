@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { Model, Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
+import { CLOSED_WORK_ORDER_STATUSES } from '../common/work-order-status';
 import {
   TranslationCache,
   TranslationCacheDocument,
@@ -208,6 +209,13 @@ export class DynamicContentTranslationService {
 
     const technicianId = this.referenceToString(workOrder.technician_id);
     if (technicianId && technicianId === actor.userId) return workOrder;
+    if (
+      actor.role === 'technician' &&
+      !technicianId &&
+      !CLOSED_WORK_ORDER_STATUSES.includes(workOrder.status ?? '')
+    ) {
+      return workOrder;
+    }
 
     throw new ForbiddenException('Work order is not accessible');
   }

@@ -159,7 +159,6 @@ describe('WorkOrderLifecycleService', () => {
             technician_id: { $in: [technicianId, technicianId.toHexString()] },
           },
           {
-            machine_id: { $in: [machineId] },
             $or: [
               { technician_id: { $exists: false } },
               { technician_id: null },

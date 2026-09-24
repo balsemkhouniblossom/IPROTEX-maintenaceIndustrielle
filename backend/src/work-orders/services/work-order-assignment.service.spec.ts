@@ -122,15 +122,17 @@ describe('WorkOrderAssignmentService', () => {
   });
 
   describe('claimableUnassignedScope', () => {
-    it('returns $in: [] when machineIds is empty', () => {
+    it('keeps unassigned open work globally claimable when machineIds is empty', () => {
       const result = service.claimableUnassignedScope([]);
-      expect(result).toMatchObject({ machine_id: { $in: [] } });
+      expect(result).not.toHaveProperty('machine_id');
+      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('$or');
     });
 
-    it('returns machine_id filter with $in for non-empty machineIds', () => {
+    it('does not restrict unassigned work to preassigned machines', () => {
       const ids = [new Types.ObjectId(), new Types.ObjectId()];
       const result = service.claimableUnassignedScope(ids);
-      expect(result).toHaveProperty('machine_id');
+      expect(result).not.toHaveProperty('machine_id');
       expect(result).toHaveProperty('status');
       expect(result).toHaveProperty('$or');
     });

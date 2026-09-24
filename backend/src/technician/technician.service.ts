@@ -259,11 +259,9 @@ export class TechnicianService {
   }
 
   private claimableUnassignedScope(
-    machineIds: Types.ObjectId[],
+    _machineIds: Types.ObjectId[],
   ): FilterQuery<WorkOrderDocument> | null {
-    if (!machineIds.length) return null;
     return {
-      machine_id: { $in: machineIds },
       status: { $nin: CLOSED_STATUSES },
       $or: [{ technician_id: { $exists: false } }, { technician_id: null }],
     };
@@ -1021,9 +1019,11 @@ export class TechnicianService {
     const assignedTechnicianId = this.referenceId(workOrder.technician_id);
     const isAssignedToTechnician =
       assignedTechnicianId?.toString() === technicianId;
-    // Assignment is an explicit authorization to perform and inspect this work
-    // order. Unassigned, claimable work still requires machine-level access.
-    if (machineId && !isAssignedToTechnician) {
+    const isUnassigned = !assignedTechnicianId;
+    // Every technician may inspect an open, unassigned order so it can be
+    // claimed. Once claimed, only its assignee (or an independently
+    // machine-authorized technician) may continue to inspect it.
+    if (machineId && !isAssignedToTechnician && !isUnassigned) {
       await this.documentAccessService.assertCanAccessMachine(
         { userId: technicianId, role: Role.TECHNICIAN },
         machineId.toString(),

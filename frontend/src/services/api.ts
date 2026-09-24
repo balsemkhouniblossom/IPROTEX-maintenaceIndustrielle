@@ -326,7 +326,8 @@ export const apiService = {
   rotateDeviceKey: (id: string) => api.post(`/devices/${id}/rotate-key`),
   deleteDevice: (id: string) => api.delete(`/devices/${id}`),
 
-  getLiveMonitoringSummary: () => api.get("/live-monitoring/machines"),
+  getLiveMonitoringSummary: (options?: QuietAxiosConfig) =>
+    api.get("/live-monitoring/machines", options),
   getMachineLiveStatus: (machineId: string) =>
     api.get(`/live-monitoring/machines/${machineId}`),
   resolveFaultEvent: (id: string) =>
