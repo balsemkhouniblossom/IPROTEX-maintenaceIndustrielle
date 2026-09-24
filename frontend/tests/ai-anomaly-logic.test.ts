@@ -27,6 +27,8 @@ function readSource(relativePath: string): string {
 const PAGE = "src/app/[locale]/ai-anomaly/page.tsx";
 const API = "src/services/api.ts";
 const LAYOUT = "src/components/DashboardLayout.tsx";
+const TECHNICIAN_MACHINE_HEALTH_INSIGHT =
+  "src/components/technician/MachineHealthInsightContainer.tsx";
 
 const baseAnalysis: AiAnomalyAnalysis = {
   analysis_id: "AI-ANOM-1",
@@ -98,6 +100,15 @@ test("apiService integrates only the existing /ai-anomaly backend endpoints", ()
   assert.match(
     source,
     /stopAiAnomalyModel:[\s\S]*\/ai-anomaly\/models\/\$\{encodeURIComponent\(modelId\)\}\/stop/,
+  );
+});
+
+test("optional technician machine-health history failures do not raise a page-level console error", () => {
+  const source = readSource(TECHNICIAN_MACHINE_HEALTH_INSIGHT);
+  assert.match(source, /import \{ apiService, quiet \} from "@\/services\/api"/);
+  assert.match(
+    source,
+    /getAiAnomalyMachineHistory\([\s\S]*?quiet\(\)[\s\S]*?\)/,
   );
 });
 

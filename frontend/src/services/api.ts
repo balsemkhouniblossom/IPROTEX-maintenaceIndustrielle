@@ -781,11 +781,11 @@ export const apiService = {
       dateFrom?: string;
       dateTo?: string;
     },
-    options?: { signal?: AbortSignal },
+    options?: QuietAxiosConfig,
   ) =>
     api.get(`/ai-anomaly/machines/${machineId}/history`, {
       params,
-      signal: options?.signal,
+      ...options,
     }),
   getAiAnomalyAnalysis: (id: string, options?: { signal?: AbortSignal }) =>
     api.get(`/ai-anomaly/analyses/${id}`, { signal: options?.signal }),

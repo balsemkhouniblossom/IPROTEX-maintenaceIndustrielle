@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { apiService } from "@/services/api";
+import { apiService, quiet } from "@/services/api";
 import type { AiAnomalyAnalysis } from "@/services/aiAnomaly";
 import MachineHealthInsight from "@/components/technician/MachineHealthInsight";
 
@@ -27,10 +27,14 @@ export default function MachineHealthInsightContainer({
       return;
     }
     try {
-      const response = await apiService.getAiAnomalyMachineHistory(machineId, {
-        limit: 50,
-        page: 1,
-      });
+      const response = await apiService.getAiAnomalyMachineHistory(
+        machineId,
+        {
+          limit: 50,
+          page: 1,
+        },
+        quiet(),
+      );
       const items = ((response.data?.items ||
         response.data ||
         []) as AiAnomalyAnalysis[]).filter(
