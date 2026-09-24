@@ -115,11 +115,12 @@ test("Modal traps focus, exposes dialog ARIA semantics, and restores focus to th
   assert.match(source, /e\.key !== 'Tab'/, "must intercept Tab to keep the focus trap scoped to the dialog");
 });
 
-test("Pagination is a labeled <nav> landmark with per-page-number accessible names", () => {
+test("Pagination is a localized labeled <nav> landmark with per-page-number accessible names", () => {
   const source = readSource(PAGINATION);
   assert.match(source, /<nav\s/);
-  assert.match(source, /aria-label="Pagination"/);
-  assert.match(source, /aria-label=\{`Page \$\{currentPage\}`\}/);
+  assert.match(source, /useTranslations\('common\.pagination'\)/);
+  assert.match(source, /aria-label=\{t\('label'\)\}/);
+  assert.match(source, /aria-label=\{t\('page', \{ page: currentPage \}\)\}/);
 });
 
 test("StatusBadge is the single shared badge shell (no page redeclares the wrapper markup)", () => {
