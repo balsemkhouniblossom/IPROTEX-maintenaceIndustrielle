@@ -167,27 +167,11 @@ export class DocumentAccessService {
     userId: string,
     machineId: string,
   ): Promise<boolean> {
-    const assignedMachineIds = await this.getAssignedMachineIds(userId);
-    if (assignedMachineIds.some((id) => id.equals(machineId))) return true;
-
-    const match = await this.workOrderModel
-      .exists({
-        machine_id: new Types.ObjectId(machineId),
-        $or: [
-          { technician_id: this.userReferenceFilter(userId) },
-          {
-            status: { $nin: CLOSED_WORK_ORDER_STATUSES },
-            machine_id: { $in: assignedMachineIds },
-            $or: [
-              { technician_id: { $exists: false } },
-              { technician_id: null },
-            ],
-          },
-        ],
-      })
+    // Allow access to all machines for technicians
+    const machineExists = await this.machineModel
+      .exists({ _id: new Types.ObjectId(machineId) })
       .exec();
-
-    return Boolean(match);
+    return Boolean(machineExists);
   }
 
   private async getTechnicianMachineIds(

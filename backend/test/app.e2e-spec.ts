@@ -1477,10 +1477,11 @@ describe('Preventive scheduling lifecycle (e2e)', () => {
         .get(`/documents/${unassignedDoc._id.toString()}/file`)
         .set('Authorization', `Bearer ${operatorToken}`)
         .expect(403);
+      // Technician can now access all machines including unassigned ones
       await request(app.getHttpServer())
         .get(`/documents/${unassignedDoc._id.toString()}/file`)
         .set('Authorization', `Bearer ${technicianToken}`)
-        .expect(403);
+        .expect(200);
 
       const response = await request(app.getHttpServer())
         .get(`/documents/${doc._id.toString()}/file`)

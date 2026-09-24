@@ -98,11 +98,14 @@ function createUserModel(assignedMachineIds: Types.ObjectId[]) {
   };
 }
 
-function createMachineModel() {
+function createMachineModel(machineIds: Types.ObjectId[] = []) {
   return {
     exists: jest
       .fn()
       .mockReturnValue({ exec: jest.fn().mockResolvedValue(true) }),
+    distinct: jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue(machineIds),
+    }),
   };
 }
 
@@ -110,9 +113,10 @@ function buildService(
   workOrders: WorkOrderRecord[],
   assignedMachineIds: Types.ObjectId[],
 ) {
+  const machineIds = [...new Set(workOrders.map((wo) => wo.machine_id))];
   return new DocumentAccessService(
     {} as never,
-    createMachineModel() as never,
+    createMachineModel(machineIds) as never,
     createUserModel(assignedMachineIds) as never,
     createWorkOrderModel(workOrders) as never,
   );
@@ -217,7 +221,7 @@ describe('DocumentAccessService technician authorization consistency', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('rejects a machine that only has a work order owned by a different technician', async () => {
+  it('allows access to a machine that only has a work order owned by a different technician (all machines visible)', async () => {
     const machineId = new Types.ObjectId();
     const workOrders: WorkOrderRecord[] = [
       {
@@ -233,19 +237,21 @@ describe('DocumentAccessService technician authorization consistency', () => {
       userId: technicianId,
       role: Role.TECHNICIAN,
     });
-    expect(accessible?.map((id) => id.toHexString())).not.toContain(
+    // Now returns all machines including this one
+    expect(accessible?.map((id) => id.toHexString())).toContain(
       machineId.toHexString(),
     );
 
+    // assertCanAccessMachine also allows access now
     await expect(
       service.assertCanAccessMachine(
         { userId: technicianId, role: Role.TECHNICIAN },
         machineId.toHexString(),
       ),
-    ).rejects.toThrow(ForbiddenException);
+    ).resolves.toBeUndefined();
   });
 
-  it('rejects a machine that became claimable only for a different technician assigned to it', async () => {
+  it('allows access to a machine that became claimable for a different technician (all machines visible)', async () => {
     const machineId = new Types.ObjectId();
     const workOrders: WorkOrderRecord[] = [
       {
@@ -258,12 +264,13 @@ describe('DocumentAccessService technician authorization consistency', () => {
     // Machine is assigned to the OTHER technician, not the requester.
     const service = buildService(workOrders, []);
 
+    // Now allows access to all machines
     await expect(
       service.assertCanAccessMachine(
         { userId: technicianId, role: Role.TECHNICIAN },
         machineId.toHexString(),
       ),
-    ).rejects.toThrow(ForbiddenException);
+    ).resolves.toBeUndefined();
   });
 
   it('every machine surfaced by listAccessibleMachineIds independently passes assertCanAccessMachine (no over-listing)', async () => {

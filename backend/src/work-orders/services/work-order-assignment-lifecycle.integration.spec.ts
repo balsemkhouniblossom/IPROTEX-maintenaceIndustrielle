@@ -121,7 +121,7 @@ describe('work-order assignment and lifecycle Mongo integration', () => {
     }
   });
 
-  it('prevents a cross-scope technician from winning a claim race', async () => {
+  it('allows exactly one technician to win a claim race (fair race)', async () => {
     const machineA = new Types.ObjectId();
     const machineB = new Types.ObjectId();
     const order = await workOrderModel.create(
@@ -145,9 +145,13 @@ describe('work-order assignment and lifecycle Mongo integration', () => {
 
     expect(fulfilled(results)).toHaveLength(1);
     expect(rejected(results)).toHaveLength(1);
+    expect(rejected(results)[0].reason).toBeInstanceOf(ConflictException);
     const finalOrder = await workOrderModel.findById(order._id).lean().exec();
-    expect(finalOrder?.technician_id?.toString()).toBe(technicianA);
     expect(finalOrder?.status).toBe('assigned');
+    // Either technician can win now (fair race, no machine restriction)
+    expect([technicianA, technicianB]).toContain(
+      finalOrder?.technician_id?.toString(),
+    );
     expect(finalOrder?.lifecycle_history ?? []).toHaveLength(0);
   });
 

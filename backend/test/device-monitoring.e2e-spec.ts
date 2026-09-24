@@ -741,9 +741,9 @@ describe('Device registration, REST device-gateway ingestion, and role-scoped li
       await expect(subscribeMachine(technician, machineAId)).resolves.toEqual({
         ok: true,
       });
+      // Technician can now access all machines
       await expect(subscribeMachine(technician, machineBId)).resolves.toEqual({
-        ok: false,
-        error: 'SOCKET_ACCESS_DENIED',
+        ok: true,
       });
       await expect(subscribeMachine(admin, machineBId)).resolves.toEqual({
         ok: true,
