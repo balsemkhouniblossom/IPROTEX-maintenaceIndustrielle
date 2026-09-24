@@ -1937,7 +1937,8 @@
       "aiAnomalyMonitoring": "?????? ?????? ??????? ?????????",
       "aiAnalytics": "مراقبة الذكاء الاصطناعي",
       "preventiveTasks": "المهام الوقائية",
-      "notifications": "الإشعارات"
+      "notifications": "الإشعارات",
+      "machineMaintenanceMttr": "MTTR صيانة الآلات"
     }
   },
   "machines": {

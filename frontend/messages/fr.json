@@ -2112,7 +2112,8 @@
       "aiAnomalyMonitoring": "Surveillance IA des anomalies",
       "aiAnalytics": "Vue d’ensemble IA",
       "preventiveTasks": "Tâches préventives",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "machineMaintenanceMttr": "MTTR maintenance machine"
     }
   },
   "machines": {

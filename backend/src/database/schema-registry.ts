@@ -120,6 +120,10 @@ import {
   ProductQualityMonthlyMttr,
   ProductQualityMonthlyMttrSchema,
 } from '../schemas/product-quality-monthly-mttr.schema';
+import {
+  MachineMaintenanceMttrEntry,
+  MachineMaintenanceMttrEntrySchema,
+} from '../schemas/machine-maintenance-mttr-entry.schema';
 
 export interface SchemaRegistryEntry {
   modelName: string;
@@ -169,6 +173,10 @@ export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   {
     modelName: ProductQualityMonthlyMttr.name,
     schema: ProductQualityMonthlyMttrSchema,
+  },
+  {
+    modelName: MachineMaintenanceMttrEntry.name,
+    schema: MachineMaintenanceMttrEntrySchema,
   },
   { modelName: Stock.name, schema: StockSchema },
   { modelName: ModulePieces.name, schema: ModulePiecesSchema },

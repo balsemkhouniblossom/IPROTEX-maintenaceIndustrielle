@@ -2112,7 +2112,8 @@
       "aiAnomalyMonitoring": "AI Anomaly Monitoring",
       "aiAnalytics": "AI Overview",
       "preventiveTasks": "Preventive Tasks",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "machineMaintenanceMttr": "Machine Maintenance MTTR"
     }
   },
   "machines": {

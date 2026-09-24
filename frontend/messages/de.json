@@ -2179,7 +2179,8 @@
       "aiAnomalyMonitoring": "KI-Anomalie?berwachung",
       "aiAnalytics": "KI-Übersicht",
       "preventiveTasks": "Präventivaufgaben",
-      "notifications": "Benachrichtigungen"
+      "notifications": "Benachrichtigungen",
+      "machineMaintenanceMttr": "Maschinenwartungs-MTTR"
     }
   },
   "machines": {

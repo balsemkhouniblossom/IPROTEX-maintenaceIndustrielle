@@ -22,12 +22,16 @@ test('Admin Machine Maintenance MTTR is separate from Product Quality MTTR', () 
   assert.match(page, /createMachineMaintenanceMttr/);
   assert.match(page, /updateMachineMaintenanceMttr/);
   assert.match(page, /deleteMachineMaintenanceMttr/);
+  assert.match(page, /dark:bg-slate-900/);
+  assert.match(page, /const \[showForm, setShowForm\]/);
   assert.match(api, /\/machine-maintenance-mttr/);
   assert.doesNotMatch(page, /product-mttr/);
 });
 
-test('all locales provide matching Machine Maintenance MTTR keys', () => {
+test('all locales provide matching Machine Maintenance MTTR and sidebar keys', () => {
   const locales = ['en', 'fr', 'ar', 'es', 'de', 'it'];
-  const keys = locales.map((locale) => Object.keys(JSON.parse(read(`messages/${locale}.json`)).machineMaintenanceMttr).sort());
+  const messages = locales.map((locale) => JSON.parse(read(`messages/${locale}.json`)));
+  const keys = messages.map((current) => Object.keys(current.machineMaintenanceMttr).sort());
   for (const current of keys.slice(1)) assert.deepEqual(current, keys[0]);
+  for (const current of messages) assert.equal(typeof current.sidebar.navigation.machineMaintenanceMttr, 'string');
 });

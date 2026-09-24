@@ -1959,7 +1959,8 @@
       "aiAnomalyMonitoring": "Monitoraggio anomalie IA",
       "aiAnalytics": "Panoramica IA",
       "preventiveTasks": "Attività preventive",
-      "notifications": "Notifiche"
+      "notifications": "Notifiche",
+      "machineMaintenanceMttr": "MTTR manutenzione macchine"
     },
     "categories": {
       "catalogues": "Kataloge",
