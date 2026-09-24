@@ -18,6 +18,17 @@ test("legacy escalation notifications are parsed without accepting multiline tit
     ),
     null,
   );
+  assert.equal(
+    legacyNotificationTranslation("Escalation 3+ days overdue for "),
+    null,
+  );
+  assert.deepEqual(
+    legacyNotificationTranslation("ESCALATION 3+ DAYS OVERDUE FOR WO-7"),
+    {
+      key: "templates.workOrderOverdueThreeDays",
+      params: { workOrder: "WO-7" },
+    },
+  );
 });
 
 test("apiService exposes the shared /notifications endpoints for list/unread-count/read/clear", () => {
