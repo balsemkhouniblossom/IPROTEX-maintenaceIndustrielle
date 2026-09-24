@@ -669,6 +669,24 @@ test("Operator preventive workflow keeps mixed-direction content readable in Ara
   assert.doesNotMatch(tabsSource, /text-left/);
 });
 
+test("Shared dashboard keeps the Arabic Operator workspace full-width below desktop", () => {
+  const layoutSource = fs.readFileSync(
+    path.join(process.cwd(), "src/components/DashboardLayout.tsx"),
+    "utf8",
+  );
+  const globalsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/globals.css"),
+    "utf8",
+  );
+
+  assert.match(layoutSource, /flex flex-wrap items-center justify-between gap-4 xl:flex-nowrap/);
+  assert.match(layoutSource, /flex flex-wrap items-center justify-end gap-2 sm:gap-4/);
+  assert.match(
+    globalsSource,
+    /@media \(max-width: 1023px\) \{\s*\[dir="rtl"\] \.dashboard-grid \{\s*grid-template-columns: minmax\(0, 1fr\) !important;/,
+  );
+});
+
 test("Corrective page uses the existing operator report-problem API and shows real WorkOrder reference", () => {
   const source = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),

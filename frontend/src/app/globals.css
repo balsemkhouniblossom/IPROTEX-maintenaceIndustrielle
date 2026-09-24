@@ -1931,6 +1931,14 @@ select option {
   grid-template-columns: 280px minmax(0, 1fr) !important;
 }
 
+/* The RTL desktop track order must not keep a hidden 280px sidebar track on
+   tablet/mobile widths. */
+@media (max-width: 1023px) {
+  [dir="rtl"] .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 /* Sidebar border swap */
 [dir="rtl"] .sidebar-modern {
   border-right: none;

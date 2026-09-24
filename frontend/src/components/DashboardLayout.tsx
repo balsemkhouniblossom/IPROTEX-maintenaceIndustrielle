@@ -827,14 +827,14 @@ function DashboardLayoutBody({
       {/* Main Content */}
       <div className="main-content relative z-10">
         <header className="panel dashboard-header-panel">
-          <div className="flex items-center justify-between gap-4 flex-wrap md:flex-nowrap">
+          <div className="flex flex-wrap items-center justify-between gap-4 xl:flex-nowrap">
             <div className="flex items-center gap-3 min-w-0">
               <h1 className="text-lg md:text-xl lg:text-2xl font-bold truncate">
                 {title}
               </h1>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
               {headerActions}
               <NotificationBell />
               <LiveClock locale={locale} />
