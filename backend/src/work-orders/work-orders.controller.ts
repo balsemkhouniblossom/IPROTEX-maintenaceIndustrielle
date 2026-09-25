@@ -264,6 +264,12 @@ export class WorkOrdersController {
     return this.workOrdersService.update(id, updateWorkOrderDto);
   }
 
+  @Delete()
+  @AdminOnly()
+  removeAll(): Promise<{ deletedCount: number }> {
+    return this.workOrdersService.removeAll();
+  }
+
   @Delete(':id')
   @AdminOnly()
   remove(@Param('id') id: string): Promise<WorkOrderResponse | null> {

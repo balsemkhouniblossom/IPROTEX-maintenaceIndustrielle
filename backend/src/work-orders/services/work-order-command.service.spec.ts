@@ -19,6 +19,7 @@ describe('WorkOrderCommandService', () => {
     db: { startSession: jest.Mock<any, any, any> };
     findByIdAndUpdate: jest.Mock<any, any, any>;
     findByIdAndDelete: jest.Mock<any, any, any>;
+    deleteMany: jest.Mock<any, any, any>;
   } & jest.Mock<any, any, any>;
   let counterService: { getNextSequence: jest.Mock<any, any, any> };
   let notificationService: { notifyCreated: jest.Mock<any, any, any> };
@@ -34,6 +35,7 @@ describe('WorkOrderCommandService', () => {
       db: { startSession: jest.fn() },
       findByIdAndUpdate: jest.fn(),
       findByIdAndDelete: jest.fn(),
+      deleteMany: jest.fn(),
     });
     counterService = { getNextSequence: jest.fn() };
     notificationService = { notifyCreated: jest.fn() };
@@ -254,6 +256,17 @@ describe('WorkOrderCommandService', () => {
       });
       const result = await service.remove('nonexistent');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('removeAll', () => {
+    it('deletes every work order and returns the database count', async () => {
+      workOrderModel.deleteMany.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ deletedCount: 12 }),
+      });
+
+      await expect(service.removeAll()).resolves.toEqual({ deletedCount: 12 });
+      expect(workOrderModel.deleteMany).toHaveBeenCalledWith({});
     });
   });
 });

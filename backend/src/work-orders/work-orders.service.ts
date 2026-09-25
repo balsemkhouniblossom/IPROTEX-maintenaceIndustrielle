@@ -119,6 +119,10 @@ export class WorkOrdersService {
     return this.commandService.remove(id);
   }
 
+  async removeAll(): Promise<{ deletedCount: number }> {
+    return this.commandService.removeAll();
+  }
+
   /**
    * The Admin dashboard's legacy statistics endpoint. Delegates to
    * `WorkOrderDashboardQueryService`, the canonical owner of Work Order

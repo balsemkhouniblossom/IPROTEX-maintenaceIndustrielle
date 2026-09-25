@@ -1390,6 +1390,12 @@
     "searchPlaceholder": "Buscar órdenes de trabajo...",
     "unassigned": "Sin asignar",
     "confirmDelete": "¿Está seguro de que desea eliminar esta orden de trabajo?",
+    "deleteAll": "Eliminar todo",
+    "deleteAllConfirmTitle": "¿Eliminar todas las órdenes de trabajo?",
+    "deleteAllConfirmMessage": "Esto eliminará las {count} órdenes de trabajo, incluidos los registros fuera de la página y los filtros actuales.",
+    "deleteAllWarning": "Esta acción no se puede deshacer.",
+    "confirmDeleteAll": "Eliminar todas las órdenes de trabajo",
+    "deletingAll": "Eliminando...",
     "table": {
       "otId": "N° OT",
       "description": "Descripción",
@@ -1461,6 +1467,8 @@
     "notifications": {
       "deleted": "Orden de trabajo eliminada con éxito",
       "deleteFailed": "Error al eliminar la orden de trabajo",
+      "allDeleted": "Se eliminaron {count} órdenes de trabajo correctamente",
+      "deleteAllFailed": "No se pudieron eliminar todas las órdenes de trabajo",
       "updated": "Orden de trabajo actualizada con éxito",
       "created": "Orden de trabajo creada con éxito",
       "saveFailed": "Error al guardar la orden de trabajo",

@@ -85,6 +85,18 @@ test("Work Orders page preserves its CRUD business logic verbatim (validateForm/
   assert.match(source, /apiService\.createWorkOrder\(data\)/);
 });
 
+test("Work Orders supports an Admin-confirmed delete-all action across every page and filter", () => {
+  const source = readSource(WORK_ORDERS_PAGE);
+  const apiSource = readSource(API);
+
+  assert.match(apiSource, /deleteAllWorkOrders:\s*\(\)\s*=>[\s\S]*api\.delete<\{ deletedCount: number \}>\("\/work-orders"\)/);
+  assert.match(source, /setShowDeleteAllModal\(true\)/);
+  assert.match(source, /apiService\.deleteAllWorkOrders\(\)/);
+  assert.match(source, /count: response\.data\.deletedCount/);
+  assert.match(source, /disabled=\{table\.totalItems === 0 \|\| deletingAll\}/);
+  assert.match(source, /if \(deletingAll\) return/);
+});
+
 test("Work Orders page invalidates the shared workOrders list event on its own CRUD, and listens for cross-page invalidation", () => {
   const source = readSource(WORK_ORDERS_PAGE);
 

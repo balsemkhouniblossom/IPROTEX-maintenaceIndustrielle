@@ -1351,6 +1351,12 @@
     "searchPlaceholder": "البحث في أوامر العمل...",
     "unassigned": "غير مسند",
     "confirmDelete": "هل أنت متأكد من حذف أمر العمل هذا؟",
+    "deleteAll": "حذف الكل",
+    "deleteAllConfirmTitle": "حذف جميع أوامر العمل؟",
+    "deleteAllConfirmMessage": "سيؤدي هذا إلى حذف جميع أوامر العمل وعددها {count}، بما فيها السجلات خارج الصفحة الحالية وعوامل التصفية.",
+    "deleteAllWarning": "لا يمكن التراجع عن هذا الإجراء.",
+    "confirmDeleteAll": "حذف جميع أوامر العمل",
+    "deletingAll": "جارٍ الحذف...",
     "table": {
       "otId": "رقم OT",
       "description": "الوصف",
@@ -1422,6 +1428,8 @@
     "notifications": {
       "deleted": "تم حذف أمر العمل بنجاح",
       "deleteFailed": "فشل حذف أمر العمل",
+      "allDeleted": "تم حذف {count} من أوامر العمل بنجاح",
+      "deleteAllFailed": "فشل حذف جميع أوامر العمل",
       "updated": "تم تحديث أمر العمل بنجاح",
       "created": "تم إنشاء أمر العمل بنجاح",
       "saveFailed": "فشل حفظ أمر العمل",

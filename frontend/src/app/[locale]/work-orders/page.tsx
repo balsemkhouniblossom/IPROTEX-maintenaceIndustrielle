@@ -146,6 +146,8 @@ export default function WorkOrdersPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [editingWorkOrder, setEditingWorkOrder] = useState<WorkOrder | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -343,6 +345,33 @@ export default function WorkOrdersPage() {
         console.error('Error deleting work order:', error);
         showNotification('error', tWorkOrders("notifications.deleteFailed"));
       }
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (deletingAll) return;
+    setDeletingAll(true);
+    try {
+      const response = await apiService.deleteAllWorkOrders();
+      setShowDeleteAllModal(false);
+      await refreshWorkOrders();
+      showNotification(
+        'success',
+        tWorkOrders('notifications.allDeleted', {
+          count: response.data.deletedCount,
+        }),
+      );
+    } catch (error) {
+      console.error('Error deleting all work orders:', error);
+      showNotification(
+        'error',
+        extractApiErrorMessage(
+          error,
+          tWorkOrders('notifications.deleteAllFailed'),
+        ),
+      );
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -654,8 +683,17 @@ export default function WorkOrdersPage() {
                 <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">{tWorkOrders("title")}</h1>
                 <p className="mt-1 text-sm text-slate-600">{tWorkOrders('workspaceSubtitle')}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-sm text-slate-500">{table.totalItems} {tWorkOrders('totalLabel')}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAllModal(true)}
+                  disabled={table.totalItems === 0 || deletingAll}
+                  className="btn-danger flex min-h-11 items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                  <span>{tWorkOrders('deleteAll')}</span>
+                </button>
                 <button type="button"
                   onClick={handleCreate}
                   className="btn-primary flex min-h-11 items-center space-x-2"
@@ -761,6 +799,46 @@ export default function WorkOrdersPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showDeleteAllModal}
+        onClose={() => {
+          if (!deletingAll) setShowDeleteAllModal(false);
+        }}
+        title={tWorkOrders('deleteAllConfirmTitle')}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">
+            {tWorkOrders('deleteAllConfirmMessage', {
+              count: table.totalItems,
+            })}
+          </p>
+          <p className="text-sm font-semibold text-red-700">
+            {tWorkOrders('deleteAllWarning')}
+          </p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className="btn-secondary min-h-11"
+              disabled={deletingAll}
+              onClick={() => setShowDeleteAllModal(false)}
+            >
+              {tCommon('cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn-danger min-h-11"
+              disabled={deletingAll}
+              onClick={() => void handleDeleteAll()}
+            >
+              {deletingAll
+                ? tWorkOrders('deletingAll')
+                : tWorkOrders('confirmDeleteAll')}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showModal}

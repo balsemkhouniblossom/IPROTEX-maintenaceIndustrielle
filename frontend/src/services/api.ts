@@ -523,6 +523,8 @@ export const apiService = {
   updateWorkOrder: (id: string, data: AnyObject) =>
     api.patch(`/work-orders/${id}`, data),
   deleteWorkOrder: (id: string) => api.delete(`/work-orders/${id}`),
+  deleteAllWorkOrders: () =>
+    api.delete<{ deletedCount: number }>("/work-orders"),
   getWorkOrderStatistics: () => api.get("/work-orders/statistics"),
   getAdminDashboard: () => api.get("/dashboard/admin"),
   getOperatorDashboard: () => api.get("/operator/dashboard"),

@@ -166,6 +166,11 @@ export class WorkOrderCommandService {
     return toWorkOrderResponseOrNull(removed);
   }
 
+  async removeAll(): Promise<{ deletedCount: number }> {
+    const result = await this.workOrderModel.deleteMany({}).exec();
+    return { deletedCount: result.deletedCount };
+  }
+
   private async generateWorkOrderCode(type?: string) {
     const sequence = await this.counterService.getNextSequence('work_order');
     const prefix = (type || 'maintenance').toLowerCase().startsWith('correct')

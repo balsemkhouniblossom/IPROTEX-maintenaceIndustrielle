@@ -1390,6 +1390,12 @@
     "searchPlaceholder": "Rechercher des bons de travail...",
     "unassigned": "Non assigné",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce bon de travail ?",
+    "deleteAll": "Tout supprimer",
+    "deleteAllConfirmTitle": "Supprimer tous les ordres de travail ?",
+    "deleteAllConfirmMessage": "Cette action supprimera les {count} ordres de travail, y compris ceux qui ne figurent pas sur la page actuelle ou dans les filtres.",
+    "deleteAllWarning": "Cette action est irréversible.",
+    "confirmDeleteAll": "Supprimer tous les ordres de travail",
+    "deletingAll": "Suppression...",
     "table": {
       "otId": "N° OT",
       "description": "Description",
@@ -1461,6 +1467,8 @@
     "notifications": {
       "deleted": "Bon de travail supprimé avec succès",
       "deleteFailed": "Échec de la suppression du bon de travail",
+      "allDeleted": "{count} ordres de travail supprimés avec succès",
+      "deleteAllFailed": "Échec de la suppression de tous les ordres de travail",
       "updated": "Bon de travail mis à jour avec succès",
       "created": "Bon de travail créé avec succès",
       "saveFailed": "Échec de l'enregistrement du bon de travail",

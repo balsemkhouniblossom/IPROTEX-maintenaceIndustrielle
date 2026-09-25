@@ -50,6 +50,7 @@ describe('WorkOrdersService facade delegation', () => {
     create: jest.Mock;
     update: jest.Mock;
     remove: jest.Mock;
+    removeAll: jest.Mock;
   };
   let operatorCommandService: {
     startWorkOrderForOperator: jest.Mock;
@@ -97,6 +98,7 @@ describe('WorkOrdersService facade delegation', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      removeAll: jest.fn(),
     };
     operatorCommandService = {
       startWorkOrderForOperator: jest.fn(),
@@ -163,6 +165,14 @@ describe('WorkOrdersService facade delegation', () => {
 
     await expect(service.remove('wo-1')).resolves.toBe(expected);
     expect(commandService.remove).toHaveBeenCalledWith('wo-1');
+  });
+
+  it('removeAll delegates to WorkOrderCommandService', async () => {
+    const expected = { deletedCount: 4 };
+    commandService.removeAll.mockResolvedValue(expected);
+
+    await expect(service.removeAll()).resolves.toBe(expected);
+    expect(commandService.removeAll).toHaveBeenCalledWith();
   });
 
   it('getStatistics delegates to WorkOrderDashboardQueryService', async () => {
