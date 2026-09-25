@@ -30,6 +30,7 @@ describe('MttrSourceService', () => {
   let interventionReportModel: { find: jest.Mock };
   let machineModel: { find: jest.Mock };
   let userModel: { find: jest.Mock };
+  let panneModel: { find: jest.Mock };
   let service: MttrSourceService;
 
   function workOrder(
@@ -55,11 +56,13 @@ describe('MttrSourceService', () => {
     };
     machineModel = { find: jest.fn().mockReturnValue(queryChain([])) };
     userModel = { find: jest.fn().mockReturnValue(queryChain([])) };
+    panneModel = { find: jest.fn().mockReturnValue(queryChain([])) };
     service = new MttrSourceService(
       interventionReportModel as never,
       workOrderModel as never,
       machineModel as never,
       userModel as never,
+      panneModel as never,
       new MttrCalculationService(),
     );
   });
@@ -272,5 +275,22 @@ describe('MttrSourceService', () => {
     expect(result.summary.mttrMinutes).toBeNull();
     expect(result.excluded.byReason.missingUnresolvableWorkOrder).toBe(1);
     expect(result.months[8].repairs).toEqual([]);
+  });
+
+  it('filters the MTTR source by component using the fault reference codes', async () => {
+    panneModel.find.mockReturnValue(
+      queryChain([{ code_panne: 'B03' }, { code_panne: 'T04' }]),
+    );
+
+    const result = await service.calculate({
+      year: 2026,
+      component: 'Courroie',
+    });
+
+    expect(panneModel.find).toHaveBeenCalledWith({ component: 'Courroie' });
+    expect(workOrderModel.find).toHaveBeenCalledWith({
+      code_panne: { $in: ['B03', 'T04'] },
+    });
+    expect(result.filters.component).toBe('Courroie');
   });
 });

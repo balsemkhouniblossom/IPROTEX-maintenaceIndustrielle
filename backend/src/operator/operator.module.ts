@@ -36,6 +36,7 @@ import {
 import { KpiModule } from '../kpi/kpi.module';
 import { PreventiveTasksModule } from '../preventive-tasks/preventive-tasks.module';
 import { MaintenancePlansModule } from '../maintenance-plans/maintenance-plans.module';
+import { PannePart, PannePartSchema } from '../schemas/panne-part.schema';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MaintenancePlansModule } from '../maintenance-plans/maintenance-plans.m
       { name: Stock.name, schema: StockSchema },
       { name: DocumentEntity.name, schema: DocumentSchema },
       { name: Panne.name, schema: PanneSchema },
+      { name: PannePart.name, schema: PannePartSchema },
       { name: PanneSolution.name, schema: PanneSolutionSchema },
       { name: User.name, schema: UserSchema },
       { name: PreventiveTask.name, schema: PreventiveTaskSchema },

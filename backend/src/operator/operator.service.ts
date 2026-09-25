@@ -37,6 +37,7 @@ import {
   PanneSolution,
   PanneSolutionDocument,
 } from '../schemas/panne-solution.schema';
+import { PannePart, PannePartDocument } from '../schemas/panne-part.schema';
 import {
   PreventiveTask,
   PreventiveTaskDocument,
@@ -163,6 +164,8 @@ export class OperatorService {
     private readonly panneSolutionModel: Model<PanneSolutionDocument>,
     @InjectModel(PreventiveTask.name)
     private readonly preventiveTaskModel: Model<PreventiveTaskDocument>,
+    @InjectModel(PannePart.name)
+    private readonly pannePartModel: Model<PannePartDocument>,
     private readonly workOrdersService: WorkOrdersService,
     private readonly kpiService: KpiService,
     private readonly preventiveTasksService: PreventiveTasksService,
@@ -1139,9 +1142,18 @@ export class OperatorService {
     skip: number,
     filters: FaultFilters,
   ): Promise<PaginatedResponse<PanneResponse>> {
-    const query: Record<string, unknown> = {};
+    const query: Record<string, unknown> = { is_active: { $ne: false } };
     if (filters.machineId) {
-      await this.assertMachineExists(filters.machineId);
+      await this.assertCanAccessMachine(userId, filters.machineId);
+      const machine = await this.machineModel
+        .findById(filters.machineId)
+        .select({ type_id: 1 })
+        .exec();
+      if (!machine) throw new NotFoundException('Machine not found');
+      query.machine_type_id = machine.type_id;
+    } else if (filters.machineTypeId) {
+      this.assertValidObjectId(filters.machineTypeId, 'machine_type_id');
+      query.machine_type_id = this.toObjectId(filters.machineTypeId);
     } else {
       const scope = await this.buildFaultScope(userId, filters);
       if (!scope.machineIds.length) {
@@ -1175,6 +1187,32 @@ export class OperatorService {
       page,
       limit,
     );
+  }
+
+  async getFaultPartsForOperator(userId: string, panneId: string) {
+    this.assertValidObjectId(panneId, 'panne_id');
+    const allowedMachineIds = await this.getAllowedMachineIds(userId);
+    const machines = allowedMachineIds.length
+      ? await this.machineModel
+          .find({ _id: { $in: this.toObjectIdList(allowedMachineIds) } })
+          .select({ type_id: 1 })
+          .exec()
+      : [];
+    const machineTypeIds = machines.map((machine) => machine.type_id);
+    const fault = await this.panneModel
+      .findOne({
+        _id: this.toObjectId(panneId),
+        machine_type_id: { $in: machineTypeIds },
+        is_active: { $ne: false },
+      })
+      .select({ _id: 1 })
+      .exec();
+    if (!fault) throw new ForbiddenException('Fault is outside operator scope');
+
+    return this.pannePartModel
+      .find({ panne_id: fault._id })
+      .populate('part_id')
+      .exec();
   }
 
   async getFaultSolutionsForOperator(

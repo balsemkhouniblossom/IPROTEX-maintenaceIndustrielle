@@ -12,12 +12,16 @@ import {
 import { WorkOrder, WorkOrderDocument } from '../schemas/work-order.schema';
 import { Machine, MachineDocument } from '../schemas/machine.schema';
 import { User, UserDocument } from '../schemas/user.schema';
+import { Panne, PanneDocument } from '../schemas/panne.schema';
 import * as businessTime from '../common/business-time';
 
 export interface MttrSourceQuery {
   year?: number;
   machineIds?: string[];
   technicianId?: string;
+  machineTypeId?: string;
+  faultCode?: string;
+  component?: string;
   dateFrom?: Date;
   dateTo?: Date;
   session?: ClientSession;
@@ -69,6 +73,9 @@ export interface MttrSourceResult {
   filters: {
     machineId?: string;
     technicianId?: string;
+    machineTypeId?: string;
+    faultCode?: string;
+    component?: string;
   };
   summary: {
     completedRepairs: number;
@@ -87,6 +94,7 @@ interface WorkOrderView {
   technicianId: string | null;
   typeMaintenance: string | null;
   status: string | null;
+  faultCode: string | null;
 }
 
 interface ReportView {
@@ -109,14 +117,51 @@ export class MttrSourceService {
     private readonly machineModel: Model<MachineDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(Panne.name)
+    private readonly panneModel: Model<PanneDocument>,
     private readonly calculation: MttrCalculationService,
   ) {}
 
   async calculate(query: MttrSourceQuery = {}): Promise<MttrSourceResult> {
     const workOrderFilter: FilterQuery<WorkOrderDocument> = {};
-    if (query.machineIds?.length) {
+    let scopedMachineIds = query.machineIds;
+    if (query.machineTypeId) {
+      const machineFilter: FilterQuery<MachineDocument> = {
+        type_id: new Types.ObjectId(query.machineTypeId),
+      };
+      if (scopedMachineIds?.length) {
+        machineFilter._id = {
+          $in: scopedMachineIds.map((id) => new Types.ObjectId(id)),
+        };
+      }
+      const machines = await this.machineModel
+        .find(machineFilter)
+        .select({ _id: 1 })
+        .session(query.session ?? null)
+        .lean()
+        .exec();
+      scopedMachineIds = machines.map((machine) =>
+        this.objectIdString(machine._id),
+      );
+      if (!scopedMachineIds.length) {
+        workOrderFilter._id = { $in: [] };
+      }
+    }
+    if (scopedMachineIds?.length) {
       workOrderFilter.machine_id = {
-        $in: query.machineIds.map((id) => new Types.ObjectId(id)),
+        $in: scopedMachineIds.map((id) => new Types.ObjectId(id)),
+      };
+    }
+    if (query.faultCode) workOrderFilter.code_panne = query.faultCode;
+    if (query.component) {
+      const matchingFaults = await this.panneModel
+        .find({ component: query.component })
+        .select({ code_panne: 1 })
+        .session(query.session ?? null)
+        .lean()
+        .exec();
+      workOrderFilter.code_panne = {
+        $in: matchingFaults.map((fault) => fault.code_panne),
       };
     }
 
@@ -129,6 +174,7 @@ export class MttrSourceService {
         technician_id: 1,
         type_maintenance: 1,
         status: 1,
+        code_panne: 1,
       })
       .session(query.session ?? null)
       .lean()
@@ -143,6 +189,7 @@ export class MttrSourceService {
         technicianId: this.objectIdString(workOrder.technician_id),
         typeMaintenance: workOrder.type_maintenance ?? null,
         status: workOrder.status ?? null,
+        faultCode: workOrder.code_panne ?? null,
       });
     }
 
@@ -268,6 +315,9 @@ export class MttrSourceService {
       filters: {
         ...(query.machineIds?.[0] ? { machineId: query.machineIds[0] } : {}),
         ...(query.technicianId ? { technicianId: query.technicianId } : {}),
+        ...(query.machineTypeId ? { machineTypeId: query.machineTypeId } : {}),
+        ...(query.faultCode ? { faultCode: query.faultCode } : {}),
+        ...(query.component ? { component: query.component } : {}),
       },
       summary: {
         completedRepairs: repairs.length,

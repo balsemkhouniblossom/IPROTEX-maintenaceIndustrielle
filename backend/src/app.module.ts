@@ -38,6 +38,7 @@ import {
   LubrificationLogSchema,
 } from './schemas/lubrification-log.schema';
 import { Panne, PanneSchema } from './schemas/panne.schema';
+import { PannePart, PannePartSchema } from './schemas/panne-part.schema';
 import {
   PanneSolution,
   PanneSolutionSchema,
@@ -211,6 +212,7 @@ const SLOW_QUERY_THRESHOLD_MS =
       { name: Lubrifiant.name, schema: LubrifiantSchema },
       { name: LubrificationLog.name, schema: LubrificationLogSchema },
       { name: Panne.name, schema: PanneSchema },
+      { name: PannePart.name, schema: PannePartSchema },
       { name: PanneSolution.name, schema: PanneSolutionSchema },
       { name: KPI.name, schema: KPISchema },
       { name: TranslationCache.name, schema: TranslationCacheSchema },

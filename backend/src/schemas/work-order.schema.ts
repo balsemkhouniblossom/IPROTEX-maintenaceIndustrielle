@@ -76,6 +76,9 @@ export class WorkOrder {
   @Prop()
   code_panne?: string;
 
+  @Prop({ type: Types.ObjectId, ref: 'Panne' })
+  panne_ref_id?: Types.ObjectId;
+
   @Prop({ type: Date, required: true })
   date_created: Date;
 
@@ -127,6 +130,7 @@ export class WorkOrder {
 
 export const WorkOrderSchema = SchemaFactory.createForClass(WorkOrder);
 WorkOrderSchema.index({ machine_id: 1, status: 1 });
+WorkOrderSchema.index({ panne_ref_id: 1, date_created: -1 });
 WorkOrderSchema.index({ technician_id: 1, status: 1 });
 WorkOrderSchema.index(
   { technician_id: 1, date_created: -1 },

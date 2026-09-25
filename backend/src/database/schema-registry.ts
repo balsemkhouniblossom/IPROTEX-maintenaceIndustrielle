@@ -36,6 +36,7 @@ import {
   LubrificationLogSchema,
 } from '../schemas/lubrification-log.schema';
 import { Panne, PanneSchema } from '../schemas/panne.schema';
+import { PannePart, PannePartSchema } from '../schemas/panne-part.schema';
 import {
   PanneSolution,
   PanneSolutionSchema,
@@ -187,6 +188,7 @@ export const SCHEMA_REGISTRY: SchemaRegistryEntry[] = [
   { modelName: Lubrifiant.name, schema: LubrifiantSchema },
   { modelName: LubrificationLog.name, schema: LubrificationLogSchema },
   { modelName: Panne.name, schema: PanneSchema },
+  { modelName: PannePart.name, schema: PannePartSchema },
   { modelName: PanneSolution.name, schema: PanneSolutionSchema },
   { modelName: KPI.name, schema: KPISchema },
   { modelName: AiInteraction.name, schema: AiInteractionSchema },

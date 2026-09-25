@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreatePanneDto {
   @IsString()
@@ -13,7 +19,18 @@ export class CreatePanneDto {
   @IsNotEmpty()
   description: string;
 
+  @IsMongoId()
+  machine_type_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  component: string;
+
   @IsOptional()
   @IsString()
   gravite?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
 }

@@ -29,6 +29,15 @@ interface Panne {
   code_panne: string;
   description: string;
   gravite?: string;
+  component?: string;
+}
+
+interface RecommendedPart {
+  _id: string;
+  part_id: string | { _id: string; part_id?: string; nom_piece?: string };
+  recommended_quantity: number;
+  priority: string;
+  note?: string;
 }
 
 interface WorkOrder {
@@ -222,6 +231,7 @@ function ReportProblemFlow() {
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryingPhoto, setRetryingPhoto] = useState(false);
+  const [recommendedParts, setRecommendedParts] = useState<RecommendedPart[]>([]);
 
   const initialMachineId = searchParams.get("machine") || "";
 
@@ -292,6 +302,22 @@ function ReportProblemFlow() {
         .join("; "),
     [selectedFaults, isOtherSelected, otherProblem],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedFault) {
+      setRecommendedParts([]);
+      return;
+    }
+    apiService.getOperatorFaultParts(selectedFault._id)
+      .then((response) => {
+        if (!cancelled) setRecommendedParts(response.data ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setRecommendedParts([]);
+      });
+    return () => { cancelled = true; };
+  }, [selectedFault]);
 
   const canSubmitReview = useMemo(() => {
     if (!selectedMachine) return false;
@@ -416,7 +442,13 @@ function ReportProblemFlow() {
     setSubmitting(true);
     setError(null);
     try {
-      const codePanne = selectedFault?.code_panne || "OBSERVED_SYMPTOMS";
+      const catalogueOtherFault = faults.find(
+        (fault) => fault.component?.trim().toLowerCase() === "autre",
+      );
+      const codePanne = selectedFault?.code_panne || catalogueOtherFault?.code_panne;
+      if (!codePanne) {
+        throw new Error("No 'Autre panne technique' reference is configured for this machine type.");
+      }
       const problemLabels = [
         ...selectedFaults.map((fault) => fault.description),
         isOtherSelected ? otherProblem.trim() : "",
@@ -958,6 +990,21 @@ function ReportProblemFlow() {
                   </div>
                 </div>
                 {photo && <PhotoPreview photo={photo} label={t("photoUpload")} />}
+                {recommendedParts.length > 0 ? (
+                  <section className="border-t border-slate-200 pt-4">
+                    <h3 className="text-sm font-semibold text-slate-900">Recommended machine parts</h3>
+                    <ul className="mt-2 space-y-2">
+                      {recommendedParts.map((link) => {
+                        const part = typeof link.part_id === "string" ? null : link.part_id;
+                        return <li key={link._id} className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                          <span className="font-semibold">{part?.part_id ?? (typeof link.part_id === "string" ? link.part_id : "")}</span>
+                          {part?.nom_piece ? ` · ${part.nom_piece}` : ""} · Qty {link.recommended_quantity} · {link.priority}
+                          {link.note ? <div className="mt-1 text-xs text-slate-500">{link.note}</div> : null}
+                        </li>;
+                      })}
+                    </ul>
+                  </section>
+                ) : null}
               </div>
             </div>
           )}

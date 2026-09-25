@@ -619,14 +619,28 @@ export const apiService = {
     api.delete(`/intervention-reports/${id}`),
 
   // Pannes
-  getPannes: (params?: PaginationParams) =>
-    api.get("/pannes", withPagination(params)),
+  getPannes: (params?: PaginationParams & {
+    machineTypeId?: string;
+    component?: string;
+    search?: string;
+    active?: string;
+    partsLinked?: string;
+  }) => api.get("/pannes", { params }),
   getOperatorFaults: (params?: AnyObject) =>
     api.get("/operator/faults", { params }),
   createPanne: (data: AnyObject) => api.post("/pannes", data),
   updatePanne: (id: string, data: AnyObject) =>
     api.patch(`/pannes/${id}`, data),
   deletePanne: (id: string) => api.delete(`/pannes/${id}`),
+  getPanneParts: (id: string) => api.get(`/pannes/${id}/parts`),
+  getCompatiblePanneParts: (id: string) =>
+    api.get(`/pannes/${id}/compatible-parts`),
+  upsertPannePart: (id: string, data: AnyObject) =>
+    api.post(`/pannes/${id}/parts`, data),
+  deletePannePart: (id: string, partId: string) =>
+    api.delete(`/pannes/${id}/parts/${partId}`),
+  getOperatorFaultParts: (id: string) =>
+    api.get(`/operator/faults/${id}/parts`),
 
   // Panne Solutions
   getPanneSolutions: (params?: PaginationParams) =>

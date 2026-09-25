@@ -561,4 +561,13 @@ export class OperatorController {
       },
     );
   }
+
+  @Get('faults/:id/parts')
+  getFaultParts(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') panneId: string,
+  ) {
+    const userId = this.ensureOperator(req);
+    return this.operatorService.getFaultPartsForOperator(userId, panneId);
+  }
 }

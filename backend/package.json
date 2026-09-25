@@ -16,6 +16,8 @@
     "translate:gemini:dry-run": "node scripts/gemini-translate-messages.mjs --dry-run",
     "translate:icu-test": "node --test scripts/icu-validation.test.mjs",
     "migrate:user-approval": "ts-node scripts/migrate-user-approval-status.ts",
+    "import:mttr-faults": "ts-node scripts/import-mttr-fault-reference.ts",
+    "import:mttr-faults:dry-run": "ts-node scripts/import-mttr-fault-reference.ts --dry-run",
     "invalidate:all-sessions": "ts-node scripts/invalidate-all-sessions.ts",
     "mongodb:indexes": "ts-node scripts/mongodb-index-manager.ts",
     "mongodb:indexes:apply": "ts-node scripts/mongodb-index-manager.ts --apply",

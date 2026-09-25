@@ -148,6 +148,20 @@ export class WorkOrderReportService {
       throw new BadRequestException('code_panne is required');
     }
 
+    const panne = await this.panneModel
+      .findOne({
+        code_panne: codePanne,
+        machine_type_id: machine.type_id,
+        is_active: { $ne: false },
+      })
+      .select({ _id: 1 })
+      .exec();
+    if (!panne) {
+      throw new BadRequestException(
+        'Fault code is not valid for the selected machine type',
+      );
+    }
+
     const actions = (input.actions || [])
       .map((action) => action.trim())
       .filter(Boolean);
@@ -233,6 +247,7 @@ export class WorkOrderReportService {
               status: 'waiting_validation',
               priorite: input.priority?.trim() || 'high',
               code_panne: codePanne,
+              panne_ref_id: panne._id,
               date_created: now,
               date_start: now,
             },

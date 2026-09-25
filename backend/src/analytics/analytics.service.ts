@@ -23,6 +23,9 @@ export class AnalyticsService {
     filters: {
       machineId?: string;
       technicianId?: string;
+      machineTypeId?: string;
+      faultCode?: string;
+      component?: string;
       actor: { userId: string; role: Role };
     },
   ): Promise<MttrSourceResult> {
@@ -32,6 +35,12 @@ export class AnalyticsService {
 
     if (filters.technicianId && !Types.ObjectId.isValid(filters.technicianId)) {
       throw new BadRequestException('Invalid technicianId');
+    }
+    if (
+      filters.machineTypeId &&
+      !Types.ObjectId.isValid(filters.machineTypeId)
+    ) {
+      throw new BadRequestException('Invalid machineTypeId');
     }
     if (
       filters.technicianId &&
@@ -69,6 +78,9 @@ export class AnalyticsService {
       year,
       machineIds,
       technicianId: filters.technicianId,
+      machineTypeId: filters.machineTypeId,
+      faultCode: filters.faultCode?.trim() || undefined,
+      component: filters.component?.trim() || undefined,
     });
   }
 }

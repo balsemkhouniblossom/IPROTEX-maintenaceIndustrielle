@@ -30,7 +30,11 @@ describe('OperatorService machine scoping', () => {
     findOne: jest.Mock;
     countDocuments: jest.Mock;
   };
-  let machineModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let machineModel: {
+    find: jest.Mock;
+    findById: jest.Mock;
+    countDocuments: jest.Mock;
+  };
   let referenceModel: { find: jest.Mock; countDocuments: jest.Mock };
   let moduleModel: {
     find: jest.Mock;
@@ -49,6 +53,7 @@ describe('OperatorService machine scoping', () => {
   };
   let preventiveTasksService: { syncPlansForModuleIds: jest.Mock };
   let maintenancePlansService: { create: jest.Mock };
+  let pannePartModel: { find: jest.Mock };
   let workOrdersService: {
     getMachinePreventiveStates: jest.Mock;
     scheduleFirstPreventiveOccurrence: jest.Mock;
@@ -88,6 +93,14 @@ describe('OperatorService machine scoping', () => {
         .fn()
         .mockReturnValue(queryResult([{ _id: assignedMachineId }])),
       countDocuments: jest.fn().mockReturnValue(queryResult(1)),
+      findById: jest
+        .fn()
+        .mockReturnValue(
+          queryResult({
+            _id: assignedMachineId,
+            type_id: new Types.ObjectId(),
+          }),
+        ),
       distinct: jest.fn().mockReturnValue(queryResult([])),
     } as never;
     referenceModel = {
@@ -136,6 +149,9 @@ describe('OperatorService machine scoping', () => {
     };
     maintenancePlansService = {
       create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+    };
+    pannePartModel = {
+      find: jest.fn().mockReturnValue(queryResult([])),
     };
     workOrdersService = {
       getMachinePreventiveStates: jest.fn().mockResolvedValue({ sections: {} }),
@@ -189,6 +205,7 @@ describe('OperatorService machine scoping', () => {
       panneModel as never,
       panneSolutionModel as never,
       preventiveTaskModel as never,
+      pannePartModel as never,
       workOrdersService as never,
       {} as never,
       preventiveTasksService as never,
@@ -341,6 +358,7 @@ describe('OperatorService machine scoping', () => {
         { code_panne: { $regex: 'bearing', $options: 'i' } },
         { description: { $regex: 'bearing', $options: 'i' } },
       ],
+      is_active: { $ne: false },
     });
 
     workOrderModel.find.mockReturnValueOnce(
@@ -362,17 +380,14 @@ describe('OperatorService machine scoping', () => {
     );
   });
 
-  it('returns the complete fault catalogue for a selected existing machine', async () => {
+  it('rejects a fault catalogue request for an unassigned machine', async () => {
     await expect(
       service.getFaultsForOperator(operatorId.toString(), 1, 20, 0, {
         machineId: unassignedMachineId.toString(),
       }),
-    ).resolves.toMatchObject({ totalItems: 0 });
+    ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(machineModel.countDocuments).toHaveBeenCalledWith({
-      _id: unassignedMachineId,
-    });
-    expect(panneModel.find).toHaveBeenCalledWith({});
+    expect(panneModel.find).not.toHaveBeenCalled();
     expect(workOrderModel.find).not.toHaveBeenCalled();
   });
 

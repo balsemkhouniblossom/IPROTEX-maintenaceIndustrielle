@@ -24,6 +24,9 @@ export class AnalyticsController {
     @Query('year') yearQuery?: string,
     @Query('machineId') machineId?: string,
     @Query('technicianId') technicianId?: string,
+    @Query('machineTypeId') machineTypeId?: string,
+    @Query('faultCode') faultCode?: string,
+    @Query('component') component?: string,
   ): Promise<MttrSourceResult> {
     const yearMatch = /^(\d{4})$/.exec(yearQuery ?? '');
     const year = yearMatch ? Number(yearMatch[1]) : Number.NaN;
@@ -34,6 +37,9 @@ export class AnalyticsController {
     return this.analyticsService.getMttr(year, {
       machineId,
       technicianId,
+      machineTypeId,
+      faultCode,
+      component,
       actor: {
         userId: req.user!.userId!,
         role: req.user!.role as never,

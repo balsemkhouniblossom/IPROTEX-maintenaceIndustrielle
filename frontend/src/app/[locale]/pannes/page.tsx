@@ -21,6 +21,7 @@ import type { ToastNotificationState } from "@/components/ToastNotification";
 import { apiService } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayText } from "@/services/displayValues";
+import { extractApiErrorMessage } from "@/services/apiErrors";
 import {
   ALL_FIELDS_TOKEN,
   getSearchableFields,
@@ -33,6 +34,20 @@ interface Panne {
   code_panne: string;
   description: string;
   gravite?: string;
+  machine_type_id?: string | MachineType;
+  component?: string;
+  is_active?: boolean;
+  recommended_parts?: PannePart[];
+}
+
+interface MachineType { _id: string; type_id: number; name: string }
+interface CataloguePart { _id: string; part_id: string; nom_piece: string; ref_constructeur?: string }
+interface PannePart {
+  _id: string;
+  part_id: string | CataloguePart;
+  recommended_quantity: number;
+  priority: "optional" | "recommended" | "required";
+  note?: string;
 }
 
 interface PanneRef {
@@ -62,6 +77,9 @@ type PanneFormData = {
   description: string;
   gravite: string;
   details: string;
+  machine_type_id: string;
+  component: string;
+  is_active: boolean;
 };
 
 type SolutionFormData = {
@@ -77,6 +95,7 @@ const FAILURE_SEARCH_FIELDS = [
   "code_panne",
   "description",
   "gravite",
+  "component",
   "solution_cause",
   "solution_recommendation",
 ] as const;
@@ -241,7 +260,17 @@ export default function PannesPage() {
     description: "",
     gravite: "",
     details: "",
+    machine_type_id: "",
+    component: "",
+    is_active: true,
   });
+  const [machineTypes, setMachineTypes] = useState<MachineType[]>([]);
+  const [compatibleParts, setCompatibleParts] = useState<CataloguePart[]>([]);
+  const [machineTypeFilter, setMachineTypeFilter] = useState("");
+  const [componentFilter, setComponentFilter] = useState("");
+  const [partsFilter, setPartsFilter] = useState("");
+  const [partsPanne, setPartsPanne] = useState<Panne | null>(null);
+  const [partForm, setPartForm] = useState({ part_id: "", recommended_quantity: "1", priority: "recommended", note: "" });
   const [solutionFormData, setSolutionFormData] = useState<SolutionFormData>({
     solution_id: "",
     panne_id: "",
@@ -263,14 +292,19 @@ export default function PannesPage() {
 
   async function loadData(pageNumber = page) {
     try {
-      const [pannesRes, solutionsList] = await Promise.all([
+      const [pannesRes, solutionsList, machineTypeItems] = await Promise.all([
         apiService.getPannes({
           page: pageNumber,
           limit,
+          machineTypeId: machineTypeFilter || undefined,
+          component: componentFilter || undefined,
+          search: searchTerm || undefined,
+          partsLinked: partsFilter || undefined,
         }),
         apiService.fetchAllFromPaginatedEndpoint<PanneSolution>(
           apiService.getPanneSolutions,
         ),
+        apiService.fetchAllFromPaginatedEndpoint<MachineType>(apiService.getMachineTypes),
       ]);
 
       const data = pannesRes.data;
@@ -280,6 +314,7 @@ export default function PannesPage() {
       setPage(data?.page || 1);
       setTotalPages(data?.totalPages || 1);
       setTotalItems(data?.totalItems || 0);
+      setMachineTypes(machineTypeItems);
     } catch (error) {
       console.error("Error loading failures:", error);
       setPannes([]);
@@ -288,6 +323,25 @@ export default function PannesPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!partsPanne) {
+      setCompatibleParts([]);
+      return;
+    }
+    let active = true;
+    apiService.getCompatiblePanneParts(partsPanne._id)
+      .then((response) => {
+        if (active) setCompatibleParts(response.data ?? []);
+      })
+      .catch((error) => {
+        if (active) {
+          setCompatibleParts([]);
+          setNotification({ type: "error", message: extractApiErrorMessage(error, "Unable to load compatible parts") });
+        }
+      });
+    return () => { active = false; };
+  }, [partsPanne]);
 
   function handlePageChange(newPage: number) {
     void loadData(newPage);
@@ -397,6 +451,9 @@ export default function PannesPage() {
       description: template.description ?? "",
       gravite: template.gravite ?? "",
       details: "",
+      machine_type_id: typeof template.machine_type_id === "string" ? template.machine_type_id : template.machine_type_id?._id || "",
+      component: template.component ?? "",
+      is_active: template.is_active !== false,
     });
   }
 
@@ -407,6 +464,9 @@ export default function PannesPage() {
       description: "",
       gravite: "",
       details: "",
+      machine_type_id: "",
+      component: "",
+      is_active: true,
     });
     setCustomMode({
       panne_id: false,
@@ -452,6 +512,14 @@ export default function PannesPage() {
       showNotification("error", t("notifications.descriptionRequired"));
       return false;
     }
+    if (!formData.machine_type_id) {
+      showNotification("error", "Machine type is required");
+      return false;
+    }
+    if (!formData.component.trim()) {
+      showNotification("error", "Component is required");
+      return false;
+    }
     return true;
   }
 
@@ -488,6 +556,9 @@ export default function PannesPage() {
       description: panne.description ?? "",
       gravite: panne.gravite ?? "",
       details: "",
+      machine_type_id: typeof panne.machine_type_id === "string" ? panne.machine_type_id : panne.machine_type_id?._id || "",
+      component: panne.component ?? "",
+      is_active: panne.is_active !== false,
     });
     setCustomMode({
       panne_id: false,
@@ -570,6 +641,9 @@ export default function PannesPage() {
         panne_id: formData.panne_id.trim(),
         code_panne: formData.code_panne.trim(),
         description: descriptionWithDetails,
+        machine_type_id: formData.machine_type_id,
+        component: formData.component.trim(),
+        is_active: formData.is_active,
       };
 
       if (formData.gravite.trim()) payload.gravite = formData.gravite.trim();
@@ -632,6 +706,38 @@ export default function PannesPage() {
       showNotification("error", tSolutions("notifications.saveFailed"));
     } finally {
       setSubmittingSolution(false);
+    }
+  }
+
+  async function handlePartLinkSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!partsPanne || !partForm.part_id) return;
+    try {
+      await apiService.upsertPannePart(partsPanne._id, {
+        part_id: partForm.part_id,
+        recommended_quantity: Number(partForm.recommended_quantity),
+        priority: partForm.priority,
+        note: partForm.note.trim() || undefined,
+      });
+      setPartForm({ part_id: "", recommended_quantity: "1", priority: "recommended", note: "" });
+      await refreshFailures();
+      setPartsPanne(null);
+      showNotification("success", "Recommended part linked");
+    } catch (error) {
+      console.error("Error linking recommended part", error);
+      showNotification("error", "Unable to link the recommended part");
+    }
+  }
+
+  async function handleRemovePart(panne: Panne, part: PannePart) {
+    const partId = typeof part.part_id === "string" ? part.part_id : part.part_id._id;
+    try {
+      await apiService.deletePannePart(panne._id, partId);
+      await refreshFailures();
+      showNotification("success", "Recommended part removed");
+    } catch (error) {
+      console.error("Error removing recommended part", error);
+      showNotification("error", "Unable to remove the recommended part");
     }
   }
 
@@ -823,6 +929,19 @@ export default function PannesPage() {
       onNotificationClose={() => setNotification(null)}
       closeLabel={tCommon("close")}
     >
+      <div className="panel mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <select className="input-field" value={machineTypeFilter} onChange={(e) => setMachineTypeFilter(e.target.value)} aria-label="Machine type process">
+          <option value="">All processes</option>
+          {machineTypes.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}
+        </select>
+        <input className="input-field" value={componentFilter} onChange={(e) => setComponentFilter(e.target.value)} placeholder="Component" aria-label="Component" />
+        <select className="input-field" value={partsFilter} onChange={(e) => setPartsFilter(e.target.value)} aria-label="Parts link status">
+          <option value="">All part links</option>
+          <option value="true">With recommended parts</option>
+          <option value="false">Without recommended parts</option>
+        </select>
+        <button type="button" className="btn-secondary" onClick={() => void loadData(1)}>Apply filters</button>
+      </div>
       <CrudDataTablePanel
         title={t("allPannes")}
         page={page}
@@ -835,6 +954,13 @@ export default function PannesPage() {
         emptyMessage={panneEmptyMessage}
         actionsHeader={tCommon("table.actions")}
         columns={[
+          {
+            id: "process",
+            header: "Process",
+            render: (panne) => typeof panne.machine_type_id === "string"
+              ? machineTypes.find((type) => type._id === panne.machine_type_id)?.name || tCommon("notAvailable")
+              : panne.machine_type_id?.name || tCommon("notAvailable"),
+          },
           {
             id: "fault-reference",
             header: t("table.faultReference", {
@@ -849,6 +975,11 @@ export default function PannesPage() {
             render: (panne) => panne.code_panne,
           },
           {
+            id: "component",
+            header: "Component",
+            render: (panne) => panne.component || tCommon("notAvailable"),
+          },
+          {
             id: "description",
             header: t("table.description"),
             render: (panne) => (
@@ -861,6 +992,22 @@ export default function PannesPage() {
             id: "severity",
             header: t("table.severity"),
             render: (panne) => panne.gravite || tCommon("notAvailable"),
+          },
+          {
+            id: "parts",
+            header: "Recommended parts",
+            render: (panne) => (
+              <div className="min-w-48 space-y-2">
+                {(panne.recommended_parts ?? []).map((link) => {
+                  const part = typeof link.part_id === "string" ? null : link.part_id;
+                  return <div key={link._id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1 text-xs">
+                    <span>{part ? `${part.part_id} - ${part.nom_piece}` : (typeof link.part_id === "string" ? link.part_id : "")} × {link.recommended_quantity}</span>
+                    <button type="button" className="text-red-700" onClick={() => void handleRemovePart(panne, link)} aria-label="Remove recommended part">×</button>
+                  </div>;
+                })}
+                <button type="button" className="text-xs font-semibold text-blue-700 underline" onClick={() => setPartsPanne(panne)}>Manage parts</button>
+              </div>
+            ),
           },
           {
             id: "cause",
@@ -900,6 +1047,27 @@ export default function PannesPage() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <SelectField
+              label="Machine type / process"
+              value={formData.machine_type_id}
+              onChange={(machine_type_id) => setFormData({ ...formData, machine_type_id })}
+              title="Machine type / process"
+              required
+            >
+              <option value="">Select a process</option>
+              {machineTypes.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}
+            </SelectField>
+            <FormFieldShell label="Component">
+              <InlineTextInput
+                value={formData.component}
+                onChange={(component) => setFormData({ ...formData, component })}
+                title="Component"
+                placeholder="Affected component"
+                required
+              />
+            </FormFieldShell>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormFieldShell
               label={t("form.faultReference", { default: "Fault Reference" })}
@@ -1104,6 +1272,11 @@ export default function PannesPage() {
             placeholder="Add any extra context you want to keep with this record"
           />
 
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" checked={formData.is_active} onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })} />
+            Active fault code
+          </label>
+
           <ModalFormActions
             cancelLabel={tCommon("cancel")}
             submitLabel={getPanneSubmitLabel(
@@ -1120,6 +1293,34 @@ export default function PannesPage() {
             }}
             withTopBorder
           />
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(partsPanne)}
+        onClose={() => setPartsPanne(null)}
+        title={partsPanne ? `Recommended parts · ${partsPanne.code_panne}` : "Recommended parts"}
+        size="lg"
+      >
+        <form onSubmit={handlePartLinkSubmit} className="space-y-4">
+          <SelectField label="Machine part" value={partForm.part_id} onChange={(part_id) => setPartForm((prev) => ({ ...prev, part_id }))} title="Machine part" required>
+            <option value="">Select a catalogue part</option>
+            {compatibleParts.map((part) => <option key={part._id} value={part._id}>{part.part_id} - {part.nom_piece}</option>)}
+          </SelectField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormFieldShell label="Recommended quantity">
+              <input className="input-field" type="number" min="1" value={partForm.recommended_quantity} onChange={(event) => setPartForm((prev) => ({ ...prev, recommended_quantity: event.target.value }))} title="Recommended quantity" required />
+            </FormFieldShell>
+            <SelectField label="Priority" value={partForm.priority} onChange={(priority) => setPartForm((prev) => ({ ...prev, priority }))} title="Priority">
+              <option value="optional">Optional</option>
+              <option value="recommended">Recommended</option>
+              <option value="required">Required</option>
+            </SelectField>
+          </div>
+          <FormFieldShell label="Usage note">
+            <InlineTextArea value={partForm.note} onChange={(note) => setPartForm((prev) => ({ ...prev, note }))} title="Usage note" rows={3} />
+          </FormFieldShell>
+          <ModalFormActions cancelLabel={tCommon("cancel")} submitLabel="Link part" submitting={false} onCancel={() => setPartsPanne(null)} withTopBorder />
         </form>
       </Modal>
 

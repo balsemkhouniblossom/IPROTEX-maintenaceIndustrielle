@@ -8,6 +8,7 @@ import { WorkOrder, WorkOrderSchema } from '../schemas/work-order.schema';
 import { Stock, StockSchema } from '../schemas/stock.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { User, UserSchema } from '../schemas/user.schema';
+import { Panne, PanneSchema } from '../schemas/panne.schema';
 import {
   InterventionReport,
   InterventionReportSchema,
@@ -20,6 +21,7 @@ import {
       { name: Stock.name, schema: StockSchema },
       { name: Machine.name, schema: MachineSchema },
       { name: User.name, schema: UserSchema },
+      { name: Panne.name, schema: PanneSchema },
       {
         name: InterventionReport.name,
         schema: InterventionReportSchema,

@@ -10,9 +10,11 @@ import { WorkOrderReportService } from './work-order-report.service';
 function execResult<T>(value: T) {
   const chain = {
     session: jest.fn(),
+    select: jest.fn(),
     exec: jest.fn().mockResolvedValue(value),
   };
   chain.session.mockReturnValue(chain);
+  chain.select.mockReturnValue(chain);
   return chain;
 }
 
@@ -42,6 +44,7 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
   };
   let interventionReportModel: { findOne: jest.Mock; create: jest.Mock };
   let machineModel: { findById: jest.Mock };
+  let panneModel: { findOne: jest.Mock };
   let counterService: { getNextSequence: jest.Mock };
   let notificationService: {
     notifyCorrectiveAwaitingValidation: jest.Mock;
@@ -74,6 +77,13 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
           execResult({ _id: machineId, type_id: new Types.ObjectId() }),
         ),
     };
+    panneModel = {
+      findOne: jest
+        .fn()
+        .mockReturnValue(
+          execResult({ _id: new Types.ObjectId(), code_panne: 'STOP-1' }),
+        ),
+    };
     counterService = {
       getNextSequence: jest.fn().mockResolvedValue(1),
     };
@@ -91,7 +101,7 @@ describe('WorkOrderReportService.createCorrectiveReportForOperator', () => {
       machineModel as never,
       {} as never,
       {} as never,
-      {} as never,
+      panneModel as never,
       {} as never,
       counterService as never,
       notificationService as never,

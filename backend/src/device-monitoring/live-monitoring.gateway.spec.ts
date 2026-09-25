@@ -398,9 +398,14 @@ describe('LiveMonitoringGateway', () => {
   describe('device:telemetry for an authenticated device socket', () => {
     it('re-verifies the device is still active before ingesting', async () => {
       const record = { machine_id: machineId, device_id: 'DEV-1' };
+      const receivedAt = new Date();
       deviceAuthService.getDeviceOrThrow.mockResolvedValue(record);
       telemetryIngestionService.recordTelemetry.mockResolvedValue({
-        record: { metrics: { x: 1 }, recorded_at: new Date() },
+        record: {
+          metrics: { x: 1 },
+          recorded_at: receivedAt,
+          received_at: receivedAt,
+        },
         cameOnline: false,
       });
       const socket = fakeSocket({});
