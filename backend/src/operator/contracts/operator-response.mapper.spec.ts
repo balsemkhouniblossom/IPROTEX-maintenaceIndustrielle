@@ -105,6 +105,7 @@ describe('toPanneResponse / toPanneSolutionResponse', () => {
       panne_id: 'P-1',
       code_panne: 'E-1',
       description: 'Overheating',
+      is_active: true,
     };
     const doc = {
       _id: new Types.ObjectId(),

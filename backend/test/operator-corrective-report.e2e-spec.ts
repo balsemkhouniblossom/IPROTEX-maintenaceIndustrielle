@@ -20,6 +20,7 @@ import {
   InterventionReport,
   InterventionReportDocument,
 } from '../src/schemas/intervention-report.schema';
+import { Panne, PanneDocument } from '../src/schemas/panne.schema';
 
 describe('Operator corrective report workflow (e2e)', () => {
   let replSet: MongoMemoryReplSet;
@@ -31,6 +32,7 @@ describe('Operator corrective report workflow (e2e)', () => {
   let machines: Model<MachineDocument>;
   let workOrders: Model<WorkOrderDocument>;
   let reports: Model<InterventionReportDocument>;
+  let pannes: Model<PanneDocument>;
   let operatorToken: string;
   let machine: MachineDocument;
 
@@ -65,6 +67,7 @@ describe('Operator corrective report workflow (e2e)', () => {
     machines = app.get(getModelToken(Machine.name));
     workOrders = app.get(getModelToken(WorkOrder.name));
     reports = app.get(getModelToken(InterventionReport.name));
+    pannes = app.get(getModelToken(Panne.name));
 
     const machineType = await machineTypes.create({
       type_id: 100,
@@ -102,6 +105,13 @@ describe('Operator corrective report workflow (e2e)', () => {
 
   it('creates a corrective work order and report from required visible fields without requiring a photo', async () => {
     const codePanne = `COR-E2E-${Date.now()}`;
+    await pannes.create({
+      panne_id: `PANNE-${codePanne}`,
+      code_panne: codePanne,
+      description: 'Corrective E2E fault',
+      machine_type_id: machine.type_id,
+      is_active: true,
+    });
 
     const response = await request(app.getHttpServer())
       .post('/operator/report-problem')

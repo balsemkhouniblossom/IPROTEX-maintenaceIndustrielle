@@ -93,14 +93,12 @@ describe('OperatorService machine scoping', () => {
         .fn()
         .mockReturnValue(queryResult([{ _id: assignedMachineId }])),
       countDocuments: jest.fn().mockReturnValue(queryResult(1)),
-      findById: jest
-        .fn()
-        .mockReturnValue(
-          queryResult({
-            _id: assignedMachineId,
-            type_id: new Types.ObjectId(),
-          }),
-        ),
+      findById: jest.fn().mockReturnValue(
+        queryResult({
+          _id: assignedMachineId,
+          type_id: new Types.ObjectId(),
+        }),
+      ),
       distinct: jest.fn().mockReturnValue(queryResult([])),
     } as never;
     referenceModel = {

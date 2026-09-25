@@ -265,8 +265,16 @@ describe('simple CRUD services coverage', () => {
   });
 
   it('covers pannes and panne-solutions CRUD wrappers', async () => {
+    const machineTypeId = '507f1f77bcf86cd799439011';
     const panneModel = createModelMock({ _id: 'panne-id' });
-    panneModel.find.mockReturnValue(createQuery([{ _id: 'panne-id' }]));
+    panneModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: 'panne-id',
+          toObject: () => ({ _id: 'panne-id' }),
+        },
+      ]),
+    );
     panneModel.countDocuments.mockReturnValue(createQuery(2));
     panneModel.findById.mockReturnValue(createQuery({ _id: 'panne-id' }));
     panneModel.findByIdAndUpdate.mockReturnValue(
@@ -275,10 +283,30 @@ describe('simple CRUD services coverage', () => {
     panneModel.findByIdAndDelete.mockReturnValue(
       createQuery({ _id: 'panne-id' }),
     );
-    const pannesService = new PannesService(panneModel as never);
+    const pannePartModel = {
+      distinct: jest.fn().mockReturnValue(createQuery([])),
+      find: jest.fn().mockReturnValue(createQuery([])),
+      deleteMany: jest.fn().mockReturnValue(createQuery({ deletedCount: 0 })),
+    };
+    const machineTypeModel = {
+      exists: jest.fn().mockResolvedValue({ _id: machineTypeId }),
+    };
+    const pannesService = new PannesService(
+      panneModel as never,
+      pannePartModel as never,
+      machineTypeModel as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
 
     await expect(
-      pannesService.create({ description: 'Fault' } as never),
+      pannesService.create({
+        panne_id: 'P-1',
+        code_panne: 'E-1',
+        description: 'Fault',
+        machine_type_id: machineTypeId,
+      } as never),
     ).resolves.toMatchObject({
       description: 'Fault',
     });

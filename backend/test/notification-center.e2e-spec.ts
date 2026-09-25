@@ -33,6 +33,7 @@ import {
   PartRequestDocument,
 } from '../src/schemas/part-request.schema';
 import { Stock, StockDocument } from '../src/schemas/stock.schema';
+import { Panne, PanneDocument } from '../src/schemas/panne.schema';
 
 describe('Notification center (e2e)', () => {
   // A replica set is required: corrective-report creation writes the work
@@ -50,6 +51,7 @@ describe('Notification center (e2e)', () => {
   let notifications: Model<NotificationDocument>;
   let partRequests: Model<PartRequestDocument>;
   let stocks: Model<StockDocument>;
+  let pannes: Model<PanneDocument>;
 
   let operatorToken: string;
   let otherOperatorToken: string;
@@ -95,6 +97,7 @@ describe('Notification center (e2e)', () => {
     notifications = app.get(getModelToken(Notification.name));
     partRequests = app.get(getModelToken(PartRequest.name));
     stocks = app.get(getModelToken(Stock.name));
+    pannes = app.get(getModelToken(Panne.name));
 
     await seedBaseData();
   }, 120_000);
@@ -132,6 +135,22 @@ describe('Notification center (e2e)', () => {
       serial_no: 'NOTIF-001',
       status: 'active',
     });
+    await pannes.create([
+      {
+        panne_id: 'PANNE-NOTIF-1',
+        code_panne: 'FAULT-NOTIF-1',
+        description: 'Notification E2E breaker fault',
+        machine_type_id: machineType._id,
+        is_active: true,
+      },
+      {
+        panne_id: 'PANNE-NOTIF-2',
+        code_panne: 'FAULT-NOTIF-2',
+        description: 'Notification E2E wiring fault',
+        machine_type_id: machineType._id,
+        is_active: true,
+      },
+    ]);
     await modules.create({
       module_id: 'MODULE-NOTIF',
       machine_id: machine._id,

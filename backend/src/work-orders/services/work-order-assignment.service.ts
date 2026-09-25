@@ -53,7 +53,7 @@ export class WorkOrderAssignmentService {
   }
 
   claimableUnassignedScope(
-    accessibleMachineIds: Types.ObjectId[],
+    _accessibleMachineIds: Types.ObjectId[],
   ): FilterQuery<WorkOrderDocument> {
     return {
       status: { $nin: CLOSED_WORK_ORDER_STATUSES },

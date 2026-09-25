@@ -259,7 +259,7 @@ export class TechnicianService {
   }
 
   private claimableUnassignedScope(
-    machineIds: Types.ObjectId[],
+    _machineIds: Types.ObjectId[],
   ): FilterQuery<WorkOrderDocument> | null {
     return {
       status: { $nin: CLOSED_STATUSES },

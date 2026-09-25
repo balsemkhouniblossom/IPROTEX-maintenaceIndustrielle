@@ -12,11 +12,13 @@ import type { ArgumentsHost } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 describe('backend log sanitization', () => {
+  const originalLogFormat = process.env.LOG_FORMAT;
   let logSpy: jest.SpyInstance;
   let warnSpy: jest.SpyInstance;
   let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    delete process.env.LOG_FORMAT;
     logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -24,6 +26,11 @@ describe('backend log sanitization', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  afterAll(() => {
+    if (originalLogFormat === undefined) delete process.env.LOG_FORMAT;
+    else process.env.LOG_FORMAT = originalLogFormat;
   });
 
   it('prefers originalUrl over a mount-truncated path/url (NestJS forRoutes(\'*\') rewrites both to "/")', () => {
