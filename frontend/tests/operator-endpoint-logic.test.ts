@@ -712,7 +712,8 @@ test("Corrective page uses the existing operator report-problem API and shows re
 
   assert.match(source, /apiService\.createOperatorCorrectiveReport/);
   assert.match(source, /machine_id: selectedMachine/);
-  assert.match(source, /selectedFault\?\.code_panne \|\| "OBSERVED_SYMPTOMS"/);
+  assert.match(source, /selectedFault\?\.code_panne \|\| catalogueOtherFault\?\.code_panne/);
+  assert.doesNotMatch(source, /OBSERVED_SYMPTOMS/);
   assert.match(source, /actions/);
   assert.match(source, /priority:/);
   assert.match(source, /step === "machine"/);
