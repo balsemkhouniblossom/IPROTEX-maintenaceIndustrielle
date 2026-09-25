@@ -8,6 +8,12 @@ import { Telemetry, TelemetrySchema } from '../schemas/telemetry.schema';
 import { FaultEvent, FaultEventSchema } from '../schemas/fault-event.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
 import { User, UserSchema } from '../schemas/user.schema';
+import {
+  Module as MachineModule,
+  ModuleSchema,
+} from '../schemas/module.schema';
+import { Capteur, CapteurSchema } from '../schemas/capteur.schema';
+import { Mesure, MesureSchema } from '../schemas/mesure.schema';
 
 import { resolveJwtSecret } from '../auth/jwt.strategy';
 import { DocumentsModule } from '../documents/documents.module';
@@ -25,6 +31,7 @@ import { LiveMonitoringGateway } from './live-monitoring.gateway';
 import { LiveStatusService } from './live-status.service';
 import { DeviceOfflineSweepService } from './device-offline-sweep.service';
 import { LiveMonitoringController } from './live-monitoring.controller';
+import { SensorMeasurementIngestionService } from './sensor-measurement-ingestion.service';
 
 @Module({
   imports: [
@@ -35,6 +42,9 @@ import { LiveMonitoringController } from './live-monitoring.controller';
       { name: FaultEvent.name, schema: FaultEventSchema },
       { name: Machine.name, schema: MachineSchema },
       { name: User.name, schema: UserSchema },
+      { name: MachineModule.name, schema: ModuleSchema },
+      { name: Capteur.name, schema: CapteurSchema },
+      { name: Mesure.name, schema: MesureSchema },
     ]),
     // A dedicated JwtModule registration (rather than importing AuthModule)
     // keeps this module fully self-contained — it only needs to *verify*
@@ -65,6 +75,7 @@ import { LiveMonitoringController } from './live-monitoring.controller';
     LiveStatusService,
     DeviceOfflineSweepService,
     MqttIngestionService,
+    SensorMeasurementIngestionService,
   ],
   exports: [LiveStatusService],
 })

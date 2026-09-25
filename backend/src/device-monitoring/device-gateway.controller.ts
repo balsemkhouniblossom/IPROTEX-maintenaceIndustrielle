@@ -11,6 +11,7 @@ import { TelemetryIngestDto } from './dto/telemetry-ingest.dto';
 import { FaultIngestDto } from './dto/fault-ingest.dto';
 import { DeviceConnectionStatus } from '../schemas/device.schema';
 import { Public } from '../auth/decorators/public.decorator';
+import { parseDeviceDate } from './telemetry-validation';
 
 /**
  * The device-facing REST ingestion surface — reachable only with valid
@@ -68,13 +69,13 @@ export class DeviceGatewayController {
     const { record, cameOnline } =
       await this.telemetryIngestionService.recordTelemetry(device, {
         metrics: dto.metrics,
-        recordedAt: dto.recorded_at ? new Date(dto.recorded_at) : undefined,
+        recordedAt: parseDeviceDate(dto.recorded_at),
       });
 
     this.liveMonitoringGateway.emitTelemetry(String(device.machine_id), {
       deviceId: device.device_id,
       metrics: record.metrics,
-      recordedAt: record.recorded_at.toISOString(),
+      recordedAt: record.received_at.toISOString(),
     });
     if (cameOnline) {
       this.liveMonitoringGateway.emitStatusChange(String(device.machine_id), {
@@ -98,7 +99,7 @@ export class DeviceGatewayController {
         codePanne: dto.code_panne,
         severity: dto.severity,
         message: dto.message,
-        raisedAt: dto.raised_at ? new Date(dto.raised_at) : undefined,
+        raisedAt: parseDeviceDate(dto.raised_at),
       });
 
     this.liveMonitoringGateway.emitFault(String(device.machine_id), {

@@ -15,7 +15,7 @@ import { Modal } from "@/components/Modal";
 import { apiService } from "@/services/api";
 import { extractApiErrorMessage } from "@/services/apiErrors";
 
-type DeviceType = "openplc" | "simulator" | "gateway";
+type DeviceType = "openplc" | "simulator" | "gateway" | "esp32";
 
 interface Device {
   _id: string;
@@ -34,7 +34,7 @@ interface Machine {
   machine_id: string;
 }
 
-const DEVICE_TYPES: DeviceType[] = ["openplc", "simulator", "gateway"];
+const DEVICE_TYPES: DeviceType[] = ["openplc", "simulator", "gateway", "esp32"];
 
 function machineRefId(value: Device["machine_id"]): string {
   return typeof value === "string" ? value : value?._id ?? "";

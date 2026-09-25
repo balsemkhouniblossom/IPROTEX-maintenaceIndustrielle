@@ -3811,7 +3811,8 @@
     "deviceTypes": {
       "openplc": "OpenPLC",
       "simulator": "Simulator",
-      "gateway": "Gateway"
+      "gateway": "Gateway",
+        "esp32": "ESP32"
     },
     "table": {
       "liveStatus": "Live Status"

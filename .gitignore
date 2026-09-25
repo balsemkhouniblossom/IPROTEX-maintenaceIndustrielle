@@ -37,6 +37,9 @@ coverage
 .env.example
 backend/.env.example
 
+# Local ESP32 provisioning secrets
+firmware/**/secrets.h
+
 # =====================
 # LOCAL BACKUPS (VERY IMPORTANT)
 # Manual code/filesystem/MongoDB backup archives — these can contain raw

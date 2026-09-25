@@ -45,11 +45,12 @@ export function useLiveMonitoring() {
       const items: LiveMachineStatus[] = Array.isArray(response.data)
         ? response.data
         : [];
-      setStatusByMachine((prev) => {
-        const next = { ...prev };
-        for (const item of items) next[item.machineId] = item;
-        return next;
-      });
+      // The poll response is the authoritative server snapshot. Replacing
+      // the map prevents deleted, disabled, or reassigned devices from
+      // remaining visible until a hard browser refresh.
+      setStatusByMachine(
+        Object.fromEntries(items.map((item) => [item.machineId, item])),
+      );
     } catch (error) {
       const status = (error as { response?: { status?: number } })?.response
         ?.status;
@@ -169,6 +170,10 @@ export function useLiveMonitoring() {
       socket?.disconnect();
       socketRef.current = null;
       currentSubscriptions.clear();
+      // Authentication changes must never leave a previous user's machine
+      // status visible while the next role-scoped snapshot is loading.
+      setStatusByMachine({});
+      setSocketConnected(false);
     };
   }, [user, refresh]);
 

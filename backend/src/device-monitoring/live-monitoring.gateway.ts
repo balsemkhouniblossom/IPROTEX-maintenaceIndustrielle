@@ -23,6 +23,7 @@ import { DeviceAuthService } from './device-auth.service';
 import { TelemetryIngestionService } from './telemetry-ingestion.service';
 import { DeviceConnectionStatus } from '../schemas/device.schema';
 import { FaultEventSeverity } from '../schemas/fault-event.schema';
+import { parseDeviceDate } from './telemetry-validation';
 
 interface UserSocketData {
   kind: 'user';
@@ -267,15 +268,13 @@ export class LiveMonitoringGateway
       const { record: telemetry, cameOnline } =
         await this.telemetryIngestionService.recordTelemetry(record, {
           metrics: payload?.metrics ?? {},
-          recordedAt: payload?.recorded_at
-            ? new Date(payload.recorded_at)
-            : undefined,
+          recordedAt: parseDeviceDate(payload?.recorded_at),
         });
 
       this.emitTelemetry(device.machineId, {
         deviceId: device.deviceId,
         metrics: telemetry.metrics,
-        recordedAt: telemetry.recorded_at.toISOString(),
+        recordedAt: telemetry.received_at.toISOString(),
       });
       if (cameOnline) {
         this.emitStatusChange(device.machineId, {

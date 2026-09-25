@@ -753,6 +753,47 @@ describe('validateEnvironment', () => {
     );
   });
 
+  it('accepts an authenticated MQTT configuration and validates its limits', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.MQTT_BROKER_URL = 'mqtts://broker.example.com:8883';
+    process.env.MQTT_USERNAME = 'backend-subscriber';
+    process.env.MQTT_PASSWORD = 'secret';
+    process.env.MQTT_MAX_PAYLOAD_BYTES = '32768';
+
+    const env = validateEnvironment();
+
+    expect(env.mqttBrokerUrl).toBe('mqtts://broker.example.com:8883');
+  });
+
+  it('rejects unsupported MQTT schemes and incomplete credentials', () => {
+    process.env.NODE_ENV = 'test';
+    process.env.MQTT_BROKER_URL = 'https://broker.example.com';
+    delete process.env.MQTT_USERNAME;
+    delete process.env.MQTT_PASSWORD;
+    expect(() => validateEnvironment()).toThrow(
+      'MQTT_BROKER_URL must be a valid mqtt://, mqtts://, ws://, or wss:// URL',
+    );
+
+    process.env.MQTT_BROKER_URL = 'mqtt://broker.example.com:1883';
+    process.env.MQTT_USERNAME = 'backend-subscriber';
+    delete process.env.MQTT_PASSWORD;
+    expect(() => validateEnvironment()).toThrow(
+      'MQTT_USERNAME and MQTT_PASSWORD must either both be set or both be omitted',
+    );
+  });
+
+  it('rejects an invalid MQTT payload-size limit', () => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.MQTT_BROKER_URL;
+    delete process.env.MQTT_USERNAME;
+    delete process.env.MQTT_PASSWORD;
+    process.env.MQTT_MAX_PAYLOAD_BYTES = 'NaN';
+
+    expect(() => validateEnvironment()).toThrow(
+      'MQTT_MAX_PAYLOAD_BYTES must be a positive integer',
+    );
+  });
+
   it('defaults TRUST_PROXY to false when unset', () => {
     process.env.NODE_ENV = 'test';
     delete process.env.TRUST_PROXY;

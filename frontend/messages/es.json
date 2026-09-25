@@ -3608,7 +3608,8 @@
     "deviceTypes": {
       "openplc": "OpenPLC",
       "simulator": "Simulador",
-      "gateway": "Pasarela"
+      "gateway": "Pasarela",
+        "esp32": "ESP32"
     },
     "table": {
       "liveStatus": "Estado en vivo"

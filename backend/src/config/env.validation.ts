@@ -158,7 +158,10 @@ function validateBusinessTimezone(value: string | undefined): string {
  * never connects to a broker, so this only validates the URL *shape* when
  * one is actually configured, never requires it.
  */
-function validateMqttBrokerUrl(value: string | undefined): string | undefined {
+function validateMqttBrokerUrl(
+  value: string | undefined,
+  nodeEnv: RuntimeMode,
+): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
 
@@ -166,12 +169,56 @@ function validateMqttBrokerUrl(value: string | undefined): string | undefined {
   // URL parser (used elsewhere in this file via `parseUrl`) accepts fine —
   // it only rejects genuinely malformed input, not the scheme.
   try {
-    return new URL(trimmed).toString().replace(/\/$/, '');
+    const url = new URL(trimmed);
+    const supportedProtocols = new Set(['mqtt:', 'mqtts:', 'ws:', 'wss:']);
+    if (!supportedProtocols.has(url.protocol)) {
+      throw new TypeError(
+        'MQTT_BROKER_URL must use mqtt://, mqtts://, ws://, or wss://',
+      );
+    }
+    if (
+      nodeEnv === 'production' &&
+      url.protocol !== 'mqtts:' &&
+      url.protocol !== 'wss:'
+    ) {
+      throw new TypeError(
+        'MQTT_BROKER_URL must use mqtts:// or wss:// in production',
+      );
+    }
+    return url.toString().replace(/\/$/, '');
   } catch {
     throw new TypeError(
-      'MQTT_BROKER_URL must be a valid URL (e.g. mqtt://host:1883)',
+      nodeEnv === 'production'
+        ? 'MQTT_BROKER_URL must be a valid mqtts:// or wss:// URL in production'
+        : 'MQTT_BROKER_URL must be a valid mqtt://, mqtts://, ws://, or wss:// URL',
     );
   }
+}
+
+function validateMqttSettings(nodeEnv: RuntimeMode): string | undefined {
+  const brokerUrl = validateMqttBrokerUrl(process.env.MQTT_BROKER_URL, nodeEnv);
+  const username = process.env.MQTT_USERNAME?.trim();
+  const password = process.env.MQTT_PASSWORD;
+
+  if (Boolean(username) !== Boolean(password)) {
+    throw new Error(
+      'MQTT_USERNAME and MQTT_PASSWORD must either both be set or both be omitted',
+    );
+  }
+  if (nodeEnv === 'production' && brokerUrl && (!username || !password)) {
+    throw new Error(
+      'MQTT_USERNAME and MQTT_PASSWORD are required when MQTT is enabled in production',
+    );
+  }
+
+  const payloadLimit = process.env.MQTT_MAX_PAYLOAD_BYTES;
+  if (payloadLimit?.trim()) {
+    const parsed = Number(payloadLimit);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new Error('MQTT_MAX_PAYLOAD_BYTES must be a positive integer');
+    }
+  }
+  return brokerUrl;
 }
 
 /**
@@ -690,7 +737,7 @@ export function validateEnvironment(): EnvValidationResult {
   const businessTimezone = validateBusinessTimezone(
     process.env.BUSINESS_TIMEZONE,
   );
-  const mqttBrokerUrl = validateMqttBrokerUrl(process.env.MQTT_BROKER_URL);
+  const mqttBrokerUrl = validateMqttSettings(nodeEnv);
   const telemetryRetentionSeconds = validateRetentionSeconds(
     process.env.TELEMETRY_RETENTION_SECONDS,
     'TELEMETRY_RETENTION_SECONDS',

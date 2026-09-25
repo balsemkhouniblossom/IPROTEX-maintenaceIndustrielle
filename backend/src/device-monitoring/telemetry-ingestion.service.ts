@@ -27,6 +27,8 @@ import {
   type DocumentActor,
 } from '../documents/document-access.service';
 import { ResolveFaultDto } from './dto/resolve-fault.dto';
+import { SensorMeasurementIngestionService } from './sensor-measurement-ingestion.service';
+import { validateTelemetryMetrics } from './telemetry-validation';
 
 export interface TelemetryPayload {
   metrics: Record<string, number>;
@@ -74,6 +76,7 @@ export class TelemetryIngestionService {
     private readonly faultEventModel: Model<FaultEventDocument>,
     private readonly notificationCenterService: NotificationCenterService,
     private readonly documentAccessService: DocumentAccessService,
+    private readonly sensorMeasurementIngestionService: SensorMeasurementIngestionService,
   ) {}
 
   async recordHeartbeat(
@@ -89,9 +92,7 @@ export class TelemetryIngestionService {
     device: DeviceDocument,
     payload: TelemetryPayload,
   ): Promise<IngestResult<TelemetryDocument>> {
-    if (!payload.metrics || typeof payload.metrics !== 'object') {
-      throw new BadRequestException('metrics is required');
-    }
+    const metrics = validateTelemetryMetrics(payload.metrics);
 
     const cameOnline =
       device.last_known_status !== DeviceConnectionStatus.ONLINE;
@@ -101,11 +102,17 @@ export class TelemetryIngestionService {
       this.telemetryModel.create({
         device_id: device._id,
         machine_id: device.machine_id,
-        metrics: payload.metrics,
+        metrics,
         recorded_at: recordedAt,
       }),
       this.markSeenAndOnline(device),
     ]);
+
+    await this.sensorMeasurementIngestionService.project(
+      device,
+      metrics,
+      recordedAt,
+    );
 
     return { record, cameOnline };
   }

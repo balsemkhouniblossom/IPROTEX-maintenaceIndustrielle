@@ -13,6 +13,7 @@ import {
   DeviceConnectionStatus,
   DeviceDocument,
 } from '../schemas/device.schema';
+import { parseDeviceDate } from './telemetry-validation';
 
 const TELEMETRY_TOPIC = 'devices/+/telemetry';
 const HEARTBEAT_TOPIC = 'devices/+/heartbeat';
@@ -67,13 +68,24 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
   }
 
   private connect(brokerUrl: string): void {
+    const username = this.configService.get<string>('MQTT_USERNAME')?.trim();
+    const password = this.configService.get<string>('MQTT_PASSWORD');
+    const clientId =
+      this.configService.get<string>('MQTT_CLIENT_ID')?.trim() ||
+      `iprotex-backend-${process.pid}`;
     this.client = mqtt.connect(brokerUrl, {
       reconnectPeriod: 5000,
       connectTimeout: 10000,
+      clientId,
+      username: username || undefined,
+      password: password || undefined,
+      clean: true,
     });
 
     this.client.on('connect', () => {
-      this.logger.log(`Connected to MQTT broker at ${brokerUrl}`);
+      this.logger.log(
+        `Connected to MQTT broker at ${safeBrokerLabel(brokerUrl)}`,
+      );
       this.client?.subscribe(
         [TELEMETRY_TOPIC, HEARTBEAT_TOPIC, FAULT_TOPIC],
         (err) => {
@@ -86,7 +98,11 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.client.on('message', (topic, payload) => {
-      void this.handleMessage(topic, payload);
+      void this.handleMessage(topic, payload).catch((error) => {
+        this.logger.warn(
+          `Rejected MQTT message on ${topic}: ${safeError(error)}`,
+        );
+      });
     });
 
     this.client.on('error', (error) => {
@@ -115,6 +131,19 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
     topic: string,
     payloadBuffer: Buffer,
   ): ParsedMqttMessage | null {
+    const configuredLimit = Number(
+      this.configService.get<string>('MQTT_MAX_PAYLOAD_BYTES'),
+    );
+    const maxPayloadBytes =
+      Number.isInteger(configuredLimit) && configuredLimit > 0
+        ? configuredLimit
+        : 16384;
+    if (payloadBuffer.byteLength > maxPayloadBytes) {
+      this.logger.warn(
+        `MQTT payload exceeds ${maxPayloadBytes} bytes on ${topic}`,
+      );
+      return null;
+    }
     const segments = topic.split('/');
     if (segments.length !== 3 || segments[0] !== 'devices') {
       this.logger.warn(`Ignoring message on unrecognized topic: ${topic}`);
@@ -124,10 +153,11 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
 
     let body: Record<string, unknown>;
     try {
-      body = JSON.parse(payloadBuffer.toString('utf8')) as Record<
-        string,
-        unknown
-      >;
+      const decoded: unknown = JSON.parse(payloadBuffer.toString('utf8'));
+      if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded)) {
+        throw new TypeError('payload must be a JSON object');
+      }
+      body = decoded as Record<string, unknown>;
     } catch {
       this.logger.warn(`Malformed JSON payload on topic ${topic}`);
       return null;
@@ -195,17 +225,16 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
     device: DeviceDocument,
     body: Record<string, unknown>,
   ): Promise<void> {
-    const metrics = (body.metrics ?? {}) as Record<string, number>;
     const { record, cameOnline } =
       await this.telemetryIngestionService.recordTelemetry(device, {
-        metrics,
-        recordedAt: optionalDate(body.recorded_at),
+        metrics: body.metrics as Record<string, number>,
+        recordedAt: parseDeviceDate(body.recorded_at),
       });
     const machineId = String(device.machine_id);
     this.liveMonitoringGateway.emitTelemetry(machineId, {
       deviceId: device.device_id,
       metrics: record.metrics,
-      recordedAt: record.recorded_at.toISOString(),
+      recordedAt: record.received_at.toISOString(),
     });
     this.emitOnlineStatusIfNeeded(device, cameOnline);
   }
@@ -219,7 +248,7 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
         codePanne: typeof body.code_panne === 'string' ? body.code_panne : '',
         severity: body.severity as never,
         message: typeof body.message === 'string' ? body.message : undefined,
-        raisedAt: optionalDate(body.raised_at),
+        raisedAt: parseDeviceDate(body.raised_at),
       });
     const machineId = String(device.machine_id);
     this.liveMonitoringGateway.emitFault(machineId, {
@@ -247,7 +276,15 @@ export class MqttIngestionService implements OnModuleInit, OnModuleDestroy {
   }
 }
 
-function optionalDate(value: unknown): Date | undefined {
-  if (typeof value !== 'string') return undefined;
-  return new Date(value);
+function safeBrokerLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return 'configured broker';
+  }
+}
+
+function safeError(error: unknown): string {
+  return error instanceof Error ? error.message : 'invalid message';
 }

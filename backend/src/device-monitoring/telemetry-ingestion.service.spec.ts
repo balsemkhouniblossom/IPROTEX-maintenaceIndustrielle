@@ -55,6 +55,7 @@ describe('TelemetryIngestionService', () => {
       faultEventModel as never,
       notificationCenterService as never,
       documentAccessService as never,
+      { project: jest.fn().mockResolvedValue(undefined) } as never,
     );
   });
 
@@ -88,6 +89,20 @@ describe('TelemetryIngestionService', () => {
       await expect(
         service.recordTelemetry(dev as never, { metrics: undefined as never }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects empty, nested, and non-finite metrics before persistence', async () => {
+      const dev = device();
+      for (const metrics of [
+        {},
+        { vibration: { rms: 1 } },
+        { vibration: Number.NaN },
+      ]) {
+        await expect(
+          service.recordTelemetry(dev as never, { metrics: metrics as never }),
+        ).rejects.toThrow(BadRequestException);
+      }
+      expect(telemetryModel.create).not.toHaveBeenCalled();
     });
 
     it('persists a telemetry record scoped to the device and its machine', async () => {

@@ -7,6 +7,7 @@ export enum DeviceType {
   OPENPLC = 'openplc',
   SIMULATOR = 'simulator',
   GATEWAY = 'gateway',
+  ESP32 = 'esp32',
 }
 
 export enum DeviceConnectionStatus {

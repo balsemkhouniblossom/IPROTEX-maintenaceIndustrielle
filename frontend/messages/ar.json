@@ -3569,7 +3569,8 @@
     "deviceTypes": {
       "openplc": "OpenPLC",
       "simulator": "محاكي",
-      "gateway": "بوابة"
+      "gateway": "بوابة",
+        "esp32": "ESP32"
     },
     "table": {
       "liveStatus": "الحالة المباشرة"

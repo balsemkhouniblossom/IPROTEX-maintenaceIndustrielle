@@ -32,10 +32,15 @@ describe('MqttIngestionService.handleMessage', () => {
     deviceAuthService = {
       verifyCredentials: jest.fn().mockResolvedValue(device),
     };
+    const now = new Date();
     telemetryIngestionService = {
       recordHeartbeat: jest.fn().mockResolvedValue({ cameOnline: false }),
       recordTelemetry: jest.fn().mockResolvedValue({
-        record: { metrics: { temperature: 70 }, recorded_at: new Date() },
+        record: {
+          metrics: { temperature: 70 },
+          recorded_at: now,
+          received_at: now,
+        },
         cameOnline: false,
       }),
       recordFault: jest.fn().mockResolvedValue({

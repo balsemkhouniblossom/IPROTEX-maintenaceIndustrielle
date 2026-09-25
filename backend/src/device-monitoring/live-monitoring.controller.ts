@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Patch,
   Req,
@@ -37,6 +38,7 @@ export class LiveMonitoringController {
   ) {}
 
   @Get('machines')
+  @Header('Cache-Control', 'no-store')
   @Throttle({ default: { limit: 300, ttl: 60000 } })
   async listMachinesLiveStatus(@Req() req: AuthenticatedRequest) {
     const machineIds =
@@ -45,6 +47,7 @@ export class LiveMonitoringController {
   }
 
   @Get('machines/:machineId')
+  @Header('Cache-Control', 'no-store')
   @Throttle({ default: { limit: 300, ttl: 60000 } })
   async getMachineLiveStatus(
     @Param('machineId') machineId: string,

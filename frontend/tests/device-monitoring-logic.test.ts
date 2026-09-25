@@ -51,6 +51,27 @@ test("apiService exposes device registration/management and role-scoped live-mon
   );
 });
 
+test("live monitoring replaces the polled snapshot so stale device state is removed", () => {
+  const source = readSource(HOOK);
+  assert.match(
+    source,
+    /setStatusByMachine\(\s*Object\.fromEntries\(items\.map/,
+    "REST polling must replace the previous map instead of merging stale entries",
+  );
+  assert.doesNotMatch(
+    source,
+    /const next = \{ \.\.\.prev \};[\s\S]*for \(const item of items\)/,
+  );
+});
+
+test("live monitoring clears role-scoped state when the authenticated session changes", () => {
+  const source = readSource(HOOK);
+  assert.match(
+    source,
+    /return \(\) => \{[\s\S]*setStatusByMachine\(\{\}\);[\s\S]*setSocketConnected\(false\);/,
+  );
+});
+
 test("useLiveMonitoring always does an initial REST fetch and keeps polling as a resilient fallback", () => {
   const source = readSource(HOOK);
 
