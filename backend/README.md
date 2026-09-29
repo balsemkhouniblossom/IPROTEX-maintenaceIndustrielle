@@ -58,6 +58,20 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Maintenance Services
+
+- `MttrSourceService` builds the scoped work-order query separately from MTTR
+  aggregation. Machine type, machine, fault code, component, technician, and
+  date filters remain part of the same calculation contract.
+- `WorkOrderReportService` validates operator corrective reports, including an
+  optional machine-stop interval, before its transactional work-order and
+  intervention-report writes.
+- Keep validation and query-building helpers small and independently testable;
+  SonarCloud allows a maximum Cognitive Complexity of 15 per function.
+
+When these services or their dependencies change, update the corresponding
+classes and relationships in the repository PlantUML diagrams.
+
 ## IMS Anomaly Integration
 
 The `ai-anomaly` module connects the NestJS backend to the separate FastAPI IMS anomaly service. It does not train models, modify artifacts, duplicate scoring formulas, create work orders, call Gemini, or invent live IPROTEX vibration data. The backend stores audit records only after FastAPI returns a validated response, and the frontend labels those records as IMS dataset replay results.

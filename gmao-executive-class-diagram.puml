@@ -209,6 +209,15 @@ package "Alertes & Pilotage" {
     +getCorrectiveAssistant(...)
   }
 
+  class WorkOrderReportService <<service>> {
+    +createCorrectiveReportForOperator(...)
+    +submitPreventiveMaintenanceForOperator(...)
+  }
+
+  class MttrSourceService <<service>> {
+    +calculate(...)
+  }
+
   class AutomationSchedulerService <<service>> {
     +runNightlyJobs()
     +runHourlyJobs()
@@ -316,6 +325,12 @@ User "0..1" <-- "0..*" AiAnomalyAnalysis : validated by
 
 AutomationSchedulerService ..> WorkOrdersService
 WorkOrdersService ..> WorkOrder
+WorkOrdersService ..> WorkOrderReportService : delegates reports
+WorkOrderReportService ..> WorkOrder
+WorkOrderReportService ..> InterventionReport
+MttrSourceService ..> WorkOrder
+MttrSourceService ..> InterventionReport
+MttrSourceService ..> KPI : aggregates
 WorkOrdersService ..> MaintenancePlan
 WorkOrdersService ..> KPI
 WorkOrdersService ..> Notification

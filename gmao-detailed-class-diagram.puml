@@ -977,6 +977,24 @@ package "Services metier backend" {
     +getCorrectiveAssistant(...)
   }
 
+  class WorkOrderReportService <<service>> {
+    +createCorrectiveReportForOperator(...)
+    +submitPreventiveMaintenanceForOperator(...)
+    -getStoppedInterval(...)
+  }
+
+  class MttrSourceService <<service>> {
+    +calculate(...)
+    -buildWorkOrderFilter(...)
+    -calculateFromFilter(...)
+    -getResultFilters(...)
+  }
+
+  class MttrCalculationService <<service>> {
+    +classifyExclusion(...)
+    +buildYearlyResult(...)
+  }
+
   class MaintenancePlansService <<service>> {
     +create(...)
     +findAll(...)
@@ -1143,6 +1161,13 @@ MaintenancePlan "0..1" <-- "0..*" WorkOrder : plan_id
 WorkOrder "0..1" <-- "0..*" WorkOrder : recurrence_source_occurrence_id
 User "0..1" <-- "0..*" WorkOrder : rescheduled_by
 User "0..1" <-- "0..*" WorkOrder : validated_by
+WorkOrdersService ..> WorkOrderReportService : delegates reports
+WorkOrderReportService ..> WorkOrder : transactional creation
+WorkOrderReportService ..> InterventionReport : transactional creation
+MttrSourceService ..> WorkOrder : scoped source
+MttrSourceService ..> InterventionReport : repair durations
+MttrSourceService ..> Panne : component filter
+MttrSourceService ..> MttrCalculationService : aggregation
 WorkOrder "1" *-- "0..*" WorkOrderLifecycleEntry : lifecycle_history
 WorkOrderLifecycleEntry "0..*" --> "0..1" User : actor_user_id
 WorkOrder "1" -- "0..*" InterventionReport : ot_id

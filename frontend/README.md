@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Application Notes
+
+The localized `src/app/[locale]/pannes/page.tsx` route manages fault codes,
+recommended spare parts, solutions, and active status. Keep table-cell display
+logic in explicit local statements or helpers rather than nested ternaries, and
+wrap checkbox label text in an element so spacing remains unambiguous to React
+and static-analysis tooling.
+
+After changes to this workflow, run the targeted ESLint check and audit the
+root README plus the PlantUML diagrams for any behavior or architecture impact.
+
 ## Getting Started
 
 First, run the development server:

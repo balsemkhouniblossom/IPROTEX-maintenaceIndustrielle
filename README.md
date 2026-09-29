@@ -516,8 +516,12 @@ npm run start
 2. Keep changes scoped and typed.
 3. Add or update tests for business logic.
 4. Run backend and frontend quality checks.
-5. Update documentation when behavior, setup, or deployment changes.
-6. Open a pull request with a clear summary and test results.
+5. Audit the root and application READMEs whenever code changes. Update the
+   relevant README when behavior, setup, validation, or maintenance guidance
+   changes; record explicitly when no documentation change is required.
+6. Audit the PlantUML diagrams whenever services, dependencies, workflows, or
+   system boundaries change, and keep the affected `.puml` files synchronized.
+7. Open a pull request with a clear summary and test results.
 
 ## License
 
