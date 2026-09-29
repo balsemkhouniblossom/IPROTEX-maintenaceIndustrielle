@@ -123,6 +123,13 @@ export class MttrSourceService {
   ) {}
 
   async calculate(query: MttrSourceQuery = {}): Promise<MttrSourceResult> {
+    const workOrderFilter = await this.buildWorkOrderFilter(query);
+    return this.calculateFromFilter(query, workOrderFilter);
+  }
+
+  private async buildWorkOrderFilter(
+    query: MttrSourceQuery,
+  ): Promise<FilterQuery<WorkOrderDocument>> {
     const workOrderFilter: FilterQuery<WorkOrderDocument> = {};
     let scopedMachineIds = query.machineIds;
     if (query.machineTypeId) {
@@ -165,6 +172,13 @@ export class MttrSourceService {
       };
     }
 
+    return workOrderFilter;
+  }
+
+  private async calculateFromFilter(
+    query: MttrSourceQuery,
+    workOrderFilter: FilterQuery<WorkOrderDocument>,
+  ): Promise<MttrSourceResult> {
     const workOrders = await this.workOrderModel
       .find(workOrderFilter)
       .select({
@@ -312,13 +326,7 @@ export class MttrSourceService {
     return {
       year: query.year,
       businessTimezone: businessTime.getBusinessTimezone(),
-      filters: {
-        ...(query.machineIds?.[0] ? { machineId: query.machineIds[0] } : {}),
-        ...(query.technicianId ? { technicianId: query.technicianId } : {}),
-        ...(query.machineTypeId ? { machineTypeId: query.machineTypeId } : {}),
-        ...(query.faultCode ? { faultCode: query.faultCode } : {}),
-        ...(query.component ? { component: query.component } : {}),
-      },
+      filters: this.getResultFilters(query),
       summary: {
         completedRepairs: repairs.length,
         totalRepairMinutes,
@@ -332,6 +340,18 @@ export class MttrSourceService {
         ) as MttrSourceExclusions['byReason'],
       },
       generatedAt: new Date().toISOString(),
+    };
+  }
+
+  private getResultFilters(
+    query: MttrSourceQuery,
+  ): MttrSourceResult['filters'] {
+    return {
+      ...(query.machineIds?.[0] ? { machineId: query.machineIds[0] } : {}),
+      ...(query.technicianId ? { technicianId: query.technicianId } : {}),
+      ...(query.machineTypeId ? { machineTypeId: query.machineTypeId } : {}),
+      ...(query.faultCode ? { faultCode: query.faultCode } : {}),
+      ...(query.component ? { component: query.component } : {}),
     };
   }
 

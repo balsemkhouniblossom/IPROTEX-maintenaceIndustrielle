@@ -172,26 +172,7 @@ export class WorkOrderReportService {
     }
 
     const operatorObjectId = new Types.ObjectId(input.operatorId);
-    let stoppedInterval: { startedAt: Date; endedAt: Date } | null = null;
-    if (input.machineStopped) {
-      if (!input.interventionStartedAt || !input.interventionEndedAt) {
-        throw new BadRequestException(
-          'Machine stop and restart times are required when the machine is stopped',
-        );
-      }
-      const startedAt = new Date(input.interventionStartedAt);
-      const endedAt = new Date(input.interventionEndedAt);
-      if (
-        Number.isNaN(startedAt.getTime()) ||
-        Number.isNaN(endedAt.getTime()) ||
-        endedAt <= startedAt
-      ) {
-        throw new BadRequestException(
-          'Restart time must be later than the machine stop time',
-        );
-      }
-      stoppedInterval = { startedAt, endedAt };
-    }
+    const stoppedInterval = this.getStoppedInterval(input);
     const description = `${codePanne} | ${actions.join(' | ')}`;
     const descriptionAction = actions.join(' | ');
 
@@ -308,6 +289,30 @@ export class WorkOrderReportService {
     }
 
     return result;
+  }
+
+  private getStoppedInterval(
+    input: CorrectiveReportForOperatorInput,
+  ): { startedAt: Date; endedAt: Date } | null {
+    if (!input.machineStopped) return null;
+    if (!input.interventionStartedAt || !input.interventionEndedAt) {
+      throw new BadRequestException(
+        'Machine stop and restart times are required when the machine is stopped',
+      );
+    }
+
+    const startedAt = new Date(input.interventionStartedAt);
+    const endedAt = new Date(input.interventionEndedAt);
+    if (
+      Number.isNaN(startedAt.getTime()) ||
+      Number.isNaN(endedAt.getTime()) ||
+      endedAt <= startedAt
+    ) {
+      throw new BadRequestException(
+        'Restart time must be later than the machine stop time',
+      );
+    }
+    return { startedAt, endedAt };
   }
 
   /**

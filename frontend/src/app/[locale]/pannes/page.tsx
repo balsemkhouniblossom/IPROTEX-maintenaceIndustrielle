@@ -1000,8 +1000,14 @@ export default function PannesPage() {
               <div className="min-w-48 space-y-2">
                 {(panne.recommended_parts ?? []).map((link) => {
                   const part = typeof link.part_id === "string" ? null : link.part_id;
+                  let partLabel = "";
+                  if (part) {
+                    partLabel = `${part.part_id} - ${part.nom_piece}`;
+                  } else if (typeof link.part_id === "string") {
+                    partLabel = link.part_id;
+                  }
                   return <div key={link._id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1 text-xs">
-                    <span>{part ? `${part.part_id} - ${part.nom_piece}` : (typeof link.part_id === "string" ? link.part_id : "")} × {link.recommended_quantity}</span>
+                    <span>{partLabel} × {link.recommended_quantity}</span>
                     <button type="button" className="text-red-700" onClick={() => void handleRemovePart(panne, link)} aria-label="Remove recommended part">×</button>
                   </div>;
                 })}
@@ -1274,7 +1280,7 @@ export default function PannesPage() {
 
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
             <input type="checkbox" checked={formData.is_active} onChange={(event) => setFormData({ ...formData, is_active: event.target.checked })} />
-            Active fault code
+            <span>Active fault code</span>
           </label>
 
           <ModalFormActions
