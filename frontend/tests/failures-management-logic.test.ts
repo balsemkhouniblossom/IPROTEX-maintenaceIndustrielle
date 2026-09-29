@@ -53,6 +53,34 @@ test("Failures Management search includes fault and solution fields", () => {
   assert.match(source, /matchesFailureSearch\(panne, searchTerm, selectedSearchField\)/);
 });
 
+test("Failures Management exposes database-backed process, parts, and active-state controls", () => {
+  const source = readSource("src/app/[locale]/pannes/page.tsx");
+
+  assert.match(source, /active:\s*activeFilter \|\| undefined/);
+  assert.match(source, /header: t\("table\.process"\)/);
+  assert.match(source, /header: t\("table\.component"\)/);
+  assert.match(source, /header: t\("table\.parts"\)/);
+  assert.match(source, /header: t\("table\.status"\)/);
+  assert.match(source, /panne\.is_active !== false/);
+  assert.match(source, /t\("parts\.none"\)/);
+  assert.doesNotMatch(source, />All processes</);
+  assert.doesNotMatch(source, /header: "Recommended parts"/);
+});
+
+test("Failures Management entity-table translations exist in every supported locale", () => {
+  for (const locale of ["en", "fr", "ar", "es", "de", "it"]) {
+    const messages = JSON.parse(readSource(`messages/${locale}.json`));
+    for (const key of ["process", "component", "parts", "status"]) {
+      assert.equal(typeof messages.pannes.table[key], "string");
+      assert.ok(messages.pannes.table[key].length > 0);
+    }
+    assert.equal(typeof messages.pannes.status.active, "string");
+    assert.equal(typeof messages.pannes.status.inactive, "string");
+    assert.equal(typeof messages.pannes.filters.apply, "string");
+    assert.equal(typeof messages.pannes.parts.manage, "string");
+  }
+});
+
 test("Old Panne Solutions route redirects to Failures Management and sidebar entry is removed", () => {
   const redirectSource = readSource("src/app/[locale]/panne-solutions/page.tsx");
   const layoutSource = readSource("src/components/DashboardLayout.tsx");

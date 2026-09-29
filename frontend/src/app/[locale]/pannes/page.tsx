@@ -269,6 +269,7 @@ export default function PannesPage() {
   const [machineTypeFilter, setMachineTypeFilter] = useState("");
   const [componentFilter, setComponentFilter] = useState("");
   const [partsFilter, setPartsFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
   const [partsPanne, setPartsPanne] = useState<Panne | null>(null);
   const [partForm, setPartForm] = useState({ part_id: "", recommended_quantity: "1", priority: "recommended", note: "" });
   const [solutionFormData, setSolutionFormData] = useState<SolutionFormData>({
@@ -300,6 +301,7 @@ export default function PannesPage() {
           component: componentFilter || undefined,
           search: searchTerm || undefined,
           partsLinked: partsFilter || undefined,
+          active: activeFilter || undefined,
         }),
         apiService.fetchAllFromPaginatedEndpoint<PanneSolution>(
           apiService.getPanneSolutions,
@@ -929,18 +931,23 @@ export default function PannesPage() {
       onNotificationClose={() => setNotification(null)}
       closeLabel={tCommon("close")}
     >
-      <div className="panel mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <select className="input-field" value={machineTypeFilter} onChange={(e) => setMachineTypeFilter(e.target.value)} aria-label="Machine type process">
-          <option value="">All processes</option>
+      <div className="panel mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <select className="input-field" value={machineTypeFilter} onChange={(e) => setMachineTypeFilter(e.target.value)} aria-label={t("filters.process")}>
+          <option value="">{t("filters.allProcesses")}</option>
           {machineTypes.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}
         </select>
-        <input className="input-field" value={componentFilter} onChange={(e) => setComponentFilter(e.target.value)} placeholder="Component" aria-label="Component" />
-        <select className="input-field" value={partsFilter} onChange={(e) => setPartsFilter(e.target.value)} aria-label="Parts link status">
-          <option value="">All part links</option>
-          <option value="true">With recommended parts</option>
-          <option value="false">Without recommended parts</option>
+        <input className="input-field" value={componentFilter} onChange={(e) => setComponentFilter(e.target.value)} placeholder={t("filters.component")} aria-label={t("filters.component")} />
+        <select className="input-field" value={partsFilter} onChange={(e) => setPartsFilter(e.target.value)} aria-label={t("filters.partsStatus")}>
+          <option value="">{t("filters.allPartLinks")}</option>
+          <option value="true">{t("filters.withParts")}</option>
+          <option value="false">{t("filters.withoutParts")}</option>
         </select>
-        <button type="button" className="btn-secondary" onClick={() => void loadData(1)}>Apply filters</button>
+        <select className="input-field" value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)} aria-label={t("filters.status")}>
+          <option value="">{t("filters.allStatuses")}</option>
+          <option value="true">{t("status.active")}</option>
+          <option value="false">{t("status.inactive")}</option>
+        </select>
+        <button type="button" className="btn-secondary" onClick={() => void loadData(1)}>{t("filters.apply")}</button>
       </div>
       <CrudDataTablePanel
         title={t("allPannes")}
@@ -956,7 +963,7 @@ export default function PannesPage() {
         columns={[
           {
             id: "process",
-            header: "Process",
+            header: t("table.process"),
             render: (panne) => typeof panne.machine_type_id === "string"
               ? machineTypes.find((type) => type._id === panne.machine_type_id)?.name || tCommon("notAvailable")
               : panne.machine_type_id?.name || tCommon("notAvailable"),
@@ -976,7 +983,7 @@ export default function PannesPage() {
           },
           {
             id: "component",
-            header: "Component",
+            header: t("table.component"),
             render: (panne) => panne.component || tCommon("notAvailable"),
           },
           {
@@ -995,9 +1002,12 @@ export default function PannesPage() {
           },
           {
             id: "parts",
-            header: "Recommended parts",
+            header: t("table.parts"),
             render: (panne) => (
               <div className="min-w-48 space-y-2">
+                {(panne.recommended_parts ?? []).length === 0 && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{t("parts.none")}</span>
+                )}
                 {(panne.recommended_parts ?? []).map((link) => {
                   const part = typeof link.part_id === "string" ? null : link.part_id;
                   let partLabel = "";
@@ -1008,12 +1018,24 @@ export default function PannesPage() {
                   }
                   return <div key={link._id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1 text-xs">
                     <span>{partLabel} × {link.recommended_quantity}</span>
-                    <button type="button" className="text-red-700" onClick={() => void handleRemovePart(panne, link)} aria-label="Remove recommended part">×</button>
+                    <button type="button" className="text-red-700 dark:text-red-300" onClick={() => void handleRemovePart(panne, link)} aria-label={t("parts.remove")}>×</button>
                   </div>;
                 })}
-                <button type="button" className="text-xs font-semibold text-blue-700 underline" onClick={() => setPartsPanne(panne)}>Manage parts</button>
+                <button type="button" className="text-xs font-semibold text-blue-700 underline dark:text-blue-300" onClick={() => setPartsPanne(panne)}>{t("parts.manage")}</button>
               </div>
             ),
+          },
+          {
+            id: "status",
+            header: t("table.status"),
+            render: (panne) => {
+              const isActive = panne.is_active !== false;
+              return (
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${isActive ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"}`}>
+                  {isActive ? t("status.active") : t("status.inactive")}
+                </span>
+              );
+            },
           },
           {
             id: "cause",

@@ -2590,6 +2590,32 @@
       "description": "Description",
       "severity": "Severity",
       "faultReference": "Fault Reference"
+    ,
+      "process": "Process / machine type",
+      "component": "Component",
+      "parts": "Recommended parts",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "filters": {
+      "process": "Process / machine type",
+      "allProcesses": "All processes",
+      "component": "Component",
+      "partsStatus": "Recommended-parts status",
+      "allPartLinks": "All part links",
+      "withParts": "With recommended parts",
+      "withoutParts": "Without recommended parts",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "apply": "Apply filters"
+    },
+    "parts": {
+      "manage": "Manage parts",
+      "none": "No linked parts",
+      "remove": "Remove recommended part"
     },
     "empty": {
       "default": "No pannes found",

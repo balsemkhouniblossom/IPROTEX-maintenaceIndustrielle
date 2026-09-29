@@ -2386,7 +2386,33 @@
       "code": "Codigo",
       "description": "Descripcion",
       "severity": "Gravedad",
-      "faultReference": "Referencia de aver?a"
+      "faultReference": "Referencia de avería"
+    ,
+      "process": "Proceso / tipo de máquina",
+      "component": "Componente",
+      "parts": "Piezas recomendadas",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "filters": {
+      "process": "Proceso / tipo de máquina",
+      "allProcesses": "Todos los procesos",
+      "component": "Componente",
+      "partsStatus": "Estado de piezas recomendadas",
+      "allPartLinks": "Todos los enlaces de piezas",
+      "withParts": "Con piezas recomendadas",
+      "withoutParts": "Sin piezas recomendadas",
+      "status": "Estado",
+      "allStatuses": "Todos los estados",
+      "apply": "Aplicar filtros"
+    },
+    "parts": {
+      "manage": "Gestionar piezas",
+      "none": "Sin piezas vinculadas",
+      "remove": "Quitar pieza recomendada"
     },
     "empty": {
       "default": "No se encontraron averias",
@@ -2401,7 +2427,7 @@
       "code": "Codigo de averia",
       "description": "Descripcion",
       "severity": "Gravedad (opcional)",
-      "faultReference": "Referencia de aver?a"
+      "faultReference": "Referencia de avería"
     },
     "notifications": {
       "panneIdRequired": "El ID de averia es obligatorio",
@@ -2433,7 +2459,7 @@
       "panne": "Averia",
       "cause": "Causa probable",
       "solution": "Solucion recomendada",
-      "solutionReference": "Referencia de soluci?n"
+      "solutionReference": "Referencia de solución"
     },
     "empty": {
       "default": "No se encontraron soluciones de averias",
@@ -2449,7 +2475,7 @@
       "selectPanne": "Selecciona una averia",
       "cause": "Causa probable (opcional)",
       "solution": "Solucion recomendada (opcional)",
-      "solutionReference": "Referencia de soluci?n"
+      "solutionReference": "Referencia de solución"
     },
     "notifications": {
       "solutionIdRequired": "El ID de solucion es obligatorio",

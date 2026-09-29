@@ -2347,7 +2347,33 @@
       "code": "رمز العطل",
       "description": "الوصف",
       "severity": "الخطورة",
-      "faultReference": "???? ?????"
+      "faultReference": "مرجع العطل"
+    ,
+      "process": "العملية / نوع الآلة",
+      "component": "المكوّن",
+      "parts": "قطع الغيار الموصى بها",
+      "status": "الحالة"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "filters": {
+      "process": "العملية / نوع الآلة",
+      "allProcesses": "جميع العمليات",
+      "component": "المكوّن",
+      "partsStatus": "حالة ربط قطع الغيار",
+      "allPartLinks": "جميع روابط قطع الغيار",
+      "withParts": "مع قطع غيار موصى بها",
+      "withoutParts": "بدون قطع غيار موصى بها",
+      "status": "الحالة",
+      "allStatuses": "جميع الحالات",
+      "apply": "تطبيق عوامل التصفية"
+    },
+    "parts": {
+      "manage": "إدارة قطع الغيار",
+      "none": "لا توجد قطع غيار مرتبطة",
+      "remove": "إزالة قطعة الغيار الموصى بها"
     },
     "empty": {
       "default": "لا توجد أعطال",
@@ -2362,7 +2388,7 @@
       "code": "رمز العطل",
       "description": "الوصف",
       "severity": "الخطورة (اختياري)",
-      "faultReference": "???? ?????"
+      "faultReference": "مرجع العطل"
     },
     "notifications": {
       "panneIdRequired": "معرف العطل مطلوب",
@@ -2394,7 +2420,7 @@
       "panne": "العطل",
       "cause": "السبب المحتمل",
       "solution": "الحل الموصى به",
-      "solutionReference": "???? ????"
+      "solutionReference": "مرجع الحل"
     },
     "empty": {
       "default": "لا توجد حلول أعطال",
@@ -2410,7 +2436,7 @@
       "selectPanne": "اختر عطلًا",
       "cause": "السبب المحتمل (اختياري)",
       "solution": "الحل الموصى به (اختياري)",
-      "solutionReference": "???? ????"
+      "solutionReference": "مرجع الحل"
     },
     "notifications": {
       "solutionIdRequired": "معرف الحل مطلوب",

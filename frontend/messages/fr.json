@@ -2522,7 +2522,33 @@
       "code": "Code",
       "description": "Description",
       "severity": "Gravite",
-      "faultReference": "R?f?rence panne"
+      "faultReference": "Référence de panne"
+    ,
+      "process": "Processus / type de machine",
+      "component": "Composant",
+      "parts": "Pièces recommandées",
+      "status": "Statut"
+    },
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "filters": {
+      "process": "Processus / type de machine",
+      "allProcesses": "Tous les processus",
+      "component": "Composant",
+      "partsStatus": "État du lien avec les pièces",
+      "allPartLinks": "Tous les liens de pièces",
+      "withParts": "Avec pièces recommandées",
+      "withoutParts": "Sans pièce recommandée",
+      "status": "Statut",
+      "allStatuses": "Tous les statuts",
+      "apply": "Appliquer les filtres"
+    },
+    "parts": {
+      "manage": "Gérer les pièces",
+      "none": "Aucune pièce liée",
+      "remove": "Retirer la pièce recommandée"
     },
     "empty": {
       "default": "Aucune panne trouvee",
@@ -2537,7 +2563,7 @@
       "code": "Code panne",
       "description": "Description",
       "severity": "Gravite (optionnel)",
-      "faultReference": "R?f?rence panne"
+      "faultReference": "Référence de panne"
     },
     "notifications": {
       "panneIdRequired": "ID panne requis",
@@ -2569,7 +2595,7 @@
       "panne": "Panne",
       "cause": "Cause probable",
       "solution": "Solution recommandee",
-      "solutionReference": "R?f?rence solution"
+      "solutionReference": "Référence de solution"
     },
     "empty": {
       "default": "Aucune solution de panne trouvee",
@@ -2585,7 +2611,7 @@
       "selectPanne": "Selectionner une panne",
       "cause": "Cause probable (optionnel)",
       "solution": "Solution recommandee (optionnel)",
-      "solutionReference": "R?f?rence solution"
+      "solutionReference": "Référence de solution"
     },
     "notifications": {
       "solutionIdRequired": "ID solution requis",

@@ -2387,6 +2387,32 @@
       "description": "Descrizione",
       "severity": "Gravita",
       "faultReference": "Riferimento guasto"
+    ,
+      "process": "Processo / tipo macchina",
+      "component": "Componente",
+      "parts": "Ricambi consigliati",
+      "status": "Stato"
+    },
+    "status": {
+      "active": "Attivo",
+      "inactive": "Inattivo"
+    },
+    "filters": {
+      "process": "Processo / tipo macchina",
+      "allProcesses": "Tutti i processi",
+      "component": "Componente",
+      "partsStatus": "Stato dei ricambi consigliati",
+      "allPartLinks": "Tutti i collegamenti ricambi",
+      "withParts": "Con ricambi consigliati",
+      "withoutParts": "Senza ricambi consigliati",
+      "status": "Stato",
+      "allStatuses": "Tutti gli stati",
+      "apply": "Applica filtri"
+    },
+    "parts": {
+      "manage": "Gestisci ricambi",
+      "none": "Nessun ricambio collegato",
+      "remove": "Rimuovi ricambio consigliato"
     },
     "empty": {
       "default": "Nessun guasto trovato",

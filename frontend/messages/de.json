@@ -2589,7 +2589,33 @@
       "code": "Code",
       "description": "Beschreibung",
       "severity": "Schweregrad",
-      "faultReference": "St?rungsreferenz"
+      "faultReference": "Störungsreferenz"
+    ,
+      "process": "Prozess / Maschinentyp",
+      "component": "Komponente",
+      "parts": "Empfohlene Teile",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "filters": {
+      "process": "Prozess / Maschinentyp",
+      "allProcesses": "Alle Prozesse",
+      "component": "Komponente",
+      "partsStatus": "Status der Teileverknüpfung",
+      "allPartLinks": "Alle Teileverknüpfungen",
+      "withParts": "Mit empfohlenen Teilen",
+      "withoutParts": "Ohne empfohlene Teile",
+      "status": "Status",
+      "allStatuses": "Alle Status",
+      "apply": "Filter anwenden"
+    },
+    "parts": {
+      "manage": "Teile verwalten",
+      "none": "Keine Teile verknüpft",
+      "remove": "Empfohlenes Teil entfernen"
     },
     "empty": {
       "default": "Keine Stoerungen gefunden",
@@ -2604,7 +2630,7 @@
       "code": "Stoerungscode",
       "description": "Beschreibung",
       "severity": "Schweregrad (optional)",
-      "faultReference": "St?rungsreferenz"
+      "faultReference": "Störungsreferenz"
     },
     "notifications": {
       "panneIdRequired": "Stoerungs-ID ist erforderlich",
@@ -2636,7 +2662,7 @@
       "panne": "Stoerung",
       "cause": "Wahrscheinliche Ursache",
       "solution": "Empfohlene Loesung",
-      "solutionReference": "L?sungsreferenz"
+      "solutionReference": "Lösungsreferenz"
     },
     "empty": {
       "default": "Keine Stoerungsloesungen gefunden",
@@ -2652,7 +2678,7 @@
       "selectPanne": "Stoerung auswaehlen",
       "cause": "Wahrscheinliche Ursache (optional)",
       "solution": "Empfohlene Loesung (optional)",
-      "solutionReference": "L?sungsreferenz"
+      "solutionReference": "Lösungsreferenz"
     },
     "notifications": {
       "solutionIdRequired": "Loesungs-ID ist erforderlich",
