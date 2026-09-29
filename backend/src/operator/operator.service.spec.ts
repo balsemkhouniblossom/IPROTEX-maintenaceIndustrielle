@@ -43,7 +43,11 @@ describe('OperatorService machine scoping', () => {
   };
   let userModel: { findById: jest.Mock };
   let documentModel: { find: jest.Mock; countDocuments: jest.Mock };
-  let panneModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let panneModel: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    countDocuments: jest.Mock;
+  };
   let panneSolutionModel: { find: jest.Mock; countDocuments: jest.Mock };
   let preventiveTaskModel: {
     find: jest.Mock;
@@ -128,6 +132,7 @@ describe('OperatorService machine scoping', () => {
     };
     panneModel = {
       find: jest.fn().mockReturnValue(queryResult([])),
+      findOne: jest.fn().mockReturnValue(queryResult(null)),
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
     };
     panneSolutionModel = {
@@ -378,15 +383,44 @@ describe('OperatorService machine scoping', () => {
     );
   });
 
-  it('rejects a fault catalogue request for an unassigned machine', async () => {
+  it('returns the fault catalogue for a reportable unassigned machine', async () => {
+    const machineTypeId = new Types.ObjectId();
+    machineModel.findById.mockReturnValueOnce(
+      queryResult({
+        _id: unassignedMachineId,
+        type_id: machineTypeId,
+      }),
+    );
+
     await expect(
       service.getFaultsForOperator(operatorId.toString(), 1, 20, 0, {
         machineId: unassignedMachineId.toString(),
       }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).resolves.toMatchObject({ items: [], totalItems: 0 });
 
-    expect(panneModel.find).not.toHaveBeenCalled();
+    expect(panneModel.find).toHaveBeenCalledWith({
+      is_active: { $ne: false },
+      machine_type_id: machineTypeId,
+    });
     expect(workOrderModel.find).not.toHaveBeenCalled();
+  });
+
+  it('returns linked parts for an active reportable fault', async () => {
+    const panneId = new Types.ObjectId();
+    panneModel.findOne.mockReturnValueOnce(queryResult({ _id: panneId }));
+
+    await expect(
+      service.getFaultPartsForOperator(
+        operatorId.toString(),
+        panneId.toString(),
+      ),
+    ).resolves.toEqual([]);
+
+    expect(panneModel.findOne).toHaveBeenCalledWith({
+      _id: panneId,
+      is_active: { $ne: false },
+    });
+    expect(pannePartModel.find).toHaveBeenCalledWith({ panne_id: panneId });
   });
 
   it('returns empty fault pages when the operator has no visible machines', async () => {

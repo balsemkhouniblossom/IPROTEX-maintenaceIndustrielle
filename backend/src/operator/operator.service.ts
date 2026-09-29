@@ -1144,7 +1144,7 @@ export class OperatorService {
   ): Promise<PaginatedResponse<PanneResponse>> {
     const query: Record<string, unknown> = { is_active: { $ne: false } };
     if (filters.machineId) {
-      await this.assertCanAccessMachine(userId, filters.machineId);
+      this.assertValidObjectId(filters.machineId, 'machine_id');
       const machine = await this.machineModel
         .findById(filters.machineId)
         .select({ type_id: 1 })
@@ -1189,25 +1189,16 @@ export class OperatorService {
     );
   }
 
-  async getFaultPartsForOperator(userId: string, panneId: string) {
+  async getFaultPartsForOperator(_userId: string, panneId: string) {
     this.assertValidObjectId(panneId, 'panne_id');
-    const allowedMachineIds = await this.getAllowedMachineIds(userId);
-    const machines = allowedMachineIds.length
-      ? await this.machineModel
-          .find({ _id: { $in: this.toObjectIdList(allowedMachineIds) } })
-          .select({ type_id: 1 })
-          .exec()
-      : [];
-    const machineTypeIds = machines.map((machine) => machine.type_id);
     const fault = await this.panneModel
       .findOne({
         _id: this.toObjectId(panneId),
-        machine_type_id: { $in: machineTypeIds },
         is_active: { $ne: false },
       })
       .select({ _id: 1 })
       .exec();
-    if (!fault) throw new ForbiddenException('Fault is outside operator scope');
+    if (!fault) throw new NotFoundException('Fault not found');
 
     return this.pannePartModel
       .find({ panne_id: fault._id })

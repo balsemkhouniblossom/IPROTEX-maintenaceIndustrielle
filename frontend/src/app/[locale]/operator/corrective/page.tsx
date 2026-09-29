@@ -104,6 +104,11 @@ function uniqueId(prefix: string): string {
   return `${prefix}-${Date.now()}-${crypto.randomUUID().toUpperCase()}`;
 }
 
+function toLocalDateTimeInputValue(date: Date): string {
+  const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localTime.toISOString().slice(0, 16);
+}
+
 async function uploadFaultPhoto({
   photo,
   machineId,
@@ -323,6 +328,8 @@ function ReportProblemFlow() {
     if (!selectedMachine) return false;
     if (urgency === "machineStopped") {
       if (!interventionStartedAt || !interventionEndedAt) return false;
+      const now = new Date();
+      if (new Date(interventionStartedAt) > now || new Date(interventionEndedAt) > now) return false;
       if (new Date(interventionEndedAt) <= new Date(interventionStartedAt)) return false;
     }
     return canProceedFromProblem;
@@ -375,17 +382,20 @@ function ReportProblemFlow() {
         );
         if (!cancelled) {
           setFaults(faultItems);
+          setError(null);
         }
       } catch (e) {
-        console.error("Failed to load faults", e);
-        if (!cancelled) setFaults([]);
+        if (!cancelled) {
+          setFaults([]);
+          setError(extractApiErrorMessage(e, tCommon("loadFailed")));
+        }
       }
     }
     void loadFaults();
     return () => {
       cancelled = true;
     };
-  }, [selectedMachine]);
+  }, [selectedMachine, tCommon]);
 
   function resetMachineSpecificDraft() {
     setSelectedFaults([]);
@@ -404,6 +414,19 @@ function ReportProblemFlow() {
     resetMachineSpecificDraft();
     setSelectedMachine(machineId);
     setStep("problem");
+  }
+
+  function handleUrgencySelect(option: keyof typeof URGENCY_PRIORITY_MAP) {
+    setUrgency(option);
+    if (option === "machineStopped" && !interventionStartedAt) {
+      setInterventionStartedAt(toLocalDateTimeInputValue(new Date()));
+    }
+  }
+
+  function returnToMachineSelection() {
+    resetMachineSpecificDraft();
+    setSelectedMachine(null);
+    setStep("machine");
   }
 
   function handleFaultSelect(fault: Panne | null) {
@@ -532,6 +555,7 @@ function ReportProblemFlow() {
   }
 
   const stepIndex = ["machine", "problem", "description", "urgency", "review"].indexOf(step);
+  const currentDateTimeLocal = toLocalDateTimeInputValue(new Date());
 
   if (loading) {
     return (
@@ -650,7 +674,7 @@ function ReportProblemFlow() {
     );*/
   }
 
-  const steps = [
+  const steps: Array<{ key: Exclude<Step, "success">; label: string }> = [
     { key: "machine", label: t("step1Title") },
     { key: "problem", label: t("step2Title") },
     { key: "description", label: t("step3Title") },
@@ -658,10 +682,30 @@ function ReportProblemFlow() {
     { key: "review", label: t("reviewTitle") },
   ];
 
+  function canNavigateToStep(targetStep: Exclude<Step, "success">): boolean {
+    switch (targetStep) {
+      case "machine":
+        return true;
+      case "problem":
+        return Boolean(selectedMachine);
+      case "description":
+      case "urgency":
+        return Boolean(selectedMachine) && canProceedFromProblem;
+      case "review":
+        return canSubmitReview;
+    }
+  }
+
+  function navigateToStep(targetStep: Exclude<Step, "success">) {
+    if (canNavigateToStep(targetStep)) {
+      setStep(targetStep);
+    }
+  }
+
   return (
     <ProtectedRoute requiredRole="operator">
       <DashboardLayout title={t("title")}>
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto w-full max-w-[1600px]">
           {selectedMachineData && step !== "machine" && (
             <div className="mb-6 flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-4">
               <div>
@@ -675,11 +719,7 @@ function ReportProblemFlow() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  resetMachineSpecificDraft();
-                  setSelectedMachine(null);
-                  setStep("machine");
-                }}
+                onClick={returnToMachineSelection}
                 className="text-sm font-semibold text-blue-700 hover:text-blue-900"
               >
                 {t("changeMachine")}
@@ -718,26 +758,32 @@ function ReportProblemFlow() {
             <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
           )}
 
-          <div className="mb-8">
+          <div className="mb-10 pb-2">
             <div className="flex items-center">
               {steps.map((s, i) => (
                 <div key={s.key} className="flex flex-1 items-center">
-                  <div className="flex flex-col items-center">
-                    <div
+                  <button
+                    type="button"
+                    onClick={() => navigateToStep(s.key)}
+                    disabled={!canNavigateToStep(s.key)}
+                    aria-current={step === s.key ? "step" : undefined}
+                    className="flex flex-col items-center rounded-lg px-1 py-1 enabled:cursor-pointer enabled:hover:underline disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    <span
                       className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
                         i <= stepIndex ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-500"
                       }`}
                     >
                       {i + 1}
-                    </div>
-                    <div
-                      className={`mt-1 text-xs ${
+                    </span>
+                    <span
+                      className={`mt-1 text-xs underline-offset-2 ${
                         i <= stepIndex ? "text-slate-900" : "text-slate-500"
                       }`}
                     >
                       {s.label}
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                   {i < steps.length - 1 && (
                     <div
                       className={`mx-2 h-0.5 flex-1 ${
@@ -751,9 +797,9 @@ function ReportProblemFlow() {
           </div>
 
           {step === "machine" && (
-            <div className="space-y-6">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">{t("searchMachine")}</label>
+            <div className="space-y-10 rounded-2xl border border-slate-200 bg-slate-50/60 p-6 sm:p-8 lg:p-10">
+              <div className="max-w-3xl space-y-4">
+                <label className="block text-sm font-semibold text-slate-700">{t("searchMachine")}</label>
                 <input
                   type="text"
                   value={machineSearch}
@@ -762,21 +808,21 @@ function ReportProblemFlow() {
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
                 {filteredMachines.map((machine) => (
                   <button
                     key={machine._id}
                     type="button"
                     onClick={() => handleMachineSelect(machine._id)}
-                    className={`rounded-2xl border p-4 text-left transition hover:-translate-y-1 hover:shadow-lg ${
+                    className={`flex min-h-28 flex-col rounded-xl border p-4 text-start transition hover:-translate-y-0.5 hover:shadow-md ${
                       selectedMachine === machine._id
                         ? "border-blue-500 bg-blue-50 shadow-md"
                         : "border-slate-200 bg-white"
                     }`}
                   >
-                    <div className="text-base font-semibold text-slate-900">{machine.machine_id}</div>
-                    <div className="mt-1 text-sm text-slate-500">{machine.model || tCommon("notAvailable")}</div>
-                    <div className="mt-2">
+                    <div className="break-words text-base font-semibold leading-snug text-slate-900">{machine.machine_id}</div>
+                    <div className="mt-1 break-words text-sm leading-snug text-slate-500">{machine.model || tCommon("notAvailable")}</div>
+                    <div className="mt-3">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ${machineStatusClass(machine.status)}`}
                       >
@@ -791,7 +837,7 @@ function ReportProblemFlow() {
                 ))}
               </div>
               {filteredMachines.length === 0 && (
-                <div className="text-center text-sm text-slate-500">{t("noMachines")}</div>
+                <div className="col-span-full rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">{t("noMachines")}</div>
               )}
             </div>
           )}
@@ -921,7 +967,7 @@ function ReportProblemFlow() {
                 <button
                   key={option}
                   type="button"
-                  onClick={() => setUrgency(option)}
+                  onClick={() => handleUrgencySelect(option)}
                   className={`w-full rounded-xl border p-4 text-left transition ${
                     urgency === option ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"
                   }`}
@@ -934,6 +980,7 @@ function ReportProblemFlow() {
                   <label className="text-sm font-semibold text-slate-700">
                     {t("interventionStartTime")}
                     <input type="datetime-local" value={interventionStartedAt}
+                      max={currentDateTimeLocal}
                       onChange={(event) => setInterventionStartedAt(event.target.value)}
                       className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
                   </label>
@@ -941,6 +988,7 @@ function ReportProblemFlow() {
                     {t("interventionEndTime")}
                     <input type="datetime-local" value={interventionEndedAt}
                       min={interventionStartedAt || undefined}
+                      max={currentDateTimeLocal}
                       onChange={(event) => setInterventionEndedAt(event.target.value)}
                       className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
                   </label>
@@ -1054,7 +1102,7 @@ function ReportProblemFlow() {
                 <button
                   type="button"
                   onClick={() => setStep("review")}
-                  disabled={urgency === "machineStopped" && (!interventionStartedAt || !interventionEndedAt || new Date(interventionEndedAt) <= new Date(interventionStartedAt))}
+                  disabled={!canSubmitReview}
                   className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
                 >
                   {tCommon("next")}

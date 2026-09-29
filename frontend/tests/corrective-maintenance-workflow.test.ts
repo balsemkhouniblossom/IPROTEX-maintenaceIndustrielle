@@ -231,3 +231,63 @@ test("corrective photo is previewed during entry, review, and final confirmation
     3,
   );
 });
+
+test("corrective machine selection uses the available width and a responsive card grid", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /mx-auto w-full max-w-\[1600px\]/);
+  assert.match(source, /grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4/);
+  assert.match(source, /flex min-h-28 flex-col/);
+  assert.match(source, /rounded-xl border p-4 text-start/);
+  assert.match(source, /mb-10 pb-2/);
+  assert.match(source, /space-y-10 rounded-2xl/);
+  assert.match(source, /p-6 sm:p-8 lg:p-10/);
+  assert.match(source, /max-w-3xl space-y-4/);
+  assert.doesNotMatch(source, /<div className="mx-auto max-w-3xl">/);
+});
+
+test("corrective stepper navigates across accessible steps without resetting the draft", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /function canNavigateToStep\(/);
+  assert.match(source, /function navigateToStep\(/);
+  assert.match(source, /onClick=\{\(\) => navigateToStep\(s\.key\)\}/);
+  assert.match(source, /disabled=\{!canNavigateToStep\(s\.key\)\}/);
+  assert.match(source, /aria-current=\{step === s\.key \? "step" : undefined\}/);
+
+  const navigationFunction = source.slice(
+    source.indexOf("function navigateToStep"),
+    source.indexOf("return (", source.indexOf("function navigateToStep")),
+  );
+  assert.doesNotMatch(navigationFunction, /resetMachineSpecificDraft/);
+  assert.doesNotMatch(navigationFunction, /setSelectedMachine/);
+});
+
+test("Machine stopped defaults the start time and rejects future MTTR timestamps", () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /function toLocalDateTimeInputValue\(date: Date\)/);
+  assert.match(source, /function handleUrgencySelect\(/);
+  assert.match(
+    source,
+    /option === "machineStopped" && !interventionStartedAt/,
+  );
+  assert.match(
+    source,
+    /setInterventionStartedAt\(toLocalDateTimeInputValue\(new Date\(\)\)\)/,
+  );
+  assert.equal(source.match(/max=\{currentDateTimeLocal\}/g)?.length, 2);
+  assert.match(source, /new Date\(interventionStartedAt\) > now/);
+  assert.match(source, /new Date\(interventionEndedAt\) > now/);
+  assert.match(source, /intervention_started_at:/);
+  assert.match(source, /intervention_ended_at:/);
+});
