@@ -32,6 +32,7 @@ import { WidgetErrorFallback } from "@/components/WidgetErrorFallback";
 type Props = {
   readonly document: ViewableDocument;
   readonly title?: string;
+  readonly initialPage?: number;
   readonly onError?: () => void;
 };
 
@@ -60,6 +61,7 @@ function rendererFallback(_error: unknown, reset: () => void) {
 export default function DocumentAttachmentViewer({
   document,
   title,
+  initialPage,
   onError,
 }: Readonly<Props>) {
   const t = useTranslations("documents.viewer");
@@ -204,6 +206,7 @@ export default function DocumentAttachmentViewer({
           blob={state.blob}
           objectUrl={state.objectUrl}
           label={label}
+          initialPage={initialPage}
           onCorrupt={() => handleContentFailure("corrupt")}
           onRendererError={() => handleContentFailure("renderer")}
           unsupportedMessage={t("states.unsupported")}
@@ -219,6 +222,7 @@ function FormatViewer({
   blob,
   objectUrl,
   label,
+  initialPage,
   onCorrupt,
   onRendererError,
   unsupportedMessage,
@@ -228,6 +232,7 @@ function FormatViewer({
   blob: Blob | null;
   objectUrl: string;
   label: string;
+  initialPage?: number;
   onCorrupt: () => void;
   onRendererError: () => void;
   unsupportedMessage: string;
@@ -237,6 +242,7 @@ function FormatViewer({
     return (
       <PdfViewer
         file={blob}
+        initialPage={initialPage}
         onCorrupt={onCorrupt}
         onRendererError={onRendererError}
       />

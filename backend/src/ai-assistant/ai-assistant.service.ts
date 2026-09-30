@@ -21,27 +21,20 @@ import {
   AiProviderError,
 } from './ai-provider.interface';
 import { RequestAiRecommendationDto } from './dto/request-ai-recommendation.dto';
+import { Role } from '../schemas/user.schema';
 import {
   KnowledgeRetrievalService,
   KnowledgeSource,
 } from '../rag/services/knowledge-retrieval.service';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
-const NO_EVIDENCE_BY_LOCALE: Record<string, string> = {
-  en: 'I could not find sufficiently relevant information in the available company documentation.',
-  fr: "Je n'ai pas trouvé d'informations suffisamment pertinentes dans la documentation disponible de l'entreprise.",
-  es: 'No encontré información suficientemente relevante en la documentación disponible de la empresa.',
-  de: 'In der verfügbaren Unternehmensdokumentation wurden keine ausreichend relevanten Informationen gefunden.',
-  it: 'Non ho trovato informazioni sufficientemente pertinenti nella documentazione aziendale disponibile.',
-  ar: 'لم أجد معلومات ذات صلة كافية في وثائق الشركة المتاحة.',
-};
 const CLARIFICATION_MESSAGE_BY_LOCALE: Record<string, string> = {
-  en: 'I need a clearer maintenance question before giving recommendations. Please describe the fault, symptom, alarm, noise, temperature, movement, or check you want help with.',
-  fr: "J'ai besoin d'une question de maintenance plus claire avant de donner des recommandations. Veuillez decrire la panne, le symptome, l'alarme, le bruit, la temperature, le mouvement ou le controle souhaite.",
-  es: 'Necesito una pregunta de mantenimiento mas clara antes de dar recomendaciones. Describe la averia, el sintoma, la alarma, el ruido, la temperatura, el movimiento o la comprobacion que necesitas.',
-  de: 'Ich brauche eine klarere Wartungsfrage, bevor ich Empfehlungen gebe. Bitte beschreiben Sie die Stoerung, das Symptom, den Alarm, das Geraeusch, die Temperatur, die Bewegung oder die gewuenschte Pruefung.',
-  it: "Ho bisogno di una domanda di manutenzione piu chiara prima di dare raccomandazioni. Descrivi il guasto, il sintomo, l'allarme, il rumore, la temperatura, il movimento o il controllo richiesto.",
-  ar: 'احتاج الى سؤال صيانة اوضح قبل تقديم توصيات. يرجى وصف العطل او العرض او الانذار او الضوضاء او الحرارة او الحركة او الفحص المطلوب.',
+  en: 'Please ask a clearer question or describe what you want help with.',
+  fr: "Veuillez poser une question plus claire ou décrire l'aide dont vous avez besoin.",
+  es: 'Haz una pregunta más clara o describe con qué necesitas ayuda.',
+  de: 'Bitte stellen Sie eine klarere Frage oder beschreiben Sie, wobei Sie Hilfe benötigen.',
+  it: 'Fai una domanda più chiara o descrivi ciò per cui hai bisogno di aiuto.',
+  ar: 'يرجى طرح سؤال أوضح أو وصف ما تحتاج إلى مساعدة بشأنه.',
 };
 
 const MAINTENANCE_INTENT_TERMS = [
@@ -132,38 +125,49 @@ const ARABIC_MAINTENANCE_INTENT_TERMS = [
   'حرارة',
   'فحص',
 ] as const;
-const QUESTION_WORDS = new Set([
-  'why',
+const GENERAL_QUESTION_WORDS = new Set([
   'what',
+  'why',
   'how',
   'when',
   'where',
+  'who',
+  'which',
   'can',
+  'could',
   'should',
-  'do',
-  'does',
-  'is',
-  'are',
-  'pourquoi',
+  'tell',
+  'explain',
+  'describe',
+  'translate',
+  'calculate',
   'quoi',
+  'pourquoi',
   'comment',
-  'cuando',
+  'quel',
+  'quelle',
+  'explique',
   'que',
   'como',
-  'warum',
+  'cuando',
+  'donde',
   'was',
+  'warum',
   'wie',
-  'perche',
   'cosa',
+  'perche',
   'come',
+  'ما',
+  'ماذا',
+  'لماذا',
+  'كيف',
+  'متى',
+  'أين',
+  'من',
+  'اشرح',
 ]);
-
 function extractWords(value: string): string[] {
   return Array.from(value.matchAll(/[\p{L}\p{N}]+/gu), (match) => match[0]);
-}
-
-function hasQuestionWord(words: string[]): boolean {
-  return words.some((word) => QUESTION_WORDS.has(word.toLowerCase()));
 }
 
 export type AiRecommendationResponse = {
@@ -174,6 +178,7 @@ export type AiRecommendationResponse = {
   diagnostic?: AiProviderDiagnostics;
   answer?: AiAssistantAnswer;
   grounded: boolean;
+  operationalContextUsed: boolean;
   sources: KnowledgeSource[];
   retrieval: { matched: number };
 };
@@ -273,7 +278,7 @@ export class AiAssistantService {
 
     if (
       injectionResult.flags.length === 0 &&
-      !this.isClearMaintenanceQuestion(redactionResult.redacted)
+      !this.isClearQuestion(redactionResult.redacted)
     ) {
       return this.record({
         actor,
@@ -302,23 +307,6 @@ export class AiAssistantService {
           machineId: effectiveMachineId,
         })
       : undefined;
-    if (retrieval?.matched === 0 && !authorizedWorkOrder) {
-      return this.record({
-        actor,
-        dto,
-        status: AiInteractionStatus.OK,
-        provider: this.provider.name,
-        answer: this.buildNoEvidenceAnswer(dto.locale),
-        question: redactionResult.redacted,
-        redactionsApplied: redactionResult.count,
-        injectionFlags: injectionResult.flags,
-        grounded: false,
-        sources: [],
-        validatedWorkOrderId,
-        validatedMachineId: effectiveMachineId,
-      });
-    }
-
     const timeoutMs = this.getTimeoutMs();
     const controller = new AbortController();
     let timedOut = false;
@@ -364,7 +352,11 @@ export class AiAssistantService {
         question: redactionResult.redacted,
         redactionsApplied: redactionResult.count,
         injectionFlags: injectionResult.flags,
-        grounded: Boolean(retrieval?.matched || authorizedWorkOrder),
+        // `grounded` has one precise meaning in the public contract: at
+        // least one authorized company-document chunk supported the answer.
+        // Work-order context is useful operational evidence, but must not
+        // make the UI claim that documentation was used.
+        grounded: Boolean(retrieval?.matched),
         sources: retrieval?.sources ?? [],
         validatedWorkOrderId,
         validatedMachineId: effectiveMachineId,
@@ -475,23 +467,19 @@ export class AiAssistantService {
       : DEFAULT_TIMEOUT_MS;
   }
 
-  private isClearMaintenanceQuestion(question: string): boolean {
+  private isClearQuestion(question: string): boolean {
     const normalized = question.trim().replace(/\s+/g, ' ');
     if (normalized.length < 4 || !/\p{L}/u.test(normalized)) {
       return false;
     }
-
-    if (this.hasMaintenanceIntent(normalized)) {
-      return true;
-    }
-
     const words = extractWords(normalized).filter((word) => word.length >= 2);
-    const uniqueWords = new Set(words.map((word) => word.toLowerCase()));
-    if (words.length < 4 || uniqueWords.size < 3) {
-      return false;
-    }
-
-    return normalized.includes('?') && hasQuestionWord(words);
+    return (
+      words.length >= 2 &&
+      (normalized.includes('?') ||
+        normalized.includes('؟') ||
+        GENERAL_QUESTION_WORDS.has(words[0].toLowerCase()) ||
+        this.hasMaintenanceIntent(normalized))
+    );
   }
 
   private hasMaintenanceIntent(question: string): boolean {
@@ -519,16 +507,6 @@ export class AiAssistantService {
       uncertainty:
         CLARIFICATION_MESSAGE_BY_LOCALE[locale] ??
         CLARIFICATION_MESSAGE_BY_LOCALE.en,
-    };
-  }
-
-  private buildNoEvidenceAnswer(locale: string): AiAssistantAnswer {
-    return {
-      knownFacts: [],
-      probableCauses: [],
-      recommendedChecks: [],
-      safetyWarnings: [],
-      uncertainty: NO_EVIDENCE_BY_LOCALE[locale] ?? NO_EVIDENCE_BY_LOCALE.en,
     };
   }
 
@@ -589,9 +567,15 @@ export class AiAssistantService {
       interactionId: doc._id.toString(),
       provider: params.provider,
       retryAfterSeconds: params.retryAfterSeconds,
-      diagnostic: this.diagnosticForStatus(params.status),
+      // Detailed provider/configuration diagnostics are an Admin concern.
+      // Operator and Technician users receive the localized status only.
+      diagnostic:
+        (params.actor.role as Role) === Role.ADMIN
+          ? this.diagnosticForStatus(params.status)
+          : undefined,
       answer: params.answer,
       grounded: params.grounded ?? false,
+      operationalContextUsed: Boolean(params.validatedWorkOrderId),
       sources: params.sources ?? [],
       retrieval: { matched: params.sources?.length ?? 0 },
     };

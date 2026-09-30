@@ -210,9 +210,8 @@ describe('AI Assistant — mocked provider (e2e)', () => {
       role: 'operator',
       is_active: true,
       is_verified: true,
-      // Non-empty and deliberately excludes unassignedMachine: an empty list
-      // now defaults to full visibility, so this must narrow explicitly to
-      // still exercise "operator scoped away from a specific machine".
+      // Deliberately excludes unassignedMachine so this account exercises
+      // the server-side machine-scope denial path.
       assigned_machine_ids: [assignedMachine._id],
     });
     const errorTestUser = await users.create({

@@ -3728,7 +3728,7 @@
   "aiAssistant": {
     "title": "Assistant IA (a titre consultatif)",
     "disclaimer": "A titre consultatif uniquement : cet assistant suggere des pistes possibles a partir des donnees disponibles. Il ne modifie jamais un ordre de travail, le stock ou le statut d'une machine -- verifiez toujours avant d'agir.",
-    "questionPlaceholder": "Decrivez le symptome ou posez une question de depannage...",
+    "questionPlaceholder": "Posez une question sur la maintenance, votre machine ou tout autre sujet...",
     "ask": "Demander",
     "asking": "Envoi en cours...",
     "requestFailed": "Impossible de contacter l'assistant IA. Veuillez reessayer.",

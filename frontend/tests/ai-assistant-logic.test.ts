@@ -32,6 +32,10 @@ test("apiService exposes the AI assistant recommendation and audit-history endpo
   );
   assert.match(
     source,
+    /getRagReadiness:\s*\(\)\s*=>\s*api\.get\(["']\/rag\/readiness["']\)/,
+  );
+  assert.match(
+    source,
     /getAiAssistantHealth:\s*\(\)\s*=>\s*api\.get\(["']\/ai-assistant\/health["']\)/,
     "apiService.getAiAssistantHealth must GET /ai-assistant/health",
   );
@@ -172,6 +176,28 @@ test("AiAssistantPanel renders safe backend diagnostics for non-OK assistant res
   assert.match(source, /diagnostic\.enabled/);
   assert.match(source, /diagnostic\.message/);
   assert.doesNotMatch(source, /apiKey|GEMINI_API_KEY/);
+});
+
+test("AiAssistantPanel bounds questions, uses RTL-safe alignment, and passes citation pages to the viewer", () => {
+  const source = readSource("src/components/ai-assistant/AiAssistantPanel.tsx");
+  assert.match(source, /maxLength=\{2000\}/);
+  assert.match(source, /question\.length\}\/2000/);
+  assert.match(source, /initialPage=\{sourcePage\}/);
+  assert.match(source, /\bps-5\b/);
+  assert.match(source, /\btext-start\b/);
+  assert.doesNotMatch(source, /console\.error\("Failed to request AI assistant/);
+});
+
+test("backend reserves detailed assistant diagnostics for Admin and defines documentation grounding precisely", () => {
+  const source = readSource(
+    "../backend/src/ai-assistant/ai-assistant.service.ts",
+  );
+  assert.match(source, /\(params\.actor\.role as Role\) === Role\.ADMIN/);
+  assert.match(source, /grounded: Boolean\(retrieval\?\.matched\)/);
+  assert.doesNotMatch(
+    source,
+    /grounded: Boolean\(retrieval\?\.matched \|\| authorizedWorkOrder\)/,
+  );
 });
 
 test("frontend never references backend-only Gemini secret names", () => {

@@ -752,6 +752,8 @@ export const apiService = {
 
   getAiAssistantHealth: () => api.get("/ai-assistant/health"),
 
+  getRagReadiness: () => api.get("/rag/readiness"),
+
   // Predictive maintenance (advisory only — read endpoints never mutate a work order, stock, or machine)
   getPredictiveFleetSummary: (config?: QuietAxiosConfig) =>
     api.get("/predictive-maintenance/fleet-summary", config),

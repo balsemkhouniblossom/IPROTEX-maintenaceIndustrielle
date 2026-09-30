@@ -160,10 +160,15 @@ describe('AiAssistantService', () => {
     );
     const service = buildService();
 
-    await service.getRecommendation(
+    const result = await service.getRecommendation(
       { ...actor, role: 'technician' },
       baseDto({ machineId, workOrderId }),
     );
+
+    expect(result).toMatchObject({
+      grounded: false,
+      operationalContextUsed: true,
+    });
 
     expect(workOrderContextService.resolve).toHaveBeenCalledWith(
       { ...actor, role: 'technician' },
@@ -221,13 +226,7 @@ describe('AiAssistantService', () => {
     const result = await service.getRecommendation(actor, baseDto());
 
     expect(result.status).toBe(AiInteractionStatus.DISABLED);
-    expect(result.diagnostic).toMatchObject({
-      enabled: false,
-      configured: false,
-      provider: 'disabled',
-      status: 'disabled',
-      message: 'AI assistant is intentionally disabled',
-    });
+    expect(result.diagnostic).toBeUndefined();
     expect(result.answer).toBeUndefined();
     expect(contextBuilder.buildContext).not.toHaveBeenCalled();
     expect(provider.generate).not.toHaveBeenCalled();
@@ -292,7 +291,7 @@ describe('AiAssistantService', () => {
       probableCauses: [],
       recommendedChecks: [],
       safetyWarnings: [],
-      uncertainty: expect.stringMatching(/clearer maintenance question/i),
+      uncertainty: expect.stringMatching(/clearer question/i),
     });
     expect(contextBuilder.buildContext).not.toHaveBeenCalled();
     expect(provider.generate).not.toHaveBeenCalled();
@@ -368,10 +367,7 @@ describe('AiAssistantService', () => {
     const result = await service.getRecommendation(actor, baseDto());
 
     expect(result.status).toBe(AiInteractionStatus.ERROR);
-    expect(result.diagnostic).toMatchObject({
-      provider: 'fake',
-      message: 'AI assistant failed with an unexpected provider error',
-    });
+    expect(result.diagnostic).toBeUndefined();
     expect(result.answer).toBeUndefined();
     expect(interactionModel.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -453,6 +449,21 @@ describe('AiAssistantService', () => {
     expect(JSON.stringify(service.getHealth())).not.toContain('GEMINI_API_KEY');
   });
 
+  it('returns provider diagnostics to Admin only', async () => {
+    provider.generate.mockRejectedValue(new Error('provider exploded'));
+    const service = buildService();
+
+    const result = await service.getRecommendation(
+      { ...actor, role: 'admin' },
+      baseDto(),
+    );
+
+    expect(result.diagnostic).toMatchObject({
+      provider: 'fake',
+      message: 'AI assistant failed with an unexpected provider error',
+    });
+  });
+
   it('is advisory only: never calls anything resembling a work-order/stock/machine mutation', () => {
     // Structural guarantee, not a runtime check: AiAssistantService's only
     // injected collaborators are read-oriented (DocumentAccessService's
@@ -511,7 +522,7 @@ describe('AiAssistantService', () => {
     );
 
     expect(response.answer?.uncertainty).toBe(
-      'I need a clearer maintenance question before giving recommendations. Please describe the fault, symptom, alarm, noise, temperature, movement, or check you want help with.',
+      'Please ask a clearer question or describe what you want help with.',
     );
   });
 

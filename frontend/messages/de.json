@@ -3795,7 +3795,7 @@
   "aiAssistant": {
     "title": "KI-Assistent (nur beratend)",
     "disclaimer": "Nur beratend: Dieser Assistent schlägt lediglich Möglichkeiten auf Basis der verfügbaren Daten vor. Er ändert niemals einen Arbeitsauftrag, den Lagerbestand oder den Maschinenstatus -- überprüfen Sie stets, bevor Sie handeln.",
-    "questionPlaceholder": "Beschreiben Sie das Symptom oder stellen Sie eine Frage zur Fehlerbehebung...",
+    "questionPlaceholder": "Fragen Sie nach Wartung, Ihrer Maschine oder einem allgemeinen Thema...",
     "ask": "Fragen",
     "asking": "Wird gesendet...",
     "requestFailed": "Der KI-Assistent konnte nicht erreicht werden. Bitte versuchen Sie es erneut.",

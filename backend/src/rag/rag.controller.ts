@@ -1,4 +1,4 @@
-import { Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -13,6 +13,12 @@ import { DocumentIngestionService } from './services/document-ingestion.service'
 @AdminOnly()
 export class RagController {
   constructor(private readonly ingestion: DocumentIngestionService) {}
+
+  /** Read-only operational evidence for Admin release checks. */
+  @Get('readiness')
+  readiness() {
+    return this.ingestion.getReadiness();
+  }
 
   @Post('documents/:id/index')
   @Throttle({ default: { limit: 5, ttl: 60000 } })

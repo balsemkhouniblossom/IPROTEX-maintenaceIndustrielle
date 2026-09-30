@@ -146,19 +146,16 @@ export class DocumentAccessService {
       .map((id) => this.toObjectId(id))
       .filter((id): id is Types.ObjectId => Boolean(id));
 
-    if (!explicitIds.length) {
-      // No explicit assignment configured for this operator — default to
-      // every machine, mirroring OperatorService.getAllowedMachineIds.
-      const allMachineIds = await this.machineModel.distinct('_id').exec();
-      return this.uniqueObjectIds(allMachineIds);
-    }
-
     const workOrderMachineIds = await this.workOrderModel
       .distinct('machine_id', {
         technician_id: this.userReferenceFilter(userId),
       })
       .exec();
 
+    // Keep document/RAG authorization aligned with OperatorService: an
+    // Operator's scope is the union of explicit machine assignments and
+    // machines reached through their work orders. An empty assignment must
+    // never broaden access to the complete machine catalogue.
     return this.uniqueObjectIds([...explicitIds, ...workOrderMachineIds]);
   }
 

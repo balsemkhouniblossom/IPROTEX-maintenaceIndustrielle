@@ -81,10 +81,11 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toMatch(/untrusted reference data/i);
   });
 
-  it('instructs the model to ask for clarification when the question is unclear or unrelated', () => {
+  it('answers general questions but asks for clarification when the question is unclear', () => {
     const prompt = buildSystemPrompt('en');
     expect(prompt).toMatch(/question is unclear/i);
-    expect(prompt).toMatch(/unrelated to industrial maintenance/i);
+    expect(prompt).toMatch(/general question unrelated to company operations/i);
+    expect(prompt).toMatch(/broadly established knowledge/i);
     expect(prompt).toMatch(/ask the user to clarify/i);
   });
 });

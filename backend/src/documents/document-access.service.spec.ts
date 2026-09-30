@@ -310,6 +310,57 @@ describe('DocumentAccessService technician authorization consistency', () => {
   });
 });
 
+describe('DocumentAccessService operator authorization consistency', () => {
+  it('does not broaden an unassigned Operator to every machine', async () => {
+    const userId = new Types.ObjectId().toHexString();
+    const unrelatedMachineId = new Types.ObjectId();
+    const service = new DocumentAccessService(
+      {} as never,
+      createMachineModel([unrelatedMachineId]) as never,
+      createUserModel([]) as never,
+      createWorkOrderModel([]) as never,
+    );
+
+    await expect(
+      service.listAccessibleMachineIds({ userId, role: Role.OPERATOR }),
+    ).resolves.toEqual([]);
+    await expect(
+      service.assertCanAccessMachine(
+        { userId, role: Role.OPERATOR },
+        unrelatedMachineId.toHexString(),
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('uses the same explicit-plus-work-order scope as OperatorService', async () => {
+    const userId = new Types.ObjectId().toHexString();
+    const explicitMachineId = new Types.ObjectId();
+    const workOrderMachineId = new Types.ObjectId();
+    const service = buildService(
+      [
+        {
+          _id: new Types.ObjectId(),
+          machine_id: workOrderMachineId,
+          technician_id: userId,
+          status: 'completed',
+        },
+      ],
+      [explicitMachineId],
+    );
+
+    const accessible = await service.listAccessibleMachineIds({
+      userId,
+      role: Role.OPERATOR,
+    });
+
+    expect(accessible?.map((id) => id.toHexString()).sort()).toEqual(
+      [explicitMachineId, workOrderMachineId]
+        .map((id) => id.toHexString())
+        .sort(),
+    );
+  });
+});
+
 describe('DocumentAccessService lifecycle visibility', () => {
   const machineId = new Types.ObjectId();
   const userId = new Types.ObjectId().toHexString();

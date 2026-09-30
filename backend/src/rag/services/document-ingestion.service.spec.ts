@@ -27,6 +27,16 @@ describe('DocumentIngestionService', () => {
     const documentModel = {
       findById: jest.fn(() => executable(overrides.document ?? null)),
       updateOne: jest.fn(() => executable({ acknowledged: true })),
+      countDocuments: jest.fn((filter: Record<string, unknown>) => {
+        const status = filter.rag_status as string | undefined;
+        const counts = (overrides.documentCounts ?? {}) as Record<
+          string,
+          number
+        >;
+        if (!Object.keys(filter).length) return executable(counts.total ?? 0);
+        if (status) return executable(counts[status] ?? 0);
+        return executable(counts.notIndexed ?? 0);
+      }),
       db: { startSession: jest.fn().mockResolvedValue(session) },
     };
     const chunkModel = {
@@ -37,6 +47,19 @@ describe('DocumentIngestionService', () => {
         exec: jest.fn().mockResolvedValue({ deletedCount: 1 }),
       })),
       aggregate: jest.fn(() => executable(overrides.searchResults ?? [])),
+      collection: {
+        listSearchIndexes: jest.fn(() => ({
+          toArray: jest.fn().mockResolvedValue(
+            overrides.searchIndexes ?? [
+              {
+                name: 'knowledge_vector_index',
+                status: 'READY',
+                queryable: true,
+              },
+            ],
+          ),
+        })),
+      },
     };
     const machineModel = {
       findById: jest.fn(() => ({
@@ -87,6 +110,34 @@ describe('DocumentIngestionService', () => {
     );
     return { service, documentModel, chunkModel, embeddings };
   }
+
+  it('reports read-only Atlas/vector readiness and indexing counts', async () => {
+    const { service } = createService({
+      chunkCount: 12,
+      documentCounts: {
+        total: 4,
+        READY: 2,
+        PROCESSING: 1,
+        FAILED: 0,
+        notIndexed: 1,
+      },
+    });
+
+    await expect(service.getReadiness()).resolves.toEqual({
+      ready: true,
+      indexName: 'knowledge_vector_index',
+      indexQueryable: true,
+      documents: {
+        total: 4,
+        ready: 2,
+        processing: 1,
+        failed: 0,
+        notIndexed: 1,
+      },
+      chunks: 12,
+      message: 'RAG knowledge retrieval is ready',
+    });
+  });
 
   it('indexes metadata and atomically replaces the previous generation', async () => {
     const document = {

@@ -3592,7 +3592,7 @@
   "aiAssistant": {
     "title": "Assistente IA (solo consultivo)",
     "disclaimer": "Solo a scopo consultivo: questo assistente suggerisce solo possibilita in base ai dati disponibili. Non modifica mai un ordine di lavoro, lo stock o lo stato di una macchina -- verificare sempre prima di agire.",
-    "questionPlaceholder": "Descrivi il sintomo o poni una domanda di risoluzione dei problemi...",
+    "questionPlaceholder": "Fai una domanda sulla manutenzione, sulla macchina o su qualsiasi argomento generale...",
     "ask": "Chiedi",
     "asking": "Invio in corso...",
     "requestFailed": "Impossibile contattare l'assistente IA. Riprova.",

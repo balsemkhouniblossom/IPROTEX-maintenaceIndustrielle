@@ -3592,7 +3592,7 @@
   "aiAssistant": {
     "title": "Asistente de IA (solo orientativo)",
     "disclaimer": "Solo con fines orientativos: este asistente solo sugiere posibilidades a partir de los datos disponibles. Nunca modifica una orden de trabajo, el stock ni el estado de una maquina -- verifique siempre antes de actuar.",
-    "questionPlaceholder": "Describa el sintoma o haga una pregunta de diagnostico...",
+    "questionPlaceholder": "Pregunte sobre mantenimiento, su máquina o cualquier tema general...",
     "ask": "Preguntar",
     "asking": "Enviando...",
     "requestFailed": "No se pudo contactar al asistente de IA. Intentelo de nuevo.",

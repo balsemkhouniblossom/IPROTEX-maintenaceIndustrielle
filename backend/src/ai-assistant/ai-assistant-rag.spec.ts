@@ -36,15 +36,29 @@ describe('AiAssistantService RAG integration', () => {
     return { service, interactionModel, generate };
   }
 
-  it('returns localized no-evidence behavior without calling Gemini', async () => {
-    const { service, generate } = build({
-      retrieve: jest.fn().mockResolvedValue({
-        matched: 0,
-        sources: [],
-        chunks: [],
-        context: '',
-      }),
+  it('allows safe general maintenance guidance when no company evidence matches', async () => {
+    const generate = jest.fn().mockResolvedValue({
+      model: 'gemini-test',
+      answer: {
+        knownFacts: [],
+        probableCauses: ['General bearing wear may cause vibration.'],
+        recommendedChecks: ['Have a qualified technician inspect the bearing.'],
+        safetyWarnings: ['Apply lockout/tagout before inspection.'],
+        uncertainty:
+          'No relevant company documentation was found; this is general guidance.',
+      },
     });
+    const { service } = build(
+      {
+        retrieve: jest.fn().mockResolvedValue({
+          matched: 0,
+          sources: [],
+          chunks: [],
+          context: '',
+        }),
+      },
+      generate,
+    );
 
     const response = await service.getRecommendation(actor, {
       question: 'Que faut-il vérifier sur le roulement ?',
@@ -57,8 +71,48 @@ describe('AiAssistantService RAG integration', () => {
       sources: [],
       retrieval: { matched: 0 },
     });
-    expect(response.answer?.uncertainty).toContain('documentation');
-    expect(generate).not.toHaveBeenCalled();
+    expect(response.answer?.uncertainty).toContain('general guidance');
+    expect(generate).toHaveBeenCalledWith(
+      expect.objectContaining({ ragContext: '' }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('answers a clear general question without claiming company-document grounding', async () => {
+    const generate = jest.fn().mockResolvedValue({
+      model: 'gemini-test',
+      answer: {
+        knownFacts: ['Paris is the capital of France.'],
+        probableCauses: [],
+        recommendedChecks: [],
+        safetyWarnings: [],
+        uncertainty: 'This is general knowledge, not company documentation.',
+      },
+    });
+    const { service } = build(
+      {
+        retrieve: jest.fn().mockResolvedValue({
+          matched: 0,
+          sources: [],
+          chunks: [],
+          context: '',
+        }),
+      },
+      generate,
+    );
+
+    const response = await service.getRecommendation(actor, {
+      question: 'What is the capital of France?',
+      locale: 'en',
+    });
+
+    expect(generate).toHaveBeenCalled();
+    expect(response).toMatchObject({
+      status: AiInteractionStatus.OK,
+      grounded: false,
+      sources: [],
+      retrieval: { matched: 0 },
+    });
   });
 
   it('passes only controlled evidence to Gemini and returns its sources', async () => {

@@ -39,6 +39,21 @@ export type RagIndexResult = {
   error?: string;
 };
 
+export type RagReadiness = {
+  ready: boolean;
+  indexName: string;
+  indexQueryable: boolean;
+  documents: {
+    total: number;
+    ready: number;
+    processing: number;
+    failed: number;
+    notIndexed: number;
+  };
+  chunks: number;
+  message: string;
+};
+
 export type VectorSearchOptions = {
   role: Role;
   machineIds?: Array<string | Types.ObjectId>;
@@ -214,6 +229,62 @@ export class DocumentIngestionService {
 
   async removeDocument(documentId: Types.ObjectId): Promise<void> {
     await this.chunkModel.deleteMany({ documentId }).exec();
+  }
+
+  async getReadiness(): Promise<RagReadiness> {
+    const [total, ready, processing, failed, notIndexed, chunks] =
+      await Promise.all([
+        this.documentModel.countDocuments({}).exec(),
+        this.documentModel
+          .countDocuments({ rag_status: RagIndexStatus.READY })
+          .exec(),
+        this.documentModel
+          .countDocuments({ rag_status: RagIndexStatus.PROCESSING })
+          .exec(),
+        this.documentModel
+          .countDocuments({ rag_status: RagIndexStatus.FAILED })
+          .exec(),
+        this.documentModel
+          .countDocuments({
+            $or: [
+              { rag_status: RagIndexStatus.NOT_INDEXED },
+              { rag_status: { $exists: false } },
+            ],
+          })
+          .exec(),
+        this.chunkModel.countDocuments({}).exec(),
+      ]);
+
+    let indexQueryable = false;
+    try {
+      const indexes = (await this.chunkModel.collection
+        .listSearchIndexes(RAG_VECTOR_INDEX_NAME)
+        .toArray()) as Array<{
+        name: string;
+        status?: string;
+        queryable?: boolean;
+      }>;
+      const index = indexes.find(
+        (candidate) => candidate.name === RAG_VECTOR_INDEX_NAME,
+      );
+      indexQueryable = Boolean(index?.queryable || index?.status === 'READY');
+    } catch (error) {
+      this.logger.warn(
+        `Unable to inspect RAG search index readiness: ${this.safeErrorMessage(error)}`,
+      );
+    }
+
+    const isReady = indexQueryable && ready > 0 && chunks > 0;
+    return {
+      ready: isReady,
+      indexName: RAG_VECTOR_INDEX_NAME,
+      indexQueryable,
+      documents: { total, ready, processing, failed, notIndexed },
+      chunks,
+      message: isReady
+        ? 'RAG knowledge retrieval is ready'
+        : 'RAG requires a queryable vector index and at least one indexed document',
+    };
   }
 
   async search(

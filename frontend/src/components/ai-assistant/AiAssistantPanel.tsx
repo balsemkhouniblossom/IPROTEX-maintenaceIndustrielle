@@ -47,6 +47,7 @@ type AiRecommendationResponse = {
   };
   answer?: AiAssistantAnswer;
   grounded?: boolean;
+  operationalContextUsed?: boolean;
   sources?: Array<{
     documentId: string;
     documentName: string;
@@ -123,8 +124,7 @@ function AiAssistantPanelInner({
         locale,
       });
       setResult(response.data as AiRecommendationResponse);
-    } catch (error) {
-      console.error("Failed to request AI assistant recommendation", error);
+    } catch {
       setSubmitError(true);
     } finally {
       setLoading(false);
@@ -171,6 +171,7 @@ function AiAssistantPanelInner({
           onChange={(event) => setQuestion(event.target.value)}
           placeholder={t("questionPlaceholder")}
           rows={2}
+          maxLength={2000}
           className="w-full flex-1 rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-purple-400 focus:outline-none"
           data-testid="ai-assistant-question-input"
         />
@@ -184,6 +185,9 @@ function AiAssistantPanelInner({
           {loading ? t("asking") : t("ask")}
         </button>
       </div>
+      <p className="mt-1 text-end text-xs text-slate-500" aria-live="polite">
+        {question.length}/2000
+      </p>
 
       {submitError ? (
         <p
@@ -222,6 +226,7 @@ function AiAssistantPanelInner({
           <DocumentAttachmentViewer
             document={sourceDocument}
             title={sourceDocument.file_name || undefined}
+            initialPage={sourcePage}
           />
         ) : null}
       </Modal>
@@ -321,7 +326,7 @@ function AiAssistantResult({
           <p className="mb-1 font-semibold text-red-800">
             {t("safetyWarnings")}
           </p>
-          <ul className="list-disc space-y-1 pl-5 text-red-800">
+          <ul className="list-disc space-y-1 ps-5 text-red-800">
             {answer.safetyWarnings.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -348,7 +353,7 @@ function AiAssistantResult({
                 <button
                   type="button"
                   onClick={() => void openSource(source)}
-                  className="max-w-full text-left text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                  className="max-w-full text-start text-blue-700 underline underline-offset-2 hover:text-blue-900"
                   aria-label={`${t("openSource")} ${source.documentName}`}
                 >
                   <span className="break-words">{source.documentName}</span>
@@ -414,7 +419,7 @@ function AnswerSection({
   return (
     <div data-testid={testId}>
       <p className="mb-1 font-semibold text-slate-800">{label}</p>
-      <ul className="list-disc space-y-1 pl-5 text-slate-700">
+      <ul className="list-disc space-y-1 ps-5 text-slate-700">
         {items.map((item) => (
           <li key={`${testId}-${item}`}>{item}</li>
         ))}

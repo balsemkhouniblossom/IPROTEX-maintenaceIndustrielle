@@ -13,6 +13,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 type PdfViewerProps = Readonly<{
   file: Blob;
+  initialPage?: number;
   onCorrupt: () => void;
   onRendererError: () => void;
 }>;
@@ -21,7 +22,12 @@ const MIN_SCALE = 0.6;
 const MAX_SCALE = 2.5;
 const SCALE_STEP = 0.2;
 
-export default function PdfViewer({ file, onCorrupt, onRendererError }: PdfViewerProps) {
+export default function PdfViewer({
+  file,
+  initialPage,
+  onCorrupt,
+  onRendererError,
+}: PdfViewerProps) {
   const t = useTranslations("documents.viewer");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -45,7 +51,11 @@ export default function PdfViewer({ file, onCorrupt, onRendererError }: PdfViewe
           return;
         }
         setPdf(loadedPdf);
-        setPageNumber(1);
+        const requestedPage =
+          Number.isInteger(initialPage) && initialPage !== undefined
+            ? initialPage
+            : 1;
+        setPageNumber(Math.min(Math.max(requestedPage, 1), loadedPdf.numPages));
       })
       .catch(() => {
         if (active) onCorrupt();
@@ -55,7 +65,7 @@ export default function PdfViewer({ file, onCorrupt, onRendererError }: PdfViewe
       active = false;
       if (loadingTask) void loadingTask.destroy();
     };
-  }, [file, onCorrupt]);
+  }, [file, initialPage, onCorrupt]);
 
   useEffect(() => {
     if (!pdf || !canvasRef.current) return;
