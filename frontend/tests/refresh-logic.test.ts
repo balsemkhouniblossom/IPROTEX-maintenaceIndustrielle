@@ -19,6 +19,11 @@ import {
 import { getApiBaseUrl } from "../src/config/api-base-url.ts";
 import { parseLocalLoginSession } from "../src/services/localLogin.ts";
 
+const apiSource = readFileSync(
+  join(process.cwd(), "src/services/api.ts"),
+  "utf8",
+);
+
 const safeUser = {
   _id: "user-id",
   nom_complet: "Refresh User",
@@ -77,6 +82,17 @@ test("only confirmed refresh authentication failures are session-clearing failur
   assert.equal(
     isConfirmedRefreshAuthFailure({ response: { status: 408, data: {} } }),
     false,
+  );
+});
+
+test("handled session 401 responses refresh or redirect without a console error overlay", () => {
+  assert.match(
+    apiSource,
+    /const isHandledSessionFailure = status === 401 && !isAuthEndpoint/,
+  );
+  assert.match(
+    apiSource,
+    /!isExpectedAuthFailure &&\s*!isHandledSessionFailure &&\s*!suppressErrorLog/,
   );
 });
 

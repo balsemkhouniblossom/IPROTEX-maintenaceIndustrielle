@@ -269,7 +269,7 @@ test("corrective stepper navigates across accessible steps without resetting the
   assert.doesNotMatch(navigationFunction, /setSelectedMachine/);
 });
 
-test("Machine stopped defaults the start time and rejects future MTTR timestamps", () => {
+test("Machine stopped defaults both editable MTTR timestamps and permits future values", () => {
   const source = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
     "utf8",
@@ -279,15 +279,17 @@ test("Machine stopped defaults the start time and rejects future MTTR timestamps
   assert.match(source, /function handleUrgencySelect\(/);
   assert.match(
     source,
-    /option === "machineStopped" && !interventionStartedAt/,
+    /option === "machineStopped"/,
   );
   assert.match(
     source,
-    /setInterventionStartedAt\(toLocalDateTimeInputValue\(new Date\(\)\)\)/,
+    /setInterventionStartedAt\(currentDateTime\)/,
   );
-  assert.equal(source.match(/max=\{currentDateTimeLocal\}/g)?.length, 2);
-  assert.match(source, /new Date\(interventionStartedAt\) > now/);
-  assert.match(source, /new Date\(interventionEndedAt\) > now/);
+  assert.match(source, /setInterventionEndedAt\(currentDateTime\)/);
+  assert.doesNotMatch(source, /max=\{currentDateTimeLocal\}/);
+  assert.doesNotMatch(source, /new Date\(interventionStartedAt\) > now/);
+  assert.doesNotMatch(source, /new Date\(interventionEndedAt\) > now/);
+  assert.match(source, /min=\{interventionStartedAt \|\| undefined\}/);
   assert.match(source, /intervention_started_at:/);
   assert.match(source, /intervention_ended_at:/);
 });

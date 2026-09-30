@@ -85,6 +85,21 @@ test("Corrective reporting loads the complete reportable machine catalogue", () 
   assert.match(api, /operator\/machines\/reportable/);
 });
 
+test("Corrective reporting waits for the authenticated Operator session before loading protected data", () => {
+  const page = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(page, /isLoading: authLoading/);
+  assert.match(page, /isAuthenticated/);
+  assert.match(
+    page,
+    /authLoading\s*\|\|[\s\S]*!isAuthenticated\s*\|\|[\s\S]*user\?\.role\?\.toLowerCase\(\) !== "operator"/,
+  );
+  assert.doesNotMatch(page, /console\.error\("Failed to load data"/);
+});
+
 test("Corrective reporting requests the complete fault catalogue for the selected machine", () => {
   const page = fs.readFileSync(
     path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),

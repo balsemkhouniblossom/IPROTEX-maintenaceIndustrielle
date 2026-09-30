@@ -152,6 +152,7 @@ api.interceptors.response.use(
         requestUrl,
       );
     const isExpectedAuthFailure = status === 401 && isAuthEndpoint;
+    const isHandledSessionFailure = status === 401 && !isAuthEndpoint;
 
     const originalRequest = error.config as typeof error.config & {
       _retry?: boolean;
@@ -185,7 +186,11 @@ api.interceptors.response.use(
       (error.config as QuietAxiosConfig | undefined)?.suppressErrorLog,
     );
 
-    if (!isExpectedAuthFailure && !suppressErrorLog) {
+    if (
+      !isExpectedAuthFailure &&
+      !isHandledSessionFailure &&
+      !suppressErrorLog
+    ) {
       console.error("API Error:", error);
     }
     throw error;

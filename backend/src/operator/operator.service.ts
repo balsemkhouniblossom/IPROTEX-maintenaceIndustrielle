@@ -651,12 +651,14 @@ export class OperatorService {
     if (reportId?.trim()) {
       const trimmed = reportId.trim();
       query.$or = [
-        ...(Types.ObjectId.isValid(trimmed) ? [{ _id: trimmed }] : []),
+        ...(Types.ObjectId.isValid(trimmed)
+          ? [{ _id: this.toObjectId(trimmed) }]
+          : []),
         { report_id: trimmed },
       ];
     }
     if (workOrderId?.trim() && Types.ObjectId.isValid(workOrderId.trim())) {
-      query.ot_id = workOrderId.trim();
+      query.ot_id = this.toObjectId(workOrderId.trim());
     }
     if (search?.trim()) {
       const escaped = search
@@ -871,7 +873,7 @@ export class OperatorService {
       interventionEndedAt?: string;
     },
   ): Promise<CorrectiveReportForOperatorResponse> {
-    await this.assertCanAccessMachine(userId, input.machineId);
+    await this.assertMachineExists(input.machineId);
     return this.workOrdersService.createCorrectiveReportForOperator({
       machineId: input.machineId,
       codePanne: input.codePanne,
@@ -1150,7 +1152,7 @@ export class OperatorService {
         .select({ type_id: 1 })
         .exec();
       if (!machine) throw new NotFoundException('Machine not found');
-      query.machine_type_id = machine.type_id;
+      query.machine_type_id = this.toObjectId(this.toIdString(machine.type_id));
     } else if (filters.machineTypeId) {
       this.assertValidObjectId(filters.machineTypeId, 'machine_type_id');
       query.machine_type_id = this.toObjectId(filters.machineTypeId);

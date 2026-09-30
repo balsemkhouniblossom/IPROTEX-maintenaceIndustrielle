@@ -465,10 +465,10 @@ describe('OperatorService machine scoping', () => {
       string,
       any
     >;
-    expect(query.ot_id).toBe(assignedWorkOrderId.toString());
+    expect(query.ot_id).toEqual(assignedWorkOrderId);
     expect(query.technician_id.$in).toContain(operatorId.toString());
     expect(query.$or).toEqual([
-      { _id: reportId.toString() },
+      { _id: reportId },
       { report_id: reportId.toString() },
     ]);
   });
@@ -586,14 +586,35 @@ describe('OperatorService machine scoping', () => {
     expect(workOrdersService.getCalendarEvents).not.toHaveBeenCalled();
   });
 
-  it('denies corrective reporting for a machine outside the operator scope', async () => {
+  it('allows corrective reporting for any existing reportable machine', async () => {
     await expect(
       service.createCorrectiveReport(operatorId.toString(), {
         machineId: unassignedMachineId.toString(),
         codePanne: 'FAULT-1',
         actions: ['Reset breaker'],
       }),
-    ).rejects.toThrow(ForbiddenException);
+    ).resolves.toBeDefined();
+
+    expect(
+      workOrdersService.createCorrectiveReportForOperator,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        machineId: unassignedMachineId.toString(),
+        operatorId: operatorId.toString(),
+      }),
+    );
+  });
+
+  it('rejects corrective reporting when the selected machine does not exist', async () => {
+    machineModel.countDocuments.mockReturnValueOnce(queryResult(0));
+
+    await expect(
+      service.createCorrectiveReport(operatorId.toString(), {
+        machineId: unassignedMachineId.toString(),
+        codePanne: 'FAULT-1',
+        actions: ['Reset breaker'],
+      }),
+    ).rejects.toThrow(NotFoundException);
 
     expect(
       workOrdersService.createCorrectiveReportForOperator,

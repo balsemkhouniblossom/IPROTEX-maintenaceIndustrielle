@@ -210,7 +210,11 @@ function ReportProblemFlow() {
   const t = useTranslations("dashboard.operator.reportProblemFlow");
   const tCommon = useTranslations("common");
   const tEnums = useTranslations("common.enums");
-  const { user } = useAuth();
+  const {
+    user,
+    isLoading: authLoading,
+    isAuthenticated,
+  } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -328,14 +332,20 @@ function ReportProblemFlow() {
     if (!selectedMachine) return false;
     if (urgency === "machineStopped") {
       if (!interventionStartedAt || !interventionEndedAt) return false;
-      const now = new Date();
-      if (new Date(interventionStartedAt) > now || new Date(interventionEndedAt) > now) return false;
       if (new Date(interventionEndedAt) <= new Date(interventionStartedAt)) return false;
     }
     return canProceedFromProblem;
   }, [selectedMachine, canProceedFromProblem, urgency, interventionStartedAt, interventionEndedAt]);
 
   useEffect(() => {
+    if (
+      authLoading ||
+      !isAuthenticated ||
+      user?.role?.toLowerCase() !== "operator"
+    ) {
+      return;
+    }
+
     async function load() {
       try {
         setLoading(true);
@@ -348,13 +358,13 @@ function ReportProblemFlow() {
         setMachines(machineItems);
         setWorkOrders(workOrderItems);
       } catch (e) {
-        console.error("Failed to load data", e);
+        setError(extractApiErrorMessage(e, tCommon("loadFailed")));
       } finally {
         setLoading(false);
       }
     }
     void load();
-  }, []);
+  }, [authLoading, isAuthenticated, tCommon, user?.role]);
 
   useEffect(() => {
     if (loading) return;
@@ -418,8 +428,14 @@ function ReportProblemFlow() {
 
   function handleUrgencySelect(option: keyof typeof URGENCY_PRIORITY_MAP) {
     setUrgency(option);
-    if (option === "machineStopped" && !interventionStartedAt) {
-      setInterventionStartedAt(toLocalDateTimeInputValue(new Date()));
+    if (option === "machineStopped") {
+      const currentDateTime = toLocalDateTimeInputValue(new Date());
+      if (!interventionStartedAt) {
+        setInterventionStartedAt(currentDateTime);
+      }
+      if (!interventionEndedAt) {
+        setInterventionEndedAt(currentDateTime);
+      }
     }
   }
 
@@ -555,8 +571,6 @@ function ReportProblemFlow() {
   }
 
   const stepIndex = ["machine", "problem", "description", "urgency", "review"].indexOf(step);
-  const currentDateTimeLocal = toLocalDateTimeInputValue(new Date());
-
   if (loading) {
     return (
       <ProtectedRoute requiredRole="operator">
@@ -980,7 +994,6 @@ function ReportProblemFlow() {
                   <label className="text-sm font-semibold text-slate-700">
                     {t("interventionStartTime")}
                     <input type="datetime-local" value={interventionStartedAt}
-                      max={currentDateTimeLocal}
                       onChange={(event) => setInterventionStartedAt(event.target.value)}
                       className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
                   </label>
@@ -988,7 +1001,6 @@ function ReportProblemFlow() {
                     {t("interventionEndTime")}
                     <input type="datetime-local" value={interventionEndedAt}
                       min={interventionStartedAt || undefined}
-                      max={currentDateTimeLocal}
                       onChange={(event) => setInterventionEndedAt(event.target.value)}
                       className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2" />
                   </label>

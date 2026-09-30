@@ -148,10 +148,15 @@ export class WorkOrderReportService {
       throw new BadRequestException('code_panne is required');
     }
 
+    const machineTypeId = String(machine.type_id);
+    if (!Types.ObjectId.isValid(machineTypeId)) {
+      throw new BadRequestException('Machine has an invalid machine type');
+    }
+
     const panne = await this.panneModel
       .findOne({
         code_panne: codePanne,
-        machine_type_id: machine.type_id,
+        machine_type_id: new Types.ObjectId(machineTypeId),
         is_active: { $ne: false },
       })
       .select({ _id: 1 })
