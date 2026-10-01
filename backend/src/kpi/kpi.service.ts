@@ -19,6 +19,10 @@ import {
 import * as businessTime from '../common/business-time';
 import { MttrCalculationService } from './mttr-calculation.service';
 import { MttrSourceService } from './mttr-source.service';
+import {
+  MachineMaintenanceMttrEntry,
+  MachineMaintenanceMttrEntryDocument,
+} from '../schemas/machine-maintenance-mttr-entry.schema';
 
 export interface WorkOrderStatusCounts {
   openCount: number;
@@ -60,8 +64,8 @@ export interface CorrectiveResponseTimeResult {
 export interface MttrMtbfResult {
   mttrMinutes: number | null;
   mttrHours: number | null;
-  mtbfHours: number;
-  availabilityPercent: number;
+  mtbfHours: number | null;
+  availabilityPercent: number | null;
   sampleSize: number;
 }
 
@@ -129,6 +133,8 @@ export class KpiService {
     private readonly machineModel: Model<MachineDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(MachineMaintenanceMttrEntry.name)
+    private readonly machineMaintenanceMttrModel: Model<MachineMaintenanceMttrEntryDocument>,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly mttrCalculation: MttrCalculationService,
     private readonly mttrSource: MttrSourceService,
@@ -452,36 +458,31 @@ export class KpiService {
         {
           ...baseFilter,
           type_maintenance: CORRECTIVE_TYPE_REGEX,
-          status: { $in: COMPLETED_WORK_ORDER_STATUSES },
         },
         {
-          date_end: 1,
-          date_closed: 1,
+          date_created: 1,
         },
       )
-      .sort({ date_closed: 1, date_end: 1 })
+      .sort({ date_created: 1 })
       .lean()
       .exec();
 
-    const correctiveClosures = orders
-      .map((order) => {
-        const closed = order.date_closed || order.date_end;
-        return closed ? new Date(closed) : null;
-      })
-      .filter((closed): closed is Date => Boolean(closed))
-      .filter((closed) => {
-        if (scope.dateFrom && closed < scope.dateFrom) return false;
-        if (scope.dateTo && closed >= scope.dateTo) return false;
+    const failureOccurrences = orders
+      .map((order) => order.date_created && new Date(order.date_created))
+      .filter((occurred): occurred is Date => Boolean(occurred))
+      .filter((occurred) => {
+        if (scope.dateFrom && occurred < scope.dateFrom) return false;
+        if (scope.dateTo && occurred >= scope.dateTo) return false;
         return true;
       });
 
-    let mtbfHours = 0;
-    if (correctiveClosures.length >= 2) {
-      const gaps = correctiveClosures
+    let mtbfHours: number | null = null;
+    if (failureOccurrences.length >= 2) {
+      const gaps = failureOccurrences
         .slice(1)
         .map(
-          (closed, index) =>
-            (closed.getTime() - correctiveClosures[index].getTime()) /
+          (occurred, index) =>
+            (occurred.getTime() - failureOccurrences[index].getTime()) /
             3_600_000,
         );
       mtbfHours = gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
@@ -493,18 +494,53 @@ export class KpiService {
       dateFrom: scope.dateFrom,
       dateTo: scope.dateTo,
     });
-    const mttrMinutes = mttrResult.summary.mttrMinutes;
+    let mttrMinutes = mttrResult.summary.mttrMinutes;
+    let mttrSampleSize = mttrResult.summary.completedRepairs;
+
+    // Operator-reported machine stop/restart intervals are persisted in the
+    // dedicated maintenance-MTTR collection. Use them when no completed
+    // technician intervention report is available, instead of presenting a
+    // real recorded duration as zero on the Admin dashboard.
+    if (mttrMinutes === null) {
+      const entryFilter: FilterQuery<MachineMaintenanceMttrEntryDocument> = {};
+      if (scope.machineIds) {
+        entryFilter.machine_id = { $in: scope.machineIds.map(toObjectId) };
+      }
+      if (scope.dateFrom || scope.dateTo) {
+        entryFilter.ended_at = {
+          ...(scope.dateFrom ? { $gte: scope.dateFrom } : {}),
+          ...(scope.dateTo ? { $lt: scope.dateTo } : {}),
+        };
+      }
+      const [recordedMttr] = await this.machineMaintenanceMttrModel
+        .aggregate<{ sampleSize: number; mttrMinutes: number }>([
+          { $match: entryFilter },
+          {
+            $group: {
+              _id: null,
+              sampleSize: { $sum: 1 },
+              mttrMinutes: { $avg: '$duration_minutes' },
+            },
+          },
+        ])
+        .exec();
+      if (recordedMttr) {
+        mttrMinutes = recordedMttr.mttrMinutes;
+        mttrSampleSize = recordedMttr.sampleSize;
+      }
+    }
     const availabilityPercent =
-      mtbfHours > 0 && mttrMinutes !== null && mttrMinutes > 0
+      mtbfHours !== null && mttrMinutes !== null && mttrMinutes > 0
         ? (mtbfHours / (mtbfHours + mttrMinutes / 60)) * 100
-        : 100;
+        : null;
 
     return {
       mttrMinutes,
       mttrHours: mttrMinutes === null ? null : mttrMinutes / 60,
-      mtbfHours: round2(mtbfHours),
-      availabilityPercent: round2(availabilityPercent),
-      sampleSize: mttrResult.summary.completedRepairs,
+      mtbfHours: mtbfHours === null ? null : round2(mtbfHours),
+      availabilityPercent:
+        availabilityPercent === null ? null : round2(availabilityPercent),
+      sampleSize: mttrSampleSize,
     };
   }
 

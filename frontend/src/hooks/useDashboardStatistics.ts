@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { apiService } from '@/services/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from "react";
+import { apiService } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface WorkOrderKpiCounts {
   openCount: number;
@@ -35,12 +35,16 @@ export interface WorkloadEntry {
 export interface AdminDashboardStatistics {
   workOrders: WorkOrderKpiCounts;
   stockAlerts: { count: number; items: StockAlertItem[] };
-  preventiveCompliance: { ratePercent: number; onTimeCount: number; evaluableCount: number };
+  preventiveCompliance: {
+    ratePercent: number;
+    onTimeCount: number;
+    evaluableCount: number;
+  };
   correctiveResponseTime: { averageResponseHours: number; sampleSize: number };
   mttrMtbf: {
-    mttrHours: number;
-    mtbfHours: number;
-    availabilityPercent: number;
+    mttrHours: number | null;
+    mtbfHours: number | null;
+    availabilityPercent: number | null;
     sampleSize: number;
   };
   workload: WorkloadEntry[];
@@ -63,11 +67,13 @@ export interface AdminDashboardStatistics {
  * calls an endpoint it isn't permitted to use).
  */
 export function useDashboardStatistics() {
-  const [statistics, setStatistics] = useState<AdminDashboardStatistics | null>(null);
+  const [statistics, setStatistics] = useState<AdminDashboardStatistics | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, isLoading: authLoading } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (authLoading) return;
@@ -88,7 +94,7 @@ export function useDashboardStatistics() {
 
         const data = response.data as Omit<
           AdminDashboardStatistics,
-          'pendingMaintenance' | 'percentageChange'
+          "pendingMaintenance" | "percentageChange"
         >;
 
         setStatistics({
@@ -100,8 +106,8 @@ export function useDashboardStatistics() {
         setError(null);
       } catch (err) {
         if (cancelled) return;
-        console.error('Error fetching admin dashboard statistics:', err);
-        setError('Failed to load statistics');
+        console.error("Error fetching admin dashboard statistics:", err);
+        setError("Failed to load statistics");
         setStatistics(null);
       } finally {
         if (!cancelled) setLoading(false);

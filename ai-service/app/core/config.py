@@ -9,6 +9,28 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 SUPPORTED_MODEL_VERSIONS = {"0.1.0", "0.2.0"}
 
 
+def _load_local_env() -> None:
+    """Load ignored local `.env` values without overriding deployment env."""
+    env_file = ROOT_DIR / ".env"
+    if not env_file.is_file():
+        return
+    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key or not key.replace("_", "").isalnum():
+            continue
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+_load_local_env()
+
+
 def _model_file(version: str, extension: str) -> Path:
     semantic_version = version.strip().lower().removeprefix("v")
     if semantic_version not in SUPPORTED_MODEL_VERSIONS:

@@ -41,6 +41,7 @@ describe('KpiService', () => {
   let stockModel: { find: jest.Mock };
   let machineModel: { countDocuments: jest.Mock };
   let userModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let machineMaintenanceMttrModel: { aggregate: jest.Mock };
   let cache: { get: jest.Mock; set: jest.Mock };
   let mttrSource: { calculate: jest.Mock };
   let service: KpiService;
@@ -56,6 +57,9 @@ describe('KpiService', () => {
     userModel = {
       find: jest.fn().mockReturnValue(findChain([])),
       countDocuments: jest.fn().mockReturnValue(execResult(0)),
+    };
+    machineMaintenanceMttrModel = {
+      aggregate: jest.fn().mockReturnValue(execResult([])),
     };
     cache = {
       get: jest.fn().mockResolvedValue(undefined),
@@ -76,6 +80,7 @@ describe('KpiService', () => {
       stockModel as never,
       machineModel as never,
       userModel as never,
+      machineMaintenanceMttrModel as never,
       cache as never,
       { calculateMttrMinutes: jest.fn().mockReturnValue(180) } as never,
       mttrSource as never,
@@ -346,22 +351,22 @@ describe('KpiService', () => {
   });
 
   describe('computeMttrMtbf', () => {
-    it('uses the shared InterventionReport MTTR source and WorkOrder closures for MTBF', async () => {
-      const firstClosure = new Date('2026-07-01T04:00:00.000Z');
-      const secondClosure = new Date('2026-07-03T02:00:00.000Z');
+    it('uses the shared InterventionReport MTTR source and corrective occurrences for MTBF', async () => {
+      const firstOccurrence = new Date('2026-07-01T04:00:00.000Z');
+      const secondOccurrence = new Date('2026-07-03T02:00:00.000Z');
       workOrderModel.find.mockReturnValue(
         findChain([
           {
             _id: new Types.ObjectId(),
             type_maintenance: 'corrective',
-            status: 'completed',
-            date_closed: firstClosure,
+            status: 'waiting_validation',
+            date_created: firstOccurrence,
           },
           {
             _id: new Types.ObjectId(),
             type_maintenance: 'corrective',
-            status: 'validated',
-            date_closed: secondClosure,
+            status: 'waiting_validation',
+            date_created: secondOccurrence,
           },
         ]),
       );
@@ -395,9 +400,22 @@ describe('KpiService', () => {
 
       expect(result.mttrMinutes).toBeNull();
       expect(result.mttrHours).toBeNull();
-      expect(result.mtbfHours).toBe(0);
-      expect(result.availabilityPercent).toBe(100);
+      expect(result.mtbfHours).toBeNull();
+      expect(result.availabilityPercent).toBeNull();
       expect(result.sampleSize).toBe(0);
+    });
+
+    it('uses recorded machine stop intervals when no intervention-report MTTR exists', async () => {
+      workOrderModel.find.mockReturnValue(findChain([]));
+      machineMaintenanceMttrModel.aggregate.mockReturnValue(
+        execResult([{ sampleSize: 2, mttrMinutes: 90 }]),
+      );
+
+      const result = await service.computeMttrMtbf();
+
+      expect(result.mttrMinutes).toBe(90);
+      expect(result.mttrHours).toBe(1.5);
+      expect(result.sampleSize).toBe(2);
     });
 
     it('scopes the shared MTTR source by machine, technician, and completion range', async () => {

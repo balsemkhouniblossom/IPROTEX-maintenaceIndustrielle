@@ -13,6 +13,10 @@ import {
   InterventionReport,
   InterventionReportSchema,
 } from '../schemas/intervention-report.schema';
+import {
+  MachineMaintenanceMttrEntry,
+  MachineMaintenanceMttrEntrySchema,
+} from '../schemas/machine-maintenance-mttr-entry.schema';
 
 @Module({
   imports: [
@@ -25,6 +29,10 @@ import {
       {
         name: InterventionReport.name,
         schema: InterventionReportSchema,
+      },
+      {
+        name: MachineMaintenanceMttrEntry.name,
+        schema: MachineMaintenanceMttrEntrySchema,
       },
     ]),
     CacheModule.register(),
