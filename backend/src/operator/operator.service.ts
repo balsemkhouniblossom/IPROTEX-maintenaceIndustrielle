@@ -334,14 +334,16 @@ export class OperatorService {
   }
 
   async getModules(
-    userId: string,
+    _userId: string,
     page: number,
     limit: number,
     skip: number,
   ): Promise<PaginatedResponse<ModuleSummaryResponse>> {
-    const machineIds = await this.getAllowedMachineIds(userId);
-    if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
-    const query = this.machineIdStringExpr(machineIds);
+    // This catalogue drives the machine/module selectors on the Operator
+    // maintenance-plan form. Preventive plans may be created for any existing
+    // machine, so restricting this list to assigned_machine_ids left almost
+    // the entire fleet unavailable in the dropdown.
+    const query = {};
 
     const [items, totalItems] = await Promise.all([
       this.moduleModel
@@ -424,7 +426,7 @@ export class OperatorService {
     if (!machineId) {
       throw new ForbiddenException('Module has no associated machine');
     }
-    await this.assertCanAccessMachine(userId, machineId);
+    await this.assertMachineExists(machineId);
 
     return this.maintenancePlansService.create(
       { ...dto, type_maintenance: 'preventive' },

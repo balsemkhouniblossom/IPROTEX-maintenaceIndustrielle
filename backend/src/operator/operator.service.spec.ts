@@ -225,11 +225,12 @@ describe('OperatorService machine scoping', () => {
     });
   });
 
-  it('creates a preventive plan only for a module on an assigned machine', async () => {
+  it('creates a preventive plan for an existing machine module', async () => {
     const moduleId = new Types.ObjectId();
     moduleModel.findById.mockReturnValueOnce(
       queryResult({ _id: moduleId, machine_id: assignedMachineId }),
     );
+    machineModel.countDocuments.mockReturnValueOnce(queryResult(1));
 
     await service.createPreventiveMaintenancePlan(operatorId.toString(), {
       plan_id: 'OP-PM-1',
@@ -249,22 +250,32 @@ describe('OperatorService machine scoping', () => {
     );
   });
 
-  it('denies operator plan creation for an unassigned machine', async () => {
+  it('allows preventive plan creation for an existing unassigned machine', async () => {
     const moduleId = new Types.ObjectId();
     moduleModel.findById.mockReturnValueOnce(
       queryResult({ _id: moduleId, machine_id: unassignedMachineId }),
     );
+    machineModel.countDocuments.mockReturnValueOnce(queryResult(1));
 
-    await expect(
-      service.createPreventiveMaintenancePlan(operatorId.toString(), {
-        plan_id: 'OP-PM-2',
-        module_id: moduleId.toString(),
-        type_maintenance: 'preventive',
-        frequence: 1,
-        unite_frequence: 'semaine',
-      }),
-    ).rejects.toThrow(ForbiddenException);
-    expect(maintenancePlansService.create).not.toHaveBeenCalled();
+    await service.createPreventiveMaintenancePlan(operatorId.toString(), {
+      plan_id: 'OP-PM-2',
+      module_id: moduleId.toString(),
+      type_maintenance: 'preventive',
+      frequence: 1,
+      unite_frequence: 'semaine',
+    });
+
+    expect(maintenancePlansService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ module_id: moduleId.toString() }),
+      operatorId.toString(),
+    );
+  });
+
+  it('returns modules for the complete machine catalogue', async () => {
+    await service.getModules(operatorId.toString(), 1, 10, 0);
+
+    expect(moduleModel.find).toHaveBeenCalledWith({});
+    expect(moduleModel.countDocuments).toHaveBeenCalledWith({});
   });
 
   it('returns the complete machine catalogue for corrective reporting', async () => {
