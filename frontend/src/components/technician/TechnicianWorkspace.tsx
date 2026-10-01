@@ -193,18 +193,18 @@ function isWorkOrderOverdue(order: WorkOrder): boolean {
 
 function priorityBadgeClass(priority?: string): string {
   const value = priority?.toLowerCase();
-  if (value === "urgent") return "border-red-200 bg-red-50 text-red-700";
-  if (value === "high") return "border-orange-200 bg-orange-50 text-orange-700";
-  if (value === "medium") return "border-yellow-200 bg-yellow-50 text-yellow-700";
-  return "border-slate-200 bg-slate-50 text-slate-700";
+  if (value === "urgent") return "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300";
+  if (value === "high") return "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300";
+  if (value === "medium") return "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300";
+  return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300";
 }
 
 function maintenanceBadgeClass(type?: string): string {
   const value = type?.toLowerCase();
-  if (value === "preventive") return "border-blue-200 bg-blue-50 text-blue-700";
-  if (value === "corrective") return "border-orange-200 bg-orange-50 text-orange-700";
-  if (value === "inspection") return "border-violet-200 bg-violet-50 text-violet-700";
-  return "border-slate-200 bg-slate-50 text-slate-700";
+  if (value === "preventive") return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300";
+  if (value === "corrective") return "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300";
+  if (value === "inspection") return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/60 dark:text-violet-300";
+  return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300";
 }
 
 function uniqueOrders(orders: WorkOrder[]): WorkOrder[] {
@@ -361,7 +361,7 @@ function TechnicianWorkOrderCard({
           <p className="mt-2 font-semibold text-slate-800 dark:text-slate-100">
             {machineName(order) || t("notAvailable")}
           </p>
-          <p className="text-sm text-slate-500">{machineModel(order) || t("notAvailable")}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{machineModel(order) || t("notAvailable")}</p>
         </div>
         <span className={`rounded-full border px-2.5 py-1 text-xs font-bold uppercase ${priorityBadgeClass(order.priorite)}`}>
           {priority}
@@ -373,13 +373,13 @@ function TechnicianWorkOrderCard({
           {maintenanceType}
         </span>
         {overdue ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold uppercase text-red-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold uppercase text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
             <ExclamationTriangleIcon className="h-3.5 w-3.5" />
             {t("badges.overdue")}
           </span>
         ) : null}
         {machineState ? (
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
             {t("machine.status")}: {translateEnumValue(tEnums, "machineStates", machineState) || machineState}
           </span>
         ) : null}
@@ -396,20 +396,20 @@ function TechnicianWorkOrderCard({
 
       <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         <div>
-          <dt className="inline text-slate-500">{t("fields.due")}:</dt>{" "}
-          <dd className="inline font-medium">
+          <dt className="inline text-slate-500 dark:text-slate-400">{t("fields.due")}:</dt>{" "}
+          <dd className="inline font-medium text-slate-900 dark:text-slate-100">
             {formatDueLabel(order, locale, t("dates.today"), t("dates.tomorrow"))}
           </dd>
         </div>
         <div>
-          <dt className="inline text-slate-500">{t("filters.status")}:</dt>{" "}
-          <dd className="inline font-medium">{status}</dd>
+          <dt className="inline text-slate-500 dark:text-slate-400">{t("filters.status")}:</dt>{" "}
+          <dd className="inline font-medium text-slate-900 dark:text-slate-100">{status}</dd>
         </div>
       </dl>
 
       <div className="mt-5 flex flex-wrap justify-end gap-2">
         <Link
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400 dark:text-slate-100"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-800 hover:border-blue-400 dark:border-slate-600 dark:text-slate-100 dark:hover:border-blue-500 dark:hover:bg-slate-800"
           href={`/${locale}/technician/work-orders/${order._id}`}
         >
           <EyeIcon className="h-4 w-4 text-blue-600" />
@@ -1063,7 +1063,7 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
                       className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                         selected
                           ? "border-blue-600 bg-blue-600 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-slate-800"
                       }`}
                       onClick={() => {
                         setPage(1);
@@ -1072,7 +1072,7 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
                     >
                       <span>{t(`workOrderTabs.${tab.key}`)}</span>
                       <span className={`ms-2 rounded-full px-2 py-0.5 text-xs ${
-                        selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                        selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
                       }`}>
                         {tabCounts[tab.key]}
                       </span>
@@ -1084,7 +1084,7 @@ export function TechnicianOrders({ fixedStatus }: Readonly<{ fixedStatus?: strin
                 <MagnifyingGlassIcon className="pointer-events-none absolute inset-s-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   aria-label={t("filters.search")}
-                  className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3"
+                  className="w-full rounded-lg border border-slate-300 bg-white py-2 ps-9 pe-3 text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-100"
                   placeholder={t("filters.searchPlaceholder")}
                   value={filters.search}
                   onChange={(event) => {

@@ -97,10 +97,13 @@ function machineStatusTranslationKey(status?: string): string {
 }
 
 function machineStatusClassName(status?: string): string {
-  if (status === "operational") return "bg-green-100 text-green-800";
-  if (status === "maintenance") return "bg-yellow-100 text-yellow-800";
-  if (status === "out_of_service") return "bg-red-100 text-red-800";
-  return "bg-gray-100 text-gray-600";
+  if (status === "operational")
+    return "bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300";
+  if (status === "maintenance")
+    return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300";
+  if (status === "out_of_service")
+    return "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300";
+  return "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300";
 }
 
 function machineTypeId(value: unknown): string {
@@ -439,7 +442,7 @@ export default function MachinesPage() {
     if (loadError) return null;
     if (filtered.length === 0) {
       return (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
           {searchTerm
             ? tMachines("empty.search")
             : tMachines("empty.default")}
@@ -478,12 +481,12 @@ export default function MachinesPage() {
       return (
         <article
           key={machine._id}
-          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
         >
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-950">
+                <h2 className="text-xl font-bold text-slate-950 dark:text-slate-100">
                   {machine.machine_id}
                 </h2>
                 <span
@@ -496,12 +499,12 @@ export default function MachinesPage() {
                 </span>
                 <MachineHealthBadge status={healthByMachine[machine._id]} />
               </div>
-              <p className="text-sm font-medium text-slate-700">{machineType}</p>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{machineType}</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 {displayText(machine.serial_no, tCommon("notAvailable"))}
               </p>
               {attentionReason && (
-                <p className="mt-2 text-sm font-medium text-amber-800">
+                <p className="mt-2 text-sm font-medium text-amber-800 dark:text-amber-300">
                   {attentionReason}
                 </p>
               )}
@@ -517,20 +520,20 @@ export default function MachinesPage() {
               </button>
             </div>
           </div>
-          <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
+          <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-sm dark:border-slate-700 sm:grid-cols-3">
             <div className="flex justify-between gap-4 sm:block">
-              <dt className="text-slate-500">
+              <dt className="text-slate-500 dark:text-slate-400">
                 {tMachines("technician.openWorkOrders")}
               </dt>
-              <dd className="font-semibold text-slate-900">
+              <dd className="font-semibold text-slate-900 dark:text-slate-100">
                 {summary?.stats.openWorkOrders ?? 0}
               </dd>
             </div>
             <div className="flex justify-between gap-4 sm:block">
-              <dt className="text-slate-500">
+              <dt className="text-slate-500 dark:text-slate-400">
                 {tMachines("technician.nextMaintenance")}
               </dt>
-              <dd className="font-semibold text-slate-900">
+              <dd className="font-semibold text-slate-900 dark:text-slate-100">
                 {summary?.stats.nextMaintenanceAt
                   ? new Date(summary.stats.nextMaintenanceAt).toLocaleDateString(
                       locale,
@@ -540,10 +543,10 @@ export default function MachinesPage() {
               </dd>
             </div>
             <div className="flex justify-between gap-4 sm:block">
-              <dt className="text-slate-500">
+              <dt className="text-slate-500 dark:text-slate-400">
                 {tMachines("technician.lastMaintenance")}
               </dt>
-              <dd className="font-semibold text-slate-900">
+              <dd className="font-semibold text-slate-900 dark:text-slate-100">
                 {summary?.stats.lastMaintenanceAt
                   ? new Date(summary.stats.lastMaintenanceAt).toLocaleDateString(
                       locale,
@@ -916,36 +919,36 @@ export default function MachinesPage() {
           )}
 
           <div className="mx-auto max-w-6xl space-y-5">
-            <section className="rounded-lg border border-slate-200 bg-white p-5">
+            <section className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-950">
+                  <h1 className="text-2xl font-bold text-slate-950 dark:text-slate-100">
                     {tMachines("technician.title")}
                   </h1>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                     {tMachines("technician.subtitle")}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-blue-700">
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">
                     {totalItems}
                   </p>
-                  <p className="text-xs font-semibold uppercase text-slate-500">
+                  <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                     {tMachines("totalMachines")}
                   </p>
                 </div>
               </div>
-              <label className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2">
-                <span className="text-sm font-semibold text-slate-700">{tCommon("actions.search")}</span>
+              <label className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700 dark:bg-slate-950/50">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{tCommon("actions.search")}</span>
                 <MagnifyingGlassIcon className="h-5 w-5 text-slate-400" />
                 <input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder={tMachines("technician.searchPlaceholder")}
-                  className="w-full bg-transparent text-sm outline-none"
+                  className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
                 />
               </label>
-              <p className="mt-2 text-xs text-slate-500">{tMachines("searchScopeCurrentPage")}</p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{tMachines("searchScopeCurrentPage")}</p>
               <div className="mt-4 flex flex-wrap gap-2" role="tablist">
                 {filters.map((filter) => (
                   <button
@@ -957,7 +960,7 @@ export default function MachinesPage() {
                     className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                       technicianFilter === filter.key
                         ? "bg-blue-700 text-white"
-                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        : "border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     }`}
                   >
                     {filter.label}

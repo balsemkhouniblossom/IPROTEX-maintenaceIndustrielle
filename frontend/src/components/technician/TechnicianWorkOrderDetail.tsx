@@ -224,19 +224,19 @@ function machineTypeModel(machine: Record<string, any>, fallback: string): strin
 }
 
 function statusTone(status: string): string {
-  if (["completed", "validated"].includes(status)) return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (status === "in_progress") return "border-blue-200 bg-blue-50 text-blue-800";
-  if (status === "waiting_parts") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (["returned", "technician_required", "waiting_validation"].includes(status)) return "border-purple-200 bg-purple-50 text-purple-800";
-  return "border-slate-200 bg-slate-50 text-slate-700";
+  if (["completed", "validated"].includes(status)) return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200";
+  if (status === "in_progress") return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-200";
+  if (status === "waiting_parts") return "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200";
+  if (["returned", "technician_required", "waiting_validation"].includes(status)) return "border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-950/50 dark:text-purple-200";
+  return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 }
 
 function priorityTone(priority?: string): string {
   const normalized = (priority || "").toLowerCase();
-  if (normalized === "urgent") return "border-red-200 bg-red-50 text-red-800";
-  if (normalized === "high") return "border-orange-200 bg-orange-50 text-orange-800";
-  if (normalized === "medium") return "border-amber-200 bg-amber-50 text-amber-800";
-  return "border-slate-200 bg-slate-50 text-slate-700";
+  if (normalized === "urgent") return "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200";
+  if (normalized === "high") return "border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950/50 dark:text-orange-200";
+  if (normalized === "medium") return "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200";
+  return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 }
 
 function isInterventionEditable(status: string): boolean {
@@ -343,7 +343,7 @@ function ManualsSection({
                 <input
                   type="text"
                   aria-label={t("manuals.searchLabel")}
-                  className="w-full rounded-lg border border-slate-300 py-2 ps-9 pe-3 text-sm"
+                  className="w-full rounded-lg border border-slate-300 bg-white py-2 ps-9 pe-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                   placeholder={t("manuals.searchPlaceholder")}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -351,7 +351,7 @@ function ManualsSection({
               </label>
               <select
                 aria-label={t("manuals.typeLabel")}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 value={typeFilter}
                 onChange={(event) => setTypeFilter(event.target.value)}
               >
@@ -374,21 +374,21 @@ function ManualsSection({
                   return (
                     <li
                       key={doc._id ?? doc.document_id ?? doc.file_path ?? doc.file_name ?? "manual"}
-                      className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+                      className="rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-950/60"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">
                             {doc.file_name || t("notAvailable")}
                           </p>
                           {doc.description ? (
-                            <p className="line-clamp-2 text-xs text-slate-600">
+                            <p className="line-clamp-2 text-xs text-slate-600 dark:text-slate-300">
                               {doc.description}
                             </p>
                           ) : null}
                         </div>
                         {doc.type_document ? (
-                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700">
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                             {doc.type_document}
                           </span>
                         ) : null}
@@ -424,13 +424,13 @@ function ManualsSection({
                 })}
               </ul>
             ) : (
-              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
+              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
                 {t("manuals.emptyFilters")}
               </p>
             )}
           </>
         ) : (
-          <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
+          <p className="rounded-lg border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
             {t("empty.manuals")}
           </p>
         )}
@@ -493,21 +493,21 @@ function OverviewTab({
           {t("overview.title")}
         </h2>
         <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div><dt className="text-slate-500">{t("fields.machine")}</dt><dd className="font-medium">{compactMachineLabel(machine, t("notAvailable"))}</dd></div>
-          <div><dt className="text-slate-500">{t("overview.problem")}</dt><dd>{description || t("notAvailable")}</dd></div>
-          <div><dt className="text-slate-500">{t("overview.reportedBy")}</dt><dd>{reportOwner?.nom_complet || t("notAvailable")}</dd></div>
-          <div><dt className="text-slate-500">{t("fields.priority")}</dt><dd>{translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}</dd></div>
-          <div><dt className="text-slate-500">{t("fields.status")}</dt><dd>{t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}</dd></div>
-          <div><dt className="text-slate-500">{t("fields.due")}</dt><dd>{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</dd></div>
+          <div><dt className="text-slate-500 dark:text-slate-400">{t("fields.machine")}</dt><dd className="font-medium">{compactMachineLabel(machine, t("notAvailable"))}</dd></div>
+          <div><dt className="text-slate-500 dark:text-slate-400">{t("overview.problem")}</dt><dd>{description || t("notAvailable")}</dd></div>
+          <div><dt className="text-slate-500 dark:text-slate-400">{t("overview.reportedBy")}</dt><dd>{reportOwner?.nom_complet || t("notAvailable")}</dd></div>
+          <div><dt className="text-slate-500 dark:text-slate-400">{t("fields.priority")}</dt><dd>{translateEnumValue(tEnums, "priorities", wo.priorite) || t("notAvailable")}</dd></div>
+          <div><dt className="text-slate-500 dark:text-slate-400">{t("fields.status")}</dt><dd>{t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}</dd></div>
+          <div><dt className="text-slate-500 dark:text-slate-400">{t("fields.due")}</dt><dd>{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</dd></div>
         </dl>
         {wo.code_panne ? (
-          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             {t("overview.faultCode")}: <strong>{wo.code_panne}</strong>
           </p>
         ) : null}
       </section>
 
-      <section className="panel border border-cyan-100 bg-cyan-50/60">
+      <section className="panel border border-cyan-100 bg-cyan-50/60 dark:border-cyan-900 dark:bg-cyan-950/30">
         <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-cyan-950">
           <BeakerIcon className="h-5 w-5" />
           {t("machineContext.title")}
@@ -521,7 +521,7 @@ function OverviewTab({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {machine._id ? <LiveStatusBadge machineId={machine._id} status={statusByMachine[machine._id]} onSubscribe={subscribeToMachine} /> : null}
           {machine._id ? (
-            <Link href={`/${locale}/machines/${machine._id}`} className="rounded-lg border border-cyan-200 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-800">
+            <Link href={`/${locale}/machines/${machine._id}`} className="rounded-lg border border-cyan-200 bg-white px-3 py-1.5 text-xs font-semibold text-cyan-800 dark:border-cyan-800 dark:bg-slate-900 dark:text-cyan-200">
               {t("machine.viewTimeline", { default: "View timeline" })}
             </Link>
           ) : null}
@@ -535,16 +535,16 @@ function OverviewTab({
               <SparklesIcon className="h-5 w-5 text-purple-700" />
               {t("aiInsight.title")}
             </h2>
-            <p className="mt-1 text-sm text-slate-600">{t("aiInsight.summary")}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{t("aiInsight.summary")}</p>
           </div>
           <button type="button" className="rounded-lg border border-purple-200 px-3 py-2 text-sm font-semibold text-purple-800" onClick={() => setShowTechnicalAnalysis(!showTechnicalAnalysis)}>
             {showTechnicalAnalysis ? t("aiInsight.hideTechnical") : t("aiInsight.viewTechnical")}
           </button>
         </div>
         <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-          <div className="rounded-lg bg-purple-50 p-3"><strong>{t("aiInsight.healthInsight")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.healthCopy")}</p></div>
-          <div className="rounded-lg bg-amber-50 p-3"><strong>{t("aiInsight.possibleAnomaly")}</strong><p className="mt-1 text-slate-600">{wo.code_panne || t("notAvailable")}</p></div>
-          <div className="rounded-lg bg-emerald-50 p-3"><strong>{t("aiInsight.recommendedInspection")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.recommendedCopy")}</p></div>
+          <div className="rounded-lg bg-purple-50 p-3 dark:bg-purple-950/40"><strong>{t("aiInsight.healthInsight")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.healthCopy")}</p></div>
+          <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-950/40"><strong>{t("aiInsight.possibleAnomaly")}</strong><p className="mt-1 text-slate-600">{wo.code_panne || t("notAvailable")}</p></div>
+          <div className="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950/40"><strong>{t("aiInsight.recommendedInspection")}</strong><p className="mt-1 text-slate-600">{t("aiInsight.recommendedCopy")}</p></div>
         </div>
         {showTechnicalAnalysis ? (
           <div className="mt-4 space-y-4">
@@ -587,7 +587,7 @@ function InterventionActionButtons({
       {!hasAssignedTechnician && !isTerminal ? <button type="button" disabled={saving} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.claimTechnicianWorkOrder(id))}>{t("claim")}</button> : null}
       {waitingForValidation ? (
         <>
-          <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm italic text-slate-600">{t("messages.awaitingValidation")}</span>
+          <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm italic text-slate-600 dark:bg-slate-800 dark:text-slate-300">{t("messages.awaitingValidation")}</span>
           <button type="button" disabled={saving} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "return"))}>{t("actions.return")}</button>
           <button type="button" disabled={saving} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={() => void act(() => apiService.reviewTechnicianWorkOrder(id, "intervene"))}>{t("actions.intervene")}</button>
         </>
@@ -652,7 +652,7 @@ function InterventionTab({
             <WrenchScrewdriverIcon className="h-5 w-5 text-blue-700" />
             {t("intervention.title")}
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {startedAt ? `${t("intervention.startedAt")}: ${formatOptionalDate(startedAt, locale, t("notAvailable"))}` : t("intervention.notStarted")}
           </p>
         </div>
@@ -672,15 +672,15 @@ function InterventionTab({
       </div>
       {canEditIntervention ? (
         <div className="grid gap-4">
-          <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.diagnosis")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.cause_racine} onChange={(event) => setReport({ ...report, cause_racine: event.target.value })} /></label>
-          <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.actionPerformed")}<textarea className="min-h-24 rounded-lg border p-3 font-normal" value={report.description_action} onChange={(event) => setReport({ ...report, description_action: event.target.value })} /></label>
-          <label className="grid gap-1 text-sm font-medium text-slate-700">{t("intervention.observations")}<textarea className="min-h-20 rounded-lg border p-3 font-normal" value={report.etat_final} onChange={(event) => setReport({ ...report, etat_final: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700 dark:text-slate-300">{t("intervention.diagnosis")}<textarea className="min-h-24 rounded-lg border border-slate-300 bg-white p-3 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" value={report.cause_racine} onChange={(event) => setReport({ ...report, cause_racine: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700 dark:text-slate-300">{t("intervention.actionPerformed")}<textarea className="min-h-24 rounded-lg border border-slate-300 bg-white p-3 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" value={report.description_action} onChange={(event) => setReport({ ...report, description_action: event.target.value })} /></label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700 dark:text-slate-300">{t("intervention.observations")}<textarea className="min-h-20 rounded-lg border border-slate-300 bg-white p-3 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" value={report.etat_final} onChange={(event) => setReport({ ...report, etat_final: event.target.value })} /></label>
         </div>
       ) : (
         <dl className="grid gap-3 text-sm md:grid-cols-3">
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.observations")}</dt><dd>{report.etat_final || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("intervention.observations")}</dt><dd>{report.etat_final || t("notAvailable")}</dd></div>
         </dl>
       )}
     </section>
@@ -747,7 +747,7 @@ function PartsTab({
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-700">{t("parts.used")}</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t("parts.used")}</h3>
             {detail.parts.length ? (
               <ul className="mt-3 divide-y rounded-lg border">
                 {detail.parts.map((line) => (
@@ -761,14 +761,14 @@ function PartsTab({
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("parts.noneAdded")}</p>
+              <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">{t("parts.noneAdded")}</p>
             )}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-700">{t("parts.myRequests")}</h3>
-            <p className="mt-1 text-xs text-slate-500">{t("parts.myRequestsHint")}</p>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t("parts.myRequests")}</h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("parts.myRequestsHint")}</p>
             {status === "waiting_parts" ? (
-              <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+              <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 {t("parts.workOrderWaitingForParts")}
               </p>
             ) : null}
@@ -810,18 +810,18 @@ function PartsTab({
                 })}
               </ul>
             ) : (
-              <p className="mt-3 rounded-lg border border-dashed p-4 text-sm text-slate-500">
+              <p className="mt-3 rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
                 {t("parts.noRequestsYet")}
               </p>
             )}
           </div>
         </div>
-        <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
-          <h3 className="font-semibold text-amber-950">{t("parts.addOrRequestTitle")}</h3>
-          <p className="mt-1 text-xs text-amber-800">{t("parts.addOrRequestHint")}</p>
+        <div className="rounded-lg border border-amber-100 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+          <h3 className="font-semibold text-amber-950 dark:text-amber-100">{t("parts.addOrRequestTitle")}</h3>
+          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">{t("parts.addOrRequestHint")}</p>
           <div className="mt-3 grid gap-3">
             <select
-              className="rounded-lg border bg-white p-2 text-sm"
+              className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               aria-label={t("parts.select")}
               value={partId}
               onChange={(event) => setPartId(event.target.value)}
@@ -838,11 +838,11 @@ function PartsTab({
                 );
               })}
             </select>
-            <p className="text-xs text-amber-800">
+            <p className="text-xs text-amber-800 dark:text-amber-200">
               {t("parts.available")}: <strong>{partId ? availableQuantity : t("notAvailable")}</strong>
             </p>
             <input
-              className="rounded-lg border bg-white p-2 text-sm"
+              className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               aria-label={t("parts.quantity")}
               type="number"
               min={1}
@@ -860,12 +860,12 @@ function PartsTab({
             <button
               type="button"
               disabled={saving || !partId || !canEditIntervention || !requestShortage}
-              className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50"
+              className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 disabled:opacity-50 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-200"
               onClick={onSubmitRequest}
             >
               {t("parts.requestPart")}
             </button>
-            <p className="text-xs text-amber-800">
+            <p className="text-xs text-amber-800 dark:text-amber-200">
               {requestShortage
                 ? t("parts.requestHintShortage", { available: availableQuantity })
                 : t("parts.requestHintEnough")}
@@ -894,19 +894,19 @@ function HistoryTab({
 }>) {
   return (
     <section className="panel">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClockIcon className="h-5 w-5 text-slate-700" />{t("history.title")}</h2>
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><ClockIcon className="h-5 w-5 text-slate-700 dark:text-slate-300" />{t("history.title")}</h2>
       <ol className="space-y-3">
-        <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.created")}</p><p className="text-slate-500">{formatOptionalDate(wo.date_created, locale, t("notAvailable"))}</p></li>
-        {startedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.started")}</p><p className="text-slate-500">{formatOptionalDate(startedAt, locale, t("notAvailable"))}</p></li> : null}
+        <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.created")}</p><p className="text-slate-500 dark:text-slate-400">{formatOptionalDate(wo.date_created, locale, t("notAvailable"))}</p></li>
+        {startedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.started")}</p><p className="text-slate-500 dark:text-slate-400">{formatOptionalDate(startedAt, locale, t("notAvailable"))}</p></li> : null}
         {lifecycleHistory.map((entry: any, index: number) => (
           <li className="rounded-lg border p-3 text-sm" key={`${entry.action}-${entry.at}-${index}`}>
             <p className="font-semibold">{entry.action || t("history.statusChanged")}</p>
-            <p className="text-slate-500">{formatOptionalDate(entry.at, locale, t("notAvailable"))}</p>
-            <p className="text-slate-600">{entry.from_status ? `${entry.from_status} -> ` : ""}{entry.to_status}</p>
+            <p className="text-slate-500 dark:text-slate-400">{formatOptionalDate(entry.at, locale, t("notAvailable"))}</p>
+            <p className="text-slate-600 dark:text-slate-300">{entry.from_status ? `${entry.from_status} -> ` : ""}{entry.to_status}</p>
             {entry.reason ? <p className="mt-1 text-slate-500">{entry.reason}</p> : null}
           </li>
         ))}
-        {endedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.completed")}</p><p className="text-slate-500">{formatOptionalDate(endedAt, locale, t("notAvailable"))}</p></li> : null}
+        {endedAt ? <li className="rounded-lg border p-3 text-sm"><p className="font-semibold">{t("history.completed")}</p><p className="text-slate-500 dark:text-slate-400">{formatOptionalDate(endedAt, locale, t("notAvailable"))}</p></li> : null}
       </ol>
     </section>
   );
@@ -943,10 +943,10 @@ function CompletionModal({
     <Modal isOpen={completeOpen} onClose={() => setCompleteOpen(false)} title={t("completion.title")} size="lg">
       <div className="space-y-4">
         <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("completion.partsUsed")}</dt><dd>{detail.parts.length}</dd></div>
-          <div className="rounded-lg border p-3"><dt className="text-slate-500">{t("completion.duration")}</dt><dd>{duration}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("intervention.diagnosis")}</dt><dd>{report.cause_racine || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("intervention.actionPerformed")}</dt><dd>{report.description_action || t("notAvailable")}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("completion.partsUsed")}</dt><dd>{detail.parts.length}</dd></div>
+          <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-950/40"><dt className="text-slate-500 dark:text-slate-400">{t("completion.duration")}</dt><dd>{duration}</dd></div>
         </dl>
         <div className="grid gap-2 text-sm">
           <span className="font-semibold">{t("completion.finalResult")}</span>
@@ -957,9 +957,9 @@ function CompletionModal({
             </label>
           ))}
         </div>
-        <label className="grid gap-1 text-sm font-semibold text-slate-700">
+        <label className="grid gap-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
           {t("completion.finalNotes")}
-          <textarea className="min-h-24 rounded-lg border p-3 font-normal" value={finalNotes} onChange={(event) => setFinalNotes(event.target.value)} />
+          <textarea className="min-h-24 rounded-lg border border-slate-300 bg-white p-3 font-normal text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" value={finalNotes} onChange={(event) => setFinalNotes(event.target.value)} />
         </label>
         <div className="flex justify-end gap-2">
           <button type="button" className="rounded-lg border px-4 py-2 text-sm font-semibold" onClick={() => setCompleteOpen(false)}>{t("actions.cancel")}</button>
@@ -997,8 +997,8 @@ function WorkOrderDetailHeader({
 }>) {
   return (
     <>
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-5">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-5 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-cyan-950/40">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -1009,8 +1009,8 @@ function WorkOrderDetailHeader({
                   {t.has(`status.${status}`) ? t(`status.${status}`) : translateEnumValue(tEnums, "workOrderStatuses", status)}
                 </span>
               </div>
-              <h1 className="text-2xl font-bold text-slate-950">{wo.ot_id}</h1>
-              <p className="mt-1 max-w-3xl text-sm text-slate-600">
+              <h1 className="text-2xl font-bold text-slate-950 dark:text-slate-50">{wo.ot_id}</h1>
+              <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
                 {description || t("notAvailable")}
                 {dynamicTranslations.isAutomaticallyTranslated(wo._id, "description") ? (
                   <span className="ms-1 text-xs text-amber-700" title={t("dynamicTranslations.safetyNotice")}>
@@ -1020,22 +1020,22 @@ function WorkOrderDetailHeader({
               </p>
             </div>
             <div className="grid gap-2 text-sm sm:grid-cols-2 lg:min-w-[32rem]">
-              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">{t("fields.machine")}</p>
-                <p className="font-semibold text-slate-900">{compactMachineLabel(machine, t("notAvailable"))}</p>
-                <p className="text-xs text-slate-500">{machineTypeModel(machine, t("notAvailable"))}</p>
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-950/60">
+                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("fields.machine")}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{compactMachineLabel(machine, t("notAvailable"))}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{machineTypeModel(machine, t("notAvailable"))}</p>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
-                <p className="text-xs font-semibold uppercase text-slate-500">{t("fields.due")}</p>
-                <p className="font-semibold text-slate-900">{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</p>
-                <p className="text-xs text-slate-500">{translateEnumValue(tEnums, "maintenanceTypes", wo.type_maintenance) || t("notAvailable")}</p>
+              <div className="rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-950/60">
+                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("fields.due")}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{formatOptionalDate(wo.due_date, locale, t("notAvailable"))}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{translateEnumValue(tEnums, "maintenanceTypes", wo.type_maintenance) || t("notAvailable")}</p>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2">
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 py-2 dark:border-slate-700">
           {tabs.map(({ key, label, Icon }) => (
-            <button key={key} type="button" onClick={() => setActiveTab(key)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === key ? "bg-blue-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            <button key={key} type="button" onClick={() => setActiveTab(key)} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === key ? "bg-blue-700 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
               <Icon className="h-4 w-4" />
               {label}
             </button>
@@ -1284,7 +1284,7 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
           ) : null}
 
           {completionResult ? (
-            <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+            <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <CheckCircleIcon className="mt-0.5 h-6 w-6 shrink-0" />
@@ -1299,7 +1299,7 @@ function TechnicianWorkOrderDetailWorkspaceInner({ id }: TechnicianWorkOrderDeta
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className="rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800" onClick={() => setActiveTab("intervention")}>
+                  <button type="button" className="rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200" onClick={() => setActiveTab("intervention")}>
                     {t("actions.viewReport")}
                   </button>
                   <Link href={`/${locale}/technician/work-orders`} className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">

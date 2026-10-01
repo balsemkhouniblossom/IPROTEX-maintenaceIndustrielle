@@ -5,11 +5,11 @@ import { HeartIcon } from "@heroicons/react/24/outline";
 import type { MachineHealthSummary, RiskLevel } from "@/hooks/usePredictiveHealth";
 
 const RISK_STYLES: Record<RiskLevel, string> = {
-  low: "border-green-200 bg-green-100 text-green-800",
-  medium: "border-amber-200 bg-amber-100 text-amber-800",
-  high: "border-orange-200 bg-orange-100 text-orange-800",
-  critical: "border-red-200 bg-red-100 text-red-800",
-  insufficient_data: "border-gray-300 bg-gray-100 text-gray-600",
+  low: "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/60 dark:text-green-300",
+  medium: "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
+  high: "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300",
+  critical: "border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300",
+  insufficient_data: "border-gray-300 bg-gray-100 text-gray-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300",
 };
 
 /**
@@ -48,7 +48,7 @@ export default function MachineHealthBadge({
           : t("healthScoreValue", { value: Math.round(status.healthScore) })}
       </span>
       {!isInsufficientData && (
-        <span className="text-xs text-gray-500" title={t("confidence")}>
+        <span className="text-xs text-gray-500 dark:text-slate-400" title={t("confidence")}>
           {t(`riskLevels.${status.riskLevel}`)}
         </span>
       )}
