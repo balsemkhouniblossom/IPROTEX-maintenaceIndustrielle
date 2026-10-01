@@ -261,7 +261,7 @@ describe('MaintenancePlansService', () => {
       );
       expect(
         workOrdersService.createInitialOccurrenceForPlan,
-      ).toHaveBeenCalledWith(planId);
+      ).toHaveBeenCalledWith(planId, undefined);
       expect(result.createdOccurrence).toBe(createdOccurrence);
     });
 

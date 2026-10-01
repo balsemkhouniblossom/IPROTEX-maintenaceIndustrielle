@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { PreventiveTaskChecklistItem } from "../types.ts";
+import { parseChecklistInstruction } from "../utils/checklist-instruction";
 
 export function PreventiveChecklist({
   checklistLoading,
@@ -31,53 +32,92 @@ export function PreventiveChecklist({
   return (
     <div className="mt-4 max-h-[360px] space-y-2 overflow-y-auto pr-1">
       {(checklistLoading || stateLoading) && (
-        <div data-testid="preventive-checklist-loading" className="text-sm text-slate-500">
+        <div
+          data-testid="preventive-checklist-loading"
+          className="text-sm text-slate-500"
+        >
           {tCommon("loading")}
         </div>
       )}
       {!checklistLoading && !stateLoading && checklistError && (
-        <div data-testid="preventive-checklist-error" className="text-sm text-red-600">
+        <div
+          data-testid="preventive-checklist-error"
+          className="text-sm text-red-600"
+        >
           {checklistError}
         </div>
       )}
-      {!checklistLoading && !stateLoading && !checklistError && items.length === 0 && (
-        <div data-testid="preventive-checklist-empty" className="text-sm text-slate-500">
-          {tChecklist("empty.default")}
-        </div>
-      )}
-      {!checklistLoading && !stateLoading && !checklistError && items.length > 0 &&
-        items.map((item, index) => (
+      {!checklistLoading &&
+        !stateLoading &&
+        !checklistError &&
+        items.length === 0 && (
           <div
-            key={item._id}
-            data-testid={`preventive-checklist-item-${index}`}
-            className={`rounded-xl border p-3 ${
-              item.status === "completed" ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white"
-            }`}
+            data-testid="preventive-checklist-empty"
+            className="text-sm text-slate-500"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="text-sm font-medium text-slate-900">{item.instruction}</div>
-              <button
-                type="button"
-                disabled={checklistSavingId === item._id || !taskStarted}
-                onClick={() => onToggleItem(item)}
-                data-testid={`preventive-checklist-toggle-${index}`}
-                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 ${
-                  item.status === "completed" ? "bg-slate-600" : "bg-emerald-600"
-                }`}
-              >
-                {item.status === "completed" ? tChecklist("status.pending") : tChecklist("actions.complete")}
-              </button>
-            </div>
-            <input
-              value={checklistNotesDraft[item._id] ?? item.notes ?? ""}
-              onChange={(event) => onNoteChange(item._id, event.target.value)}
-              onBlur={() => onNoteBlur(item)}
-              data-testid={`preventive-checklist-notes-${index}`}
-              className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder={tChecklist("placeholders.notes")}
-            />
+            {tChecklist("empty.default")}
           </div>
-        ))}
+        )}
+      {!checklistLoading &&
+        !stateLoading &&
+        !checklistError &&
+        items.length > 0 &&
+        items.map((item, index) => {
+          const instruction = parseChecklistInstruction(item.instruction);
+          return (
+            <div
+              key={item._id}
+              data-testid={`preventive-checklist-item-${index}`}
+              className={`rounded-xl border p-3 ${
+                item.status === "completed"
+                  ? "border-emerald-400 bg-emerald-50"
+                  : "border-slate-200 bg-white"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 text-sm text-slate-900">
+                  {instruction.code ? (
+                    <span
+                      dir="ltr"
+                      className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800"
+                    >
+                      {instruction.code}
+                    </span>
+                  ) : null}
+                  <p
+                    dir="auto"
+                    className={`${instruction.code ? "mt-1.5" : ""} whitespace-pre-line font-medium leading-5`}
+                  >
+                    {instruction.details}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={checklistSavingId === item._id || !taskStarted}
+                  onClick={() => onToggleItem(item)}
+                  data-testid={`preventive-checklist-toggle-${index}`}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 ${
+                    item.status === "completed"
+                      ? "bg-slate-600"
+                      : "bg-emerald-600"
+                  }`}
+                >
+                  {item.status === "completed"
+                    ? tChecklist("status.pending")
+                    : tChecklist("actions.complete")}
+                </button>
+              </div>
+              <input
+                value={checklistNotesDraft[item._id] ?? item.notes ?? ""}
+                onChange={(event) => onNoteChange(item._id, event.target.value)}
+                onBlur={() => onNoteBlur(item)}
+                data-testid={`preventive-checklist-notes-${index}`}
+                className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+                placeholder={tChecklist("placeholders.notes")}
+              />
+            </div>
+          );
+        })}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { parseChecklistInstruction } from "../utils/checklist-instruction";
 
 interface InspectionViewProps {
   planName: string;
@@ -8,10 +9,12 @@ interface InspectionViewProps {
   itemResults: Record<string, "ok" | "problem">;
   loading: boolean;
   onToggle: (itemId: string, result: "ok" | "problem") => void;
+  onMarkAllOk: () => void;
   onProblemClick: (itemId: string, instruction: string) => void;
   onSubmit: (observation?: string) => void;
   onBack: () => void;
   submitting: boolean;
+  markingAllOk: boolean;
   observation: string;
   onObservationChange: (value: string) => void;
   allAnswered: boolean;
@@ -28,10 +31,12 @@ export function InspectionView({
   itemResults,
   loading,
   onToggle,
+  onMarkAllOk,
   onProblemClick,
   onSubmit,
   onBack,
   submitting,
+  markingAllOk,
   observation,
   onObservationChange,
   allAnswered,
@@ -66,30 +71,51 @@ export function InspectionView({
         <div>
           <div dir="auto" className="text-base font-semibold text-blue-900">
             {planName} — <bdi dir="auto">{machineName}</bdi>{" "}
-            {showMachineCode && <bdi dir="ltr" className="text-blue-700">{machineCode}</bdi>}
+            {showMachineCode && (
+              <bdi dir="ltr" className="text-blue-700">
+                {machineCode}
+              </bdi>
+            )}
           </div>
           <div className="mt-1 text-sm text-blue-700">
-            {t("progress")}: {okCount + problemCount} / {items.length} {t("checksCompleted")}
+            {t("progress")}: {okCount + problemCount} / {items.length}{" "}
+            {t("checksCompleted")}
           </div>
         </div>
         <div className="flex gap-3 text-sm">
-          <span className="font-semibold text-emerald-700">{okCount} {t("okLabel")}</span>
-          <span className="font-semibold text-amber-700">{problemCount} {t("problemLabel")}</span>
+          <span className="font-semibold text-emerald-700">
+            {okCount} {t("okLabel")}
+          </span>
+          <span className="font-semibold text-amber-700">
+            {problemCount} {t("problemLabel")}
+          </span>
         </div>
       </div>
 
       {!allAnswered && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          {t("completeRemaining")}
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{t("completeRemaining")}</span>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={onMarkAllOk}
+              disabled={markingAllOk}
+              className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+            >
+              {markingAllOk ? t("markingAllOk") : t("markAllOk")}
+            </button>
+          )}
         </div>
       )}
 
       <div className="space-y-4">
         {items.map((item, index) => {
-            const result = itemResults[item._id];
-            let resultClass = "border-slate-200 bg-white";
-            if (result === "ok") resultClass = "border-emerald-200 bg-emerald-50";
-            if (result === "problem") resultClass = "border-amber-200 bg-amber-50";
+          const result = itemResults[item._id];
+          const instruction = parseChecklistInstruction(item.instruction);
+          let resultClass = "border-slate-200 bg-white";
+          if (result === "ok") resultClass = "border-emerald-200 bg-emerald-50";
+          if (result === "problem")
+            resultClass = "border-amber-200 bg-amber-50";
           return (
             <div
               key={item._id}
@@ -97,8 +123,26 @@ export function InspectionView({
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div dir="auto" className="text-sm font-semibold text-slate-900">
-                    {index + 1}. {item.instruction}
+                  <div className="flex items-start gap-3">
+                    <span className="pt-1 text-sm font-semibold text-slate-500">
+                      {index + 1}.
+                    </span>
+                    <div className="min-w-0">
+                      {instruction.code ? (
+                        <span
+                          dir="ltr"
+                          className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800"
+                        >
+                          {instruction.code}
+                        </span>
+                      ) : null}
+                      <p
+                        dir="auto"
+                        className={`${instruction.code ? "mt-2" : "pt-1"} whitespace-pre-line text-sm font-semibold leading-6 text-slate-900`}
+                      >
+                        {instruction.details}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -145,7 +189,9 @@ export function InspectionView({
       </div>
 
       <div>
-        <label className="mb-2 block text-sm font-semibold text-slate-700">{t("observationLabel")}</label>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          {t("observationLabel")}
+        </label>
         <textarea
           value={observation}
           onChange={(e) => onObservationChange(e.target.value.slice(0, 500))}
@@ -154,25 +200,31 @@ export function InspectionView({
           rows={3}
           className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm"
         />
-        <div className="mt-1 text-xs text-slate-500">{observation.length}/500</div>
+        <div className="mt-1 text-xs text-slate-500">
+          {observation.length}/500
+        </div>
       </div>
 
       <div className="flex items-center justify-between pt-4">
-        {!readOnly && <button
-          type="button"
-          onClick={onBack}
-          className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          {t("back")}
-        </button>}
-        {!readOnly && <button
-          type="button"
-          onClick={() => onSubmit(observation)}
-          disabled={!allAnswered || submitting}
-          className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {submitting ? t("submitting") : t("completeInspection")}
-        </button>}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {t("back")}
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => onSubmit(observation)}
+            disabled={!allAnswered || submitting}
+            className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {submitting ? t("submitting") : t("completeInspection")}
+          </button>
+        )}
       </div>
     </div>
   );

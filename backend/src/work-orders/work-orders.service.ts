@@ -210,9 +210,11 @@ export class WorkOrdersService {
    */
   async createInitialOccurrenceForPlan(
     planId: string,
+    options?: { operatorId?: string; startImmediately?: boolean },
   ): Promise<WorkOrderDocument | null> {
     return this.preventiveSchedulingService.createInitialOccurrenceForPlan(
       planId,
+      options,
     );
   }
 

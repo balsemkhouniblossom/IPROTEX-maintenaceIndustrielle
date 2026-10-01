@@ -391,6 +391,23 @@ describe('WorkOrderPreventiveSchedulingService.createInitialOccurrenceForPlan', 
     );
   });
 
+  it('assigns and starts an Operator-created occurrence immediately', async () => {
+    const operatorId = new Types.ObjectId();
+
+    await service.createInitialOccurrenceForPlan(planId.toHexString(), {
+      operatorId: operatorId.toHexString(),
+      startImmediately: true,
+    });
+
+    expect(workOrderModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        technician_id: operatorId,
+        status: 'in_progress',
+        execution_date: expect.any(Date),
+      }),
+    );
+  });
+
   it('skips (returns null) when the plan already has an occurrence, without creating a second', async () => {
     workOrderModel.exists.mockReturnValue(
       execResult({ _id: new Types.ObjectId() }),

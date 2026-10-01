@@ -8,6 +8,8 @@ import {
   PreventiveTask,
   PreventiveTaskSchema,
 } from '../schemas/preventive-task.schema';
+import { Machine, MachineSchema } from '../schemas/machine.schema';
+import { Module as MachineModule, ModuleSchema } from '../schemas/module.schema';
 import { PreventiveTasksController } from './preventive-tasks.controller';
 import { PreventiveTasksService } from './preventive-tasks.service';
 
@@ -16,6 +18,8 @@ import { PreventiveTasksService } from './preventive-tasks.service';
     MongooseModule.forFeature([
       { name: PreventiveTask.name, schema: PreventiveTaskSchema },
       { name: MaintenancePlan.name, schema: MaintenancePlanSchema },
+      { name: Machine.name, schema: MachineSchema },
+      { name: MachineModule.name, schema: ModuleSchema },
     ]),
   ],
   controllers: [PreventiveTasksController],

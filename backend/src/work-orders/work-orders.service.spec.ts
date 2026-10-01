@@ -322,7 +322,7 @@ describe('WorkOrdersService facade delegation', () => {
     ).resolves.toBeNull();
     expect(
       preventiveSchedulingService.createInitialOccurrenceForPlan,
-    ).toHaveBeenCalledWith('plan-id');
+    ).toHaveBeenCalledWith('plan-id', undefined);
   });
 
   it('reschedulePreventiveOccurrence delegates to WorkOrderPreventiveSchedulingService, preserving thrown errors', async () => {

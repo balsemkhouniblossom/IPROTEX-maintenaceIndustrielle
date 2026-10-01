@@ -13,6 +13,8 @@ import {
 import { CreatePreventiveTaskDto } from './dto/create-preventive-task.dto';
 import { UpdatePreventiveTaskDto } from './dto/update-preventive-task.dto';
 import { NOT_CORRECTIVE_TYPE_FILTER } from '../common/maintenance-type';
+import { Machine, MachineDocument } from '../schemas/machine.schema';
+import { Module, ModuleDocument } from '../schemas/module.schema';
 
 @Injectable()
 export class PreventiveTasksService {
@@ -21,6 +23,10 @@ export class PreventiveTasksService {
     private readonly model: Model<PreventiveTaskDocument>,
     @InjectModel(MaintenancePlan.name)
     private readonly planModel: Model<MaintenancePlanDocument>,
+    @InjectModel(Module.name)
+    private readonly moduleModel: Model<ModuleDocument>,
+    @InjectModel(Machine.name)
+    private readonly machineModel: Model<MachineDocument>,
   ) {}
 
   create(dto: CreatePreventiveTaskDto) {
@@ -58,6 +64,84 @@ export class PreventiveTasksService {
     });
   }
 
+  async syncPlanWithTemplateDetails(planId: Types.ObjectId) {
+    const plan = await this.planModel.findById(planId).lean().exec();
+    if (!plan) throw new NotFoundException('Maintenance plan not found');
+
+    let instructions = this.extractChecklistInstructions(plan.instruction);
+    const maintenanceCodes = String(plan.maintenance_code || '')
+      .split(',')
+      .map((code) => code.trim().toUpperCase())
+      .filter(Boolean);
+    const hasDetailedCodeInstructions = maintenanceCodes.every((code) =>
+      instructions.some((instruction) =>
+        new RegExp(`^${code}\\s*:\\s*\\S`, 'i').test(instruction),
+      ),
+    );
+
+    if (maintenanceCodes.length > 0 && !hasDetailedCodeInstructions) {
+      const targetModule = await this.moduleModel
+        .findById(plan.module_id)
+        .select({ machine_id: 1 })
+        .lean()
+        .exec();
+      const targetMachine = targetModule
+        ? await this.machineModel
+            .findById(targetModule.machine_id)
+            .select({ type_id: 1 })
+            .lean()
+            .exec()
+        : null;
+      const processMachineIds = targetMachine
+        ? await this.machineModel
+            .find({ type_id: targetMachine.type_id })
+            .distinct('_id')
+            .exec()
+        : [];
+      const processModuleIds = processMachineIds.length
+        ? await this.moduleModel
+            .find({ machine_id: { $in: processMachineIds } })
+            .distinct('_id')
+            .exec()
+        : [];
+
+      const templates = await this.planModel
+        .find({
+          _id: { $ne: plan._id },
+          module_id: { $in: processModuleIds },
+          maintenance_code: { $in: maintenanceCodes },
+          instruction: { $exists: true, $ne: '' },
+        })
+        .lean()
+        .exec();
+      const detailedInstructions = maintenanceCodes.flatMap((code) => {
+        const matchingTemplates = templates.filter(
+          (candidate) =>
+            String(candidate.maintenance_code || '')
+              .trim()
+              .toUpperCase() === code,
+        );
+        const template =
+          matchingTemplates.find(
+            (candidate) =>
+              String(candidate.module_id) === String(plan.module_id),
+          ) || matchingTemplates[0];
+        return this.extractChecklistInstructions(template?.instruction).map(
+          (instruction) =>
+            new RegExp(`^${code}\\s*:`, 'i').test(instruction)
+              ? instruction
+              : `${code}: ${instruction}`,
+        );
+      });
+      if (detailedInstructions.length > 0) {
+        instructions = detailedInstructions;
+      }
+    }
+
+    const created = await this.syncPlan(plan, instructions);
+    return { plans: 1, created };
+  }
+
   private async syncPlansMatching(
     filter: FilterQuery<MaintenancePlanDocument>,
   ) {
@@ -65,49 +149,56 @@ export class PreventiveTasksService {
     let created = 0;
     for (const plan of plans) {
       const instructions = this.extractChecklistInstructions(plan.instruction);
-      const sourceKeys: string[] = [];
-      for (let index = 0; index < instructions.length; index += 1) {
-        const sourceKey = `${String(plan._id)}:${index}`;
-        sourceKeys.push(sourceKey);
-        const result = await this.model
-          .updateOne(
-            { source_key: sourceKey },
-            {
-              $set: {
-                plan_id: plan._id,
-                plan_code: plan.plan_id,
-                module_id: plan.module_id,
-                instruction: instructions[index],
-                responsable: plan.responsable,
-              },
-              $unset: {
-                deleted_at: '',
-              },
-              $setOnInsert: {
-                task_id: `PT-${String(plan._id).slice(-8)}-${index + 1}`,
-                status: 'pending',
-                source: 'plan',
-                source_key: sourceKey,
-              },
-            },
-            { upsert: true },
-          )
-          .exec();
-        if (result.upsertedCount) created += 1;
-      }
-      await this.model
-        .updateMany(
-          {
-            plan_id: plan._id,
-            source: 'plan',
-            source_key: { $nin: sourceKeys },
-            deleted_at: { $exists: false },
-          },
-          { $set: { deleted_at: new Date() } },
-        )
-        .exec();
+      created += await this.syncPlan(plan, instructions);
     }
     return { plans: plans.length, created };
+  }
+
+  private async syncPlan(
+    plan: MaintenancePlanDocument | (MaintenancePlan & { _id: Types.ObjectId }),
+    instructions: string[],
+  ): Promise<number> {
+    const sourceKeys: string[] = [];
+    let created = 0;
+    for (let index = 0; index < instructions.length; index += 1) {
+      const sourceKey = `${String(plan._id)}:${index}`;
+      sourceKeys.push(sourceKey);
+      const result = await this.model
+        .updateOne(
+          { source_key: sourceKey },
+          {
+            $set: {
+              plan_id: plan._id,
+              plan_code: plan.plan_id,
+              module_id: plan.module_id,
+              instruction: instructions[index],
+              responsable: plan.responsable,
+            },
+            $unset: { deleted_at: '' },
+            $setOnInsert: {
+              task_id: `PT-${String(plan._id).slice(-8)}-${index + 1}`,
+              status: 'pending',
+              source: 'plan',
+              source_key: sourceKey,
+            },
+          },
+          { upsert: true },
+        )
+        .exec();
+      if (result.upsertedCount) created += 1;
+    }
+    await this.model
+      .updateMany(
+        {
+          plan_id: plan._id,
+          source: 'plan',
+          source_key: { $nin: sourceKeys },
+          deleted_at: { $exists: false },
+        },
+        { $set: { deleted_at: new Date() } },
+      )
+      .exec();
+    return created;
   }
 
   private extractChecklistInstructions(value?: string): string[] {

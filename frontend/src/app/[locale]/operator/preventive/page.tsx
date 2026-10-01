@@ -212,6 +212,7 @@ function PreventiveTasksFlow() {
                 itemResults={inspection.itemResults}
                 loading={inspection.loading}
                 onToggle={inspection.toggleItem}
+                onMarkAllOk={inspection.markAllUnansweredOk}
                 onProblemClick={handleProblemDetected}
                 onSubmit={(obs) => {
                   setObservation(obs || "");
@@ -223,6 +224,7 @@ function PreventiveTasksFlow() {
                   setStep("list");
                 }}
                 submitting={inspection.submitting}
+                markingAllOk={inspection.markingAllOk}
                 observation={observation}
                 onObservationChange={setObservation}
                 allAnswered={inspection.allAnswered}

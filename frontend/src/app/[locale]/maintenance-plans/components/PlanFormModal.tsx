@@ -1,6 +1,6 @@
-import { useTranslations } from 'next-intl';
-import { Modal } from '@/components/Modal';
-import { MaintenancePlan, ModuleEntity } from '../types';
+import { useTranslations } from "next-intl";
+import { Modal } from "@/components/Modal";
+import { MaintenancePlan, ModuleEntity } from "../types";
 import {
   CUSTOM_OPTION,
   DOCUMENTATION_OPTIONS,
@@ -17,9 +17,9 @@ import {
   getMachineLabel,
   getNextFieldValue,
   getSelectValue,
-} from '../utils';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { renderWidgetErrorFallback } from '@/components/WidgetErrorFallback';
+} from "../utils";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { renderWidgetErrorFallback } from "@/components/WidgetErrorFallback";
 
 export type PlanFormData = {
   plan_id: string;
@@ -44,7 +44,11 @@ type PlanFormModalProps = Readonly<{
   submitting: boolean;
   modules: ModuleEntity[];
   planIdOptions: string[];
+  hidePlanCode?: boolean;
+  hideMaintenanceCode?: boolean;
   maintenanceCodeOptions: string[];
+  maintenancePlanTemplates?: MaintenancePlan[];
+  allowMultipleMaintenanceCodes?: boolean;
   frequenceLabelOptions: string[];
   maintenanceTypeOptions?: string[];
   onClose: () => void;
@@ -55,7 +59,10 @@ type PlanFormModalProps = Readonly<{
 
 export function PlanFormModal(props: PlanFormModalProps) {
   return (
-    <ErrorBoundary boundaryName="plan-form-modal" fallback={renderWidgetErrorFallback}>
+    <ErrorBoundary
+      boundaryName="plan-form-modal"
+      fallback={renderWidgetErrorFallback}
+    >
       <PlanFormModalInner {...props} />
     </ErrorBoundary>
   );
@@ -69,7 +76,11 @@ function PlanFormModalInner({
   submitting,
   modules,
   planIdOptions,
+  hidePlanCode = false,
+  hideMaintenanceCode = false,
   maintenanceCodeOptions,
+  maintenancePlanTemplates = [],
+  allowMultipleMaintenanceCodes = false,
   frequenceLabelOptions,
   maintenanceTypeOptions = MAINTENANCE_TYPE_OPTIONS,
   onClose,
@@ -80,103 +91,190 @@ function PlanFormModalInner({
   const hasLegacyFrequencyUnit =
     Boolean(formData.unite_frequence) &&
     !FREQUENCE_UNIT_OPTIONS.includes(formData.unite_frequence);
-  let submitLabel = t('actions.create');
+  let submitLabel = t("actions.create");
   if (submitting) {
-    submitLabel = tCommon('saving');
+    submitLabel = tCommon("saving");
   } else if (editingPlan) {
-    submitLabel = t('actions.update');
+    submitLabel = t("actions.update");
   }
   const machineModules = modules.filter((module) => getMachineId(module));
   const machineIds = Array.from(new Set(machineModules.map(getMachineId)));
-  const availableModules = modules.filter((module) => getMachineId(module) === formData.machineId);
+  const availableModules = modules.filter(
+    (module) => getMachineId(module) === formData.machineId,
+  );
+  const selectedMaintenanceCodes = formData.maintenance_code
+    .split(",")
+    .map((code) => code.trim())
+    .filter(Boolean);
+  const selectedMaintenanceTemplates = selectedMaintenanceCodes
+    .map((maintenanceCode) => {
+      const candidates = maintenancePlanTemplates.filter(
+        (plan) => plan.maintenance_code === maintenanceCode,
+      );
+      return (
+        candidates.find((plan) => {
+          const planModule =
+            typeof plan.module_id === "string" ? undefined : plan.module_id;
+          return formData.module_id && planModule?._id === formData.module_id;
+        }) ||
+        candidates.find((plan) => {
+          const planModule =
+            typeof plan.module_id === "string" ? undefined : plan.module_id;
+          return getMachineId(planModule) === formData.machineId;
+        })
+      );
+    })
+    .filter((plan): plan is MaintenancePlan => Boolean(plan));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editingPlan ? t('modal.edit') : t('modal.add')}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={editingPlan ? t("modal.edit") : t("modal.add")}
+    >
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label htmlFor="plan-form-machine" className="block text-sm font-medium text-slate-700 mb-1">{t('machineLabel')}</label>
+          <label
+            htmlFor="plan-form-machine"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("machineLabel")}
+          </label>
           <select
             id="plan-form-machine"
             value={formData.machineId}
-            onChange={(event) => setFormData((prev) => ({ ...prev, machineId: event.target.value, module_id: '' }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            required
-          >
-            <option value="">{t('selectMachine')}</option>
-            {machineIds.map((id) => (
-              <option key={id} value={id}>
-                {getMachineLabel(machineModules.find((module) => getMachineId(module) === id), modules, '—')}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="plan-form-module-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.module')}</label>
-          <select
-            id="plan-form-module-id"
-            value={formData.module_id}
-            onChange={(event) => setFormData((prev) => ({ ...prev, module_id: event.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.module')}
-            required
-          >
-            <option value="">{t('placeholders.module')}</option>
-            {availableModules.map((module) => (
-              <option key={module._id} value={module._id}>
-                {getModuleLabel(module, modules, '—')}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="plan-form-plan-id" className="block text-sm font-medium text-slate-700 mb-1">{t('form.planCode', { default: 'Plan Code' })}</label>
-          <select
-            id="plan-form-plan-id"
-            value={getSelectValue(planIdOptions, formData.plan_id)}
             onChange={(event) =>
               setFormData((prev) => ({
                 ...prev,
-                plan_id: getNextFieldValue(planIdOptions, prev.plan_id, event.target.value),
+                machineId: event.target.value,
+                module_id: "",
               }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.planCode', { default: 'Plan Code' })}
             required
           >
-            <option value="">{t('placeholders.planCode', { default: 'Select plan code' })}</option>
-            {planIdOptions.map((planId) => (
-              <option key={planId} value={planId}>
-                {planId}
+            <option value="">{t("selectMachine")}</option>
+            {machineIds.map((id) => (
+              <option key={id} value={id}>
+                {getMachineLabel(
+                  machineModules.find((module) => getMachineId(module) === id),
+                  modules,
+                  "—",
+                )}
               </option>
             ))}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
           </select>
-          {getSelectValue(planIdOptions, formData.plan_id) === CUSTOM_OPTION && (
-            <input
-              type="text"
-              value={formData.plan_id}
-              onChange={(event) => setFormData((prev) => ({ ...prev, plan_id: event.target.value }))}
-              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.planCode', { default: 'Enter plan code' })}
-              required
-            />
-          )}
         </div>
-
         <div>
+          <label
+            htmlFor="plan-form-module-id"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.module")}
+          </label>
+          <select
+            id="plan-form-module-id"
+            value={formData.module_id}
+            onChange={(event) =>
+              setFormData((prev) => ({
+                ...prev,
+                module_id: event.target.value,
+              }))
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            title={t("form.module")}
+            required
+          >
+            <option value="">{t("placeholders.module")}</option>
+            {availableModules.map((module) => (
+              <option key={module._id} value={module._id}>
+                {getModuleLabel(module, modules, "—")}
+              </option>
+            ))}
+          </select>
+        </div>
+        {!hidePlanCode && (
           <div>
-            <label htmlFor="plan-form-type-maintenance" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceType')}</label>
+            <label
+              htmlFor="plan-form-plan-id"
+              className="block text-sm font-medium text-slate-700 mb-1"
+            >
+              {t("form.planCode", { default: "Plan Code" })}
+            </label>
             <select
-              id="plan-form-type-maintenance"
-              value={getSelectValue(maintenanceTypeOptions, formData.type_maintenance)}
+              id="plan-form-plan-id"
+              value={getSelectValue(planIdOptions, formData.plan_id)}
               onChange={(event) =>
                 setFormData((prev) => ({
                   ...prev,
-                  type_maintenance: getNextFieldValue(maintenanceTypeOptions, prev.type_maintenance, event.target.value),
+                  plan_id: getNextFieldValue(
+                    planIdOptions,
+                    prev.plan_id,
+                    event.target.value,
+                  ),
                 }))
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              title={t('form.maintenanceType')}
+              title={t("form.planCode", { default: "Plan Code" })}
+              required
+            >
+              <option value="">
+                {t("placeholders.planCode", { default: "Select plan code" })}
+              </option>
+              {planIdOptions.map((planId) => (
+                <option key={planId} value={planId}>
+                  {planId}
+                </option>
+              ))}
+              <option value={CUSTOM_OPTION}>{t("custom")}</option>
+            </select>
+            {getSelectValue(planIdOptions, formData.plan_id) ===
+              CUSTOM_OPTION && (
+              <input
+                type="text"
+                value={formData.plan_id}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    plan_id: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder={t("placeholders.planCode", {
+                  default: "Enter plan code",
+                })}
+                required
+              />
+            )}
+          </div>
+        )}
+
+        <div>
+          <div>
+            <label
+              htmlFor="plan-form-type-maintenance"
+              className="block text-sm font-medium text-slate-700 mb-1"
+            >
+              {t("form.maintenanceType")}
+            </label>
+            <select
+              id="plan-form-type-maintenance"
+              value={getSelectValue(
+                maintenanceTypeOptions,
+                formData.type_maintenance,
+              )}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  type_maintenance: getNextFieldValue(
+                    maintenanceTypeOptions,
+                    prev.type_maintenance,
+                    event.target.value,
+                  ),
+                }))
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              title={t("form.maintenanceType")}
               required
             >
               {maintenanceTypeOptions.map((option) => (
@@ -184,93 +282,152 @@ function PlanFormModalInner({
                   {option}
                 </option>
               ))}
-              {maintenanceTypeOptions.length > 1 ? <option value={CUSTOM_OPTION}>{t('custom')}</option> : null}
+              {maintenanceTypeOptions.length > 1 ? (
+                <option value={CUSTOM_OPTION}>{t("custom")}</option>
+              ) : null}
             </select>
-            {maintenanceTypeOptions.length > 1 && getSelectValue(maintenanceTypeOptions, formData.type_maintenance) === CUSTOM_OPTION && (
-              <input
-                type="text"
-                value={formData.type_maintenance}
-                onChange={(event) => setFormData((prev) => ({ ...prev, type_maintenance: event.target.value }))}
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder={t('placeholders.maintenanceType')}
-                required
-              />
-            )}
+            {maintenanceTypeOptions.length > 1 &&
+              getSelectValue(
+                maintenanceTypeOptions,
+                formData.type_maintenance,
+              ) === CUSTOM_OPTION && (
+                <input
+                  type="text"
+                  value={formData.type_maintenance}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      type_maintenance: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder={t("placeholders.maintenanceType")}
+                  required
+                />
+              )}
           </div>
         </div>
         <div>
-          <label htmlFor="plan-form-instruction" className="block text-sm font-medium text-slate-700 mb-1">{t('form.instruction')}</label>
+          <label
+            htmlFor="plan-form-instruction"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.instruction")}
+          </label>
           <select
             id="plan-form-instruction"
             value={getSelectValue(INSTRUCTION_OPTIONS, formData.instruction)}
-            onChange={(event) => setFormData((prev) => ({
-              ...prev,
-              instruction: getNextFieldValue(INSTRUCTION_OPTIONS, prev.instruction, event.target.value),
-            }))}
+            onChange={(event) =>
+              setFormData((prev) => ({
+                ...prev,
+                instruction: getNextFieldValue(
+                  INSTRUCTION_OPTIONS,
+                  prev.instruction,
+                  event.target.value,
+                ),
+              }))
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
           >
-            <option value="">{t('placeholders.instruction')}</option>
-            {INSTRUCTION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
+            <option value="">{t("placeholders.instruction")}</option>
+            {INSTRUCTION_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+            <option value={CUSTOM_OPTION}>{t("custom")}</option>
           </select>
-          {getSelectValue(INSTRUCTION_OPTIONS, formData.instruction) === CUSTOM_OPTION && (
+          {getSelectValue(INSTRUCTION_OPTIONS, formData.instruction) ===
+            CUSTOM_OPTION && (
             <textarea
               rows={5}
               value={formData.instruction}
-              onChange={(event) => setFormData((prev) => ({ ...prev, instruction: cleanInstruction(event.target.value) }))}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  instruction: cleanInstruction(event.target.value),
+                }))
+              }
               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.instruction')}
+              placeholder={t("placeholders.instruction")}
             />
           )}
         </div>
         <div>
-            <label htmlFor="plan-form-frequence" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequency')}</label>
-            <select
-              id="plan-form-frequence"
-              value={getSelectValue(FREQUENCE_OPTIONS, formData.frequence)}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  frequence: getNextFieldValue(FREQUENCE_OPTIONS, prev.frequence, event.target.value),
-                }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              title={t('form.frequency')}
-              required
-            >
-              {FREQUENCE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value={CUSTOM_OPTION}>{t('custom')}</option>
-            </select>
-            {getSelectValue(FREQUENCE_OPTIONS, formData.frequence) === CUSTOM_OPTION && (
-              <input
-                type="number"
-                min="1"
-                value={formData.frequence}
-                onChange={(event) => setFormData((prev) => ({ ...prev, frequence: event.target.value }))}
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder={t('placeholders.frequency')}
-                required
-              />
-            )}
-        </div>
-
-        <div>
-          <label htmlFor="plan-form-unite-frequence" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequencyUnit')}</label>
+          <label
+            htmlFor="plan-form-frequence"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.frequency")}
+          </label>
           <select
-            id="plan-form-unite-frequence"
-            value={getSelectValue(FREQUENCE_UNIT_OPTIONS, formData.unite_frequence)}
+            id="plan-form-frequence"
+            value={getSelectValue(FREQUENCE_OPTIONS, formData.frequence)}
             onChange={(event) =>
               setFormData((prev) => ({
                 ...prev,
-                unite_frequence: getNextFieldValue(FREQUENCE_UNIT_OPTIONS, prev.unite_frequence, event.target.value),
+                frequence: getNextFieldValue(
+                  FREQUENCE_OPTIONS,
+                  prev.frequence,
+                  event.target.value,
+                ),
               }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.frequencyUnit')}
+            title={t("form.frequency")}
+            required
+          >
+            {FREQUENCE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+            <option value={CUSTOM_OPTION}>{t("custom")}</option>
+          </select>
+          {getSelectValue(FREQUENCE_OPTIONS, formData.frequence) ===
+            CUSTOM_OPTION && (
+            <input
+              type="number"
+              min="1"
+              value={formData.frequence}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  frequence: event.target.value,
+                }))
+              }
+              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder={t("placeholders.frequency")}
+              required
+            />
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="plan-form-unite-frequence"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.frequencyUnit")}
+          </label>
+          <select
+            id="plan-form-unite-frequence"
+            value={getSelectValue(
+              FREQUENCE_UNIT_OPTIONS,
+              formData.unite_frequence,
+            )}
+            onChange={(event) =>
+              setFormData((prev) => ({
+                ...prev,
+                unite_frequence: getNextFieldValue(
+                  FREQUENCE_UNIT_OPTIONS,
+                  prev.unite_frequence,
+                  event.target.value,
+                ),
+              }))
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            title={t("form.frequencyUnit")}
             required
           >
             {FREQUENCE_UNIT_OPTIONS.map((option) => (
@@ -284,175 +441,401 @@ function PlanFormModalInner({
           </select>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div
+          className={`grid grid-cols-1 gap-3 ${hideMaintenanceCode ? "" : "sm:grid-cols-2"}`}
+        >
+          {!hideMaintenanceCode && (
+            <div>
+              <label
+                htmlFor="plan-form-maintenance-code"
+                className="block text-sm font-medium text-slate-700 mb-1"
+              >
+                {t("form.maintenanceCode")}
+              </label>
+              {allowMultipleMaintenanceCodes ? (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maintenance_code: maintenanceCodeOptions.join(","),
+                      }))
+                    }
+                    disabled={
+                      maintenanceCodeOptions.length === 0 ||
+                      selectedMaintenanceCodes.length ===
+                        maintenanceCodeOptions.length
+                    }
+                    className="rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {t("actions.selectAllCodes")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maintenance_code: "",
+                      }))
+                    }
+                    disabled={selectedMaintenanceCodes.length === 0}
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {t("actions.clearCodes")}
+                  </button>
+                </div>
+              ) : null}
+              <select
+                id="plan-form-maintenance-code"
+                multiple={allowMultipleMaintenanceCodes}
+                size={
+                  allowMultipleMaintenanceCodes
+                    ? maintenanceCodeOptions.length
+                    : undefined
+                }
+                value={
+                  allowMultipleMaintenanceCodes
+                    ? selectedMaintenanceCodes
+                    : getSelectValue(
+                        maintenanceCodeOptions,
+                        formData.maintenance_code,
+                      )
+                }
+                onChange={(event) =>
+                  setFormData((prev) => {
+                    const maintenanceCode = allowMultipleMaintenanceCodes
+                      ? Array.from(
+                          event.target.selectedOptions,
+                          (option) => option.value,
+                        ).join(",")
+                      : getNextFieldValue(
+                          maintenanceCodeOptions,
+                          prev.maintenance_code,
+                          event.target.value,
+                        );
+                    const primaryCode = maintenanceCode.split(",")[0] || "";
+                    const template = maintenancePlanTemplates.find((plan) => {
+                      if (plan.maintenance_code !== primaryCode) return false;
+                      const planModule =
+                        typeof plan.module_id === "string"
+                          ? undefined
+                          : plan.module_id;
+                      if (
+                        prev.module_id &&
+                        planModule?._id === prev.module_id
+                      ) {
+                        return true;
+                      }
+                      return getMachineId(planModule) === prev.machineId;
+                    });
+                    return {
+                      ...prev,
+                      maintenance_code: maintenanceCode,
+                      ...(template
+                        ? {
+                            frequence: String(template.frequence),
+                            unite_frequence: template.unite_frequence,
+                            instruction: template.instruction || "",
+                            responsable: template.responsable || "",
+                            huile_graisse: template.huile_graisse || "",
+                            documentation: template.documentation || "",
+                            frequence_label: template.frequence_label || "",
+                          }
+                        : {}),
+                    };
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                title={t("form.maintenanceCode")}
+              >
+                {!allowMultipleMaintenanceCodes ? (
+                  <option value="">{t("placeholders.maintenanceCode")}</option>
+                ) : null}
+                {maintenanceCodeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+                {!allowMultipleMaintenanceCodes ? (
+                  <option value={CUSTOM_OPTION}>{t("custom")}</option>
+                ) : null}
+              </select>
+              {!allowMultipleMaintenanceCodes &&
+                getSelectValue(
+                  maintenanceCodeOptions,
+                  formData.maintenance_code,
+                ) === CUSTOM_OPTION && (
+                  <input
+                    type="text"
+                    value={formData.maintenance_code}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        maintenance_code: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    placeholder={t("placeholders.maintenanceCode")}
+                  />
+                )}
+              {selectedMaintenanceTemplates.length > 0 ? (
+                <div className="mt-3 space-y-3">
+                  {selectedMaintenanceTemplates.map((template) => (
+                    <section
+                      key={`${template._id}-${template.maintenance_code}`}
+                      className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700"
+                    >
+                      <h4 className="mb-2 font-bold text-blue-900">
+                        {template.maintenance_code}
+                      </h4>
+                      <dl className="space-y-2">
+                        <div>
+                          <dt className="font-semibold">
+                            {t("form.instruction")}
+                          </dt>
+                          <dd className="whitespace-pre-line">
+                            {template.instruction || "—"}
+                          </dd>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div>
+                            <dt className="font-semibold">
+                              {t("form.frequency")}
+                            </dt>
+                            <dd>{`${template.frequence} ${template.unite_frequence}`}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">
+                              {t("form.responsable")}
+                            </dt>
+                            <dd>{template.responsable || "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">
+                              {t("form.huileGraisse")}
+                            </dt>
+                            <dd>{template.huile_graisse || "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">
+                              {t("form.documentation")}
+                            </dt>
+                            <dd>{template.documentation || "—"}</dd>
+                          </div>
+                        </div>
+                      </dl>
+                    </section>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
           <div>
-            <label htmlFor="plan-form-maintenance-code" className="block text-sm font-medium text-slate-700 mb-1">{t('form.maintenanceCode')}</label>
-            <select
-              id="plan-form-maintenance-code"
-              value={getSelectValue(maintenanceCodeOptions, formData.maintenance_code)}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  maintenance_code: getNextFieldValue(maintenanceCodeOptions, prev.maintenance_code, event.target.value),
-                }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              title={t('form.maintenanceCode')}
+            <label
+              htmlFor="plan-form-frequence-label"
+              className="block text-sm font-medium text-slate-700 mb-1"
             >
-              <option value="">{t('placeholders.maintenanceCode')}</option>
-              {maintenanceCodeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value={CUSTOM_OPTION}>{t('custom')}</option>
-            </select>
-            {getSelectValue(maintenanceCodeOptions, formData.maintenance_code) === CUSTOM_OPTION && (
-              <input
-                type="text"
-                value={formData.maintenance_code}
-                onChange={(event) => setFormData((prev) => ({ ...prev, maintenance_code: event.target.value }))}
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder={t('placeholders.maintenanceCode')}
-              />
-            )}
-          </div>
-          <div>
-            <label htmlFor="plan-form-frequence-label" className="block text-sm font-medium text-slate-700 mb-1">{t('form.frequencyLabel')}</label>
+              {t("form.frequencyLabel")}
+            </label>
             <select
               id="plan-form-frequence-label"
-              value={getSelectValue(frequenceLabelOptions, formData.frequence_label)}
+              value={getSelectValue(
+                frequenceLabelOptions,
+                formData.frequence_label,
+              )}
               onChange={(event) =>
                 setFormData((prev) => ({
                   ...prev,
-                  frequence_label: getNextFieldValue(frequenceLabelOptions, prev.frequence_label, event.target.value),
+                  frequence_label: getNextFieldValue(
+                    frequenceLabelOptions,
+                    prev.frequence_label,
+                    event.target.value,
+                  ),
                 }))
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              title={t('form.frequencyLabel')}
+              title={t("form.frequencyLabel")}
             >
-              <option value="">{t('placeholders.frequencyLabel')}</option>
+              <option value="">{t("placeholders.frequencyLabel")}</option>
               {frequenceLabelOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
-              <option value={CUSTOM_OPTION}>{t('custom')}</option>
+              <option value={CUSTOM_OPTION}>{t("custom")}</option>
             </select>
-            {getSelectValue(frequenceLabelOptions, formData.frequence_label) === CUSTOM_OPTION && (
+            {getSelectValue(frequenceLabelOptions, formData.frequence_label) ===
+              CUSTOM_OPTION && (
               <input
                 type="text"
                 value={formData.frequence_label}
-                onChange={(event) => setFormData((prev) => ({ ...prev, frequence_label: event.target.value }))}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    frequence_label: event.target.value,
+                  }))
+                }
                 className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder={t('placeholders.frequencyLabel')}
+                placeholder={t("placeholders.frequencyLabel")}
               />
             )}
           </div>
         </div>
 
         <div>
-          <label htmlFor="plan-form-responsable" className="block text-sm font-medium text-slate-700 mb-1">{t('form.responsable')}</label>
+          <label
+            htmlFor="plan-form-responsable"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.responsable")}
+          </label>
           <select
             id="plan-form-responsable"
             value={getSelectValue(RESPONSABLE_OPTIONS, formData.responsable)}
             onChange={(event) =>
               setFormData((prev) => ({
                 ...prev,
-                responsable: getNextFieldValue(RESPONSABLE_OPTIONS, prev.responsable, event.target.value),
+                responsable: getNextFieldValue(
+                  RESPONSABLE_OPTIONS,
+                  prev.responsable,
+                  event.target.value,
+                ),
               }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.responsable')}
+            title={t("form.responsable")}
           >
-            <option value="">{t('placeholders.responsable')}</option>
+            <option value="">{t("placeholders.responsable")}</option>
             {RESPONSABLE_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
+            <option value={CUSTOM_OPTION}>{t("custom")}</option>
           </select>
-          {getSelectValue(RESPONSABLE_OPTIONS, formData.responsable) === CUSTOM_OPTION && (
+          {getSelectValue(RESPONSABLE_OPTIONS, formData.responsable) ===
+            CUSTOM_OPTION && (
             <input
               type="text"
               value={formData.responsable}
-              onChange={(event) => setFormData((prev) => ({ ...prev, responsable: cleanResponsable(event.target.value) }))}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  responsable: cleanResponsable(event.target.value),
+                }))
+              }
               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.responsable')}
+              placeholder={t("placeholders.responsable")}
             />
           )}
         </div>
 
         <div>
-          <label htmlFor="plan-form-huile-graisse" className="block text-sm font-medium text-slate-700 mb-1">{t('form.huileGraisse')}</label>
+          <label
+            htmlFor="plan-form-huile-graisse"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.huileGraisse")}
+          </label>
           <select
             id="plan-form-huile-graisse"
-            value={getSelectValue(HUILE_GRAISSE_OPTIONS, formData.huile_graisse)}
+            value={getSelectValue(
+              HUILE_GRAISSE_OPTIONS,
+              formData.huile_graisse,
+            )}
             onChange={(event) =>
               setFormData((prev) => ({
                 ...prev,
-                huile_graisse: getNextFieldValue(HUILE_GRAISSE_OPTIONS, prev.huile_graisse, event.target.value),
+                huile_graisse: getNextFieldValue(
+                  HUILE_GRAISSE_OPTIONS,
+                  prev.huile_graisse,
+                  event.target.value,
+                ),
               }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.huileGraisse')}
+            title={t("form.huileGraisse")}
           >
-            <option value="">{t('placeholders.huileGraisse')}</option>
+            <option value="">{t("placeholders.huileGraisse")}</option>
             {HUILE_GRAISSE_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
+            <option value={CUSTOM_OPTION}>{t("custom")}</option>
           </select>
-          {getSelectValue(HUILE_GRAISSE_OPTIONS, formData.huile_graisse) === CUSTOM_OPTION && (
+          {getSelectValue(HUILE_GRAISSE_OPTIONS, formData.huile_graisse) ===
+            CUSTOM_OPTION && (
             <input
               type="text"
               value={formData.huile_graisse}
-              onChange={(event) => setFormData((prev) => ({ ...prev, huile_graisse: event.target.value }))}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  huile_graisse: event.target.value,
+                }))
+              }
               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.huileGraisse')}
+              placeholder={t("placeholders.huileGraisse")}
             />
           )}
         </div>
 
         <div>
-          <label htmlFor="plan-form-documentation" className="block text-sm font-medium text-slate-700 mb-1">{t('form.documentation')}</label>
+          <label
+            htmlFor="plan-form-documentation"
+            className="block text-sm font-medium text-slate-700 mb-1"
+          >
+            {t("form.documentation")}
+          </label>
           <select
             id="plan-form-documentation"
-            value={getSelectValue(DOCUMENTATION_OPTIONS, formData.documentation)}
+            value={getSelectValue(
+              DOCUMENTATION_OPTIONS,
+              formData.documentation,
+            )}
             onChange={(event) =>
               setFormData((prev) => ({
                 ...prev,
-                documentation: getNextFieldValue(DOCUMENTATION_OPTIONS, prev.documentation, event.target.value),
+                documentation: getNextFieldValue(
+                  DOCUMENTATION_OPTIONS,
+                  prev.documentation,
+                  event.target.value,
+                ),
               }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            title={t('form.documentation')}
+            title={t("form.documentation")}
           >
-            <option value="">{t('placeholders.documentation')}</option>
+            <option value="">{t("placeholders.documentation")}</option>
             {DOCUMENTATION_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
             ))}
-            <option value={CUSTOM_OPTION}>{t('custom')}</option>
+            <option value={CUSTOM_OPTION}>{t("custom")}</option>
           </select>
-          {getSelectValue(DOCUMENTATION_OPTIONS, formData.documentation) === CUSTOM_OPTION && (
+          {getSelectValue(DOCUMENTATION_OPTIONS, formData.documentation) ===
+            CUSTOM_OPTION && (
             <input
               type="text"
               value={formData.documentation}
-              onChange={(event) => setFormData((prev) => ({ ...prev, documentation: event.target.value }))}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  documentation: event.target.value,
+                }))
+              }
               className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={t('placeholders.documentation')}
+              placeholder={t("placeholders.documentation")}
             />
           )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            {t('actions.cancel')}
+            {t("actions.cancel")}
           </button>
           <button type="submit" className="btn-primary" disabled={submitting}>
             {submitLabel}

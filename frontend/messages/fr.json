@@ -976,6 +976,9 @@
         "okLabel": "OK",
         "problemLabel": "Problème",
         "completeRemaining": "Terminez les contrôles restants avant l’envoi.",
+        "markAllOk": "Marquer tous les contrôles restants OK",
+        "markingAllOk": "Marquage des contrôles...",
+        "markAllFailed": "Certains contrôles n’ont pas pu être marqués OK. Veuillez réessayer.",
         "observationLabel": "Observation",
         "observationPlaceholder": "Ajouter une observation facultative...",
         "completeInspection": "Terminer l’inspection",
@@ -2880,7 +2883,9 @@
       "pause": "Mettre en pause",
       "resume": "Reprendre",
       "archive": "Archiver",
-      "complete": "Marquer comme terminé"
+      "complete": "Marquer comme terminé",
+      "selectAllCodes": "Sélectionner tous les codes",
+      "clearCodes": "Effacer la sélection"
     },
     "notifications": {
       "loadFailed": "Echec du chargement des plans de maintenance",

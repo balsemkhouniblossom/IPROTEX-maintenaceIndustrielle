@@ -233,6 +233,15 @@ export class OperatorController {
     );
   }
 
+  @Post('preventive-tasks/:planId/prepare')
+  preparePreventiveTaskChecklist(
+    @Req() req: AuthenticatedRequest,
+    @Param('planId') planId: string,
+  ) {
+    const userId = this.ensureOperator(req);
+    return this.operatorService.preparePreventiveTaskChecklist(userId, planId);
+  }
+
   @Patch('preventive-tasks/:id')
   updatePreventiveTaskChecklist(
     @Req() req: AuthenticatedRequest,

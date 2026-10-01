@@ -4,6 +4,7 @@ import { fetchAllPaginated } from "@/services/pagination";
 import { extractApiErrorMessage } from "@/services/apiErrors";
 import { useTranslations } from "next-intl";
 import { invalidateList, LIST_EVENTS } from "@/services/listInvalidation";
+import { sortChecklistItems } from "../utils/checklist-instruction";
 
 export interface ChecklistItem {
   _id: string;
@@ -32,8 +33,11 @@ export function usePreventiveInspection(
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [markingAllOk, setMarkingAllOk] = useState(false);
   const [workOrderId, setWorkOrderId] = useState<string | null>(null);
-  const [itemResults, setItemResults] = useState<Record<string, "ok" | "problem">>({});
+  const [itemResults, setItemResults] = useState<
+    Record<string, "ok" | "problem">
+  >({});
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations("dashboard.operator.preventiveTasksFlow");
 
@@ -45,28 +49,41 @@ export function usePreventiveInspection(
 
   useEffect(() => {
     if (!planId || !machineId) return;
+    const currentPlanId = planId;
     let cancelled = false;
 
     async function loadChecklist() {
       setLoading(true);
       setError(null);
       try {
-      const items = await fetchAllPaginated<ChecklistItem>((params) =>
+        if (!readOnly) {
+          await apiService.prepareOperatorPreventiveTaskChecklist(
+            currentPlanId,
+          );
+        }
+        const items = await fetchAllPaginated<ChecklistItem>((params) =>
           apiService.getOperatorPreventiveTaskChecklist({
             ...params,
             machineId: machineId || undefined,
           }),
         );
-        const planItems = items.filter((item) => {
-          const pid = typeof item.plan_id === "string" ? item.plan_id : item.plan_id?._id || "";
-          return pid === planId;
-        });
+        const planItems = sortChecklistItems(
+          items.filter((item) => {
+            const pid =
+              typeof item.plan_id === "string"
+                ? item.plan_id
+                : item.plan_id?._id || "";
+            return pid === currentPlanId;
+          }),
+        );
         if (!cancelled) {
           setChecklistItems(planItems);
           const results: Record<string, "ok" | "problem"> = {};
           planItems.forEach((item) => {
-          if (readOnly && item.status === "completed") {
-              results[item._id] = item.notes?.startsWith("Problem:") ? "problem" : "ok";
+            if (readOnly && item.status === "completed") {
+              results[item._id] = item.notes?.startsWith("Problem:")
+                ? "problem"
+                : "ok";
             }
           });
           setItemResults(results);
@@ -94,17 +111,22 @@ export function usePreventiveInspection(
   );
 
   const allAnswered = useMemo(
-    () => checklistItems.length > 0 && checklistItems.every((item) => itemResults[item._id] !== undefined),
+    () =>
+      checklistItems.length > 0 &&
+      checklistItems.every((item) => itemResults[item._id] !== undefined),
     [checklistItems, itemResults],
   );
 
   const okCount = useMemo(
-    () => checklistItems.filter((item) => itemResults[item._id] === "ok").length,
+    () =>
+      checklistItems.filter((item) => itemResults[item._id] === "ok").length,
     [checklistItems, itemResults],
   );
 
   const problemCount = useMemo(
-    () => checklistItems.filter((item) => itemResults[item._id] === "problem").length,
+    () =>
+      checklistItems.filter((item) => itemResults[item._id] === "problem")
+        .length,
     [checklistItems, itemResults],
   );
 
@@ -120,8 +142,7 @@ export function usePreventiveInspection(
 
       if (readOnly) return;
       try {
-        const notes =
-          result === "ok" ? "OK" : `Problem: ${item.instruction}`;
+        const notes = result === "ok" ? "OK" : `Problem: ${item.instruction}`;
         await apiService.updateOperatorPreventiveTaskChecklist(itemId, {
           status: "completed",
           notes,
@@ -133,9 +154,53 @@ export function usePreventiveInspection(
     [checklistItems, readOnly],
   );
 
+  const markAllUnansweredOk = useCallback(async () => {
+    if (readOnly || markingAllOk) return;
+    const unansweredItems = checklistItems.filter(
+      (item) => itemResults[item._id] === undefined,
+    );
+    if (unansweredItems.length === 0) return;
+
+    setMarkingAllOk(true);
+    setError(null);
+    setItemResults((previous) => ({
+      ...previous,
+      ...Object.fromEntries(unansweredItems.map((item) => [item._id, "ok"])),
+    }));
+
+    const results = await Promise.allSettled(
+      unansweredItems.map((item) =>
+        apiService.updateOperatorPreventiveTaskChecklist(item._id, {
+          status: "completed",
+          notes: "OK",
+        }),
+      ),
+    );
+    const failedIds = unansweredItems
+      .filter((_, index) => results[index].status === "rejected")
+      .map((item) => item._id);
+
+    if (failedIds.length > 0) {
+      setItemResults((previous) => {
+        const next = { ...previous };
+        failedIds.forEach((itemId) => delete next[itemId]);
+        return next;
+      });
+      setError(t("markAllFailed"));
+    }
+    setMarkingAllOk(false);
+  }, [checklistItems, itemResults, markingAllOk, readOnly, t]);
+
   const submit = useCallback(
     async (observation?: string): Promise<InspectionResult | null> => {
-      if (readOnly || !planId || !machineIdRef || !allAnswered || checklistItems.length === 0) return null;
+      if (
+        readOnly ||
+        !planId ||
+        !machineIdRef ||
+        !allAnswered ||
+        checklistItems.length === 0
+      )
+        return null;
 
       setSubmitting(true);
       setError(null);
@@ -154,18 +219,21 @@ export function usePreventiveInspection(
         }
         setWorkOrderId(targetWorkOrderId);
 
-        const reportResponse = await apiService.submitOperatorPreventiveMaintenance({
-          work_order_id: targetWorkOrderId,
-          tasks_completed: tasksCompleted,
-          condition,
-          comments: observation?.trim() || undefined,
-        });
+        const reportResponse =
+          await apiService.submitOperatorPreventiveMaintenance({
+            work_order_id: targetWorkOrderId,
+            tasks_completed: tasksCompleted,
+            condition,
+            comments: observation?.trim() || undefined,
+          });
 
         invalidateList(LIST_EVENTS.workOrders);
 
         return {
           workOrderId: targetWorkOrderId,
-          workOrderOtId: reportResponse.data.workOrder.ot_id || reportResponse.data.workOrder._id,
+          workOrderOtId:
+            reportResponse.data.workOrder.ot_id ||
+            reportResponse.data.workOrder._id,
           reportId: reportResponse.data.report.report_id,
         };
       } catch (e) {
@@ -175,7 +243,17 @@ export function usePreventiveInspection(
         setSubmitting(false);
       }
     },
-    [planId, machineIdRef, allAnswered, checklistItems, itemResults, occurrenceId, workOrderId, readOnly, t],
+    [
+      planId,
+      machineIdRef,
+      allAnswered,
+      checklistItems,
+      itemResults,
+      occurrenceId,
+      workOrderId,
+      readOnly,
+      t,
+    ],
   );
 
   const reset = useCallback(() => {
@@ -189,6 +267,7 @@ export function usePreventiveInspection(
     checklistItems,
     loading,
     submitting,
+    markingAllOk,
     workOrderId,
     itemResults,
     problems,
@@ -197,6 +276,7 @@ export function usePreventiveInspection(
     problemCount,
     error,
     toggleItem,
+    markAllUnansweredOk,
     submit,
     reset,
   };

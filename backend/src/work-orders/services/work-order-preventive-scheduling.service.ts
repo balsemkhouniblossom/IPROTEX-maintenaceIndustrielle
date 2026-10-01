@@ -211,6 +211,7 @@ export class WorkOrderPreventiveSchedulingService {
 
   async createInitialOccurrenceForPlan(
     planId: string,
+    options?: { operatorId?: string; startImmediately?: boolean },
   ): Promise<WorkOrderDocument | null> {
     if (!Types.ObjectId.isValid(planId)) {
       return null;
@@ -236,11 +237,19 @@ export class WorkOrderPreventiveSchedulingService {
     const now = new Date();
     const otId = await this.generateWorkOrderCode(plan.type_maintenance);
     const machineId = this.toPersistedObjectId(moduleEntity.machine_id);
+    const operatorId =
+      options?.operatorId && Types.ObjectId.isValid(options.operatorId)
+        ? new Types.ObjectId(options.operatorId)
+        : undefined;
+    const startsImmediately = Boolean(
+      options?.startImmediately && operatorId,
+    );
     return this.workOrderModel.create({
       ot_id: otId,
       machine_id: machineId,
       module_id: moduleEntity._id,
       plan_id: plan._id,
+      technician_id: operatorId,
       preventive_occurrence_key: buildPreventiveOccurrenceKey({
         maintenanceType: plan.type_maintenance,
         machineId,
@@ -250,10 +259,11 @@ export class WorkOrderPreventiveSchedulingService {
       }),
       description: plan.instruction || 'Preventive maintenance task',
       type_maintenance: plan.type_maintenance,
-      status: 'scheduled',
+      status: startsImmediately ? 'in_progress' : 'scheduled',
       priorite: 'medium',
       date_created: now,
       date_start: now,
+      execution_date: startsImmediately ? now : undefined,
       scheduled_date: now,
       due_date: now,
     });

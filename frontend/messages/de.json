@@ -778,6 +778,9 @@
         "okLabel": "OK",
         "problemLabel": "Problem",
         "completeRemaining": "Complete the remaining check before submitting.",
+        "markAllOk": "Alle verbleibenden als OK markieren",
+        "markingAllOk": "Prüfungen werden markiert...",
+        "markAllFailed": "Einige Prüfungen konnten nicht als OK markiert werden. Bitte erneut versuchen.",
         "observationLabel": "Observation",
         "observationPlaceholder": "Add an optional observation...",
         "completeInspection": "Complete Inspection",
@@ -2947,7 +2950,9 @@
       "pause": "Pausieren",
       "resume": "Fortsetzen",
       "archive": "Archivieren",
-      "complete": "Als abgeschlossen markieren"
+      "complete": "Als abgeschlossen markieren",
+      "selectAllCodes": "Alle Codes auswählen",
+      "clearCodes": "Auswahl löschen"
     },
     "notifications": {
       "loadFailed": "Laden der Wartungspläne fehlgeschlagen",

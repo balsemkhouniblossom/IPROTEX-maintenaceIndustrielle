@@ -35,7 +35,11 @@ describe('OperatorService machine scoping', () => {
     findById: jest.Mock;
     countDocuments: jest.Mock;
   };
-  let referenceModel: { find: jest.Mock; countDocuments: jest.Mock };
+  let referenceModel: {
+    find: jest.Mock;
+    findById: jest.Mock;
+    countDocuments: jest.Mock;
+  };
   let moduleModel: {
     find: jest.Mock;
     findById: jest.Mock;
@@ -55,8 +59,11 @@ describe('OperatorService machine scoping', () => {
     findOne: jest.Mock;
     findOneAndUpdate: jest.Mock;
   };
-  let preventiveTasksService: { syncPlansForModuleIds: jest.Mock };
-  let maintenancePlansService: { create: jest.Mock };
+  let preventiveTasksService: {
+    syncPlansForModuleIds: jest.Mock;
+    syncPlanWithTemplateDetails: jest.Mock;
+  };
+  let maintenancePlansService: { create: jest.Mock; transition: jest.Mock };
   let pannePartModel: { find: jest.Mock };
   let workOrdersService: {
     getMachinePreventiveStates: jest.Mock;
@@ -107,6 +114,7 @@ describe('OperatorService machine scoping', () => {
     } as never;
     referenceModel = {
       find: jest.fn().mockReturnValue(queryResult([])),
+      findById: jest.fn().mockReturnValue(queryResult(null)),
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
     };
     moduleModel = {
@@ -149,9 +157,16 @@ describe('OperatorService machine scoping', () => {
       syncPlansForModuleIds: jest
         .fn()
         .mockResolvedValue({ plans: 0, created: 0 }),
+      syncPlanWithTemplateDetails: jest
+        .fn()
+        .mockResolvedValue({ plans: 1, created: 1 }),
     };
     maintenancePlansService = {
       create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      transition: jest.fn().mockResolvedValue({
+        plan: { _id: new Types.ObjectId(), status: 'active' },
+        createdOccurrence: { _id: new Types.ObjectId(), status: 'scheduled' },
+      }),
     };
     pannePartModel = {
       find: jest.fn().mockReturnValue(queryResult([])),
@@ -248,6 +263,20 @@ describe('OperatorService machine scoping', () => {
       }),
       operatorId.toString(),
     );
+    expect(preventiveTasksService.syncPlansForModuleIds).toHaveBeenCalledWith([
+      moduleId,
+    ]);
+    expect(
+      preventiveTasksService.syncPlansForModuleIds.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      maintenancePlansService.transition.mock.invocationCallOrder[0],
+    );
+    expect(maintenancePlansService.transition).toHaveBeenCalledWith(
+      expect.any(String),
+      { action: 'activate' },
+      operatorId.toString(),
+      { operatorId: operatorId.toString(), startImmediately: true },
+    );
   });
 
   it('allows preventive plan creation for an existing unassigned machine', async () => {
@@ -269,6 +298,12 @@ describe('OperatorService machine scoping', () => {
       expect.objectContaining({ module_id: moduleId.toString() }),
       operatorId.toString(),
     );
+    expect(maintenancePlansService.transition).toHaveBeenCalledWith(
+      expect.any(String),
+      { action: 'activate' },
+      operatorId.toString(),
+      { operatorId: operatorId.toString(), startImmediately: true },
+    );
   });
 
   it('returns modules for the complete machine catalogue', async () => {
@@ -276,6 +311,54 @@ describe('OperatorService machine scoping', () => {
 
     expect(moduleModel.find).toHaveBeenCalledWith({});
     expect(moduleModel.countDocuments).toHaveBeenCalledWith({});
+  });
+
+  it('returns maintenance-plan templates for the complete machine catalogue', async () => {
+    await service.getMaintenancePlans(operatorId.toString(), 1, 10, 0);
+
+    expect(referenceModel.find).toHaveBeenCalledWith({});
+    expect(referenceModel.countDocuments).toHaveBeenCalledWith({});
+  });
+
+  it('prepares a missing checklist only for a plan on an assigned machine', async () => {
+    const planId = new Types.ObjectId();
+    const moduleId = new Types.ObjectId();
+    referenceModel.findById.mockReturnValueOnce(
+      queryResult({ _id: planId, module_id: moduleId }),
+    );
+    moduleModel.findById.mockReturnValueOnce(
+      queryResult({ _id: moduleId, machine_id: assignedMachineId }),
+    );
+
+    await service.preparePreventiveTaskChecklist(
+      operatorId.toString(),
+      planId.toString(),
+    );
+
+    expect(
+      preventiveTasksService.syncPlanWithTemplateDetails,
+    ).toHaveBeenCalledWith(planId);
+  });
+
+  it('refuses to prepare a checklist for a plan outside the Operator machine scope', async () => {
+    const planId = new Types.ObjectId();
+    const moduleId = new Types.ObjectId();
+    referenceModel.findById.mockReturnValueOnce(
+      queryResult({ _id: planId, module_id: moduleId }),
+    );
+    moduleModel.findById.mockReturnValueOnce(
+      queryResult({ _id: moduleId, machine_id: unassignedMachineId }),
+    );
+
+    await expect(
+      service.preparePreventiveTaskChecklist(
+        operatorId.toString(),
+        planId.toString(),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(
+      preventiveTasksService.syncPlanWithTemplateDetails,
+    ).not.toHaveBeenCalled();
   });
 
   it('returns the complete machine catalogue for corrective reporting', async () => {

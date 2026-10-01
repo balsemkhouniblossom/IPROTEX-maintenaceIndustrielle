@@ -262,11 +262,20 @@ export const apiService = {
   getMachineMaintenanceMttr: (year: number, signal?: AbortSignal) =>
     api.get("/machine-maintenance-mttr", { params: { year }, signal }),
   createMachineMaintenanceMttr: (data: {
-    machineId: string; startedAt: string; endedAt: string; description?: string;
+    machineId: string;
+    startedAt: string;
+    endedAt: string;
+    description?: string;
   }) => api.post("/machine-maintenance-mttr", data),
-  updateMachineMaintenanceMttr: (id: string, data: {
-    machineId?: string; startedAt?: string; endedAt?: string; description?: string;
-  }) => api.patch(`/machine-maintenance-mttr/${id}`, data),
+  updateMachineMaintenanceMttr: (
+    id: string,
+    data: {
+      machineId?: string;
+      startedAt?: string;
+      endedAt?: string;
+      description?: string;
+    },
+  ) => api.patch(`/machine-maintenance-mttr/${id}`, data),
   deleteMachineMaintenanceMttr: (id: string) =>
     api.delete(`/machine-maintenance-mttr/${id}`),
   // Users
@@ -626,13 +635,15 @@ export const apiService = {
     api.delete(`/intervention-reports/${id}`),
 
   // Pannes
-  getPannes: (params?: PaginationParams & {
-    machineTypeId?: string;
-    component?: string;
-    search?: string;
-    active?: string;
-    partsLinked?: string;
-  }) => api.get("/pannes", { params }),
+  getPannes: (
+    params?: PaginationParams & {
+      machineTypeId?: string;
+      component?: string;
+      search?: string;
+      active?: string;
+      partsLinked?: string;
+    },
+  ) => api.get("/pannes", { params }),
   getOperatorFaults: (params?: AnyObject) =>
     api.get("/operator/faults", { params }),
   createPanne: (data: AnyObject) => api.post("/pannes", data),
@@ -783,7 +794,8 @@ export const apiService = {
     api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/start`),
   stopAiAnomalyModel: (modelId: string) =>
     api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/stop`),
-  getAiDatasetReplayCatalog: () => api.get("/ai-anomaly/dataset-replay/catalog"),
+  getAiDatasetReplayCatalog: () =>
+    api.get("/ai-anomaly/dataset-replay/catalog"),
   getAiDatasetReplaySamples: (experiment: string) =>
     api.get("/ai-anomaly/dataset-replay/samples", { params: { experiment } }),
   replayAiDatasetSample: (data: {
@@ -917,6 +929,8 @@ export const apiService = {
       status?: string;
     },
   ) => api.get("/operator/preventive-tasks", { params }),
+  prepareOperatorPreventiveTaskChecklist: (planId: string) =>
+    api.post(`/operator/preventive-tasks/${planId}/prepare`),
   updateOperatorPreventiveTaskChecklist: (
     id: string,
     data: { status?: "pending" | "completed"; notes?: string },
@@ -1095,11 +1109,18 @@ export const apiService = {
   ) => api.get("/analytics/mttr", { params, signal: options?.signal }),
 
   getProductQualityMttr: (params: { year: number }, signal?: AbortSignal) =>
-    api.get('/quality/product-mttr', { params, signal }),
-  saveProductQualityMttrMonth: (year: number, month: number, data: { resolvedDefects: number; totalResolutionMinutes: number; note?: string }) =>
-    api.put(`/quality/product-mttr/${year}/${month}`, data),
+    api.get("/quality/product-mttr", { params, signal }),
+  saveProductQualityMttrMonth: (
+    year: number,
+    month: number,
+    data: {
+      resolvedDefects: number;
+      totalResolutionMinutes: number;
+      note?: string;
+    },
+  ) => api.put(`/quality/product-mttr/${year}/${month}`, data),
   getManualProductQualityMttr: (year: number, signal?: AbortSignal) =>
-    api.get('/quality/product-mttr/manual', { params: { year }, signal }),
+    api.get("/quality/product-mttr/manual", { params: { year }, signal }),
   saveManualProductQualityMttr: (data: {
     year: number;
     entries: Array<{
@@ -1112,7 +1133,7 @@ export const apiService = {
       month: number;
       defectCount: number | null;
     }>;
-  }) => api.put('/quality/product-mttr/manual', data),
+  }) => api.put("/quality/product-mttr/manual", data),
 
   // Transactional bulk user approve/reject — either every selected user
   // is approved/rejected or none are (see backend UsersService).

@@ -293,6 +293,10 @@ export class MaintenancePlansService {
     id: string,
     dto: TransitionMaintenancePlanDto,
     actorId?: string,
+    initialOccurrenceOptions?: {
+      operatorId?: string;
+      startImmediately?: boolean;
+    },
   ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid maintenance plan id');
@@ -357,7 +361,10 @@ export class MaintenancePlansService {
     let createdOccurrence: WorkOrderDocument | null = null;
     if (dto.action === 'activate') {
       createdOccurrence =
-        await this.workOrdersService.createInitialOccurrenceForPlan(id);
+        await this.workOrdersService.createInitialOccurrenceForPlan(
+          id,
+          initialOccurrenceOptions,
+        );
     }
 
     return { plan: updated, createdOccurrence };

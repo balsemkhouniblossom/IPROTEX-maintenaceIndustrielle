@@ -12,7 +12,9 @@ function leanChain<T>(value: T) {
 
 describe('PreventiveTasksService.syncPlans', () => {
   let model: { updateOne: jest.Mock; updateMany: jest.Mock };
-  let planModel: { find: jest.Mock };
+  let planModel: { find: jest.Mock; findById: jest.Mock };
+  let moduleModel: { find: jest.Mock; findById: jest.Mock };
+  let machineModel: { find: jest.Mock; findById: jest.Mock };
   let service: PreventiveTasksService;
 
   beforeEach(() => {
@@ -20,8 +22,32 @@ describe('PreventiveTasksService.syncPlans', () => {
       updateOne: jest.fn().mockReturnValue(execResult({ upsertedCount: 1 })),
       updateMany: jest.fn().mockReturnValue(execResult({ modifiedCount: 0 })),
     };
-    planModel = { find: jest.fn().mockReturnValue(leanChain([])) };
-    service = new PreventiveTasksService(model as never, planModel as never);
+    planModel = {
+      find: jest.fn().mockReturnValue(leanChain([])),
+      findById: jest.fn().mockReturnValue(leanChain(null)),
+    };
+    moduleModel = {
+      find: jest.fn().mockReturnValue({
+        distinct: jest.fn().mockReturnValue(execResult([])),
+      }),
+      findById: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(leanChain(null)),
+      }),
+    };
+    machineModel = {
+      find: jest.fn().mockReturnValue({
+        distinct: jest.fn().mockReturnValue(execResult([])),
+      }),
+      findById: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(leanChain(null)),
+      }),
+    };
+    service = new PreventiveTasksService(
+      model as never,
+      planModel as never,
+      moduleModel as never,
+      machineModel as never,
+    );
   });
 
   it('queries plans by any non-corrective type (preventive, lubrication, inspection), not just preventive', async () => {
@@ -130,6 +156,81 @@ describe('PreventiveTasksService.syncPlans', () => {
       { upsert: true },
     );
   });
+
+  it('resolves every W code to existing template details for a legacy code-only pack', async () => {
+    const planId = new Types.ObjectId();
+    const moduleId = new Types.ObjectId();
+    const machineId = new Types.ObjectId();
+    const machineTypeId = new Types.ObjectId();
+    const templateModuleId = new Types.ObjectId();
+    planModel.findById.mockReturnValueOnce(
+      leanChain({
+        _id: planId,
+        module_id: moduleId,
+        plan_id: 'PACK-W1-W2',
+        maintenance_code: 'W1, W2',
+        type_maintenance: 'preventive',
+        instruction: 'W1\nW2',
+      }),
+    );
+    planModel.find.mockReturnValueOnce(
+      leanChain([
+        {
+          _id: new Types.ObjectId(),
+          maintenance_code: 'W1',
+          instruction: 'Inspect the guard',
+        },
+        {
+          _id: new Types.ObjectId(),
+          maintenance_code: 'W2',
+          instruction: 'Lubricate the bearing',
+        },
+      ]),
+    );
+    moduleModel.findById.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue(
+        leanChain({ _id: moduleId, machine_id: machineId }),
+      ),
+    });
+    machineModel.findById.mockReturnValueOnce({
+      select: jest.fn().mockReturnValue(
+        leanChain({ _id: machineId, type_id: machineTypeId }),
+      ),
+    });
+    machineModel.find.mockReturnValueOnce({
+      distinct: jest.fn().mockReturnValue(execResult([machineId])),
+    });
+    moduleModel.find.mockReturnValueOnce({
+      distinct: jest.fn().mockReturnValue(execResult([templateModuleId])),
+    });
+
+    await service.syncPlanWithTemplateDetails(planId);
+
+    expect(planModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({ module_id: { $in: [templateModuleId] } }),
+    );
+
+    expect(model.updateOne).toHaveBeenNthCalledWith(
+      1,
+      { source_key: `${String(planId)}:0` },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          instruction: 'W1: Inspect the guard',
+        }),
+      }),
+      { upsert: true },
+    );
+    expect(model.updateOne).toHaveBeenNthCalledWith(
+      2,
+      { source_key: `${String(planId)}:1` },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          instruction: 'W2: Lubricate the bearing',
+        }),
+      }),
+      { upsert: true },
+    );
+  });
 });
 
 describe('PreventiveTasksService CRUD', () => {
@@ -146,7 +247,12 @@ describe('PreventiveTasksService CRUD', () => {
       findOneAndUpdate: jest.fn(),
     };
     planModel = {};
-    service = new PreventiveTasksService(model as never, planModel as never);
+    service = new PreventiveTasksService(
+      model as never,
+      planModel as never,
+      {} as never,
+      {} as never,
+    );
   });
 
   it('throws when finding a preventive task that does not exist', async () => {

@@ -976,6 +976,9 @@
         "okLabel": "OK",
         "problemLabel": "Problem",
         "completeRemaining": "Complete the remaining check before submitting.",
+        "markAllOk": "Mark all remaining OK",
+        "markingAllOk": "Marking checks...",
+        "markAllFailed": "Some checks could not be marked OK. Please retry them.",
         "observationLabel": "Observation",
         "observationPlaceholder": "Add an optional observation...",
         "completeInspection": "Complete Inspection",
@@ -2947,7 +2950,9 @@
       "pause": "Pause",
       "resume": "Resume",
       "archive": "Archive",
-      "complete": "Mark Complete"
+      "complete": "Mark Complete",
+      "selectAllCodes": "Select all codes",
+      "clearCodes": "Clear selection"
     },
     "notifications": {
       "loadFailed": "Failed to load maintenance plans",

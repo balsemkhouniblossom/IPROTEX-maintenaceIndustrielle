@@ -988,6 +988,9 @@
         "okLabel": "سليم",
         "problemLabel": "مشكلة",
         "completeRemaining": "أكمل الفحوصات المتبقية قبل الإرسال.",
+        "markAllOk": "تحديد كل الفحوصات المتبقية كسليمة",
+        "markingAllOk": "جارٍ تحديد الفحوصات...",
+        "markAllFailed": "تعذر تحديد بعض الفحوصات كسليمة. يرجى إعادة المحاولة.",
         "observationLabel": "ملاحظة",
         "observationPlaceholder": "أضف ملاحظة اختيارية...",
         "completeInspection": "إكمال الفحص",
@@ -2705,7 +2708,9 @@
       "pause": "إيقاف مؤقت",
       "resume": "استئناف",
       "archive": "أرشفة",
-      "complete": "وضع علامة مكتمل"
+      "complete": "وضع علامة مكتمل",
+      "selectAllCodes": "تحديد جميع الرموز",
+      "clearCodes": "مسح التحديد"
     },
     "notifications": {
       "loadFailed": "فشل تحميل خطط الصيانة",

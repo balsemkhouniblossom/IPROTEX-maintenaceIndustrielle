@@ -22,6 +22,10 @@ import {
   buildPlanSubmissionPayload,
   validatePreventiveSubmission,
 } from "../src/app/[locale]/operator/preventive/utils/preventive-validation.ts";
+import {
+  parseChecklistInstruction,
+  sortChecklistItems,
+} from "../src/app/[locale]/operator/preventive/utils/checklist-instruction.ts";
 
 const FEATURE_DIR = "src/app/[locale]/operator/preventive";
 const PAGE = `${FEATURE_DIR}/page.tsx`;
@@ -35,6 +39,55 @@ const STEP_HEADER_COMPONENT = `${FEATURE_DIR}/components/PreventiveStepHeader.ts
 function readSource(relativePath: string = PAGE): string {
   return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 }
+
+test("checklist instructions display W codes separately from task details", () => {
+  assert.deepEqual(parseChecklistInstruction("W1: Inspect the machine guard"), {
+    code: "W1",
+    details: "Inspect the machine guard",
+  });
+  assert.deepEqual(parseChecklistInstruction("W1, W2: Inspect and lubricate"), {
+    code: "W1,W2",
+    details: "Inspect and lubricate",
+  });
+  assert.deepEqual(parseChecklistInstruction("Inspect the machine guard"), {
+    code: null,
+    details: "Inspect the machine guard",
+  });
+});
+
+test("inspection can mark every unanswered check OK without overwriting problems", () => {
+  const hook = readSource(
+    "src/app/[locale]/operator/preventive/hooks/usePreventiveInspection.ts",
+  );
+  const view = readSource(
+    "src/app/[locale]/operator/preventive/components/InspectionView.tsx",
+  );
+
+  assert.match(hook, /itemResults\[item\._id\] === undefined/);
+  assert.match(hook, /Promise\.allSettled/);
+  assert.match(hook, /notes: "OK"/);
+  assert.match(view, /onClick=\{onMarkAllOk\}/);
+  assert.match(view, /t\("markAllOk"\)/);
+});
+
+test("checklist items use natural W-code order regardless of database order", () => {
+  const items = [
+    { task_id: "PT-3", instruction: "W3: Third task" },
+    { task_id: "PT-1", instruction: "W1: First task" },
+    { task_id: "PT-10", instruction: "General inspection" },
+    { task_id: "PT-2", instruction: "W2: Second task" },
+  ];
+
+  assert.deepEqual(
+    sortChecklistItems(items).map((item) => item.instruction),
+    [
+      "W1: First task",
+      "W2: Second task",
+      "W3: Third task",
+      "General inspection",
+    ],
+  );
+});
 
 /** Every .ts/.tsx source file under the feature directory, concatenated — used for "this identifier must not exist anywhere in the feature" checks that used to only scan the single monolithic page.tsx. */
 function readWholeFeatureTreeSource(): string {
@@ -78,7 +131,10 @@ test("matchesPreventiveChecklistSearch: matches by populated plan maintenance_co
 });
 
 test("matchesPreventiveChecklistSearch: falls back to the plan's plan_id when maintenance_code is absent", () => {
-  const item = { instruction: "Check belt tension", plan_id: { plan_id: "PLAN-CHECKLIST-OWN" } };
+  const item = {
+    instruction: "Check belt tension",
+    plan_id: { plan_id: "PLAN-CHECKLIST-OWN" },
+  };
   assert.equal(matchesPreventiveChecklistSearch(item, "checklist-own"), true);
 });
 
@@ -95,8 +151,14 @@ test("matchesPreventiveChecklistSearch: matches by instruction, task_id, and res
 });
 
 test("matchesPreventiveChecklistSearch: a plain string plan_id (unpopulated ref) never contributes a false match", () => {
-  const item = { instruction: "Check belt tension", plan_id: "64f0000000000000000000ab" };
-  assert.equal(matchesPreventiveChecklistSearch(item, "64f0000000000000000000ab"), false);
+  const item = {
+    instruction: "Check belt tension",
+    plan_id: "64f0000000000000000000ab",
+  };
+  assert.equal(
+    matchesPreventiveChecklistSearch(item, "64f0000000000000000000ab"),
+    false,
+  );
   assert.equal(matchesPreventiveChecklistSearch(item, "belt"), true);
 });
 
@@ -108,17 +170,34 @@ test("matchesPreventiveChecklistSearch: a plain string plan_id (unpopulated ref)
 // with representative data instead of pattern-matching source text.
 
 test("buildPreventivePlanGroups: groups plan states by maintenance_code, trimmed/uppercased, falling back to plan_id", () => {
-  const stateA = { plan: { _id: "p1", plan_id: "PLAN-1", maintenance_code: " pm-01 " }, currentState: "not_scheduled" };
-  const stateB = { plan: { _id: "p2", plan_id: "PLAN-2", maintenance_code: "PM-01" }, currentState: "due_today" };
-  const stateC = { plan: { _id: "p3", plan_id: "PLAN-3" }, currentState: "not_scheduled" };
+  const stateA = {
+    plan: { _id: "p1", plan_id: "PLAN-1", maintenance_code: " pm-01 " },
+    currentState: "not_scheduled",
+  };
+  const stateB = {
+    plan: { _id: "p2", plan_id: "PLAN-2", maintenance_code: "PM-01" },
+    currentState: "due_today",
+  };
+  const stateC = {
+    plan: { _id: "p3", plan_id: "PLAN-3" },
+    currentState: "not_scheduled",
+  };
 
   // @ts-expect-error - partial PreventivePlanState fixtures are sufficient for this pure function
   const groups = buildPreventivePlanGroups([stateA, stateB, stateC]);
 
-  assert.equal(groups.length, 2, "PM-01 (both casings/whitespace) must collapse into a single group; PLAN-3 is its own group");
+  assert.equal(
+    groups.length,
+    2,
+    "PM-01 (both casings/whitespace) must collapse into a single group; PLAN-3 is its own group",
+  );
   const pm01Group = groups.find((group) => group.planIds.includes("p1"));
   assert.ok(pm01Group);
-  assert.deepEqual(pm01Group!.planIds, ["p1", "p2"], "grouping must preserve encounter order within a group");
+  assert.deepEqual(
+    pm01Group!.planIds,
+    ["p1", "p2"],
+    "grouping must preserve encounter order within a group",
+  );
   assert.equal(
     pm01Group!.label,
     " pm-01 ",
@@ -133,7 +212,11 @@ test("buildModuleIdSet / filterPreventivePlans: keeps plans for machine modules 
 
   const plans = [
     { _id: "p1", module_id: "m1", type_maintenance: "preventive" },
-    { _id: "p2", module_id: { _id: "m2" }, type_maintenance: "Corrective repair" },
+    {
+      _id: "p2",
+      module_id: { _id: "m2" },
+      type_maintenance: "Corrective repair",
+    },
     { _id: "p3", module_id: "other", type_maintenance: "lubrication" },
   ];
 
@@ -145,7 +228,9 @@ test("buildModuleIdSet / filterPreventivePlans: keeps plans for machine modules 
 });
 
 test("buildPreventivePlanStates: returns supplied states or builds not_scheduled defaults with matching modules", () => {
-  const suppliedStates = [{ plan: { _id: "already" }, currentState: "due_today" }];
+  const suppliedStates = [
+    { plan: { _id: "already" }, currentState: "due_today" },
+  ];
   assert.equal(
     // @ts-expect-error - identity branch does not need complete state fixtures
     buildPreventivePlanStates([], [], suppliedStates),
@@ -175,15 +260,16 @@ test("buildPreventivePlanStates: returns supplied states or builds not_scheduled
 
   assert.equal(states[0].module, modules[0]);
   assert.equal(states[0].currentState, "not_scheduled");
-  assert.deepEqual(states[0].frequency, { value: 2, unit: "weeks", normalized: "weeks" });
+  assert.deepEqual(states[0].frequency, {
+    value: 2,
+    unit: "weeks",
+    normalized: "weeks",
+  });
   assert.equal(states[1].module, null);
 });
 
 test("selected plan helpers and progress math cover empty and matched states", () => {
-  const states = [
-    { plan: { _id: "p1" } },
-    { plan: { _id: "p2" } },
-  ];
+  const states = [{ plan: { _id: "p1" } }, { plan: { _id: "p2" } }];
   const groups = [
     { key: "A", label: "A", planIds: ["p1"], states: [states[0]] },
     { key: "B", label: "B", planIds: ["p2"], states: [states[1]] },
@@ -203,21 +289,51 @@ test("selected plan helpers and progress math cover empty and matched states", (
 
 test("filterGroupedChecklistItems / filterSelectedChecklistItems: scope checklist items to the active group vs. the single focused plan", () => {
   const items = [
-    { _id: "i1", plan_id: "planA", status: "completed" as const, instruction: "A", task_id: "t1" },
-    { _id: "i2", plan_id: "planB", status: "pending" as const, instruction: "B", task_id: "t2" },
-    { _id: "i3", plan_id: "planC", status: "pending" as const, instruction: "C", task_id: "t3" },
+    {
+      _id: "i1",
+      plan_id: "planA",
+      status: "completed" as const,
+      instruction: "A",
+      task_id: "t1",
+    },
+    {
+      _id: "i2",
+      plan_id: "planB",
+      status: "pending" as const,
+      instruction: "B",
+      task_id: "t2",
+    },
+    {
+      _id: "i3",
+      plan_id: "planC",
+      status: "pending" as const,
+      instruction: "C",
+      task_id: "t3",
+    },
   ];
 
-  const grouped = filterGroupedChecklistItems(items, new Set(["planA", "planB"]));
-  assert.deepEqual(grouped.map((item) => item._id), ["i1", "i2"]);
+  const grouped = filterGroupedChecklistItems(
+    items,
+    new Set(["planA", "planB"]),
+  );
+  assert.deepEqual(
+    grouped.map((item) => item._id),
+    ["i1", "i2"],
+  );
 
   const focused = filterSelectedChecklistItems(items, "planB");
-  assert.deepEqual(focused.map((item) => item._id), ["i2"]);
+  assert.deepEqual(
+    focused.map((item) => item._id),
+    ["i2"],
+  );
 });
 
 test("checklistPlanId: resolves both populated and unpopulated plan_id refs, and empty when absent", () => {
   assert.equal(checklistPlanId({ plan_id: "planA" } as never), "planA");
-  assert.equal(checklistPlanId({ plan_id: { _id: "planB" } } as never), "planB");
+  assert.equal(
+    checklistPlanId({ plan_id: { _id: "planB" } } as never),
+    "planB",
+  );
   assert.equal(checklistPlanId({} as never), "");
 });
 
@@ -245,7 +361,10 @@ test("computeStepEligibility: Next requires a started, fully-completed, non-fina
   // Not the last step yet: Next is available; Submit doesn't care about step
   // position at all (the page only additionally disables the Submit button
   // with `!isLastPlanStep` at the UI layer — see PreventiveSubmissionActions).
-  assert.deepEqual(computeStepEligibility(base), { canGoToNextPlanStep: true, canSubmitFocusedTask: true });
+  assert.deepEqual(computeStepEligibility(base), {
+    canGoToNextPlanStep: true,
+    canSubmitFocusedTask: true,
+  });
 
   // On the last step, Next is never available regardless of completeness.
   assert.deepEqual(computeStepEligibility({ ...base, isLastPlanStep: true }), {
@@ -254,39 +373,84 @@ test("computeStepEligibility: Next requires a started, fully-completed, non-fina
   });
 
   // Nothing is enabled before the task has been started.
-  assert.deepEqual(computeStepEligibility({ ...base, taskStarted: false, isLastPlanStep: true }), {
-    canGoToNextPlanStep: false,
-    canSubmitFocusedTask: false,
-  });
+  assert.deepEqual(
+    computeStepEligibility({
+      ...base,
+      taskStarted: false,
+      isLastPlanStep: true,
+    }),
+    {
+      canGoToNextPlanStep: false,
+      canSubmitFocusedTask: false,
+    },
+  );
 
   // Every selected plan must have a resolvable occurrence id (from the map
   // or the plan-group's currentOccurrence) before Submit is enabled.
   assert.deepEqual(
-    computeStepEligibility({ ...base, selectedOccurrenceIdsByPlan: { p1: "occ1" } }),
+    computeStepEligibility({
+      ...base,
+      selectedOccurrenceIdsByPlan: { p1: "occ1" },
+    }),
     { canGoToNextPlanStep: true, canSubmitFocusedTask: false },
   );
 
   // groupTaskCompleted=false (not every checklist item in the group is
   // done yet) also blocks Submit even with every occurrence resolved.
-  assert.deepEqual(computeStepEligibility({ ...base, groupTaskCompleted: false }), {
-    canGoToNextPlanStep: true,
-    canSubmitFocusedTask: false,
-  });
+  assert.deepEqual(
+    computeStepEligibility({ ...base, groupTaskCompleted: false }),
+    {
+      canGoToNextPlanStep: true,
+      canSubmitFocusedTask: false,
+    },
+  );
 });
 
 test("buildPlanSubmissionPayload: only returns a payload when the plan's group items are all completed and an occurrence id is resolvable", () => {
   const items = [
-    { _id: "i1", plan_id: "planA", status: "completed" as const, instruction: "Done task", task_id: "t1" },
+    {
+      _id: "i1",
+      plan_id: "planA",
+      status: "completed" as const,
+      instruction: "Done task",
+      task_id: "t1",
+    },
   ];
-  const complete = buildPlanSubmissionPayload("planA", items, { planA: "occ1" }, null);
-  assert.deepEqual(complete, { occurrenceId: "occ1", taskLabels: ["Done task"] });
+  const complete = buildPlanSubmissionPayload(
+    "planA",
+    items,
+    { planA: "occ1" },
+    null,
+  );
+  assert.deepEqual(complete, {
+    occurrenceId: "occ1",
+    taskLabels: ["Done task"],
+  });
 
   const incompleteItems = [
-    { _id: "i1", plan_id: "planA", status: "pending" as const, instruction: "Not done", task_id: "t1" },
+    {
+      _id: "i1",
+      plan_id: "planA",
+      status: "pending" as const,
+      instruction: "Not done",
+      task_id: "t1",
+    },
   ];
-  assert.equal(buildPlanSubmissionPayload("planA", incompleteItems, { planA: "occ1" }, null), null);
+  assert.equal(
+    buildPlanSubmissionPayload(
+      "planA",
+      incompleteItems,
+      { planA: "occ1" },
+      null,
+    ),
+    null,
+  );
 
-  assert.equal(buildPlanSubmissionPayload("planA", items, {}, null), null, "no occurrence id anywhere means no payload");
+  assert.equal(
+    buildPlanSubmissionPayload("planA", items, {}, null),
+    null,
+    "no occurrence id anywhere means no payload",
+  );
 });
 
 test("validatePreventiveSubmission: reports each pre-flight failure before network submission", () => {
@@ -311,9 +475,18 @@ test("validatePreventiveSubmission: reports each pre-flight failure before netwo
     selectedPlanGroup: completeGroup,
   };
 
-  assert.equal(validatePreventiveSubmission({ ...base, userId: undefined }), "missing-user-or-machine");
-  assert.equal(validatePreventiveSubmission({ ...base, selectedMachine: "" }), "missing-user-or-machine");
-  assert.equal(validatePreventiveSubmission({ ...base, completedChecklistLabelsCount: 0 }), "no-tasks-selected");
+  assert.equal(
+    validatePreventiveSubmission({ ...base, userId: undefined }),
+    "missing-user-or-machine",
+  );
+  assert.equal(
+    validatePreventiveSubmission({ ...base, selectedMachine: "" }),
+    "missing-user-or-machine",
+  );
+  assert.equal(
+    validatePreventiveSubmission({ ...base, completedChecklistLabelsCount: 0 }),
+    "no-tasks-selected",
+  );
   assert.equal(
     validatePreventiveSubmission({ ...base, selectedPlanGroup: null }),
     "no-occurrence-scheduled",
@@ -323,8 +496,20 @@ test("validatePreventiveSubmission: reports each pre-flight failure before netwo
 
 test("buildPlanSubmissionPayload: can resolve the occurrence from the selected plan group", () => {
   const items = [
-    { _id: "i1", plan_id: "planA", status: "completed" as const, instruction: "Inspect", task_id: "t1" },
-    { _id: "i2", plan_id: "planB", status: "completed" as const, instruction: "Ignore other plan", task_id: "t2" },
+    {
+      _id: "i1",
+      plan_id: "planA",
+      status: "completed" as const,
+      instruction: "Inspect",
+      task_id: "t1",
+    },
+    {
+      _id: "i2",
+      plan_id: "planB",
+      status: "completed" as const,
+      instruction: "Ignore other plan",
+      task_id: "t2",
+    },
   ];
   const group = {
     key: "PLAN-A",
@@ -339,15 +524,21 @@ test("buildPlanSubmissionPayload: can resolve the occurrence from the selected p
     ],
   };
 
-  assert.deepEqual(
-    buildPlanSubmissionPayload("planA", items, {}, group),
-    { occurrenceId: "occ-from-state", taskLabels: ["Inspect"] },
+  assert.deepEqual(buildPlanSubmissionPayload("planA", items, {}, group), {
+    occurrenceId: "occ-from-state",
+    taskLabels: ["Inspect"],
+  });
+  assert.equal(
+    buildPlanSubmissionPayload("missing", items, { missing: "occ" }, null),
+    null,
   );
-  assert.equal(buildPlanSubmissionPayload("missing", items, { missing: "occ" }, null), null);
 });
 
 test("buildLubricationPayload: returns a numeric payload only for a selected lubricant and positive quantity", () => {
-  assert.deepEqual(buildLubricationPayload("lub1", "2.5"), { lubrifiant_id: "lub1", quantity: 2.5 });
+  assert.deepEqual(buildLubricationPayload("lub1", "2.5"), {
+    lubrifiant_id: "lub1",
+    quantity: 2.5,
+  });
   assert.equal(buildLubricationPayload("", "2.5"), undefined);
   assert.equal(buildLubricationPayload("lub1", "  "), undefined);
   assert.equal(buildLubricationPayload("lub1", "0"), undefined);
@@ -364,13 +555,17 @@ test("the operator preventive feature renders the backend-tracked checklist as t
   // competing checklist blocks as before. (The same translation key may
   // still be reused as a toast message elsewhere; that's not a duplicated
   // section.) This now lives in PreventiveStepHeader.tsx, not page.tsx.
-  const sectionOccurrences = treeSource.match(/card-title[^>]*>\s*\{tChecklist\("heading"\)\}/g) ?? [];
+  const sectionOccurrences =
+    treeSource.match(/card-title[^>]*>\s*\{tChecklist\("heading"\)\}/g) ?? [];
   assert.equal(
     sectionOccurrences.length,
     1,
     "the tChecklist('heading') ('Preventive Maintenance Tasks') card-title must render exactly once across the whole feature",
   );
-  assert.match(readSource(STEP_HEADER_COMPONENT), /card-title[^>]*>\s*\{tChecklist\("heading"\)\}/);
+  assert.match(
+    readSource(STEP_HEADER_COMPONENT),
+    /card-title[^>]*>\s*\{tChecklist\("heading"\)\}/,
+  );
 });
 
 test("the operator preventive feature no longer contains the old ad-hoc client-only checklist (duplicated section removed)", () => {
@@ -405,7 +600,10 @@ test("the checklist component shows exactly one selected plan at a time: loading
   assert.match(source, /items\.map\(\(item,\s*index\)\s*=>/);
 
   const treeSource = readWholeFeatureTreeSource();
-  assert.doesNotMatch(treeSource, /data-testid="preventive-checklist-empty-search"/);
+  assert.doesNotMatch(
+    treeSource,
+    /data-testid="preventive-checklist-empty-search"/,
+  );
   assert.doesNotMatch(treeSource, /filteredChecklistItems/);
 
   // Regression guard: these must be branches of the *same* ternary chain
@@ -423,17 +621,29 @@ test("the checklist is filtered to the currently selected maintenance code group
   const tabsSource = readSource(PLAN_TABS_COMPONENT);
   const treeSource = readWholeFeatureTreeSource();
 
-  assert.match(workflowSource, /const selectedPlanId = selectedPlanIds\[activePlanStepIndex\] \|\| selectedPlanIds\[0\] \|\| ""/);
+  assert.match(
+    workflowSource,
+    /const selectedPlanId = selectedPlanIds\[activePlanStepIndex\] \|\| selectedPlanIds\[0\] \|\| ""/,
+  );
   assert.match(workflowSource, /const preventivePlanGroups = useMemo\(/);
   assert.match(workflowSource, /const groupedChecklistItems = useMemo\(/);
   assert.match(workflowSource, /const selectedChecklistItems = useMemo\(/);
   assert.match(groupsUtilsSource, /existing\.states\.push\(state\)/);
-  assert.match(groupsUtilsSource, /checklistItems\.filter\(\(item\) => checklistPlanId\(item\) === selectedPlanId\)/);
+  assert.match(
+    groupsUtilsSource,
+    /checklistItems\.filter\(\(item\) => checklistPlanId\(item\) === selectedPlanId\)/,
+  );
 
   // Selecting a plan-group tab passes that group's full planIds array down
   // to the workflow hook, which stores it verbatim as the active selection.
-  assert.match(tabsSource, /onClick=\{\(\) => onSelectGroup\(group\.planIds\)\}/);
-  assert.match(workflowSource, /function selectPlanGroup\(planIds: string\[\]\): void \{/);
+  assert.match(
+    tabsSource,
+    /onClick=\{\(\) => onSelectGroup\(group\.planIds\)\}/,
+  );
+  assert.match(
+    workflowSource,
+    /function selectPlanGroup\(planIds: string\[\]\): void \{/,
+  );
   assert.match(workflowSource, /setSelectedPlanIds\(planIds\);/);
 
   assert.doesNotMatch(treeSource, /allTaskItems\.length === 0/);
@@ -450,16 +660,23 @@ test("the old two-part checklist search layout is removed from the operator prev
 
 test("submission derives tasks_completed from persisted checklist items for each stepped work order", () => {
   const submissionSource = readSource(SUBMISSION_HOOK);
-  const validationSource = readSource("src/app/[locale]/operator/preventive/utils/preventive-validation.ts");
+  const validationSource = readSource(
+    "src/app/[locale]/operator/preventive/utils/preventive-validation.ts",
+  );
 
   assert.match(submissionSource, /for \(const planId of selectedPlanIds\)/);
   assert.match(submissionSource, /tasks_completed:\s*planPayload\.taskLabels/);
-  assert.match(validationSource, /const planItems = groupedChecklistItems\.filter\(\(item\) => checklistPlanId\(item\) === planId\)/);
+  assert.match(
+    validationSource,
+    /const planItems = groupedChecklistItems\.filter\(\(item\) => checklistPlanId\(item\) === planId\)/,
+  );
 });
 
 test("the preventive page exposes Today, Upcoming, and Completed tabs with task cards and a checklist flow", () => {
   const pageSource = readSource();
-  const inspectionSource = readSource(`${FEATURE_DIR}/hooks/usePreventiveInspection.ts`);
+  const inspectionSource = readSource(
+    `${FEATURE_DIR}/hooks/usePreventiveInspection.ts`,
+  );
 
   assert.match(pageSource, /type Tab = "today" | "upcoming" | "completed"/);
   assert.match(pageSource, /activeTab === "today"/);
@@ -476,14 +693,21 @@ test("the preventive page exposes Today, Upcoming, and Completed tabs with task 
 });
 
 test("the preventive page success view shows the completion result without exposing internal IDs", () => {
-  const successSource = readSource(`${FEATURE_DIR}/components/InspectionSuccess.tsx`);
+  const successSource = readSource(
+    `${FEATURE_DIR}/components/InspectionSuccess.tsx`,
+  );
 
   assert.match(successSource, /workOrderOtId/);
   assert.match(successSource, /okCount/);
   assert.match(successSource, /problemCount/);
   assert.match(successSource, /completedAt/);
 
-  for (const hiddenPattern of [/item\.reportId/, /item\.workOrderId/, /_id/, /mongodb/i]) {
+  for (const hiddenPattern of [
+    /item\.reportId/,
+    /item\.workOrderId/,
+    /_id/,
+    /mongodb/i,
+  ]) {
     assert.doesNotMatch(
       successSource,
       hiddenPattern,
@@ -494,16 +718,28 @@ test("the preventive page success view shows the completion result without expos
 
 test("Operator preventive cards and checklist carry the exact occurrence and protect completed results", () => {
   const page = readSource("src/app/[locale]/operator/preventive/page.tsx");
-  const taskHook = readSource("src/app/[locale]/operator/preventive/hooks/useOperatorPreventiveTasks.ts");
-  const inspection = readSource("src/app/[locale]/operator/preventive/hooks/usePreventiveInspection.ts");
-  const view = readSource("src/app/[locale]/operator/preventive/components/InspectionView.tsx");
+  const taskHook = readSource(
+    "src/app/[locale]/operator/preventive/hooks/useOperatorPreventiveTasks.ts",
+  );
+  const inspection = readSource(
+    "src/app/[locale]/operator/preventive/hooks/usePreventiveInspection.ts",
+  );
+  const view = readSource(
+    "src/app/[locale]/operator/preventive/components/InspectionView.tsx",
+  );
 
-  assert.match(taskHook, /const key = wo\._id \|\| `\$\{planId\}:\$\{machineId\}`/);
+  assert.match(
+    taskHook,
+    /const key = wo\._id \|\| `\$\{planId\}:\$\{machineId\}`/,
+  );
   assert.match(page, /task\.workOrderId === initialWorkOrderId/);
   assert.match(page, /workOrderId: task\.workOrderId/);
   assert.match(page, /readOnly: task\.tab === "completed"/);
   assert.match(page, /my-reports\?reportId=/);
-  assert.match(page, /operator\/corrective\?machine=\$\{selectedTask\?\.machineId\}/);
+  assert.match(
+    page,
+    /operator\/corrective\?machine=\$\{selectedTask\?\.machineId\}/,
+  );
   assert.match(page, /setCompletedReportId\(result\.reportId\)/);
   assert.match(inspection, /work_order_id: targetWorkOrderId/);
   assert.doesNotMatch(inspection, /scheduleOperatorPreventive/);
@@ -513,8 +749,14 @@ test("Operator preventive cards and checklist carry the exact occurrence and pro
 
 test("preventive navigation preserves the checklist draft when returning to the task list", () => {
   const page = readSource("src/app/[locale]/operator/preventive/page.tsx");
-  assert.doesNotMatch(page, /useEffect\(\(\) => \{[\s\S]*?if \(step !== "list"\) return;[\s\S]*?inspection\.reset\(\)/);
-  assert.match(page, /if \(selectedTask\?\.workOrderId !== task\.workOrderId\) \{/);
+  assert.doesNotMatch(
+    page,
+    /useEffect\(\(\) => \{[\s\S]*?if \(step !== "list"\) return;[\s\S]*?inspection\.reset\(\)/,
+  );
+  assert.match(
+    page,
+    /if \(selectedTask\?\.workOrderId !== task\.workOrderId\) \{/,
+  );
 });
 
 test("all supported locales still define the preventiveTaskChecklist empty key used by the operator checklist", () => {

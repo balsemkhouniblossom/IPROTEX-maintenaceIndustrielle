@@ -366,23 +366,14 @@ export class OperatorService {
   }
 
   async getMaintenancePlans(
-    userId: string,
+    _userId: string,
     page: number,
     limit: number,
     skip: number,
   ): Promise<PaginatedResponse<MaintenancePlanSummaryResponse>> {
-    const machineIds = await this.getAllowedMachineIds(userId);
-    if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
-    const modules = await this.moduleModel
-      .find(this.machineIdStringExpr(machineIds))
-      .select({ _id: 1 })
-      .exec();
-    const moduleIds = modules.map((module) => module._id.toString());
-    const query = {
-      $expr: {
-        $in: [{ $toString: '$module_id' }, moduleIds],
-      },
-    };
+    // Existing plans provide the authoritative W1-W6 task details for the
+    // full machine catalogue shown in the Operator creation form.
+    const query = {};
 
     const [items, totalItems] = await Promise.all([
       this.maintenancePlanModel
@@ -428,9 +419,28 @@ export class OperatorService {
     }
     await this.assertMachineExists(machineId);
 
-    return this.maintenancePlansService.create(
+    const createdPlan = await this.maintenancePlansService.create(
       { ...dto, type_maintenance: 'preventive' },
       userId,
+    );
+
+    // Checklist rows are execution data and must be materialized by this
+    // explicit mutation path. Keeping this out of the Operator GET prevents
+    // page loads from writing to the database. The sync uses deterministic
+    // plan/index source keys, so retries cannot duplicate checklist rows.
+    await this.preventiveTasksService.syncPlansForModuleIds([
+      this.toObjectId(dto.module_id),
+    ]);
+
+    // The Operator form represents creation of an actionable preventive
+    // task, not preparation of an Admin draft. Activation uses the existing
+    // lifecycle path, which creates the one-and-only first occurrence and
+    // keeps duplicate prevention centralized in WorkOrdersService.
+    return this.maintenancePlansService.transition(
+      this.toIdString(createdPlan),
+      { action: 'activate' },
+      userId,
+      { operatorId: userId, startImmediately: true },
     );
   }
 
@@ -470,7 +480,7 @@ export class OperatorService {
     const [items, totalItems] = await Promise.all([
       this.preventiveTaskModel
         .find(query)
-        .sort({ createdAt: -1 })
+        .sort({ plan_id: 1, source_key: 1, task_id: 1 })
         .skip(skip)
         .limit(limit)
         .populate('plan_id')
@@ -484,6 +494,35 @@ export class OperatorService {
       totalItems,
       page,
       limit,
+    );
+  }
+
+  async preparePreventiveTaskChecklist(userId: string, planId: string) {
+    this.assertValidObjectId(planId, 'plan_id');
+    const plan = await this.maintenancePlanModel
+      .findById(planId)
+      .select({ module_id: 1 })
+      .exec();
+    if (!plan) {
+      throw new NotFoundException('Maintenance plan not found');
+    }
+
+    const moduleId = this.toIdString(plan.module_id);
+    if (!moduleId) {
+      throw new NotFoundException('Maintenance plan module not found');
+    }
+    const targetModule = await this.moduleModel
+      .findById(moduleId)
+      .select({ machine_id: 1 })
+      .exec();
+    if (!targetModule) {
+      throw new NotFoundException('Maintenance plan module not found');
+    }
+
+    const machineId = this.toIdString(targetModule.machine_id);
+    await this.assertCanAccessMachine(userId, machineId);
+    return this.preventiveTasksService.syncPlanWithTemplateDetails(
+      this.toObjectId(planId),
     );
   }
 

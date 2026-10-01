@@ -14,11 +14,20 @@ const operatorPages = [
 
 test("Operator can create preventive plans through a scoped route and assigned-module form", () => {
   const page = fs.readFileSync(
-    path.join(process.cwd(), "src/app/[locale]/operator/maintenance-plans/page.tsx"),
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/operator/maintenance-plans/page.tsx",
+    ),
     "utf8",
   );
-  const api = fs.readFileSync(path.join(process.cwd(), "src/services/api.ts"), "utf8");
-  const navigation = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
+  const api = fs.readFileSync(
+    path.join(process.cwd(), "src/services/api.ts"),
+    "utf8",
+  );
+  const navigation = fs.readFileSync(
+    path.join(process.cwd(), "src/components/DashboardLayout.tsx"),
+    "utf8",
+  );
 
   assert.match(page, /requiredRole="operator"/);
   assert.match(page, /getOperatorModules/);
@@ -28,9 +37,63 @@ test("Operator can create preventive plans through a scoped route and assigned-m
   assert.match(navigation, /href: "\/operator\/maintenance-plans"/);
 });
 
+test("Operator can select every maintenance code and create one combined task", () => {
+  const page = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/operator/maintenance-plans/page.tsx",
+    ),
+    "utf8",
+  );
+  const modal = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/maintenance-plans/components/PlanFormModal.tsx",
+    ),
+    "utf8",
+  );
+
+  assert.match(page, /allowMultipleMaintenanceCodes/);
+  assert.match(page, /maintenance_code: selectedCodes\.join\(", "\)/);
+  assert.match(page, /combinedInstruction/);
+  assert.match(page, /map\(\(line\) => `\$\{maintenanceCode\}: \$\{line\}`\)/);
+  assert.doesNotMatch(page, /\|\| candidates\[0\]/);
+  assert.doesNotMatch(page, /Promise\.all\([\s\S]{0,80}codesToCreate\.map/);
+  assert.match(modal, /maintenanceCodeOptions\.join\(","\)/);
+  assert.match(modal, /actions\.selectAllCodes/);
+  assert.match(modal, /actions\.clearCodes/);
+  assert.match(modal, /selectedMaintenanceTemplates\.map/);
+});
+
+test("opening an editable preventive checklist prepares missing plan items before loading", () => {
+  const hook = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/operator/preventive/hooks/usePreventiveInspection.ts",
+    ),
+    "utf8",
+  );
+  const api = fs.readFileSync(
+    path.join(process.cwd(), "src/services/api.ts"),
+    "utf8",
+  );
+
+  assert.match(
+    hook,
+    /if \(!readOnly\)[\s\S]*prepareOperatorPreventiveTaskChecklist\([\s\S]*currentPlanId/,
+  );
+  assert.match(
+    api,
+    /post\(`\/operator\/preventive-tasks\/\$\{planId\}\/prepare`\)/,
+  );
+});
+
 test("Operator pages use scoped machine-type endpoint instead of Admin-only generic endpoint", () => {
   for (const relativePath of operatorPages) {
-    const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+    const source = fs.readFileSync(
+      path.join(process.cwd(), relativePath),
+      "utf8",
+    );
 
     assert.doesNotMatch(
       source,
@@ -47,7 +110,10 @@ test("Operator pages use scoped machine-type endpoint instead of Admin-only gene
 
 test("Corrective page submits through the single scoped Operator corrective-report endpoint only", () => {
   const relativePath = "src/app/[locale]/operator/corrective/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   assert.match(
     source,
@@ -129,19 +195,32 @@ test("Operator UI no longer routes to the removed report-problem page", () => {
     "src/app/[locale]/operator/page.tsx",
     "src/app/[locale]/operator/machines/page.tsx",
   ]) {
-    const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
-    assert.doesNotMatch(source, /\/operator\/report-problem/, `${relativePath} must route to /operator/corrective instead`);
+    const source = fs.readFileSync(
+      path.join(process.cwd(), relativePath),
+      "utf8",
+    );
+    assert.doesNotMatch(
+      source,
+      /\/operator\/report-problem/,
+      `${relativePath} must route to /operator/corrective instead`,
+    );
   }
 });
 
 test("apiService exposes the scoped Operator corrective-report endpoint with no identity field in its payload type", () => {
   const relativePath = "src/services/api.ts";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   const match = source.match(
     /createOperatorCorrectiveReport:\s*\(data:\s*\{([^}]*)\}\)\s*=>\s*api\.post\(["']\/operator\/report-problem["']/,
   );
-  assert.ok(match, "createOperatorCorrectiveReport must post to /operator/report-problem");
+  assert.ok(
+    match,
+    "createOperatorCorrectiveReport must post to /operator/report-problem",
+  );
 
   const payloadShape = match[1];
   assert.doesNotMatch(
@@ -157,10 +236,19 @@ test("Preventive page submits through the single scoped Operator preventive-subm
   // that hook directly; the negative "never calls X" assertions scan the
   // whole feature directory so a forbidden call couldn't hide in any
   // extracted file either.
-  const relativePath = "src/app/[locale]/operator/preventive/hooks/usePreventiveSubmission.ts";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
-  const featureDir = path.join(process.cwd(), "src/app/[locale]/operator/preventive");
-  const featureFiles = fs.readdirSync(featureDir, { recursive: true }) as string[];
+  const relativePath =
+    "src/app/[locale]/operator/preventive/hooks/usePreventiveSubmission.ts";
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
+  const featureDir = path.join(
+    process.cwd(),
+    "src/app/[locale]/operator/preventive",
+  );
+  const featureFiles = fs.readdirSync(featureDir, {
+    recursive: true,
+  }) as string[];
   const featureSource = featureFiles
     .filter((file) => /\.tsx?$/.test(file))
     .map((file) => fs.readFileSync(path.join(featureDir, file), "utf8"))
@@ -195,7 +283,10 @@ test("Preventive page submits through the single scoped Operator preventive-subm
 
 test("apiService exposes the scoped Operator preventive-submission endpoint with no identity/status/execution field in its payload type", () => {
   const relativePath = "src/services/api.ts";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   const match = source.match(
     /submitOperatorPreventiveMaintenance:\s*\(data:\s*([\s\S]*?)\)\s*=>\s*api\.post\(["']\/operator\/preventive\/submit["']/,
@@ -215,7 +306,10 @@ test("apiService exposes the scoped Operator preventive-submission endpoint with
 
 test("Corrective page submits through the scoped Operator corrective-report endpoint only", () => {
   const relativePath = "src/app/[locale]/operator/corrective/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   assert.match(
     source,
@@ -247,7 +341,10 @@ test("Corrective page submits through the scoped Operator corrective-report endp
 test("Smart maintenance calendar page uses only Operator-scoped calendar endpoints, never the Admin-only /work-orders/calendar/* routes", () => {
   const relativePath =
     "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   const requiredScopedCalls = [
     "apiService.getMyCalendarEvents(",
@@ -284,7 +381,10 @@ test("Smart maintenance calendar page uses only Operator-scoped calendar endpoin
 test("Smart maintenance calendar opts into operator dark-mode theme mapping", () => {
   const relativePath =
     "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
   const globalsSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/globals.css"),
     "utf8",
@@ -304,21 +404,48 @@ test("Smart maintenance calendar opts into operator dark-mode theme mapping", ()
 });
 
 test("Operator navigation preserves canonical context and locale", () => {
-  const dashboard = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"), "utf8");
-  const machines = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/machines/page.tsx"), "utf8");
-  const detail = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/machines/[id]/page.tsx"), "utf8");
-  assert.match(dashboard, /\/\$\{locale\}\/operator\/machines\/\$\{machineId\}/);
+  const dashboard = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"),
+    "utf8",
+  );
+  const machines = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/machines/page.tsx"),
+    "utf8",
+  );
+  const detail = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/operator/machines/[id]/page.tsx",
+    ),
+    "utf8",
+  );
+  assert.match(
+    dashboard,
+    /\/\$\{locale\}\/operator\/machines\/\$\{machineId\}/,
+  );
   assert.match(machines, /\/\$\{locale\}\/operator\/machines\/\$\{machineId\}/);
   assert.match(detail, /operator\/corrective\?machine=\$\{machineId\}/);
-  assert.match(detail, /operator\/preventive\?workOrder=\$\{task\.currentOccurrence\._id\}/);
+  assert.match(
+    detail,
+    /operator\/preventive\?workOrder=\$\{task\.currentOccurrence\._id\}/,
+  );
   assert.match(detail, /operator\/machines`\)/);
   assert.doesNotMatch(dashboard, /router\.push\(`\/\$\{locale\}\/machines\//);
 });
 
 test("Operator follow-up deep links carry report/work-order ids and resolve server-side", () => {
-  const reports = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/my-reports/page.tsx"), "utf8");
-  const api = fs.readFileSync(path.join(process.cwd(), "src/services/api.ts"), "utf8");
-  const controller = fs.readFileSync(path.join(process.cwd(), "../backend/src/operator/operator.controller.ts"), "utf8");
+  const reports = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/my-reports/page.tsx"),
+    "utf8",
+  );
+  const api = fs.readFileSync(
+    path.join(process.cwd(), "src/services/api.ts"),
+    "utf8",
+  );
+  const controller = fs.readFileSync(
+    path.join(process.cwd(), "../backend/src/operator/operator.controller.ts"),
+    "utf8",
+  );
   assert.match(reports, /requestedWorkOrderId/);
   assert.match(reports, /reportId: requestedReportId/);
   assert.match(reports, /workOrderId: requestedWorkOrderId/);
@@ -333,7 +460,10 @@ test("Notification targets use supported Operator destinations and fail safely w
     "src/app/[locale]/operator/notifications/page.tsx",
     "src/components/NotificationBell.tsx",
   ]) {
-    const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+    const source = fs.readFileSync(
+      path.join(process.cwd(), relativePath),
+      "utf8",
+    );
     assert.match(source, /operator\/my-reports\?reportId=/);
     assert.match(source, /operator\/preventive\?workOrder=/);
     assert.match(source, /operator\/machines\//);
@@ -342,7 +472,10 @@ test("Notification targets use supported Operator destinations and fail safely w
 });
 
 test("Nested Operator sidebar routes remain active and expose aria-current", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/components/DashboardLayout.tsx"),
+    "utf8",
+  );
   assert.match(source, /pathname\.startsWith\(`\$\{itemPath\}\//);
   assert.match(source, /active=\{isActive\}/);
   assert.match(source, /aria-current=\{active \? "page" : undefined\}/);
@@ -350,18 +483,33 @@ test("Nested Operator sidebar routes remain active and expose aria-current", () 
 });
 
 test("DashboardLayout blocks Operator access to shared management routes while preserving locale", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/components/DashboardLayout.tsx"), "utf8");
-  const guard = fs.readFileSync(path.join(process.cwd(), "src/services/sessionGuard.ts"), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/components/DashboardLayout.tsx"),
+    "utf8",
+  );
+  const guard = fs.readFileSync(
+    path.join(process.cwd(), "src/services/sessionGuard.ts"),
+    "utf8",
+  );
   assert.match(source, /evaluateProtectedRouteAccess\(\{ user, pathname \}\)/);
   assert.match(source, /router\.replace\(routeDestination\)/);
-  for (const route of ["devices", "work-orders", "maintenance-plans", "documents", "digital-twin"]) {
+  for (const route of [
+    "devices",
+    "work-orders",
+    "maintenance-plans",
+    "documents",
+    "digital-twin",
+  ]) {
     assert.match(guard, new RegExp(`[\\"']${route}[\\"']`));
   }
   assert.match(guard, /getDashboardPath\(locale, role\)/);
 });
 
 test("Operator dashboard separates preventive tasks from corrective work and uses server KPI report counts", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/page.tsx"),
+    "utf8",
+  );
   assert.match(source, /type_maintenance[\s\S]*includes\("correct"\)/);
   assert.match(source, /kpiCounts\.waitingValidationCount/);
   assert.doesNotMatch(source, /recentReports\.filter\(\s*\(report\)/);
@@ -370,14 +518,26 @@ test("Operator dashboard separates preventive tasks from corrective work and use
 });
 
 test("Operator machine detail does not claim maintenance is active from open-work-order totals alone", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/machines/[id]/page.tsx"), "utf8");
+  const source = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/operator/machines/[id]/page.tsx",
+    ),
+    "utf8",
+  );
   assert.match(source, /currentIssueWorkOrderId/);
   assert.match(source, /A technician is working on this report/);
-  assert.doesNotMatch(source, /openWorkOrdersCount > 0[\s\S]{0,200}Maintenance is in progress/);
+  assert.doesNotMatch(
+    source,
+    /openWorkOrdersCount > 0[\s\S]{0,200}Maintenance is in progress/,
+  );
 });
 
 test("My Reports exposes employee-facing status wording for active and terminal states", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/my-reports/page.tsx"), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/my-reports/page.tsx"),
+    "utf8",
+  );
   assert.match(source, /case "in_progress"/);
   assert.match(source, /case "waiting_parts"/);
   assert.match(source, /case "cancelled"/);
@@ -388,14 +548,23 @@ test("My Reports exposes employee-facing status wording for active and terminal 
 });
 
 test("Operator preventive cards distinguish overdue occurrences from tasks due today", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/preventive/components/TaskCard.tsx"), "utf8");
+  const source = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "src/app/[locale]/operator/preventive/components/TaskCard.tsx",
+    ),
+    "utf8",
+  );
   assert.match(source, /isOverdue/);
   assert.match(source, /statusOverdue/);
   assert.match(source, /Intl\.DateTimeFormat\(locale\)/);
 });
 
 test("Corrective existing-issue action opens the exact follow-up record instead of an alert-only dead end", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), "src/app/[locale]/operator/corrective/page.tsx"),
+    "utf8",
+  );
   assert.match(source, /my-reports\?workOrderId=/);
   assert.doesNotMatch(source, /alert\(`\$\{t\("reference"\)\}/);
 });
@@ -403,7 +572,10 @@ test("Corrective existing-issue action opens the exact follow-up record instead 
 test("Smart maintenance calendar is organized around the operator's next task action", () => {
   const relativePath =
     "src/app/[locale]/operator/smart-maintenance-calendar/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   assert.match(source, /type CalendarView = "day" \| "week" \| "month"/);
   assert.match(source, /data-testid="smart-calendar-action-sections"/);
@@ -411,7 +583,10 @@ test("Smart maintenance calendar is organized around the operator's next task ac
   assert.match(source, /key: "due-today"/);
   assert.match(source, /key: "upcoming"/);
   assert.match(source, /key: "waiting-validation"/);
-  assert.match(source, /data-testid=\{`smart-calendar-primary-action-\$\{section\.key\}-\$\{index\}`\}/);
+  assert.match(
+    source,
+    /data-testid=\{`smart-calendar-primary-action-\$\{section\.key\}-\$\{index\}`\}/,
+  );
   assert.match(source, /void quickStartEvent\(event\)/);
   assert.match(source, /<dialog\s/);
   assert.match(source, /aria-labelledby="smart-calendar-details-title"/);
@@ -436,8 +611,13 @@ test("Smart maintenance calendar is organized around the operator's next task ac
 // calendar endpoints..." test in list-pages-migration-logic.test.ts, which
 // asserts against src/services/api.ts directly rather than against a caller.
 test("the operator preventive feature has no unreachable schedule/reschedule modal state left behind", () => {
-  const featureDir = path.join(process.cwd(), "src/app/[locale]/operator/preventive");
-  const featureFiles = fs.readdirSync(featureDir, { recursive: true }) as string[];
+  const featureDir = path.join(
+    process.cwd(),
+    "src/app/[locale]/operator/preventive",
+  );
+  const featureFiles = fs.readdirSync(featureDir, {
+    recursive: true,
+  }) as string[];
   const featureSource = featureFiles
     .filter((file) => /\.tsx?$/.test(file))
     .map((file) => fs.readFileSync(path.join(featureDir, file), "utf8"))
@@ -463,10 +643,16 @@ test("the operator preventive feature has no unreachable schedule/reschedule mod
 
 test("apiService exposes the scoped Operator calendar endpoints pointing at /operator/calendar/*, not /work-orders/calendar/*", () => {
   const relativePath = "src/services/api.ts";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   const expectations: Array<[RegExp, string]> = [
-    [/getMyCalendarWidget:\s*\(\)\s*=>\s*api\.get\(["']\/operator\/calendar\/widget["']\)/, "getMyCalendarWidget"],
+    [
+      /getMyCalendarWidget:\s*\(\)\s*=>\s*api\.get\(["']\/operator\/calendar\/widget["']\)/,
+      "getMyCalendarWidget",
+    ],
     [
       /getMyCalendarNotifications:\s*\(\)\s*=>\s*api\.get\(["']\/operator\/calendar\/notifications["']\)/,
       "getMyCalendarNotifications",
@@ -494,13 +680,20 @@ test("apiService exposes the scoped Operator calendar endpoints pointing at /ope
   ];
 
   for (const [pattern, name] of expectations) {
-    assert.match(source, pattern, `apiService.${name} must post/get the scoped /operator/calendar/* route`);
+    assert.match(
+      source,
+      pattern,
+      `apiService.${name} must post/get the scoped /operator/calendar/* route`,
+    );
   }
 });
 
 test("apiService exposes the scoped Operator parts-request endpoint with no requester/status/stock/approval field in its payload type", () => {
   const relativePath = "src/services/api.ts";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
 
   const match = source.match(
     /requestOperatorParts:\s*\(\s*workOrderId:\s*string,\s*data:\s*([\s\S]*?),?\s*\)\s*=>\s*api\.post\(\s*`\/operator\/work-orders\/\$\{workOrderId\}\/parts-request`/,
@@ -520,7 +713,10 @@ test("apiService exposes the scoped Operator parts-request endpoint with no requ
 
 test("Operator My Reports list hides internal identifiers and long descriptions from the scan view", () => {
   const relativePath = "src/app/[locale]/operator/my-reports/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
   const listMarkup = source.slice(
     source.indexOf('<section className="col-span-full panel">'),
     source.indexOf("<Modal"),
@@ -529,7 +725,10 @@ test("Operator My Reports list hides internal identifiers and long descriptions 
   assert.match(listMarkup, /machineLabel\(workOrder\)/);
   assert.match(listMarkup, /maintenanceTypeLabel\(workOrder\)/);
   assert.match(listMarkup, /submittedAt\(report,\s*workOrder\)/);
-  assert.match(listMarkup, /statusLabel\(workOrder\?\.status \|\| report\.validation_responsable\)/);
+  assert.match(
+    listMarkup,
+    /statusLabel\(workOrder\?\.status \|\| report\.validation_responsable\)/,
+  );
   assert.match(listMarkup, /data-testid=\{`my-report-card-\$\{index\}`\}/);
 
   for (const hiddenPattern of [
@@ -552,7 +751,10 @@ test("Operator My Reports list hides internal identifiers and long descriptions 
 
 test("Operator My Reports opts into operator dark-mode theme mapping", () => {
   const relativePath = "src/app/[locale]/operator/my-reports/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
   const globalsSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/globals.css"),
     "utf8",
@@ -573,7 +775,10 @@ test("Operator My Reports opts into operator dark-mode theme mapping", () => {
 
 test("Operator My Reports shows persisted submission details and protected photo attachments", () => {
   const relativePath = "src/app/[locale]/operator/my-reports/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
   const apiSource = fs.readFileSync(
     path.join(process.cwd(), "src/services/api.ts"),
     "utf8",
@@ -593,14 +798,20 @@ test("Operator My Reports shows persisted submission details and protected photo
 
 test("Operator Manuals opts into operator dark-mode theme mapping", () => {
   const relativePath = "src/app/[locale]/operator/manuals/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
   const globalsSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/globals.css"),
     "utf8",
   );
 
   assert.match(source, /operator-dashboard-theme bento-grid/);
-  assert.match(source, /<div className="operator-dashboard-theme">\s*<DocumentAttachmentViewer/);
+  assert.match(
+    source,
+    /<div className="operator-dashboard-theme">\s*<DocumentAttachmentViewer/,
+  );
   assert.match(
     globalsSource,
     /\[data-theme='dark'\] \.operator-dashboard-theme \.to-blue-50/,
@@ -613,7 +824,10 @@ test("Operator Manuals opts into operator dark-mode theme mapping", () => {
 
 test("Operator Machines opts into operator dark-mode theme mapping", () => {
   const relativePath = "src/app/[locale]/operator/machines/page.tsx";
-  const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+  const source = fs.readFileSync(
+    path.join(process.cwd(), relativePath),
+    "utf8",
+  );
   const globalsSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/globals.css"),
     "utf8",
@@ -711,8 +925,14 @@ test("Shared dashboard keeps the Arabic Operator workspace full-width below desk
     "utf8",
   );
 
-  assert.match(layoutSource, /flex flex-wrap items-center justify-between gap-4 xl:flex-nowrap/);
-  assert.match(layoutSource, /flex flex-wrap items-center justify-end gap-2 sm:gap-4/);
+  assert.match(
+    layoutSource,
+    /flex flex-wrap items-center justify-between gap-4 xl:flex-nowrap/,
+  );
+  assert.match(
+    layoutSource,
+    /flex flex-wrap items-center justify-end gap-2 sm:gap-4/,
+  );
   assert.match(
     globalsSource,
     /@media \(max-width: 1023px\) \{\s*\[dir="rtl"\] \.dashboard-grid \{\s*grid-template-columns: minmax\(0, 1fr\) !important;/,
@@ -727,7 +947,10 @@ test("Corrective page uses the existing operator report-problem API and shows re
 
   assert.match(source, /apiService\.createOperatorCorrectiveReport/);
   assert.match(source, /machine_id: selectedMachine/);
-  assert.match(source, /selectedFault\?\.code_panne \|\| catalogueOtherFault\?\.code_panne/);
+  assert.match(
+    source,
+    /selectedFault\?\.code_panne \|\| catalogueOtherFault\?\.code_panne/,
+  );
   assert.doesNotMatch(source, /OBSERVED_SYMPTOMS/);
   assert.match(source, /actions/);
   assert.match(source, /priority:/);

@@ -778,6 +778,9 @@
         "okLabel": "OK",
         "problemLabel": "Problem",
         "completeRemaining": "Complete the remaining check before submitting.",
+        "markAllOk": "Marcar todas las restantes como correctas",
+        "markingAllOk": "Marcando comprobaciones...",
+        "markAllFailed": "Algunas comprobaciones no pudieron marcarse como correctas. Inténtelo de nuevo.",
         "observationLabel": "Observation",
         "observationPlaceholder": "Add an optional observation...",
         "completeInspection": "Complete Inspection",
@@ -2744,7 +2747,9 @@
       "pause": "Pausar",
       "resume": "Reanudar",
       "archive": "Archivar",
-      "complete": "Marcar como completado"
+      "complete": "Marcar como completado",
+      "selectAllCodes": "Seleccionar todos los códigos",
+      "clearCodes": "Borrar selección"
     },
     "notifications": {
       "loadFailed": "Error al cargar los planes de mantenimiento",
