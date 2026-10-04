@@ -11,6 +11,7 @@ import {
   DIGITAL_TWIN_MACHINES_CHANGED_STORAGE_KEY,
 } from "@/services/digitalTwinMachines";
 import { fetchAllPaginated } from "@/services/pagination";
+import { useAuth } from "@/contexts/AuthContext";
 
 type TwinStatus = "running" | "stopped" | "fault" | "offline";
 type TwinFloor = "first" | "second";
@@ -54,7 +55,16 @@ type FactoryCanvasProps = {
   selectedId: string;
   viewMode: FactoryViewMode;
   resetCameraTick: number;
+  editingLayout: boolean;
+  snapToGrid: boolean;
   onSelect: (machine: TwinMachine) => void;
+  onPositionChange: (machineId: string, position: [number, number, number]) => void;
+  onPositionSwap: (
+    draggedMachineId: string,
+    targetMachineId: string,
+    draggedStartPosition: [number, number, number],
+    targetPosition: [number, number, number],
+  ) => void;
   onLoaded: () => void;
   onError: (message: string) => void;
 };
@@ -62,6 +72,25 @@ type FactoryCanvasProps = {
 const FLOOR_HEIGHT = 2.7;
 const FACTORY_WIDTH = 12;
 const FACTORY_DEPTH = 7;
+const FACTORY_LAYOUT_STORAGE_KEY = "iprotex:digital-twin-layout:v1";
+
+type StoredMachinePlacement = {
+  position: [number, number, number];
+  rotationY: number;
+};
+
+function readStoredPlacements(): Record<string, StoredMachinePlacement> {
+  if (typeof window === "undefined") return {};
+  try {
+    const rawLayout = window.localStorage.getItem(FACTORY_LAYOUT_STORAGE_KEY);
+    return rawLayout
+      ? (JSON.parse(rawLayout) as Record<string, StoredMachinePlacement>)
+      : {};
+  } catch {
+    window.localStorage.removeItem(FACTORY_LAYOUT_STORAGE_KEY);
+    return {};
+  }
+}
 
 const floorViewOptions: Array<{ key: FactoryViewMode; label: string }> = [
   { key: "complete", label: "Complete Factory" },
@@ -485,7 +514,11 @@ function FactoryCanvas({
   selectedId,
   viewMode,
   resetCameraTick,
+  editingLayout,
+  snapToGrid,
   onSelect,
+  onPositionChange,
+  onPositionSwap,
   onLoaded,
   onError,
 }: Readonly<FactoryCanvasProps>) {
@@ -495,6 +528,10 @@ function FactoryCanvas({
   const viewModeRef = useRef(viewMode);
   const resetCameraTickRef = useRef(resetCameraTick);
   const onSelectRef = useRef(onSelect);
+  const editingLayoutRef = useRef(editingLayout);
+  const snapToGridRef = useRef(snapToGrid);
+  const onPositionChangeRef = useRef(onPositionChange);
+  const onPositionSwapRef = useRef(onPositionSwap);
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
 
@@ -517,6 +554,22 @@ function FactoryCanvas({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    editingLayoutRef.current = editingLayout;
+  }, [editingLayout]);
+
+  useEffect(() => {
+    snapToGridRef.current = snapToGrid;
+  }, [snapToGrid]);
+
+  useEffect(() => {
+    onPositionChangeRef.current = onPositionChange;
+  }, [onPositionChange]);
+
+  useEffect(() => {
+    onPositionSwapRef.current = onPositionSwap;
+  }, [onPositionSwap]);
 
   useEffect(() => {
     onLoadedRef.current = onLoaded;
@@ -581,6 +634,10 @@ function FactoryCanvas({
     let frame = 0;
     let activeViewMode: FactoryViewMode | null = null;
     let activeResetCameraTick = resetCameraTickRef.current;
+    let draggedMachineId: string | null = null;
+    let draggedStartPosition: [number, number, number] | null = null;
+    const dragPlane = new THREE.Plane();
+    const dragPoint = new THREE.Vector3();
 
     const resize = () => {
       const rect = host.getBoundingClientRect();
@@ -610,6 +667,15 @@ function FactoryCanvas({
           material.color.set(nextColor);
           material.emissive.set(nextColor);
         }
+      });
+    };
+
+    const updateMachineTransforms = () => {
+      machinesRef.current.forEach((machine) => {
+        const group = machineGroups.get(machine.id);
+        if (!group || group.userData.dragging) return;
+        group.position.fromArray(machine.position);
+        group.rotation.y = machine.rotationY;
       });
     };
 
@@ -661,10 +727,113 @@ function FactoryCanvas({
       const visibleGroups = Array.from(machineGroups.values()).filter((group) => group.visible);
       const intersects = raycaster.intersectObjects(visibleGroups, true);
       const machineId = intersects
-        .map((hit) => hit.object.userData.machineId)
+        .map((hit) => {
+          let object: THREE.Object3D | null = hit.object;
+          while (object) {
+            if (typeof object.userData.machineId === "string") {
+              return object.userData.machineId as string;
+            }
+            object = object.parent;
+          }
+          return undefined;
+        })
         .find((value): value is string => typeof value === "string");
       const machine = machinesRef.current.find((item) => item.id === machineId);
-      if (machine) onSelectRef.current(machine);
+      if (!machine) return;
+      onSelectRef.current(machine);
+      if (!editingLayoutRef.current) return;
+
+      draggedMachineId = machine.id;
+      draggedStartPosition = [...machine.position];
+      const group = machineGroups.get(machine.id);
+      if (group) group.userData.dragging = true;
+      dragPlane.set(new THREE.Vector3(0, 1, 0), -machine.position[1]);
+      controls.enabled = false;
+      renderer.domElement.setPointerCapture(event.pointerId);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!draggedMachineId) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      if (!raycaster.ray.intersectPlane(dragPlane, dragPoint)) return;
+
+      const machine = machinesRef.current.find(
+        (item) => item.id === draggedMachineId,
+      );
+      if (!machine) return;
+      const gridSize = snapToGridRef.current ? 0.5 : 0.05;
+      const snap = (value: number) => Math.round(value / gridSize) * gridSize;
+      const x = snap(THREE.MathUtils.clamp(dragPoint.x, -5.2, 5.2));
+      const z = snap(THREE.MathUtils.clamp(dragPoint.z, -2.9, 2.9));
+      const position: [number, number, number] = [x, machine.position[1], z];
+      const group = machineGroups.get(machine.id);
+      if (group) group.position.fromArray(position);
+      onPositionChangeRef.current(machine.id, position);
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      if (!draggedMachineId) return;
+      const finishedMachineId = draggedMachineId;
+      const group = machineGroups.get(finishedMachineId);
+      if (group) group.userData.dragging = false;
+      const draggedMachine = machinesRef.current.find(
+        (machine) => machine.id === finishedMachineId,
+      );
+      const dropPosition = group
+        ? ([group.position.x, group.position.y, group.position.z] as [
+            number,
+            number,
+            number,
+          ])
+        : draggedMachine?.position;
+      const swapTarget =
+        draggedMachine && dropPosition
+          ? machinesRef.current
+              .filter(
+                (machine) =>
+                  machine.id !== finishedMachineId &&
+                  machine.floor === draggedMachine.floor,
+              )
+              .map((machine) => ({
+                machine,
+                distance: Math.hypot(
+                  machine.position[0] - dropPosition[0],
+                  machine.position[2] - dropPosition[2],
+                ),
+              }))
+              .filter(
+                ({ machine, distance }) =>
+                  distance <=
+                  Math.max(
+                    0.75,
+                    (draggedMachine.targetSize + machine.targetSize) * 0.45,
+                  ),
+              )
+              .sort((left, right) => left.distance - right.distance)[0]?.machine
+          : undefined;
+
+      if (swapTarget && draggedStartPosition) {
+        const targetPosition: [number, number, number] = [
+          ...swapTarget.position,
+        ];
+        group?.position.fromArray(targetPosition);
+        machineGroups.get(swapTarget.id)?.position.fromArray(draggedStartPosition);
+        onPositionSwapRef.current(
+          finishedMachineId,
+          swapTarget.id,
+          draggedStartPosition,
+          targetPosition,
+        );
+      }
+      draggedMachineId = null;
+      draggedStartPosition = null;
+      controls.enabled = true;
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
     };
 
     const animate = () => {
@@ -674,6 +843,7 @@ function FactoryCanvas({
       controls.update();
       updateSelection();
       updateStatusIndicators();
+      updateMachineTransforms();
       renderer.render(scene, camera);
       frame = window.requestAnimationFrame(animate);
     };
@@ -681,6 +851,9 @@ function FactoryCanvas({
     resize();
     window.addEventListener("resize", resize);
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
+    renderer.domElement.addEventListener("pointercancel", handlePointerUp);
     void loadMachines();
     animate();
 
@@ -689,6 +862,9 @@ function FactoryCanvas({
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
+      renderer.domElement.removeEventListener("pointercancel", handlePointerUp);
       controls.dispose();
       themeObserver.disconnect();
       renderer.dispose();
@@ -700,13 +876,37 @@ function FactoryCanvas({
 }
 
 export default function FactoryTwinScene() {
+  const { user } = useAuth();
+  const canEditLayout = user?.role === "admin";
   const [machines, setMachines] = useState<TwinMachine[]>(firstFloorAssetMachines);
   const [selectedMachineId, setSelectedMachineId] = useState(firstFloorAssetMachines[0].id);
   const [viewMode, setViewMode] = useState<FactoryViewMode>("complete");
   const [machineSort, setMachineSort] = useState<MachineSort>("name");
+  const [inspectedMachineIds, setInspectedMachineIds] = useState<Set<string>>(
+    () => new Set([firstFloorAssetMachines[0].id]),
+  );
   const [resetCameraTick, setResetCameraTick] = useState(0);
+  const [editingLayout, setEditingLayout] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const layoutBeforeEditRef = useRef<TwinMachine[] | null>(null);
+
+  useEffect(() => {
+    const placements = readStoredPlacements();
+    setMachines((currentMachines) =>
+      currentMachines.map((machine) => {
+        const placement = placements[machine.id];
+        return placement
+          ? {
+              ...machine,
+              position: placement.position,
+              rotationY: placement.rotationY,
+            }
+          : machine;
+      }),
+    );
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -744,7 +944,26 @@ export default function FactoryTwinScene() {
               toFactoryMachine(row, index, assignedRows[floor].length, floor),
             ),
         );
-        setMachines([...firstFloorAssetMachines, ...inventoryMachines]);
+        const refreshedMachines = [
+          ...firstFloorAssetMachines,
+          ...inventoryMachines,
+        ];
+        const storedPlacements = readStoredPlacements();
+        setMachines((currentMachines) =>
+          refreshedMachines.map((machine) => {
+            const currentMachine = currentMachines.find(
+              (candidate) => candidate.id === machine.id,
+            );
+            const placement = currentMachine ?? storedPlacements[machine.id];
+            return placement
+              ? {
+                  ...machine,
+                  position: placement.position,
+                  rotationY: placement.rotationY,
+                }
+              : machine;
+          }),
+        );
       } catch (loadError) {
         console.error("Unable to load IPROTEX machine table for digital twin:", loadError);
       } finally {
@@ -813,6 +1032,104 @@ export default function FactoryTwinScene() {
       });
     });
   }, [machineSort, machines]);
+
+  const inspectedCount = useMemo(
+    () => machines.filter((machine) => inspectedMachineIds.has(machine.id)).length,
+    [inspectedMachineIds, machines],
+  );
+  const inspectionProgress = machines.length
+    ? Math.round((inspectedCount / machines.length) * 100)
+    : 0;
+  const firstFloorInspected = machines.some(
+    (machine) =>
+      machine.floor === "first" && inspectedMachineIds.has(machine.id),
+  );
+  const secondFloorInspected = machines.some(
+    (machine) =>
+      machine.floor === "second" && inspectedMachineIds.has(machine.id),
+  );
+  const nextUninspectedMachine = sortedMachines.find(
+    (machine) => !inspectedMachineIds.has(machine.id),
+  );
+
+  const inspectMachine = (machine: TwinMachine) => {
+    setSelectedMachineId(machine.id);
+    setInspectedMachineIds((currentIds) => {
+      if (currentIds.has(machine.id)) return currentIds;
+      const nextIds = new Set(currentIds);
+      nextIds.add(machine.id);
+      return nextIds;
+    });
+  };
+
+  const updateMachinePosition = (
+    machineId: string,
+    position: [number, number, number],
+  ) => {
+    setMachines((currentMachines) =>
+      currentMachines.map((machine) =>
+        machine.id === machineId ? { ...machine, position } : machine,
+      ),
+    );
+  };
+
+  const swapMachinePositions = (
+    draggedMachineId: string,
+    targetMachineId: string,
+    draggedStartPosition: [number, number, number],
+    targetPosition: [number, number, number],
+  ) => {
+    setMachines((currentMachines) =>
+      currentMachines.map((machine) => {
+        if (machine.id === draggedMachineId) {
+          return { ...machine, position: targetPosition };
+        }
+        if (machine.id === targetMachineId) {
+          return { ...machine, position: draggedStartPosition };
+        }
+        return machine;
+      }),
+    );
+  };
+
+  const rotateSelectedMachine = (degrees: number) => {
+    const radians = THREE.MathUtils.degToRad(degrees);
+    setMachines((currentMachines) =>
+      currentMachines.map((machine) =>
+        machine.id === selectedMachineId
+          ? { ...machine, rotationY: machine.rotationY + radians }
+          : machine,
+      ),
+    );
+  };
+
+  const beginLayoutEditing = () => {
+    layoutBeforeEditRef.current = machines.map((machine) => ({ ...machine }));
+    setEditingLayout(true);
+  };
+
+  const cancelLayoutEditing = () => {
+    if (layoutBeforeEditRef.current) {
+      setMachines(layoutBeforeEditRef.current);
+    }
+    layoutBeforeEditRef.current = null;
+    setEditingLayout(false);
+  };
+
+  const saveLayout = () => {
+    const placements = Object.fromEntries(
+      machines.map((machine) => [
+        machine.id,
+        { position: machine.position, rotationY: machine.rotationY },
+      ]),
+    );
+    window.localStorage.setItem(
+      FACTORY_LAYOUT_STORAGE_KEY,
+      JSON.stringify(placements),
+    );
+    layoutBeforeEditRef.current = null;
+    setEditingLayout(false);
+  };
 
   const sceneKey = machines.map((machine) => machine.id).join("|");
 
@@ -895,7 +1212,11 @@ export default function FactoryTwinScene() {
               selectedId={selectedMachine.id}
               viewMode={viewMode}
               resetCameraTick={resetCameraTick}
-              onSelect={(machine) => setSelectedMachineId(machine.id)}
+              editingLayout={editingLayout}
+              snapToGrid={snapToGrid}
+              onSelect={inspectMachine}
+              onPositionChange={updateMachinePosition}
+              onPositionSwap={swapMachinePositions}
               onLoaded={() => setLoading(false)}
               onError={(message) => {
                 setError(message);
@@ -918,6 +1239,156 @@ export default function FactoryTwinScene() {
         </div>
 
         <div className="mt-6 space-y-4">
+          {canEditLayout ? (
+          <section className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-slate-100">
+                  Factory layout
+                </h4>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {editingLayout
+                    ? "Drag a machine onto another machine to swap their places."
+                    : "Enter layout mode to reposition machines."}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                  editingLayout
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                    : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                }`}
+              >
+                {editingLayout ? "EDITING" : "VIEW ONLY"}
+              </span>
+            </div>
+            {editingLayout ? (
+              <div className="mt-3 space-y-3">
+                <label className="flex items-center justify-between gap-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Snap to 0.5 m grid
+                  <input
+                    type="checkbox"
+                    checked={snapToGrid}
+                    onChange={(event) => setSnapToGrid(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    onClick={() => rotateSelectedMachine(-15)}
+                  >
+                    ↶ Rotate 15°
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    onClick={() => rotateSelectedMachine(15)}
+                  >
+                    Rotate 15° ↷
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    onClick={cancelLayoutEditing}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                    onClick={saveLayout}
+                  >
+                    Save layout
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="mt-3 w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700"
+                onClick={beginLayoutEditing}
+              >
+                Edit layout
+              </button>
+            )}
+          </section>
+          ) : null}
+
+          <section
+            className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 dark:border-blue-800 dark:from-blue-950/50 dark:to-cyan-950/30"
+            aria-labelledby="inspection-challenge-title"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h4
+                  id="inspection-challenge-title"
+                  className="font-bold text-blue-950 dark:text-blue-100"
+                >
+                  Factory inspection challenge
+                </h4>
+                <p className="mt-1 text-xs text-blue-800 dark:text-blue-200">
+                  Explore each machine to learn its location, condition, and simulated telemetry.
+                </p>
+              </div>
+              <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">
+                {inspectionProgress}%
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-100">
+              <span>Machines inspected</span>
+              <output aria-live="polite">
+                {inspectedCount} / {machines.length}
+              </output>
+            </div>
+            <div
+              className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"
+              role="progressbar"
+              aria-label="Factory inspection progress"
+              aria-valuemin={0}
+              aria-valuemax={machines.length}
+              aria-valuenow={inspectedCount}
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300"
+                style={{ width: `${inspectionProgress}%` }}
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
+              <span
+                className={`rounded-full border px-2 py-1 ${
+                  firstFloorInspected
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200"
+                    : "border-slate-300 bg-white/70 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                }`}
+              >
+                {firstFloorInspected ? "✓ " : "○ "}First floor discovered
+              </span>
+              <span
+                className={`rounded-full border px-2 py-1 ${
+                  secondFloorInspected
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200"
+                    : "border-slate-300 bg-white/70 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                }`}
+              >
+                {secondFloorInspected ? "✓ " : "○ "}Second floor discovered
+              </span>
+            </div>
+            <button
+              type="button"
+              className="mt-3 w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-600"
+              disabled={!nextUninspectedMachine}
+              onClick={() => {
+                if (nextUninspectedMachine) inspectMachine(nextUninspectedMachine);
+              }}
+            >
+              {nextUninspectedMachine
+                ? `Inspect next: ${nextUninspectedMachine.name}`
+                : "Inspection complete ✓"}
+            </button>
+          </section>
+
           <label className="block text-sm font-medium text-slate-700">
             <span>Sort machines</span>
             <select
@@ -942,7 +1413,7 @@ export default function FactoryTwinScene() {
                     ? "border-blue-500 bg-blue-50 text-blue-950"
                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                 }`}
-                onClick={() => setSelectedMachineId(machine.id)}
+                onClick={() => inspectMachine(machine)}
               >
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{machine.name}</span>
@@ -951,10 +1422,19 @@ export default function FactoryTwinScene() {
                   </span>
                 </span>
                 <span
-                  className="ml-3 h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: statusStyle[machine.status].color }}
-                  aria-hidden="true"
-                />
+                  className="ml-3 flex shrink-0 items-center gap-2"
+                >
+                  {inspectedMachineIds.has(machine.id) ? (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      Seen ✓
+                    </span>
+                  ) : null}
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: statusStyle[machine.status].color }}
+                    aria-hidden="true"
+                  />
+                </span>
               </button>
             ))}
           </div>

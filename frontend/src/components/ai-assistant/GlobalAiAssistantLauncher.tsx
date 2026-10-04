@@ -13,15 +13,15 @@ export default function GlobalAiAssistantLauncher() {
     <>
       <button
         type="button"
-        className="fixed bottom-4 end-4 z-1000 inline-flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full bg-purple-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-900/20 transition hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
+        className="fixed bottom-4 end-4 z-1000 inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-700 text-white shadow-md shadow-purple-900/20 transition hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-300"
         aria-expanded={open}
         aria-controls="global-ai-assistant-panel"
         aria-label={open ? t("globalClose") : t("globalOpen")}
+        title={open ? t("globalClose") : t("globalOpen")}
         data-testid="global-ai-assistant-launcher"
         onClick={() => setOpen((current) => !current)}
       >
-        {open ? <XMarkIcon className="h-5 w-5 shrink-0" /> : <SparklesIcon className="h-5 w-5 shrink-0" />}
-        <span className="hidden sm:inline">{open ? t("globalCloseShort") : t("globalOpenShort")}</span>
+        {open ? <XMarkIcon className="h-4 w-4 shrink-0" /> : <SparklesIcon className="h-4 w-4 shrink-0" />}
       </button>
 
       {open ? (

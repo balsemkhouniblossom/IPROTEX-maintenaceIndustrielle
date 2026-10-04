@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AiDataProvenance from "@/components/ai-anomaly/AiDataProvenance";
 import Pagination from "@/components/Pagination";
@@ -430,6 +430,7 @@ function AiAnomalyMonitoringContent() {
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [submittingValidation, setSubmittingValidation] = useState(false);
+  const modelsRequestInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [toast, setToast] = useState<ToastNotificationState | null>(null);
@@ -486,9 +487,10 @@ function AiAnomalyMonitoringContent() {
 
     try {
       const [analysesResponse, machinesResponse] = await Promise.all([
-        apiService.getAiAnomalyAnalyses(buildAnalysesQuery(), {
-          signal: controller.signal,
-        }),
+        apiService.getAiAnomalyAnalyses(
+          buildAnalysesQuery(),
+          quiet({ signal: controller.signal }),
+        ),
         apiService
           .getMachines({ page: 1, limit: 100 }, quiet())
           .catch(() => null),
@@ -520,14 +522,18 @@ function AiAnomalyMonitoringContent() {
   }, [loadData]);
 
   const loadModels = useCallback(async () => {
+    if (modelsRequestInFlightRef.current) return;
+    modelsRequestInFlightRef.current = true;
     try {
-      const response = await apiService.getAiAnomalyModels();
+      const response = await apiService.getAiAnomalyModels(quiet());
       setModels((response.data?.models ?? []) as AiAnomalyRuntimeModel[]);
       setModelsError(null);
     } catch (err) {
       setModelsError(
         extractApiErrorDetails(err, t("models.unavailable")).message,
       );
+    } finally {
+      modelsRequestInFlightRef.current = false;
     }
   }, [t]);
 

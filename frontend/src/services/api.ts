@@ -110,6 +110,9 @@ api.interceptors.response.use(
     const retryConfig = error.config as
       | (typeof error.config & { _getRetryCount?: number })
       | undefined;
+    const suppressErrorLog = Boolean(
+      (error.config as QuietAxiosConfig | undefined)?.suppressErrorLog,
+    );
 
     if (
       retryConfig &&
@@ -124,7 +127,10 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.code === "ERR_NETWORK" || !error.response) {
+    if (
+      !suppressErrorLog &&
+      (error.code === "ERR_NETWORK" || !error.response)
+    ) {
       console.error("[API] Network/CORS error", {
         baseURL: API_BASE_URL,
         url: error.config?.url,
@@ -182,10 +188,6 @@ api.interceptors.response.use(
     if (status === 401 && !isAuthEndpoint) {
       redirectToLoginOnce(error);
     }
-    const suppressErrorLog = Boolean(
-      (error.config as QuietAxiosConfig | undefined)?.suppressErrorLog,
-    );
-
     if (
       !isExpectedAuthFailure &&
       !isHandledSessionFailure &&
@@ -789,7 +791,8 @@ export const apiService = {
     api.post(`/predictive-maintenance/models/${modelType}/train`),
 
   // IMS anomaly analysis (FastAPI-backed, advisory prototype only)
-  getAiAnomalyModels: () => api.get("/ai-anomaly/models"),
+  getAiAnomalyModels: (options?: QuietAxiosConfig) =>
+    api.get("/ai-anomaly/models", options),
   startAiAnomalyModel: (modelId: string) =>
     api.post(`/ai-anomaly/models/${encodeURIComponent(modelId)}/start`),
   stopAiAnomalyModel: (modelId: string) =>
@@ -814,8 +817,8 @@ export const apiService = {
       dateFrom?: string;
       dateTo?: string;
     },
-    options?: { signal?: AbortSignal },
-  ) => api.get("/ai-anomaly/analyses", { params, signal: options?.signal }),
+    options?: QuietAxiosConfig,
+  ) => api.get("/ai-anomaly/analyses", { ...options, params }),
   getAiAnomalyMachineHistory: (
     machineId: string,
     params?: {

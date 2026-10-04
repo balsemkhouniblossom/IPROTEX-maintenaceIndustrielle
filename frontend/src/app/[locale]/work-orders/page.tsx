@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { translateEnumValue } from "@/services/enumTranslations";
 import { useWorkOrderDynamicTranslations } from "@/hooks/useDynamicContentTranslations";
+import { fetchAllPaginated } from "@/services/pagination";
 
 interface WorkOrder {
   _id: string;
@@ -244,17 +245,36 @@ export default function WorkOrdersPage() {
   }, []);
 
   const loadFormOptions = useCallback(async () => {
-    try {
-      const [machinesRes, usersRes] = await Promise.all([
-        apiService.getMachines(),
-        apiService.getUsers(),
-      ]);
-      setMachines(machinesRes.data.items || []);
-      setUsers(usersRes.data.items || []);
-    } catch (error) {
-      console.error('Error loading machines/users:', error);
+    const [machinesResult, usersResult] = await Promise.allSettled([
+      fetchAllPaginated<Machine>((params) => apiService.getMachines(params)),
+      fetchAllPaginated<User>((params) => apiService.getUsers(params)),
+    ]);
+
+    if (machinesResult.status === "fulfilled") {
+      setMachines(
+        machinesResult.value.sort((left, right) =>
+          left.machine_id.localeCompare(right.machine_id, locale, {
+            numeric: true,
+            sensitivity: "base",
+          }),
+        ),
+      );
+    } else {
+      console.error("Error loading machines:", machinesResult.reason);
     }
-  }, []);
+
+    if (usersResult.status === "fulfilled") {
+      setUsers(
+        usersResult.value.sort((left, right) =>
+          left.nom_complet.localeCompare(right.nom_complet, locale, {
+            sensitivity: "base",
+          }),
+        ),
+      );
+    } else {
+      console.error("Error loading users:", usersResult.reason);
+    }
+  }, [locale]);
 
   useEffect(() => {
     void loadFormOptions();

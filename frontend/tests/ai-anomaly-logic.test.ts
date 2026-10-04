@@ -73,7 +73,7 @@ test("apiService integrates only the existing /ai-anomaly backend endpoints", ()
   const source = readSource(API);
   assert.match(
     source,
-    /getAiAnomalyModels:\s*\(\)\s*=>\s*api\.get\("\/ai-anomaly\/models"\)/,
+    /getAiAnomalyModels:\s*\(options\?: QuietAxiosConfig\)\s*=>\s*api\.get\("\/ai-anomaly\/models", options\)/,
   );
   assert.match(
     source,
@@ -114,7 +114,8 @@ test("optional technician machine-health history failures do not raise a page-le
 
 test("model runtime UI polls real backend state and limits controls to Admin", () => {
   const source = readSource(PAGE);
-  assert.match(source, /getAiAnomalyModels/);
+  assert.match(source, /getAiAnomalyModels\(quiet\(\)\)/);
+  assert.match(source, /if \(modelsRequestInFlightRef\.current\) return/);
   assert.match(source, /window\.setInterval\([\s\S]*10000/);
   assert.match(source, /user\?\.role === "admin"/);
   assert.match(source, /startAiAnomalyModel/);
