@@ -72,7 +72,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (authLoading || user?.role !== "admin") return;
 
-    (async () => {
+    void (async () => {
       try {
         const [workOrdersRes, machinesRes] = await Promise.all([
           apiService.getWorkOrders({ page: 1, limit: 5 }),
