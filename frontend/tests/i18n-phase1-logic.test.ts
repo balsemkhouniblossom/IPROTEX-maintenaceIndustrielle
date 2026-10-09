@@ -143,7 +143,10 @@ test("important visible hardcoded text is not rendered directly in protected int
   assert.doesNotMatch(dashboardLayout, /name:\s*['"]Digital Twin['"]/);
   assert.match(dashboardLayout, /t\('navigation\.digitalTwin'\)/);
   assert.doesNotMatch(dashboard, />\s*\{wo\.status\}\s*</);
-  assert.match(dashboard, /translateEnumValue\(tEnums, 'workOrderStatuses', wo\.status\)/);
+  assert.match(
+    dashboard,
+    /translateEnumValue\(\s*tEnums,\s*["']workOrderStatuses["'],\s*wo\.status,?\s*\)/,
+  );
 });
 
 test("language switcher replaces or inserts the locale while preserving the path and query string", () => {

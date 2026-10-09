@@ -176,7 +176,7 @@ test("useDashboardStatistics only fetches the admin dashboard for admin users", 
 
   assert.match(
     source,
-    /const isAdmin = user\?\.role === 'admin'/,
+    /const isAdmin = user\?\.role === ["']admin["']/,
     "the hook must gate on the admin role",
   );
   assert.match(
