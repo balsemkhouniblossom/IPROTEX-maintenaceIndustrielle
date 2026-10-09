@@ -929,6 +929,10 @@ function applyStoredMachinePlacements(machines: TwinMachine[]): TwinMachine[] {
   });
 }
 
+function calculateInspectionProgress(inspectedCount: number, total: number) {
+  return total === 0 ? 0 : Math.round((inspectedCount / total) * 100);
+}
+
 export default function FactoryTwinScene() {
   const { user } = useAuth();
   const canEditLayout = user?.role === "admin";
@@ -1041,9 +1045,10 @@ export default function FactoryTwinScene() {
     () => machines.filter((machine) => inspectedMachineIds.has(machine.id)).length,
     [inspectedMachineIds, machines],
   );
-  const inspectionProgress = machines.length
-    ? Math.round((inspectedCount / machines.length) * 100)
-    : 0;
+  const inspectionProgress = calculateInspectionProgress(
+    inspectedCount,
+    machines.length,
+  );
   const firstFloorInspected = machines.some(
     (machine) =>
       machine.floor === "first" && inspectedMachineIds.has(machine.id),
