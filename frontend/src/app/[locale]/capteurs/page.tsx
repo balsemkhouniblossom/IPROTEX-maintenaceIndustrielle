@@ -313,7 +313,7 @@ export default function CapteursPage() {
   }
 
   useEffect(() => {
-    loadCapteurs();
+    void loadCapteurs();
     // loadCapteurs intentionally reads the current pagination state; wrapping it here would change the page's existing refresh behavior.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit]);
@@ -324,7 +324,7 @@ export default function CapteursPage() {
 
   useEffect(() => {
     const handleCapteursChanged = () => {
-      loadCapteurs();
+      void loadCapteurs();
     };
 
     window.addEventListener("capteurs:changed", handleCapteursChanged);

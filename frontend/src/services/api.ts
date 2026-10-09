@@ -96,6 +96,42 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function reportNetworkError(
+  error: {
+    code?: string;
+    response?: unknown;
+    config?: { url?: unknown; method?: unknown };
+    message?: string;
+  },
+  suppressErrorLog: boolean,
+): void {
+  if (
+    suppressErrorLog ||
+    (error.code !== "ERR_NETWORK" && Boolean(error.response))
+  ) {
+    return;
+  }
+
+  console.error("[API] Network/CORS error", {
+    baseURL: API_BASE_URL,
+    url: error.config?.url,
+    method: error.config?.method,
+    message: error.message,
+  });
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("app:api-network-error", {
+        detail: {
+          message: error.message,
+          url: error.config?.url,
+          method: error.config?.method,
+        },
+      }),
+    );
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -127,29 +163,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (
-      !suppressErrorLog &&
-      (error.code === "ERR_NETWORK" || !error.response)
-    ) {
-      console.error("[API] Network/CORS error", {
-        baseURL: API_BASE_URL,
-        url: error.config?.url,
-        method: error.config?.method,
-        message: error.message,
-      });
-
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("app:api-network-error", {
-            detail: {
-              message: error.message,
-              url: error.config?.url,
-              method: error.config?.method,
-            },
-          }),
-        );
-      }
-    }
+    reportNetworkError(error, suppressErrorLog);
 
     const status = error.response?.status;
     const requestUrl = String(error.config?.url || "");

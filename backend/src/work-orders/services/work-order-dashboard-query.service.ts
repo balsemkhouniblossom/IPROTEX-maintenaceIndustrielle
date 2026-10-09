@@ -520,7 +520,7 @@ export class WorkOrderDashboardQueryService {
     };
   }
 
-  private async mesureCriticalAlarmCount() {
+  private mesureCriticalAlarmCount() {
     // No schema change: derive count from "critical" sensor status already stored in Mesure.status.
     const now = new Date();
     const last24h = new Date(now);
@@ -528,10 +528,12 @@ export class WorkOrderDashboardQueryService {
 
     // This collection can be huge; keep a cheap count query.
     const mesureModel = this.workOrderModel.db.model('Mesure');
-    return mesureModel.countDocuments({
-      status: { $in: ['critical', 'alarm', 'danger'] },
-      timestamp: { $gte: last24h, $lte: now },
-    });
+    return Promise.resolve(
+      mesureModel.countDocuments({
+        status: { $in: ['critical', 'alarm', 'danger'] },
+        timestamp: { $gte: last24h, $lte: now },
+      }),
+    );
   }
 
   private async stockAlertCount() {

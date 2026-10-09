@@ -77,16 +77,16 @@ export async function mapWithConcurrency<T>(
   worker: (item: T, index: number) => Promise<void>,
 ): Promise<void> {
   let nextIndex = 0;
+  const runWorker = async (): Promise<void> => {
+    const index = nextIndex;
+    nextIndex += 1;
+    if (index >= items.length) return;
+    await worker(items[index], index);
+    await runWorker();
+  };
   const workers = Array.from(
     { length: Math.min(Math.max(1, concurrency), items.length) },
-    async () => {
-      for (;;) {
-        const index = nextIndex;
-        nextIndex += 1;
-        if (index >= items.length) return;
-        await worker(items[index], index);
-      }
-    },
+    runWorker,
   );
   await Promise.all(workers);
 }

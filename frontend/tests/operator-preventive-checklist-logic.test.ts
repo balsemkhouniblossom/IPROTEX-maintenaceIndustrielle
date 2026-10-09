@@ -664,7 +664,10 @@ test("submission derives tasks_completed from persisted checklist items for each
     "src/app/[locale]/operator/preventive/utils/preventive-validation.ts",
   );
 
-  assert.match(submissionSource, /for \(const planId of selectedPlanIds\)/);
+  assert.match(
+    submissionSource,
+    /selectedPlanIds\.reduce\(async \(previous, planId\)/,
+  );
   assert.match(submissionSource, /tasks_completed:\s*planPayload\.taskLabels/);
   assert.match(
     validationSource,

@@ -25,7 +25,7 @@ export class SavedViewsService {
     private readonly savedViewModel: Model<SavedViewDocument>,
   ) {}
 
-  async create(
+  create(
     dto: CreateSavedViewDto,
     actor: SavedViewActor,
   ): Promise<SavedViewDocument> {
@@ -39,7 +39,7 @@ export class SavedViewsService {
     });
   }
 
-  async listForPage(
+  listForPage(
     pageKey: string,
     actor: SavedViewActor,
   ): Promise<SavedViewDocument[]> {

@@ -3,20 +3,25 @@ export interface ChecklistInstructionDisplay {
   details: string;
 }
 
-const W_CODE_PREFIX = /^(W\d+(?:\s*,\s*W\d+)*)\s*:\s*([\s\S]+)$/i;
-
 export function parseChecklistInstruction(
   instruction: string,
 ): ChecklistInstructionDisplay {
   const normalized = instruction.trim();
-  const match = W_CODE_PREFIX.exec(normalized);
-  if (!match) {
+  const separatorIndex = normalized.indexOf(":");
+  if (separatorIndex < 0) {
+    return { code: null, details: normalized };
+  }
+
+  const rawCode = normalized.slice(0, separatorIndex).trim();
+  const details = normalized.slice(separatorIndex + 1).trim();
+  const codes = rawCode.split(",").map((code) => code.trim());
+  if (!details || !codes.length || codes.some((code) => !/^W\d+$/i.test(code))) {
     return { code: null, details: normalized };
   }
 
   return {
-    code: match[1].replace(/\s+/g, ""),
-    details: match[2].trim(),
+    code: codes.join(","),
+    details,
   };
 }
 

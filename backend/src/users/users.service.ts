@@ -262,11 +262,11 @@ export class UsersService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async findOne(id: string): Promise<UserDocument | null> {
+  findOne(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).exec();
   }
 
-  async findByEmail(email: string): Promise<UserDocument | null> {
+  findByEmail(email: string): Promise<UserDocument | null> {
     const normalizedEmail = email.trim().toLowerCase();
     return this.userModel
       .findOne({
@@ -278,7 +278,7 @@ export class UsersService {
       .exec();
   }
 
-  async findByGoogleId(googleId: string): Promise<UserDocument | null> {
+  findByGoogleId(googleId: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ google_id: googleId }).exec();
   }
 
@@ -438,7 +438,7 @@ export class UsersService {
       .exec();
   }
 
-  async findByResetToken(token: string): Promise<UserDocument | null> {
+  findByResetToken(token: string): Promise<UserDocument | null> {
     return this.userModel
       .findOne({
         reset_password_token: token,
@@ -481,11 +481,11 @@ export class UsersService {
       .exec();
   }
 
-  async remove(id: string): Promise<UserDocument | null> {
+  remove(id: string): Promise<UserDocument | null> {
     return this.userModel.findByIdAndDelete(id).exec();
   }
 
-  async setRefreshTokenHash(
+  setRefreshTokenHash(
     id: string,
     refreshTokenHash: string | null,
   ): Promise<UserDocument | null> {
@@ -499,7 +499,7 @@ export class UsersService {
       .exec();
   }
 
-  async recordSuccessfulLogin(
+  recordSuccessfulLogin(
     id: string,
     loginAt: Date = new Date(),
   ): Promise<UserDocument | null> {
@@ -522,7 +522,7 @@ export class UsersService {
       .exec();
   }
 
-  async setPasswordResetToken(
+  setPasswordResetToken(
     id: string,
     resetToken: string,
     resetExpires: Date,
@@ -540,7 +540,7 @@ export class UsersService {
       .exec();
   }
 
-  async updatePasswordAndClearReset(
+  updatePasswordAndClearReset(
     id: string,
     password: string,
   ): Promise<UserDocument | null> {
@@ -558,7 +558,7 @@ export class UsersService {
       .exec();
   }
 
-  async countAll(): Promise<number> {
+  countAll(): Promise<number> {
     return this.userModel.countDocuments().exec();
   }
 
@@ -580,7 +580,7 @@ export class UsersService {
     }
   }
 
-  async getActiveUsersCount(): Promise<number> {
+  getActiveUsersCount(): Promise<number> {
     return this.userModel.countDocuments({ is_active: true }).exec();
   }
 
@@ -937,7 +937,8 @@ export class UsersService {
     const session = await this.userModel.db.startSession();
     try {
       await session.withTransaction(async () => {
-        for (const targetId of uniqueIds) {
+        await uniqueIds.reduce(async (previous, targetId) => {
+          await previous;
           try {
             await this.approveUser(
               targetId,
@@ -948,7 +949,7 @@ export class UsersService {
           } catch (error) {
             annotateBulkFailure(error, targetId);
           }
-        }
+        }, Promise.resolve());
       });
     } finally {
       await session.endSession();
@@ -975,7 +976,8 @@ export class UsersService {
     const session = await this.userModel.db.startSession();
     try {
       await session.withTransaction(async () => {
-        for (const targetId of uniqueIds) {
+        await uniqueIds.reduce(async (previous, targetId) => {
+          await previous;
           try {
             await this.rejectUser(
               targetId,
@@ -987,7 +989,7 @@ export class UsersService {
           } catch (error) {
             annotateBulkFailure(error, targetId);
           }
-        }
+        }, Promise.resolve());
       });
     } finally {
       await session.endSession();

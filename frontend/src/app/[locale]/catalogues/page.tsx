@@ -222,14 +222,14 @@ export default function CataloguesPage() {
   }
 
   useEffect(() => {
-    loadCatalogues();
+    void loadCatalogues();
     // loadCatalogues intentionally reads the current page; wrapping it would change the existing request lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   useEffect(() => {
     const handleCataloguesChanged = () => {
-      loadCatalogues();
+      void loadCatalogues();
     };
 
     window.addEventListener("catalogues:changed", handleCataloguesChanged);

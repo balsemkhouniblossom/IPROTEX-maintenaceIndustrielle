@@ -114,7 +114,7 @@ export function useDashboardStatistics() {
       }
     }
 
-    fetchStatistics();
+    void fetchStatistics();
     return () => {
       cancelled = true;
     };

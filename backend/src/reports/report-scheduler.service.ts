@@ -136,20 +136,23 @@ export class ReportSchedulerService {
       .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
-    let generated = 0;
-    let failed = 0;
-    for (const schedule of due) {
-      if (Date.now() >= deadline) break;
-      try {
-        await this.fireSchedule(schedule, now);
-        generated += 1;
-      } catch (error) {
-        failed += 1;
-        this.logger.warn(
-          `Failed to fire scheduled report ${schedule.schedule_id}: ${String(error)}`,
-        );
-      }
-    }
+    const outcome = await due.reduce(
+      async (previous, schedule) => {
+        const counts = await previous;
+        if (Date.now() >= deadline) return counts;
+        try {
+          await this.fireSchedule(schedule, now);
+          return { ...counts, generated: counts.generated + 1 };
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fire scheduled report ${schedule.schedule_id}: ${String(error)}`,
+          );
+          return { ...counts, failed: counts.failed + 1 };
+        }
+      },
+      Promise.resolve({ generated: 0, failed: 0 }),
+    );
+    const { generated, failed } = outcome;
 
     const expiredCleaned =
       Date.now() < deadline ? await this.cleanupExpiredReports(deadline) : 0;
@@ -234,9 +237,9 @@ export class ReportSchedulerService {
       .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
-    let cleaned = 0;
-    for (const report of expired) {
-      if (Date.now() >= deadline) break;
+    return expired.reduce(async (previous, report) => {
+      const cleaned = await previous;
+      if (Date.now() >= deadline) return cleaned;
       try {
         if (
           report.file_path &&
@@ -248,14 +251,13 @@ export class ReportSchedulerService {
         await this.generatedReportModel
           .findByIdAndUpdate(report._id, { $unset: { file_path: 1 } })
           .exec();
-        cleaned += 1;
+        return cleaned + 1;
       } catch (error) {
         this.logger.warn(
           `Failed to clean up expired report ${report.report_id}: ${String(error)}`,
         );
+        return cleaned;
       }
-    }
-
-    return cleaned;
+    }, Promise.resolve(0));
   }
 }

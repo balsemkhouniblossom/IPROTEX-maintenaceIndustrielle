@@ -172,8 +172,8 @@ export function usePreventiveSubmission({
       const lubrication = buildLubricationPayload(selectedLubrifiant, lubrificationQty);
 
       // Sequential on purpose — see the hook-level doc comment above.
-      const submissionResults: Array<{ workOrderId: string; reportId: string }> = [];
-      for (const planId of selectedPlanIds) {
+      const submissionResults = await selectedPlanIds.reduce(async (previous, planId) => {
+        const results = await previous;
         const planPayload = buildPlanSubmissionPayload(planId, groupedChecklistItems, selectedOccurrenceIdsByPlan, selectedPlanGroup);
         if (!planPayload) {
           throw new Error("Preventive submission is incomplete");
@@ -192,8 +192,8 @@ export function usePreventiveSubmission({
         if (!workOrderId || !reportId) {
           throw new Error("Preventive submission failed");
         }
-        submissionResults.push({ workOrderId, reportId });
-      }
+        return [...results, { workOrderId, reportId }];
+      }, Promise.resolve([] as Array<{ workOrderId: string; reportId: string }>));
 
       await uploadPhotoIfPresent(selectedMachine);
       // The submitted work order's status changed server-side, so the Admin

@@ -99,22 +99,22 @@ export async function getPendingApprovalCount(): Promise<PendingApprovalCount> {
   };
 }
 
-export async function approveUserAccount(userId: string) {
+export function approveUserAccount(userId: string) {
   return api.patch(`/users/${encodeURIComponent(userId)}/approve`);
 }
 
-export async function rejectUserAccount(userId: string, reason: string) {
+export function rejectUserAccount(userId: string, reason: string) {
   return api.patch(
     `/users/${encodeURIComponent(userId)}/reject`,
     buildRejectAccountPayload(reason),
   );
 }
 
-export async function deactivateUserAccount(userId: string) {
+export function deactivateUserAccount(userId: string) {
   return api.patch(`/users/${encodeURIComponent(userId)}/deactivate`);
 }
 
-export async function reactivateUserAccount(userId: string) {
+export function reactivateUserAccount(userId: string) {
   return api.patch(`/users/${encodeURIComponent(userId)}/reactivate`);
 }
 

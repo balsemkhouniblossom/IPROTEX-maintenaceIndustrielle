@@ -478,7 +478,7 @@ export default function DocumentsPage() {
   }
 
   useEffect(() => {
-    loadData();
+    void loadData();
     // Initial load only; loadData is reused by mutations and intentionally not a dependency here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

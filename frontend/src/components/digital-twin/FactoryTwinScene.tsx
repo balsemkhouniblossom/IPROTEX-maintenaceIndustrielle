@@ -875,6 +875,46 @@ function FactoryCanvas({
   return <div ref={hostRef} className="absolute inset-0" />;
 }
 
+function mergeInventoryMachines(
+  rows: MachineRecord[],
+  currentMachines: TwinMachine[],
+): TwinMachine[] {
+  const assignedRows: Record<TwinFloor, MachineRecord[]> = {
+    first: [],
+    second: [],
+  };
+
+  rows.forEach((row) => {
+    const explicitFloor = floorFromLocation(row.location);
+    const fallbackFloor =
+      assignedRows.first.length + firstFloorAssetMachines.length <=
+      assignedRows.second.length
+        ? "first"
+        : "second";
+    assignedRows[explicitFloor ?? fallbackFloor].push(row);
+  });
+
+  const inventoryMachines = (["first", "second"] as const).flatMap((floor) =>
+    assignedRows[floor].map((row, index) =>
+      toFactoryMachine(row, index, assignedRows[floor].length, floor),
+    ),
+  );
+  const storedPlacements = readStoredPlacements();
+  return [...firstFloorAssetMachines, ...inventoryMachines].map((machine) => {
+    const currentMachine = currentMachines.find(
+      (candidate) => candidate.id === machine.id,
+    );
+    const placement = currentMachine ?? storedPlacements[machine.id];
+    return placement
+      ? {
+          ...machine,
+          position: placement.position,
+          rotationY: placement.rotationY,
+        }
+      : machine;
+  });
+}
+
 export default function FactoryTwinScene() {
   const { user } = useAuth();
   const canEditLayout = user?.role === "admin";
@@ -923,46 +963,8 @@ export default function FactoryTwinScene() {
         );
         if (cancelled) return;
 
-        const assignedRows: Record<TwinFloor, MachineRecord[]> = {
-          first: [],
-          second: [],
-        };
-
-        rows.forEach((row) => {
-          const explicitFloor = floorFromLocation(row.location);
-          const fallbackFloor =
-            assignedRows.first.length + firstFloorAssetMachines.length <=
-            assignedRows.second.length
-              ? "first"
-              : "second";
-          assignedRows[explicitFloor ?? fallbackFloor].push(row);
-        });
-
-        const inventoryMachines = (["first", "second"] as const).flatMap(
-          (floor) =>
-            assignedRows[floor].map((row, index) =>
-              toFactoryMachine(row, index, assignedRows[floor].length, floor),
-            ),
-        );
-        const refreshedMachines = [
-          ...firstFloorAssetMachines,
-          ...inventoryMachines,
-        ];
-        const storedPlacements = readStoredPlacements();
         setMachines((currentMachines) =>
-          refreshedMachines.map((machine) => {
-            const currentMachine = currentMachines.find(
-              (candidate) => candidate.id === machine.id,
-            );
-            const placement = currentMachine ?? storedPlacements[machine.id];
-            return placement
-              ? {
-                  ...machine,
-                  position: placement.position,
-                  rotationY: placement.rotationY,
-                }
-              : machine;
-          }),
+          mergeInventoryMachines(rows, currentMachines),
         );
       } catch (loadError) {
         console.error("Unable to load IPROTEX machine table for digital twin:", loadError);
@@ -1265,7 +1267,7 @@ export default function FactoryTwinScene() {
             {editingLayout ? (
               <div className="mt-3 space-y-3">
                 <label className="flex items-center justify-between gap-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Snap to 0.5 m grid
+                  <span>Snap to 0.5 m grid</span>
                   <input
                     type="checkbox"
                     checked={snapToGrid}
@@ -1342,19 +1344,12 @@ export default function FactoryTwinScene() {
                 {inspectedCount} / {machines.length}
               </output>
             </div>
-            <div
-              className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"
-              role="progressbar"
+            <progress
+              className="mt-2 h-2 w-full overflow-hidden rounded-full bg-blue-100 accent-blue-600 dark:bg-blue-950"
               aria-label="Factory inspection progress"
-              aria-valuemin={0}
-              aria-valuemax={machines.length}
-              aria-valuenow={inspectedCount}
-            >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-300"
-                style={{ width: `${inspectionProgress}%` }}
-              />
-            </div>
+              max={machines.length}
+              value={inspectedCount}
+            />
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
               <span
                 className={`rounded-full border px-2 py-1 ${

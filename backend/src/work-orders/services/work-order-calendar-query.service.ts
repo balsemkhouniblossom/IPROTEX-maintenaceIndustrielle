@@ -932,7 +932,7 @@ export class WorkOrderCalendarQueryService {
     return 'pending_end_of_shift';
   }
 
-  private async resolveMachine(value: unknown, hydrated?: unknown) {
+  private resolveMachine(value: unknown, hydrated?: unknown) {
     const inlineMachine = this.extractHydratedEntity<Machine>(hydrated, [
       'machine_id',
     ]);
@@ -942,7 +942,7 @@ export class WorkOrderCalendarQueryService {
     return this.machineModel.findById(machineId).exec();
   }
 
-  private async resolveModule(value: unknown, hydrated?: unknown) {
+  private resolveModule(value: unknown, hydrated?: unknown) {
     const inlineModule = this.extractHydratedEntity<ModuleEntity>(hydrated, [
       'module_id',
     ]);
@@ -952,7 +952,7 @@ export class WorkOrderCalendarQueryService {
     return this.moduleModel.findById(moduleId).exec();
   }
 
-  private async resolvePlan(value: unknown, hydrated?: unknown) {
+  private resolvePlan(value: unknown, hydrated?: unknown) {
     const inlinePlan = this.extractHydratedEntity<MaintenancePlan>(hydrated, [
       'plan_id',
     ]);

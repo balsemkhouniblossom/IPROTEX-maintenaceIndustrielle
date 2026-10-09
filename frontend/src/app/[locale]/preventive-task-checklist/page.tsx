@@ -785,7 +785,7 @@ export default function PreventiveTaskChecklistPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!selectedTask.completed && selectedTask.source === "manual") {
-                  markTaskComplete();
+                  void markTaskComplete();
                 }
               }}
               className="space-y-4"

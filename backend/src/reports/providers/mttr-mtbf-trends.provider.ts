@@ -53,21 +53,22 @@ export class MttrMtbfTrendsReportProvider implements ReportDataProvider {
       cursor = next;
     }
 
-    const rows: Array<Record<string, string | number | null>> = [];
-    for (const bucket of buckets) {
-      const result = await this.kpiService.computeMttrMtbf({
-        machineIds: machineIds?.map((id) => id.toString()),
-        dateFrom: bucket.start,
-        dateTo: bucket.end,
-      });
-      rows.push({
-        period: bucket.start.toISOString().slice(0, 7), // YYYY-MM
-        mttr_hours: result.mttrHours,
-        mtbf_hours: result.mtbfHours,
-        availability_percent: result.availabilityPercent,
-        sample_size: result.sampleSize,
-      });
-    }
+    const rows = await Promise.all(
+      buckets.map(async (bucket) => {
+        const result = await this.kpiService.computeMttrMtbf({
+          machineIds: machineIds?.map((id) => id.toString()),
+          dateFrom: bucket.start,
+          dateTo: bucket.end,
+        });
+        return {
+          period: bucket.start.toISOString().slice(0, 7), // YYYY-MM
+          mttr_hours: result.mttrHours,
+          mtbf_hours: result.mtbfHours,
+          availability_percent: result.availabilityPercent,
+          sample_size: result.sampleSize,
+        };
+      }),
+    );
 
     return {
       title: 'MTTR / MTBF Trends Report',

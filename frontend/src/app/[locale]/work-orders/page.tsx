@@ -251,26 +251,24 @@ export default function WorkOrdersPage() {
     ]);
 
     if (machinesResult.status === "fulfilled") {
-      setMachines(
-        machinesResult.value.sort((left, right) =>
-          left.machine_id.localeCompare(right.machine_id, locale, {
-            numeric: true,
-            sensitivity: "base",
-          }),
-        ),
+      const sortedMachines = [...machinesResult.value].sort((left, right) =>
+        left.machine_id.localeCompare(right.machine_id, locale, {
+          numeric: true,
+          sensitivity: "base",
+        }),
       );
+      setMachines(sortedMachines);
     } else {
       console.error("Error loading machines:", machinesResult.reason);
     }
 
     if (usersResult.status === "fulfilled") {
-      setUsers(
-        usersResult.value.sort((left, right) =>
-          left.nom_complet.localeCompare(right.nom_complet, locale, {
-            sensitivity: "base",
-          }),
-        ),
+      const sortedUsers = [...usersResult.value].sort((left, right) =>
+        left.nom_complet.localeCompare(right.nom_complet, locale, {
+          sensitivity: "base",
+        }),
       );
+      setUsers(sortedUsers);
     } else {
       console.error("Error loading users:", usersResult.reason);
     }
@@ -298,7 +296,7 @@ export default function WorkOrdersPage() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  async function refreshWorkOrders() {
+  function refreshWorkOrders() {
     invalidateList(LIST_EVENTS.workOrders);
     router.refresh();
   }

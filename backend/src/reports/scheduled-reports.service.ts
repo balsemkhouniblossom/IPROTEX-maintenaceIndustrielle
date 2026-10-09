@@ -39,13 +39,15 @@ export class ScheduledReportsService {
     private readonly scheduledReportModel: Model<ScheduledReportDocument>,
   ) {}
 
-  async create(
+  create(
     dto: CreateScheduledReportDto,
     actor: ReportActor,
   ): Promise<ScheduledReportDocument> {
     if (!canRequestReportType(actor.role, dto.type)) {
-      throw new ForbiddenException(
-        `Your role may not schedule a ${dto.type} report`,
+      return Promise.reject(
+        new ForbiddenException(
+          `Your role may not schedule a ${dto.type} report`,
+        ),
       );
     }
 
@@ -62,7 +64,7 @@ export class ScheduledReportsService {
     });
   }
 
-  async listForActor(actor: ReportActor): Promise<ScheduledReportDocument[]> {
+  listForActor(actor: ReportActor): Promise<ScheduledReportDocument[]> {
     const filter =
       actor.role === Role.ADMIN
         ? {}

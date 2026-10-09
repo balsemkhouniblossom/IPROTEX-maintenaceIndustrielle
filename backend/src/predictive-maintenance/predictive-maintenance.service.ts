@@ -109,9 +109,9 @@ export class PredictiveMaintenanceService {
 
     const results = await Promise.all(
       activeVersions.map(
-        async (version): Promise<MachineHealthPredictionDocument | null> => {
+        (version): Promise<MachineHealthPredictionDocument | null> => {
           const model = this.models.find((m) => m.type === version.model_type);
-          if (!model) return null;
+          if (!model) return Promise.resolve(null);
 
           const inference = model.score(
             features,

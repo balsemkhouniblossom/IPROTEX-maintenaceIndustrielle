@@ -102,7 +102,7 @@ test("Work Orders page invalidates the shared workOrders list event on its own C
 
   assert.match(source, /import \{ invalidateList, LIST_EVENTS, useListInvalidation \} from "@\/services\/listInvalidation";/);
   assert.match(source, /useListInvalidation\(LIST_EVENTS\.workOrders, table\.reload\)/);
-  assert.match(source, /async function refreshWorkOrders\(\) \{\s*\n\s*invalidateList\(LIST_EVENTS\.workOrders\);/);
+  assert.match(source, /function refreshWorkOrders\(\) \{\s*\n\s*invalidateList\(LIST_EVENTS\.workOrders\);/);
 });
 
 test("Work Orders page edit/delete action buttons carry an accessible name including the work order reference", () => {

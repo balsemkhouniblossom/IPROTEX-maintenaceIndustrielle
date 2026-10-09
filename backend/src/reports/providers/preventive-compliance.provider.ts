@@ -39,26 +39,30 @@ export class PreventiveComplianceReportProvider implements ReportDataProvider {
       .select({ machine_id: 1, reference: 1 })
       .exec();
 
-    const rows: Array<Record<string, string | number>> = [];
+    const machineResults = await Promise.all(
+      machines.map(async (machine) => ({
+        machine,
+        result: await this.kpiService.computePreventiveCompliance({
+          machineIds: [machine._id.toString()],
+          dateFrom: params.dateFrom,
+          dateTo: params.dateTo,
+        }),
+      })),
+    );
     let totalOnTime = 0;
     let totalEvaluable = 0;
-    for (const machine of machines) {
-      const result = await this.kpiService.computePreventiveCompliance({
-        machineIds: [machine._id.toString()],
-        dateFrom: params.dateFrom,
-        dateTo: params.dateTo,
-      });
+    const rows = machineResults.map(({ machine, result }) => {
       totalOnTime += result.onTimeCount;
       totalEvaluable += result.evaluableCount;
-      rows.push({
+      return {
         machine: machine.reference
           ? `${machine.machine_id} (${machine.reference})`
           : machine.machine_id,
         compliance_rate_percent: result.ratePercent,
         on_time_count: result.onTimeCount,
         evaluable_count: result.evaluableCount,
-      });
-    }
+      };
+    });
 
     const overallRate =
       totalEvaluable > 0
