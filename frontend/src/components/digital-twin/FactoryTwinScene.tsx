@@ -915,6 +915,20 @@ function mergeInventoryMachines(
   });
 }
 
+function applyStoredMachinePlacements(machines: TwinMachine[]): TwinMachine[] {
+  const placements = readStoredPlacements();
+  return machines.map((machine) => {
+    const placement = placements[machine.id];
+    return placement
+      ? {
+          ...machine,
+          position: placement.position,
+          rotationY: placement.rotationY,
+        }
+      : machine;
+  });
+}
+
 export default function FactoryTwinScene() {
   const { user } = useAuth();
   const canEditLayout = user?.role === "admin";
@@ -933,19 +947,7 @@ export default function FactoryTwinScene() {
   const layoutBeforeEditRef = useRef<TwinMachine[] | null>(null);
 
   useEffect(() => {
-    const placements = readStoredPlacements();
-    setMachines((currentMachines) =>
-      currentMachines.map((machine) => {
-        const placement = placements[machine.id];
-        return placement
-          ? {
-              ...machine,
-              position: placement.position,
-              rotationY: placement.rotationY,
-            }
-          : machine;
-      }),
-    );
+    setMachines(applyStoredMachinePlacements);
   }, []);
 
   useEffect(() => {

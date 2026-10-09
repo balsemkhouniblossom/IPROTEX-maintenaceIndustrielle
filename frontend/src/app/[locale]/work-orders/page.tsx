@@ -357,7 +357,7 @@ export default function WorkOrdersPage() {
     if (confirm(tWorkOrders("confirmDelete"))) {
       try {
         await apiService.deleteWorkOrder(workOrderId);
-        await refreshWorkOrders();
+        refreshWorkOrders();
         showNotification('success', tWorkOrders("notifications.deleted"));
       } catch (error) {
         console.error('Error deleting work order:', error);
@@ -372,7 +372,7 @@ export default function WorkOrdersPage() {
     try {
       const response = await apiService.deleteAllWorkOrders();
       setShowDeleteAllModal(false);
-      await refreshWorkOrders();
+      refreshWorkOrders();
       showNotification(
         'success',
         tWorkOrders('notifications.allDeleted', {
@@ -407,7 +407,7 @@ export default function WorkOrdersPage() {
     if (!confirm(confirmMessages[action])) return;
     try {
       await apiService.validateWorkOrder(workOrderId, { action });
-      await refreshWorkOrders();
+      refreshWorkOrders();
       const successMessages: Record<typeof action, string> = {
         approve: tWorkOrders("notifications.approved"),
         reject: tWorkOrders("notifications.rejected"),
@@ -449,7 +449,7 @@ export default function WorkOrdersPage() {
 
       setShowModal(false);
       resetForm();
-      await refreshWorkOrders();
+      refreshWorkOrders();
     } catch (error) {
       console.error('Error saving work order:', error);
       showNotification('error', tWorkOrders("notifications.saveFailed"));
