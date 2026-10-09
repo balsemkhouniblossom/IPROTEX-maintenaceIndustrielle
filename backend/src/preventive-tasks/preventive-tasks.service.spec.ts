@@ -188,14 +188,14 @@ describe('PreventiveTasksService.syncPlans', () => {
       ]),
     );
     moduleModel.findById.mockReturnValueOnce({
-      select: jest.fn().mockReturnValue(
-        leanChain({ _id: moduleId, machine_id: machineId }),
-      ),
+      select: jest
+        .fn()
+        .mockReturnValue(leanChain({ _id: moduleId, machine_id: machineId })),
     });
     machineModel.findById.mockReturnValueOnce({
-      select: jest.fn().mockReturnValue(
-        leanChain({ _id: machineId, type_id: machineTypeId }),
-      ),
+      select: jest
+        .fn()
+        .mockReturnValue(leanChain({ _id: machineId, type_id: machineTypeId })),
     });
     machineModel.find.mockReturnValueOnce({
       distinct: jest.fn().mockReturnValue(execResult([machineId])),

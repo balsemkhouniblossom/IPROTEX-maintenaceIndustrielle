@@ -44,6 +44,7 @@ describe('OperatorService machine scoping', () => {
     find: jest.Mock;
     findById: jest.Mock;
     countDocuments: jest.Mock;
+    distinct: jest.Mock;
   };
   let userModel: { findById: jest.Mock };
   let documentModel: { find: jest.Mock; countDocuments: jest.Mock };
@@ -126,6 +127,7 @@ describe('OperatorService machine scoping', () => {
         }),
       ),
       countDocuments: jest.fn().mockReturnValue(queryResult(0)),
+      distinct: jest.fn().mockReturnValue(queryResult([])),
     };
     userModel = {
       findById: jest.fn().mockReturnValue(
@@ -279,45 +281,43 @@ describe('OperatorService machine scoping', () => {
     );
   });
 
-  it('allows preventive plan creation for an existing unassigned machine', async () => {
+  it('rejects preventive plan creation for an unassigned machine', async () => {
     const moduleId = new Types.ObjectId();
     moduleModel.findById.mockReturnValueOnce(
       queryResult({ _id: moduleId, machine_id: unassignedMachineId }),
     );
-    machineModel.countDocuments.mockReturnValueOnce(queryResult(1));
+    await expect(
+      service.createPreventiveMaintenancePlan(operatorId.toString(), {
+        plan_id: 'OP-PM-2',
+        module_id: moduleId.toString(),
+        type_maintenance: 'preventive',
+        frequence: 1,
+        unite_frequence: 'semaine',
+      }),
+    ).rejects.toThrow(ForbiddenException);
 
-    await service.createPreventiveMaintenancePlan(operatorId.toString(), {
-      plan_id: 'OP-PM-2',
-      module_id: moduleId.toString(),
-      type_maintenance: 'preventive',
-      frequence: 1,
-      unite_frequence: 'semaine',
-    });
-
-    expect(maintenancePlansService.create).toHaveBeenCalledWith(
-      expect.objectContaining({ module_id: moduleId.toString() }),
-      operatorId.toString(),
-    );
-    expect(maintenancePlansService.transition).toHaveBeenCalledWith(
-      expect.any(String),
-      { action: 'activate' },
-      operatorId.toString(),
-      { operatorId: operatorId.toString(), startImmediately: true },
-    );
+    expect(maintenancePlansService.create).not.toHaveBeenCalled();
+    expect(maintenancePlansService.transition).not.toHaveBeenCalled();
   });
 
-  it('returns modules for the complete machine catalogue', async () => {
+  it('scopes modules to the operator assigned machines', async () => {
     await service.getModules(operatorId.toString(), 1, 10, 0);
 
-    expect(moduleModel.find).toHaveBeenCalledWith({});
-    expect(moduleModel.countDocuments).toHaveBeenCalledWith({});
+    const expectedQuery = {
+      machine_id: { $in: [assignedMachineId] },
+    };
+    expect(moduleModel.find).toHaveBeenCalledWith(expectedQuery);
+    expect(moduleModel.countDocuments).toHaveBeenCalledWith(expectedQuery);
   });
 
-  it('returns maintenance-plan templates for the complete machine catalogue', async () => {
+  it('scopes maintenance-plan templates to assigned-machine modules', async () => {
+    const moduleId = new Types.ObjectId();
+    moduleModel.distinct.mockReturnValueOnce(queryResult([moduleId]));
     await service.getMaintenancePlans(operatorId.toString(), 1, 10, 0);
 
-    expect(referenceModel.find).toHaveBeenCalledWith({});
-    expect(referenceModel.countDocuments).toHaveBeenCalledWith({});
+    const expectedQuery = { module_id: { $in: [moduleId] } };
+    expect(referenceModel.find).toHaveBeenCalledWith(expectedQuery);
+    expect(referenceModel.countDocuments).toHaveBeenCalledWith(expectedQuery);
   });
 
   it('prepares a missing checklist only for a plan on an assigned machine', async () => {
@@ -680,35 +680,14 @@ describe('OperatorService machine scoping', () => {
     expect(workOrdersService.getCalendarEvents).not.toHaveBeenCalled();
   });
 
-  it('allows corrective reporting for any existing reportable machine', async () => {
+  it('rejects corrective reporting for an unassigned machine', async () => {
     await expect(
       service.createCorrectiveReport(operatorId.toString(), {
         machineId: unassignedMachineId.toString(),
         codePanne: 'FAULT-1',
         actions: ['Reset breaker'],
       }),
-    ).resolves.toBeDefined();
-
-    expect(
-      workOrdersService.createCorrectiveReportForOperator,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        machineId: unassignedMachineId.toString(),
-        operatorId: operatorId.toString(),
-      }),
-    );
-  });
-
-  it('rejects corrective reporting when the selected machine does not exist', async () => {
-    machineModel.countDocuments.mockReturnValueOnce(queryResult(0));
-
-    await expect(
-      service.createCorrectiveReport(operatorId.toString(), {
-        machineId: unassignedMachineId.toString(),
-        codePanne: 'FAULT-1',
-        actions: ['Reset breaker'],
-      }),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toThrow(ForbiddenException);
 
     expect(
       workOrdersService.createCorrectiveReportForOperator,

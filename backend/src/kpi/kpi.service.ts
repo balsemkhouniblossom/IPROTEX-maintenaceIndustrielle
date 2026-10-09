@@ -433,7 +433,7 @@ export class KpiService {
    * MTTR (mean time to repair) is the average repair duration
    * (InterventionReport.date_fin - date_debut) in minutes across
    * completed corrective work orders. MTBF (mean time between
-   * failures) is the average gap between consecutive corrective
+   * failures) is the average gap between consecutive completed corrective
    * closures. Availability follows `MTBF / (MTBF + MTTR)`,
    * defaulting to 100% when there's no failure history yet.
    * MTTR is computed via MttrCalculationService so the same
@@ -458,17 +458,19 @@ export class KpiService {
         {
           ...baseFilter,
           type_maintenance: CORRECTIVE_TYPE_REGEX,
+          status: { $in: ['completed', 'validated'] },
+          date_end: { $exists: true, $ne: null },
         },
         {
-          date_created: 1,
+          date_end: 1,
         },
       )
-      .sort({ date_created: 1 })
+      .sort({ date_end: 1 })
       .lean()
       .exec();
 
     const failureOccurrences = orders
-      .map((order) => order.date_created && new Date(order.date_created))
+      .map((order) => order.date_end && new Date(order.date_end))
       .filter((occurred): occurred is Date => Boolean(occurred))
       .filter((occurred) => {
         if (scope.dateFrom && occurred < scope.dateFrom) return false;

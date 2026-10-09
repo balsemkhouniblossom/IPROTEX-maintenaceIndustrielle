@@ -334,16 +334,14 @@ export class OperatorService {
   }
 
   async getModules(
-    _userId: string,
+    userId: string,
     page: number,
     limit: number,
     skip: number,
   ): Promise<PaginatedResponse<ModuleSummaryResponse>> {
-    // This catalogue drives the machine/module selectors on the Operator
-    // maintenance-plan form. Preventive plans may be created for any existing
-    // machine, so restricting this list to assigned_machine_ids left almost
-    // the entire fleet unavailable in the dropdown.
-    const query = {};
+    const machineIds = await this.getAllowedMachineIds(userId);
+    if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
+    const query = { machine_id: { $in: this.toObjectIdList(machineIds) } };
 
     const [items, totalItems] = await Promise.all([
       this.moduleModel
@@ -366,14 +364,17 @@ export class OperatorService {
   }
 
   async getMaintenancePlans(
-    _userId: string,
+    userId: string,
     page: number,
     limit: number,
     skip: number,
   ): Promise<PaginatedResponse<MaintenancePlanSummaryResponse>> {
-    // Existing plans provide the authoritative W1-W6 task details for the
-    // full machine catalogue shown in the Operator creation form.
-    const query = {};
+    const machineIds = await this.getAllowedMachineIds(userId);
+    if (!machineIds.length) return toPaginatedResponse([], 0, page, limit);
+    const moduleIds = await this.moduleModel
+      .distinct('_id', { machine_id: { $in: this.toObjectIdList(machineIds) } })
+      .exec();
+    const query = { module_id: { $in: moduleIds } };
 
     const [items, totalItems] = await Promise.all([
       this.maintenancePlanModel
@@ -417,7 +418,7 @@ export class OperatorService {
     if (!machineId) {
       throw new ForbiddenException('Module has no associated machine');
     }
-    await this.assertMachineExists(machineId);
+    await this.assertCanAccessMachine(userId, machineId);
 
     const createdPlan = await this.maintenancePlansService.create(
       { ...dto, type_maintenance: 'preventive' },
@@ -914,7 +915,7 @@ export class OperatorService {
       interventionEndedAt?: string;
     },
   ): Promise<CorrectiveReportForOperatorResponse> {
-    await this.assertMachineExists(input.machineId);
+    await this.assertCanAccessMachine(userId, input.machineId);
     return this.workOrdersService.createCorrectiveReportForOperator({
       machineId: input.machineId,
       codePanne: input.codePanne,

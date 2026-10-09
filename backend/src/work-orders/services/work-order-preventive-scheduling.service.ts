@@ -241,9 +241,7 @@ export class WorkOrderPreventiveSchedulingService {
       options?.operatorId && Types.ObjectId.isValid(options.operatorId)
         ? new Types.ObjectId(options.operatorId)
         : undefined;
-    const startsImmediately = Boolean(
-      options?.startImmediately && operatorId,
-    );
+    const startsImmediately = Boolean(options?.startImmediately && operatorId);
     return this.workOrderModel.create({
       ot_id: otId,
       machine_id: machineId,

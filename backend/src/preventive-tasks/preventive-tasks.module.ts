@@ -9,7 +9,10 @@ import {
   PreventiveTaskSchema,
 } from '../schemas/preventive-task.schema';
 import { Machine, MachineSchema } from '../schemas/machine.schema';
-import { Module as MachineModule, ModuleSchema } from '../schemas/module.schema';
+import {
+  Module as MachineModule,
+  ModuleSchema,
+} from '../schemas/module.schema';
 import { PreventiveTasksController } from './preventive-tasks.controller';
 import { PreventiveTasksService } from './preventive-tasks.service';
 

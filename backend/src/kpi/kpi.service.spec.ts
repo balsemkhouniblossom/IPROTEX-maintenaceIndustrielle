@@ -351,7 +351,7 @@ describe('KpiService', () => {
   });
 
   describe('computeMttrMtbf', () => {
-    it('uses the shared InterventionReport MTTR source and corrective occurrences for MTBF', async () => {
+    it('uses the shared InterventionReport MTTR source and completed corrective closures for MTBF', async () => {
       const firstOccurrence = new Date('2026-07-01T04:00:00.000Z');
       const secondOccurrence = new Date('2026-07-03T02:00:00.000Z');
       workOrderModel.find.mockReturnValue(
@@ -359,14 +359,14 @@ describe('KpiService', () => {
           {
             _id: new Types.ObjectId(),
             type_maintenance: 'corrective',
-            status: 'waiting_validation',
-            date_created: firstOccurrence,
+            status: 'completed',
+            date_end: firstOccurrence,
           },
           {
             _id: new Types.ObjectId(),
             type_maintenance: 'corrective',
-            status: 'waiting_validation',
-            date_created: secondOccurrence,
+            status: 'validated',
+            date_end: secondOccurrence,
           },
         ]),
       );
