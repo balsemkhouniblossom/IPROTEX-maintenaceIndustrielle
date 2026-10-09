@@ -443,15 +443,7 @@ export class KpiService {
   async computeMttrMtbf(
     scope: WorkOrderScopeFilter = {},
   ): Promise<MttrMtbfResult> {
-    const baseFilter: FilterQuery<WorkOrderDocument> = {};
-    if (scope.technicianId) {
-      baseFilter.technician_id = toObjectId(scope.technicianId);
-    }
-    if (scope.machineIds) {
-      baseFilter.machine_id = {
-        $in: scope.machineIds.map(toObjectId),
-      };
-    }
+    const baseFilter = this.buildWorkOrderScopeFilter(scope);
 
     const orders = await this.workOrderModel
       .find(
@@ -469,26 +461,8 @@ export class KpiService {
       .lean()
       .exec();
 
-    const failureOccurrences = orders
-      .map((order) => order.date_end && new Date(order.date_end))
-      .filter((occurred): occurred is Date => Boolean(occurred))
-      .filter((occurred) => {
-        if (scope.dateFrom && occurred < scope.dateFrom) return false;
-        if (scope.dateTo && occurred >= scope.dateTo) return false;
-        return true;
-      });
-
-    let mtbfHours: number | null = null;
-    if (failureOccurrences.length >= 2) {
-      const gaps = failureOccurrences
-        .slice(1)
-        .map(
-          (occurred, index) =>
-            (occurred.getTime() - failureOccurrences[index].getTime()) /
-            3_600_000,
-        );
-      mtbfHours = gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
-    }
+    const failureOccurrences = this.selectFailureOccurrences(orders, scope);
+    const mtbfHours = this.averageFailureGapHours(failureOccurrences);
 
     const mttrResult = await this.mttrSource.calculate({
       machineIds: scope.machineIds,
@@ -504,28 +478,7 @@ export class KpiService {
     // technician intervention report is available, instead of presenting a
     // real recorded duration as zero on the Admin dashboard.
     if (mttrMinutes === null) {
-      const entryFilter: FilterQuery<MachineMaintenanceMttrEntryDocument> = {};
-      if (scope.machineIds) {
-        entryFilter.machine_id = { $in: scope.machineIds.map(toObjectId) };
-      }
-      if (scope.dateFrom || scope.dateTo) {
-        entryFilter.ended_at = {
-          ...(scope.dateFrom ? { $gte: scope.dateFrom } : {}),
-          ...(scope.dateTo ? { $lt: scope.dateTo } : {}),
-        };
-      }
-      const [recordedMttr] = await this.machineMaintenanceMttrModel
-        .aggregate<{ sampleSize: number; mttrMinutes: number }>([
-          { $match: entryFilter },
-          {
-            $group: {
-              _id: null,
-              sampleSize: { $sum: 1 },
-              mttrMinutes: { $avg: '$duration_minutes' },
-            },
-          },
-        ])
-        .exec();
+      const recordedMttr = await this.loadRecordedMttr(scope);
       if (recordedMttr) {
         mttrMinutes = recordedMttr.mttrMinutes;
         mttrSampleSize = recordedMttr.sampleSize;
@@ -544,6 +497,76 @@ export class KpiService {
         availabilityPercent === null ? null : round2(availabilityPercent),
       sampleSize: mttrSampleSize,
     };
+  }
+
+  private buildWorkOrderScopeFilter(
+    scope: WorkOrderScopeFilter,
+  ): FilterQuery<WorkOrderDocument> {
+    return {
+      ...(scope.technicianId
+        ? { technician_id: toObjectId(scope.technicianId) }
+        : {}),
+      ...(scope.machineIds
+        ? { machine_id: { $in: scope.machineIds.map(toObjectId) } }
+        : {}),
+    };
+  }
+
+  private selectFailureOccurrences(
+    orders: Array<{ date_end?: Date | string | null }>,
+    scope: WorkOrderScopeFilter,
+  ): Date[] {
+    return orders
+      .map((order) => order.date_end && new Date(order.date_end))
+      .filter((occurred): occurred is Date => Boolean(occurred))
+      .filter(
+        (occurred) =>
+          (!scope.dateFrom || occurred >= scope.dateFrom) &&
+          (!scope.dateTo || occurred < scope.dateTo),
+      );
+  }
+
+  private averageFailureGapHours(failureOccurrences: Date[]): number | null {
+    if (failureOccurrences.length < 2) return null;
+    const gaps = failureOccurrences
+      .slice(1)
+      .map(
+        (occurred, index) =>
+          (occurred.getTime() - failureOccurrences[index].getTime()) /
+          3_600_000,
+      );
+    return gaps.reduce((sum, value) => sum + value, 0) / gaps.length;
+  }
+
+  private async loadRecordedMttr(
+    scope: WorkOrderScopeFilter,
+  ): Promise<{ sampleSize: number; mttrMinutes: number } | undefined> {
+    const entryFilter: FilterQuery<MachineMaintenanceMttrEntryDocument> = {
+      ...(scope.machineIds
+        ? { machine_id: { $in: scope.machineIds.map(toObjectId) } }
+        : {}),
+      ...(scope.dateFrom || scope.dateTo
+        ? {
+            ended_at: {
+              ...(scope.dateFrom ? { $gte: scope.dateFrom } : {}),
+              ...(scope.dateTo ? { $lt: scope.dateTo } : {}),
+            },
+          }
+        : {}),
+    };
+    const [recordedMttr] = await this.machineMaintenanceMttrModel
+      .aggregate<{ sampleSize: number; mttrMinutes: number }>([
+        { $match: entryFilter },
+        {
+          $group: {
+            _id: null,
+            sampleSize: { $sum: 1 },
+            mttrMinutes: { $avg: '$duration_minutes' },
+          },
+        },
+      ])
+      .exec();
+    return recordedMttr;
   }
 
   /**

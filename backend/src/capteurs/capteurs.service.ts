@@ -30,16 +30,16 @@ export class CapteursService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async findOne(id: string): Promise<Capteur | null> {
+  findOne(id: string): Promise<Capteur | null> {
     return this.capteurModel.findById(id).exec();
   }
 
-  async create(createCapteurDto: CreateCapteurDto): Promise<Capteur> {
+  create(createCapteurDto: CreateCapteurDto): Promise<Capteur> {
     const newCapteur = new this.capteurModel(createCapteurDto);
     return newCapteur.save();
   }
 
-  async update(
+  update(
     id: string,
     updateCapteurDto: UpdateCapteurDto,
   ): Promise<Capteur | null> {

@@ -85,7 +85,7 @@ export async function validateAndNormalizeAvatar(
   };
 }
 
-export async function normalizeAvatarImage(buffer: Buffer): Promise<Buffer> {
+export function normalizeAvatarImage(buffer: Buffer): Promise<Buffer> {
   return sharp(buffer)
     .rotate()
     .resize({

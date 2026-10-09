@@ -107,47 +107,53 @@ export class PredictiveMaintenanceService {
       .find({ status: PredictionModelVersionStatus.ACTIVE })
       .exec();
 
-    const results: MachineHealthPredictionDocument[] = [];
-    for (const version of activeVersions) {
-      const model = this.models.find((m) => m.type === version.model_type);
-      if (!model) continue;
+    const results = await Promise.all(
+      activeVersions.map(
+        async (version): Promise<MachineHealthPredictionDocument | null> => {
+          const model = this.models.find((m) => m.type === version.model_type);
+          if (!model) return null;
 
-      const inference = model.score(
-        features,
-        version.artifact as ModelArtifact,
-      );
-      const healthScore = clampHealthScore(100 * (1 - inference.anomalyScore));
-      const riskLevel = isEmpty
-        ? PredictionRiskLevel.INSUFFICIENT_DATA
-        : this.deriveRiskLevel(inference.anomalyScore, features);
+          const inference = model.score(
+            features,
+            version.artifact as ModelArtifact,
+          );
+          const healthScore = clampHealthScore(
+            100 * (1 - inference.anomalyScore),
+          );
+          const riskLevel = isEmpty
+            ? PredictionRiskLevel.INSUFFICIENT_DATA
+            : this.deriveRiskLevel(inference.anomalyScore, features);
 
-      const created = await this.predictionModel.create({
-        machine_id: new Types.ObjectId(machineId),
-        model_version_id: version._id,
-        model_type: version.model_type,
-        health_score: healthScore,
-        anomaly_score: inference.anomalyScore,
-        risk_level: riskLevel,
-        confidence: inference.confidence,
-        feature_snapshot: features,
-        generated_at: asOfDate,
-        explanation: {
-          measuredFacts,
-          modelOutputNotes: [
-            `Anomaly score ${inference.anomalyScore.toFixed(2)} (0 = matches the trained baseline, 1 = maximally anomalous) from the ${model.displayName} model, version ${version.version}.`,
-            ...inference.modelNotes,
-          ],
-          uncertaintyNotes: this.buildUncertaintyNotes(
-            inference.confidence,
-            version,
-            isEmpty,
-          ),
+          return this.predictionModel.create({
+            machine_id: new Types.ObjectId(machineId),
+            model_version_id: version._id,
+            model_type: version.model_type,
+            health_score: healthScore,
+            anomaly_score: inference.anomalyScore,
+            risk_level: riskLevel,
+            confidence: inference.confidence,
+            feature_snapshot: features,
+            generated_at: asOfDate,
+            explanation: {
+              measuredFacts,
+              modelOutputNotes: [
+                `Anomaly score ${inference.anomalyScore.toFixed(2)} (0 = matches the trained baseline, 1 = maximally anomalous) from the ${model.displayName} model, version ${version.version}.`,
+                ...inference.modelNotes,
+              ],
+              uncertaintyNotes: this.buildUncertaintyNotes(
+                inference.confidence,
+                version,
+                isEmpty,
+              ),
+            },
+          });
         },
-      });
-      results.push(created);
-    }
+      ),
+    );
 
-    return results;
+    return results.filter(
+      (result): result is NonNullable<typeof result> => result !== null,
+    );
   }
 
   async predictForMachine(
@@ -200,12 +206,12 @@ export class PredictiveMaintenanceService {
       .select({ _id: 1 })
       .exec();
 
-    const summaries: FleetHealthSummary[] = [];
-    for (const machine of machines) {
-      const summary = await this.summarizeMachine(machine._id.toString());
-      if (summary) summaries.push(summary);
-    }
-    return summaries;
+    const summaries = await Promise.all(
+      machines.map((machine) => this.summarizeMachine(machine._id.toString())),
+    );
+    return summaries.filter(
+      (summary): summary is FleetHealthSummary => summary !== null,
+    );
   }
 
   /** Resolves every accessible maintenance plan to its machine (Plan -> Module -> Machine) and attaches that machine's latest health summary, so the plans page can show risk without needing to know about machines at all. */
@@ -242,7 +248,20 @@ export class PredictiveMaintenanceService {
       .select({ _id: 1, module_id: 1 })
       .exec();
 
-    const summaryByMachineId = new Map<string, FleetHealthSummary | null>();
+    const machineIds = [
+      ...new Set(
+        plans
+          .map((plan) => machineIdByModuleId.get(plan.module_id.toString()))
+          .filter((machineId): machineId is string => Boolean(machineId)),
+      ),
+    ];
+    const summaries = await Promise.all(
+      machineIds.map(
+        async (machineId) =>
+          [machineId, await this.summarizeMachine(machineId)] as const,
+      ),
+    );
+    const summaryByMachineId = new Map(summaries);
     const result: Record<string, FleetHealthSummary & { machineId: string }> =
       {};
 
@@ -250,12 +269,6 @@ export class PredictiveMaintenanceService {
       const machineId = machineIdByModuleId.get(plan.module_id.toString());
       if (!machineId) continue;
 
-      if (!summaryByMachineId.has(machineId)) {
-        summaryByMachineId.set(
-          machineId,
-          await this.summarizeMachine(machineId),
-        );
-      }
       const summary = summaryByMachineId.get(machineId);
       if (summary) result[plan._id.toString()] = { ...summary, machineId };
     }
@@ -291,17 +304,18 @@ export class PredictiveMaintenanceService {
     machineId: string,
   ): Promise<MachineHealthPredictionDocument[]> {
     const machineObjectId = new Types.ObjectId(machineId);
-    const results: MachineHealthPredictionDocument[] = [];
+    const results = await Promise.all(
+      [...new Set(this.models.map((model) => model.type))].map((modelType) =>
+        this.predictionModel
+          .findOne({ machine_id: machineObjectId, model_type: modelType })
+          .sort({ generated_at: -1 })
+          .exec(),
+      ),
+    );
 
-    for (const modelType of new Set(this.models.map((m) => m.type))) {
-      const latest = await this.predictionModel
-        .findOne({ machine_id: machineObjectId, model_type: modelType })
-        .sort({ generated_at: -1 })
-        .exec();
-      if (latest) results.push(latest);
-    }
-
-    return results;
+    return results.filter(
+      (result): result is NonNullable<typeof result> => result !== null,
+    );
   }
 
   private deriveRiskLevel(

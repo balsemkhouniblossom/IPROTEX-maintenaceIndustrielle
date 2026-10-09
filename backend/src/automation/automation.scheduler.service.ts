@@ -171,9 +171,13 @@ export class AutomationSchedulerService {
 
     this.logger.log(`Scheduler batch started: ${label}`);
 
-    for (const [name, job] of jobs) {
-      await this.runJob(name, job);
-    }
+    await jobs.reduce(
+      (previous, [name, job]) =>
+        previous.then(async () => {
+          await this.runJob(name, job);
+        }),
+      Promise.resolve(),
+    );
 
     this.logger.log(`Scheduler batch finished: ${label}`);
   }
@@ -688,27 +692,31 @@ export class AutomationSchedulerService {
           }
 
           if (overdueDays >= 7) {
-            for (const supervisor of supervisors) {
-              const supervisorId = this.objectIdString(supervisor._id);
-              const dedupeKey = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
-                overdueDays / 7,
-              )}`;
-              const created =
-                await this.notificationCenterService.createIfNotExists({
-                  dedupeKey,
-                  type: NotificationType.OVERDUE_ESCALATION,
-                  title: `Escalation 7+ days overdue for ${
-                    row.ot_id || workOrderId
-                  }`,
-                  translationKey: 'templates.workOrderOverdueSevenDays',
-                  translationParams: { workOrder: row.ot_id || workOrderId },
-                  workOrderId,
-                  recipientUserId: supervisorId,
-                });
-              if (created) {
-                notifications += 1;
-              }
-            }
+            const supervisorNotifications = await Promise.all(
+              supervisors.map(async (supervisor): Promise<number> => {
+                const supervisorId = this.objectIdString(supervisor._id);
+                const dedupeKey = `escalation:supervisor:${workOrderId}:${supervisorId}:${Math.floor(
+                  overdueDays / 7,
+                )}`;
+                const created =
+                  await this.notificationCenterService.createIfNotExists({
+                    dedupeKey,
+                    type: NotificationType.OVERDUE_ESCALATION,
+                    title: `Escalation 7+ days overdue for ${
+                      row.ot_id || workOrderId
+                    }`,
+                    translationKey: 'templates.workOrderOverdueSevenDays',
+                    translationParams: { workOrder: row.ot_id || workOrderId },
+                    workOrderId,
+                    recipientUserId: supervisorId,
+                  });
+                return created ? 1 : 0;
+              }),
+            );
+            notifications += supervisorNotifications.reduce(
+              (sum, count) => sum + count,
+              0,
+            );
           }
         } catch (error) {
           failed += 1;
@@ -1173,16 +1181,19 @@ export class AutomationSchedulerService {
       .limit(Math.min(settings.batchSize, settings.maxItemsPerRun))
       .exec();
 
-    let updated = 0;
-    for (const row of completedWithoutCloseDate) {
-      if (context && !context.shouldContinue()) break;
-      await this.workOrderModel
-        .findByIdAndUpdate(row._id, {
-          date_closed: row.date_end || now,
-        })
-        .exec();
-      updated += 1;
-    }
+    const updated = await completedWithoutCloseDate.reduce(
+      async (previous, row) => {
+        const count = await previous;
+        if (context && !context.shouldContinue()) return count;
+        await this.workOrderModel
+          .findByIdAndUpdate(row._id, {
+            date_closed: row.date_end || now,
+          })
+          .exec();
+        return count + 1;
+      },
+      Promise.resolve(0),
+    );
 
     const duplicateSummary = await this.jobDetectDuplicateWorkOrders();
 

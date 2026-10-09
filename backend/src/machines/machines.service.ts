@@ -76,7 +76,7 @@ export class MachinesService {
     return toMachineResponse(saved);
   }
 
-  async countAll(): Promise<number> {
+  countAll(): Promise<number> {
     return this.machineModel.countDocuments().exec();
   }
 

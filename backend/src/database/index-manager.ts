@@ -217,21 +217,24 @@ export async function loadExistingIndexes(
   specs: RecommendedMongoIndex[] = RECOMMENDED_MONGODB_INDEXES,
 ): Promise<Map<string, ExistingMongoIndex[]>> {
   const collections = [...new Set(specs.map((spec) => spec.collection))];
-  const result = new Map<string, ExistingMongoIndex[]>();
-  for (const collectionName of collections) {
-    try {
-      const indexes = (await connection.db
-        ?.collection(collectionName)
-        .indexes()) as ExistingMongoIndex[] | undefined;
-      result.set(collectionName, indexes ?? []);
-    } catch (error) {
-      if ((error as { codeName?: string })?.codeName === 'NamespaceNotFound') {
-        result.set(collectionName, []);
-        continue;
+  const entries = await Promise.all(
+    collections.map(async (collectionName) => {
+      try {
+        const indexes = (await connection.db
+          ?.collection(collectionName)
+          .indexes()) as ExistingMongoIndex[] | undefined;
+        return [collectionName, indexes ?? []] as const;
+      } catch (error) {
+        if (
+          (error as { codeName?: string })?.codeName === 'NamespaceNotFound'
+        ) {
+          return [collectionName, [] as ExistingMongoIndex[]] as const;
+        }
+        throw error;
       }
-      throw error;
-    }
-  }
+    }),
+  );
+  const result = new Map<string, ExistingMongoIndex[]>(entries);
   return result;
 }
 
@@ -301,13 +304,14 @@ export async function runIndexManager({
     const existing = await loadExistingIndexes(connection, effectiveIndexes);
     const plan = planIndexes(existing, effectiveIndexes);
 
-    for (const entry of plan) {
+    await plan.reduce(async (previous, entry) => {
+      await previous;
       const { spec } = entry;
       if (entry.status === 'exists') {
         logger.log(
           `[exists] ${spec.collection}.${spec.name} equivalent=${entry.equivalentName}`,
         );
-        continue;
+        return;
       }
 
       logger.log(
@@ -318,7 +322,7 @@ export async function runIndexManager({
       if (apply) {
         await applyMissingIndex(connection, existing, spec, logger);
       }
-    }
+    }, Promise.resolve());
 
     return plan;
   } finally {

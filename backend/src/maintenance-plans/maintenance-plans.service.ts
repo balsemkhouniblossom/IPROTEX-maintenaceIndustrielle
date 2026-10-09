@@ -138,7 +138,7 @@ export class MaintenancePlansService {
     private readonly workOrdersService: WorkOrdersService,
   ) {}
 
-  async create(dto: CreateMaintenancePlanDto, actorId?: string) {
+  create(dto: CreateMaintenancePlanDto, actorId?: string) {
     const now = new Date();
     return this.maintenancePlanModel.create({
       ...dto,

@@ -26,7 +26,7 @@ export class ModuleTypesService {
     private readonly modulePiecesModel: Model<ModulePiecesDocument>,
   ) {}
 
-  async create(createModuleTypeDto: CreateModuleTypeDto): Promise<ModuleType> {
+  create(createModuleTypeDto: CreateModuleTypeDto): Promise<ModuleType> {
     const createdModuleType = new this.moduleTypeModel(createModuleTypeDto);
     return createdModuleType.save();
   }
@@ -44,14 +44,11 @@ export class ModuleTypesService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async findOne(id: string): Promise<any> {
+  findOne(id: string): Promise<any> {
     return this.moduleTypeModel.findById(id).exec();
   }
 
-  async update(
-    id: string,
-    updateModuleTypeDto: UpdateModuleTypeDto,
-  ): Promise<any> {
+  update(id: string, updateModuleTypeDto: UpdateModuleTypeDto): Promise<any> {
     return this.moduleTypeModel
       .findByIdAndUpdate(id, updateModuleTypeDto, { new: true })
       .exec();

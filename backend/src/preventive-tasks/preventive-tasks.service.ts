@@ -75,7 +75,7 @@ export class PreventiveTasksService {
       .filter(Boolean);
     const hasDetailedCodeInstructions = maintenanceCodes.every((code) =>
       instructions.some((instruction) =>
-        new RegExp(`^${code}\\s*:\\s*\\S`, 'i').test(instruction),
+        new RegExp(String.raw`^${code}\s*:\s*\S`, 'i').test(instruction),
       ),
     );
 
@@ -128,7 +128,7 @@ export class PreventiveTasksService {
           ) || matchingTemplates[0];
         return this.extractChecklistInstructions(template?.instruction).map(
           (instruction) =>
-            new RegExp(`^${code}\\s*:`, 'i').test(instruction)
+            new RegExp(String.raw`^${code}\s*:`, 'i').test(instruction)
               ? instruction
               : `${code}: ${instruction}`,
         );
@@ -146,11 +146,16 @@ export class PreventiveTasksService {
     filter: FilterQuery<MaintenancePlanDocument>,
   ) {
     const plans = await this.planModel.find(filter).lean().exec();
-    let created = 0;
-    for (const plan of plans) {
-      const instructions = this.extractChecklistInstructions(plan.instruction);
-      created += await this.syncPlan(plan, instructions);
-    }
+    const created = (
+      await Promise.all(
+        plans.map((plan) =>
+          this.syncPlan(
+            plan,
+            this.extractChecklistInstructions(plan.instruction),
+          ),
+        ),
+      )
+    ).reduce((total, count) => total + count, 0);
     return { plans: plans.length, created };
   }
 
@@ -158,35 +163,40 @@ export class PreventiveTasksService {
     plan: MaintenancePlanDocument | (MaintenancePlan & { _id: Types.ObjectId }),
     instructions: string[],
   ): Promise<number> {
-    const sourceKeys: string[] = [];
-    let created = 0;
-    for (let index = 0; index < instructions.length; index += 1) {
-      const sourceKey = `${String(plan._id)}:${index}`;
-      sourceKeys.push(sourceKey);
-      const result = await this.model
-        .updateOne(
-          { source_key: sourceKey },
-          {
-            $set: {
-              plan_id: plan._id,
-              plan_code: plan.plan_id,
-              module_id: plan.module_id,
-              instruction: instructions[index],
-              responsable: plan.responsable,
+    const sourceKeys = instructions.map(
+      (_, index) => `${String(plan._id)}:${index}`,
+    );
+    const upserts = await Promise.all(
+      instructions.map((instruction, index) => {
+        const sourceKey = `${String(plan._id)}:${index}`;
+        return this.model
+          .updateOne(
+            { source_key: sourceKey },
+            {
+              $set: {
+                plan_id: plan._id,
+                plan_code: plan.plan_id,
+                module_id: plan.module_id,
+                instruction,
+                responsable: plan.responsable,
+              },
+              $unset: { deleted_at: '' },
+              $setOnInsert: {
+                task_id: `PT-${String(plan._id).slice(-8)}-${index + 1}`,
+                status: 'pending',
+                source: 'plan',
+                source_key: sourceKey,
+              },
             },
-            $unset: { deleted_at: '' },
-            $setOnInsert: {
-              task_id: `PT-${String(plan._id).slice(-8)}-${index + 1}`,
-              status: 'pending',
-              source: 'plan',
-              source_key: sourceKey,
-            },
-          },
-          { upsert: true },
-        )
-        .exec();
-      if (result.upsertedCount) created += 1;
-    }
+            { upsert: true },
+          )
+          .exec();
+      }),
+    );
+    const created = upserts.reduce(
+      (total, result) => total + result.upsertedCount,
+      0,
+    );
     await this.model
       .updateMany(
         {

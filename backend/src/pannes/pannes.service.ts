@@ -118,7 +118,7 @@ export class PannesService {
     );
   }
 
-  async findOne(id: string): Promise<Panne | null> {
+  findOne(id: string): Promise<Panne | null> {
     return this.panneModel.findById(id).exec();
   }
 
@@ -141,7 +141,7 @@ export class PannesService {
     return removed;
   }
 
-  async findParts(panneId: string) {
+  findParts(panneId: string) {
     this.assertObjectId(panneId, 'panne_id');
     return this.pannePartModel
       .find({ panne_id: new Types.ObjectId(panneId) })

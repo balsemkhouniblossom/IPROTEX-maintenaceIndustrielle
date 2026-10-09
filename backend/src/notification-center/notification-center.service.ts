@@ -122,7 +122,7 @@ export class NotificationCenterService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async unreadCount(userId: string, role: string): Promise<number> {
+  unreadCount(userId: string, role: string): Promise<number> {
     return this.notificationModel
       .countDocuments({ ...this.visibilityScope(userId, role), is_read: false })
       .exec();

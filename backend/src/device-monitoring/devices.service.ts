@@ -65,7 +65,7 @@ export class DevicesService {
     }
   }
 
-  async findAll(): Promise<DeviceDocument[]> {
+  findAll(): Promise<DeviceDocument[]> {
     return this.deviceModel.find().sort({ createdAt: -1 }).exec();
   }
 

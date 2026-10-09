@@ -426,7 +426,7 @@ export class AiAssistantService {
     );
   }
 
-  async listOwnHistory(
+  listOwnHistory(
     actor: { userId: string },
     limit = 20,
   ): Promise<AiInteractionDocument[]> {
@@ -437,7 +437,7 @@ export class AiAssistantService {
       .exec();
   }
 
-  async listAllHistory(limit = 50): Promise<AiInteractionDocument[]> {
+  listAllHistory(limit = 50): Promise<AiInteractionDocument[]> {
     return this.interactionModel
       .find({})
       .sort({ createdAt: -1 })

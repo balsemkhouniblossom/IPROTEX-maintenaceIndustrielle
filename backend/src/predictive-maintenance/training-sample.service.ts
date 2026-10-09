@@ -37,25 +37,28 @@ export class TrainingSampleService {
     now: Date = new Date(),
   ): Promise<TrainingSample[]> {
     const machines = await this.machineModel.find({}).select({ _id: 1 }).exec();
-    const samples: TrainingSample[] = [];
-
-    for (const machine of machines) {
+    const checkpoints = machines.flatMap((machine) => {
       const machineId = machine._id.toString();
-      for (let i = 0; i < CHECKPOINT_COUNT; i += 1) {
-        const asOfDate = new Date(
-          now.getTime() - i * CHECKPOINT_INTERVAL_DAYS * DAY_MS,
-        );
+      return Array.from({ length: CHECKPOINT_COUNT }, (_, index) => ({
+        machineId,
+        asOfDate: new Date(
+          now.getTime() - index * CHECKPOINT_INTERVAL_DAYS * DAY_MS,
+        ),
+      }));
+    });
 
+    return checkpoints.reduce(
+      async (previous, checkpoint) => {
+        const samples = await previous;
         const { features, isEmpty } =
           await this.featureExtractionService.buildFeatureVector(
-            machineId,
-            asOfDate,
+            checkpoint.machineId,
+            checkpoint.asOfDate,
           );
-        if (isEmpty) continue;
-        samples.push({ machineId, asOfDate, features });
-      }
-    }
-
-    return samples;
+        if (!isEmpty) samples.push({ ...checkpoint, features });
+        return samples;
+      },
+      Promise.resolve([] as TrainingSample[]),
+    );
   }
 }

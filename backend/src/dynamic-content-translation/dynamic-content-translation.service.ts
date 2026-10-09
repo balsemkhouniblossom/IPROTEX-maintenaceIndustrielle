@@ -100,7 +100,8 @@ export class DynamicContentTranslationService {
 
     const results: TranslationResultItem[] = [];
     const seenRequests = new Set<string>();
-    for (const item of dto.items) {
+    await dto.items.reduce(async (previous, item) => {
+      await previous;
       const itemResults = await this.translateBatchItem(
         actor,
         item,
@@ -108,15 +109,15 @@ export class DynamicContentTranslationService {
         targetLocale,
         seenRequests,
       );
-      for (const result of itemResults) {
+      itemResults.forEach((result) => {
         if (results.length >= MAX_FIELD_RESULTS) {
           throw new BadRequestException(
             `Translation field result limit is ${MAX_FIELD_RESULTS}`,
           );
         }
         results.push(result);
-      }
-    }
+      });
+    }, Promise.resolve());
 
     return { items: results };
   }
@@ -135,9 +136,10 @@ export class DynamicContentTranslationService {
     const workOrder = await this.loadAccessibleWorkOrder(actor, item.entityId);
 
     const results: TranslationResultItem[] = [];
-    for (const requestField of new Set(item.fields)) {
+    await [...new Set(item.fields)].reduce(async (previous, requestField) => {
+      await previous;
       const requestKey = `${item.entityType}:${workOrder._id.toString()}:${requestField}`;
-      if (seenRequests.has(requestKey)) continue;
+      if (seenRequests.has(requestKey)) return;
       seenRequests.add(requestKey);
 
       const fieldResults = await this.translateExtractedFields(
@@ -147,7 +149,7 @@ export class DynamicContentTranslationService {
         targetLocale,
       );
       results.push(...fieldResults);
-    }
+    }, Promise.resolve());
     return results;
   }
 
@@ -157,22 +159,23 @@ export class DynamicContentTranslationService {
     sourceLocale: SupportedContentLocale,
     targetLocale: SupportedContentLocale,
   ): Promise<TranslationResultItem[]> {
-    const results: TranslationResultItem[] = [];
     const entityId = workOrder._id.toString();
     const extracted = this.extractWorkOrderField(workOrder, requestField);
-    for (const fieldValue of extracted) {
-      results.push(
-        await this.translateField({
+    return extracted.reduce(
+      async (previous, fieldValue) => {
+        const results = await previous;
+        const translated = await this.translateField({
           entityType: 'workOrder',
           entityId,
           field: fieldValue.field,
           originalText: fieldValue.text,
           sourceLocale,
           targetLocale,
-        }),
-      );
-    }
-    return results;
+        });
+        return [...results, translated];
+      },
+      Promise.resolve([] as TranslationResultItem[]),
+    );
   }
 
   private assertLocale(value: string, field: string): SupportedContentLocale {

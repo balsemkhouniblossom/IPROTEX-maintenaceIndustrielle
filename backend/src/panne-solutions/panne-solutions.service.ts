@@ -16,7 +16,7 @@ export class PanneSolutionsService {
     private readonly panneSolutionModel: Model<PanneSolutionDocument>,
   ) {}
 
-  async create(
+  create(
     createPanneSolutionDto: CreatePanneSolutionDto,
   ): Promise<PanneSolution> {
     const createdPanneSolution = new this.panneSolutionModel(
@@ -43,11 +43,11 @@ export class PanneSolutionsService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async findOne(id: string): Promise<PanneSolution | null> {
+  findOne(id: string): Promise<PanneSolution | null> {
     return this.panneSolutionModel.findById(id).populate('panne_id').exec();
   }
 
-  async update(
+  update(
     id: string,
     updatePanneSolutionDto: UpdatePanneSolutionDto,
   ): Promise<PanneSolution | null> {
@@ -57,7 +57,7 @@ export class PanneSolutionsService {
       .exec();
   }
 
-  async remove(id: string): Promise<PanneSolution | null> {
+  remove(id: string): Promise<PanneSolution | null> {
     return this.panneSolutionModel.findByIdAndDelete(id).exec();
   }
 }

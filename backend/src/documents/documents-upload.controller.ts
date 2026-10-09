@@ -77,7 +77,7 @@ interface SavedUploadFile {
   deleteRef: string;
 }
 
-export async function normalizeOperatorPhoto(buffer: Buffer): Promise<Buffer> {
+export function normalizeOperatorPhoto(buffer: Buffer): Promise<Buffer> {
   return sharp(buffer)
     .rotate()
     .resize({

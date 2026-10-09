@@ -29,18 +29,17 @@ export class EmbeddingService {
 
   async embedBatch(texts: string[]): Promise<number[][]> {
     if (!texts.length) return [];
-    const vectors: number[][] = [];
     const concurrency = 5;
-    for (let index = 0; index < texts.length; index += concurrency) {
-      vectors.push(
-        ...(await Promise.all(
-          texts
-            .slice(index, index + concurrency)
-            .map((text) => this.embedDocument(text)),
-        )),
+    const embedFrom = async (index: number): Promise<number[][]> => {
+      if (index >= texts.length) return [];
+      const batch = await Promise.all(
+        texts
+          .slice(index, index + concurrency)
+          .map((text) => this.embedDocument(text)),
       );
-    }
-    return vectors;
+      return [...batch, ...(await embedFrom(index + concurrency))];
+    };
+    return embedFrom(0);
   }
 
   getModel(): string {

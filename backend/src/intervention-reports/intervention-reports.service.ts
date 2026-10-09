@@ -17,7 +17,7 @@ export class InterventionReportsService {
     private readonly interventionReportModel: Model<InterventionReportDocument>,
   ) {}
 
-  async create(
+  create(
     createInterventionReportDto: CreateInterventionReportDto,
   ): Promise<InterventionReport> {
     const createdInterventionReport = new this.interventionReportModel(
@@ -45,7 +45,7 @@ export class InterventionReportsService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async findOne(id: string): Promise<InterventionReport | null> {
+  findOne(id: string): Promise<InterventionReport | null> {
     return this.interventionReportModel
       .findById(id)
       .populate('ot_id')
@@ -53,7 +53,7 @@ export class InterventionReportsService {
       .exec();
   }
 
-  async update(
+  update(
     id: string,
     updateInterventionReportDto: UpdateInterventionReportDto,
   ): Promise<InterventionReport | null> {
@@ -64,7 +64,7 @@ export class InterventionReportsService {
       .exec();
   }
 
-  async remove(id: string): Promise<InterventionReport | null> {
+  remove(id: string): Promise<InterventionReport | null> {
     return this.interventionReportModel.findByIdAndDelete(id).exec();
   }
 }

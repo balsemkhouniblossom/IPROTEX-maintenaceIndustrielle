@@ -90,23 +90,24 @@ export class PredictiveMaintenanceTrainingService {
   async trainAllMissing(): Promise<PredictionModelType[]> {
     const trained: PredictionModelType[] = [];
 
-    for (const model of this.models) {
+    await this.models.reduce(async (previous, model) => {
+      await previous;
       const hasActive = await this.modelVersionModel
         .exists({
           model_type: model.type,
           status: PredictionModelVersionStatus.ACTIVE,
         })
         .exec();
-      if (hasActive) continue;
+      if (hasActive) return;
 
       await this.trainModel(model.type);
       trained.push(model.type);
-    }
+    }, Promise.resolve());
 
     return trained;
   }
 
-  async listVersions(
+  listVersions(
     modelType?: PredictionModelType,
   ): Promise<PredictionModelVersionDocument[]> {
     const filter = modelType ? { model_type: modelType } : {};

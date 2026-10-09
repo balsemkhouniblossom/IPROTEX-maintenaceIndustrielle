@@ -13,7 +13,7 @@ export class CataloguesService {
     private readonly catalogueModel: Model<CatalogueDocument>,
   ) {}
 
-  async create(createCatalogueDto: CreateCatalogueDto): Promise<Catalogue> {
+  create(createCatalogueDto: CreateCatalogueDto): Promise<Catalogue> {
     const createdCatalogue = new this.catalogueModel(createCatalogueDto);
     return createdCatalogue.save();
   }
@@ -31,20 +31,17 @@ export class CataloguesService {
     return toPaginatedResponse(items, totalItems, page, limit);
   }
 
-  async findOne(id: string): Promise<any> {
+  findOne(id: string): Promise<any> {
     return this.catalogueModel.findById(id).exec();
   }
 
-  async update(
-    id: string,
-    updateCatalogueDto: UpdateCatalogueDto,
-  ): Promise<any> {
+  update(id: string, updateCatalogueDto: UpdateCatalogueDto): Promise<any> {
     return this.catalogueModel
       .findByIdAndUpdate(id, updateCatalogueDto, { new: true })
       .exec();
   }
 
-  async remove(id: string): Promise<any> {
+  remove(id: string): Promise<any> {
     return this.catalogueModel.findByIdAndDelete(id).exec();
   }
 }
