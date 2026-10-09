@@ -611,7 +611,7 @@ export default function StocksPage() {
         </div>
       )}
 
-      <main className="w-full space-y-4">
+      <main className="stocks-theme w-full space-y-4">
         <header className="panel flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div><h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Inventory</h1><p className="mt-1 text-sm text-slate-600">{totalItems} live stock records · See what is available, reserved, low, or unavailable.</p></div>
           <button type="button" onClick={handleCreate} className="btn-primary flex min-h-11 items-center justify-center gap-2"><PlusIcon className="h-4 w-4" /><span>{t("addStock", { default: "Add Stock Record" })}</span></button>
@@ -641,7 +641,7 @@ export default function StocksPage() {
         onClose={() => setShowFormModal(false)}
         title={editingStock ? t("modal.edit", { default: "Edit Stock Record" }) : t("modal.add", { default: "Add Stock Record" })}
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="stocks-theme space-y-4">
           {!editingStock && (
             <>
               <div>
@@ -746,7 +746,7 @@ export default function StocksPage() {
       </Modal>
 
       <Modal isOpen={showAdjustModal} onClose={() => setShowAdjustModal(false)} title={t("modal.adjust", { default: "Adjust Stock" })}>
-        <form onSubmit={handleSubmitAdjust} className="space-y-4">
+        <form onSubmit={handleSubmitAdjust} className="stocks-theme space-y-4">
           {adjustingStock && (
             <div className="text-sm text-slate-600">
               <div className="font-medium text-slate-800">{partLabel(adjustingStock.part_id)}</div>
@@ -794,16 +794,19 @@ export default function StocksPage() {
         title={t("modal.history", { default: "Movement History" })}
         size="lg"
       >
-        {historyStock && (
-          <div className="mb-3 text-sm font-medium text-slate-800">{partLabel(historyStock.part_id)}</div>
-        )}
-        <StockHistoryContent
-          loading={historyLoading}
-          movements={historyMovements}
-          t={t}
-          tCommon={tCommon}
-        />
+        <div className="stocks-theme">
+          {historyStock && (
+            <div className="mb-3 text-sm font-medium text-slate-800">{partLabel(historyStock.part_id)}</div>
+          )}
+          <StockHistoryContent
+            loading={historyLoading}
+            movements={historyMovements}
+            t={t}
+            tCommon={tCommon}
+          />
+        </div>
       </Modal>
     </DashboardLayout>
   );
 }
+

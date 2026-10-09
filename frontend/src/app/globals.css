@@ -2754,3 +2754,87 @@ textarea,
     min-height: 2.5rem;
   }
 }
+
+/* Stocks uses shared theme tokens so inventory cards, tables, filters, and
+   modal forms remain legible in both light and dark mode. */
+.stocks-theme {
+  color: var(--text-primary);
+}
+
+.stocks-theme .text-slate-800,
+.stocks-theme .text-slate-700 {
+  color: var(--text-primary) !important;
+}
+
+.stocks-theme .text-slate-600,
+.stocks-theme .text-slate-500 {
+  color: var(--text-secondary) !important;
+}
+
+.stocks-theme :where(input, select, textarea),
+.stocks-theme .input-field {
+  background: var(--surface-elevated);
+  border-color: var(--border) !important;
+  color: var(--text-primary);
+  color-scheme: light dark;
+}
+
+.stocks-theme :where(input, textarea)::placeholder {
+  color: var(--text-muted);
+}
+
+.stocks-theme .table {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.stocks-theme .table th {
+  background: linear-gradient(135deg, var(--surface-secondary) 0%, var(--background) 100%);
+  color: var(--text-primary);
+}
+
+.stocks-theme .table td {
+  color: var(--text-primary);
+}
+
+.stocks-theme .table tbody tr:hover {
+  background: var(--surface-secondary);
+}
+
+html[data-theme='dark'] .stocks-theme .border-s-slate-300 {
+  border-inline-start-color: var(--border-hover) !important;
+}
+
+html[data-theme='dark'] .stocks-theme .ring-blue-200 {
+  --tw-ring-color: rgb(96 165 250 / 0.5);
+}
+
+html[data-theme='dark'] .stocks-theme .bg-slate-100 {
+  background: var(--surface-secondary) !important;
+}
+
+html[data-theme='dark'] .stocks-theme .bg-emerald-50 {
+  background: rgb(6 78 59 / 0.45) !important;
+  border-color: rgb(52 211 153 / 0.45) !important;
+  color: #a7f3d0 !important;
+}
+
+html[data-theme='dark'] .stocks-theme .bg-amber-50,
+html[data-theme='dark'] .stocks-theme .bg-amber-100 {
+  background: rgb(120 53 15 / 0.45) !important;
+  border-color: rgb(251 191 36 / 0.45) !important;
+  color: #fde68a !important;
+}
+
+html[data-theme='dark'] .stocks-theme .bg-red-50,
+html[data-theme='dark'] .stocks-theme .bg-red-100 {
+  background: rgb(127 29 29 / 0.45) !important;
+  border-color: rgb(248 113 113 / 0.45) !important;
+  color: #fecaca !important;
+}
+
+html[data-theme='dark'] .stocks-theme .bg-blue-100 {
+  background: rgb(30 64 175 / 0.42) !important;
+  border-color: rgb(96 165 250 / 0.45) !important;
+  color: #bfdbfe !important;
+}
