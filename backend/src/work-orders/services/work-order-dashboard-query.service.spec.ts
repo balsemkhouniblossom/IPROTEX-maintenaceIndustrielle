@@ -59,6 +59,8 @@ describe('WorkOrderDashboardQueryService', () => {
   let service: WorkOrderDashboardQueryService;
 
   beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(TEST_TODAY);
     mesureModel = { countDocuments: jest.fn().mockResolvedValue(0) };
     workOrderModel = {
       find: jest.fn().mockReturnValue(chain([])),
@@ -92,6 +94,10 @@ describe('WorkOrderDashboardQueryService', () => {
       createMockSchedulingService(),
       kpiService as never,
     );
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe('getStatistics', () => {
