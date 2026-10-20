@@ -11,8 +11,6 @@ skinparam usecase {
 
 title Diagramme global des cas d'utilisation - GMAO industrielle (audit 2026-09-08)
 
-actor "Visiteur" as Visitor
-actor "Utilisateur authentifie" as User
 actor "Administrateur" as Admin
 actor "Operateur" as Operator
 actor "Technicien" as Technician
@@ -23,10 +21,6 @@ actor "Assistant IA Gemini" as AI
 actor "Service IA anomalies IMS / FastAPI" as AnomalyAI
 actor "Planificateur automatique" as Scheduler
 actor "Passerelle temps reel" as RealtimeGateway
-
-User <|-- Admin
-User <|-- Operator
-User <|-- Technician
 
 rectangle "Systeme GMAO" {
 
@@ -200,31 +194,30 @@ rectangle "Systeme GMAO" {
   }
 }
 
-Visitor --> UC_Register
-Visitor --> UC_Login
-Visitor --> UC_GoogleLogin
-Visitor --> UC_GoogleExchange
-Visitor --> UC_VerifyEmail
-Visitor --> UC_ForgotPassword
-Visitor --> UC_VerifyResetToken
-Visitor --> UC_ResetPassword
-Visitor --> UC_Health
-
-User --> UC_CompleteProfile
-User --> UC_Refresh
-User --> UC_Logout
-User --> UC_Profile
-User --> UC_ViewNotifications
-User --> UC_UnreadCount
-User --> UC_ReadNotifications
-User --> UC_DeleteNotifications
-User --> UC_SavedViews
-User --> UC_ManageKnowledge
-User --> UC_KnowledgeSuggestions
-User --> UC_DynamicTranslation
-User --> UC_RequestGeneratedReport
-User --> UC_DownloadReports
-User --> UC_ScheduledReports
+Operator --> UC_Register
+Operator --> UC_Login
+Operator --> UC_GoogleLogin
+Operator --> UC_GoogleExchange
+Operator --> UC_VerifyEmail
+Operator --> UC_ForgotPassword
+Operator --> UC_VerifyResetToken
+Operator --> UC_ResetPassword
+Operator --> UC_Health
+Operator --> UC_CompleteProfile
+Operator --> UC_Refresh
+Operator --> UC_Logout
+Operator --> UC_Profile
+Operator --> UC_ViewNotifications
+Operator --> UC_UnreadCount
+Operator --> UC_ReadNotifications
+Operator --> UC_DeleteNotifications
+Operator --> UC_SavedViews
+Operator --> UC_ManageKnowledge
+Operator --> UC_KnowledgeSuggestions
+Operator --> UC_DynamicTranslation
+Operator --> UC_RequestGeneratedReport
+Operator --> UC_DownloadReports
+Operator --> UC_ScheduledReports
 
 Admin --> UC_ManageUsers
 Admin --> UC_ApproveUsers
@@ -284,7 +277,6 @@ Operator --> UC_PreventiveState
 Operator --> UC_ViewManuals
 Operator --> UC_ViewDocument
 Operator --> UC_ViewKPI
-Operator --> UC_KnowledgeSuggestions
 
 Technician --> UC_TechnicianDashboard
 Technician --> UC_TechnicianWO
