@@ -1935,7 +1935,7 @@ select option {
    tablet/mobile widths. */
 @media (max-width: 1023px) {
   [dir="rtl"] .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
@@ -2284,8 +2284,8 @@ html[data-theme='dark'] .operator-context-card {
   .mini-avatar-body,
   .mini-avatar-eyes,
   .mini-avatar-wave {
-    animation: none;
-    transform: none;
+    animation: none !important;
+    transform: none !important;
   }
 }
 
