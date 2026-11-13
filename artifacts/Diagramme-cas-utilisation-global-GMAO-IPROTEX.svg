@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#edf6ff"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#173a6b" flood-opacity=".14"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#3979b8"/></marker>
+    <marker id="inherit" markerWidth="16" markerHeight="16" refX="14" refY="8" orient="auto"><path d="M1,1 L15,8 L1,15 z" fill="#fff" stroke="#173a6b" stroke-width="2"/></marker>
+    <style>
+      .title{font:700 48px 'Segoe UI',Arial,sans-serif;fill:#082b61}.sub{font:400 24px 'Segoe UI',Arial,sans-serif;fill:#527196}
+      .actor{font:700 23px 'Segoe UI',Arial,sans-serif;fill:#102a56;text-anchor:middle}.uc{font:600 20px 'Segoe UI',Arial,sans-serif;fill:#163961;text-anchor:middle}
+      .group{font:700 22px 'Segoe UI',Arial,sans-serif;fill:#fff;text-anchor:middle}.note{font:500 19px 'Segoe UI',Arial,sans-serif;fill:#365777}
+      .line{fill:none;stroke:#3979b8;stroke-width:2.4}.inherit{fill:none;stroke:#173a6b;stroke-width:3}
+      .oval{fill:#fff;stroke:#5c99d2;stroke-width:2}.actorStroke{fill:none;stroke:#173a6b;stroke-width:5;stroke-linecap:round}
+    </style>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <text x="960" y="64" class="title" text-anchor="middle">Diagramme global des cas d’utilisation</text>
+  <text x="960" y="101" class="sub" text-anchor="middle">GMAO / IPROTEX — acteurs humains et héritage des droits communs</text>
+
+  <!-- actors -->
+  <g transform="translate(170 170)"><circle cx="0" cy="0" r="25" class="actorStroke"/><path d="M0 25v70M-42 52h84M0 95l-38 52M0 95l38 52" class="actorStroke"/><text x="0" y="185" class="actor">Utilisateur</text><text x="0" y="212" class="actor">authentifié</text></g>
+  <g transform="translate(170 450)"><circle cx="0" cy="0" r="25" class="actorStroke"/><path d="M0 25v70M-42 52h84M0 95l-38 52M0 95l38 52" class="actorStroke"/><text x="0" y="185" class="actor">Administrateur</text></g>
+  <g transform="translate(170 700)"><circle cx="0" cy="0" r="25" class="actorStroke"/><path d="M0 25v70M-42 52h84M0 95l-38 52M0 95l38 52" class="actorStroke"/><text x="0" y="185" class="actor">Technicien</text></g>
+  <g transform="translate(170 930)"><circle cx="0" cy="-25" r="25" class="actorStroke"/><path d="M0 0v62M-42 27h84M0 62l-32 42M0 62l32 42" class="actorStroke"/><text x="0" y="135" class="actor">Opérateur</text></g>
+
+  <!-- inheritance -->
+  <path d="M220 505 H270 V220 H220" class="inherit" marker-end="url(#inherit)"/>
+  <path d="M220 755 H290 V220 H220" class="inherit" marker-end="url(#inherit)"/>
+  <path d="M220 955 H310 V220 H220" class="inherit" marker-end="url(#inherit)"/>
+  <text x="255" y="195" class="note">Héritage des droits communs</text>
+
+  <!-- system boundary -->
+  <rect x="350" y="135" width="1520" height="865" rx="26" fill="#f9fcff" stroke="#2d6fb7" stroke-width="3"/>
+  <rect x="690" y="118" width="840" height="48" rx="24" fill="#123f78"/>
+  <text x="1110" y="151" class="group">SYSTÈME GMAO / IPROTEX</text>
+
+  <!-- group headers -->
+  <rect x="390" y="185" width="1440" height="44" rx="16" fill="#54769b"/><text x="1110" y="215" class="group">CAS COMMUNS — hérités par les trois rôles</text>
+  <rect x="390" y="385" width="460" height="44" rx="16" fill="#27a85e"/><text x="620" y="415" class="group">ADMINISTRATEUR</text>
+  <rect x="880" y="385" width="460" height="44" rx="16" fill="#277ccc"/><text x="1110" y="415" class="group">TECHNICIEN</text>
+  <rect x="1370" y="385" width="460" height="44" rx="16" fill="#7241bd"/><text x="1600" y="415" class="group">OPÉRATEUR</text>
+
+  <!-- common use cases -->
+  <g filter="url(#shadow)"><ellipse cx="620" cy="295" rx="195" ry="53" class="oval"/><ellipse cx="1110" cy="295" rx="195" ry="53" class="oval"/><ellipse cx="1600" cy="295" rx="195" ry="53" class="oval"/></g>
+  <text x="620" y="289" class="uc"><tspan x="620">S’authentifier et gérer</tspan><tspan x="620" dy="25">son profil</tspan></text>
+  <text x="1110" y="289" class="uc"><tspan x="1110">Consulter les</tspan><tspan x="1110" dy="25">notifications</tspan></text>
+  <text x="1600" y="289" class="uc"><tspan x="1600">Consulter machines et</tspan><tspan x="1600" dy="25">documents autorisés</tspan></text>
+
+  <!-- role use cases helper rows -->
+  <g filter="url(#shadow)">
+    <!-- admin -->
+    <ellipse cx="620" cy="500" rx="195" ry="45" class="oval"/><ellipse cx="620" cy="600" rx="195" ry="45" class="oval"/><ellipse cx="620" cy="700" rx="195" ry="45" class="oval"/><ellipse cx="620" cy="800" rx="195" ry="45" class="oval"/><ellipse cx="620" cy="900" rx="195" ry="45" class="oval"/>
+    <!-- tech -->
+    <ellipse cx="1110" cy="500" rx="195" ry="45" class="oval"/><ellipse cx="1110" cy="600" rx="195" ry="45" class="oval"/><ellipse cx="1110" cy="700" rx="195" ry="45" class="oval"/><ellipse cx="1110" cy="800" rx="195" ry="45" class="oval"/><ellipse cx="1110" cy="900" rx="195" ry="45" class="oval"/>
+    <!-- operator -->
+    <ellipse cx="1600" cy="500" rx="195" ry="45" class="oval"/><ellipse cx="1600" cy="600" rx="195" ry="45" class="oval"/><ellipse cx="1600" cy="700" rx="195" ry="45" class="oval"/><ellipse cx="1600" cy="800" rx="195" ry="45" class="oval"/><ellipse cx="1600" cy="900" rx="195" ry="45" class="oval"/>
+  </g>
+  <text x="620" y="494" class="uc"><tspan x="620">Gérer utilisateurs</tspan><tspan x="620" dy="24">et référentiels</tspan></text>
+  <text x="620" y="594" class="uc"><tspan x="620">Gérer machines et plans</tspan><tspan x="620" dy="24">de maintenance</tspan></text>
+  <text x="620" y="694" class="uc"><tspan x="620">Gérer stock, pièces</tspan><tspan x="620" dy="24">et documents</tspan></text>
+  <text x="620" y="794" class="uc"><tspan x="620">Superviser KPI, MTTR</tspan><tspan x="620" dy="24">et rapports</tspan></text>
+  <text x="620" y="894" class="uc"><tspan x="620">Valider interventions</tspan><tspan x="620" dy="24">et ordres de travail</tspan></text>
+
+  <text x="1110" y="494" class="uc"><tspan x="1110">Consulter les ordres</tspan><tspan x="1110" dy="24">de travail assignés</tspan></text>
+  <text x="1110" y="606" class="uc">Exécuter les interventions</text>
+  <text x="1110" y="694" class="uc"><tspan x="1110">Renseigner le rapport</tspan><tspan x="1110" dy="24">d’intervention</tspan></text>
+  <text x="1110" y="794" class="uc"><tspan x="1110">Déclarer les pièces</tspan><tspan x="1110" dy="24">utilisées</tspan></text>
+  <text x="1110" y="894" class="uc"><tspan x="1110">Utiliser le diagnostic</tspan><tspan x="1110" dy="24">et l’assistant IA</tspan></text>
+
+  <text x="1600" y="494" class="uc"><tspan x="1600">Consulter les machines</tspan><tspan x="1600" dy="24">assignées</tspan></text>
+  <text x="1600" y="606" class="uc">Signaler une panne</text>
+  <text x="1600" y="694" class="uc"><tspan x="1600">Exécuter les tâches</tspan><tspan x="1600" dy="24">préventives assignées</tspan></text>
+  <text x="1600" y="794" class="uc"><tspan x="1600">Suivre ses</tspan><tspan x="1600" dy="24">signalements</tspan></text>
+  <text x="1600" y="894" class="uc"><tspan x="1600">Consulter ses</tspan><tspan x="1600" dy="24">rapports</tspan></text>
+
+  <!-- associations: bundled to keep readable -->
+  <path d="M220 220 C300 230 330 250 425 285" class="line" marker-end="url(#arrow)"/><path d="M220 220 C450 180 790 220 915 285" class="line" marker-end="url(#arrow)"/><path d="M220 220 C650 160 1280 205 1405 285" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="390" y="1020" width="1440" height="40" rx="18" fill="#e4f0fb"/>
+  <text x="1110" y="1047" class="note" text-anchor="middle">△ Héritage : chaque rôle bénéficie automatiquement des cas communs de l’Utilisateur authentifié.</text>
+</svg>

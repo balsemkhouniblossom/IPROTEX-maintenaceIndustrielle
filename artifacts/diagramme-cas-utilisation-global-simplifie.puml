@@ -1,0 +1,85 @@
+@startuml
+' Diagramme global des cas d'utilisation — GMAO/IPROTEX
+' Conventions suivies : Visual Paradigm UML Use Case Diagram Guide.
+
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 30
+skinparam ranksep 35
+skinparam ArrowColor #315D8A
+skinparam ActorBorderColor #173A6B
+skinparam ActorFontColor #102A56
+skinparam UsecaseBorderColor #4A7FB3
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam UsecaseFontColor #102A56
+skinparam RectangleBorderColor #2D6FB7
+skinparam RectangleFontColor #102A56
+skinparam PackageBorderColor #8FB5D9
+skinparam PackageFontColor #173A6B
+
+title Diagramme global des cas d’utilisation\nGMAO / IPROTEX
+
+actor "Utilisateur\nauthentifié" as User <<abstrait>>
+actor "Administrateur" as Admin
+actor "Technicien" as Tech
+actor "Opérateur" as Operator
+
+' Généralisation : le triangle creux pointe vers l'acteur général.
+Admin --|> User
+Tech --|> User
+Operator --|> User
+
+rectangle "Plateforme GMAO / IPROTEX" {
+  package "Fonctions communes" #EEF5FC {
+    usecase "Consulter les\nnotifications" as UC_Notifications
+    usecase "Consulter les\ndocuments" as UC_Documents
+  }
+
+  package "Administration" #ECF9F1 {
+    usecase "Administrer les\nutilisateurs" as UC_Users
+    usecase "Gérer le parc\nmachines" as UC_Assets
+    usecase "Planifier la\nmaintenance" as UC_Planning
+    usecase "Gérer les ressources" as UC_Resources
+    usecase "Piloter la\nperformance" as UC_Performance
+  }
+
+  package "Maintenance" #EEF6FF {
+    usecase "Consulter les ordres\nde travail" as UC_WorkOrders
+    usecase "Realiser une\nintervention" as UC_Intervention
+    usecase "Déclarer les pièces\nutilisées" as UC_UsedParts
+    usecase "Rédiger un rapport" as UC_Report
+    usecase "Obtenir une aide\nau diagnostic" as UC_Diagnosis
+  }
+
+  package "Exploitation" #F5EEFF {
+    usecase "Consulter les\néquipements" as UC_Equipment
+    usecase "Signaler une panne" as UC_Fault
+    usecase "Exécuter une tâche\npréventive" as UC_Preventive
+    usecase "Suivre les\nsignalements" as UC_Tracking
+  }
+}
+
+' Associations : lignes continues sans flèche.
+User -- UC_Notifications
+User -- UC_Documents
+
+Admin -- UC_Users
+Admin -- UC_Assets
+Admin -- UC_Planning
+Admin -- UC_Resources
+Admin -- UC_Performance
+
+Tech -- UC_WorkOrders
+Tech -- UC_Intervention
+Tech -- UC_UsedParts
+Tech -- UC_Report
+Tech -- UC_Diagnosis
+
+Operator -- UC_Equipment
+Operator -- UC_Fault
+Operator -- UC_Preventive
+Operator -- UC_Tracking
+
+@enduml
