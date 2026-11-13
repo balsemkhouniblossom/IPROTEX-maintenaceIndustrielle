@@ -933,9 +933,20 @@ test("Shared dashboard keeps the Arabic Operator workspace full-width below desk
     layoutSource,
     /flex flex-wrap items-center justify-end gap-2 sm:gap-4/,
   );
+  // The mobile RTL rule must collapse to a single track. It wins on source
+  // order (it comes after the desktop RTL rule of equal specificity), so it no
+  // longer needs an !important escape hatch.
   assert.match(
     globalsSource,
-    /@media \(max-width: 1023px\) \{\s*\[dir="rtl"\] \.dashboard-grid \{\s*grid-template-columns: minmax\(0, 1fr\) !important;/,
+    /@media \(max-width: 1023px\) \{\s*\[dir="rtl"\] \.dashboard-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/,
+  );
+  const rtlDesktopRule = globalsSource.search(/\[dir="rtl"\] \.dashboard-grid \{/);
+  const rtlMediaRule = globalsSource.search(
+    /@media \(max-width: 1023px\) \{\s*\[dir="rtl"\] \.dashboard-grid \{/,
+  );
+  assert.ok(
+    rtlMediaRule > rtlDesktopRule,
+    "the mobile RTL grid rule must come after the desktop rule to win on order",
   );
 });
 

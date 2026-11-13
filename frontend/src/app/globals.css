@@ -302,7 +302,7 @@ textarea {
   border-radius: 0.75rem;
   background: var(--surface);
   color: var(--text-primary);
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .auth-input::placeholder {
@@ -375,7 +375,7 @@ textarea {
   border: 1px solid var(--surface-overlay);
   border-radius: 24px;
   box-shadow: none;
-  transition: all 0.3s ease-in-out;
+  transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out;
   padding: 32px;
   position: relative;
   overflow: hidden;
@@ -1137,7 +1137,7 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
 
 /* Card Icon Animation */
 .card-icon {
-  transition: all 0.3s ease-in-out;
+  transition: color 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
 .panel:hover .card-icon {
@@ -1253,7 +1253,7 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
   background: var(--surface);
   border-left: 4px solid;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .status-reminder:hover {
@@ -1364,7 +1364,7 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--surface-secondary) 0%, var(--surface-accent) 100%);
   border: 1px solid var(--border);
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   text-decoration: none;
   color: inherit;
   min-width: 0;
@@ -1406,7 +1406,7 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
   background: var(--surface);
   color: var(--text-primary);
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search-input:focus {
@@ -1591,7 +1591,7 @@ html[data-theme='dark'] .operator-dashboard-theme input[type='date'] {
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   position: relative;
   min-width: 0;
   max-width: 100%;
@@ -1679,7 +1679,7 @@ html[data-theme='dark'] .themed-logo-watermark {
   background: var(--surface);
   color: var(--text-secondary);
   box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
   min-width: 0;
   max-width: 100%;
 }
@@ -1706,7 +1706,7 @@ html[data-theme='dark'] .themed-logo-watermark {
   padding: 0.625rem 0.75rem;
   border-radius: 0.75rem;
   color: var(--text-secondary);
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   min-width: 0;
 }
 
@@ -1752,7 +1752,7 @@ html[data-theme='dark'] .themed-logo-watermark {
   text-transform: none;
   letter-spacing: 0.025em;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
   box-shadow: var(--shadow-sm);
   max-width: 100%;
   min-width: 0;
@@ -1779,7 +1779,7 @@ html[data-theme='dark'] .themed-logo-watermark {
   text-transform: none;
   letter-spacing: 0.025em;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
   box-shadow: var(--shadow-sm);
   max-width: 100%;
   min-width: 0;
@@ -1803,7 +1803,7 @@ html[data-theme='dark'] .themed-logo-watermark {
   font-size: 14px;
   color: var(--text-primary);
   font-family: inherit;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   box-shadow: var(--shadow-sm);
   width: 100%;
   max-width: 100%;
@@ -1829,7 +1829,7 @@ html[data-theme='dark'] .themed-logo-watermark {
   border: 1px solid var(--surface-overlay);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   z-index: 10;
   min-width: 0;
   max-width: 100%;
@@ -1902,10 +1902,13 @@ html[data-theme='dark'] .themed-logo-watermark {
   border-bottom: none;
 }
 
+.table tr {
+  transition: transform 0.2s ease-in-out;
+}
+
 .table tr:hover {
   background: linear-gradient(135deg, var(--surface-secondary) 0%, var(--surface-accent) 100%);
   transform: scale(1.01);
-  transition: all 0.2s ease-in-out;
 }
 
 select option {
@@ -1935,7 +1938,7 @@ select option {
    tablet/mobile widths. */
 @media (max-width: 1023px) {
   [dir="rtl"] .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2071,7 +2074,7 @@ a {
   border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 html[data-theme='dark'] .btn-primary {
@@ -2284,8 +2287,8 @@ html[data-theme='dark'] .operator-context-card {
   .mini-avatar-body,
   .mini-avatar-eyes,
   .mini-avatar-wave {
-    animation: none !important;
-    transform: none !important;
+    animation: none;
+    transform: none;
   }
 }
 
@@ -2837,4 +2840,44 @@ html[data-theme='dark'] .stocks-theme .bg-blue-100 {
   background: rgb(30 64 175 / 0.42);
   border-color: rgb(96 165 250 / 0.45);
   color: #bfdbfe;
+}
+
+/* Motion accessibility: the decorative spinners, pulse dot and hover
+   transitions above are cosmetic, so honour the user's reduced-motion
+   preference. Placed last so it overrides the transition declarations above
+   by source order alone, with no specificity override. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow,
+  .animate-spin-reverse,
+  .pulse-dot {
+    animation: none;
+  }
+
+  .auth-input,
+  .panel,
+  .card-icon,
+  .status-reminder,
+  .app-icon,
+  .search-input,
+  .nav-link-modern,
+  .toolbar-control,
+  .toolbar-action,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .input-field,
+  .card,
+  .operator-context-card,
+  .panel::before,
+  .table tr {
+    transition: none;
+  }
+
+  .panel:hover {
+    transform: none;
+  }
+
+  .table tr:hover {
+    transform: none;
+  }
 }

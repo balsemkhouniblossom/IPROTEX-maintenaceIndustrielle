@@ -65,7 +65,21 @@ test("reduced motion disables nonessential animation", () => {
   assert.equal(getAssistantAnimationClass(true, false), "mini-avatar-animate");
   const css = readFileSync(join(process.cwd(), "src", "app", "globals.css"), "utf8");
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.match(css, /animation:\s*none\s*!important/);
+  // Avatar animations must be switched off inside a reduced-motion block.
+  // Assert the behaviour rather than a literal "!important" so the rule can
+  // rely on source order instead of a specificity override.
+  const reducedMotionBlocks = css.match(
+    /@media \(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\}/g,
+  );
+  assert.ok(reducedMotionBlocks, "expected at least one reduced-motion block");
+  assert.ok(
+    reducedMotionBlocks.some(
+      (block) =>
+        /\.mini-avatar-(animate|body|eyes|wave)/.test(block) &&
+        /animation:\s*none/.test(block),
+    ),
+    "reduced motion must disable the mini-avatar animations",
+  );
 });
 
 test("speech-bubble dismissal uses the supplied session storage", () => {
