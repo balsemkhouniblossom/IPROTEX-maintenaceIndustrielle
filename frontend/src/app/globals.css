@@ -2853,6 +2853,10 @@ html[data-theme='dark'] .stocks-theme .bg-blue-100 {
     animation: none;
   }
 
+  /* Keep this list in sync with every `transition` declared above: a
+     selector that animates a property but is missing here silently ignores
+     the reduced-motion preference, which Sonar reports as an accessibility
+     defect on the declaring line. */
   .auth-input,
   .auth-icon-button,
   .panel,
