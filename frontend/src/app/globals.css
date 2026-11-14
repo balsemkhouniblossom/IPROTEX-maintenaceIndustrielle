@@ -2854,10 +2854,13 @@ html[data-theme='dark'] .stocks-theme .bg-blue-100 {
   }
 
   .auth-input,
+  .auth-icon-button,
   .panel,
   .card-icon,
   .status-reminder,
   .app-icon,
+  .technician-order-link,
+  .sidebar,
   .search-input,
   .nav-link-modern,
   .toolbar-control,
